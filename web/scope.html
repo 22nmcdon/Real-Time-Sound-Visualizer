@@ -1267,6 +1267,10 @@ body[data-layer-edit="b"] #phaseRow { display: none !important; }
 /* A row whose menus need the column's whole width: the label over them. Draw's
    two menus read "2 n" and "bass and" beside it in a 240 px column. */
 .menu-row.stack > .grow { flex: 1 1 100%; }
+/* Draw's second line, under its way, at every size: the compact face puts
+   a label beside its control, and with the way beside the label too the
+   outline's menus were squeezed onto the same line. */
+#midiDrawRow > .grow { flex-basis: 100%; }
 
 /* A drawbar's colour, as on the organ: brown under the note, white for the
    octaves, black for the fifths and the third. A mark beside the label
@@ -2180,9 +2184,45 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               </select>
             </div>
             <p class="menu-note" id="midiLayersNote" hidden></p>
+            <!-- Ways to draw, step 2 (docs/ways-to-draw.md): a prototype of the
+                 constellation beside today's one figure, which stays the
+                 default. On the label's line, which a stacked row leaves empty,
+                 so choosing a way costs the Keyboard no height: Play had 11 px
+                 to spare with two hands at 1400x900, and a row of its own put it
+                 over. While it is chosen its place and hands take the outline's
+                 line, the outline having nothing to draw (its menus still lean
+                 the heard notes, and keep their values). Page-only and never
+                 stored - not in a setup, a preset, a code, undo or the morph.
+                 Its menus have no ids, which is how a page-only menu has to be:
+                 parity holds every select with an id to the core's panel, and
+                 these have no place there. The info line finds them by
+                 data-draw (SAY_KEYS), and the script through el. -->
             <div class="menu-row stack" id="midiDrawRow" hidden>
               <label class="menu-label" for="midiDrawCount">Draw</label>
-              <div class="grow">
+              <select data-draw="way" aria-label="One figure, or a figure for each note (a prototype)"
+                      style="flex:1 1 0; min-width:0">
+                <option value="one" selected>one figure</option>
+                <option value="constellation">constellation (a prototype)</option>
+              </select>
+              <div class="grow" id="drawConst" hidden>
+                <select data-draw="place" aria-label="Where each note's figure lands"
+                        style="flex:1 1 0; min-width:0">
+                  <option value="pitch" selected>by pitch</option>
+                  <option value="clock">clock</option>
+                  <option value="seeded">seeded</option>
+                </select>
+                <select data-draw="hands" aria-label="One constellation for each hand, or one shared" hidden
+                        style="flex:1 1 0; min-width:0">
+                  <option value="each" selected>one each</option>
+                  <option value="shared">shared</option>
+                </select>
+                <button type="button" class="link-btn caps" id="drawSeed" hidden>Reseed</button>
+                <span class="reading" id="drawProto" title="A prototype: page-only, never saved, heard on the page's own brain">prototype</span>
+              </div>
+              <div class="grow" id="drawAway" hidden>
+                <span class="reading">Heard on the page's brain: <a id="drawAwayLink" href="?brain=js&amp;draw=constellation">open it</a></span>
+              </div>
+              <div class="grow" id="drawOutline">
                 <!-- Allowed to shrink. At their natural width the two menus ran
                      89 px out of the Bench's column, over the next section's
                      heading - since poly, unseen because the Bench's check
@@ -5518,6 +5558,14 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         under it, which is what just tuning a chord means.
         A chord is louder than a note; the limiter catches it.
         <br><br>
+        <i>Draw</i>'s first menu can also be a <i>constellation</i>, a prototype heard only on
+        the page's own brain (the address ending <i>?brain=js</i>; elsewhere it offers to take
+        you there): each note draws its own figure &mdash; a sine a ring &mdash; where the note
+        lands, as large as it is loud, so Scan reads where you play. <i>By pitch</i> puts the
+        notes round a clock face with the octave outward, <i>clock</i> puts every note across
+        Scan's circle, and <i>seeded</i> scatters them, <i>Reseed</i> dealing again. The sound
+        is the one figure's except for what Scan reads, and nothing saves the choice.
+        <br><br>
         Tuning applies to what you play: <i>just</i> snaps the interval to its whole-number
         ratio and the figure stands still, <i>equal</i> takes the keys as they are and it
         turns at the rate the interval beats. A tempered fifth turns about three quarters of
@@ -5881,6 +5929,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "morphGroup",
                   "morphPos", "morphStoreA", "morphStoreB", "morphNote",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
+                  "drawConst", "drawSeed", "drawProto", "drawAway", "drawAwayLink", "drawOutline",
                   "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow",
                   "midiLayerPair", "midiLayersNote", "genTitle", "pictureHandName",
                   "pictureMovesRow", "pictureMovesA", "pictureMovesB",
@@ -5979,6 +6028,10 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
 for (const id of ["pictureResponds", "pictureSwell", "pictureFeel", "pictureRise", "pictureRiseValue", "pictureRiseRow",
                   "pictureFall", "pictureFallValue", "pictureFallRow"]) {
   el[id] = document.getElementById(id);
+}
+// The draw row's page-only menus, which have no ids (see the markup).
+for (const which of ["way", "place", "hands"]) {
+  el["draw" + which[0].toUpperCase() + which.slice(1)] = document.querySelector('[data-draw="' + which + '"]');
 }
 for (const id of ["barsGroup", "barsTitle", "barsStateRow", "barsState", "barsUse", "barsGo",
                   "barsGoRow", "morphRow", "morph", "morphValue", "widthRow", "width", "widthValue"]) {
@@ -13741,8 +13794,10 @@ function makeToneSource(atRate) {
        right to everything else on the page, and a pair that is layer A
        against layer B is not that. */
     laneNames() { return layoutLaneNames(layout, tone, core.toneB); },
-    // The X-Y figures this source asks for, when it asks for more than one.
-    figures() { return layout === "each" ? [[0, 1], [2, 3]] : null; },
+    /* The X-Y figures this source asks for, when it asks for more than one;
+       and none at all while the constellation draws the notes in their
+       place (drawConstellation), so the graticule is drawn and no figure. */
+    figures() { return constellationLive() ? [] : layout === "each" ? [[0, 1], [2, 3]] : null; },
 
     describe() { return describeGenerator(tone); },
 
@@ -17089,6 +17144,309 @@ function scanStrike(note, velocity) {
   }
 }
 
+/* --- ways to draw: the constellation (a prototype) --------------------------
+   Step 2 of docs/ways-to-draw.md: beside today's one figure, which stays the
+   default, a figure for each held note - the one it would draw alone, its
+   own output against itself a quarter of its period late, so a sine is a
+   ring, a triangle a diamond and a saw its own shape - at a place the note
+   decides, as large as it is loud. It is drawn on the screen and into the
+   phosphor grid, which is what Scan reads, so where a note lands is part of
+   how it sounds: that is the whole reason to hear it before it is ported.
+
+   A prototype, and page-only, which shaped four decisions:
+
+   - It is DRAWN here, on the main thread, from what the page knows of each
+     note - the voice lists it sends the generator, an envelope per note run
+     against the hand's own settings, the hand's shape and Level - and not
+     from the voice's output. The page's brain runs its generator in a
+     worklet, compiled unless the address says ?core=js, and a voice's own
+     samples never leave it; reaching for them would have meant a change to
+     the core, which a prototype is not allowed. What it costs: the voice's
+     chain after the oscillator - shaping, the filter, Scan itself - does not
+     reshape a note's figure, and the envelope here is stepped a frame at a
+     time beside the worklet's rather than being it. The port (step 3) draws
+     from the voice.
+   - The lanes and the sound are untouched. The generator still makes one
+     pair, still heard as it was; only what the screen draws of it changes,
+     the tone source's `figures()` answering none (so drawXY draws the
+     graticule and no figure) and this drawing the notes in its place. So
+     while it is on, what is heard is no longer exactly what is drawn - P4's
+     rule - except through Scan, which reads the constellation. That is the
+     experiment. Every reading the lanes feed (the tuner, the readouts, the
+     picture stage's motion) reads the one figure as before.
+   - It reaches Scan only on the page's own brain. On the instrument's - the
+     site's default and the plugin - the core draws and reads its own grid,
+     which nothing drawn here could reach: a constellation there would be
+     seen and not heard, against the first rule of the plan. So there the
+     choice says so and offers the page's brain (?brain=js&draw=constellation),
+     and in the plugin it is not offered.
+   - Not a setup field: not in a preset, a code, undo, the morph or a host's
+     parameters, and not remembered by the browser. The address can ask for
+     it (?draw=constellation), which is how the instrument's face hands over.
+
+   With two hands it is one screen. Each hand's figures are in its ink, and
+   both hands' Scan reads that screen: the layer pictures (each hand's own
+   grid) are the picture stage's, and this leaves them alone.
+
+   The sizes and radii, in half-widths of the screen at zoom one, and why:
+
+   - Clock: pitch class round a circle of 0.4, C at the top and clockwise,
+     the octave ignored; a figure 0.58 across its half-width at full
+     loudness, so 0.32 at the default Level held at the default sustain from
+     the screen's keys (0.55 x 0.7 x 100/127). Scan's circle is not a fixed
+     circle: it follows the picture's centre and spread (scanFollow) and is
+     read off-centre (scanRead), so "on Scan's circle" cannot mean placed on
+     it - placed there, the centre would walk off by the offset every second.
+     It means laid out so the circle Scan finds crosses every note, and at
+     those numbers it does, for every root-position triad, seventh and
+     six-note chord tried (simulated against scanRead's geometry, and held by
+     constellationtest.py on the page).
+   - Pitch: the same clock face, the octave as distance from the middle,
+     0.14 for octave two and 0.17 more an octave to 0.82 at octave six (lower
+     and higher octaves share the innermost and outermost); a figure 0.09 at
+     full loudness, 0.05 held, so neighbouring octaves stay apart and a
+     chromatic run's figures, a quarter apart on the middle ring, do not
+     run into one another (at 0.12 they touched, and a run lit four patches
+     rather than twelve). A
+     middle-register triad sits on the ring at 0.48, where the circle Scan
+     finds passes inside the figures on one side and outside them on the
+     other: C, E and G in octave four sit just clear of it, and of the 24
+     root-position triads there every one has a note clear of it.
+   - Seeded: a place for each note dealt from the seed, anywhere within 0.72
+     of the middle, a figure 0.2 at full loudness. The seed is fixed until New
+     seed deals another; a Fixed scatter by pitch is the Pitch place.
+   - With two hands, one each lays each hand out by pitch class alone (Pitch
+     on its middle ring, Seeded by a seed of the hand's own), so the lower
+     hand's G3 and the upper's G5 land on one place; shared lays every note
+     of both out by its place, octave and all. Clock ignores the octave
+     either way. */
+const CONSTELLATION_RATE = 4000;          // an envelope's steps a second, here
+const CONSTELLATION_LEVEL_REF = 0.55;     // the Level a figure's sizes are given at: Level's default
+const CONSTELLATION_POINTS = 96;          // a figure's segments
+const CONSTELLATION_CLOCK_R = 0.4;
+const CONSTELLATION_CLOCK_SIZE = 0.58;
+const CONSTELLATION_PITCH_R0 = 0.14;
+const CONSTELLATION_PITCH_STEP = 0.17;
+const CONSTELLATION_PITCH_SIZE = 0.09;
+const CONSTELLATION_SEED_REACH = 0.72;
+const CONSTELLATION_SEED_SIZE = 0.2;
+const CONSTELLATION_NOISES = new Set(["noise", "pink", "brown", "stepped"]);
+const constellation = {
+  way: "one", place: "pitch", hands: "each", seed: 1,
+  figures: new Map(),       // "hand:note" -> { hand, note, env, held, level }
+  units: [null, null],      // each hand's figure at size one, and what it was made from
+  cost: 0,                  // milliseconds of the last frame's drawing and deposits
+  drawn: [],                // the last frame's figures: where each landed and how large
+};
+const constellationXs = new Float64Array(CONSTELLATION_POINTS + 1);
+const constellationYs = new Float64Array(CONSTELLATION_POINTS + 1);
+{
+  // The address may ask for it, which is how the instrument's face sends you here.
+  const asked = typeof location !== "undefined" ? new URLSearchParams(location.search).get("draw") : null;
+  if (asked === "constellation") constellation.way = "constellation";
+}
+
+// Whether the page draws what Scan reads: its own generator, outside the plugin.
+function constellationAvailable() {
+  const source = state.source;
+  return !window.__JUCE__ && !!source && source.kind === "tone";
+}
+// Whether it is drawing now: chosen, available, in X-Y, and a chord playing.
+function constellationLive() {
+  if (constellation.way !== "constellation" || !constellationAvailable() || state.display !== "xy") return false;
+  const tone = genSettings(0);
+  return !!tone && tone.voices !== null;
+}
+
+/* A hand's figure at size one: a cycle of its shape against itself a
+   quarter-cycle late, as the quarter turn draws a lone note. Unband-limited
+   (a step of nought), since it is a drawing of the shape and not a sound;
+   a noise has no cycle to draw and is drawn as a sine is. Made again only
+   when what it is made from moves. */
+function constellationUnit(hand) {
+  const tone = genSettings(hand);
+  const shape = tone.shape;
+  const amount = shape === "pulse" ? (tone.width > 0 ? tone.width : 0.25)
+    : shape === "wavetable" ? Math.max(0, Math.min(3, Number.isFinite(tone.table) ? tone.table : 1.5))
+    : Math.max(0, Math.min(3, tone.morph));
+  const bars = shape === "drawbars" ? tone.bars : shape === "drawn" ? tone.cycle : shape === "wavetable" ? tone.wavetable : null;
+  const key = shape + "|" + amount + "|" + (shape === "drawbars" ? tone.bars.join(",") : "");
+  const kept = constellation.units[hand];
+  if (kept && kept.key === key && kept.bars === bars) return kept;
+  const weights = shape === "drawbars" ? drawbarWeights(tone.bars, new Float64Array(9)) : bars;
+  const plain = CONSTELLATION_NOISES.has(shape) ? "sine" : shape;
+  const xs = new Float64Array(CONSTELLATION_POINTS + 1), ys = new Float64Array(CONSTELLATION_POINTS + 1);
+  for (let i = 0; i <= CONSTELLATION_POINTS; i++) {
+    const phase = 2 * Math.PI * i / CONSTELLATION_POINTS;
+    xs[i] = waveAt(plain, phase, 0, weights, amount);
+    ys[i] = waveAt(plain, phase + 1.5 * Math.PI, 0, weights, amount);
+  }
+  const unit = { key, bars, xs, ys };
+  constellation.units[hand] = unit;
+  return unit;
+}
+
+/* A number from nought to one from the seed and a key: a few rounds of an
+   integer hash (Wellons's lowbias32), so neighbouring notes land far apart. */
+function constellationHash(seed, key) {
+  let h = (Math.imul(seed | 0, 0x9e3779b1) ^ Math.imul(key | 0, 0x85ebca6b)) >>> 0;
+  h ^= h >>> 16; h = Math.imul(h, 0x7feb352d) >>> 0;
+  h ^= h >>> 15; h = Math.imul(h, 0x846ca68b) >>> 0;
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+/* Where a note's figure lands, in half-widths of the screen with Y up, and
+   its size at full loudness. `own` is whether the hands are laid out one
+   each, which only matters with two. */
+function constellationPlace(note, hand, own) {
+  const pc = ((note % 12) + 12) % 12, octave = Math.floor(note / 12) - 1;
+  const turn = 2 * Math.PI * pc / 12;
+  if (constellation.place === "seeded") {
+    const key = own ? 1000 + 100 * hand + pc : note;
+    const seed = own ? constellation.seed + 7919 * hand : constellation.seed;
+    const th = 2 * Math.PI * constellationHash(seed, key);
+    const r = CONSTELLATION_SEED_REACH * Math.sqrt(constellationHash(seed, key + 50000));
+    return { x: r * Math.sin(th), y: r * Math.cos(th), size: CONSTELLATION_SEED_SIZE };
+  }
+  if (constellation.place === "clock") {
+    return { x: CONSTELLATION_CLOCK_R * Math.sin(turn), y: CONSTELLATION_CLOCK_R * Math.cos(turn), size: CONSTELLATION_CLOCK_SIZE };
+  }
+  const ring = own ? 4 : Math.max(2, Math.min(6, octave));
+  const r = CONSTELLATION_PITCH_R0 + CONSTELLATION_PITCH_STEP * (ring - 2);
+  return { x: r * Math.sin(turn), y: r * Math.cos(turn), size: CONSTELLATION_PITCH_SIZE };
+}
+
+/* Each note's envelope, kept in step with the voice lists the page sends
+   the generator: a note new to a list is struck at its velocity, one gone
+   from it is released, and a released one goes once its release is over, as
+   the generator lets its voice go. Run whatever is drawn, so a note's figure
+   is where its sound is when it is drawn again. */
+function constellationNotes(elapsed) {
+  const hands = layersOn() ? 2 : 1;
+  const seen = new Set();
+  for (let hand = 0; hand < hands; hand++) {
+    const tone = genSettings(hand);
+    const list = tone && tone.voices ? tone.voices : [];
+    for (const voice of list) {
+      const key = hand + ":" + voice.note;
+      seen.add(key);
+      let figure = constellation.figures.get(key);
+      if (!figure || !figure.held) {
+        if (!figure) {
+          figure = { hand, note: voice.note, env: makeEnvelope(CONSTELLATION_RATE, tone), held: true, level: 0 };
+          figure.env.reset(0);
+          constellation.figures.set(key, figure);
+        }
+        figure.held = true;
+        figure.env.gate(true, voice.velocity);
+      }
+    }
+  }
+  const steps = Math.max(0, Math.round(Math.min(250, elapsed) * CONSTELLATION_RATE / 1000));
+  for (const [key, figure] of constellation.figures) {
+    if (figure.held && !seen.has(key)) { figure.held = false; figure.env.gate(false); }
+    let level = figure.env.level;
+    for (let k = 0; k < steps; k++) level = figure.env.step();
+    figure.level = level;
+    if (!figure.held && figure.env.stage === "idle") constellation.figures.delete(key);
+  }
+}
+
+/* A drawn figure's outline in canvas pixels, into `xs` and `ys`: its hand's
+   figure at size one, scaled and put at its place. Shared with the tests, so
+   what they lay into a grid of their own is what was drawn. */
+function constellationTrace(figure, xs, ys) {
+  const half = plot.w / 2, cx = plot.x + half, cy = plot.y + plot.h / 2;
+  const unit = constellationUnit(figure.hand);
+  for (let i = 0; i <= CONSTELLATION_POINTS; i++) {
+    xs[i] = cx + (figure.x + figure.size * unit.xs[i]) * half;
+    ys[i] = cy - (figure.y + figure.size * unit.ys[i]) * half;
+  }
+  return CONSTELLATION_POINTS + 1;
+}
+
+/* The frame's constellation, over the graticule drawXY has just drawn: each
+   figure stroked in its hand's ink and laid into the phosphor grid at the
+   beam's full level, as the one figure is with the beam off - its size, not
+   its brightness, is how loud it is. */
+function drawConstellation(elapsed) {
+  if (!constellationLive()) {
+    if (constellation.figures.size) constellation.figures.clear();
+    constellation.drawn = [];
+    constellation.cost = 0;
+    return;
+  }
+  const started = performance.now();
+  constellationNotes(elapsed);
+  const ctx = el.trace.getContext("2d");
+  const hands = layersOn() ? 2 : 1;
+  const own = hands === 2 && constellation.hands === "each";
+  const drawn = [];
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(plot.x, plot.y, plot.w, plot.h);
+  ctx.clip();
+  ctx.lineWidth = traceWidth(1.4);
+  ctx.lineJoin = "round";
+  for (const figure of constellation.figures.values()) {
+    if (figure.hand >= hands) continue;
+    const tone = genSettings(figure.hand);
+    const loud = figure.level * (tone.amp / CONSTELLATION_LEVEL_REF);
+    if (!(loud > 0)) continue;
+    const at = constellationPlace(figure.note, figure.hand, own);
+    const one = { hand: figure.hand, note: figure.note, x: at.x, y: at.y, size: at.size * loud, loud };
+    const count = constellationTrace(one, constellationXs, constellationYs);
+    const unseen = hands === 2 && handHidden(figure.hand, 2);
+    ctx.globalAlpha = unseen ? 0 : 1;
+    ctx.strokeStyle = ink[figureInk(figure.hand, figure.hand * 2)];
+    ctx.beginPath();
+    ctx.moveTo(constellationXs[0], constellationYs[0]);
+    for (let i = 1; i < count; i++) ctx.lineTo(constellationXs[i], constellationYs[i]);
+    ctx.stroke();
+    phosphorDeposit(constellationXs, constellationYs, count, null);
+    drawn.push(one);
+  }
+  ctx.restore();
+  constellation.drawn = drawn;
+  constellation.cost = performance.now() - started;
+}
+
+/* The row's state, from the choice and from where the page is: the place
+   and the hands only while it is chosen, the hands only with two, the seed
+   only when seeded, and a line saying why nothing changed where the page
+   cannot draw it. */
+function paintDraw() {
+  const chosen = constellation.way === "constellation";
+  const here = constellationAvailable();
+  const two = layersOn();
+  el.drawWay.hidden = !!window.__JUCE__;
+  el.drawWay.value = constellation.way;
+  el.drawPlace.value = constellation.place;
+  el.drawHands.value = constellation.hands;
+  el.drawOutline.hidden = chosen && !window.__JUCE__;
+  el.drawConst.hidden = !(chosen && here);
+  el.drawAway.hidden = !(chosen && !here && !window.__JUCE__);
+  el.drawHands.hidden = !two;
+  el.drawSeed.hidden = constellation.place !== "seeded";
+  // The word, where there is room for it beside the rest; the menu always says it.
+  el.drawProto.hidden = two && !el.drawSeed.hidden;
+}
+el.drawWay.addEventListener("change", () => {
+  constellation.way = el.drawWay.value === "constellation" ? "constellation" : "one";
+  paintDraw();
+});
+el.drawPlace.addEventListener("change", () => {
+  if (["pitch", "clock", "seeded"].includes(el.drawPlace.value)) constellation.place = el.drawPlace.value;
+  paintDraw();
+});
+el.drawHands.addEventListener("change", () => {
+  constellation.hands = el.drawHands.value === "shared" ? "shared" : "each";
+});
+el.drawSeed.addEventListener("click", () => {
+  constellation.seed = 1 + Math.floor(Math.random() * 2147483646);
+});
+
 /* Memory: the phosphor's persistence as how long a stroke takes to fade to
    half, at sixty frames a second. The slider is a log scale from 20 ms to
    ten seconds, with Off below it and Infinite above; Persistence's menu over
@@ -19577,6 +19935,8 @@ function frameLoop(now) {
   paintStage();
 
   drawMain(frame, elapsed);
+  // After drawMain, which drew the graticule and faded the screen and the grid.
+  drawConstellation(elapsed);
   drawScorePlayhead();
   placeReticle();
   drawLoopOverlay();
@@ -22039,6 +22399,7 @@ function syncMidi() {
   {
     const tone = genSettings();
     el.midiDrawRow.hidden = !(midi.mode === "poly" && tone);
+    paintDraw();
     el.midiPolyJustRow.hidden = el.midiDrawRow.hidden;
     el.midiLayersRow.hidden = el.midiDrawRow.hidden;
     const on = layersOn();
@@ -28338,6 +28699,10 @@ const CONTROL_WORDS = {
   "midiLayerPair": ["How the two layers are drawn", "A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y, heard left and right."],
   "midiDrawCount": ["Draw", "How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears."],
   "midiDrawWhich": ["Draw", "Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y."],
+  "drawWay": ["Draw", "One figure merges every note; constellation, a prototype, draws each note's own figure where the note lands, which is what Scan reads."],
+  "drawPlace": ["Place", "Where each note's figure lands: by pitch on a clock face, octave outward; on Scan's circle, octave ignored; or seeded, a scatter."],
+  "drawHands": ["Hands", "With two hands: a constellation each, laid out by pitch class alone so the hands overlap, or one shared, every note by its place."],
+  "drawSeed": ["Reseed", "Deals the seeded constellation a new place for every note. The places stay until you deal again; nothing saves them."],
   "midiPolyJust": ["Tune a chord", "Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there."],
   "polyRound": ["Quarter turn", "In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line."],
   "midiHold": ["Hold the interval", "In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison."],
@@ -28651,6 +29016,7 @@ const SAY_KEYS = [
   // A row of depths' three (G5b), wherever one is: a card's editor, Routings.
   ['.mod-edit input[type="range"]', "mod-depth"], [".mod-edit-val", "mod-depth-typed"], [".mod-edit-off", "mod-remove"],
   ["#benchTab-space", "tab-space"],
+  ['[data-draw="way"]', "drawWay"], ['[data-draw="place"]', "drawPlace"], ['[data-draw="hands"]', "drawHands"],
 ];
 let infoAt = null, infoPending = null, infoTimer = 0;
 

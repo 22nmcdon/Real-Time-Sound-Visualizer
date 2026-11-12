@@ -7,15 +7,16 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-322 controls: 322 lines, none marked as removed by a later stage, 77 wanting a paragraph
+327 controls: 327 lines, none marked as removed by a later stage, 79 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
 right-click menu has no controls of its own to describe: its items are its words, and
 *What is this?* in it opens a control's card; and in G6, which took Edit A / B, the rack's
 Together / A / B and B's turn on a row of its own, gave the turn the Turn's place, and
-added the header's Editing and a link on eleven sections; and on 11 Nov, which added the five
-of *How the picture responds*).
+added the header's Editing and a link on eleven sections; on 11 Nov, which added the five
+of *How the picture responds*; and on 12 Nov, with the constellation's prototype, Draw's way,
+its place, its hands and Reseed).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -95,6 +96,10 @@ them; G3b gives each a `data-say` with the key in the first column:
 | midiLayerPair | How the two layers are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y, heard left and right. | 121 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B puts A in the left ear only and B in the right |
 | midiDrawCount | Draw | How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears. | 132 | - |
 | midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
+| drawWay | Draw | One figure merges every note; constellation, a prototype, draws each note's own figure where the note lands, which is what Scan reads. | 134 | yes: a prototype, page-only and never saved; heard only on the page's own brain (?brain=js), where Scan reads the screen the page draws - on the site's default it offers to open it there, and in the plugin it is not offered; the lanes and the sound are the one figure's, and only Scan hears the constellation; its place and hands take the outline's line |
+| drawPlace | Place | Where each note's figure lands: by pitch on a clock face, octave outward; on Scan's circle, octave ignored; or seeded, a scatter. | 129 | yes: on the clock every note's figure crosses the circle Scan reads, so every note is in the tone; by pitch a middle-register chord can sit just clear of it, heard less; seeded deals a place for each note from a seed, the same each time until Reseed |
+| drawHands | Hands | With two hands: a constellation each, laid out by pitch class alone so the hands overlap, or one shared, every note by its place. | 129 | - |
+| drawSeed | Reseed | Deals the seeded constellation a new place for every note. The places stay until you deal again; nothing saves them. | 116 | - |
 | midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
 | polyRound | Quarter turn | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line. | 131 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
 | midiHold | Hold the interval | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
