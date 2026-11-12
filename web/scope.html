@@ -2192,22 +2192,26 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                  over. While it is chosen its place and hands take the outline's
                  line, the outline having nothing to draw (its menus still lean
                  the heard notes, and keep their values). Page-only and never
-                 stored - not in a setup, a preset, a code, undo or the morph. -->
+                 stored - not in a setup, a preset, a code, undo or the morph.
+                 Its menus have no ids, which is how a page-only menu has to be:
+                 parity holds every select with an id to the core's panel, and
+                 these have no place there. The info line finds them by
+                 data-draw (SAY_KEYS), and the script through el. -->
             <div class="menu-row stack" id="midiDrawRow" hidden>
               <label class="menu-label" for="midiDrawCount">Draw</label>
-              <select id="drawWay" aria-label="One figure, or a figure for each note (a prototype)"
+              <select data-draw="way" aria-label="One figure, or a figure for each note (a prototype)"
                       style="flex:1 1 0; min-width:0">
                 <option value="one" selected>one figure</option>
                 <option value="constellation">constellation (a prototype)</option>
               </select>
               <div class="grow" id="drawConst" hidden>
-                <select id="drawPlace" aria-label="Where each note's figure lands"
+                <select data-draw="place" aria-label="Where each note's figure lands"
                         style="flex:1 1 0; min-width:0">
                   <option value="pitch" selected>by pitch</option>
                   <option value="clock">clock</option>
                   <option value="seeded">seeded</option>
                 </select>
-                <select id="drawHands" aria-label="One constellation for each hand, or one shared" hidden
+                <select data-draw="hands" aria-label="One constellation for each hand, or one shared" hidden
                         style="flex:1 1 0; min-width:0">
                   <option value="each" selected>one each</option>
                   <option value="shared">shared</option>
@@ -5871,7 +5875,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "morphGroup",
                   "morphPos", "morphStoreA", "morphStoreB", "morphNote",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
-                  "drawWay", "drawConst", "drawPlace", "drawHands", "drawSeed", "drawProto", "drawAway", "drawAwayLink", "drawOutline",
+                  "drawConst", "drawSeed", "drawProto", "drawAway", "drawAwayLink", "drawOutline",
                   "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow",
                   "midiLayerPair", "midiLayersNote", "genTitle", "pictureHandName",
                   "pictureMovesRow", "pictureMovesA", "pictureMovesB",
@@ -5965,6 +5969,10 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "verdict", "readoutDetail", "looking", "measures",
                   "laneLegend"]) {
   el[id] = document.getElementById(id);
+}
+// The draw row's page-only menus, which have no ids (see the markup).
+for (const which of ["way", "place", "hands"]) {
+  el["draw" + which[0].toUpperCase() + which.slice(1)] = document.querySelector('[data-draw="' + which + '"]');
 }
 for (const id of ["barsGroup", "barsTitle", "barsStateRow", "barsState", "barsUse", "barsGo",
                   "barsGoRow", "morphRow", "morph", "morphValue", "widthRow", "width", "widthValue"]) {
@@ -28732,6 +28740,7 @@ const SAY_KEYS = [
   // A row of depths' three (G5b), wherever one is: a card's editor, Routings.
   ['.mod-edit input[type="range"]', "mod-depth"], [".mod-edit-val", "mod-depth-typed"], [".mod-edit-off", "mod-remove"],
   ["#benchTab-space", "tab-space"],
+  ['[data-draw="way"]', "drawWay"], ['[data-draw="place"]', "drawPlace"], ['[data-draw="hands"]', "drawHands"],
 ];
 let infoAt = null, infoPending = null, infoTimer = 0;
 

@@ -6258,3 +6258,10 @@ different light, and an "off is the same as absent" check comparing two runs
 compares their histories. `constellationtest.py` stops the scope, takes
 nothing held so the frame loop draws nothing, and before each condition clears
 `beamRefs`, wipes the grid and draws the one frame thirty times.
+
+**A menu only the page has cannot have an id.** Parity's `restore_page.py
+--controls` reads every `select[id]` on the page and holds it to the core's
+panel, range and options and all, so the constellation's three menus, which
+the core has no place for, failed it the first time round. They have no ids:
+the script finds them by `data-draw` into `el`, and the info line by
+`SAY_KEYS`. Buttons and links are not read, so *Reseed* keeps its id.

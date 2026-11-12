@@ -213,8 +213,8 @@ with sync_playwright() as pw:
       try { for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch (e) {}
       return { before, keys, steps: undoHistory.undo.length };
     }""")
-    p.locator("#drawWay").select_option("constellation"); p.wait_for_timeout(700)
-    p.locator("#drawPlace").select_option("seeded"); p.wait_for_timeout(700)
+    p.locator('[data-draw="way"]').select_option("constellation"); p.wait_for_timeout(700)
+    p.locator('[data-draw="place"]').select_option("seeded"); p.wait_for_timeout(700)
     after = p.evaluate("""() => {
       const keys = [];
       try { for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch (e) {}
@@ -228,6 +228,11 @@ with sync_playwright() as pw:
     moved = p.evaluate("() => ({ code: encodeSetup(snapshot()), steps: undoHistory.undo.length })")
     null("a control that is in the setup, moved by a key the same way, changes the code and makes a step",
          moved["code"] != after["code"] and moved["steps"] > after["steps"], str(moved["steps"]))
+    said = p.evaluate("""() => ({ ids: [el.drawWay, el.drawPlace, el.drawHands].map((s) => s.id),
+      keys: [el.drawWay, el.drawPlace, el.drawHands].map(wordsKey), plain: wordsKey(document.createElement('select')) })""")
+    check("its menus have no ids, which parity would hold to the core's panel, and the info line still has their words",
+          said["ids"] == ["", "", ""] and said["keys"] == ["drawWay", "drawPlace", "drawHands"], str(said))
+    null("a menu with no id and no data-draw has no words", said["plain"] is None, str(said["plain"]))
     p.close()
     p, _ = opened(b, "?brain=js&draw=constellation")
     asked = p.evaluate("() => ({ way: constellation.way, shown: el.drawWay.value, place: !el.drawConst.hidden })")
