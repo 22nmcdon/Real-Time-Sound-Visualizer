@@ -1864,6 +1864,14 @@ kruns = [
     # chord, no layers - and a keyboard arriving and going, until 10 Nov: the
     # site waits for a note as the plugin does since, so the page's keyboard
     # has no absent state to hold the core's `setPresent(false)` to.)
+    # The Key held through a release (12 Nov, keyHeard and Keyboard::heard):
+    # every key up while the note envelope is above nought keeps the last held
+    # key's velocity - 57's, not 60's, which went first - and gives nought once
+    # it is not; a new note's own, held through a panic while it rings, and
+    # nought again once that has rung out.
+    ("key-release", krun("mode poly", "frame 16", "on 57 100", "envelope 0.6", "on 60 80", "off 60", "off 57",
+                         "envelope 0.2", "frame 16", "envelope 0", "frame 16", "on 64 50", "envelope 0.5", "panic",
+                         "envelope 0", "frame 16")),
 ]
 
 # And sequences no one wrote: seeded, so a failure is the same failure again.
@@ -1971,6 +1979,22 @@ check("40 random sequences of 80 commands, every call the same", not rbad, ", ".
 
 # Each run has to show what it is for, or agreeing on it proves nothing.
 def kout(name): return kslice(kjs, next(i for i, (n, _) in enumerate(kruns) if n == name))
+def kkeys(name): return [float(l.split(" | key ")[1].split()[0]) for l in kout(name).split("\n")]
+kk = kkeys("key-release")
+check("the Key rings out: held through the release at the last held key's velocity while the envelope is up, nought once it is down",
+      kk[2] == kk[3] == 100 / 127 and kk[4] == 80 / 127 and kk[5] == kk[6] == kk[7] == kk[8] == 100 / 127
+      and kk[9] == kk[10] == 0 and kk[11] == kk[12] == kk[13] == 50 / 127 and kk[14] == kk[15] == 0, str(kk))
+# Its null: the page with the Key read as its gate, as before 12 Nov, does
+# not pass for the core's, or the run could not tell.
+gate_page = os.path.join(BUILD, "scope_key_null.html")
+with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: key_text = f.read()
+assert key_text.count("    value: keyHeard,") == 1
+with open(gate_page, "w", encoding="utf-8") as f: f.write(key_text.replace("    value: keyHeard,", "    value: () => midi.key,"))
+with open(os.path.join(BUILD, "keyboard_key_null.txt"), "w") as f: f.write(dict(kruns)["key-release"])
+kkn = subprocess.run(["node", os.path.join(HERE, "tools", "keyboard_js.mjs"), os.path.join(BUILD, "keyboard_key_null.txt")], check=True,
+                     capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=gate_page)).stdout
+check("null: a page whose Key is its gate, nought the moment the keys are up, is not the core's",
+      kdiff(kkn, kslice(kcpp, next(k for k, (n, _) in enumerate(kruns) if n == "key-release"))) is not None)
 check("the dyad sets an interval wider than an octave, and clamps the pitch at both ends",
       "set octaves 2." in kout("dyad") and "set freq 4000.0" in kout("dyad-edges") and "set freq 30.00" in kout("dyad-edges"))
 check("a chord leaves notes heard and not drawn, by every rule",
@@ -5299,6 +5323,19 @@ check("the Output by hand is the same gain on the page and in the core, and no p
 onull, _ = rboth([_json.dumps(o) for o in OUTPUT_OPS[:1] + [{"op": "slider", "id": "output", "value": 60}]], "output_null.txt")
 check("null: the page told 60 where the core was told 50 disagrees with it",
       rdiff(_json.loads(onull[1]), _json.loads(opt[1])) != [])
+# The master Width (12 Nov) the same way: the knob's fraction, a straight
+# line, on both sides, and no preset or code puts it back.
+WIDTH_OPS = [{}, {"op": "slider", "id": "stereoWidth", "value": 30}, _json.loads(bank_setups[0]), {"pictureAmount": 30},
+             {"op": "slider", "id": "stereoWidth", "value": 0}, _json.loads(bank_setups[-1]), {"op": "slider", "id": "stereoWidth", "value": 71}]
+wpg, wpt = rboth([_json.dumps(o) for o in WIDTH_OPS], "width_ops.txt")
+wb_ = rbad(wpg, wpt)
+wseen = [(_json.loads(l)["a"]["stereoWidth"], _json.loads(l)["ranges"]["stereoWidth"]) for l in wpg]
+check("the Width by hand is the same on the page and in the core, and no preset or code puts it back",
+      not wb_ and wseen == [(1, 100), (0.3, 30), (0.3, 30), (0.3, 30), (0, 0), (0, 0), (0.71, 71)],
+      (wb_[0] if wb_ else "") + " %r" % wseen)
+wnull, _ = rboth([_json.dumps(o) for o in WIDTH_OPS[:1] + [{"op": "slider", "id": "stereoWidth", "value": 40}]], "width_null.txt")
+check("null: the page told 40 where the core was told 30 disagrees with it",
+      rdiff(_json.loads(wnull[1]), _json.loads(wpt[1])) != [])
 # A slider the panel has not got - the page had Scan's three before the core
 # did (P7a), and a hand on one crashed the core in the middle of the morph's
 # walk, which is how this was found - does nothing, the walk going on. The
@@ -6247,6 +6284,9 @@ OUTPUT_HANDS = [["feed", 100, 73], NOTE_ON(57)] + blocks(4) + ["OUT"] + blocks(1
 OUTPUT_MAKE = [["make", 48000, 128, icode["Harmonic tone"]]]
 iruns["output"] = OUTPUT_MAKE + [["slider", "output", "50"] if h == "OUT" else h for h in OUTPUT_HANDS]
 iruns["output unity"] = OUTPUT_MAKE + [h for h in OUTPUT_HANDS if h != "OUT"]
+# The master Width (12 Nov) on the same hands, at nought: the generator, the
+# input whole and in bands, and after a preset, against "output unity".
+iruns["width"] = OUTPUT_MAKE + [["slider", "stereoWidth", "0"] if h == "OUT" else h for h in OUTPUT_HANDS]
 # And moved while the bands are drawn, against the same at unity: the glide
 # there is the generator's, one step a sample, though the generator runs too.
 OUTPUT_BANDS = [["feed", 100, 73], NOTE_ON(57), ["control", "srcBands", "1"]] + blocks(10)
@@ -6446,6 +6486,32 @@ check("a project reopened at 50 is a quarter from its first sample, its picture 
       ore_most == 0 and not ore_other and iquarter(oreb, ounb, [(0, len(oreb))]) and ipictures_same(oreb, ounb)
       and max(abs(v) for b in ounb for v in b[0]) > 0.02)
 check("null: the same project at unity is not a quarter of itself", not iquarter(ounb, ounb, [(0, len(ounb))]))
+# The master Width (12 Nov), the instrument's, on the Output's hands at
+# nought: its picture every lane the unity run's, its heard pair one channel
+# twice to the bit once landed (the generator, the input, the bands, after a
+# preset), kept beside the setup as `pluginWidth` and as no hand, and a
+# project reopened at nought mono from its first sample. Each with a null.
+wb = isplit("width")
+def imono(rows, spans): return all(p[0][:len(p[0]) // 2] == p[0][len(p[0]) // 2:] for lo, hi in spans for p in rows[lo:hi])
+def iside(rows, spans): return max(abs(x - y) for lo, hi in spans for p in rows[lo:hi] for x, y in zip(p[0][:len(p[0]) // 2], p[0][len(p[0]) // 2:]))
+check("the instrument's Width leaves its picture as it was, every lane, the generator's, the input's and the bands'",
+      ipictures_same(wb, ub) and len(wb) == 274)
+check("and at nought what it hears is one channel twice, to the bit, once landed: the generator, the input, the bands, and after a preset",
+      imono(wb, OSPANS), "widest %g" % iside(wb, OSPANS))
+check("null: at a hundred the same spans are two channels", all(iside(ub, [sp]) > 0.01 for sp in OSPANS),
+      "%s" % [round(iside(ub, [sp]), 3) for sp in OSPANS])
+whands = [h for st in istates("width") for h in st.get("pluginHands", []) if h[1] == "stereoWidth"]
+wfirst = next((i for i, st in enumerate(istates("width")) if "pluginWidth" in st), None)
+check("the state keeps the Width beside the setup, through a preset's load, and as no hand",
+      istate("width").get("pluginWidth") == 0 and not whands and "pluginWidth" not in ustate and wfirst is not None
+      and len(istates("width")) - wfirst >= 2 and all(st.get("pluginWidth") == 0 for st in istates("width")[wfirst:]),
+      repr((istate("width").get("pluginWidth"), whands, wfirst)))
+wre, wre_most, wre_other = ireopen(istate("width"), "width reopened")
+wun, _, _ = ireopen(dict(istate("width"), pluginWidth=100), "width reopened full")
+wreb, wunb = ihalves(wre), ihalves(wun)
+check("a project reopened at nought is mono from its first sample, its picture the full project's, the compiled as the native",
+      wre_most == 0 and not wre_other and imono(wreb, [(0, len(wreb))]) and ipictures_same(wreb, wunb))
+check("null: the same project at a hundred is not mono", iside(wunb, [(0, len(wunb))]) > 0.01)
 # What the runs have to have had in them for the checks above to mean anything.
 def icount(name, prefix): return sum(1 for l in iout[name][1] if l.startswith(prefix))
 def ipeak(name): return max((abs(float(v)) for l in iout[name][1] if l.startswith("block ") for v in l.split()[1:]), default=0)

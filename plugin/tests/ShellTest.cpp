@@ -1220,13 +1220,15 @@ int main() {
       grouped += (grouped.empty() ? "" : "; ") + g->getName().toStdString() + ":";
       for (const auto* q : g->getParameters(false)) grouped += " " + q->getName(32).toStdString();
     }
-    // P9 added the reverb's mix, version 4, before the morph; G7 the master Output, version 5, before the level.
-    check("the host's parameters are the loop's thirteen and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 14
-          && names == "Picture, Scan, Strike, Softness, Persistence, Output, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph"
+    // P9 added the reverb's mix, version 4, before the morph; G7 the master Output, version 5, before the level;
+    // and 12 Nov the Width, version 6, after the Output.
+    check("the host's parameters are the loop's fourteen and then the morph, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 15
+          && names == "Picture, Scan, Strike, Softness, Persistence, Output, Width, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph"
           && p.knob("phaser")->get() == 0 && p.knob("reverb")->get() == 0
           // The Output at unity, its slider's top, which no setup moves.
           && p.knob("output")->get() == 100 && p.slider("output") == 100
+          && p.knob("width")->get() == 100 && p.slider("stereoWidth") == 100
           // F7c's three, each its own slider: strike and softness differ at
           // the page's defaults (50 and 30), so one wired to the other's fails.
           && p.knob("strike")->get() == p.slider("scanStrike") && p.knob("softness")->get() == p.slider("scanSoft")
@@ -1236,12 +1238,12 @@ int main() {
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Strike Softness Persistence Output Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph"
-          && p.knob("output") == p.getParameters()[5] && p.knob("level") == p.getParameters()[6]
-          && p.knob("phaser") == p.getParameters()[11] && p.knob("reverb") == p.getParameters()[12]
-          && p.knob("morph") == p.getParameters()[13]
+          grouped == "Instrument: Picture Scan Strike Softness Persistence Output Width Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph"
+          && p.knob("output") == p.getParameters()[5] && p.knob("width") == p.getParameters()[6] && p.knob("level") == p.getParameters()[7]
+          && p.knob("phaser") == p.getParameters()[12] && p.knob("reverb") == p.getParameters()[13]
+          && p.knob("morph") == p.getParameters()[14]
           && ids.find("macro") == std::string::npos
-          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 output:5 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1",
+          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 output:5 width:6 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1",
           grouped + " | " + ids);
   }
   /* Every preset this file opens on by name is in the old library it reads
@@ -1387,6 +1389,31 @@ int main() {
           && output.second == still.second,
           "after the move " + num(apart(still.first, output.first, 20 * block, end)));
     check("null: the Level automated as far moves the picture too", level.second != still.second && apart(still.first, level.first, 20 * block, end) > 0.01);
+    /* The Width (12 Nov) automated to nought: the picture the same to the
+       bit and, once its glide has landed, both channels one, to the bit; the
+       null is the same plugin left at a hundred, whose channels differ. */
+    const auto withWidth = [&](bool turned) {
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      std::vector<float> l, r;
+      juce::AudioBuffer<float> buf(2, block);
+      for (int k = 0; k < 200; ++k) {
+        if (k == 20 && turned) p.knob("width")->setValueNotifyingHost(p.knob("width")->convertTo0to1(0));
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0) { m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 100); m.addEvent(juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)), 120); }
+        p.processBlock(buf, m);
+        for (int i = 0; i < block; ++i) { l.push_back(buf.getSample(0, i)); r.push_back(buf.getSample(1, i)); }
+      }
+      return std::make_tuple(l, r, p.pictureSnapshot());
+    };
+    const auto [wl, wr, wpic] = withWidth(true);
+    const auto [sl, sr, spic] = withWidth(false);
+    bool mono = true;
+    for (std::size_t i = tail; i < wl.size(); ++i) mono = mono && wl[i] == wr[i];
+    check("automating the Width to nought puts one channel in both ears, to the bit, and the picture is the same to the bit",
+          mono && wpic == spic && apart(wl, wr, 0, 20 * block) > 0.01, "before the move " + num(apart(wl, wr, 0, 20 * block)));
+    check("null: left at a hundred the channels differ", apart(sl, sr, 20 * block, end) > 0.01, num(apart(sl, sr, 20 * block, end)));
   }
   /* Kept with the project, beside the setup and never in it (G7): saved at
      50, a fresh plugin reopens at 50, its parameter with it; a preset then
@@ -1433,6 +1460,38 @@ int main() {
     const double atUnity = into(unity), atStripped = into(without);
     check("a project saved at unity opens at unity in a plugin turned down", atUnity == 100, num(atUnity));
     check("null: the same state without the Output leaves it turned down", atStripped == 20, num(atStripped));
+    // The Width the same way (12 Nov): `pluginWidth`, saved, reopened and kept past a preset.
+    ScopeProcessor wa;
+    wa.prepareToPlay(rate, block);
+    wa.knob("width")->setValueNotifyingHost(wa.knob("width")->convertTo0to1(30));
+    wa.processBlock(buf, none);
+    const auto wsaved = stateOf(wa);
+    ScopeProcessor wb;
+    wb.setStateInformation(wsaved.getData(), static_cast<int>(wsaved.getSize()));
+    wb.prepareToPlay(rate, block);
+    const bool wreopened = wb.knob("width")->get() == 30 && wb.slider("stereoWidth") == 30 && wb.tone().stereoWidth == 0.3;
+    wb.setCurrentProgram(1);
+    wb.processBlock(buf, none);
+    const bool wkept = wb.slider("stereoWidth") == 30 && wb.tone().stereoWidth == 0.3 && wb.knob("width")->get() == 30;
+    check("the Width is kept with the project: reopened at 30, its parameter with it, and a preset loaded after leaves it",
+          wreopened && wkept, num(wb.slider("stereoWidth")) + ", parameter " + num(wb.knob("width")->get()));
+    const auto intoW = [&](const juce::MemoryBlock& state) {
+      ScopeProcessor d;
+      d.prepareToPlay(rate, block);
+      d.knob("width")->setValueNotifyingHost(d.knob("width")->convertTo0to1(20));
+      d.processBlock(buf, none);
+      d.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+      d.processBlock(buf, none);
+      return d.slider("stereoWidth");
+    };
+    auto wdecoded = scope::decodeSetup(std::string_view(static_cast<const char*>(unity.getData()), unity.getSize()));
+    wdecoded.setup.erase(u"pluginWidth");
+    const auto wstripped = scope::encodeSetup(wdecoded.setup);
+    juce::MemoryBlock wwithout;
+    if (wstripped) wwithout.append(wstripped->data(), wstripped->size());
+    const double wAtFull = intoW(unity), wAtStripped = intoW(wwithout);
+    check("a project saved at a hundred opens at a hundred in a plugin narrowed", wAtFull == 100, num(wAtFull));
+    check("null: the same state without the Width leaves it narrowed", wAtStripped == 20, num(wAtStripped));
   }
   {
     /* With the layers on, the panel's voice sliders show the layer being
@@ -2531,12 +2590,13 @@ int main() {
     juce::MemoryBlock earlySaved;
     early.getStateInformation(earlySaved);
     const std::string earlyCode(static_cast<const char*>(earlySaved.getData()), earlySaved.getSize());
-    // Less the face's window, the master Output (G7) and the program's number (G8), which a saved state carries beside the setup.
+    // Less the face's window, the master Output (G7) and Width (12 Nov) and the program's number (G8), which a saved state carries beside the setup.
     const auto unwindowed = [&](const std::string& code) {
       auto d = scope::decodeSetup(code);
       if (d.kind != scope::DecodedSetup::Kind::Read) return std::string("unread");
       d.setup.erase(u"pluginWindow");
       d.setup.erase(u"pluginOutput");
+      d.setup.erase(u"pluginWidth");
       d.setup.erase(u"pluginProgram");
       return scope::utf16To8(scope::jsonStringify(d.setup));
     };

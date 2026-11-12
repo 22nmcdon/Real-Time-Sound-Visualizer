@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-327 controls: 327 lines, none marked as removed by a later stage, 79 wanting a paragraph
+328 controls: 328 lines, none marked as removed by a later stage, 79 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -16,7 +16,7 @@ right-click menu has no controls of its own to describe: its items are its words
 Together / A / B and B's turn on a row of its own, gave the turn the Turn's place, and
 added the header's Editing and a link on eleven sections; on 11 Nov, which added the five
 of *How the picture responds*; and on 12 Nov, with the constellation's prototype, Draw's way,
-its place, its hands and Reseed).
+its place, its hands and Reseed; and again on 12 Nov, the Width beside the Output).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -318,6 +318,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | scanSoft | Softness | How much the light is blurred before Scan reads it. At nought thin lines read as spikes and buzz; higher is rounder. Only while Scan is on. | 139 | - |
 | scanMemory | Persistence | How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more. | 133 | yes — the screen’s, shared by both hands; the photocell’s memory too; the same setting as the menu over the screen |
 | output | Output | How loud you hear it, after everything, and nothing else: the picture, Scan and the loop are the same at any setting. No preset changes it. | 139 | yes — both hands’, on what is heard alone, like a monitor’s volume; −6 dB at 71, −12 dB at 50, unity at the top; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it; its meter is what is heard |
+| stereoWidth | Width | How wide you hear it: nought puts the middle in both ears, a hundred is the pair as drawn. The picture and Scan are the same at any setting. | 140 | yes — both hands’, on what is heard alone, before the Output; the side of the pair scaled by it, so nought is mono and a hundred the sound as it was; nothing above a hundred, where the limiter would do the widening; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it |
 
 ### Picture › Advanced
 

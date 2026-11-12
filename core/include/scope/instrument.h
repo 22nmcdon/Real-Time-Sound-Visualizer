@@ -244,7 +244,7 @@ class Instrument {
     /* The capture's room, for as many lanes as the setup draws: made here so
        the first frame on the audio thread makes nothing (G8). */
     pictureRun_->reserve(notes_->layout() == Layout::Each || bands_ ? 4 : 2, sampleRate, static_cast<double>(kPictureFrames));
-    // Opening at the Output it was saved at, not gliding down to it (G7).
+    // Opening at the Output and the Width it was saved at, not gliding to them (G7).
     core_->settleOutput();
     keyboard_->frame();
     changed_ = true;
@@ -304,6 +304,11 @@ class Instrument {
     if (const Json* out = setup_.type == Json::Type::Object ? setup_.get("pluginOutput") : nullptr) {
       if (out->type == Json::Type::Number) scope::moveSliderTo("output", out->n, *brain_, *core_, *keyboard_, lfos_);
       setup_.erase("pluginOutput");
+    }
+    // And the Width (12 Nov), `pluginWidth`, kept and read the same way.
+    if (const Json* w = setup_.type == Json::Type::Object ? setup_.get("pluginWidth") : nullptr) {
+      if (w->type == Json::Type::Number) scope::moveSliderTo("stereoWidth", w->n, *brain_, *core_, *keyboard_, lfos_);
+      setup_.erase("pluginWidth");
     }
     // A setup restores two lanes' worth of view; the band split has four, and keeps them.
     if (bands_) { brain_->view.capture.channels.resize(static_cast<std::size_t>(kBandCount)); fitView(*brain_); }
@@ -529,7 +534,8 @@ class Instrument {
        the steps exist to stop (second review, 1.3). The others still walk:
        a hand on them sets the block's value, with nothing per sample under
        it. */
-    if (std::strcmp(id, "amp") == 0 || std::strcmp(id, "vcfCut") == 0 || std::strcmp(id, "output") == 0) steps = 1;
+    if (std::strcmp(id, "amp") == 0 || std::strcmp(id, "vcfCut") == 0 || std::strcmp(id, "output") == 0
+        || std::strcmp(id, "stereoWidth") == 0) steps = 1;
     Ramp* r = nullptr;
     for (auto& x : ramps_) if (x.id && std::strcmp(x.id, id) == 0) { r = &x; break; }
     if (!r) for (auto& x : ramps_) if (!x.id) { r = &x; break; }
@@ -588,6 +594,9 @@ class Instrument {
     setup.erase("pluginOutput");
     if (brain_ && brain_->panel.range("output") != rangeSpec("output")->value)
       setup.set("pluginOutput", Json::number(brain_->panel.range("output")));
+    setup.erase("pluginWidth");
+    if (brain_ && brain_->panel.range("stereoWidth") != rangeSpec("stereoWidth")->value)
+      setup.set("pluginWidth", Json::number(brain_->panel.range("stereoWidth")));
     const auto code = encodeSetup(setup);
     return code ? *code : std::string();
   }
@@ -719,8 +728,9 @@ class Instrument {
     /* The Output is not a hand on the setup (G7): the state carries it as
        `pluginOutput`, beside the setup, so a load - which clears the hands -
        never takes it back to unity. Its host parameter and the page still
-       follow it as any other slider's. */
-    if (id == "output") {
+       follow it as any other slider's. The Width (12 Nov) is kept the same
+       way, as `pluginWidth`. */
+    if (id == "output" || id == "stereoWidth") {
       changed_ = true;
       if (fromHost) {
         hostVersion_++;

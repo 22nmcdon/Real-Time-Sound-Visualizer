@@ -79,6 +79,8 @@ Json toneJson(const scope::Tone& t) {
   o.set("scoreDecayMs", num(t.scoreDecayMs)); o.set("scoreLevel", num(t.scoreLevel));
   // The Output (G7): never a setup's, so a restore leaves it where a hand put it, on both sides.
   o.set("output", num(t.output));
+  // And the Width (12 Nov), the same.
+  o.set("stereoWidth", num(t.stereoWidth));
   // How long a switched stage crossfades (11 Nov): no setup's either, so a restore leaves it.
   o.set("switchMs", num(t.switchMs));
   o.set("heldRamp", num(t.heldRamp));

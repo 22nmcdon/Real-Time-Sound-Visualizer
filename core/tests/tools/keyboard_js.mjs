@@ -14,7 +14,7 @@
      mode dyad|mono|poly   draw LAYER COUNT WHICH   just 0|1
      layers off|split|layer   learn   pair each|against   hold 0|1
      gen FIELD VALUE   panel FIELD VALUE
-     frame MS   present 0|1
+     frame MS   present 0|1   envelope LEVEL (where the note envelope has got to, which the Key's release reads)
      arp MODE RATE OCTAVES   bpm BPM   at MS   tick   out 0|1
    `at` moves the clock, firing first any timer due by then at its own time;
    `tick` is the frame's arpTick; `out` opens or closes the MIDI out.
@@ -50,7 +50,7 @@ const LIFTED = [
   "polyHz", "layersOn", "layerNotes", "polyVoices", "polyWanted", "midiApplyPoly", "syncPoly", "syncLayers",
   "midiPair", "midiInterval", "midiApplyGate", "midiGateNotes",
   "midiApplyNotes", "midiNotesBefore", "midiApplyNotesTo", "midiControl",
-  "midiRegisterKey", "midiBytes", "midiBytesHere", "midiPitchBend", "midiPressure", "VIBRATO_MOST", "midiExpress", "midiCoreHears", "midiToCore", "setMidiMode", "genSettings", "genSet", "genReswing",
+  "midiRegisterKey", "keyHeard", "midiBytes", "midiBytesHere", "midiPitchBend", "midiPressure", "VIBRATO_MOST", "midiExpress", "midiCoreHears", "midiToCore", "setMidiMode", "genSettings", "genSet", "genReswing",
   "ARP_RATES", "ARP_GATHER", "arp", "arpActive", "arpStepMs", "arpSequence", "arpApply", "arpStep", "arpStop", "arpHeld",
   "arpTick", "arpSet",
 ];
@@ -90,6 +90,8 @@ const toneSource = {
   noteDown() { log.push("noteDown"); },
   setGated(on) { log.push("setGated " + show(on)); gatedNow = on; },
   get gated() { return gatedNow; },
+  // Where the note envelope has got to, set by a run's \`envelope\` (the Key's release reads it, keyHeard).
+  envelope: 0,
   describe() { return ""; },
 };
 const state = { source: toneSource };
@@ -110,6 +112,8 @@ function midiOutOff(note) { log.push("outoff " + note); }
 const sources = new Map();
 function registerSource(entry) { sources.set(entry.id, entry); return entry; }
 const MOD_SOURCES = sources;
+// The page's env.note, read as it reads it, off the stand-in.
+registerSource({ id: "env.note", value: () => (toneSource.gated ? toneSource.envelope || 0 : 0) });
 function midiRealtime(status) { log.push("realtime " + status); }
 const noop = () => {};
 const syncMidi = noop, midiSayMonitor = noop, syncLayerPanel = noop, buildLaneRows = noop,
@@ -172,6 +176,7 @@ function run(head, commands) {
     } else if (cmd === "panel") k.el[a[0]].value = a[1];
     else if (cmd === "frame") k.midiApplyGate();
     else if (cmd === "present") k.setPresent(a[0] === "1");
+    else if (cmd === "envelope") k.toneSource.envelope = Number(a[0]);
     else if (cmd === "arp") {
       k.el.arpMode.value = a[0]; k.el.arpRate.value = a[1]; k.el.arpOctaves.value = a[2];
       k.arpSet();

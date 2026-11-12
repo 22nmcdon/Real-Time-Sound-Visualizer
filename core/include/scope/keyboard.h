@@ -83,6 +83,8 @@ class NoteTarget {
   virtual void noteDown() = 0;
   virtual void setGated(bool on) = 0;
   virtual bool gated() const = 0;
+  // Where the note envelope has got to, `env.note`'s reading while gated: the Key's release reads it (heard).
+  virtual double envelope() const = 0;
   virtual Layout layout() const = 0;
   virtual void setLayout(Layout next) = 0;
 };
@@ -101,6 +103,7 @@ class GeneratorNotes : public NoteTarget {
   void noteDown() override { g_.noteDown(); }
   void setGated(bool on) override { g_.setGated(on); }
   bool gated() const override { return g_.gated(); }
+  double envelope() const override { return g_.envelope(); }
   Layout layout() const override { return layout_; }
   void setLayout(Layout next) override { layout_ = next; }
 
@@ -433,6 +436,15 @@ class Keyboard {
 
   // Key, the one keyboard source left since F4b (velocity, Expression's FM).
   double key() const { return key_; }
+  /* The Key as a routing hears it, the page's keyHeard (12 Nov): the newest
+     held key's velocity, and once every key is up the last one's while the
+     note envelope is above nought (env.note's reading), so a velocity routed
+     to FM rings out with its note rather than leaving a bare sine for the
+     release, which the quarter turn puts in one ear. key() stays the gate. */
+  double heard() const {
+    if (key_ > 0 || struck_ <= 0) return key_;
+    return t_.gated() && t_.envelope() > 0 ? struck_ : 0;
+  }
 
   // layersOn: two layers, in poly with the generator alone.
   bool layersOn() const { return layers_.mode != LayerMode::Off && layable_ && polyWanted(); }
@@ -609,6 +621,7 @@ class Keyboard {
   void applyNotes() {
     if (arpActive() && !arp_.stepping) {
       key_ = notes_.empty() ? 0 : notes_.back().velocity;
+      if (!notes_.empty()) struck_ = key_;
       arpHeld();
       return;
     }
@@ -693,6 +706,7 @@ class Keyboard {
   // tells the generator.
   void applyNotesTo() {
     key_ = notes_.empty() ? 0 : notes_.back().velocity;
+    if (!notes_.empty()) struck_ = key_;
     applyGate();
     gateNotes();
     // A note held now that was not last time is a key gone down, as the page reckons it.
@@ -751,7 +765,7 @@ class Keyboard {
   bool sustain_ = false;
   double bendRange_ = 2, bend_ = 0;  // Expression (6 Nov)
   Express wheelTo_ = Express::Vibrato, pressureTo_ = Express::Off;
-  double key_ = 0;
+  double key_ = 0, struck_ = 0;
   Interval interval_;
   PolyCount poly_;
   Panel panel_;

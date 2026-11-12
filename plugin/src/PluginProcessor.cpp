@@ -208,6 +208,9 @@ void ScopeProcessor::getStateInformation(juce::MemoryBlock& out) {
          that names its own keeps it. */
       if (!decoded.setup.get("pluginOutput"))
         decoded.setup.set("pluginOutput", scope::Json::number(static_cast<double>(knob(std::string_view("output"))->get())));
+      // And the Width (12 Nov), always, for the same reason.
+      if (!decoded.setup.get("pluginWidth"))
+        decoded.setup.set("pluginWidth", scope::Json::number(static_cast<double>(knob(std::string_view("width"))->get())));
       // And the program's number (G8), which the instrument never sees, always: a project reopens showing it.
       decoded.setup.set("pluginProgram", scope::Json::number(static_cast<double>(program_.load())));
       if (const auto encoded = scope::encodeSetup(decoded.setup)) code = *encoded;

@@ -26,6 +26,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "amp", 0, 140, 1, 55 },
   // The master Output (G7): the Picture section's corner, never a setup's.
   { "output", 0, 100, 1, 100 },
+  // The master Width (12 Nov): beside the Output, never a setup's either.
+  { "stereoWidth", 0, 100, 1, 100 },
   { "morph", 0, 300, 1, 150 },
   { "width", 5, 95, 1, 25 },
   { "table", 0, 300, 1, 150 },

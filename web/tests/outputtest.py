@@ -117,7 +117,9 @@ with sync_playwright() as pw:
       const row = el.output.closest('.menu-row');
       return { amp: home('amp'), output: home('output'), ampTab: el.amp.closest('[data-tab]') && el.amp.closest('[data-tab]').dataset.tab,
                knob: row.classList.contains('knob-row'), host: row.classList.contains('host-param'),
-               dest: row.dataset.modDest || null, meterAfter: row.nextElementSibling === el.levelMeter,
+               // The meter after the Output, past the Width since 12 Nov: it reads what is heard after both.
+               dest: row.dataset.modDest || null, meterAfter: row.nextElementSibling === el.stereoWidth.closest('.menu-row')
+                 && el.stereoWidth.closest('.menu-row').nextElementSibling === el.levelMeter,
                ampDest: el.amp.closest('.menu-row').dataset.modDest, gen: HAND_SECTIONS.gen.controls.includes('amp'),
                reading: el.outputValue.textContent, picture: HAND_SECTIONS.picture.controls.includes('output') };
     }""")

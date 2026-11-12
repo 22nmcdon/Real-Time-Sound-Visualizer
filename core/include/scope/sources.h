@@ -49,7 +49,8 @@ class KeyboardSource : public ModSource {
   KeyboardSource(Kind kind, const Keyboard& keys) : ModSource(idFor(kind)), kind_(kind), keys_(keys) { stepped = true; }
   double value() const override {
     switch (kind_) {
-      case Kind::Key: return keys_.key();
+      // Held through the note's release since 12 Nov (Keyboard::heard, the page's keyHeard).
+      case Kind::Key: return keys_.heard();
     }
     return 0;
   }

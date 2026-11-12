@@ -78,13 +78,13 @@ int main() {
   // names them (plugin/src/PluginProcessor.h, which this cannot include for
   // JUCE's sake); parity reads that list and requires this one to be it.
   // In the plugin's kKnobs order, which parity.py reads and holds this to (F7c added three, the reverb one,
-  // G7 the Output before the level).
-  for (const char* id : { "pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "output", "amp", "vcfCut", "oscBend",
+  // G7 the Output before the level, and the Width after it on 12 Nov).
+  for (const char* id : { "pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "output", "stereoWidth", "amp", "vcfCut", "oscBend",
                           "planeTwist", "delayMix", "phaserMix", "reverbMix", "morphPos" }) {
     const scope::RangeSpec* r = scope::rangeSpec(id);
     const double from = brain.panel.range(id);
     /* Up from the bottom, or down from the top for one that starts at its
-       top - the Output, at unity - so the walk ends somewhere it did not
+       top - the Output, at unity, and the Width - so the walk ends somewhere it did not
        start and the line can say it moved. */
     const bool down = from == r->max;
     scope::moveSliderTo(id, down ? r->max : r->min, brain, gen, keys, lfos);

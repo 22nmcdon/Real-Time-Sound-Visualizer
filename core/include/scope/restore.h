@@ -1840,6 +1840,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "amp") layerSet("amp", v / 100);
   // The master Output (G7): both hands', on what is heard alone, and never a setup's.
   else if (id == "output") gen.set("output", outputGain(v), 0);
+  // The master Width (12 Nov), the same: the knob's fraction, a straight line.
+  else if (id == "stereoWidth") gen.set("stereoWidth", std::fmax(0.0, std::fmin(1.0, v / 100)), 0);
   else if (id == "morph" || id == "width" || id == "table") layerSet(id, v / 100);
   else if (id == "phase") gen.set("phase", v * kPi / 180);
   else if (id == "envAttack") layerSet("attackMs", v);

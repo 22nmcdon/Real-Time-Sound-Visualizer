@@ -51,6 +51,9 @@ class Logged : public scope::GeneratorNotes {
     log_.push_back(std::string("layout ") + scope::layoutName(next));
     GeneratorNotes::setLayout(next);
   }
+  // A run's `envelope`, standing in for a generator that has played no block.
+  double envelope() const override { return env; }
+  double env = 0;
 
  private:
   std::vector<std::string>& log_;
@@ -125,6 +128,7 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
       else if (arg(1) == "interval") p.interval = static_cast<int>(num(arg(2)));
     } else if (cmd == "frame") k.frame();
     else if (cmd == "present") k.setPresent(arg(1) == "1");
+    else if (cmd == "envelope") target.env = num(arg(1));
     else if (cmd == "arp") k.setArp(arg(1), arg(2), num(arg(3)));
     else if (cmd == "bpm") k.setTempo(num(arg(1)));
     else if (cmd == "at") {
@@ -144,7 +148,7 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     std::string notes, sustained;
     for (const auto& h : k.notes()) notes += (notes.empty() ? "" : "+") + std::to_string(h.note) + "/" + show(h.velocity);
     for (const int n : k.sustained()) sustained += (sustained.empty() ? "" : "+") + std::to_string(n);
-    line += " | key " + show(k.key())
+    line += " | key " + show(k.heard())
           + " poly " + std::to_string(poly.sounding) + " " + std::to_string(poly.drawn) + " " + std::to_string(poly.held)
           + " split " + std::to_string(k.splitPoint()) + " " + (k.learning() ? "1" : "0")
           + " sustain " + (k.sustain() ? "1" : "0")

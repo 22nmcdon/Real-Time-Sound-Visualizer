@@ -102,6 +102,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height; and no word the page can show - its text, hidden panels and the cheat sheet included, tooltips, the info line, the sources' descriptions - names a tab, view or drawer that has gone (G8), with nulls planted in each |
 | `outputtest.py` | Level in the Generator and the master Output (G7): where each is and Level on the Generator's link; the Output's law (the knob's fraction squared) and its reading in decibels; no setup's - a preset, a code, undo under real keys and the morph leave it, each against Level, which they move; this browser's storage, and the page opening at unity with storage refused; the picture the same to the bit and the heard pair a quarter on the compiled instrument the page carries and on the page's own generator, played deterministically on the main thread; the meter at the Output's gain; the site's instrument told the remembered Output as it connects, each with its null |
+| `widthtest.py` | The master Width (12 Nov), the Output's twin: where it is (after the Output, before the meter); its law (the knob's fraction) and reading; no setup's - a preset, a code, New, undo under real keys and the morph leave it, against Level; this browser's storage, and a hundred with storage refused; on the compiled instrument and the page's generator, mono to the bit at nought once landed and glided there, half the side at fifty, the heard pair the drawn pair to the bit at a hundred, the picture the same to the bit; the instrument's state; the site's instrument told the remembered Width; and the Key held through a note's release on the page and at the speakers (serial, real time), each with its null |
 | `enlargetest.py` | Enlarge (G4): the button and Esc, Esc closing a panel first; Picture only hiding the reticle, the loop, the hand's mark, the verdict, the panes, and every ink off the trace in X-Y and Y-T; the phosphor grid and Scan's table the same with it on and off and with Which hands on one hand, on `?brain=js`; the Trail fading the canvas at the square of the Persistence (Half) or Short's and the grid at the Persistence, and doing nothing on the face; the light kept as it opens and closes; Which hands by ink; the panes beside it at 1400x900 and 960x600; no undo step and nothing stored; and the header one row before any sound at three windows, each with its null |
 | `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
@@ -5830,6 +5831,51 @@ after the knob is read at boot. MORPH_SKIP holds it out of the morph, and undo
 never sees it because undo records the setup. A slider whose start is its top
 also broke parity's allocation walk, which judged "moved" by where the walk
 ended against where it began: it walks down from the top for that one.
+
+**The Key is the note's, through its release (12 Nov).** The owner, on the
+tine piano: a note is wide in both ears while held, and let go "the
+duplication stops instantly", as if it left one ear. Measured at the
+speakers (the monitor chain's clamp tapped with a script processor), the
+heard pair's side over its middle was +9.9 dB held and 0 dB 33 ms after the
+key came up, while the release had 450 ms to go; the base sine and every
+preset without the Key on FM kept theirs. The cause was the Key (`midi.key`,
+Expression's *Velocity* on FM): "nought when nothing is held", so the bark
+the velocity put on the note went the moment the hand lifted and the rest
+of the release was a bare sine. A sine whose right channel is the left a
+quarter-period late (the quarter turn, `polyRound`) is a tone with a 90
+degree difference between the ears, which is heard in the leading ear: hence
+one ear. Rich, the same quarter-period is a different phase for every
+harmonic and is heard as wide. So the Key as a routing hears it is now held
+through the release at the last held key's velocity while the Envelope
+(`env.note`) is above nought, and nought once it is not (`keyHeard`, and
+`Keyboard::heard` in the core, which reads the envelope through
+`NoteTarget::envelope`); `midi.key` itself stays the gate, which the
+keyboard's checks read. What it costs: a routing from the Key onto the
+picture holds through the release too, and drops when the Envelope does, a
+step the fade eases. Two traps on the way. A compiled brain played on the
+test's thread with no frames cannot show this at all: the tine piano's bark
+is half its wave read off its own figure by Scan, and without frames there is
+no figure, so the held note was within half a decibel of mono either way;
+`widthtest.py` measures it at the speakers instead, and is serial for it.
+And parity's keyboard harness reads the Key through the page's source, so a
+source whose value became a function had to be lifted (`keyHeard`) and given
+a stand-in Envelope, on both sides, or the harness would have thrown.
+
+**The Width is the Output's twin (12 Nov).** The owner asked for a listening
+width on top of that fix, and it is built exactly as the Output is: on the
+heard pair and nothing else (`makeGeneratorCore`, `scope::Generator::widen`,
+and `hear` for the instrument's input), no setup's (the browser keeps
+`scope.width`, the plugin's state `pluginWidth`, the instrument writes it
+where it is not a hundred and the plugin's own save always), a host
+parameter after the Output in `kKnobs` (version 6), out of the morph and
+undo. Three choices. It is on the sum before the Output's gain, so the Output
+is still the last multiply and its quarter is a quarter at any width. At a
+hundred the pair is passed as it is, not rebuilt from its middle and side:
+(l + r) / 2 + (l - r) / 2 is not l to the bit, and a hundred has to be the
+sound as it was; it lands there because it glides on the Output's one-pole
+and snap. And nothing above a hundred: the tine piano's side is already ten
+decibels over its middle, and widening past the figure would hand the
+limiter the work. Its id is `stereoWidth`, since `width` was the pulse's.
 
 **A module switched on starts from silence (11 Nov).** The delay's lines, the
 chorus's, the phaser's states and the reverb's network are written only while

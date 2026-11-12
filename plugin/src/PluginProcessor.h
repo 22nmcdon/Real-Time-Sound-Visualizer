@@ -185,7 +185,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
      the hand the panel shows while it is that hand's own (`readBack` when
      the panel turns to the other hand). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
-  static constexpr std::array<HostKnob, 14> kKnobs { {
+  static constexpr std::array<HostKnob, 15> kKnobs { {
     // F7c of web/docs/redesigning-the-face.md: the Picture section along the
     // bottom of the face, then the sound controls people automate. Strike,
     // softness and twist arrived in version 3; the rest kept their ids, so
@@ -198,7 +198,13 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
        moves one along with everything after it. The Output is both hands'
        and has no layer to read back. Not a hand on the setup: the plugin's
        state keeps it as `pluginOutput`, beside the setup. */
-    { "output", "Output", "output", 5, true }, { "level", "Level", "amp", 1, true },
+    { "output", "Output", "output", 5, true },
+    /* The master Width (12 Nov), new in version 6, after the Output and for
+       its reasons: both hands', what is heard alone, kept as `pluginWidth`
+       beside the setup. Everything after it moves one along again, which
+       hosts that bind by id do not see. */
+    { "width", "Width", "stereoWidth", 6, true },
+    { "level", "Level", "amp", 1, true },
     { "cutoff", "Cutoff", "vcfCut", 1, true }, { "bend", "Warp", "oscBend", 2, true },
     { "twist", "Twist", "planeTwist", 3, true },
     // Shown as Delay mix since F5, the rack's name for the effect and its

@@ -119,6 +119,8 @@ struct Tone : LayerSettings, PlaneTone {
   double scoreDecayMs = 400, scoreLevel = 0.4;
   // The master Output (G7), as a gain on what is heard alone: the page's tone says why.
   double output = 1;
+  // The master Width (12 Nov), nought (mono) to one (the pair as it is), on what is heard alone.
+  double stereoWidth = 1;
   // How long a stage switched in or out mid-sound crossfades, in ms (the page's tone says why).
   double switchMs = kSwitchMs;
   // How many samples a held route's change is walked over (the page's tone's heldRamp, which says why).
@@ -215,6 +217,7 @@ class Generator {
     else if (field == "scoreDecayMs") a.scoreDecayMs = value;
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "output") a.output = value;
+    else if (field == "stereoWidth") a.stereoWidth = value;
     else if (field == "switchMs") a.switchMs = value;
     else if (field == "heldRamp") a.heldRamp = value;
     else if (field == "planeOS") a.planeOS = value;
@@ -636,8 +639,10 @@ class Generator {
       // What is heard: the lanes, summed, and the score's voice, at the Output (G7).
       if (heardL) {
         outputStep(outGlide);
-        heardL[i] = static_cast<float>((outL[i] + bx + scored) * outNow_);
-        heardR[i] = static_cast<float>((outR[i] + by + scored) * outNow_);
+        double hl = outL[i] + bx + scored, hr = outR[i] + by + scored;
+        widen(hl, hr);
+        heardL[i] = static_cast<float>(hl * outNow_);
+        heardR[i] = static_cast<float>(hr * outNow_);
       }
     }
 
@@ -661,8 +666,14 @@ class Generator {
     const double glide = poleFor(kOutputGlideMs, rate_);
     for (int i = 0; i < n; i++) {
       outputStep(glide);
-      left[i] = static_cast<float>(left[i] * outNow_);
-      if (right) right[i] = static_cast<float>(right[i] * outNow_);
+      if (right) {
+        double l = left[i], r = right[i];
+        widen(l, r);
+        left[i] = static_cast<float>(l * outNow_);
+        right[i] = static_cast<float>(r * outNow_);
+      } else {
+        left[i] = static_cast<float>(left[i] * outNow_);
+      }
     }
   }
   // Where the Output's gain has got to, for a harness; and a hand's level and cutoff (layer 1 is B's).
@@ -673,7 +684,8 @@ class Generator {
      instrument opening on a project that was turned down, whose first
      samples - an input heard at once, a note held from the start - would
      otherwise come out at unity for the glide's first tenth of a second. */
-  void settleOutput() { outNow_ = a_.output; }
+  void settleOutput() { outNow_ = a_.output; widthNow_ = a_.stereoWidth; }
+  double widthNow() const { return widthNow_; }
 
  private:
   static constexpr double kBendGlideMs = 5, kVibratoHz = 5.5;  // BEND_GLIDE_MS, VIBRATO_HZ
@@ -682,6 +694,18 @@ class Generator {
   void outputStep(double glide) {
     outNow_ += (a_.output - outNow_) * glide;
     if (std::fabs(a_.output - outNow_) < kOutputSnap) outNow_ = a_.output;
+    // The Width on the Output's glide and snap (the page's widthNow says why).
+    widthNow_ += (a_.stereoWidth - widthNow_) * glide;
+    if (std::fabs(a_.stereoWidth - widthNow_) < kOutputSnap) widthNow_ = a_.stereoWidth;
+  }
+  /* The Width on a heard pair, before the Output: its side scaled, and the
+     pair passed as it is at one, since rebuilt from its middle and side it
+     would not be the same to the bit (the page's block says more). */
+  void widen(double& l, double& r) const {
+    if (widthNow_ == 1) return;
+    const double mid = (l + r) * 0.5, side = (l - r) * 0.5 * widthNow_;
+    l = mid + side;
+    r = mid - side;
   }
   // LEVEL_GLIDE_MS, LEVEL_SNAP and CUT_SNAP, and the page's levelsStep, where the page says why.
   static constexpr double kLevelGlideMs = 20, kLevelSnap = 1e-6, kCutSnap = 1e-6;
@@ -701,6 +725,7 @@ class Generator {
     else vx.cut = std::exp(vx.cutLn);
   }
   double outNow_ = 1;  // the Output's gain as it glides, a sample at a time
+  double widthNow_ = 1;  // and the Width's
   static constexpr double kClockHyst = 0.01;
 
   // JavaScript's `| 0`: towards nought, and a value past 32 bits wrapped.
