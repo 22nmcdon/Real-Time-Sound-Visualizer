@@ -22,7 +22,7 @@ over the C++ core. A native desktop build in Python and Qt was retired in P0 of
 | `docs/laying-it-out.md` | the layout revamp, R1–R5: a fixed home for every section, the Bench as task tabs, a Sources tab, search. Built |
 | `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built, and so are the rest of G (pulse, noises, wavetable, a drawn and a grabbed cycle), J and K, the breadth of L, S10's voice budget and S6's start and stop. The plan is built |
 | `docs/making-it-one-instrument.md` | the plan that comes before any new feature, measured by whether the instrument gets reached for: what it is (*the sound is made from what the screen remembers* - the phosphor read back at audio rate as Scan, at control rate as the picture stage, at tempo as the score), why the picture barely moves the sound today (measured), two plugins from one codebase with the synth first (it adds only what needs an ink the loop can reach) and the effect after, what goes and the rule for the host's parameters, and stages P0-P9 with the Scan experiment run from the start. Not built |
-| `docs/the-picture-amount.md` | a study of the picture stage, measured on the core: why its swell is inconsistent (a sound moved by its own picture through a range that closes in two seconds oscillates by itself, and notes land on its swells), what else it does (loud, noise-driven, a switch-like knob, every Settled preset made Breathing), and four options; recommended: read the other hand's picture against a slow, wide range, which keeps the swell and passes the owner's consistency test. Not built |
+| `docs/the-picture-amount.md` | a study of the picture stage, measured on the core: why its swell is inconsistent (a sound moved by its own picture through a range that closes in two seconds oscillates by itself, and notes land on its swells), what else it does (loud, noise-driven, a switch-like knob, every Settled preset made Breathing), and four options; recommended: read the other hand's picture against a slow, wide range, which keeps the swell and passes the owner's consistency test. Decided with the owner on 11 Nov and built on 12 Nov as *How the picture responds* (Responds to, Rise and Fall, Swell), each hand's own, on fixed scales a held chord cannot swell on by itself; its last section has what was built and measured |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `docs/scan-experiment/` | P2 of the plan: the phosphor recorded from six presets, scanned along four paths at three softnesses, rendered and measured, with the scripts that do it. Softness makes the tables warm; a centred path plays a symmetric figure out of tune, an off-centre one mostly not. Run; the go or no-go waits on listening |
 | `docs/z-axis-lane.md` | brightness as a third axis: written for the retired desktop build, kept as an idea for the plugin |
@@ -93,6 +93,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `phototest.py` | the photocell: the phosphor grid against the canvas, its fade, the reticle, the loop's defences |
 | `shapetest.py` | what the picture says: continuity per source, roundness's blind spot, the verdict on made-up sequences, the sixth-slot survey |
 | `looptest.py` | the loop through the sound: one total per destination, boredom, the stability run from silence and full scale, with the picture stage at its top |
+| `responsetest.py` | how the picture responds (11 Nov): the owner's consistency test, rebuilt from the study's repro and rendered through the compiled core offline - Change's fast run swells as the study's option 3 did and its soft notes no more than from a fresh start, a held chord does not swell by itself with Swell off and breathes at the Persistence's period with it on, Level holds a run up, Both is a base and a flare, Motion is on a fixed scale; each with its null |
 | `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
 | `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, the waveform (every kind until G2), ten learned controllers; with the modulation row in place across the window (G5a), cards at 1400x900 and chips at the four smaller windows, and the null that the cards' row puts Ink over at 1100x860 |
 | `modrowtest.py` | the modulation row (G5a): four cards across the window under the screen and the tabs, Routings in the corner; each card's drawing read off its canvas, its dot moving; the Photocell dragged from its card onto a knob with it off, switched on and turning the screen, and nothing in the dark; each editor's drawing - the LFO's wave at its shape's height, the Envelope's curve following Play's attack or its own, the photocell's crop against the trace and its four seconds; Routings by source and by destination, a silence that stills a control and keeps its routing in the setup, kept by a restore since G5b (forgotten until then) and undone by patching; the fade from Routings; chips under 900 tall, each with its null |
@@ -6201,3 +6202,47 @@ phaser's sweeps advance only while they are on, so the two come back at
 different points of the sweep. A harness that can only send the worklet a tone,
 as `workletharness.mjs` does, has to wait out the 0.27 s before it calls
 anything silence, and read the difference before that.
+
+**A read that moves its own push needs a scale that cannot run away (11 Nov).**
+The picture stage's swell was a hand's Glow on the fold, and its
+inconsistency was the loop through the hand's own picture: the fold enlarges
+the figure, which raises the coverage, which raised Glow against a range whose
+top followed at once - so a held chord swelled and collapsed every four to
+eight seconds with nothing played (`the-picture-amount.md`). A slow, wide range
+alone left that loop swelling; what stops it is a read whose gain, against the
+push it makes, stays under one. The fold multiplies a figure's coverage, by at
+most about 0.12 of a log unit a point of fold on the steep part of the curve
+(measured on the owner's chord, from 0.41 lit at no fold to 0.98 at 15), so
+the level is read on a log scale (`stageLevel`): there the most a full push
+can add is a bounded share of the scale whatever the figure's size, and at the
+routes' top the loop's gain is about a half. A linear scale out of the same
+quarter screen had a gain near two on the steep part, and a held chord jumped
+to a swollen state it then kept or left by chance - bistable, which is the
+same inconsistency in another form. `responsetest.py` holds a held chord to
+rising under 1.5 dB from six seconds on, split at 75 and unsplit at 100;
+today's stage rose 5.1 and 6.7 there. Three more were found on the way. The
+reads used to take the slewed coverage, and the slew's two swings a second
+was a Rise no Rise could beat, so they take the raw reads and the Rise and
+Fall are the smoothing. Motion over the light present made any soft note a
+full Motion, so it is the changed light itself, on a fixed scale; a small
+figure moving is a small Motion now, which parity's "a moving picture" check
+had to be told. And the breath was first added on top of the push, which a
+Level near one clipped flat; it is a crossfade towards the wave instead, so it
+rises from a settled Change and dips under a Level, and never leaves the
+push's range. The suite renders the owner's sequence through the compiled
+core offline rather than on the page in real time: parity holds the page to
+the core, and offline the swell of one run against another at Picture nought
+is the same every time.
+
+**The picture's pushes glide at the destination (11 Nov).** The loop's
+combined route into a generator slot is a held value, stepped once a picture
+frame, so the fold and the echo's level stepped sixty times a second under
+whatever the stage meant. Each slot's push now glides on a 20 ms one-pole a
+sample at a time in the generator (`LOOP_GLIDE_MS`, `loopGlideStart`, page and
+core), as the level and the cutoff do; a route says it is the loop's
+(`loop`, a second bit of the wasm route's flags), and only the loop's glide,
+since an envelope or a held note's velocity routed by hand is meant to step.
+A slot no push reaches forgets where it had got to, so the wheel taking the
+amount to nought and back starts the push where it is asked, as the stages
+the push switches in start where they are asked - the wheel's crossover is
+the shaper's and the plane's, and the glide does not move it.
