@@ -150,11 +150,24 @@
  ],
  "scan": [
   {
+   "style": "physical",
+   "held": "audio/scan-physical-held.mp3",
+   "fade": "audio/scan-physical-build.mp3",
+   "held_centroid": 2.13,
+   "fade_centroid_median": 2.09,
+   "fade_centroid_range": [
+    2.07,
+    2.28
+   ],
+   "dark_frames": 6,
+   "frames": 310
+  },
+  {
    "style": "ink",
    "held": "audio/scan-ink-held.mp3",
    "fade": "audio/scan-ink-fade.mp3",
    "held_centroid": 2.51,
-   "fade_centroid_median": 1.66,
+   "fade_centroid_median": 1.68,
    "fade_centroid_range": [
     1.18,
     2.22
@@ -166,8 +179,8 @@
    "style": "gesture",
    "held": "audio/scan-gesture-held.mp3",
    "fade": "audio/scan-gesture-fade.mp3",
-   "held_centroid": 2.33,
-   "fade_centroid_median": 1.53,
+   "held_centroid": 2.32,
+   "fade_centroid_median": 1.55,
    "fade_centroid_range": [
     1.1,
     2.03
@@ -190,8 +203,146 @@
   }
  ],
  "checks": {
+  "physical_coverage_palette_max_difference": 0.0,
   "density_palette_max_difference": 0.0,
   "lightness_palette_max_difference_null": 0.352
+ },
+ "physical": {
+  "stills": [
+   {
+    "phrase": "pad",
+    "src": "img/pad-physical-layered-brand.jpg",
+    "detail": "img/pad-physical-layered-brand-detail.jpg",
+    "landed": {
+     "steps": 607,
+     "brush_s": 0.394,
+     "frames": 1,
+     "render_s": 0.256,
+     "wet": 231141.7,
+     "dry": 75.0,
+     "bare": 113112.8
+    }
+   },
+   {
+    "phrase": "crossed",
+    "src": "img/crossed-physical-layered-brand.jpg",
+    "detail": "img/crossed-physical-layered-brand-detail.jpg",
+    "landed": {
+     "steps": 5788,
+     "brush_s": 1.746,
+     "frames": 1,
+     "render_s": 0.271,
+     "wet": 1917949.4,
+     "dry": 198732.6,
+     "bare": 667900.6
+    }
+   },
+   {
+    "phrase": "run",
+    "src": "img/run-physical-layered-brand.jpg",
+    "detail": "img/run-physical-layered-brand-detail.jpg",
+    "landed": {
+     "steps": 4338,
+     "brush_s": 1.614,
+     "frames": 1,
+     "render_s": 0.258,
+     "wet": 2214769.6,
+     "dry": 27603.0,
+     "bare": 659779.1
+    }
+   },
+   {
+    "phrase": "chords",
+    "src": "img/chords-physical-layered-brand.jpg",
+    "detail": "img/chords-physical-layered-brand-detail.jpg",
+    "landed": {
+     "steps": 858,
+     "brush_s": 0.476,
+     "frames": 1,
+     "render_s": 0.299,
+     "wet": 234268.7,
+     "dry": 31285.6,
+     "bare": 97185.3
+    }
+   }
+  ],
+  "palettes": [
+   {
+    "phrase": "crossed",
+    "palette": "earth",
+    "src": "img/crossed-physical-layered-earth.jpg"
+   },
+   {
+    "phrase": "crossed",
+    "palette": "night",
+    "src": "img/crossed-physical-layered-night.jpg"
+   }
+  ],
+  "builds": [
+   {
+    "phrase": "crossed",
+    "src": "anim/crossed-physical-build.webm",
+    "cost": {
+     "steps": 5428,
+     "brush_s": 0.711,
+     "frames": 310,
+     "render_s": 31.337,
+     "wet": 735772.3,
+     "dry": 73106.2,
+     "bare": 233611.0
+    }
+   },
+   {
+    "phrase": "run",
+    "src": "anim/run-physical-build.webm",
+    "cost": {
+     "steps": 3907,
+     "brush_s": 0.594,
+     "frames": 143,
+     "render_s": 14.212,
+     "wet": 839788.0,
+     "dry": 12040.0,
+     "bare": 263956.2
+    }
+   },
+   {
+    "phrase": "chords",
+    "src": "anim/chords-physical-build.webm",
+    "cost": {
+     "steps": 703,
+     "brush_s": 0.217,
+     "frames": 232,
+     "render_s": 23.617,
+     "wet": 75997.7,
+     "dry": 10683.8,
+     "bare": 32247.8
+    }
+   }
+  ],
+  "costs": {
+   "512": {
+    "brush_ms_per_frame": 0.77,
+    "render_ms_per_frame": 27.55,
+    "steps": 5443,
+    "frames": 310
+   },
+   "1000": {
+    "brush_ms_per_frame": 2.45,
+    "render_ms_per_frame": 103.26,
+    "steps": 5428,
+    "frames": 310
+   },
+   "1600": {
+    "brush_ms_per_frame": 6.71,
+    "render_ms_per_frame": 266.83,
+    "steps": 5788,
+    "frames": 310
+   }
+  },
+  "scroll": {
+   "phrase": "crossed",
+   "src": "img/crossed-physical-scroll-brand.jpg"
+  }
  },
  "phrases": {
   "pad": {

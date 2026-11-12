@@ -21,6 +21,7 @@ PHRASE = {
     "chords": ("A chord change", "<em>Drawbar organ</em>, from the bank: Dm7, G7, Cmaj7 and Am7 in four-note voicings, two and a half seconds each."),
 }
 STYLE = {
+    "physical": ("Physical paint", "Oil on canvas, simulated: a bristle brush whose paint runs out along the stroke, pressed wider and heavier by loudness; paint kept as a height map and lit from the side; strokes laid into wet paint drag and mix into it (Kubelka-Munk), strokes laid on dry paint sit on top and dry-brush across its ridges."),
     "ink": ("Ink and wash", "Washes that deepen while a note is held; a broad nib at a fixed angle following the melody, drying as it goes; a few drops on a hard strike."),
     "gesture": ("Gestural", "Poured pools for held notes, which drip when heavy; flung skeins for the melody, thinner the faster the hand moves, overshooting on hard strikes; spatter in the direction of travel."),
     "geometry": ("Geometric", "A circle for each held note with a halo; arcs for steps and straight lines for leaps; a band round the turn for a consonant chord, a plane across it for a tense one; a dot and rays for each strike."),
@@ -55,16 +56,18 @@ def swatches(key):
 
 def main():
     by = {(s["phrase"], s["style"]): s["src"] for s in R["stills"]}
+    PH = R["physical"]
+    for s_ in PH["stills"]: by[(s_["phrase"], "physical")] = s_["src"]
     out = []
     for name in ("pad", "crossed", "run", "chords"):
         title, desc = PHRASE[name]
         ph = R["phrases"][name]
-        figs = "".join(fig(by[(name, st)], f"<b>{STYLE[st][0]}</b> · Layered, Accumulate, the house palette") for st in ("ink", "gesture", "geometry"))
+        figs = "".join(fig(by[(name, st)], f"<b>{STYLE[st][0]}</b> · Layered, Accumulate, the house palette") for st in ("physical", "ink", "gesture", "geometry"))
         out.append(f'''<section class="phrase" id="{name}">
 <p class="eyebrow">Phrase</p><h2>{title}</h2><p>{desc}</p>
 <audio controls preload="none" src="audio/{name}.mp3"></audio>
 <p class="measures">Measured: median level {ph["db"]:.1f} dB, brightness {ph["bright"]} octaves over the pitch, agitation {ph["agitation"]}, grain {ph["grain"]}; {ph["notes"]} notes.</p>
-<div class="three">{figs}</div></section>''')
+<div class="four">{figs}</div></section>''')
     phr = "\n".join(out)
     scroll = "".join(fig(s["src"], f"<b>{STYLE[s['style']][0]}</b> · Scroll: Crossed hands left to right, pitch up", "wide") for s in R["scroll"])
     pals = "".join(swatches(k) for k in ("brand", "earth", "night"))
@@ -75,10 +78,22 @@ def main():
                     for f in R["fades"])
     scan = "".join(f'''<div class="scan"><h3>{STYLE[s["style"]][0]}</h3>
 <p>The finished painting, held under A3:</p><audio controls preload="none" src="{e(s["held"])}"></audio>
-<p>The fading canvas, read as it is painted:</p><audio controls preload="none" src="{e(s["fade"])}"></audio>
-<p class="measures">Harmonic centroid of the table: {s["held_centroid"]} finished; {s["fade_centroid_median"]} median while fading (10th to 90th percentile {s["fade_centroid_range"][0]} to {s["fade_centroid_range"][1]}); {s["dark_frames"]} of {s["frames"]} frames too dark to read.</p></div>'''
+<p>{"The canvas read as it is painted (paint does not fade, so it builds up):" if s["style"] == "physical" else "The fading canvas, read as it is painted:"}</p><audio controls preload="none" src="{e(s["fade"])}"></audio>
+<p class="measures">Harmonic centroid of the table: {s["held_centroid"]} finished; {s["fade_centroid_median"]} median while {"painting" if s["style"] == "physical" else "fading"} (10th to 90th percentile {s["fade_centroid_range"][0]} to {s["fade_centroid_range"][1]}); {s["dark_frames"]} of {s["frames"]} frames too dark to read.</p></div>'''
                    for s in R["scan"])
     styles = "".join(f"<li><b>{v[0]}.</b> {v[1]}</li>" for v in STYLE.values())
+    pblocks = []
+    for st in PH["stills"]:
+        L = st["landed"]; other = L["wet"] + L["dry"]
+        share = f"{100 * L['wet'] / other:.0f} per cent" if other else "none"
+        pblocks.append(f'''<div class="pair"><h3>{PHRASE[st["phrase"]][0]}</h3>
+<audio controls preload="none" src="audio/{st["phrase"]}.mp3"></audio>
+<div class="two">{fig(st["src"], "The whole painting")}{fig(st["detail"], "A detail at full resolution: one pixel of the painting to one of the image")}</div>
+<p class="measures">Of the paint that landed on other paint, {share} went into paint still wet (merging) and the rest onto paint already dry (layering).</p></div>''')
+    pblocks = "".join(pblocks)
+    pbuilds = "".join(f'<figure><video controls preload="none" playsinline src="{e(b["src"])}"></video><figcaption><b>{PHRASE[b["phrase"]][0]}</b> · built up in time with its sound</figcaption></figure>' for b in PH["builds"])
+    ppals = "".join(fig(p["src"], f"<b>Physical paint</b> · {e(PAL_NAME[p['palette']])} · Crossed hands") for p in PH["palettes"])
+    costs = "".join(f"<tr><td>{k} × {k}</td><td>{v['brush_ms_per_frame']} ms</td><td>{v['render_ms_per_frame']} ms</td></tr>" for k, v in PH["costs"].items())
     chk = R["checks"]
     page = f'''<!doctype html>
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -113,6 +128,9 @@ figure img, figure video {{ display: block; width: 100%; height: auto; backgroun
   box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06); }}
 figcaption {{ padding: 8px 2px 0; }}
 .three {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 16px; }}
+.four {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 16px; }}
+.two {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 12px; }}
+.pair {{ margin-top: 28px; }}
 .wide {{ margin-top: 18px; }}
 audio {{ width: 100%; max-width: 520px; margin: 4px 0; }}
 .palettes {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }}
@@ -121,21 +139,34 @@ audio {{ width: 100%; max-width: 520px; margin: 4px 0; }}
 .sw {{ list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; }}
 .sw li {{ display: flex; gap: 8px; align-items: center; }}
 .chip {{ width: 28px; height: 28px; border-radius: 50%; flex: none; }}
-.scans {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }}
+.scans {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }}
 .scan p {{ margin: 6px 0; font-size: 14px; }}
 table {{ border-collapse: collapse; font-size: 14px; width: 100%; max-width: 900px; }}
 td, th {{ border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }}
 th {{ font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--text-soft); }}
 .table-wrap {{ overflow-x: auto; }}
 @media (max-width: 760px) {{
-  .three, .palettes, .scans {{ grid-template-columns: 1fr; }}
+  .three, .palettes, .scans, .two {{ grid-template-columns: 1fr; }}
+  .four {{ grid-template-columns: 1fr 1fr; }}
 }}
 </style></head>
 <body><main>
 <p class="eyebrow">A study, 12 November</p>
 <h1>Painting the sound</h1>
-<p class="lede">Four phrases played through the instrument's own core, and each painted from what the sound contains: a wash where a note is held, a stroke where a melody moves, spatter where a key is struck hard, grain where the sound is noisy, and harmony as which ink.</p>
+<p class="lede">Four phrases played through the instrument's own core, and each painted - first as oil paint on canvas, then in three other languages - from what the sound contains: a wash where a note is held, a stroke where a melody moves, spatter where a key is struck hard, grain where the sound is noisy, and harmony as which ink.</p>
 <p>Nothing in the instrument was changed to make this. The write-up, with what was found and the questions for the owner, is <a href="../painting-the-sound.md"><code>painting-the-sound.md</code></a>; the scripts that made every file here are in <code>tools/</code>, and run again to the same pictures.</p>
+
+<section id="physical"><p class="eyebrow">The owner's first ask</p><h2>Physical paint</h2>
+<p>{STYLE["physical"][1]} Paint's wetness falls to 1/e in 1.2 seconds, so the playing's timing decides whether a stroke merges or layers: a run returning to its notes a moment later paints into its own wet paint; a note after a pause paints over dry paint. For that to happen, a note played again has to land where it was, so physical paint's Layered puts each note round the canvas by its pitch class, a turn an octave, and lets time turn the whole only slowly (once a minute).</p>
+{pblocks}
+<h3>Built up in time</h3><p>Press play for the sound; watch wet strokes glisten and lose their shine as they dry, and later strokes drag earlier ones.</p>
+<div class="three">{pbuilds}</div>
+<h3>In the other palettes, and in Scroll</h3>
+<div class="two">{ppals}</div>
+{fig(PH["scroll"]["src"], "<b>Physical paint</b> · Scroll: Crossed hands left to right, pitch up", "wide")}
+<h3>What it costs</h3><p>Measured on this machine, one core, Crossed hands painted at 20 frames a second: the brushwork for each frame's twentieth of a second, and lighting and mixing the whole canvas once.</p>
+<div class="table-wrap"><table><tr><th>Canvas</th><th>Brushwork per frame</th><th>Render per frame</th></tr>{costs}</table></div>
+</section>
 
 <section id="read"><p class="eyebrow">How to read them</p><h2>The mapping</h2>
 <div class="table-wrap"><table>
@@ -170,7 +201,7 @@ th {{ font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spa
 <div class="three">{fades}</div></section>
 
 <section id="scan"><p class="eyebrow">A first approximation</p><h2>What Scan would hear</h2>
-<p>Each style's Crossed hands painting, reduced to a 64 by 64 grid of ink density and read by the core's own Scan functions (<code>scanGeometry</code>, <code>scanBlur</code> at the default Softness of 3, <code>scanRead</code>, <code>scanTables</code>), then played as a held A3 with the table at a depth of 0.6 against a sine. This is not the instrument playing a painting: nothing yet puts a painting on its screen, the voice's other stages are left out, and the density grid is the study's assumption about what Scan would read.</p>
+<p>Each style's Crossed hands painting, reduced to a 64 by 64 grid of ink density (for physical paint, how far the paint hides the ground) and read by the core's own Scan functions (<code>scanGeometry</code>, <code>scanBlur</code> at the default Softness of 3, <code>scanRead</code>, <code>scanTables</code>), then played as a held A3 with the table at a depth of 0.6 against a sine. This is not the instrument playing a painting: nothing yet puts a painting on its screen, the voice's other stages are left out, and the density grid is the study's assumption about what Scan would read.</p>
 <div class="scans">{scan}</div></section>
 </main></body></html>
 '''

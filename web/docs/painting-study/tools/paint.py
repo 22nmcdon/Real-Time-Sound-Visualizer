@@ -260,6 +260,7 @@ def draw(st, op, s=1.0):
 
 
 TURN = 8.0   # seconds a Layered canvas takes to come round
+WHEEL = 60.0  # seconds physical paint's wheel takes to turn once by time alone
 
 
 class Layout:
@@ -278,7 +279,7 @@ class Layout:
         self.kind, self.w, self.h = kind, w, h
         notes = [e["note"] for e in a["events"]]
         lo, hi = min(notes), max(notes)
-        span = max(hi - lo, 14 if kind == "layered" else 24)
+        span = max(hi - lo, 14 if kind in ("layered", "wheel") else 24)
         mid = (lo + hi) / 2
         self.plo, self.phi = mid - span / 2 - 2, mid + span / 2 + 2
         self.T = a["length"]
@@ -298,6 +299,15 @@ class Layout:
         if self.kind == "scroll":
             x = mx + (w - 2 * mx) * t / self.T
             y = h - my - (h - 2 * my) * px
+        elif self.kind == "wheel":
+            # Physical paint's Layered: round the canvas by pitch class, one
+            # turn an octave (so pitch spirals outward), turned slowly by
+            # time, so a note played again lands where it was - into its own
+            # wet paint after a moment, onto dry paint after a pause.
+            m = min(w, h)
+            th = -math.pi / 2 + 2 * math.pi * ((pitch % 12) / 12 + t / WHEEL)
+            r = m * (0.1 + 0.34 * px)
+            x, y = w / 2 + r * math.cos(th), h / 2 + r * math.sin(th)
         else:
             m = min(w, h)
             th = -math.pi / 2 + 2 * math.pi * t / TURN
@@ -396,7 +406,7 @@ def wobble(ctx, ts, pts, amount):
     arc = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))])
     tex = textures()["edge"]
     row = int(abs(pts[0][0] * 7 + pts[0][1] * 13)) % tex.shape[0]
-    off = (sample(tex, arc / ctx.unit() * 0.35, np.full(n, row)) - 0.5) * 2.4 * agit * amount * ctx.unit()
+    off = (sample(tex, arc / ctx.unit() * 0.08, np.full(n, row)) - 0.5) * 2.4 * agit * amount * ctx.unit()
     return pts + nrm * off[:, None]
 
 

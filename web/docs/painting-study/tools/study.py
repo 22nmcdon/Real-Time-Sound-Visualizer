@@ -5,7 +5,11 @@
     python3 page.py        # and the page
 
 What is rendered (not every combination - the brief asks for these):
-  - every phrase in every style, Layered and Accumulate, in the house palette (12);
+  - physical paint first, the owner's priority (12 Nov): every phrase, with
+    a detail crop at full resolution; Crossed hands in Earth, Night and
+    Scroll; build-up animations for Crossed hands, the run and the chords;
+    its cost per frame at three canvas sizes;
+  - every phrase in every other style, Layered and Accumulate, in the house palette (12);
   - each style once in Earth and once in Night, on Crossed hands, the one
     phrase with two hands and so all six inks (6);
   - each style once in Scroll, on Crossed hands (3); Layered is the twelve;
@@ -20,7 +24,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import features, paint, palettes  # noqa: E402
+import features, paint, palettes, physical  # noqa: E402
 
 STUDY = os.path.dirname(HERE)
 BUILD = os.path.join(STUDY, "build")
@@ -35,6 +39,9 @@ PERSISTENCE = 4.0      # seconds for a mark to fade to a tenth, in Fade
 FPS, ANIM_PX = 20, 600
 SOFT = 3.0             # Scan's Softness, cells: the page's default
 SCAN_NOTE, SCAN_DEPTH = 220.0, 0.6
+PHYS = 1600                                  # physical paint's canvas, square
+PHYS_BUILDS = ("crossed", "run", "chords")    # its build-up animations
+PHYS_ANIM = 1000                              # simulated at this size for the animations, shown at 720
 
 _cache = {}
 
@@ -123,10 +130,111 @@ def fade(name, style):
     return os.path.relpath(path, STUDY), None
 
 
+def detail_box(rgb, size=520):
+    """Where the brushwork is busiest: the window, on a coarse grid, whose
+    luminance varies most - so the crop shows strokes meeting, not paper."""
+    lum = rgb.astype(np.float32).mean(axis=2)
+    h, w = lum.shape
+    best, box = -1.0, (0, 0)
+    for y in range(0, h - size, size // 4):
+        for x in range(0, w - size, size // 4):
+            v = float(lum[y:y + size:4, x:x + size:4].std())
+            if v > best: best, box = v, (x, y)
+    return box[0], box[1], box[0] + size, box[1] + size
+
+
+def physical_still(name, layout, pal, w, h):
+    a = analysis(name)
+    out = {}
+    cost = physical.run(a, layout, w, h, palettes.PALETTES[pal], [a["length"] + 0.5],
+                        lambda rgb, cov: out.update(rgb=rgb.copy(), cov=cov.copy()))
+    tag = f"{name}-physical-{'layered' if layout == 'wheel' else layout}-{pal}"
+    path = os.path.join(IMG, tag + ".jpg")
+    Image.fromarray(out["rgb"]).save(path, quality=86, optimize=True, progressive=True)
+    rel = os.path.relpath(path, STUDY)
+    crop = None
+    if layout == "wheel" and pal == "brand":
+        box = detail_box(out["rgb"])
+        cpath = os.path.join(IMG, tag + "-detail.jpg")
+        Image.fromarray(out["rgb"]).crop(box).save(cpath, quality=90, optimize=True)
+        crop = os.path.relpath(cpath, STUDY)
+    return out, rel, crop, cost
+
+
+def parse_cost(line):
+    p = line.split()
+    d = {p[i]: p[i + 1] for i in range(0, len(p) - 1) if p[i] in ("steps", "brush_s", "frames", "render_s")}
+    k = p.index("landed")
+    return dict(steps=int(d["steps"]), brush_s=float(d["brush_s"]), frames=int(d["frames"]), render_s=float(d["render_s"]),
+                wet=float(p[k + 2]), dry=float(p[k + 4]), bare=float(p[k + 6]))
+
+
+def build_up(name):
+    """The physical painting made in time with its sound, at 20 frames a
+    second, simulated at PHYS_ANIM and shown at 720; and the brushwork's
+    and the rendering's cost per frame."""
+    a = analysis(name)
+    n = int(a["length"] * FPS)
+    times = [(f + 1) / FPS for f in range(n)]
+    path = os.path.join(ANIM, f"{name}-physical-build.webm")
+    ff = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{PHYS_ANIM}x{PHYS_ANIM}",
+                           "-r", str(FPS), "-i", "-", "-i", os.path.join(AUDIO, name + ".mp3"), "-vf", "scale=720:720:flags=area",
+                           "-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "33", "-row-mt", "1", "-deadline", "good", "-cpu-used", "4",
+                           "-c:a", "libopus", "-b:a", "48k", "-shortest", path], stdin=subprocess.PIPE)
+    grids = []
+    cost = physical.run(a, "wheel", PHYS_ANIM, PHYS_ANIM, palettes.PALETTES["brand"], times,
+                        lambda rgb, cov: (ff.stdin.write(rgb.tobytes()), grids.append(grid64(cov))))
+    ff.stdin.close(); ff.wait()
+    return os.path.relpath(path, STUDY), parse_cost(cost), grids
+
+
 def main():
     for d in (IMG, ANIM): os.makedirs(d, exist_ok=True)
-    results = {"stills": [], "palettes": [], "scroll": [], "fades": [], "scan": [], "checks": {}}
+    results = {"stills": [], "palettes": [], "scroll": [], "fades": [], "scan": [], "checks": {}, "physical": {}}
     t0 = time.time()
+    physical.build()
+    # Physical paint first: the owner's priority (12 Nov).
+    phys = results["physical"]
+    phys["stills"], phys["palettes"], phys["builds"], phys["costs"] = [], [], [], {}
+    pdens = {}
+    for name in PHRASES:
+        out, rel, crop, cost = physical_still(name, "wheel", "brand", PHYS, PHYS)
+        phys["stills"].append(dict(phrase=name, src=rel, detail=crop, landed=parse_cost(cost)))
+        if name == "crossed": pdens["brand"] = out["cov"]
+        print("physical", name, round(time.time() - t0))
+    for pal in ("earth", "night"):
+        out, rel, _, _ = physical_still("crossed", "wheel", pal, PHYS, PHYS)
+        phys["palettes"].append(dict(phrase="crossed", palette=pal, src=rel))
+        pdens[pal] = out["cov"]
+    results["checks"]["physical_coverage_palette_max_difference"] = float(max(np.abs(pdens[p] - pdens["brand"]).max() for p in ("earth", "night")))
+    assert results["checks"]["physical_coverage_palette_max_difference"] == 0.0, "the palette changed physical paint's coverage"
+    _, rel, _, _ = physical_still("crossed", "scroll", "brand", 2400, 900)
+    phys["scroll"] = dict(phrase="crossed", src=rel)
+    for name in PHYS_BUILDS:
+        rel, cost, grids = build_up(name)
+        phys["builds"].append(dict(phrase=name, src=rel, cost=cost))
+        print("physical build", name, round(time.time() - t0))
+        if name == "crossed":
+            ok, _, tabs = scan_tables(grids)
+            fpath = os.path.join(AUDIO, "scan-physical-build.mp3"); mp3(play(tabs, ok, FPS, analysis(name)["length"]), fpath)
+            ok2, _, tabs2 = scan_tables([grid64(pdens["brand"])])
+            hpath = os.path.join(AUDIO, "scan-physical-held.mp3"); mp3(play(tabs2, ok2, 1, 4.0), hpath)
+            hc = [harmonic_centroid(t) for t, k in zip(tabs, ok) if k]
+            results["scan"].append(dict(style="physical", held=os.path.relpath(hpath, STUDY), fade=os.path.relpath(fpath, STUDY),
+                                        held_centroid=round(harmonic_centroid(tabs2[0]), 2),
+                                        fade_centroid_median=round(float(np.median(hc)), 2),
+                                        fade_centroid_range=[round(float(np.percentile(hc, 10)), 2), round(float(np.percentile(hc, 90)), 2)],
+                                        dark_frames=int((~ok).sum()), frames=len(ok)))
+    # What a frame costs at the sizes a live version might run: Crossed hands,
+    # the busiest phrase, rendered every frame at 20 a second.
+    for size in (512, 1000, 1600):
+        a = analysis("crossed")
+        times = [(f + 1) / FPS for f in range(int(a["length"] * FPS))]
+        c = parse_cost(physical.run(a, "wheel", size, size, palettes.PALETTES["brand"], times, lambda rgb, cov: None))
+        phys["costs"][str(size)] = dict(brush_ms_per_frame=round(1000 * c["brush_s"] / c["frames"], 2),
+                                        render_ms_per_frame=round(1000 * c["render_s"] / c["frames"], 2),
+                                        steps=c["steps"], frames=c["frames"])
+        print("cost", size, phys["costs"][str(size)])
     finals = {}
     for name in PHRASES:
         for style in STYLES:

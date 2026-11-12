@@ -136,10 +136,111 @@ instrument.
 
 The study is `painting-study/index.html`, with every painting, animation and sound beside
 it, and the scripts that made them in `painting-study/tools/` (`phrases.py`, then
-`study.py`, then `page.py`; about four minutes, and the same pictures every time). Nothing
+`study.py`, then `page.py`; about seven minutes, and the same pictures every time). Nothing
 in the instrument was changed. It answers the first question - does it look like art and
 stay true to the sound - and gives a first, rough answer to the second, what Scan would
 hear.
+
+### Physical paint, the owner's first ask
+
+Asked for mid-study (12 Nov), and the owner's priority: a style that looks and feels like
+an actual painting - *"a paintbrush stroke that has its depth and nuance, and how other
+strokes hitting the same one will affect it differently by merging and the texture
+shifts."* It is a small paint simulation, `tools/oilpaint.cpp`, fed brushwork made from
+the sound by `tools/physical.py`.
+
+**The model.**
+
+- **The brush** is 32 bristle groups across its width, each with its own load of paint
+  and its own mixture. A dipped brush lays solid paint for several widths and has gone
+  to dry brush by about ten. Bristle groups loaded unevenly run dry at different times,
+  which makes the streaks.
+- **The paint** is pigment amounts per pixel, so its thickness is a height map. Over
+  that sits a plain-weave canvas whose threads wander.
+- **Light** is a raking light from the top left: thick strokes stand up with ridges at
+  their edges, and thin ones sink into the weave. Wet paint glistens and goes matt as
+  it dries.
+- **Colour** is Kubelka-Munk with one constant per channel. Pigments mix as pigments
+  (slate and terracotta make a brown, gold and jade a green), not as an RGB average.
+- **Drying.** Paint's wetness falls to 1/e in 1.2 seconds.
+  - **Over another stroke's wet paint**, the brush picks some up and carries it on,
+    shoves some into ridges at its flanks, and its own paint mixes in.
+  - **Over dry paint**, the new coat hides what is under it by its opacity, and a
+    nearly empty brush catches only on the high points (the weave and dried ridges),
+    which gives broken colour.
+
+**What it took.** Two faults hid the behaviour until the stroke was tested alone on a
+synthetic canvas (blue across, red across it while wet, red across it after drying):
+
+- **The brush never ran dry.** It was picking up its own just-laid paint, which
+  refilled it. Only another brush's paint, or its own from more than 0.15 s before,
+  is picked up now.
+- **Nothing merged.** The time-round-the-canvas Layered layout never brings a stroke
+  back to a place until eight seconds later, by which time the paint is long dry.
+  Physical paint's Layered therefore puts each note round the canvas by its pitch
+  class (a turn an octave, so pitch spirals outward) and turns the whole by time only
+  once a minute. A note played again lands where it was: a run's next pass goes into
+  its own wet paint, and a note after a pause goes onto dry paint.
+
+Further bugs were found by looking:
+
+- The first footprint was a box, which drew bristle marks across the stroke.
+- A perfectly periodic weave made dry brush a ruled grid.
+- A separate impasto stab for each strike read as sticks poking out of the strokes. A
+  strike now presses the stroke itself, wider and heavier for 60 ms from a deeper dip.
+
+**How true to the sound it is.** Each kind of playing paints differently, and the
+simulator counts where each phrase's paint landed when it fell on other paint: into wet
+paint (merging) or onto dry (layering).
+
+| Phrase | Into wet | What it paints |
+|---|---|---|
+| Fast run | 98.8 per cent | Three passes over the same notes, each into the last one's wet paint: one heavy worked stroke, ridged where it was dragged |
+| Crossed hands | 90.6 per cent | The right hand's run merges into itself and drags the plum through the olive; the grace notes after the pause, and the left hand's chord change, lay over dry paint |
+| Chord change | 88.2 per cent | Each chord's notes, laid side by side at once, merge with each other; where the next chord shares a pitch class it lays over the last one, by then dry |
+| Held pad | 100 per cent (of very little) | Five broad strokes, each pulled slowly round by time, dense where dipped and breaking to dry brush, re-dipped every two seconds held |
+
+A loud attack is a stroke that starts wider and heavier from a deeper dip, and the
+hardest flick flecks. A held tone is a long stroke that broadens as it is held. A fast run
+merges, and a phrase after a pause layers.
+
+What is not true to the sound:
+
+- **The re-dip** every two seconds of holding is a painter's rhythm, not the sound's.
+- **The drying time** is a choice: 1.2 s makes the study's phrases show both behaviours.
+- **The wheel's slow turn** is composition.
+
+**As art.** It is the closest of the four to a painting: the detail crops show bristle
+streaks, paint banked at the stroke's edge, colour dragged from one stroke into the next,
+and canvas showing through the dry end of a stroke. Two things are not yet right:
+
+- Paint shoved aside by a wet crossing sometimes lands as a boxy patch.
+- The merged run has a fine ribbed, slightly tubular look from pushing on every step.
+
+Both are in the push model, which moves paint to a single place at the flank, where a
+real brush spreads it.
+
+**What it costs.** Measured on one core of this machine, Crossed hands at 20 frames a
+second:
+
+| Canvas | Brushwork per frame | Lighting and mixing the whole canvas per frame |
+|---|---|---|
+| 512 × 512 | 0.8 ms | 28 ms |
+| 1000 × 1000 | 2.5 ms | 103 ms |
+| 1600 × 1600 | 6.7 ms | 267 ms |
+
+The brushwork is cheap enough for real time already. The render is not, as written: it
+relights and remixes every pixel every frame, single-threaded. It is a per-pixel
+computation with no dependencies between pixels, so it is a fragment shader's work, a
+few milliseconds on any GPU. On the CPU, only the regions a frame's strokes touched
+need redoing, which on these phrases is a few per cent of the canvas. The webview the
+plugin uses could run it as WebGL; the page could too.
+
+**Scan.** Physical paint's coverage (how far the paint hides the ground) is identical to
+the bit under all three palettes, as the ink density is for the other styles. Read by
+Scan, Crossed hands gives a table of harmonic centroid 2.13 finished and 2.07 to 2.28
+while being painted. That is steadier than the other styles, because paint does not fade
+and a stroke's body is solid.
 
 ### What was played
 
@@ -220,8 +321,9 @@ and Accumulate the better *picture*.
   pad it is five circles in a row and on the run a beaded line, closer to a chart than to
   Kandinsky. It needs more composition than the sound gives it.
 
-So: **ink and wash for calm sounds, gestural for busy ones, geometric as the clearest to
-read**, and none of the three is wrong for every phrase. The erratic phrase did not turn
+So: **physical paint is the one that looks like a painting** (above); of the other
+three, **ink and wash for calm sounds, gestural for busy ones, geometric as the clearest
+to read**, and none of the three is wrong for every phrase. The erratic phrase did not turn
 to noise in any style in Layered (the turn separates the run from the chord), but in
 Scroll the gestural Crossed hands is close to a scribble, and the wobble's first version, a
 pair of sines, read as a machine's zigzag until it became a smooth noise.
@@ -301,15 +403,18 @@ the last table, as the core does.
 
 ### Questions for the owner
 
-1. Which style, or which for which sound? The study's view: ink and wash for calm,
-   gestural for busy, and geometric if legibility matters more than painterliness.
-2. Is Layered's turn (time round the canvas, pitch outward) the right composition, or
+1. Does physical paint look like the painting you meant? Its detail crops are the place
+   to judge it. Is 1.2 seconds the right drying time: long enough for a run to merge,
+   short enough for a phrase after a breath to layer?
+2. Of the other three, which style for which sound? The study's view: ink and wash for
+   calm, gestural for busy, and geometric if legibility matters more than painterliness.
+3. Is Layered's turn (time round the canvas, pitch outward) the right composition, or
    should a Layered canvas have no time in it at all? The keyboard-across version was not
    kept; it is a few lines of `Layout.at` to bring back if you want to see it.
-3. Is a dark ground (Night) welcome in an instrument whose brand has one light?
-4. Earth only just clears the bars; should a palette be allowed to trade separation for
+4. Is a dark ground (Night) welcome in an instrument whose brand has one light?
+5. Earth only just clears the bars; should a palette be allowed to trade separation for
    character, with the quiet warning a player's own palette would get?
-5. Should Fade be the instrument's default, with Accumulate as the way to keep a painting,
+6. Should Fade be the instrument's default, with Accumulate as the way to keep a painting,
    since Fade is what keeps Scan answering the hands?
 
 ### What to try next
