@@ -81,6 +81,7 @@ Json toneJson(const scope::Tone& t) {
   o.set("output", num(t.output));
   // How long a switched stage crossfades (11 Nov): no setup's either, so a restore leaves it.
   o.set("switchMs", num(t.switchMs));
+  o.set("heldRamp", num(t.heldRamp));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeOS", num(t.planeOS));
   o.set("planeLimit", num(t.planeLimit)); o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY));
   o.set("planeShear", num(t.planeShear)); o.set("planeTwist", num(t.planeTwist));

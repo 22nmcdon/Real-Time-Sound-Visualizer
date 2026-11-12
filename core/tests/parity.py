@@ -1365,7 +1365,11 @@ def gen_runs():
                 (2048, "routes " + route(FOLD, 1, held=0.4, unipolar=flags)), (7168, "routes none"),
                 (7296, "routes " + route(FOLD, 1, held=0.3, unipolar=flags))]
     add("loop-glide", pushed(2), samples=8192)
-    add("loop-step", pushed(0), samples=8192)
+    # Not the loop's, a held route by hand: walked over its block since 12 Nov
+    # (the generator's `heldRamp`), and with the walk at nought the step as
+    # it was, which is what the glide is measured against.
+    add("loop-step", [(0, "set heldRamp 0")] + pushed(0), samples=8192)
+    add("held-walk", pushed(0), samples=8192)
     for kind, base in (("dyad", []), ("poly", [(0, "voices 0 " + notes((57, "x"), (64, "y"))), (0, "voices 1 " + notes((76, "xy")))])):
         base = base + [(0, "set planeOS 2")]
         add("switch-" + kind, base + SWITCHED, samples=8192)
@@ -1755,6 +1759,21 @@ check("and it has arrived five time constants on, where the step put it, and a p
       "%.2g arrived, %.2g made again, %.2g while gliding" % (worst(glided[6 * 6900:6 * 7168], stepped[6 * 6900:6 * 7168]),
       worst(glided[6 * 7296:6 * 7360], stepped[6 * 7296:6 * 7360]), worst(glided[6 * 2048:6 * 2400], stepped[6 * 2048:6 * 2400])))
 check("null: a route not marked the loop's is not glided", glided != stepped and gjump("loop-step", 2040) > 2 * gl_before)
+# The held route's walk (12 Nov, notetest.py's): the same push by hand, not
+# the loop's, spread over the block it was put in rather than stepped at its
+# top, so the sound moves at it no further than before it, where stepped it
+# jumped; and a block on - the walk's 128 samples and the oversampler's 32 -
+# it is the step's, to a millionth, with no glide after.
+walked = grow("held-walk")[0]
+hw_at = gjump("held-walk", 2040)
+check("a held route by hand is walked over its block: at its step the sound moves %.4f a sample, as before it (%.4f), "
+      "where stepped %.4f" % (hw_at, gjump("held-walk", 1900), st_at),
+      hw_at <= 1.5 * gjump("held-walk", 1900) and st_at > 2 * hw_at)
+check("and a block on it is the step's, to a millionth, where during the walk it is not",
+      worst(walked[6 * 2240:6 * 7168], stepped[6 * 2240:6 * 7168]) < 1e-6
+      and worst(walked[6 * 2048:6 * 2176], stepped[6 * 2048:6 * 2176]) > 1e-3,
+      "%.2g after, %.2g during" % (worst(walked[6 * 2240:6 * 7168], stepped[6 * 2240:6 * 7168]),
+                                   worst(walked[6 * 2048:6 * 2176], stepped[6 * 2048:6 * 2176])))
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
