@@ -289,3 +289,14 @@ almost all in step 3: two dozen suites whose checks move one by one, each with
 its null, and some will turn up a check that was passing for a reason of its
 own. If step 1 finds the face leaning on the page's brain in many places, step
 5 grows by a session or two.
+
+## Decided (the owner, 12 Nov)
+
+- **Go ahead**, in the order above, with golden renders plus the core's own tests
+  replacing parity's comparison.
+- **The constellation is removed for now** (step 4), not kept look-only: as built it
+  draws each note from a description rather than its sound, which is the real fault
+  (`web/docs/ways-to-draw.md`, "The prototype's shortcut"). It comes back after this
+  stage, built on each voice's real cycle sent from the core, with the painting's brush.
+- Step 1 starts once the note-click fix and the picture's swell have landed, so this
+  stage does not collide with them.
