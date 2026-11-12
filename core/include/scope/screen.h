@@ -244,7 +244,14 @@ class PictureRun {
     };
     PairShape shape;
     pics_.pictureStep(phosphor_, shapeOf(sc.xyPair, shape) ? &shape : nullptr, elapsed_, spect, limiting);
-    stage_.step(pics_.values(), pics_.raw(), elapsed_, spect, pics_.meter().verdict() == "running away");
+    // How each hand's picture responds; the shared picture as the lower hand's.
+    std::array<StageResponse, 2> responses;
+    for (std::size_t h = 0; h < 2; h++) {
+      const Brain::PictureHand& hand = brain_.pictureHands[h];
+      const auto ms = pictureFeelMs(hand);
+      responses[h] = { hand.responds, ms[0], ms[1], hand.swell, brain_.view.screen.persistence };
+    }
+    stage_.step(pics_.values(), pics_.raw(), elapsed_, spect, pics_.meter().verdict() == "running away", responses[0]);
     /* Each layer's picture, after the shared one as the page's pictureStep
        has it: from the grids the last frame's walk left, each from its own
        figure's shape. */
@@ -254,7 +261,7 @@ class PictureRun {
       const bool two = figures && figures->size() == 2;
       PairShape a, b;
       const bool hasA = two && shapeOf((*figures)[0], a), hasB = two && shapeOf((*figures)[1], b);
-      layers_.step(two, hasA ? &a : nullptr, hasB ? &b : nullptr, elapsed_, spect, limiting);
+      layers_.step(two, hasA ? &a : nullptr, hasB ? &b : nullptr, elapsed_, spect, limiting, responses);
     }
     // Each hand's Picture amount (G6), which the sliders show one of.
     matrix.setStageAmount(brain_.pictureHands[0].amount / 100, brain_.pictureHands[1].amount / 100);

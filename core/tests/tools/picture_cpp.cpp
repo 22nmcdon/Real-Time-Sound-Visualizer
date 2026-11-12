@@ -37,6 +37,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   std::array<std::vector<float>, 4> layerLanes;
   scope::Plot plot;
   double persistence = 0.12, limiting = 0, gx = 1, gy = 1, ox = 0, oy = 0, spin = 0;
+  std::array<scope::StageResponse, 2> responses;  // how each hand's picture responds, the page's pictureHands
+  const auto respond = [&] { auto r = responses; for (auto& x : r) x.persistence = persistence; return r; };
   bool spect = false, hasFrame = false;
   std::vector<float> left, right;
   for (const auto& w : commands) {
@@ -119,11 +121,15 @@ void run(const std::vector<std::vector<std::string>>& commands) {
                                                     std::min(layerLanes[0].size(), layerLanes[1].size()), gx, gy, ox, oy, spin);
       const scope::PairShape b = scope::shapeOfPair(layerLanes[2].data(), layerLanes[3].data(),
                                                     std::min(layerLanes[2].size(), layerLanes[3].size()), 1, 1, 0, 0, spin);
-      layers.step(twoFigures, layerFramed ? &a : nullptr, layerFramed ? &b : nullptr, num(arg(1)), spect, limiting);
+      layers.step(twoFigures, layerFramed ? &a : nullptr, layerFramed ? &b : nullptr, num(arg(1)), spect, limiting, respond());
     } else if (cmd == "moves") { layers.moves[0] = scope::pictureMovesOf(arg(1), "A"); layers.moves[1] = scope::pictureMovesOf(arg(2), "B"); }
     else if (cmd == "lput") layers.stage(static_cast<int>(num(arg(1)))).put(num(arg(2)), num(arg(3)), num(arg(4)), num(arg(5)));
     else if (cmd == "sput") stage.put(num(arg(1)), num(arg(2)), num(arg(3)), num(arg(4)));
     else if (cmd == "push") {}
+    else if (cmd == "resp") {
+      auto& r = responses[num(arg(1)) == 1 ? 1 : 0];
+      r.respondsTo = static_cast<int>(num(arg(2))); r.riseMs = num(arg(3)); r.fallMs = num(arg(4)); r.swell = arg(5) == "1";
+    }
     else if (cmd == "view") { gx = num(arg(1)); gy = num(arg(2)); ox = num(arg(3)); oy = num(arg(4)); spin = num(arg(5)); }  // the zoom, arg 6, fed only edge contact, cut in P5
     else if (cmd == "limit") limiting = num(arg(1));
     else if (cmd == "step") {
@@ -131,7 +137,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       sources.photoStep(phosphor, elapsed, spect);
       const scope::PairShape s = hasFrame ? shape() : scope::PairShape {};
       sources.pictureStep(phosphor, hasFrame ? &s : nullptr, elapsed, spect, limiting);
-      stage.step(sources.values(), sources.raw(), elapsed, spect, sources.meter().verdict() == "running away");
+      stage.step(sources.values(), sources.raw(), elapsed, spect, sources.meter().verdict() == "running away", respond()[0]);
       const auto& v = sources.values();
       const auto& r = sources.raw();
       const auto& m = sources.meter();

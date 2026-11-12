@@ -16,6 +16,7 @@
      lframe L ellipse A B CYCLES N PHASE | lframe L noise SEED AMP N  (layer L's two lanes, 2L and 2L+1)
      lon ON TWO (keyboard layers in X-Y, and two figures drawn)   lfade [1]   lpoly L X,Y;... [S,...]
      lstep ELAPSED   moves A B   lput L GLOW MOTION MEMORY HOLD   sput GLOW MOTION MEMORY HOLD   push
+   and how each hand's picture responds (11 Nov): resp HAND MODE RISE FALL SWELL, MODE 0 Change, 1 Level, 2 Both
    Usage: node picture_js.mjs <runs> */
 import fs from "node:fs";
 import path from "node:path";
@@ -70,7 +71,10 @@ const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "p
   "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
   "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
   "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep",
-  "STAGE_MIN_SPAN", "STAGE_RELAX", "STAGE_HOLD_FALL", "pictureStage", "stageRescale", "pictureStageStep", "stagePush",
+  "STAGE_LEVEL_EPS", "STAGE_CHANGE_SPAN", "STAGE_SETTLE", "STAGE_BOTH_BASE", "STAGE_MOTION_SCALE", "STAGE_SWELL_DEPTH",
+  "STAGE_SWELL_LEAST", "STAGE_LIT_FLOOR", "STAGE_DEFAULT", "STAGE_LEVEL_TOP", "stageLevel", "stageSwellPeriod", "stageToward",
+  "RESPONDS_TO", "PICTURE_RESPONSE", "PICTURE_FEELS", "pictureFeelMs", "pictureHands", "stageResponse",
+  "STAGE_HOLD_FALL", "makeStageState", "pictureStage", "pictureStageStep", "stagePush",
   "pictureCoreKind", "LAYER_MOVES", "makeLayerValues", "makeLayerStage", "layerPictures", "pictureMovesOf", "layerPush",
   "layerEnginesNeeded", "layerPicturesFade", "layerPicturesDeposit", "noPhotocell", "layerPicturesStep"];
 const WASM_BYTES = MODE === "wasm" ? (() => {
@@ -90,7 +94,8 @@ return { state, gains, phosphor, phosphorFade, phosphorSegment, phosphorDeposit,
          stageSources: { glow: () => stagePush("glow"), motion: () => stagePush("motion"), memory: () => stagePush("memory") },
          setPlot: (p) => { plot = p; }, setLimiting: (v) => { limiting = v; }, getLimiting: () => limiting,
          layerPictures, layerPush, pictureMovesOf, layerPicturesFade, layerPicturesDeposit, layerPicturesStep,
-         setLayers: (on, two) => { layersOnNow = on; twoFigures = two; }, setCoreKind: (k) => { pictureCoreKind = k; } };`;
+         setLayers: (on, two) => { layersOnNow = on; twoFigures = two; }, setCoreKind: (k) => { pictureCoreKind = k; },
+         pictureHands, RESPONDS_TO };`;
 
 const show = (v) => Number(v).toPrecision(17);
 
@@ -194,6 +199,8 @@ function run(commands) {
                                            { glow: Number(a[1]), motion: Number(a[2]), memory: Number(a[3]), hold: Number(a[4]) });
     else if (cmd === "sput") Object.assign(s.pictureStage, { glow: Number(a[0]), motion: Number(a[1]), memory: Number(a[2]), hold: Number(a[3]) });
     else if (cmd === "push") { /* the state alone */ }
+    else if (cmd === "resp") Object.assign(s.pictureHands[Number(a[0])], { responds: s.RESPONDS_TO[Number(a[1])],
+                                           feel: "custom", rise: Number(a[2]), fall: Number(a[3]), swell: a[4] === "1" });
     else if (cmd === "step") {
       s.photoStep(Number(a[0]));
       s.pictureStep(frame, Number(a[0]));

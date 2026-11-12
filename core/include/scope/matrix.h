@@ -160,11 +160,11 @@ inline bool routingAllowed(const ModSource* source, const ModDest* dest) {
 // heard as routings are, from picture sources, so the loop's bounds hold.
 struct StageBundle { const char* source; const char* dest; double weight; };
 inline constexpr StageBundle kStageBundles[] = {
-  { "stage.glow", "gen.fold", 0.8 },
-  { "stage.motion", "gen.echo", 0.8 },
-  { "stage.memory", "gen.twist", 0.6 },
-  { "stage.memory", "gen.phase", 0.4 },
-  { "stage.memory", "gen.phaser", 0.5 },
+  { "stage.glow", "gen.fold", 0.5 },
+  { "stage.motion", "gen.echo", 0.5 },
+  { "stage.memory", "gen.twist", 0.3 },
+  { "stage.memory", "gen.phase", 0.3 },
+  { "stage.memory", "gen.phaser", 0.3 },
 };
 inline bool isStageKey(const std::string& key) { return key.rfind("stage.", 0) == 0; }
 
@@ -580,6 +580,7 @@ class Matrix {
       r.amount = c.amount;
       r.amountB = c.amountB;
       r.unipolar = c.unipolar;
+      r.loop = c.loop;
       routes_.push_back(r);
     }
     return routes_;

@@ -18,6 +18,9 @@ inline constexpr RangeSpec kRanges[] = {
   { "level", -1000, 1000, 1, 0 },
   { "timebase", 0, 8, 1, 7 },
   { "zoom", 0, 24, 1, 0 },
+  // How the picture responds (11 Nov): Custom's Rise and Fall, in milliseconds.
+  { "pictureRise", 5, 2000, 5, 80 },
+  { "pictureFall", 20, 8000, 10, 800 },
   { "pictureAmount", 0, 100, 1, 60 },
   { "freq", 30, 4000, 1, 220 },
   { "amp", 0, 140, 1, 55 },
@@ -132,6 +135,8 @@ inline constexpr SelectSpec kSelects[] = {
   { "midiLayerPair", "each" "\x1f" "against", "each" },
   { "pictureMovesA", "A" "\x1f" "B" "\x1f" "both", "A" },
   { "pictureMovesB", "B" "\x1f" "A" "\x1f" "both", "B" },
+  { "pictureResponds", "change" "\x1f" "level" "\x1f" "both", "change" },
+  { "pictureFeel", "snappy" "\x1f" "smooth" "\x1f" "slow" "\x1f" "custom", "smooth" },
   { "scanReadsA", "A" "\x1f" "B" "\x1f" "both", "A" },
   { "scanReadsB", "B" "\x1f" "A" "\x1f" "both", "B" },
   { "midiDrawCount", "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6" "\x1f" "7" "\x1f" "8", "2" },

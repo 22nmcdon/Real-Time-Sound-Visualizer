@@ -830,8 +830,7 @@ fresh start). Cutting the stage would remove the over-reaction too, and the swel
 
 ## Decided with the owner (11 Nov)
 
-Nothing here is built yet. The owner asked for it to wait until the agents then running
-had finished and G8 had passed its full run on a quiet machine.
+*Built on 12 Nov: see* Built, *below. What follows is the decision as it was made.*
 
 **What the owner found by playing.** The swell that comes instantly was a note in the
 lower hand's register: in the repeatable sequence, the "Gb grace note to Ab" was Ab3, below
@@ -870,6 +869,106 @@ are smoothed, which is also part of the wheel's crackle.
 across the modes; `fittest.py` with four more rows in *Advanced* down to the plugin's
 960x600; and the presets re-heard, Crossed hands first, with *Picture moves* crossed
 considered for it.
+
+## Built (12 Nov)
+
+What the decision above asked for, as built, page and core alike and held together by
+parity; measured on the compiled core offline with the owner's code and sequence
+(`web/tests/responsetest.py`, which rebuilds the repro and judges it). That reconstruction
+is not the study's: on it today's stage swells the fast run by +4.1 dB (the study's +4.5)
+and a held chord alone rose by 5.1 dB split and 6.7 unsplit at 100, from six seconds on.
+
+**How the picture responds**, in the Picture section's *Advanced*, under *What Scan reads*
+(`responseGroup`, home `picture`): *Responds to* (Change · Level · Both) with *Swell* beside
+it, and *Rise, fall* (Snappy 20 / 250 ms · Smooth 80 / 800 · Slow 400 / 3000 · Custom, which
+shows a knob each). Each hand's own on the Picture's link with the Amount, Scan and Strike,
+linked by default; new setup fields `pictureResponds`, `pictureSwell`, `pictureFeel`,
+`pictureRise`, `pictureFall` and their `b` twins, additive, no version bump. **Change** is
+the start, as provisional: closest to the stage as it was, without the inconsistency.
+
+One decision went the other way from the obvious and costs something: a hand's response
+belongs to its **picture**, not its sound. The shared picture responds as the lower hand
+says, each hand's own picture as that hand says - so with *Pictures* crossed, a hand's
+response goes with its picture to the other hand's sound, and while the hands share one
+picture the upper hand's settings are not heard. The other way would need a smoothing per
+sound and per picture it hears, and every test that writes a stage's reads would stop
+writing what is pushed.
+
+**The reads** (`pictureStageStep`, `PictureStage`):
+
+- *Level* is the coverage on a log scale (nought dark, one a quarter of the screen lit),
+  chosen so the loop through the fold cannot run away: the fold multiplies a figure's
+  coverage, by at most about 0.12 of a log unit a point of fold, so on a log scale the loop's
+  gain at the routes' top is about a half. A linear scale had a gain near two on the steep
+  part and a held chord jumped to a swollen state it kept or left by chance.
+- *Change* is the level above a base that rises to a level kept up at 0.2 a second and falls
+  to one let go at 3, over a fixed span of 0.6: the floor on the span the decision asked for,
+  wider than option 3's 0.4 because a span of 0.4 put the gain over one at the top.
+- *Both* is half the level with the change on it.
+- The *Rise* and *Fall* smooth whichever; the raw coverage is read, since the old slew of two
+  swings a second was a rise no Rise could beat.
+- *Swell* crossfades the push towards a raised cosine, by a share as deep as half the level,
+  at a period of 2 s plus eight times the Persistence's half-life (2 to 20 s): 5.6 s at the
+  owner's 0.0255, 2.7 s at 0.12. It starts again from its trough when the screen goes dark.
+- *Motion* is the light that changed, on a fixed scale (full at a twentieth of a quarter
+  screen's light a frame), smoothed by the same Rise and Fall.
+- The routes' weights are their reaches (0.5, 0.5, 0.3, 0.3, 0.3), so each reaches its top
+  at 100; at 100 the sound is what it was. **The owner's 47 is about 75 now.**
+- The pushes glide at the destination on a 20 ms one-pole, a sample at a time
+  (`LOOP_GLIDE_MS`), only the loop's.
+
+**Measured, the owner's sequence:**
+
+| | Fast run | After it | Soft notes, in sequence | The same, fresh | Above 1 kHz |
+|---|---|---|---|---|---|
+| Today's stage, at 47 | +4.1 | | +3.1 | +2.7 | 6.9% |
+| Change, at 75 (the owner's depth) | +4.9 | −0.6 | +0.3 | +1.5 | 6.1% |
+| Change, at 100 | **+6.7** | −0.1 | +0.3 | +2.3 | 9.1% |
+| Level, at 75 | +6.1 | +5.4 | +5.3 | +5.6 | 5.8% |
+| Both, at 75 | +6.7 | +3.3 | +4.4 | +5.2 | 6.2% |
+| Change, *Pictures* crossed, at 75 | +5.4 | −0.3 | +0.8 | +1.4 | 4.8% |
+| Change, *Pictures* crossed, at 100 | +6.9 | +0.7 | +1.6 | +2.2 | 5.4% |
+
+(At Picture 0, 3.0 per cent of the run's energy is above 1 kHz on this reconstruction.)
+Change passes the owner's test at their depth: the soft notes swell less in sequence than
+fresh (the fresh chord's own strike is still settling when they come) and barely at all,
+and the run swells. At 75 it swells less than option 3's +6.3, because the routes' top moved
+to 100 and the owner's 47 is a lower push now; at 100 it is +6.7, which `responsetest.py`
+requires to be at least +6.0 and 1.5 dB over today's. Level and Both are what they say:
+a drive the lit screen turns, swollen whenever the chord is held.
+
+A held chord alone, Swell off, rises at most 0.6 dB from six seconds on, split at 75, and
+1.0 unsplit at 100 (Change; Level 0.4 and 1.4, Both 0.4 and 2.3 unsplit at 100). With Swell
+on it breathes every 5.6 s at the owner's Persistence and every 2.7 s at 0.12, evenly.
+
+**The echo route, fixed:** a soft note on a dark screen now moves Motion by a hundredth,
+where it threw it to its top; the fast run moves it to about two thirds. **It is still
+barely audible:** alone, the route swells the run by +0.3 dB at 75 and +0.4 at 100 (today
++0.4); without it, Change's run is +5.0 at 75 and +6.1 at 100 against +4.9 and +6.7 with it.
+Kept, as decided; the decision says it goes if so, which is the owner's to take.
+
+**Crossed hands with *Pictures* crossed, proposed, not made.** Crossing gives the left
+hand's chord the right hand's run (+5.4 dB at 75 against +4.9 uncrossed) and the soft notes
+stay soft (+0.8 in sequence, +1.4 fresh), but Level and Both crossed hold less swollen after
+the run than uncrossed (+3.0 and +1.7 after it, against +5.4 and +3.3), so the difference is
+mostly in the modes the owner has not chosen yet. Changing what a bank preset sounds like is
+the owner's ear; the setting is the two *Pictures* menus, and the honesty test's result for
+it is below.
+
+**The headings, measured** (`honestytest.py`, the bank as it ships, Change): every preset
+still under its heading but two, which breathed by the self-loop alone and measured Settled
+once a held note no longer swelled by itself - *Harmonic tone* (late 0.008, Breathing's floor
+0.02; the only Breathing preset with no Scan) and *Bass under the pad*'s low hand (late
+0.016; it was on the line at Picture 0, 0.020). The honesty test required them moved, so
+each has its **Swell on**, the designed form of the loop they breathed by, and nothing else
+changed: *Harmonic tone* late 0.022, the bass's low hand 0.022, its high hand 0.052; with
+the reverb's switch on 0.023, 0.021 and 0.035. The bass's low hand is close to the floor
+again, as it was before. Both are the owner's to hear, and to re-voice if the Swell is not
+the breath they want. *Crossed hands* is Breathing at 0.136 uncrossed.
+Under Level and Both (`HONESTY_RESPONDS=level` or `both`) every preset keeps its heading
+as well: the Settled presets late 0.000 to 0.006 in either, since they are at Picture
+nought; the Breathing ones 0.033 to 0.444 under Level and 0.025 to 0.352 under Both, the
+bass's low hand the lowest in each.
 
 ## What this did not measure
 

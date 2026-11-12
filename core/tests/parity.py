@@ -1356,6 +1356,16 @@ def gen_runs():
     SWITCHED = [(1024, "routes " + "+".join([route(FOLD, 0.02, held=0.5), route(TWIST, 0.02, held=0.5)])),
                 (3072, "routes none"), (5120, "routes " + route(FOLD, 0.02, held=0.5)), (5248, "routes none"),
                 (5376, "routes " + route(TWIST, 0.02, held=0.5))]
+    # The picture's push glides at the destination (11 Nov): a loop route's
+    # held value stepped on the fold, as a picture frame steps it, with the
+    # route marked the loop's (flags 2) and not; and the push dropped and made
+    # again, which starts where it is asked.
+    def pushed(flags):
+        return [(0, "set shape triangle"), (0, "routes " + route(FOLD, 1, held=0.05, unipolar=flags)),
+                (2048, "routes " + route(FOLD, 1, held=0.4, unipolar=flags)), (7168, "routes none"),
+                (7296, "routes " + route(FOLD, 1, held=0.3, unipolar=flags))]
+    add("loop-glide", pushed(2), samples=8192)
+    add("loop-step", pushed(0), samples=8192)
     for kind, base in (("dyad", []), ("poly", [(0, "voices 0 " + notes((57, "x"), (64, "y"))), (0, "voices 1 " + notes((76, "xy")))])):
         base = base + [(0, "set planeOS 2")]
         add("switch-" + kind, base + SWITCHED, samples=8192)
@@ -1725,6 +1735,26 @@ for kind in ("dyad", "poly"):
     body, sbody = grow("switch-" + kind)[0], grow("switch-%s-straight" % kind)[0]
     check("and in the %s, once the crossfade is through, the stage switched in sounds as it did switched straight, to the bit"
           % kind, body[6 * 6400:] == sbody[6 * 6400:] and body[6 * 1024:6 * 1504] != sbody[6 * 1024:6 * 1504])
+# The glide (11 Nov): the push's step on the fold heard over 20 ms, so the
+# sound steps no further at it than it does a little before, where stepped
+# it jumped; arrived five time constants on (960 samples each at 48 kHz) at
+# what the step gave; and a push dropped and made again starts where it is
+# asked, as stepped, rather than gliding from nought. The page's lines, held
+# to the core's.
+def gjump(name, at):
+    body = grow(name)[0]
+    return max(max(abs(a - b) for a, b in zip(col(body, c)[at + 1:at + 64], col(body, c)[at:at + 63])) for c in (2, 3))
+glided, stepped = grow("loop-glide")[0], grow("loop-step")[0]
+gl_before, gl_at, st_at = gjump("loop-glide", 1900), gjump("loop-glide", 2040), gjump("loop-step", 2040)
+check("the picture's push glides into the fold: at its step the sound moves %.4f a sample, as before it (%.4f), where stepped %.4f"
+      % (gl_at, gl_before, st_at), gl_at <= 1.5 * gl_before and st_at > 2 * gl_at)
+check("and it has arrived five time constants on, where the step put it, and a push made again starts where it is asked",
+      worst(glided[6 * 6900:6 * 7168], stepped[6 * 6900:6 * 7168]) < 0.03  # e^-5 of the step, through the fold's steep sine
+      and worst(glided[6 * 7296:6 * 7360], stepped[6 * 7296:6 * 7360]) < 2e-3
+      and worst(glided[6 * 2048:6 * 2400], stepped[6 * 2048:6 * 2400]) > 0.3,
+      "%.2g arrived, %.2g made again, %.2g while gliding" % (worst(glided[6 * 6900:6 * 7168], stepped[6 * 6900:6 * 7168]),
+      worst(glided[6 * 7296:6 * 7360], stepped[6 * 7296:6 * 7360]), worst(glided[6 * 2048:6 * 2400], stepped[6 * 2048:6 * 2400])))
+check("null: a route not marked the loop's is not glided", glided != stepped and gjump("loop-step", 2040) > 2 * gl_before)
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
@@ -2367,7 +2397,8 @@ def route_list(line):
     return [(float(r.split("/")[1]), int(r.split("/")[3]), float(r.split("/")[4])) for r in m.group(1).split("+")]
 def stage_holds(out):
     # What the stage's routes are for, read off one run: at sixty per cent
-    # glow at 0.4 pushes the fold by 0.4 x 0.6 x 0.8; a fade eases a routing
+    # glow at 0.4 pushes the fold by 0.4 x 0.6 x 0.5 (each weight its reach
+    # since 11 Nov, so a route reaches its top at 100); a fade eases a routing
     # made by hand (the twist from nought) and leaves the stage's memory on
     # the same control whole, at its reach of 0.3; and the amount at nought
     # leaves only what the setup holds. Memory's on the phaser (P8e) is one
@@ -2376,7 +2407,7 @@ def stage_holds(out):
     frames_ = [l for l in lines if l.startswith("frame")]
     stages = [l for l in lines if l.startswith("stage")]
     if not frames_ or len(stages) < 4: return False
-    fold = any(slot == 22 and abs(held - 0.192) < 1e-12 for held, slot, _ in route_list(frames_[0]))
+    fold = any(slot == 22 and abs(held - 0.12) < 1e-12 for held, slot, _ in route_list(frames_[0]))
     eased = any(any(s == 18 and a == 0 for _, s, a in route_list(l)) and
                 any(s == 18 and a == 1 and abs(h - 0.15) < 1e-12 for h, s, a in route_list(l)) for l in frames_)
     heard = [int(l.split("heard ")[1].split()[0]) for l in stages]
@@ -2451,10 +2482,10 @@ hf = frame_lines("hands")
 hcodes = [l for l in mout("hands").split("\n") if l.startswith("encodeb")]
 check("a routing with its own depth on the upper hand plays each hand at its own, and one without at one for both",
       mclose(mamt(hf[0], 19), (0.5, -0.3)) and mclose(mamt(hf[0], 1), (0.4, 0.4)), "%r %r" % (mamt(hf[0], 19), mamt(hf[0], 1)))
-check("the stage at each hand's own Picture amount: glow 0.4 into the fold at 60 and 20 per cent of 0.8, "
+check("the stage at each hand's own Picture amount: glow 0.4 into the fold at 60 and 20 per cent of 0.5, "
       "then the photocell's part on the lower hand alone; at nought and a half, and at 40 for both",
-      mclose(mheld(hf[1], 22), (0.192, 0.064)) and mclose(mheld(hf[2], 22), (0.192 + 0.21, 0.064))
-      and mclose(mheld(hf[3], 22), (0.21, 0.16)) and mclose(mheld(hf[4], 22), (0.128 + 0.21, 0.128)),
+      mclose(mheld(hf[1], 22), (0.12, 0.04)) and mclose(mheld(hf[2], 22), (0.12 + 0.21, 0.04))
+      and mclose(mheld(hf[3], 22), (0.21, 0.1)) and mclose(mheld(hf[4], 22), (0.08 + 0.21, 0.08)),
       "%r %r %r %r" % (mheld(hf[1], 22), mheld(hf[2], 22), mheld(hf[3], 22), mheld(hf[4], 22)))
 check("and with the layers' own fade on, each hand's depth through its own fade, whole once it has come in",
       mclose(mamt(hf[7], 19), (0.5, -0.3)), "%r" % (mamt(hf[7], 19),))
@@ -3437,7 +3468,9 @@ def pcframes(count, elapsed=16, deposit=None):
     out = []
     for i in range(count):
         out.append("fade")
-        if deposit: out.append(deposit(i))
+        if deposit:
+            d = deposit(i)
+            if d: out.append(d)
         out.append("step %d" % elapsed)
     return out
 PC = ["plot 40 30 600 450", "photo 1 0.5 0.5"]
@@ -3529,6 +3562,22 @@ pcruns = [
                     *["step 50" for _ in range(160)], "persist 0",
                     *pcframes(200, 50, lambda i: pcellipse(60 + (i * 37) % 520, 40 + (i * 53) % 380, 30 + i % 17, 20 + i % 11)),
                     "spect 1", "step 50", "spect 0", "step 50")),
+    # How the picture responds (11 Nov): a figure that grows, holds and goes
+    # dark, read by each Responds to, at a quick and a slow Rise and Fall,
+    # with the Swell at two persistences, held for ever and off, and a Rise
+    # and Fall of nought, which is no smoothing at all.
+    *[("respond-%s" % name, pcrun(*PC[:1], "photo 0", "persist 0.12", "pair ellipse 0.5 0.3 3 4096 0", resp,
+                                  *pcframes(120, 33, lambda i: pcellipse(340, 255, 4 + min(i, 60) * 3, 3 + min(i, 60) * 2)
+                                            if i < 90 or i % 7 == 0 else None),
+                                  "persist -1", *["step 33" for _ in range(40)], "persist 0", *["step 33" for _ in range(20)]))
+      for name, resp in (("change", "resp 0 0 80 800 0"), ("level", "resp 0 1 80 800 0"), ("both", "resp 0 2 20 250 0"),
+                         ("slow", "resp 0 0 400 3000 0"), ("swell", "resp 0 1 80 800 1"), ("bare", "resp 0 2 0 0 1"))],
+    # The breath starting again from its trough when the screen goes dark and
+    # is lit again, and a Rise and Fall of nought on a frame of no time.
+    ("respond-dark", pcrun(*PC[:1], "photo 0", "persist 0", "pair ellipse 0.5 0.3 3 4096 0", "resp 0 1 80 800 1",
+                           *pcframes(40, 33, lambda i: pcellipse(340, 255, 150, 100)), *pcframes(6, 33),
+                           *pcframes(40, 33, lambda i: pcellipse(340, 255, 150, 100)), "resp 0 2 0 0 1", "step 0",
+                           *pcframes(3, 0, lambda i: pcellipse(340, 255, 60, 40)))),
     ("shape", pcrun(*PC, "fade", "pair ellipse 0.5 0.3 3 4096 0", "step 16", "pair ellipse 0.5 0.3 3 4096 3.1416",
                     "step 16", "pair ellipse 0.5 0.5 3 4096 1.5708", "step 16", "view 2 0.5 0.1 -0.2 0.125 1.5", "step 16",
                     "pair ellipse 0.9 0.9 5 9000 0", "view 1 1 0 0 0 1.1", "step 16", "pair noise 7 0.4 3000", "step 16",
@@ -3560,6 +3609,8 @@ def pcfuzz(n):
         elif r < 0.75: out.append("view %.2f %.2f %.2f %.2f %.3f %.2f" % (pcrng.uniform(0.2, 3), pcrng.uniform(0.2, 3), pcrng.uniform(-0.3, 0.3),
                                   pcrng.uniform(-0.3, 0.3), pcrng.choice([0, 0, pcrng.uniform(-1, 1)]), pcrng.uniform(0.5, 4)))
         elif r < 0.77: out.append("limit %.1f" % pcrng.choice([0, -2, -7, -12]))
+        elif r < 0.79: out.append("resp %d %d %s %s %d" % (pcrng.randint(0, 1), pcrng.randint(0, 2), pcrng.choice(["0", "20", "80", "400"]),
+                                                          pcrng.choice(["0", "250", "800", "3000"]), pcrng.random() < 0.5))
         else: out.append("step %d" % pcrng.choice([16, 16, 33, 50, 100, 250, 0]))
     return pcrun(*out)
 pcruns += [("random-%d" % i, pcfuzz(200)) for i in range(30)]
@@ -3788,11 +3839,15 @@ check("boredom rises while the picture is still, toward eight tenths over ten se
 sg = [[float(pcfield(l, "stage", k)) for k in range(3)] for l in pcsteps("stage")]
 def still_stays(reads): return len(reads) > 100 and all(r[0] == 0 and r[1] == 0 for r in reads) and reads[-1][2] > 0.5 \
     and all(b >= a for (_, _, a), (_, _, b) in zip(reads[10:], reads[11:]))
-def moving_moves(reads, before): return len(reads) > 100 and max(r[1] for r in reads) == 1 and reads[-1][2] < before / 2
+# Motion is on a fixed scale since 11 Nov (STAGE_MOTION_SCALE): the light that
+# changed, so the wandering figure - a small ellipse a frame, a few hundredths
+# of the screen - moves it a little, where measured over the light present it
+# reached its top; the still picture reads nought.
+def moving_moves(reads, before): return len(reads) > 100 and max(r[1] for r in reads) > 0.03 and reads[-1][2] < before / 2
 check("a still picture: Glow and Motion stay at nought, its jitter not stretched into swings, and Memory climbs past a half",
       still_stays(sg[:160]), repr([[round(v, 3) for v in r] for r in sg[150:160:3]]))
 check("and that fails on a picture that never stops moving", not still_stays(sg[160:360]))
-check("a moving picture: Motion reaches the top of its range, and Memory drains to under half of where stillness left it",
+check("a moving picture: Motion reads the light it moves, and Memory drains to under half of where stillness left it",
       moving_moves(sg[160:360], sg[159][2]), repr([[round(v, 3) for v in r] for r in sg[350:360:3]]))
 check("and that fails on the still one", not moving_moves(sg[:160], sg[0][2] + 1))
 # Memory reads a cycle, which boredom cannot: the circle swinging half its
@@ -6542,8 +6597,8 @@ check("and with B's own plane the screen's rotation leaves B's figure alone, whe
       g_own_turned == g_own_still and g_together_turned != g_own_still, "%r %r %r" % (g_own_turned, g_own_still, g_together_turned))
 # Each layer's picture (P6), read natively off the instrument: a split in
 # X-Y, layer A a turning fifth and layer B one note, and the loop's routes as
-# the generator is given them. The fold's slot (22) hears Glow at 0.6 x 0.8:
-# layer A's sound held at 0.48 of A's glow through A's hold, B's of B's.
+# the generator is given them. The fold's slot (22) hears Glow at 0.6 x 0.5 (the weight its reach since 11 Nov):
+# layer A's sound held at 0.3 of A's glow through A's hold, B's of B's.
 def ilayers(*hands, split=True, display="dispXY", notes=(48, 55, 72)):
     lines = [["make", 48000, 512, icode["Harmonic tone"]], ["click", display], ["click", "midiPoly"], ["click", "tuneEqual"]] \
         + ([["control", "midiLayers", "split"]] if split else []) + list(hands) + [NOTE_ON(n) for n in notes]
@@ -6558,8 +6613,8 @@ def ilayers(*hands, split=True, display="dispXY", notes=(48, 55, 72)):
                     "shared": [float(x) for x in w[w.index("shared") + 1:w.index("shared") + 5]], "fold": routes.get(22)})
     return out
 def ifold(read, want_a, want_b):
-    """Every reading's fold route is 0.48 of the glow each layer's sound should hear, and the two differ somewhere."""
-    return bool(read) and all(abs(r["fold"][0] - 0.48 * want_a(r)) < 1e-12 and abs(r["fold"][1] - 0.48 * want_b(r)) < 1e-12 for r in read) \
+    """Every reading's fold route is 0.3 of the glow each layer's sound should hear, and the two differ somewhere."""
+    return bool(read) and all(abs(r["fold"][0] - 0.3 * want_a(r)) < 1e-12 and abs(r["fold"][1] - 0.3 * want_b(r)) < 1e-12 for r in read) \
         and any(abs(r["fold"][0] - r["fold"][1]) > 0.01 for r in read)
 own_glow = lambda k: lambda r: r["L"][k][1] * r["L"][k][4]
 cross_glow = lambda k: lambda r: r["L"][k][1] * min(r["L"][0][4], r["L"][1][4])
@@ -6645,7 +6700,7 @@ check("in a split, the upper note lands in B's picture and leaves A's alone; wit
       and l_crossed[2:4] == l_crossed0[2:4], "own %r against %r; crossed %r against %r" % (l_own, l_none, l_crossed, l_crossed0))
 lu = ilayers(split=False, notes=(48, 55))
 lt = ilayers(display="dispYT")
-shared_fold = lambda r: abs(r["fold"][0] - 0.48 * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]
+shared_fold = lambda r: abs(r["fold"][0] - 0.3 * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]
 check("unsplit, no layer pictures: both sounds hear exactly the shared picture, which moves",
       all(not r["live"] and shared_fold(r) for r in lu) and any(r["fold"][0] > 0.01 for r in lu))
 # (The second generator's two figures with no layers stayed on the one picture too, until G2.)

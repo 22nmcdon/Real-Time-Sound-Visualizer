@@ -5,4 +5,5 @@ venv/
 # The core's and the plugin's build output.
 core/build/
 plugin/build/
+# The plugin built as CLAUDE.md builds it, from the root: cmake -B build plugin.
 /build/

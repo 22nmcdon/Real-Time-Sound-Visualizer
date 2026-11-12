@@ -236,7 +236,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   back in the loop's order. A section that would crowd a tab still goes to
   another one. The Picture section along the bottom of the window (F2) holds
   the Amount, Scan, Strike, Softness, the one Persistence and the three reads,
-  on every tab (Enlarge covers it); what Scan reads, the photocell and the
+  on every tab (Enlarge covers it); what Scan reads, how the picture responds
+  (11 Nov: Responds to, Rise and Fall, Swell, each hand's own on the Picture's
+  link), the photocell and the
   score are behind its *Advanced*, with the loop overlay and the choice of
   panes, which only change the look (home `picture`); the panes themselves
   show only in Enlarge. The display, Clear, Scope & measure and Enlarge are
@@ -460,7 +462,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   face, which has no height to spare). `enlargetest.py` holds it.
 - **The hands** (G6, 10 Nov). With two hands, a link on the Generator, Amp
   envelope, Voice filter, Oscillator, Shaping, each rack module and the
-  Picture's Amount, Scan and Strike: *Same in both* or the hand's own (*Both*
+  Picture's Amount, Scan and Strike (and since 11 Nov how the picture
+  responds, which is each hand's picture's, not its sound's): *Same in both* or the hand's own (*Both*
   or the hand's name in the rack and the Picture). Linked writes both hands
   (`handSet`); unlinking copies the edited hand into the other; linking copies
   it back and drops the other hand's own routing depths there. A link is never

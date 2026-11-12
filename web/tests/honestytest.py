@@ -88,6 +88,11 @@ def null(name, red, detail=""):
     check("null: " + name, red, detail)
 
 HOLD, AFTER = 10.0, 4.5
+# How the picture responds (11 Nov): every run on the bank's own, Change unless
+# a preset says, or HONESTY_RESPONDS=level (or both) to measure the bank under
+# another, as the change was reported. The suite runs the bank as it ships.
+RESPONDS = os.environ.get("HONESTY_RESPONDS")
+def responding(wet): return dict(wet or {}, pictureResponds=RESPONDS) if RESPONDS else wet
 
 # Hold notes on a preset loaded as a player loads one, with the screen's keys
 # open so a note gates the sound as a keyboard's does, and read the sound.
@@ -99,6 +104,8 @@ RUN = r"""async ([value, notes, hold, after, wet]) => {
   // its knobs turned, one by one.
   for (const [id, v] of Object.entries(wet || {})) {
     if (id === 'switch') { document.querySelector('[data-fx-on="reverb"]').click(); continue; }
+    // How the picture responds (11 Nov), a menu: HONESTY_RESPONDS below.
+    if (id === 'pictureResponds') { el[id].value = v; el[id].dispatchEvent(new Event('change')); continue; }
     el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
   }
   await wait(900);
@@ -232,7 +239,7 @@ with sync_playwright() as pw:
         for name, setup in entries:
             for notes in probes(name, setup):
                 b, p, bad = open_page(pw)
-                run = p.evaluate(RUN, [name, notes, HOLD, AFTER, None])
+                run = p.evaluate(RUN, [name, notes, HOLD, AFTER, responding(None)])
                 limit = p.evaluate(CHORD, [name, chord(setup)])
                 b.close()
                 errors += bad
@@ -277,7 +284,7 @@ with sync_playwright() as pw:
             for name, setup in entries:
                 for notes in probes(name, setup):
                     b, p, bad = open_page(pw)
-                    run = p.evaluate(RUN, [name, notes, HOLD, AFTER, wet])
+                    run = p.evaluate(RUN, [name, notes, HOLD, AFTER, responding(wet)])
                     b.close()
                     errors.extend(bad)
                     m = summary(run["out"])

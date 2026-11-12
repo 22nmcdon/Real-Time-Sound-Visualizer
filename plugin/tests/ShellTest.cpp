@@ -738,7 +738,7 @@ int main() {
     /* Each layer's picture (P6), with no window: split into two sounds in
        X-Y, layer A a fifth turning and layer B one note, each figure laid
        into a grid of its own, and each sound moved by its own picture. The
-       fold hears Glow at 0.6 x 0.8 of the stage, so B's sound's fold is 0.48
+       fold hears Glow at 0.6 x 0.5 of the stage (0.8 until 11 Nov), so B's sound's fold is 0.3
        of B's glow through B's hold, and A's of A's, and the two are apart.
        The null is B's picture moving A's sound: B's sound then hears none. */
     struct Layered { bool live = true, own = true, apart = false; int lines = 0; };
@@ -765,7 +765,8 @@ int main() {
         out.live = out.live && layers.live();
         for (const auto& r : p->matrix().lastRoutes()) {
           if (r.index >= 0 || r.slot != scope::slot::Fold) continue;
-          const auto want = [&](int l) { return 0.48 * layers.stage(l).glow() * layers.stage(l).hold(); };
+          // Glow at 0.6 x 0.5 into the fold, the weight its reach since 11 Nov (0.8 until then).
+          const auto want = [&](int l) { return 0.3 * layers.stage(l).glow() * layers.stage(l).hold(); };
           out.own = out.own && std::fabs(r.held - want(0)) < 1e-12 && std::fabs(r.heldB - want(1)) < 1e-12;
           out.apart = out.apart || std::fabs(r.held - r.heldB) > 0.01;
           out.lines++;
@@ -1061,7 +1062,7 @@ int main() {
       send(11, 32); send(11, 127); send(7, 10); send(11, 0);
     }
     check("the expression pedal from the host sets the Picture amount; the volume does not",
-          swell.size() == 4 && std::fabs(swell[0] - 0.25 * 0.8) < 1e-12 && std::fabs(swell[1] - 0.8) < 1e-12
+          swell.size() == 4 && std::fabs(swell[0] - 0.25 * 0.5) < 1e-12 && std::fabs(swell[1] - 0.5) < 1e-12
           && swell[2] == swell[1] && swell[3] == 0,
           "fold route " + num(swell[0]) + ", " + num(swell[1]) + ", " + num(swell[2]) + ", " + num(swell[3]));
   }

@@ -229,7 +229,8 @@ with sync_playwright() as pw:
 
     print("\n--- the picture stage, the panel and setup codes ---")
     stage = p.evaluate("() => STAGE_BUNDLES.filter(([s, d]) => d === 'gen.phaser')")
-    check("the picture's Memory pushes the phaser's amount", stage == [["stage.memory", "gen.phaser", 0.5]], str(stage))
+    # At Memory's reach, 0.3, since 11 Nov: each route reaches its top at 100 (it was 0.5, clamped from 60).
+    check("the picture's Memory pushes the phaser's amount", stage == [["stage.memory", "gen.phaser", 0.3]], str(stage))
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
