@@ -38,7 +38,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 10;  // SETUP_VERSION
+constexpr int kSetupVersion = 11;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 // The table (schema.h, SETUP_FIELDS on the page), parsed once.
@@ -422,6 +422,14 @@ inline bool migrateSetup(Json& setup) {
         at = end + 1;
       }
       setup.set("mod", Json::string(kept));
+    }
+  }
+  /* 10 -> 11: a stored Picture amount scaled to the push it meant, since each
+     stage route's weight became its reach; the page's migrateSetup says why. */
+  if (!(v >= 11)) {
+    for (const char* key : { "pictureAmount", "bPictureAmount" }) {
+      const Json* amount = field(key);
+      if (amount && amount->type == Json::Type::Number) setup.set(key, Json::number(jsMin(100, amount->n * (0.8 / 0.5))));
     }
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));

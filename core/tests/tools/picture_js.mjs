@@ -71,7 +71,7 @@ const LIFTED = ["PHOSPHOR_N", "phosphor", "phosphorFade", "phosphorFadeInto", "p
   "SATURATED", "STRAINED", "makePictureMeter", "makeMoments", "shapeX", "NO_LANE", "pairOfFrame", "shapeOfPair",
   "shapeOfPairValues", "turnOf", "rotateTurns", "SIXTH", "picture", "BORED_REACH", "BORED_RISE", "BORED_LEAK",
   "PICTURE_KEYS", "makePictureEngine", "VERDICTS", "makeWasmPictureEngine", ENGINE, "pictureMeter", "pictureStep",
-  "STAGE_LEVEL_EPS", "STAGE_CHANGE_SPAN", "STAGE_SETTLE", "STAGE_BOTH_BASE", "STAGE_MOTION_SCALE", "STAGE_SWELL_DEPTH",
+  "STAGE_LEVEL_EPS", "STAGE_CHANGE_SPAN", "STAGE_SETTLE", "STAGE_CHANGE_DEAD", "STAGE_BOTH_BASE", "STAGE_MOTION_SCALE", "STAGE_SWELL_DEPTH",
   "STAGE_SWELL_LEAST", "STAGE_LIT_FLOOR", "STAGE_DEFAULT", "STAGE_LEVEL_TOP", "stageLevel", "stageSwellPeriod", "stageToward",
   "RESPONDS_TO", "PICTURE_RESPONSE", "PICTURE_FEELS", "pictureFeelMs", "pictureHands", "stageResponse",
   "STAGE_HOLD_FALL", "makeStageState", "pictureStage", "pictureStageStep", "stagePush",

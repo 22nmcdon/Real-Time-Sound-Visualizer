@@ -438,7 +438,8 @@ class PictureSources {
 // has been repeating itself, still or cycling, and never less than boredom.
 constexpr double kStageLevelEps = 0.003;     // STAGE_LEVEL_EPS: the coverage the level's log scale is out of
 constexpr double kStageChangeSpan = 0.6;     // STAGE_CHANGE_SPAN: the level a full Change is, the span's floor
-constexpr double kStageSettle = 0.2;         // STAGE_SETTLE: a second, the base rising to a level kept up
+constexpr double kStageSettle = 0.1;         // STAGE_SETTLE: a second, the base rising to a level kept up
+constexpr double kStageChangeDead = 0.1;     // STAGE_CHANGE_DEAD: a rise in the level too small to be a gesture
 constexpr double kStageRelease = 3;          // STAGE_RELEASE: a second, the base falling to a level let go
 constexpr double kStageBothBase = 0.5;       // STAGE_BOTH_BASE: Both's share of the level
 constexpr double kStageMotionScale = 0.05;   // STAGE_MOTION_SCALE: the changed light a full Motion is
@@ -495,7 +496,7 @@ class PictureStage {
     level_ = stageLevel(raw.cover);
     if (!seen_) { base_ = level_; lastCover_ = raw.cover; seen_ = true; }
     base_ += (level_ - base_) * (1 - std::exp(-dt * (level_ > base_ ? kStageSettle : kStageRelease)));
-    change_ = std::fmax(0.0, std::fmin(1.0, (level_ - base_) / kStageChangeSpan));
+    change_ = std::fmax(0.0, std::fmin(1.0, (level_ - base_ - kStageChangeDead) / kStageChangeSpan));
     const double want = r.respondsTo == 1 ? level_ : r.respondsTo == 2 ? std::fmin(1.0, kStageBothBase * level_ + change_) : change_;
     smooth_ = stageToward(smooth_, want, dt, r.riseMs, r.fallMs);
     const double moved = std::fmax(0.0, std::fmin(1.0, raw.change * (raw.cover + lastCover_) / 2 / kStageMotionScale));

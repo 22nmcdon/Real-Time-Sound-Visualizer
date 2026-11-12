@@ -272,7 +272,7 @@ with sync_playwright() as pw:
     pg = g2["page"]
     check("a version-9 code with a drawing loads as the waveform, its shape kept, the drawings' fields gone, "
           "and only the drawings' routings dropped, near-misses kept",
-          pg["nine"] == {"v": 10, "gen": "wave", "mod": G2_KEPT, "shape": "square", "kept": []}, str(pg["nine"]))
+          pg["nine"] == {"v": 11, "gen": "wave", "mod": G2_KEPT, "shape": "square", "kept": []}, str(pg["nine"]))
     check("and one that names no kind at all is given the waveform", pg["none"]["gen"] == "wave", str(pg["none"]))
     check("and the same code marked version 10 keeps everything, so the pass is what took it",
           pg["ten"]["gen"] == "figure" and len(pg["ten"]["kept"]) == 22 and pg["ten"]["mod"].count(";") == 7,
