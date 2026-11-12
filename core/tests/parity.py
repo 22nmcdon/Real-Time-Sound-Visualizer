@@ -2706,8 +2706,24 @@ V9_BARE = '{"v":9,"freq":330,"detail":7}'
 # The first code again marked 10, so nothing migrates it: the null for the check of the pass below.
 scmds += ["decode " + code_of(V9_CODE), "decode " + code_of(V9_BARE), "decode " + code_of(V9_CODE.replace('"v":9', '"v":10'))]
 scmds += ["decode ", "decode A", "decode AB==AB", "decode @@@@", "decode " + code_of("{}")[:-1] + "\u00a0"]
+# Version 11 (12 Nov): a stored Picture amount scaled to the push it meant,
+# 0.8 / 0.5, the top at 100 - before version 11, under it, at it and past it,
+# on both hands, at the clamp's edge and past it, and amounts that are not
+# numbers, which are left to the readers as they were.
+V11 = [{"v": 10, "pictureAmount": 47}, {"v": 10, "pictureAmount": 62.5, "bPictureAmount": 30}, {"v": 10, "pictureAmount": 63},
+       {"v": 9, "pictureAmount": 100, "bPictureAmount": 0}, {"v": 11, "pictureAmount": 47}, {"v": 12, "pictureAmount": 47},
+       {"v": 10, "pictureAmount": "47"}, {"v": 10, "pictureAmount": None}, {"v": 10, "bPictureAmount": -5},
+       {"v": "10", "pictureAmount": 33.3}, {"pictureAmount": 47}, {"v": 10, "pictureAmount": 1e300}]
+V11_FROM = len(scmds)
+scmds += ["decode " + code_of(_json.dumps(st, separators=(",", ":"))) for st in V11]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
+v11 = sjs[V11_FROM:V11_FROM + len(V11)]
+check("version 11: a Picture amount saved before it reads as the push it meant, 47 as 75.2, the top at 100, and one saved at 11 as it was",
+      '"pictureAmount":75.2' in v11[0] and '"pictureAmount":100' in v11[1] and '"bPictureAmount":48' in v11[1]
+      and '"pictureAmount":100' in v11[2] and '"pictureAmount":47' in v11[4] and '"pictureAmount":"47"' in v11[6],
+      " | ".join(x[:90] for x in v11[:7]))
+check("null: the same check on the codes as written fails", not ('"pictureAmount":75.2' in _json.dumps(V11[0])))
 check("the page's defaults, key for key and value for value", sjs[0] == scpp[0] and sjs[0].count(":") > 170)
 # The table they come from (SETUP_FIELDS, schema.h since 7 Nov): every menu
 # and range restore reads a setup by, which the core held in restore.h by
@@ -2742,30 +2758,30 @@ check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"
 # features' fields and their routes and keeps everything else as written.
 v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
 check("a version-4 code comes up to date without the crossings', threshold's and pluck's fields or routes, the rest as written",
-      v4_read.startswith("read ") and '"v":10' in v4_read and '"freq":330' in v4_read
+      v4_read.startswith("read ") and '"v":11' in v4_read and '"freq":330' in v4_read
       and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
 # Version 6 likewise: a version-5 code loses the macros' fields and every
 # route from a macro, and keeps the rest as written, spaces and all.
 v5_read = sjs[scmds.index("decode " + code_of(V5_CODE))]
 check("a version-5 code comes up to date without the macros' values, names or routes, the rest as written",
-      v5_read.startswith("read ") and '"v":10' in v5_read and '"freq":330' in v5_read
+      v5_read.startswith("read ") and '"v":11' in v5_read and '"freq":330' in v5_read
       and '"mod":" lfo1>gen.amp@0.400"' in v5_read and not any('"%s"' % k in v5_read for k in GONE_V6), v5_read)
 # Version 7 likewise: a version-6 code saved with the latch on loses it.
 v6_read = sjs[scmds.index("decode " + code_of(V6_CODE))]
 check("a version-6 code comes up to date without the latch, the rest as written",
-      v6_read.startswith("read ") and '"v":10' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
+      v6_read.startswith("read ") and '"v":11' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
       and '"midiLatch"' not in v6_read, v6_read)
 v7_read = sjs[scmds.index("decode " + code_of(V7_CODE))]
 check("a version-7 code comes up to date without the kaleidoscope, its snap of three bits at five and of six as it was",
-      v7_read.startswith("read ") and '"v":10' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
+      v7_read.startswith("read ") and '"v":11' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
       and '"planeSnap":5' in v7_read and '"bSnap":6' in v7_read, v7_read)
 v8_read = sjs[scmds.index("decode " + code_of(V8_CODE))]
 check("a version-8 code comes up to date without the cut sources' routes or the controllers' names, the near misses, Key and hearing kept",
-      v8_read.startswith("read ") and '"v":10' in v8_read and '"freq":330' in v8_read and '"cc"' not in v8_read
+      v8_read.startswith("read ") and '"v":11' in v8_read and '"freq":330' in v8_read and '"cc"' not in v8_read
       and '"mod":" lfo1>gen.amp@0.400;midi.key>gen.fm@0.300;cc.x>gen.amp@1;notes.counts>gen.amp@1;hear.bright>gen.freq@0.1"' in v8_read,
       v8_read)
 def v10_done(line):
-    return (line.startswith("read ") and '"v":10' in line and '"gen":"wave"' in line and '"freq":330' in line
+    return (line.startswith("read ") and '"v":11' in line and '"gen":"wave"' in line and '"freq":330' in line
             and '"inputMode":1' in line and '"inputDepth":40' in line and '"mod":' + V9_KEPT in line
             and not any('"%s"' % k in line for k in GONE_V10))
 v9_read = sjs[scmds.index("decode " + code_of(V9_CODE))]
@@ -2782,8 +2798,8 @@ check("and one that named no kind is the waveform too", v9_bare.startswith("read
 check("and the random codes reach the drawings' pass both ways: routes it drops, near misses it keeps, fields and kinds it takes out",
       sum(1 for l in sjs if '"mod":"draw.swing>gen.freq@0.500;' in l) >= 1
       and sum(1 for l in sjs if '"mod":"draw.swings>gen.amp@1;xdraw.pendulum>gen.amp@1;lfo1>gen.detailx@1;lfo1>gen.depthy@0.2;lfo2>gen.turn@0.5"' in l) >= 2
-      and sum(1 for l in sjs if l.startswith("read ") and '"v":10' in l and '"gen":"harmonograph"' in l) >= 1
-      and sum(1 for l in sjs if l.startswith("read ") and '"gen":"wave"' in l and '"v":10' in l) >= 20)
+      and sum(1 for l in sjs if l.startswith("read ") and '"v":11' in l and '"gen":"harmonograph"' in l) >= 1
+      and sum(1 for l in sjs if l.startswith("read ") and '"gen":"wave"' in l and '"v":11' in l) >= 20)
 check("and the random codes reach the macros' pass both ways: routes it drops, near misses it keeps, fields it takes out",
       sum(1 for l in sjs if '"mod":"macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1"' in l) >= 1
       and sum(1 for l in sjs if '"mod":"macro.1>gen.vcf@0.700;' in l) >= 1
@@ -3572,6 +3588,12 @@ pcruns = [
                                   "persist -1", *["step 33" for _ in range(40)], "persist 0", *["step 33" for _ in range(20)]))
       for name, resp in (("change", "resp 0 0 80 800 0"), ("level", "resp 0 1 80 800 0"), ("both", "resp 0 2 20 250 0"),
                          ("slow", "resp 0 0 400 3000 0"), ("swell", "resp 0 1 80 800 1"), ("bare", "resp 0 2 0 0 1"))],
+    # A step of light, dark and then a large figure held: the Change past its
+    # dead zone and settling at its rate, which the slow growth above never
+    # clears the dead zone to show (12 Nov).
+    ("respond-step", pcrun(*PC[:1], "photo 0", "persist -1", "pair ellipse 0.5 0.3 3 4096 0", "resp 0 0 20 250 0",
+                           *["step 33" for _ in range(10)], "fade", pcellipse(340, 255, 250, 200), pcellipse(340, 255, 180, 120),
+                           pcellipse(340, 255, 100, 60), *["step 33" for _ in range(150)])),
     # The breath starting again from its trough when the screen goes dark and
     # is lit again, and a Rise and Fall of nought on a frame of no time.
     ("respond-dark", pcrun(*PC[:1], "photo 0", "persist 0", "pair ellipse 0.5 0.3 3 4096 0", "resp 0 1 80 800 1",

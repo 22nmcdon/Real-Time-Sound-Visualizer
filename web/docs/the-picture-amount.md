@@ -970,6 +970,69 @@ as well: the Settled presets late 0.000 to 0.006 in either, since they are at Pi
 nought; the Breathing ones 0.033 to 0.444 under Level and 0.025 to 0.352 under Both, the
 bass's low hand the lowest in each.
 
+## The swell missed, and put back (12 Nov)
+
+The owner, playing Crossed hands on the site once this was built: *"currently the swell I
+was getting before doesn't really show up at all, and that is the thing I am missing the
+most."* Measured on the core with their code and the bank's Crossed hands, against the
+commit before the work (4cbb6f1, which the owner remembers). As the owner plays it - the
+chord held a few seconds with soft notes over it, then the run, then the grace notes - the
+swell is the run against the held passage just before it, each against the same playing
+at Picture nought; *Built*'s table measured the run against nought alone, which could not
+tell the run from the chord's own strike still sounding, and passed:
+
+| At the owner's settings | The run's swell | Grace notes after | Above 1 kHz in the run |
+|---|---|---|---|
+| 4cbb6f1, their code at 47 | +4.1 dB | +1.7 | 6.5% |
+| As built (43ceb32), their code at 47 | −0.1 | −0.3 | 5.7% |
+| As built, at 75 (the same push as 47 was) | −1.5 | −0.3 | 7.5% |
+| Now, their code (read as 75), *Pictures* crossed | **+4.1** | **−0.4** | 8.8% |
+| Now, their code (read as 75), *Pictures* each hand's own | −1.3 | −0.3 | |
+| 4cbb6f1, the bank's Crossed hands at 60 | +0.7 | +2.4 | 15.5% |
+| Now, the bank's Crossed hands as it ships (96, crossed) | **+4.0** | **−0.4** | 7.4% |
+
+**What took it away**, in order of size:
+
+1. **The loud hand had nothing to swell on.** The left hand's own picture hardly changes
+   when the right hand runs: at Picture nought its level goes from 0.84 to 0.85 and its
+   Motion from 0.21 to 0.23, while the right hand's level goes from 0.21 to 0.80. The old
+   relative read stretched that hundredth to a full swing (and the left hand's own loop
+   swelled by itself besides, landing where it landed), so the left chord swelled; read
+   on a fixed scale it does not. Only the right hand's picture knows the run, so the
+   chord can only swell if its sound hears that picture: **Crossed hands now crosses its
+   *Pictures*** (each hand's sound moved by the other's picture, as its Scan already
+   reads it), which the study recommended and *Built* proposed.
+2. **Change flared before the run and settled during it.** The soft notes on a dark right
+   hand lifted its level a tenth to a quarter and so the push, and the base rising at a
+   fifth a second caught the run up. Now a rise under 0.1 is no gesture
+   (`STAGE_CHANGE_DEAD`) and the base settles at a tenth a second. The price: a held
+   chord's own strike, on a hand that hears its own picture, lets go over about ten
+   seconds rather than five.
+3. **Every stored amount had become five eighths as strong.** The routes reaching their
+   top at 100 made 47 push as 29 had. **Version 11** reads a stored amount as the push it
+   meant (× 0.8 / 0.5, the top at 100): the owner's 47 reads as 75.2. Exact for the fold
+   and the echo, which carry the swell; Memory's three routes come out a little stronger
+   or weaker below their old clamps. A host's automation of the knob is not a code and is
+   not moved. The bank's amounts were scaled alike (Harmonic tone 96, Turning fifths 48,
+   Bass under the pad 100, Crossed hands 96; Slow pad was at the top).
+
+**The owner's own code still has its Pictures each hand's own**, as it was saved, and so
+does not get the swell back by the migration alone (−1.3 dB above): loading Crossed hands
+again and adding the effects, or setting the two *Pictures* menus in *Advanced* to cross,
+does. Nothing in a stored code was changed to cross it, since that would be the
+instrument deciding what the owner meant.
+
+On the study's own sequence, at the owner's depth with the Pictures crossed, the run now
+swells +6.3 dB (option 3's bar), +0.65 after it, the soft notes +0.27 in sequence against
++0.99 fresh, with 6.7 per cent of the run above 1 kHz. A chord held alone still does not
+swell by itself: it rises 1.0 dB at most split and 1.3 unsplit at 100.
+
+**What to listen for:** on Crossed hands, hold a chord in the left hand and play softly in
+the right - the chord should stay put - then run the right hand harder and faster: the left
+hand's chord swells, louder and brighter, while the run lasts, and settles after it; soft
+grace notes afterwards should not bring it back. If the swell is now too slow to let go,
+or too much, the Fall and the Amount are where to turn it.
+
 ## What this did not measure
 
 - **Listening.** Every number here is a spectrum, a level or a grid. Whether the recommended

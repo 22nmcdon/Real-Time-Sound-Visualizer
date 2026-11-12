@@ -32,8 +32,9 @@ a quarter second at a time, its mean over a stretch.
 
 The amount: the routes reach their top at a Picture of 100 now, where they
 were clamped by reach from 62.5, so the owner's 47 pushes as about 75 does
-now (47 x 0.8 / 0.5). The run's swell is judged at 100, the depth today's
-stage reached at its top, against the bar the study's option 3 measured
+now (47 x 0.8 / 0.5), and version 11 reads their stored 47 as that. The run's
+swell is judged there, with the Pictures crossed as the study's option 3 had
+them and Crossed hands now does, against the bar the study's option 3 measured
 (+6.3 dB on the study's own reconstruction of the sequence, where today's
 stage swelled +4.5; on this one today's swells +4.1, measured with the stage
 as it was before this change and kept here as TODAY). The soft notes are
@@ -41,8 +42,8 @@ judged at 75, the owner's own depth.
 
 The checks, each with its null:
 
-- Change: the fast run swells by at least +6.0 dB and 1.5 dB more than today
-  did, and is as harsh as option 3 (at least 5.4 per cent of its energy above
+- Change, at the owner's depth with the Pictures crossed: the fast run swells
+  by at least +6.0 dB and 1.5 dB more than today did, and is as harsh as option 3 (at least 5.4 per cent of its energy above
   1 kHz). Null: Picture nought, which does not swell.
 - Change: the soft notes after the swell swell no more than the same soft
   notes from a fresh start (by half a decibel), and by no more than a decibel
@@ -62,6 +63,24 @@ The checks, each with its null:
   Nulls: Change, with no base; Level, with no flare.
 - Motion, the echo's read: one soft note on a dark screen moves it a little,
   and the fast run a lot. Null: the fast run, read the same way, is not small.
+
+And the swell the owner missed (12 Nov), as they play it: the chord held a few
+seconds with soft notes over it, then the run, then the grace notes. Its
+swell is the run against the held passage just before it, each against the
+same playing at Picture nought - the swell the ear hears as the run starts,
+which a mean against nought over the run cannot tell from a chord's own
+strike still sounding. The stage as it was (4cbb6f1) gave +4.1 dB here at the
+owner's 47; the redesign as first built gave -0.1 at 47 and -1.5 at 75.
+
+- A stored amount means what it meant: the owner's code, saved at 47 under
+  version 10, reads as 75.2 (version 11's pass). Null: a code saved at
+  version 11 is left as it is.
+- Change, the Pictures crossed as Crossed hands now has them, at the owner's
+  depth: the run swells at least +3.5 dB over the held passage, and the
+  grace notes after it no more than half a decibel. Null: the Pictures each
+  hand's own, as the owner's code has them, where the left hand's own
+  picture hardly changes with the run and the swell is under a decibel.
+- The bank's Crossed hands, as it ships: the same, at least +3.5 dB.
 
 Parallel: offline renders, no real time.
 """
@@ -90,6 +109,11 @@ OWNER = ("eyJ2IjoxMCwic2hhcGUiOiJzaW5lIiwib3NjU2NhbiI6MTAwLCJzY2FuUmVhZHNBIjoiQi
 TODAY = {"fast": 4.1, "held": (5.1, 6.7)}
 
 os.makedirs(BUILD, exist_ok=True)
+# The bank's Crossed hands, by the instrument's own encoding of its preset.
+INST = os.path.join(BUILD, "instrument_cpp")
+subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(CORE, "include"),
+                os.path.join(CORE, "tests", "tools", "instrument_cpp.cpp"), "-o", INST], check=True)
+BANK = subprocess.run([INST, "--code", "Crossed hands"], check=True, capture_output=True, text=True).stdout.strip()
 EXE = os.path.join(BUILD, "response_cpp")
 subprocess.run(["g++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-I", os.path.join(CORE, "include"),
                 os.path.join(CORE, "tests", "tools", "response_cpp.cpp"), "-o", EXE], check=True)
@@ -165,11 +189,50 @@ def peaks(xs, ts):
 def at(patch, **more): p = dict(patch); p.update(more); return p
 def responds(mode, amount, **more): return at({"pictureResponds": mode, "pictureAmount": amount}, **more)
 
+# --- A stored amount, and the swell as the owner plays it --------------------------------
+def decoded(code):
+    out = subprocess.run([EXE, "--decode", code], check=True, capture_output=True, text=True).stdout.split()
+    return dict(zip(out[::2], out[1::2]))
+owner_read = decoded(OWNER)
+check("the owner's code, saved at 47 under version 10, reads as %s at version %s" % (owner_read["pictureAmount"], owner_read["v"]),
+      owner_read["pictureAmount"].startswith("75.2") and owner_read["v"].startswith("11"))
+import base64
+v11 = base64.b64encode(json.dumps({"v": 11, "pictureAmount": 47}).encode()).decode().rstrip("=")
+null("a code saved at version 11 is left at its 47 (%s)" % decoded(v11)["pictureAmount"],
+     not decoded(v11)["pictureAmount"].startswith("75.2"))
+
+softs = []
+for k, t in enumerate((3.0, 4.5, 6.0, 7.2)):
+    n = (70, 66, 73, 68)[k]; softs += [on(t, n, 40), off(t + 0.15, n)]
+PLAYED = (sorted([on(0.5, n, 80) for n in CH2] + softs + run(8, 9, 5, 55) + run(9, 13, 8, 95) + soft(17)
+                 + [off(28, n) for n in CH2]), 29.0)
+def as_played(patch, code=None):
+    """The run against the held passage before it, and the grace notes after, each against Picture nought."""
+    global OWNER
+    keep = OWNER
+    if code: OWNER = code
+    a, z = render(*PLAYED, patch), render(*PLAYED, at(patch, pictureAmount=0))
+    OWNER = keep
+    return swell(a, z, 9, 13) - swell(a, z, 6, 8), swell(a, z, 17, 27)
+CROSSED = {"pictureMovesA": "B", "pictureMovesB": "A"}
+ran, grace = as_played(responds("change", 75, **CROSSED))
+check("as the owner plays it, the Pictures crossed at their depth: the run swells %+.2f dB over the held passage "
+      "(the stage as it was +4.1), the grace notes after it %+.2f" % (ran, grace), ran >= 3.5 and grace <= 0.5)
+own_ran, _ = as_played(responds("change", 75))
+null("the Pictures each hand's own, as the owner's code has them: the run swells %+.2f" % own_ran, not (own_ran >= 3.5))
+bank_ran, bank_grace = as_played({}, BANK)
+check("the bank's Crossed hands as it ships: the run swells %+.2f dB over the held passage, the grace notes %+.2f"
+      % (bank_ran, bank_grace), bank_ran >= 3.5 and bank_grace <= 0.5)
+
 # --- Change, the owner's sequence -------------------------------------------------
-seq100, seq0 = render(*SEQUENCE, responds("change", 100)), render(*SEQUENCE, responds("change", 0))
+# At the owner's depth with the Pictures crossed, as Crossed hands has them
+# since 12 Nov. Until then this was at 100 with each hand's own picture, where
+# the run swelled +6.7; with the slower settle that holds a run up, a chord
+# changed during the run is still flaring after it there (+2.4 dB).
+seq100, seq0 = render(*SEQUENCE, responds("change", 75, **CROSSED)), render(*SEQUENCE, responds("change", 0, **CROSSED))
 fast, after = swell(seq100, seq0, 4, 9), swell(seq100, seq0, 9, 14.5)
 h100, h0 = harsh(seq100, 4, 9), harsh(seq0, 4, 9)
-check("Change, at the routes' top: the fast run swells by %+.2f dB (today's stage +%.1f, the study's option 3 +6.3), "
+check("Change, at the owner's depth, crossed: the fast run swells by %+.2f dB (today's stage +%.1f, the study's option 3 +6.3), "
       "and nothing after it (%+.2f)" % (fast, TODAY["fast"], after), fast >= 6.0 and fast >= TODAY["fast"] + 1.5 and after < 1.0)
 check("and it is as harsh as option 3: %.1f per cent of its energy above 1 kHz (%.1f at Picture nought)" % (100 * h100, 100 * h0),
       h100 >= 0.054 and h100 > h0 * 1.5)

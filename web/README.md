@@ -6342,3 +6342,25 @@ panel, range and options and all, so the constellation's three menus, which
 the core has no place for, failed it the first time round. They have no ids:
 the script finds them by `data-draw` into `el`, and the info line by
 `SAY_KEYS`. Buttons and links are not read, so *Reseed* keeps its id.
+
+**A swell measured against nought can hide that the playing no longer makes
+it (12 Nov).** The owner, on Crossed hands after the picture's response was
+built: the swell they played for had gone. `responsetest.py` had passed it,
+because it measured the fast run's level against the same playing at Picture
+nought, and the left hand's chord was still flaring from its own strike when
+the run began - so the run read as swollen when it added nothing. Measured as
+the ear hears it, the run against the held passage just before it, the stage
+as it was gave +4.1 dB at the owner's 47 and the new one -0.1 (and -1.5 at
+75). Three things, in order of size. The left hand's own picture hardly
+changes when the right hand plays (its level 0.84 to 0.85 over the run), and
+the old relative read had blown that hundredth up to full scale, so read
+honestly the loud hand had nothing to swell on: only the right hand's picture
+knows the run, so Crossed hands crosses its Pictures as well as its Scan. The
+soft notes before the run already lifted Change's push, and the run settled
+while it went on: a dead zone of 0.1 on the level (`STAGE_CHANGE_DEAD`) and a
+base that settles at a tenth a second fixed both, +4.1 dB again with the grace
+notes at -0.4. And the weights' change to their reaches had made every stored
+amount five eighths as strong without anyone moving it, which version 11's
+decode pass puts back (`PICTURE_AMOUNT_V11`, page and core; parity holds the
+two). The lesson for a check of a swell: compare the passage with what came
+just before it, not only with the same passage at nought.

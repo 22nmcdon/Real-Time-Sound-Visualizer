@@ -5,6 +5,7 @@
 // it and judges what it prints.
 //
 //   response_cpp CODE PATCH EVENTS SECONDS
+//   response_cpp --decode CODE        the code as read: its Picture amounts, after the decode passes
 //
 // CODE is a setup code; PATCH a JSON object of fields laid over it (the
 // Responds to, the amount, the Picture moves...); EVENTS a file of lines
@@ -51,6 +52,15 @@ void fft(std::vector<std::complex<double>>& a) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  if (argc == 3 && std::string(argv[1]) == "--decode") {
+    const auto read = scope::Instrument::setup(argv[2]);
+    if (!read) return 2;
+    for (const char* key : { "v", "pictureAmount", "bPictureAmount" }) {
+      const scope::Json* v = read->setup->get(key);
+      std::printf("%s %s\n", key, v && v->type == scope::Json::Type::Number ? std::to_string(v->n).c_str() : "none");
+    }
+    return 0;
+  }
   if (argc < 5) { std::fprintf(stderr, "usage: response_cpp CODE PATCH EVENTS SECONDS\n"); return 2; }
   const auto command = scope::Instrument::setup(argv[1]);
   if (!command) { std::fprintf(stderr, "the code does not read\n"); return 2; }

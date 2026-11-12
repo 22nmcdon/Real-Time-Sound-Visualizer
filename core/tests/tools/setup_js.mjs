@@ -43,7 +43,7 @@ const MODE = process.env.CORE || "js";
    as a name not defined, which is the right failure. */
 const CUTS = [...page.matchAll(/\nconst (CUT_[A-Z_]+) = /g)].map((m) => m[1]);
 const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "STAGE_DEFAULT", "SETUP_FIELDS", "DEFAULTS",
-                "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", ...CUTS, "migrateSetup", "SETUP_AHEAD_OF_CORE", "makeWasmSetupCodec"];
+                "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", ...CUTS, "PICTURE_AMOUNT_V11", "migrateSetup", "SETUP_AHEAD_OF_CORE", "makeWasmSetupCodec"];
 const WASM_BYTES = MODE === "wasm" && process.env.WASM_FILE ? new Uint8Array(fs.readFileSync(process.env.WASM_FILE))
   : MODE === "wasm" ? (() => {
   const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
