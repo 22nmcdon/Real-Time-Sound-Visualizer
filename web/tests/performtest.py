@@ -24,10 +24,17 @@ has none of them, and these setups are still the widest test there is of a
 routing a hand or an ear moves. Loaded as a preset was (loadCorpus restores
 the setup and sends it on), so what is measured is the setup, not the bank.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its voices and
-# routes, read directly - which core/tests/parity.py holds the instrument to,
-# sample for sample. The instrument, the site's default since 5m, is
-# braintest.py's and hosttest.py's.
+# Since stage 5, step 3, batch 4 (13 Nov): what the sections are is read on
+# the default page (the corpus and the face's codec, no brain). The keyboard
+# sections played - every routing reaching the generator, still at rest and
+# moving when played, the cut ones loading with none, the misspelt null, and
+# both layers sounding - are core/tests/pieces/perform.py's, on the
+# instrument: here they read the page's own MOD_SOURCES, genRoutes and
+# midi.poly.layers, which on the default are the face's. The live effects and
+# the Listening presets stay on ?brain=js, on a page of their own: they put a
+# microphone through the page's own effects insert (state.source.fx) and ask
+# the page's compiler, and the instrument's way with an input needs input
+# samples - render_cpp's, or livefx's batch.
 import os
 from playwright.sync_api import sync_playwright
 import corpus
@@ -63,10 +70,9 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.add_init_script(STUB)
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
@@ -100,90 +106,14 @@ with sync_playwright() as pw:
     check("and a section of effects for live inputs, landing on whatever is playing",
           shape["live"] is not None and shape["live"][0] >= 5 and shape["live"][1] == "display", str(shape["live"]))
 
-    print("\n--- played ---")
-    p.evaluate("() => midiConnect()"); p.wait_for_timeout(200)
-    p.evaluate("""() => {
-      /* Everything a hand can do at once: a wide chord struck hard, held
-         under the pedal, with the mod wheel up. Every source a keyboard
-         preset names is moved by some part of it. */
-      const chord = [36, 48, 60, 64, 67, 72, 84];
-      const value = (id) => { const s = MOD_SOURCES.get(id); return s ? s.value() : null; };
-      window.__play = async () => {
-        const routings = state.modRoutings.map((r) => r.sourceId);
-        const rest = routings.map(value);
-        __send([0xB0, 1, 127]); __send([0xB0, 64, 127]);
-        for (const n of chord) __send([0x90, n, 120]);
-        await __wait(250);
-        if (modDirty) compileRoutes();
-        const compiled = routings.map((id) => genRoutes.some((r) => r.source && r.source.id === id));
-        const moved = routings.map(value);
-        const layers = midi.poly && midi.poly.layers ? midi.poly.layers.map((l) => l.sounding) : null;
-        for (const n of chord) __send([0x80, n, 0]);
-        __send([0xB0, 64, 0]); __send([0xB0, 1, 0]);
-        // Long enough for the slowest release among them to finish, so the
-        // next preset's "at rest" is at rest.
-        await __wait(1700);
-        return { routings, rest, moved, compiled, layers };
-      };
-    }""")
-    played = p.evaluate("""async (names) => {
-      const out = [];
-      for (const name of names) {
-        for (const [preset, setup] of CORPUS.find(([s]) => s === name)[1]) {
-          loadCorpus(preset);
-          await __wait(150);
-          // Whether every routing it names was cut in F4b (version 9's decode
-          // pass drops them): such a preset loads with none, by design.
-          const parts = (setup.mod || '').split(';').map((p) => p.trim()).filter(Boolean);
-          const allCut = parts.length > 0 && parts.every((p) => CUT_SOURCE.test(p));
-          out.push(Object.assign({ preset, section: name, split: setup.layers || null, allCut }, await __play()));
-        }
-      }
-      return out;
-    }""", KEYBOARD)
-
-    def dead_routings(row):
-        out = []
-        for i, source in enumerate(row["routings"]):
-            if not (row["compiled"][i] and row["rest"][i] is not None and row["rest"][i] < 0.05
-                    and row["moved"][i] is not None and row["moved"][i] > 0.3):
-                out.append((row["preset"], source, row["rest"][i], row["moved"][i], row["compiled"][i]))
-        return out
-
-    dead = [d for row in played for d in dead_routings(row)]
-    print("    %d presets played" % len(played))
-    for row in played:
-        print("    %-24s %s" % (row["preset"], ", ".join("%s %s->%s" % (s, None if r is None else round(r, 2),
-              None if m is None else round(m, 2)) for s, r, m in zip(row["routings"], row["rest"], row["moved"]))))
-    # And every one played has routings to judge: with the setups now loaded
-    # from the corpus rather than found by applyPreset, a load that did
-    # nothing left the default's empty list, and no routing is a dead one, so
-    # this passed with nothing loaded at all until it asked.
-    # Less those whose every routing was from a source F4b cut (the notes'
-    # readings, the pedal), which load with none - and are held to that.
-    unrouted = [row["preset"] for row in played if not row["routings"] and not row["allCut"]]
-    emptied = [row["preset"] for row in played if row["allCut"]]
-    check("every routing in them reaches the generator, is still at rest, and moves when played",
-          len(played) >= 15 and dead == [] and unrouted == [], str(dead[:4] or unrouted[:4]))
-    check("and those whose every routing came from a cut source load with none",
-          all(not row["routings"] for row in played if row["allCut"]), str(emptied))
-
-    # The null, through the same measurement: a source spelt wrong is kept by
-    # the matrix, never compiled and never moves, and this check exists to
-    # catch exactly that.
-    null = p.evaluate("""async () => {
-      loadCorpus('Chords darken'); await __wait(150);
-      state.modRoutings = decodeRoutings('notes.cont>gen.vcf@-0.600'); touchRoutings();
-      return Object.assign({ preset: 'misspelt' }, await __play());
-    }""")
-    check("and the null: a source spelt wrong is caught by the same measurement",
-          dead_routings(null) != [], str(null))
-
-    splits = [r for r in played if r["split"]]
-    uneven = [(r["preset"], r["layers"]) for r in splits
-              if not (r["layers"] and len(r["layers"]) == 2 and r["layers"][0] > 0 and r["layers"][1] > 0)]
-    check("each split and layer sounds both layers from one chord across the keyboard",
-          len(splits) >= 5 and uneven == [], str(uneven or [(r["preset"], r["layers"]) for r in splits]))
+    # Left on the page's own brain (batch 4): the microphone through the
+    # page's effects insert, and the Listening presets on it.
+    p = b.new_page(viewport={"width": 1400, "height": 900})
+    p.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
+    p.add_init_script(STUB)
+    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
+    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- live effects on a microphone ---")
     live = p.evaluate("""async () => {

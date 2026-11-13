@@ -26,6 +26,9 @@
 //                                    and whether the layers draw a picture each (native only)
 //   ["reads"]                        which pictures each layer's Scan read last, the depths, and
 //                                    whether the layers draw one each (native only)
+//   ["tone"]                         the hands' tone, held notes, voices, envelope and lag lock (native only)
+//   ["routed"]                       each routing: source registered, its value, routes on its slot (native only)
+//   ["meter"]                        the picture meter's change, verdict, lit and novelty (native only)
 //   ["layers"]                       each layer's picture (P6): whether live, the figures laid
 //                                    out, each layer's raw coverage, stage reads, hold and raw
 //                                    signed area, and
@@ -160,6 +163,52 @@ int main(int argc, char** argv) {
       const auto& scan = instrument.scan();
       std::printf("reads %d %d %.17g %.17g %d\n", scan.reads[0], scan.reads[1], instrument.generator().tone().scan,
                   instrument.generator().toneB().scan, instrument.layerPictures().live() ? 1 : 0);
+    } else if (cmd == "tone") {
+      // ["tone"]: what the generator holds of the hands' tone - frequency,
+      // interval, octaves, just, vibrato and bend - then the keyboard's held
+      // notes, the voices each layer is sounding (note numbers, gone ones
+      // left out), the note envelope, and the automatic lag's lock (- for
+      // none). Native only, and not instrument_js's: the pieces' (stage 5,
+      // step 3, batch 4), so the keyboard's rows read the instrument the
+      // site plays rather than the page's mirror of it.
+      const auto& t = instrument.tone();
+      std::printf("tone %.17g %d %.17g %d %.17g %.17g notes", t.freq, t.interval, t.octaves, t.just ? 1 : 0, t.vibrato,
+                  t.pitchBend);
+      for (const auto& h : instrument.keyboard().notes()) std::printf(" %d", h.note);
+      for (int l = 0; l < 2; l++) {
+        std::printf(" %s", l ? "B" : "A");
+        for (const auto& v : l ? instrument.generator().voicesB() : instrument.generator().voices())
+          if (!v.gone) std::printf(" %d", v.note);
+      }
+      const auto& lock = instrument.view().capture.lagLock;
+      std::printf(" env %.17g lag", instrument.generator().envelope());
+      if (lock) std::printf(" %.17g\n", *lock); else std::printf(" -\n");
+    } else if (cmd == "routed") {
+      // ["routed"]: each routing the instrument's matrix holds, as
+      // `source>dest`, whether that source is registered (1 or 0), its value,
+      // and how many of the routes handed to the generator are on that
+      // destination's slot (- for a destination that is not the generator's).
+      // Native only: the pieces' (batch 4), for performtest's "every routing
+      // reaches the generator, is still at rest, and moves when played".
+      auto& m = instrument.matrix();
+      std::printf("routed");
+      for (const auto& r : m.routings()) {
+        const scope::ModSource* s = m.source(r.sourceId);
+        const scope::ModDest* d = m.dest(r.destId);
+        std::printf(" %s>%s %d %.17g ", r.sourceId.c_str(), r.destId.c_str(), s ? 1 : 0, s ? s->value() : 0.0);
+        if (!d || d->kind != scope::DestKind::Audio) { std::printf("-"); continue; }
+        int on = 0;
+        for (const auto& route : instrument.routes()) if (route.slot == d->slot && (route.amount != 0 || route.amountB != 0)) on++;
+        std::printf("%d", on);
+      }
+      std::printf("\n");
+    } else if (cmd == "meter") {
+      // ["meter"]: the instrument's own picture meter - how much the last frame
+      // changed, its verdict, how much is lit and how new it is. Native only,
+      // and the pieces' (batch 4): the page's `pictureMeter` on the default
+      // site is the face's second grid, not this one.
+      const auto& m = instrument.picture().pictures().meter();
+      std::printf("meter %.17g %s %.17g %.17g\n", m.change(), m.verdict().c_str(), m.lit(), m.novelty());
     } else if (cmd == "layers") {
       const auto& layers = instrument.layerPictures();
       std::printf("layers %d figures %zu", layers.live() ? 1 : 0, instrument.figures());

@@ -10,10 +10,16 @@ The numbers are worked out here rather than read back from the page. A test that
 asks the page what it thinks and then agrees with it passes whatever the page
 does.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its keyboard's
-# flags, set directly - which core/tests/parity.py holds the instrument to,
-# sample for sample. The instrument, the site's default since 5m, is
-# braintest.py's and hosttest.py's.
+# On the default page since stage 5, step 3, batch 4 (13 Nov). Until then on
+# ?brain=js, reading the page's own brain: its keyboard's flags set directly,
+# its generator's settings and samples, its lag lock. On the default those are
+# the face's mirror, written by the page's own MIDI apply beside the
+# instrument, so every row that said what the generator plays - the dyad, Hold,
+# mono, the ratios, the samples, the wheel, the note as the lag's truth - went
+# to core/tests/pieces/midi.py, read off the instrument itself. What stays is
+# the face's: the port, the stack the keys on the screen show, the panics (now
+# also heard to reach the instrument), the menu and credit line, the
+# controllers' cards, the timebase and the tuner, the codec and Velocity's menu.
 import math, os, sys
 from playwright.sync_api import sync_playwright
 
@@ -25,6 +31,9 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def null(name, red, detail=""):
+    check("null: " + name, red, detail)
 
 
 def close(a, b, tol):
@@ -68,7 +77,7 @@ with sync_playwright() as pw:
     p.add_init_script(STUB)
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -78,32 +87,27 @@ with sync_playwright() as pw:
     def held():
         return p.evaluate("() => midi.notes.map((n) => n.note)")
 
+    # The menu and the credit line: the face's, as the page's MIDI apply
+    # writes them. What the generator plays is pieces/midi.py's.
     def tone():
-        return p.evaluate("""() => ({
-          freq: state.source.settings.freq,
-          interval: state.source.settings.interval,
-          octaves: state.source.settings.octaves,
-          menu: Number(el.interval.value),
-          credit: el.credit.textContent,
-        })""")
+        return p.evaluate("""() => ({ menu: Number(el.interval.value), credit: el.credit.textContent })""")
 
-    # The routes the generator is handed, as [slot, depth] pairs: what is
-    # heard, rather than what the routings list says.
-    ROUTES = """() => { stepRoutes(); return genRoutes.map((r) => [r.slot, r.full]); }"""
-    vcf = p.evaluate("() => MOD_DESTS.get('gen.vcf').slot")
+    # The loudest of the instrument's latest 4096 samples on the first lane:
+    # what the site's instrument drew, so a panic that cleared only the face's
+    # stack would leave it sounding.
+    LOUD = "() => { let m = 0; for (const v of state.source.getLatestWindow(4096)[0]) m = Math.max(m, Math.abs(v)); return m; }"
 
     print("\n--- the port ---")
-    # A routing from the key's strength made before there is a keyboard is
-    # skipped, there being no source; the port opening has to bring it in.
-    # Asserting the routing was still listed passed while it was never heard.
-    p.evaluate("() => { state.modRoutings = [{ sourceId: 'midi.key', destId: 'gen.vcf', amount: 0.5 }]; touchRoutings(); }")
-    unplugged = p.evaluate(ROUTES)
+    # Gone (batch 4): "a routing from the keyboard made before it was plugged
+    # in is heard once it is, and not before", which read the page's own
+    # stepRoutes and genRoutes. The page registers the Key source when a port
+    # opens; the instrument's matrix has it from the start (sources.h), so on
+    # the site there is no "before" to hear nothing in. A path only the
+    # page's brain has.
     p.evaluate("() => midiConnect()")
     p.wait_for_timeout(100)
-    plugged = p.evaluate(ROUTES)
-    check("a routing from the keyboard made before it was plugged in is heard once it is, and not before",
-          unplugged == [] and plugged == [[vcf, 0.5]], "%s, then %s" % (unplugged, plugged))
-    p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
+    check("the page is the site's: the instrument is the source", p.evaluate("() => state.source.kind") == "host",
+          p.evaluate("() => state.source.kind"))
     wired = p.evaluate("() => ({ status: midi.status, ports: midi.ports, "
                        "bound: typeof __midi.port.onmidimessage })")
     check("a port is opened and its messages are listened to",
@@ -112,11 +116,21 @@ with sync_playwright() as pw:
           str(wired["ports"]))
 
     print("\n--- parsing ---")
+    # These read `midi.notes`, the face's stack, which the keys on the screen
+    # and the readout show: the page parses a port's bytes for itself and
+    # hands the instrument the same bytes. The core keyboard's parse of them,
+    # what is heard, is pieces/midi.py's.
     send(0x90, 60, 100)
     check("a note-on holds the note", held() == [60], str(held()))
     send(0x90, 60, 0)
     check("a note-on at velocity zero is a note-off", held() == [], str(held()))
 
+    # The face's stack, and only the face's: on the site the page cuts a
+    # port's message into pieces of three bytes, and the instrument's keyboard
+    # drops the half message the cut leaves, so the third note here is never
+    # heard (in Mono the instrument plays E4, the face says G4 - batch 4,
+    # web/docs/after-stage-5.md). The core's parse of the message whole is
+    # pieces/midi.py's.
     send(0x90, 60, 100, 64, 100, 67, 100)
     check("running status: one status byte, three notes", held() == [60, 64, 67],
           str(held()))
@@ -135,8 +149,18 @@ with sync_playwright() as pw:
     check("a clock byte is not mistaken for a note", held() == [62], str(held()))
 
     print("\n--- the panic ---")
+    # And the instrument hears it: a held note sounding, then the window
+    # lost, then the release run out. The null is the same note sounding
+    # before, so the reading can read a sound.
+    p.wait_for_timeout(500)
+    sounding = p.evaluate(LOUD)
     p.evaluate("() => window.dispatchEvent(new Event('blur'))")
     check("losing the window releases everything", held() == [], str(held()))
+    p.wait_for_timeout(900)
+    after_blur = p.evaluate(LOUD)
+    check("and the instrument hears it: the held note is silent once its release has run out",
+          after_blur < 1e-4, "%.5f, from %.3f" % (after_blur, sounding))
+    null("the same note before the window was lost is sounding", sounding > 0.05, "%.3f" % sounding)
 
     send(0x90, 62, 100)
     p.evaluate("""() => {
@@ -156,175 +180,38 @@ with sync_playwright() as pw:
           held() == [] and not p.evaluate("() => MOD_SOURCES.has('cc.123')"))
 
     print("\n--- the dyad (D2) ---")
+    # Batch 4: the dyad's pitches, Hold, the wide dyad and its ratios, the
+    # tuning heard in the samples and mono went to core/tests/pieces/midi.py.
+    # They read `state.source.settings` and the page's own generator's
+    # samples here, which on the default site are the face's mirror; there
+    # they read the instrument's generator and its heard pair. What stays is
+    # what the face says of the notes: its gate flag, the interval menu and
+    # the credit line, written by the page's own apply of the same bytes.
     p.evaluate("""() => {
-      midiPanic();
-      midi.mode = 'dyad'; midi.hold = false;
+      midiPanic(); midi.hold = false;
+      el.midiDyad.click();
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
       el.tuneJust.click();
-      syncMidi();
     }""")
 
-    check("nothing held is a closed gate", p.evaluate("() => midi.key") == 0)
+    check("nothing held is a closed gate, on the face", p.evaluate("() => midi.key") == 0)
 
     send(0x90, 60, 100)
     one = tone()
-    check("one note is a unison at its own pitch",
-          close(one["freq"], HZ(60), 0.01) and one["interval"] == 0
-          and one["octaves"] == 0, str(one))
-
     send(0x90, 67, 100)
     up = tone()
-    send(0x80, 67, 0); send(0x80, 60, 0)
-    send(0x90, 67, 100); send(0x90, 60, 100)
-    down = tone()
-    check("two notes are the lower pitch and the interval above it",
-          close(up["freq"], HZ(60), 0.01) and up["interval"] == 7, str(up))
-    check("and the press order does not turn the figure over",
-          close(down["freq"], up["freq"], 1e-9) and down["interval"] == up["interval"],
-          "%s vs %s" % (down["interval"], up["interval"]))
     check("the interval menu says what is being played", up["menu"] == 7, str(up["menu"]))
+    null("and with one note it said a unison, not the fifth", one["menu"] != 7, str(one["menu"]))
 
     p.evaluate("() => midiPanic()")
-    send(0x90, 60, 100); send(0x90, 67, 100); send(0x90, 64, 100)
-    three = tone()
-    check("a third note displaces the older of the pair",
-          close(three["freq"], HZ(64), 0.01) and three["interval"] == 3, str(three))
-
-    send(0x80, 67, 0)
-    after = tone()
-    check("releasing one of the pair promotes what was under it",
-          close(after["freq"], HZ(60), 0.01) and after["interval"] == 4, str(after))
-
-    p.evaluate("() => midiPanic()")
-    send(0x90, 60, 100); send(0x90, 67, 100); send(0x80, 67, 0)
-    lone = tone()
-    check("back to one note is back to a unison", lone["interval"] == 0, str(lone))
-
-    p.evaluate("() => { midiPanic(); midi.hold = true; }")
-    send(0x90, 60, 100); send(0x90, 67, 100); send(0x80, 67, 0)
-    kept = tone()
-    # One finger walking: the old note goes before the new one arrives, or the
-    # two of them are a dyad in their own right and Hold has nothing to do.
-    send(0x80, 60, 0); send(0x90, 62, 100)
-    walked = tone()
-    check("with Hold on the interval stays above the one note",
-          kept["interval"] == 7 and close(kept["freq"], HZ(60), 0.01), str(kept))
-    check("and walks with it", walked["interval"] == 7
-          and close(walked["freq"], HZ(62), 0.01), str(walked))
-    p.evaluate("() => { midiPanic(); midi.hold = false; }")
-
     print("\n--- wider than an octave ---")
     send(0x90, 60, 100); send(0x90, 79, 100)      # C4 and G5: an octave and a fifth
     wide = tone()
-    check("nineteen semitones is a fifth plus an octave",
-          wide["interval"] == 7 and wide["octaves"] == 1, str(wide))
-    check("and the credit line says so", "octave" in wide["credit"], wide["credit"])
-
-    ratios = p.evaluate("""() => {
-      const t = state.source.settings;
-      const one = intervalRatio(t.interval, true) * Math.pow(2, t.octaves);
-      const two = intervalRatio(t.interval, false) * Math.pow(2, t.octaves);
-      return { just: one, equal: two, freq: t.freq };
-    }""")
-    # The beat these make was asked of beatRate here until the second review:
-    # the readout stopped saying it, nothing on the page called it, and the
-    # fifth below is held to its beat in the samples instead.
-    check("a wide dyad is 3:1 in just tuning", close(ratios["just"], 3.0, 1e-12),
-          str(ratios["just"]))
-    check("and 2^(19/12) in equal", close(ratios["equal"], 2 ** (19 / 12), 1e-12),
-          str(ratios["equal"]))
-
-    print("\n--- tuning (D3) ---")
+    check("and the credit line says a wide dyad is an octave and more", "octave" in wide["credit"], wide["credit"])
     p.evaluate("() => midiPanic()")
-    send(0x90, 57, 100); send(0x90, 64, 100)      # A3 and E4: a fifth
-    fifth = p.evaluate("""() => {
-      const t = state.source.settings;
-      el.tuneJust.click();
-      const just = intervalRatio(t.interval, t.just) * Math.pow(2, t.octaves);
-      el.tuneEqual.click();
-      const equal = intervalRatio(t.interval, t.just) * Math.pow(2, t.octaves);
-      el.tuneJust.click();
-      return { just, equal, freq: t.freq };
-    }""")
-    check("a played fifth is exactly 3:2 in just tuning",
-          close(fifth["just"], 1.5, 1e-12), str(fifth["just"]))
-    check("and the tempered ratio in equal",
-          close(fifth["equal"], 2 ** (7 / 12), 1e-12), str(fifth["equal"]))
-
-    # The end of the argument: not what the page computes, but what came out of
-    # the generator. The ring buffer has to turn over first.
-    p.wait_for_timeout(400)
-    measured = p.evaluate("""() => {
-      const w = state.source.getLatestWindow(8192);
-      return [estimateFrequency(w[0], state.source.sampleRate),
-              estimateFrequency(w[1], state.source.sampleRate)];
-    }""")
-    ok = measured[0] and measured[1]
-    check("and the note is in the samples, not only in the state",
-          ok and close(measured[0], HZ(57), 2) and close(measured[1] / measured[0], 1.5, 0.01),
-          str(measured))
-
-    # The estimator is good to about a part in ten million here, and just and
-    # equal differ in the third decimal place, so the difference between a
-    # figure that stands still and one that turns is measurable in the samples
-    # rather than only assertable about the state. The beat a tempered fifth
-    # should make is |2*fR - 3*fL| of the notes asked for, the root and its
-    # tempered fifth, and the samples are held to it.
-    p.evaluate("() => el.tuneEqual.click()")
-    p.wait_for_timeout(450)
-    tempered = p.evaluate("""() => {
-      const w = state.source.getLatestWindow(8192);
-      const t = state.source.settings;
-      return { l: estimateFrequency(w[0], state.source.sampleRate),
-               r: estimateFrequency(w[1], state.source.sampleRate),
-               claimed: Math.abs(2 * t.freq * Math.pow(2, 7 / 12) - 3 * t.freq) };
-    }""")
-    p.evaluate("() => el.tuneJust.click()")
-    p.wait_for_timeout(450)
-    pure = p.evaluate("""() => {
-      const w = state.source.getLatestWindow(8192);
-      return { l: estimateFrequency(w[0], state.source.sampleRate),
-               r: estimateFrequency(w[1], state.source.sampleRate) };
-    }""")
-    beat = abs(2 * tempered["r"] - 3 * tempered["l"]) if tempered["r"] else None
-    check("in equal the samples carry the tempered ratio",
-          close(tempered["r"] / tempered["l"], 2 ** (7 / 12), 1e-4),
-          str(tempered["r"] / tempered["l"]) if tempered["r"] else "no pitch")
-    check("and the figure turns at the rate a tempered fifth beats at",
-          close(beat, tempered["claimed"], 0.05),
-          "%.3f Hz measured, %.3f claimed" % (beat, tempered["claimed"]))
-    check("in just it is 3:2 and stands still",
-          close(pure["r"] / pure["l"], 1.5, 1e-4)
-          and abs(2 * pure["r"] - 3 * pure["l"]) < 0.05,
-          str(pure))
-
-    print("\n--- mono ---")
-    p.evaluate("""() => {
-      midiPanic();
-      el.interval.value = '4'; el.interval.dispatchEvent(new Event('change'));
-      el.midiMono.click();
-    }""")
     send(0x90, 60, 100); send(0x90, 67, 100)
-    mono = tone()
-    check("mono takes the newest note as the pitch",
-          close(mono["freq"], HZ(67), 0.01), str(mono["freq"]))
-    check("and leaves the interval to the menu", mono["interval"] == 4, str(mono))
-
-    # A dyad two octaves wide, then mono: the menu says "major 3rd" and covers
-    # one octave, so anything left in `octaves` is a ratio nothing can say.
-    wide_then_mono = p.evaluate("""() => {
-      midiPanic(); el.midiDyad.click();
-      midiBytes(Uint8Array.from([0x90, 48, 100]));
-      midiBytes(Uint8Array.from([0x90, 76, 100]));      // two octaves and a third
-      const dyad = state.source.settings.octaves;
-      el.midiMono.click();
-      return { dyad, mono: state.source.settings.octaves,
-               interval: state.source.settings.interval };
-    }""")
-    check("and does not inherit the dyad's octaves",
-          wide_then_mono["dyad"] == 2 and wide_then_mono["mono"] == 0
-          and wide_then_mono["interval"] == 4, str(wide_then_mono))
-    p.evaluate("() => { midiPanic(); el.midiDyad.click(); }")
+    null("and a fifth's credit line does not say an octave", "octave" not in tone()["credit"], tone()["credit"])
+    p.evaluate("() => midiPanic()")
 
     # Which generator kinds a note played (D4), a box a kind, went with the
     # drawings in G2: notes always play the waveform. That they do is every
@@ -343,16 +230,28 @@ with sync_playwright() as pw:
       midiBytes(Uint8Array.from([0xB0, 42, 10]));
       el.midiWheelTo.value = 'vibrato'; el.midiWheelTo.dispatchEvent(new Event('change'));
       midiBytes(Uint8Array.from([0xB0, 1, 127]));
-      const vibrato = genSettings().vibrato;
       midiBytes(Uint8Array.from([0xB0, 1, 0]));
       buildSourceChips();
-      return { learned: [...MOD_SOURCES.keys()].filter((id) => id.startsWith('cc.')), vibrato,
+      return { learned: [...MOD_SOURCES.keys()].filter((id) => id.startsWith('cc.')),
                cards: Array.from(document.querySelectorAll('.mod-card')).map((c) => c.dataset.source) };
     }""")
     # Four since G5a made the Photocell a card; a learned controller would have been a fifth.
-    check("controllers moved are learned as nothing, and the cards are still the four",
-          moved["learned"] == [] and moved["cards"] == ["lfo1", "lfo2", "env.note", "photo.1"], str(moved))
-    check("null: the wheel still sets the vibrato", moved["vibrato"] > 0.3, str(moved["vibrato"]))
+    learned_nothing = lambda m: m["learned"] == [] and m["cards"] == ["lfo1", "lfo2", "env.note", "photo.1"]
+    check("controllers moved are learned as nothing, and the cards are still the four", learned_nothing(moved), str(moved))
+    # Its null was "the wheel still sets the vibrato", read off genSettings():
+    # on the default that is the face's mirror, so since batch 4 the wheel is
+    # held on the instrument in pieces/midi.py, and the null here is a
+    # controller the face did learn - a source put in its registry by hand -
+    # which the reading has to see.
+    taught = p.evaluate("""() => {
+      registerSource({ id: 'cc.16', label: 'Taught', family: 'keyboard', value: () => 0 });
+      buildSourceChips();
+      const out = { learned: [...MOD_SOURCES.keys()].filter((id) => id.startsWith('cc.')),
+                    cards: Array.from(document.querySelectorAll('.mod-card')).map((c) => c.dataset.source) };
+      MOD_SOURCES.delete('cc.16'); buildSourceChips();
+      return out;
+    }""")
+    null("a controller in the registry is seen as learned", not learned_nothing(taught), str(taught))
 
     # A code from before: version 8, a controller on the frequency and its
     # name kept, beside an oscillator's routing. Version 9's decode pass drops
@@ -369,39 +268,12 @@ with sync_playwright() as pw:
           old == {"routes": ["lfo1>view.rotate"], "cc": False}, str(old))
 
     print("\n--- the note as ground truth ---")
-    truth = p.evaluate("""() => {
-      midiPanic();
-      state.modRoutings = []; touchRoutings();
-      state.lagOn = true; state.lagAuto = true;
-      midi.truth = true;
-      // A dyad, whose pitch is the slider's once the note has set it; a
-      // chord's voices keep their notes' pitches whatever the slider says.
-      el.midiDyad.click();
-      midiBytes(Uint8Array.from([0x90, 69, 100]));   // A4, 440 Hz
-      /* A deliberately wrong estimate: the generator moved off the note after
-         it was struck, so the note and the signal disagree. Until G2 this
-         unticked the waveform's drive first, so the note never moved it;
-         notes always play the waveform now, so it is moved back by hand. */
-      el.freq.value = '100'; el.freq.dispatchEvent(new Event('input'));
-      lagLock = null;
-      lagLockUpdate(capture());
-      return lagLock;
-    }""")
-    check("with a note held the lag is a quarter period of the note, exactly",
-          truth == 0.25 / 440, "%r vs %r" % (truth, 0.25 / 440))
-
-    p.wait_for_timeout(400)
-    estimate = p.evaluate("""() => {
-      midi.truth = false;
-      lagLock = null;
-      lagLockUpdate(capture());
-      const fromEstimate = lagLock;
-      midi.truth = true;
-      return fromEstimate;
-    }""")
-    check("and without it the estimator is back, on the signal that is there",
-          close(estimate, 0.25 / 100, 0.25 / 100 * 0.05), str(estimate))
-
+    # Batch 4: "with a note held the lag is a quarter period of the note,
+    # exactly" and "without it the estimator is back" read the page's own
+    # lagLockUpdate on its own capture; the instrument locks its own lag, and
+    # both rows are pieces/midi.py's, read off it. The timebase and the tuner
+    # below are the face's: the screen and its reference note, which the
+    # instrument has no part in.
     times = p.evaluate("""() => {
       midiPanic();
       midi.follow = true;

@@ -21,9 +21,16 @@ What would go wrong, and what is checked for it:
 - the geometry not reaching the loop: a held just fifth reads still to the
   picture meter, an equal third moving.
 
-The voices are the page's own core here (makeGeneratorCore); the compiled one
-is held to it by core/tests/parity.py, whose voice runs strike notes into
-held chords.
+Since stage 5, step 3, batch 4 (13 Nov) the figures - the chord built a note
+at a time, struck twice, and the third turning on the picture's meter - are
+core/tests/pieces/harmony.py's, on the core's own generator and meter; here
+they were a makeGeneratorCore built in the page. The readout's words and the
+notes it reads are the face's, on the default page. One row stays on the
+page's own brain, with its twin: "a held just fifth reads settled". On the
+instrument's own meter it does not - the core's grid changes 0.02 to 0.05 a
+frame under a still fifth, and under a still unison of the same tone, and
+reads "cycling" (pieces/harmony.py says more) - so moved, it would fail,
+and which meter the face's verdict reads is step 5's to decide.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
@@ -40,71 +47,14 @@ def check(name, ok, detail=""):
 
 HZ = lambda note: 440 * 2 ** ((note - 69) / 12)
 
-# Steps of [voices or omitted, samples, keep, layer].
-RUN = """([steps, shape]) => {
-  const rate = 44100;
-  const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-  const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
-  for (const layer of [0, 1]) {
-    core.set('shape', shape || 'ramp', layer); core.set('attackMs', 1, layer); core.set('decayMs', 1, layer);
-    core.set('sustain', 1, layer); core.set('releaseMs', 5, layer);
-  }
-  const kept = [];
-  for (const step of steps) {
-    const [voices, n, keep, layer] = step;
-    if (voices !== undefined) core.set('voices', voices, layer || 0);
-    const a = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(n));
-    core.block(a[0], a[1], n, a[2], a[3], a[4], a[5]);
-    if (keep) kept.push((layer || 0) === 1 ? [Array.from(a[4]), Array.from(a[5])] : [Array.from(a[0]), Array.from(a[1])]);
-  }
-  return kept;
-}"""
-
-def voice(note, role):
-    return {"note": note, "freq": HZ(note), "velocity": 1, "role": role}
-
-def apart(a, b, start=0):
-    return max(max(abs(x - y) for x, y in zip(a[c][start:], b[c][start:])) for c in (0, 1))
-
-
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
     p = b.new_page(viewport={"width": 1400, "height": 900})
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
-    p.goto(f"file://{ART}/scope.html?brain=js&picture=0"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    run = lambda steps, shape='ramp': p.evaluate(RUN, [steps, shape])
-
-    print("\n--- a chord built a note at a time draws the struck chord's figure ---")
-    C, E, G = 48, 52, 55
-    chord = [voice(C, "x"), voice(E, "u"), voice(G, "y")]
-    # A square as well as the ramp: its edges are smoothed by where the phase
-    # is in the sample, so it would show a phase that was right only roughly.
-    for layer, shape in ((0, "ramp"), (1, "ramp"), (0, "square")):
-        # 1000 and 1337 samples: not whole cycles of anything here, so a
-        # joiner at nought is somewhere else in its cycle than in step.
-        built = run([[[voice(C, "x")], 1000, False, layer], [[voice(C, "x"), voice(E, "y")], 1337, False, layer],
-                     [chord, 3000, True, layer]], shape)[0]
-        whole = run([[chord, 5437, True, layer]], shape)[0]
-        struck = [ch[-3100:-100] for ch in whole]
-        late = [ch[-3000:] for ch in whole]
-        same, null = apart(built, struck, 2200), apart(built, late, 2200)
-        name = ("A" if layer == 0 else "B") + ", " + shape
-        print("    layer %s: built against struck %.2e; against it a hundred samples out of step %.3f" % (name, same, null))
-        check("layer %s: the chord built a note at a time draws the struck chord's figure, sample for sample" % name,
-              same < 1e-4, "%.2e" % same)
-        check("layer %s: and the comparison fails out of step" % name, null > 0.05, "%.3f" % null)
-
-    print("\n--- the same chord struck twice draws the same figure ---")
-    twice = run([[chord, 4410, True], [[], 4410, False], [[voice(50, "xy")], 2205, False], [[], 4410, False],
-                 [chord, 4410, True]])
-    shifted = [ch[100:] + ch[:100] for ch in twice[1]]
-    same, null = apart(twice[0], twice[1], 200), apart(twice[0], shifted, 200)
-    print("    struck twice %.2e; the second out of step %.3f" % (same, null))
-    check("a chord struck twice, with other notes and time between, draws the same figure", same < 1e-6, "%.2e" % same)
-    check("and the comparison fails with the second strike out of step", null > 0.05, "%.3f" % null)
 
     print("\n--- the readout's words: the interval and how fast it turns ---")
     words = p.evaluate("""() => {
@@ -128,20 +78,28 @@ with sync_playwright() as pw:
     check("the order of the two notes does not matter", words["flipped"] == words["justFifth"], words["flipped"])
 
     print("\n--- the readout reads the right notes ---")
+    # The readout is the face's: its words are harmonySaid's, over the face's
+    # mirror of the notes and the tone. Until batch 4 it was driven by
+    # setMidiMode and genSet, which the instrument never hears; it is driven
+    # here as a player drives it - the mode buttons, the interval menu and the
+    # tuning switch - so the face's mirror and the instrument are told the
+    # same. That the readout reads the mirror and not the instrument is one
+    # of the places step 5 points the face at the instrument's readings.
     said = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const read = async () => { await wait(450); return el.readoutDetail.textContent; };
+      const menu = (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); };
       const out = {};
-      /* A note held in Mono, which leaves the interval to the generator: the
-         site waits for a note since 10 Nov, and this dyad was the tone it drew
+      /* A note held in Mono, which leaves the interval to the menu: the site
+         waits for a note since 10 Nov, and this dyad was the tone it drew
          with none. Struck first, since a note sets the pitch it plays. */
-      setMidiMode('mono'); midiNoteOn(57, 127);
-      setDisplay('xy'); genSet('shape', 'sine'); genSet('freq', 220); genSet('interval', 7); genSet('just', false);
+      el.midiMono.click(); midiNoteOn(57, 127);
+      setDisplay('xy'); menu(el.shape, 'sine'); menu(el.interval, '7'); el.tuneEqual.click();
       out.dyad = await read();
-      genSet('just', true); out.dyadJust = await read();
-      genSet('interval', 0); out.unison = await read();
+      el.tuneJust.click(); out.dyadJust = await read();
+      menu(el.interval, '0'); out.unison = await read();
       midiNoteOff(57);
-      setScreenKeys(true); setMidiMode('poly');
+      setScreenKeys(true); el.midiPoly.click();
       for (const n of [57, 61, 64]) midiNoteOn(n, 100);
       out.poly = await read();
       for (const n of [57, 61, 64]) midiNoteOff(n);
@@ -153,7 +111,7 @@ with sync_playwright() as pw:
       for (const n of [48, 55, 64, 72]) midiNoteOff(n);
       el.midiLayerPair.value = 'each'; el.midiLayerPair.dispatchEvent(new Event('change'));
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
-      setMidiMode('dyad'); setScreenKeys(false);
+      el.midiDyad.click(); setScreenKeys(false);
       return out;
     }""")
     for k, v in said.items(): print("    %-8s %s" % (k, v[:160]))
@@ -168,7 +126,13 @@ with sync_playwright() as pw:
           and "A: fifth" not in said["against"], said["against"])
 
     print("\n--- the geometry reaches the loop ---")
-    loop = p.evaluate("""async () => {
+    # Left on the page's own brain (batch 4), on a page of its own: the
+    # instrument's meter reads the still fifth "cycling" (the docstring).
+    js = b.new_page(viewport={"width": 1400, "height": 900})
+    js.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
+    js.goto(f"file://{ART}/scope.html?brain=js&picture=0"); js.wait_for_timeout(700)
+    corpus.install(js)
+    loop = js.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const out = {};
       // The old library's Harmonic tone, from before P8g: the plain tone this
