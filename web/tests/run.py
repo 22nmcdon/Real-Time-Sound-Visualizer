@@ -140,6 +140,18 @@ for _name, _cmd, _kind, _blurb in SUITES:
 DEFAULT_JOBS = max(1, min(3, (os.cpu_count() or 2) - 1))
 
 
+BRAIN_COUNTS = None
+
+
+def counted(name, cmd):
+    """The command and environment a suite runs with: unchanged, or with
+    --brain-counts through braincounts.py, its counts in a file of its own."""
+    if not BRAIN_COUNTS or cmd[0] != sys.executable:
+        return cmd, None
+    env = dict(os.environ, BRAIN_COUNTS=os.path.join(BRAIN_COUNTS, name + ".jsonl"))
+    return [sys.executable, "braincounts.py"] + cmd[1:], env
+
+
 def failed_in(text):
     # A printed FAIL is a failure whatever the exit code. Two suites printed
     # theirs and exited 0, and this said "everything passes" over them for the
@@ -155,8 +167,9 @@ def run_streamed(name, cmd, blurb):
     print(header(name, blurb), flush=True)
     start = time.monotonic()
     # Read as it streams, so a long suite still shows its progress.
+    cmd, env = counted(name, cmd)
     proc = subprocess.Popen(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, bufsize=1)
+                            text=True, bufsize=1, env=env)
     printed_fail = False
     for line in proc.stdout:
         sys.stdout.write(line)
@@ -176,6 +189,12 @@ def parse(argv):
             jobs = max(1, int(v))
         elif a == "--jobs":
             jobs = max(1, int(args.pop(0)))
+        elif a == "--brain-counts":
+            # The stage-5 inventory: each Python suite run through braincounts.py,
+            # its page brain's counts dumped to a file of its own in this directory.
+            global BRAIN_COUNTS
+            BRAIN_COUNTS = os.path.abspath(args.pop(0))
+            os.makedirs(BRAIN_COUNTS, exist_ok=True)
         else:
             want.append(a)
     unknown = set(want) - {name for name, *_ in SUITES}
@@ -205,7 +224,8 @@ def main(argv):
         def run_held(suite):
             name, cmd, kind, blurb = suite
             start = time.monotonic()
-            proc = subprocess.run(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            cmd, env = counted(name, cmd)
+            proc = subprocess.run(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
             bad = proc.returncode != 0 or failed_in(proc.stdout)
             # Whole, under a lock, so a suite's lines are never split by another's.
             with lock:

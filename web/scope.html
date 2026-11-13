@@ -5796,6 +5796,21 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 <script>
 "use strict";
 
+/* The stage-5 inventory's counters (plugin/STAGE5-INVENTORY.md). Each of
+   the page brain's per-frame steps counts here when it does something - past
+   its own early return, not merely called - so a test can ask which of them
+   still work on the default site, where the instrument is the brain, and
+   step 5 of STAGE5-PLAN.md can require them at nought. A count is all they
+   do: nothing reads them but a test, and an increment a step a frame costs
+   nothing anyone could measure. Inside a function the page shares with
+   parity's harness the call is through `globalThis` and optional, because
+   the harness lifts the function's text alone and has no counters; at a
+   call site only the page has, it is direct. */
+const brainCounts = Object.create(null);
+function brainCount(name) { brainCounts[name] = (brainCounts[name] || 0) + 1; }
+globalThis.__brainCount = brainCount;
+globalThis.__brainCounts = brainCounts;
+
 /* The testing build keeps its own storage (12 Nov). The site is published
    twice from one origin - the stable page at the root and the work in
    progress under /testing/ - so both would read and write the same browser
@@ -7033,12 +7048,14 @@ function clockStep(now) {
      half a second behind for good, and a Start with no clock after it held
      the bar a tick short of the one for ever. */
   if (transport.onTicks && now - transport.baseAt > CLOCK_TIMEOUT_MS) {
+    globalThis.__brainCount?.("clockStep.rebase");
     transport.onTicks = false;
     transportRebase(now);
   }
   if (transport.from === "midi" && (transport.ticks.length === 0
       || now - transport.ticks[transport.ticks.length - 1] > CLOCK_TIMEOUT_MS)) {
     // At the slider's tempo from here on, from where the bar is now.
+    globalThis.__brainCount?.("clockStep.clockLost");
     transportRebase(now);
     transport.from = "internal";
     transport.bpm = transport.set;
@@ -7046,13 +7063,13 @@ function clockStep(now) {
   }
   for (const lfo of lfos) {
     const beats = syncBeats(lfo.sync);
-    if (beats > 0) lfo.rate = transport.bpm / 60 / beats;
+    if (beats > 0) { lfo.rate = transport.bpm / 60 / beats; globalThis.__brainCount?.("clockStep.lfoSync"); }
   }
   // A delay in note values follows the tempo too, when it moves.
   if (typeof echo !== "undefined" && echo.sync) {
     const ms = delayTimeMs();
     if (delayFollows(ms, echo.sent)) {
-      echo.sent = ms; genSet("delayMs", ms);
+      echo.sent = ms; genSet("delayMs", ms); globalThis.__brainCount?.("clockStep.delayFollow");
       if (el.delayMsValue) { syncEchoPanel(); postLiveFx(); }
     }
   }
@@ -7060,7 +7077,7 @@ function clockStep(now) {
   if (typeof handLinks !== "undefined" && !linked("delay") && echoB.sync) {
     const ms = delayTimeMs(echoB);
     if (delayFollows(ms, echoB.sent)) {
-      echoB.sent = ms; genSet("delayMs", ms, 1);
+      echoB.sent = ms; genSet("delayMs", ms, 1); globalThis.__brainCount?.("clockStep.delayFollow");
       if (el.delayMsValue) syncEchoPanel();
     }
   }
@@ -7346,6 +7363,7 @@ function updateEnvelope(frame, elapsed) {
   for (let i = 0; i < lane.length; i += stride) { sum += lane[i] * lane[i]; n++; }
   const rms = n > 0 ? Math.sqrt(sum / n) : 0;
 
+  globalThis.__brainCount?.("updateEnvelope");
   const tau = rms > envLive ? ENV_ATTACK : ENV_RELEASE;
   envLive += (rms - envLive) * (1 - Math.exp(-(elapsed / 1000) / tau));
 }
@@ -7448,6 +7466,7 @@ function hearingStep(elapsed) {
   const fresh = hearing.idle;
   hearing.idle = false;
   hearing.runs++;
+  globalThis.__brainCount?.("hearingStep");
   if (fresh) { hearing.prev = null; hearing.frame = 0; }
   const n = x.length, rate = source.sampleRate || 44100;
   if (!hearing.re || hearing.re.length !== n) {
@@ -7825,6 +7844,7 @@ function morphStep() {
   const t = Math.max(0, Math.min(1, state.morphPos + morph.mod));
   if (morph.applied !== null && Math.abs(t - morph.applied) < 1e-4) return;
   morph.applied = t;
+  globalThis.__brainCount?.("morphStep.apply");
   morphApply(t);
 }
 /* Storing an end puts the fader at that end, so storing moves nothing: the
@@ -8124,6 +8144,7 @@ function routingsHeard() {
    forgotten and the routes recompiled without it. */
 function fadeStep() {
   if (fade.mode === "off") return;
+  globalThis.__brainCount?.("fadeStep");
   const now = performance.now();
   const here = new Set();
   for (const routing of state.modRoutings) {
@@ -8443,6 +8464,7 @@ function fadeDotStep(now) {
   dot.setAttribute("cx", (along[0] + Math.min(1, phase.t) * (along[1] - along[0])).toFixed(2));
   dot.setAttribute("cy", envY(phase.level).toFixed(2));
   dot.setAttribute("visibility", "visible");
+  globalThis.__brainCount?.("fadeDotStep.shown");
 }
 // A handle moved to a point in the drawing's own units.
 function envMoveHandle(name, x, y) {
@@ -8540,6 +8562,8 @@ Promise.resolve().then(syncFadePanel);
    staircase; every other source has no per-sample loop at all, so they are
    stepped here instead. Doing both would run every rate at double. */
 function applyModMatrix(frame, elapsed) {
+  brainCount("frames");
+  brainCount("frames." + (state.source ? state.source.kind : "none"));
   /* The driver rather than the source kind. They said the same thing while
      the generator's loop was the only per-sample loop there was; once that
      loop can be in a worklet instead, "is the source a tone" stops being the
@@ -8552,10 +8576,11 @@ function applyModMatrix(frame, elapsed) {
      the fade's dot, which follows the page's own reckoning of each note's
      envelope, stood still. The page reckons them anyway, for what it shows:
      the instrument's are the same arithmetic, held to these by parity. */
-  if (state.source && state.source.kind === "host" && fade.mode !== "off") stepRoutes();
+  if (state.source && state.source.kind === "host" && fade.mode !== "off") { brainCount("stepRoutes.host"); stepRoutes(); }
   fadeDotStep(performance.now());
   if (lfoDriver() === "main") {
     assertLfoDriver("main");
+    brainCount("lfoStep.main");
     const perSecond = 1000 / Math.max(1, elapsed);
     lfoStep(lfos[0], perSecond);
     lfoStep(lfos[1], perSecond);
@@ -8581,6 +8606,7 @@ function applyModMatrix(frame, elapsed) {
       if (routing.destId !== dest.id) continue;
       const source = MOD_SOURCES.get(routing.sourceId);
       if (source && routingAllowed(source, dest)) {
+        brainCount("visualMatrix." + dest.id);
         const push = sourceNow(source) * routingAmount(source, routing.amount) * fadeGain(routeKey(routing));
         if (source.fromPicture) loop += push; else sum += push;
       }
@@ -8619,7 +8645,7 @@ function fireEvents() {
     const seen = eventSeen.get(routing), now = source.count;
     eventSeen.set(routing, now);
     if (seen === undefined || seen === now) continue;
-    if (routing.amount !== 0 && routingAllowed(source, dest)) dest.fire(routing.amount);
+    if (routing.amount !== 0 && routingAllowed(source, dest)) { globalThis.__brainCount?.("fireEvents.fire"); dest.fire(routing.amount); }
   }
 }
 
@@ -9456,6 +9482,7 @@ function midiApplyGate() {
      keyboard was present, and freed its generator when none was; it is told
      nothing now, which it takes, as the plugin's host is, for a keyboard. */
   if (!source || typeof source.setGated !== "function") return;
+  globalThis.__brainCount?.("midiApplyGate");
 
   /* Derived every frame rather than pushed when something changes, which is
      the third time this page has had to learn it. "Is the keyboard driving
@@ -14554,6 +14581,7 @@ function dropMonitorChain(chain) {
    to. */
 function syncMonitor() {
   if (monitorChains.size === 0) return;
+  globalThis.__brainCount?.("syncMonitor");
 
   const now = filterNow();
   const wet = state.filter.on && state.monitorAt === "post" ? 1 : 0;
@@ -15151,6 +15179,7 @@ function makeBrainSource() {
     get standing() { return !!stand; },
     tick(now) {
       if (!stand) return;
+      brainCount("standIn.tick");
       const last = standAt;
       standAt = now;
       if (last === null) return;
@@ -17017,6 +17046,7 @@ const phosphor = {
 };
 
 function phosphorFade(resized) {
+  globalThis.__brainCount?.("phosphorFade");
   phosphor.cost = 0;
   pictureEngine.fade(state.persistence, resized);
   layerPicturesFade(resized);
@@ -17116,6 +17146,7 @@ function phosphorSegmentInto(g, moments, plot, x0, y0, x1, y1, level) {
 /* A polyline in the renderer's scratch arrays. `steps`, when given, is the
    beam's per-segment step, and a segment deposits what it was drawn at. */
 function phosphorDeposit(xs, ys, count, steps) {
+  globalThis.__brainCount?.("phosphorDeposit");
   const started = performance.now();
   pictureEngine.deposit(plot, xs, ys, count, steps);
   phosphor.cost += performance.now() - started;
@@ -17195,6 +17226,7 @@ function scanFreeze() { scan.frozenUntil = performance.now() + SCAN_FREEZE_MS; }
 function scanStep(elapsed) {
   // The page's own generator only: the instrument reads its own grid.
   if (state.display === "spect" || !state.source || state.source.kind !== "tone") return;
+  globalThis.__brainCount?.("scanStep");
   const live = !!(layerPictures.live && layerPictures.engines);
   const count = layersOn() ? 2 : 1;
   const wants = [false, false];
@@ -17228,7 +17260,7 @@ function scanStep(elapsed) {
       for (let i = 0; i < SCAN_POINTS; i++) points[i] = (readings[0][i] + readings[1][i]) / 2;
     }
     const tables = scanTables(points);
-    if (tables) { scan.tables[l] = tables; genSet("scanTable", tables, l); }
+    if (tables) { scan.tables[l] = tables; genSet("scanTable", tables, l); globalThis.__brainCount?.("scanStep.table"); }
   }
 }
 
@@ -17526,6 +17558,7 @@ function drawConstellation(elapsed) {
     return;
   }
   const started = performance.now();
+  globalThis.__brainCount?.("drawConstellation");
   constellationNotes(elapsed);
   const ctx = el.trace.getContext("2d");
   const hands = layersOn() ? 2 : 1;
@@ -17665,6 +17698,7 @@ const PHOTO_SOURCE = {
 };
 
 function photoStep(elapsed) {
+  if (photo.on && state.display !== "spect") globalThis.__brainCount?.("photoStep");
   pictureEngine.photoStep(photo, elapsed, state.display === "spect");
 }
 
@@ -18002,6 +18036,7 @@ function monitorLimiting() {
 
 function pictureStep(frame, elapsed) {
   const spect = state.display === "spect", limiting = monitorLimiting();
+  if (!spect) globalThis.__brainCount?.("pictureStep");
   pictureEngine.pictureStep(photo, picture, pairOfFrame(frame), elapsed, spect, limiting);
   pictureStageStep(picture, elapsed, spect, pictureMeter.verdict() === "running away");
   layerPicturesStep(frame, elapsed, spect, limiting);
@@ -18345,6 +18380,7 @@ function layerPicturesStep(frame, elapsed, spect, limiting) {
   if (!layerPictures.live) return;
   const figures = sourceFigures();
   if (!figures || figures.length !== 2) { layerPictures.live = false; return; }
+  globalThis.__brainCount?.("layerPicturesStep");
   for (let l = 0; l < 2; l++) {
     const engine = layerPictures.engines[l];
     engine.pictureStep(noPhotocell, layerPictures.values[l], pairOfFrame(frame, figures[l]), elapsed, spect, limiting);
@@ -20025,7 +20061,7 @@ function frameLoop(now) {
 
   // The generator runs on its own clock and fills its buffer here; the
   // microphone's is filled by the audio thread and has nothing to do.
-  if (state.running) state.source.tick(now / 1000);
+  if (state.running) { brainCount("sourceTick." + state.source.kind); state.source.tick(now / 1000); }
   // Whether a live input's effects should be there, every frame and running
   // or not: a switch thrown while the scope is stopped still takes.
   syncLiveFx();
@@ -26148,12 +26184,14 @@ function scoreTick(now) {
   if (step < 0 || step === score.last) return;
   score.last = step;
   score.steps++;
+  globalThis.__brainCount?.("scoreTick.step");
   score.col = step % PHOSPHOR_N;
   for (const [note] of score.notes) midiOutOff(note);
   const mask = keyMask(state.keyRoot, state.keyScale);
   score.notes = scoreColumn(phosphor.grid, PHOSPHOR_N, score.col,
                             scorePitches(score.low, score.octaves, mask), score.voices);
   if (score.notes.length === 0) return;
+  globalThis.__brainCount?.("scoreTick.strike");
   genStrike(score.notes.map(([note, velocity]) => [midiHz(note), velocity]));
   for (const [note, velocity] of score.notes) midiOutNote(note, velocity, now);
 }
@@ -26261,6 +26299,7 @@ function arpTick(now) {
   const due = Math.floor((now - arp.start) / arpStepMs());
   if (due < arp.steps) return;
   arp.steps = due + 1;
+  globalThis.__brainCount?.("arpTick.step");
   arpStep(now);
 }
 /* Switched on or off with keys down: the generator is given what it should

@@ -852,6 +852,47 @@ with sync_playwright() as pw:
           and abs(pressed["peak"] / waiting["peak"] - 0.5) < 0.03, str(pressed))
     check("and the comparison fails against the level before the slider", not abs(waiting["peak"] / waiting["peak"] - 0.5) < 0.03)
     check("no page errors while it stood in", not errors, "; ".join(errors[:3]))
+    q.close()
+
+    # The stage-5 inventory's counters (plugin/STAGE5-INVENTORY.md): which of
+    # the page brain's per-frame steps still do something on the default site.
+    # Read as the difference of two snapshots, never cleared, so the
+    # inventory's harness (braincounts.py) still sees every count. A note held
+    # under Scan, on the default and on ?brain=js: the page's own grid is fed
+    # on both (pictureStep, the face's Picture reads come from it), and Scan's
+    # page step reads only on the page's own generator, the instrument reading
+    # its own grid. The counts' nulls: the "runs" test asked of Scan on the
+    # default, which must fail, and the "never runs" test asked of ?brain=js,
+    # where the same step must be seen working.
+    COUNTED = """async () => {
+      const before = Object.assign({}, globalThis.__brainCounts);
+      el.oscScan.value = "60"; el.oscScan.dispatchEvent(new Event("input"));
+      midiNoteOn(57, 100);
+      await new Promise((r) => setTimeout(r, 1500));
+      midiNoteOff(57);
+      const after = globalThis.__brainCounts, out = {};
+      for (const k of Object.keys(after)) out[k] = after[k] - (before[k] || 0);
+      return { kind: state.source.kind, counts: out };
+    }"""
+    ran = lambda got, key: got["counts"].get(key, 0) > 0
+    p, errors = opened(b, "", 2500)
+    default = p.evaluate(COUNTED)
+    p.close()
+    p, _ = opened(b, "?brain=js", 1500)
+    page_brain = p.evaluate(COUNTED)
+    p.close()
+    check("the counters count: a held note's frames on the default, the instrument its brain",
+          default["kind"] == "host" and default["counts"].get("frames", 0) > 30
+          and default["counts"].get("frames.host", 0) == default["counts"].get("frames", 0), str(default))
+    check("the page's own grid is still fed and read on the default (pictureStep)",
+          ran(default, "pictureStep") and ran(default, "phosphorDeposit"), str(default["counts"]))
+    check("null: the same test asked of Scan's page step on the default fails", not ran(default, "scanStep"))
+    check("Scan's page step does nothing on the default, with Scan on and a note held",
+          not ran(default, "scanStep") and not ran(default, "scanStep.table"), str(default["counts"]))
+    check("null: the same test asked of ?brain=js fails - the step is seen working there",
+          page_brain["kind"] == "tone" and ran(page_brain, "scanStep") and ran(page_brain, "scanStep.table"),
+          str(page_brain["counts"]))
+    check("no page errors with the counters", not errors, "; ".join(errors[:3]))
     b.close()
 
 print()
