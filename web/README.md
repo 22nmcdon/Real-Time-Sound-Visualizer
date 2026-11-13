@@ -6461,3 +6461,28 @@ counters are `globalThis.__brainCount?.(...)` for that reason, and run
 `core/tests/tools/matrix_js.mjs` (seconds) before the whole of parity. The
 counters themselves, per suite: `python3 tests/run.py --brain-counts DIR`,
 then `python3 tests/braincounts.py --sum DIR`.
+
+**A check that fails only in full runs is usually reading the machine (13
+Nov).** Four checks did, and each was found by asking what besides the code
+could move its number. `worklettest.py` judged the worklet producing by the
+ring moving over a 350 ms timer, and the worklet's 1764-sample batches are 8.8
+periods of the held A3, so every fifth batch is exactly 44 periods: a timer
+stretched to 400 ms left the ring the same to the bit (it reads "moved by
+0.000" on five batches now, passing). It counts batches now. `budgettest.py`
+timed every case on one page, and a cheap case's cost was the JIT's, trained by
+whatever ran before: alone the sine read 1.00 of the median, in full runs 1.67,
+and timed in rounds across the cases 1.5 to 1.66 every time. A page a case
+gives each the history a setup played for a while has. `benchtest.py` asked
+a parallel suite for a frame rate; what it meant was that the loop draws, so
+it counts frames. Two others are not fixed, because what varies is the sound.
+`honestytest.py`'s reverb pass: rendered offline by `core/tests/tools/
+honesty_cpp.cpp` with the key at a stated sample, the Bass under the tine
+piano's upper hand reads 0.0093 to 0.0191 late depending only on where in
+0.55 s the key lands, either side of Settled's 0.015 - the page's spread is
+the sound's own, not the timer's. `looptest.py`'s fold: the crossed split and
+the reverb at full pass only through the saturated exemption, at 0.032 to
+0.043 under the 0.05 they would otherwise need. Both are bounds, and the
+owner's. And striketest's null at Strike nought, which once read 0.00073 ->
+0.00098, reads exactly that with the generator left audible at 0.3: in that
+run the generator was not silent when it should have been, and why is not
+yet known.

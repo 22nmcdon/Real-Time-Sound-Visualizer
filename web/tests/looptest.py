@@ -518,8 +518,8 @@ with sync_playwright() as pw:
               "rotation %.3f, zoom %.2f, generator total %.3f; grid %.2f; verdicts %s"
               % (seed, SECONDS, w["post"], w["pre"], w["res"], w["rot"], w["zoom"], w["total"],
                  w["grid"], run["verdicts"]))
-        print("      it moved: resonance %.1f to %.1f, rotation %.3f to %.3f, pitch total %.3f to %.3f"
-              % (mv["res"][0], mv["res"][1], mv["rot"][0], mv["rot"][1], mv["freq"][0], mv["freq"][1]))
+        print("      it moved: resonance %.1f to %.1f, rotation %.3f to %.3f, pitch total %.3f to %.3f, fold total %.3f to %.3f"
+              % (mv["res"][0], mv["res"][1], mv["rot"][0], mv["rot"][1], mv["freq"][0], mv["freq"][1], mv["fold"][0], mv["fold"][1]))
         check("from %s, nothing goes NaN or infinite" % seed, not w["nan"] and math.isfinite(w["pre"]), str(w))
         check("from %s, what reaches the speakers never passes full scale" % seed, w["post"] <= 1.0 + 1e-6,
               "%.4f" % w["post"])

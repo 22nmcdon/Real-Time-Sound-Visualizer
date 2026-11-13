@@ -419,6 +419,21 @@ with sync_playwright() as pw:
       return { inked, pixels: px.length / 4, height: c.getBoundingClientRect().height,
                fps: state.fps };
     }""")
+    # The loop running, counted in frames drawn rather than read as a rate
+    # (13 Nov). This asked for state.fps over 20, and read 20 once in a full
+    # run: the suite runs beside two others, and a frame rate is the machine's
+    # as much as the page's - a rate belongs in a serial suite, and what this
+    # check is for is only that the loop is running. A loop that is running
+    # draws frames, given the time; a stopped one draws none however long it
+    # is given. Null-tested by counting with no wait between the reads (none
+    # drawn, red).
+    drawing = p.evaluate("""async () => {
+      const f0 = pictureEngine.frames, t0 = performance.now();
+      while (pictureEngine.frames - f0 < 30 && performance.now() - t0 < 10000) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      return { frames: pictureEngine.frames - f0, ms: performance.now() - t0 };
+    }""")
     # Enlarge took the Scope view's frame and its panes (G4): there the sheet is in the panes.
     p.evaluate("() => setEnlarged(true)"); p.wait_for_timeout(400)
     scope_home = p.evaluate("""() => ({
@@ -453,7 +468,8 @@ with sync_playwright() as pw:
     # under the screen here. The wide check below holds the size now.
     check("still has a trace drawn on it", strip["inked"] > 500,
           "%d inked pixels of %d" % (strip["inked"], strip["pixels"]))
-    check("at a real frame rate", strip["fps"] > 20, "%.0f fps" % strip["fps"])
+    check("and the loop is drawing it: thirty frames come", drawing["frames"] >= 30,
+          "%d frames in %.0f ms (%.0f fps on the readout)" % (drawing["frames"], drawing["ms"], strip["fps"]))
 
     print("\n--- the oscillators survive a source that has no generator ---")
     # They used to be switched off wholesale on anything but the test tone,

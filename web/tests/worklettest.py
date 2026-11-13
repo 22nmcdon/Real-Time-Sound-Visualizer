@@ -274,27 +274,44 @@ with sync_playwright() as pw:
     # freezes, because `tick` is what fills it. With the worklet producing,
     # the samples keep arriving whether or not anything asks for them - which
     # is what "the worklet is the source of the samples" means.
+    #
+    # Counted, as the check above is, since 13 Nov. It compared the ring
+    # before and after a 350 ms timer and required it to have moved, which
+    # is the trap that check fell into, by another road: the worklet hands
+    # the ring a batch of 40 ms, 1764 samples at 44.1 kHz, which is 8.8
+    # periods of the held A3's 220 Hz, so every fifth batch is exactly 44
+    # periods. A timer that load stretched to 400 ms let ten batches in and
+    # left the two windows the same to the bit, and a full run read "moved
+    # by 0.000" with the worklet working perfectly. The batches absorbed
+    # cannot coincide: only the worklet's messages count them, and a worklet
+    # that stopped producing, or a ring filled from this thread, counts none.
+    # It waits for five, up to three seconds, so a busy timer only makes the
+    # wait longer. Null-tested by asking for the five with no wait between
+    # the two reads (nought, red), and by taking `blocks++` out of the page's
+    # message handler (nought, red). How far the ring moved is printed, and
+    # proves nothing on a periodic tone.
     producing = p.evaluate("""async () => {
-      const takePeak = () => {
-        const w = state.source.getLatestWindow(2048)[0];
-        let sum = 0;
-        for (let i = 0; i < w.length; i++) sum += w[i] * w[i];
-        return sum;
-      };
       const was = state.running;
       state.running = false;                       // nothing calls tick now
       const before = state.source.getLatestWindow(2048)[0].slice();
-      await new Promise((r) => setTimeout(r, 350));
+      const from = state.source.blocks, t0 = performance.now();
+      while (state.source.blocks - from < 5 && performance.now() - t0 < 3000) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      const blocks = state.source.blocks - from, ms = performance.now() - t0;
       const after = state.source.getLatestWindow(2048)[0];
       let moved = 0;
       for (let i = 0; i < before.length; i++) {
         moved = Math.max(moved, Math.abs(before[i] - after[i]));
       }
       state.running = was;
-      return { moved, energy: takePeak() };
+      return { moved, blocks, ms };
     }""")
     check("the samples keep coming when nothing on this thread asks for them",
-          producing["moved"] > 0.01, "moved by %.3f" % producing["moved"])
+          producing["blocks"] >= 5,
+          "%d batches absorbed in %.0f ms while nothing here asked (the ring moved by %.3f, "
+          "which proves nothing on a periodic tone)"
+          % (producing["blocks"], producing["ms"], producing["moved"]))
 
     # Both advance paths check the driver, and both throw when they are not it.
     guard = p.evaluate("""() => {

@@ -137,7 +137,17 @@ with sync_playwright() as pw:
         "planeLimit": 1, "planeRadius": 0.3, "planeOS": 4},
         "everything": ALL,
     }
-    model = p.evaluate("""(CASES) => {""" + HELPERS + """
+    # Each case on a page of its own (13 Nov). Measured one after another on
+    # one page, every case ran the same `block` the cases before it had
+    # trained, and how far the JIT had specialised it for a cheap case was
+    # decided by what ran before and by when the background compiler got to
+    # it: the sine and the drawn cycle read 0.84 to 1.03 of the median alone
+    # and 1.67 and 1.69 in full runs, and timing the cases in rounds across
+    # one page put every cheap case at 1.5 to 1.66 every time - code trained
+    # on twenty voices, which no instrument playing one setup runs. A page
+    # each gives every case the one history a setup played for a while has,
+    # and the same one every run. Its cost is a page load a case.
+    MEASURE = """(CASES) => {""" + HELPERS + """
       const out = {};
       for (const [name, cfg] of Object.entries(CASES)) {
         // Found by asking the model, one voice a layer at a time.
@@ -155,7 +165,14 @@ with sync_playwright() as pw:
         out[name] = { per, ms: second(core), units: b.units, whole: b.unison[0] === b.asked[0] && b.factor === b.askedFactor && b.silenced === 0 };
       }
       return out;
-    }""", CASES)
+    }"""
+    model = {}
+    for name, cfg in CASES.items():
+        own = b.new_page()
+        own.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        own.goto(f"file://{ART}/scope.html?brain=js"); own.wait_for_timeout(700)
+        model.update(own.evaluate(MEASURE, {name: cfg}))
+        own.close()
     ratios = {k: v["ms"] / v["units"] for k, v in model.items()}
     mid = sorted(ratios.values())[len(ratios) // 2]
     for k, v in model.items():
@@ -166,10 +183,17 @@ with sync_playwright() as pw:
     # costed dearer than it is only gives up a copy early, while one costed
     # cheaper is a glitch. Measured, the spread is 0.6 to 1.5 from run to run
     # - noise is dearer in the model than on the machine - and the morph
-    # costed as a saw is 2.5.
+    # costed as a saw is 2.5. A page a case, 0.63 to 1.40 over three runs
+    # (13 Nov), the filter lowest, where on one page it had read 1.27.
     off = {k: round(r / mid, 2) for k, r in ratios.items() if not 0.5 <= r / mid <= 1.6}
     check("the model has each feature's cost right relative to the others, from half to 1.6 times the median",
           off == {}, str(off))
+    # Its null: the morph costed as the saw beside it, which is what it was
+    # before the model knew better, read by the same rule on the same
+    # timings - over twice the morph's own ratio, and red.
+    wrong = model["morph"]["ms"] / model["saw"]["units"] / mid
+    check("null: the same rule goes red on a model that costs the morph as a saw",
+          not 0.5 <= wrong <= 1.6, "%.2f of the median" % wrong)
     print("    a unit is %.2f ms of work a second on this machine" % mid)
 
     print("\n--- what is given up, and in what order ---")
