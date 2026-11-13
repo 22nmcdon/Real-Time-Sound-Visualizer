@@ -204,7 +204,7 @@ the full suite and parity pass.
    `clock`, `layer`, `layerplane`, `layerpicture`** - their numbers rows as
    assertions on the core alone in `core/tests/pieces/` (parity's last
    section, or `pieces/run.py` in a minute), 304 checks with their nulls;
-   web checks 290 to 121, `?brain=js` opens 9 to 4 (the clock's and score's
+   web checks 290 to 122, `?brain=js` opens 9 to 4 (the clock's and score's
    panels, which draw the page's own brain, shape's survey and layer's
    learned split point). No `render_cpp` was needed. Two site defects found,
    not fixed: the learned split point reaches only the face, and a clock byte

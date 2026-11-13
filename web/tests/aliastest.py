@@ -22,6 +22,7 @@ instrument plays.
 # is the harmonics pane, which is the face's, read over the site's instrument
 # on the default page.
 import math, os, sys
+import numpy as np
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -73,24 +74,44 @@ with sync_playwright() as pw:
     # On ?brain=js the note was the page's own generator's; here the pane
     # reads the instrument's lanes (null below: the pane with no note is
     # silent, so what it reads is the note the instrument plays).
+    # The note first, and the slider only once it sounds: sent together, the
+    # slider's move could reach the instrument before the note-on did, which
+    # then played its own A4 - 440 Hz, which the pane, reading the bin, still
+    # called 431 (13 Nov, one load in three; see the fundamental's check).
     p.evaluate("""() => {
       el.midiMono.click(); midiNoteOn(69, 127);
       el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change'));
       el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
+    }""")
+    p.wait_for_timeout(600)
+    p.evaluate("""() => {
       el.freq.value = '431'; el.freq.dispatchEvent(new Event('input'));
       state.panesExtra.harmonics = true; syncPanes();
     }""")
-    p.wait_for_timeout(900)
-    pane = p.evaluate("""() => {
+    READ = """() => {
       const h = analyseHarmonics(state.source.sampleRate);
       return h && { thd: h.thd, rel: h.partials.map((q) => Math.round(q.rel * 10) / 10),
                     hz: Math.round(h.hz) };
-    }""")
+    }"""
+    p.wait_for_timeout(900)
+    pane = p.evaluate(READ)
+    # What the instrument plays, by numpy off its own lane: the pane names
+    # the bin the fundamental fell in (430.66 Hz), which 440 falls in too.
+    lane = np.array(p.evaluate("() => Array.from(state.source.getLatestWindow(32768)[0])"))
+    state_rate = p.evaluate("() => state.source.sampleRate")
+    spec = np.abs(np.fft.rfft(lane * np.blackman(len(lane))))
+    played = float(np.argmax(spec[8:]) + 8) * state_rate / len(lane)
     odd = [pane["rel"][k - 1] for k in (3, 5, 7)] if pane else []
     even = [pane["rel"][k - 1] for k in (2, 4, 6, 8)] if pane else []
     want_odd = [20 * math.log10(1 / k) for k in (3, 5, 7)]
-    check("it finds the fundamental where it was put",
-          pane and abs(pane["hz"] - 431) <= 22, str(pane and pane["hz"]))
+    # Until 13 Nov this read the pane's bin alone, to 22 Hz either side, and
+    # passed with the instrument at 440: the fixture's race above. Now the
+    # instrument has to be playing 431 as well, to a bin of 1.3 Hz.
+    check("it finds the fundamental where it was put, and the instrument plays it",
+          pane and abs(pane["hz"] - 431) <= 22 and abs(played - 431) < 2,
+          "the pane %s, the lane %.1f Hz" % (pane and pane["hz"], played))
+    check("null: A4's 440, which the pane's bin would also have called 431, is not what is played",
+          abs(played - 440) >= 2, "%.1f Hz" % played)
     # With no pane both lists are empty and all() of nothing is true: these
     # two passed with the pane reading nothing until stage 5 (13 Nov), when
     # the note-off null showed it. Each needs its partials now.

@@ -519,7 +519,7 @@ changed: `waveRun` in `functions_cpp`, `play` in `clock_cpp`, `clear`,
 
 | Suite | Web checks before | after | pieces checks (nulls) | `?brain=js` opens | Rows: to parity / moved / rewritten / split / gone / left |
 |---|---|---|---|---|---|
-| alias | 41 | 6 | 43 (7) | 1 to 0 | 10 / 5 / 0 / 0 / 0 / 0 |
+| alias | 41 | 7 | 43 (7) | 1 to 0 | 10 / 5 / 0 / 0 / 0 / 0 |
 | drawbar | 33 | 16 | 30 (13) | 1 to 0 | 17 / 14 / 1 / 0 / 1 / 0 |
 | pulse | 24 | 13 | 21 (9) | 1 to 0 | 11 / 11 / 1 / 0 / 1 / 0 |
 | score | 20 | 4 | 28 (13) | 1 to 1 | 16 / 0 / 0 / 0 / 0 / 4 |
@@ -528,7 +528,14 @@ changed: `waveRun` in `functions_cpp`, `play` in `clock_cpp`, `clear`,
 | layer | 36 | 22 | 25 (12) | 1 to 1 | 14 / 14 / 3 / 0 / 4 / 1 |
 | layerplane | 49 | 26 | 37 (12) | 1 to 0 | 24 / 12 / 8 / 1 / 0 / 0 |
 | layerpicture | 19 | 7 | 16 (7) | 1 to 0 | 12 / 2 / 1 / 0 / 0 / 0 |
-| **nine suites** | **290** | **121** | **304 (123)** | **9 to 4** | **151 / 65 / 16 / 4 / 6 / 11** |
+| **nine suites** | **290** | **122** | **304 (123)** | **9 to 4** | **151 / 65 / 16 / 4 / 6 / 11** |
+
+The counters over the nine suites (`run.py --brain-counts`, before on
+00d51da and after): pages on `?brain=js` 9 to 4; frames the page's brain
+stepped there 6,767 to 2,001 (shape's survey 1,490 of them, the clock's 294,
+the score's 160, layer's 57); `layerPicturesStep` 1,230 to 3, `scoreTick.step`
+51 to 11, `clockStep.lfoSync` 189 to 51. On the default the same suites'
+frames went from 892 to 2,772, which is the face's, as section 1 says.
 
 (alias's 41 is its loops' iterations; its pieces count its floors one per
 shape and pitch, with the uncorrected control as the null of each.)
@@ -548,9 +555,16 @@ survey (`:387`, `:389`), corpus setups played with the loop closed, which is
    check went red once it read the instrument's own moves; all three layer
    suites load codes with `loadCode` now. Batch 1's list of unheard calls
    gains `restore()`.
-2. **Two of alias's pane checks passed on nothing.** With no pane reading
-   their partials were empty lists, and `all()` of nothing is true; the note
-   let go as a null showed it. They require their partials now.
+2. **Two of alias's pane checks passed on nothing, and a third on the wrong
+   note.** With no pane reading their partials were empty lists, and `all()`
+   of nothing is true; the note let go as a null showed it. They require their
+   partials now. And the full run found the fixture racing on the default:
+   the Frequency slider's move could reach the instrument before the note-on,
+   which then played its own A4. The pane names the bin, 430.66 Hz, which
+   440 falls in too, so "it finds the fundamental where it was put" passed at
+   440 and the 1/k check failed one load in three. The note sounds before the
+   slider moves now, and the fundamental is read off the instrument's lane as
+   well, with 440 as its null (red with the note sent after the slider).
 3. **The page's mirror again.** pulse's and drawbar's "without writing the
    slider", and the layer suites' panel rows, read `genSettings` or
    `state.source.settings`, which only the face writes on the default. They
