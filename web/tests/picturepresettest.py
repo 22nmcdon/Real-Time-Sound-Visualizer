@@ -42,11 +42,17 @@ old library and the bank both, the widest set of real setups there is. Where
 the section stood in the browser (second in Pictures and sounds) is no longer
 asked, since the browser no longer has that menu or the section.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - restore() called
-# directly, which the page sends the instrument nothing of - which
-# core/tests/parity.py holds the instrument to, sample for sample. The
-# instrument, the site's default since 5m, is braintest.py's and
-# hosttest.py's.
+# Stage 5, step 3, batch 4 (13 Nov): the four counts of what the sections
+# are read only the corpus, the bank and the page's routing grammar, no brain
+# at all, and moved to the site's default page unchanged. The runs stay on
+# ?brain=js, a page of their own: they hold each preset for ten seconds of
+# real time and read the page's own photocell (photo.raw, landPhoto,
+# movePhoto), its picture sources' values and its picture meter's verdicts,
+# and restore() a setup without its loop, which the instrument would never
+# hear. The core has every one of those (photo, the picture's sources, the
+# meter in picture.h), but no tool here plays a corpus setup with the loop
+# closed for seconds and reads them back: that is render_cpp's, the batch
+# that builds it (STAGE5-INVENTORY.md, batch 4).
 import os, sys
 from playwright.sync_api import sync_playwright
 import corpus
@@ -84,7 +90,9 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    # The default page first, for the counts: data, read by the face's own
+    # decodeRoutings, which the default has as it has the bank.
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
@@ -137,6 +145,11 @@ with sync_playwright() as pw:
     check("the library uses sources together: thirty with two or more, twelve with three or more",
           shape["two"] >= 30 and shape["three"] >= 12 and shape["most"] >= 4 and shape["nullTwo"] == 0,
           "%d with two, %d with three, at most %d, of %d walked" % (shape["two"], shape["three"], shape["most"], shape["walked"]))
+
+    # Then ?brain=js for the runs (above, and STAGE5-INVENTORY.md's batch 4).
+    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    corpus.install(p)
+    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
     print("\n--- each one run: alive, and not running away ---")
     print("    not run, being drawings the waveform now stands in for: %s" % ", ".join(DRAWN))

@@ -447,6 +447,13 @@ int main(int argc, char** argv) {
       show({ out.begin(), out.end() });
     } else if (name == "intervalRatio") show({ scope::intervalRatio(static_cast<int>(num(w[1])), num(w[2]) == 1) });
     else if (name == "svfG") show({ scope::svfG(num(w[1]), num(w[2])) });
+    // `biquad TYPE HZ Q RATE`: the picture filter's coefficients (capture.h),
+    // b0 b1 b2 a1 a2. Not parity's: core/tests/pieces/filter.py's (stage 5,
+    // step 3, batch 4), for the law against the cookbook's response.
+    else if (name == "biquad") {
+      const auto c = scope::biquadCoefficients(w[1], num(w[2]), num(w[3]), num(w[4]));
+      show({ c.b0, c.b1, c.b2, c.a1, c.a2 });
+    }
     else if (name == "svfRun") {
       scope::SvfState s;
       std::vector<double> out;

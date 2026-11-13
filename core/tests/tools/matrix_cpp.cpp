@@ -191,6 +191,14 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       else if (arg(1) == "position") brain->view.capture.position = num(arg(2));
       else if (arg(1) == "level") brain->view.capture.level = num(arg(2));
       else if (arg(1) == "rotate") brain->view.capture.rotate = num(arg(2));
+      else if (arg(1) == "cutoff") brain->view.capture.filter.cutoff = num(arg(2));
+    } else if (cmd == "filter") {
+      // The picture's filter as the screen sets it after the matrix: the
+      // cutoff's offset, and filterNow's hertz and Q. Not parity's:
+      // core/tests/pieces/filter.py's (stage 5, step 3, batch 4).
+      screen->afterMatrix();
+      const auto now = scope::filterNow(brain->view.capture);
+      said = "filter " + show(brain->view.capture.cutoffMod) + " " + show(now.hz) + " " + show(now.q) + " ";
     } else if (cmd == "view") {
       screen->afterMatrix();
       const auto& w = brain->view;

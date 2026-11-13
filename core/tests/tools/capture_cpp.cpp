@@ -121,6 +121,12 @@ void run(const std::vector<std::vector<std::string>>& commands) {
       for (std::size_t c = 0; c < 2 && c < lastFrame.size(); c++)
         for (const float x : lastFrame[c]) extra += " " + show(x);
     }
+    // `lane N`, not capture_js's either: the last capture's lane N whole, for
+    // core/tests/pieces/filter.py's shown and hidden lanes (stage 5, step 3,
+    // batch 4).
+    else if (cmd == "lane") {
+      if (ch() < lastFrame.size()) for (const float x : lastFrame[ch()]) extra += " " + show(x);
+    }
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
     std::printf("%s%s\n", cmd.c_str(), extra.c_str());
   }
