@@ -618,6 +618,133 @@ A's meter governing B, A's grid measured for both); `clock.h` ten ways;
 - **Time**: the pieces take about a minute, the generator and instrument
   renders most of it; parity grows by that.
 
+## 8. Step 3, batch 3 (13 Nov)
+
+Scan and the strike (their numbers rows to `core/tests/pieces/`, their page
+rows to the default), and the rows batches 1 and 2 left for "a source held at
+a value": lane's eight, mod's :157 to :378, photo's :338 and loop's :92 to
+:276. Every row in those six appendix tables has a "Batch 3" column. Nothing
+in `scope.html` or `core/include` changed; `git diff core/include` is empty.
+
+No `render_cpp` was needed. A held value is `matrix_cpp`'s scripted source
+(`value ID V`), which with `picture` and `reach=photo`/`reach=bored` is a
+picture source at the core's own reach; its new `screen` command builds the
+instrument's own `PictureRun` on the matrix, so the visual destinations (the
+zoom, the trigger position, the rotation, the full scales) are screen.h's,
+spans and bases included; and `lroutes` prints the routes it hands the
+generator with the loop's flag, for `generator_cpp` to play. New commands, no
+existing one changed: `tables`, `geometry`, `follow`, `read`, `path`, `show`
+and `laid` in `scan_cpp`; `screen`, `vset`, `view`, `lroutes` and the two
+reach names in `matrix_cpp`; `dump` in `capture_cpp`; `reads` in
+`instrument_cpp`.
+
+| Suite | Web checks before | after | pieces checks (nulls) | `?brain=js` opens | Rows: to pieces / moved / rewritten / split / gone / left |
+|---|---|---|---|---|---|
+| scan | 71 | 16 | 58 (28) | 1 to 1 (`?brain=js&core=js`, the held run alone; and the `?brain=js` site legs gone) | 19 / 4 / 3 / 1 / 4 / 1 |
+| strike | 36 | 11 | 27 (13) | 1 to 0 | 15 / 5 / 0 / 0 / 0 / 0 |
+| lane | 35 | 27 | 14 (6) | 1 to 0 | 8 / 0 / 0 / 0 / 0 / 0 |
+| mod | 31 | 27 | 8 (4) | 1 to 1 | 4 / 0 / 0 / 0 / 0 / 0 |
+| photo | 37 | 35 | 4 (2) | 1 to 1 | 2 / 0 / 0 / 0 / 0 / 0 |
+| loop | 75 | 61 | 24 (10) | 1 to 1 | 10 / 0 / 4 / 0 / 0 / 0 |
+| **six suites** | **285** | **177** | **135 (63)** | **6 to 3** | **58 / 9 / 7 / 1 / 4 / 1** |
+
+(Web counts are checks run, a loop's iterations each. "Rewritten" rows on
+loop are its page-compiler rows, :147, :149, :186 and :188, now asked of the
+core's matrix in the pieces rather than dropped as the inventory proposed.
+mod, photo and loop keep their `?brain=js` pages for the rows outside this
+batch.)
+
+The counters over the six suites (`run.py --brain-counts`): BRAINCOUNTS
+
+### Checks that passed on the default for the wrong reason, or could not fail
+
+1. **Stop does not reach the instrument.** Scan's "held still - the screen
+   stopped - Scan is an ordinary tone", moved to the default unchanged,
+   failed there: the site's Stop holds the face's screen only, and the
+   instrument goes on reading its own moving grid (0.0084 held against 0.0079
+   running). A site defect, in `web/docs/after-stage-5.md`; the check stays on
+   a `?brain=js&core=js` page of its own, judged against its own run before
+   the stop now, since the moving run it was judged against went to the site
+   legs.
+2. **The page's mirror once more.** Scan's Depth and setup-code rows read
+   `genSettings().scan` and `scan.soft`; on the default those are the face's.
+   They read `snapshot()` and the slider now, and the split's Depth row clicks
+   Poly (it called `setMidiMode`, unheard) and reads both hands' depths off
+   the setup the face sends.
+3. **scantest :325's null could not fail** (section 4, surprise 6): B's lanes
+   minus themselves. Two nulls replace it, each able to fail: the table and
+   depth given to A move A's lanes, and B's table at B's depth of nought
+   leaves B's lanes to the bit.
+4. **Four checks the mutation pass found could not see the fault beside
+   them**, three of them carried over from the page:
+   - a table is evened to its peak, so no check of a reading's shape sees the
+     blur's kernel summing to two (new: a figure at the edge of darkness, at a
+     fixed level, darkness through the blur and a table at twice);
+   - the bend's table has nothing past the 32nd harmonic, where the levels
+     part, so it could not see a voice reading the richest level at every
+     pitch (new: a rich table at 2 kHz against the hand's reading with the
+     step and without);
+   - photo's ceiling, held at one, read 0.5 through the loop's total whatever
+     the photocell's reach (both are a half): held at a half now;
+   - the hold sent back at one: one from a quarter is past 0.005 anyway, so
+     the clause for "back to one" was never exercised (0.997 then one now).
+   And one of mine: the dim figure's level was first found from a reading
+   of the core, so a mutant blur moved it with itself; it is a number now.
+5. **A route's loop flag.** The first loop piece marked every held route as
+   the loop's, which sent the two LFOs of "contributions add" down the loop's
+   path and hid a generator that let the second held route replace the first;
+   `lroutes` says which route is the loop's.
+
+### Nulls and mutations seen red
+
+Every piece check has its null beside it, seen red, and every moved web check
+was run with a known-wrong fixture (striketest without the Poly click: the
+row check red). The core was mutated in scratch copies (`PIECES_INCLUDE`),
+37 ways, each turning at least one check red once the four fixes above were
+in: `scan.h` fifteen (tables not evened, every level every harmonic, the
+darkness threshold, the reading centred, the blur's kernel, the follow's
+rate, the hold back to one, the freeze, the strike's level, place, Scan-off
+and layer rules, both read as A's, the crossed hold, never crossed);
+`generator.h` five (the tick a step, the crossfade half a tick, the hold
+ignored, B's depth A's, held routes replacing); `osc.h` (Scan read without
+the step); `picture.h` four (the fade, boredom's rise, leak and reach);
+`matrix.h` six (the visual and generator loop totals, every source in the
+loop, offsets unclamped, no reach ceiling); `loop.h` (the photocell's
+reach); `screen.h` five and `capture.h` one (the zoom's and position's
+spans, the zoom ignoring its offset, the offset moving the level or the
+knob, and the capture ignoring the offset - the bug lane's comment
+remembers).
+
+### What still needs `render_cpp`, and with what input
+
+- **scan :539** (held still, the screen stopped): a corpus setup and a held
+  note, the loop closed over eight seconds, and a "screen stopped" event at
+  two - once the owner decides what Stop does on the instrument.
+- **loop :523 on** (the seven seeds' stability runs, the reverb in the loop,
+  Scan's table moving, the crossed pair, the holds): corpus setups played
+  with the loop closed for thirty seconds, reading the stage's holds, the
+  meter's verdicts, per-slot loop totals, each layer's table (`scanTable`,
+  which the instrument never hands out) and the phosphor grid frame by frame.
+- **shape's survey** (batch 2): corpus setups with the loop closed.
+- **budget**, **input** and **livefx**: not this batch's (budget's costs
+  were fitted to JavaScript milliseconds; input and livefx need input
+  samples and may go rather than move, section 3).
+- The visual matrix (lane's eight and scale's three) did not need it: the
+  core has its own (screen.h), which lane's now reads. Which matrix the
+  face's screen follows on the site is still step 5's to decide, and scale's
+  three, moved by batch 1 to the default as the face's, should follow then.
+
+### What it changes for the rest of stage 5
+
+- **Step 5 gains Stop**: what the face's Stop does to the instrument has to
+  be decided before the page's brain goes, or the held-still check goes with
+  it.
+- **The pieces take about three minutes now** (scan 15 s, strike 27 s, loop
+  17 s, the rest seconds), on top of batch 2's minute.
+- **Matrix questions need no render**: anything that held a source at a
+  value and read the matrix or the generator after it can use `matrix_cpp`
+  with `screen` and `lroutes`, and `generator_cpp` behind it.
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the
@@ -1232,42 +1359,42 @@ Lines 15-18: "this suite reads the page's own brain - its gate, read directly". 
 ### lanetest.py - wholly on ?brain=js - 34/34
 Lines 18-21: "this suite reads the page's own brain - its oscillators, set by hand between frames". It opens at `?brain=js` (line 57). Most of it is the knob's ring, a face drawing. The brain matters only where `lfos[0].value` or `.rate` is set by hand: the live tick (218), the zoom (258) and the trigger position (292, 296).
 
-| Check | Kind | Why | Batch 1 (13 Nov) |
-|---|---|---|---|
-| full depth on frequency is exactly an octave up (79) | page | `destReach`, the face's lane law (`scope.html:30256`). Brain-free, though its claim is to match the engine's law, which only parity relates. | moved |
-| and full depth the other way is an octave down (81) | page | `destReach`. | moved |
-| a depth of log2(1.5) is a fifth (83) | page | `destReach`. | moved |
-| amplitude only ducks, and halves at half depth (85) | page | `destReach`. | moved |
-| half depth on phase is a quarter turn (88) | page | `destReach`. | moved |
-| half depth on rotation is an eighth of the slider (92) | page | `destReach`. | moved |
-| full depth on cutoff is 400 steps, as declared (94) | page | `destReach`. | moved |
-| the cap sits on the octave, not at the end of the range (122) | page | Knob face CSS properties. | moved |
-| and the ring runs from the value to it (126) | page | The same. | moved |
-| a second source does not move the first one's cap (162) | page | Ring. | moved |
-| and the cap is where the first one's own depth puts it (165) | page | Ring. | moved |
-| focusing the second shows the second, at its own depth (168) | page | Ring. | moved |
-| and the one not drawn is a tick (171) | page | DOM. | moved |
-| an oscillator's bar reaches one way from the value (188) | page | Ring. | moved |
-| and an envelope's the same, since the bar is the depth you set (196) | page | Ring. | moved |
-| the cap says it cannot get there (209) | page | DOM class. | moved |
-| but the depth is kept, not trimmed (211) | page | `state.modRoutings`. | moved |
-| a patched control shows itself working (234) | page | The `--now` dot driven by the page's `lfos[0]`, rate set by hand. On the default the dot reads the instrument's LFOs (lfos.bin); a step 5 item. | moved: the dot is driven by the instrument's LFO 1 (the rate set by hand was dead there, and went); null: a source at rest |
-| the tick is on whether or not anything is in focus (235) | page | DOM. | moved |
-| and the lane has no handle at all (238) | page | DOM. | moved |
-| nothing on it, nothing drawn (248) | page | DOM. | moved |
-| but the way in is still there (249) | page | `menuControl`. | moved |
-| the transport's zoom takes a patch (268) | page | DOM class. | moved |
-| full depth is the eight steps it declares (269) | numbers | `state.zoomMod` after `applyModMatrix`, with `lfos[0].value = 1` set by hand. The matrix's offset; core matrix.h. | left on ?brain=js: LFO 1 held at a value by hand, which in C++ is render_cpp's wider input |
-| and it magnifies (271) | numbers | `state.zoom` with the offset applied. | left on ?brain=js, as :269 |
-| with the offset back to nothing at rest (273) | numbers | The matrix's offset at rest. | left on ?brain=js, as :269 |
-| full depth moves the offset half a window (312) | numbers | `state.positionMod` from the matrix, LFO set by hand. | left on ?brain=js, as :269 |
-| and nothing at rest (314) | numbers | The same. | left on ?brain=js, as :269 |
-| and the window actually slides by that much (317) | numbers | `capture().pre` moved by the offset. Core capture.h. | left on ?brain=js, as :269 |
-| the trigger level is untouched (321) | numbers | `state.level` unchanged by the matrix. | left on ?brain=js, as :269 |
-| and so is the knob it is offset from (323) | numbers | `state.position` unchanged. | left on ?brain=js, as :269 |
-| a routing made anywhere is a row on the source's tab, with its depth (341) | page | Editor DOM. | moved |
-| and two destinations are two rows, each at its own depth (351) | page | Editor DOM. | moved |
-| no page errors (355) | page | Housekeeping. | moved |
+| Check | Kind | Why | Batch 1 (13 Nov) | Batch 3 (13 Nov) |
+|---|---|---|---|---|
+| full depth on frequency is exactly an octave up (79) | page | `destReach`, the face's lane law (`scope.html:30256`). Brain-free, though its claim is to match the engine's law, which only parity relates. | moved |  |
+| and full depth the other way is an octave down (81) | page | `destReach`. | moved |  |
+| a depth of log2(1.5) is a fifth (83) | page | `destReach`. | moved |  |
+| amplitude only ducks, and halves at half depth (85) | page | `destReach`. | moved |  |
+| half depth on phase is a quarter turn (88) | page | `destReach`. | moved |  |
+| half depth on rotation is an eighth of the slider (92) | page | `destReach`. | moved |  |
+| full depth on cutoff is 400 steps, as declared (94) | page | `destReach`. | moved |  |
+| the cap sits on the octave, not at the end of the range (122) | page | Knob face CSS properties. | moved |  |
+| and the ring runs from the value to it (126) | page | The same. | moved |  |
+| a second source does not move the first one's cap (162) | page | Ring. | moved |  |
+| and the cap is where the first one's own depth puts it (165) | page | Ring. | moved |  |
+| focusing the second shows the second, at its own depth (168) | page | Ring. | moved |  |
+| and the one not drawn is a tick (171) | page | DOM. | moved |  |
+| an oscillator's bar reaches one way from the value (188) | page | Ring. | moved |  |
+| and an envelope's the same, since the bar is the depth you set (196) | page | Ring. | moved |  |
+| the cap says it cannot get there (209) | page | DOM class. | moved |  |
+| but the depth is kept, not trimmed (211) | page | `state.modRoutings`. | moved |  |
+| a patched control shows itself working (234) | page | The `--now` dot driven by the page's `lfos[0]`, rate set by hand. On the default the dot reads the instrument's LFOs (lfos.bin); a step 5 item. | moved: the dot is driven by the instrument's LFO 1 (the rate set by hand was dead there, and went); null: a source at rest |  |
+| the tick is on whether or not anything is in focus (235) | page | DOM. | moved |  |
+| and the lane has no handle at all (238) | page | DOM. | moved |  |
+| nothing on it, nothing drawn (248) | page | DOM. | moved |  |
+| but the way in is still there (249) | page | `menuControl`. | moved |  |
+| the transport's zoom takes a patch (268) | page | DOM class. | moved |  |
+| full depth is the eight steps it declares (269) | numbers | `state.zoomMod` after `applyModMatrix`, with `lfos[0].value = 1` set by hand. The matrix's offset; core matrix.h. | left on ?brain=js: LFO 1 held at a value by hand, which in C++ is render_cpp's wider input | to pieces (lane.py, matrix_cpp `screen`) |
+| and it magnifies (271) | numbers | `state.zoom` with the offset applied. | left on ?brain=js, as :269 | to pieces |
+| with the offset back to nothing at rest (273) | numbers | The matrix's offset at rest. | left on ?brain=js, as :269 | to pieces |
+| full depth moves the offset half a window (312) | numbers | `state.positionMod` from the matrix, LFO set by hand. | left on ?brain=js, as :269 | to pieces |
+| and nothing at rest (314) | numbers | The same. | left on ?brain=js, as :269 | to pieces |
+| and the window actually slides by that much (317) | numbers | `capture().pre` moved by the offset. Core capture.h. | left on ?brain=js, as :269 | to pieces (capture_cpp, given the matrix's offset) |
+| the trigger level is untouched (321) | numbers | `state.level` unchanged by the matrix. | left on ?brain=js, as :269 | to pieces |
+| and so is the knob it is offset from (323) | numbers | `state.position` unchanged. | left on ?brain=js, as :269 | to pieces |
+| a routing made anywhere is a row on the source's tab, with its depth (341) | page | Editor DOM. | moved |  |
+| and two destinations are two rows, each at its own depth (351) | page | Editor DOM. | moved |  |
+| no page errors (355) | page | Housekeeping. | moved |  |
 
 ### layerpicturetest.py - 1 leg on ?brain=js beside the default - 15/19 (4 default sites not listed: 268, 270, 271, 273)
 Lines 27-32: "All of that on ?brain=js, whose page computes the routes itself. The default page plays the site's compiled instrument, which computes its routes in the core ... the last leg reads them back from it". It opens at `?brain=js` (71) and on the default (236). The numbers checks drive the page's own per-layer picture engines and stages by hand (`layerPictures.stages`, `layerPush`, `stepRoutes`, `genRoutes`).
@@ -1457,38 +1584,38 @@ Docstring note (:8): it "reads the page's own brain - its microphone and band-sp
 ### looptest.py - wholly on ?brain=js (two pages: `?brain=js` :58, and `?brain=js&core=js` :502 for the Scan runs) - 30/30
 Docstring note (:31): it "reads the page's own brain - its generator's routes and worklet". The comment at :496 says the Scan runs need `core=js` because "the run reads the tables that brain sends, which the site's instrument reads inside its worklet and never hands out". So the `core=js` page is there to reach page data, not to compare engines. Several checks force a source by hand (`MOD_SOURCES.get(id).value = () => 1`), which an offline render can only do if the core gets a hook for it.
 
-| Check | Kind | Why |
-|---|---|---|
-| three picture sources at full move a destination by the loop's total, not three times it (:92) | numbers | `state.rotateMod` after `applyModMatrix` with sources forced to 1; the core matrix's loop total, given a source-override hook |
-| and a source that is not the loop is not caught in the loop's bound (:94) | numbers | as above, with a registered test source |
-| the loop's routes into a generator parameter cross into the audio loop as one (:147) | page | counts `genRoutes` with `loopTotal`, the page brain's hand-over to its engine; goes, since :150 carries the claim |
-| carrying the bounded total (:149) | page | `route.source.value()` of the page's combined route; goes |
-| and the generator plays the bounded pitch, not three sources' worth (:150) | numbers | DFT energy at 220·2^0.5 vs 2^1.5 in the samples; offline render |
-| two on amplitude at full ask for no duck, through the combined route (:186) | page | `genRoutes` held value; goes |
-| and at nought they duck, by no more than the loop's total (:188) | page | as above |
-| and the generator is quieter at nought than at full (:190) | numbers | RMS of samples; offline render |
-| boredom rises while the picture is stuck (:227) | numbers | `picture.bored` over 10 s; the core's picture reads, rendered offline |
-| no faster than a quarter a second - it cannot slam (:234) | numbers | slope of `picture.raw.bored` |
-| and never past one (:236) | numbers | peak of `picture.bored` |
-| routed at full it moves a destination by its own reach, lower than the photocell's (:237) | numbers | `state.rotateMod / picture.bored` |
-| and it drains when the picture moves again (:239) | numbers | `picture.bored` after 5 s of a moving fifth |
-| the photocell moves the pitch you hear, through the worklet (:276) | numbers | DFT of the monitor chain with `photo.1` forced to 0.6; offline render with a source override |
-| a picture held under ten decibels of limiting is running away, and the same picture unlimited is not (:310) | numbers | `makePictureMeter()` fed a fixed grid; the core meter, offline with no render needed |
-| and the page reads a hot chain's limiter pulling it down (:313) | page | `monitorLimiting()` reads the page's Web Audio limiter in `monitorChains` (scope.html:18027); on default the limiter is the core's |
-| from %s, nothing goes NaN or infinite (:523) x7 seeds | numbers | `state.resMod/rotateMod/zoomMod`, `phosphor.grid`, `picture.raw`; offline, if the render exposes them |
-| from %s, what reaches the speakers never passes full scale (:524) x7 | numbers | analyser after the page chain's clamp; becomes the core's output peak |
-| from %s, and the speakers did hear it (:530) x7 | numbers | as above |
-| from %s, every destination stays inside the loop's total (:531) x7 | numbers | the mods and `genRoutes` loop totals |
-| from %s, and the grid stays inside the phosphor's range (:534) x7 | numbers | `phosphor.grid` max |
-| from %s, running away holds the stage's push down, to a quarter at most, and nothing else holds it (:547) x7 | numbers | `pictureMeter.verdict()` count and `pictureStage.hold` |
-| from %s, and the loop was really running - it moved what it drives, the stage's fold too (:571) x7 | numbers | ranges of resMod, the pitch total, `FOLD_SLOT` total |
-| and the reverb really was in the loop: the generator held Mix, Spread and Size at full to the end (:581) x1 | numbers | `genSettings().reverb*`; the core's generator settings in the render |
-| with Scan at its top, its wave was still moving: the table changed by a median of over 0.02 a tenth of a second (:590) x3 | numbers | `genSettings().scanTable`, which only the JS generator hands out; the core must export its table to the render |
-| crossed, the run really had two pictures: the layers drew a figure each throughout (:599) x1 | numbers | `layerPictures.live` |
-| and B's wave was moving as well as A's (:601) x1 | numbers | `genSettings(1).scanTable` |
-| and both depths were held by the lower of the two pictures' holds, never less (:602) x1 | numbers | `scanHold` against `layerPictures.stages[].hold` |
-| and Scan's depth was held by the stage's own hold, never less (:606) x2 | numbers | `scanHold` against `pictureStage.hold` |
-| no page errors (:610) | page | page health |
+| Check | Kind | Why | Batch 3 (13 Nov) |
+|---|---|---|---|
+| three picture sources at full move a destination by the loop's total, not three times it (:92) | numbers | `state.rotateMod` after `applyModMatrix` with sources forced to 1; the core matrix's loop total, given a source-override hook | to pieces (loop.py, matrix_cpp) |
+| and a source that is not the loop is not caught in the loop's bound (:94) | numbers | as above, with a registered test source | to pieces |
+| the loop's routes into a generator parameter cross into the audio loop as one (:147) | page | counts `genRoutes` with `loopTotal`, the page brain's hand-over to its engine; goes, since :150 carries the claim | rewritten, to pieces: the core's matrix hands one route, the loop's (`lroutes`) |
+| carrying the bounded total (:149) | page | `route.source.value()` of the page's combined route; goes | rewritten, to pieces |
+| and the generator plays the bounded pitch, not three sources' worth (:150) | numbers | DFT energy at 220·2^0.5 vs 2^1.5 in the samples; offline render | to pieces (generator_cpp) |
+| two on amplitude at full ask for no duck, through the combined route (:186) | page | `genRoutes` held value; goes | rewritten, to pieces |
+| and at nought they duck, by no more than the loop's total (:188) | page | as above | rewritten, to pieces |
+| and the generator is quieter at nought than at full (:190) | numbers | RMS of samples; offline render | to pieces |
+| boredom rises while the picture is stuck (:227) | numbers | `picture.bored` over 10 s; the core's picture reads, rendered offline | to pieces (picture_cpp, a stuck figure then a moving one) |
+| no faster than a quarter a second - it cannot slam (:234) | numbers | slope of `picture.raw.bored` | to pieces |
+| and never past one (:236) | numbers | peak of `picture.bored` | to pieces |
+| routed at full it moves a destination by its own reach, lower than the photocell's (:237) | numbers | `state.rotateMod / picture.bored` | to pieces (`reach=bored`) |
+| and it drains when the picture moves again (:239) | numbers | `picture.bored` after 5 s of a moving fifth | to pieces |
+| the photocell moves the pitch you hear, through the worklet (:276) | numbers | DFT of the monitor chain with `photo.1` forced to 0.6; offline render with a source override | to pieces |
+| a picture held under ten decibels of limiting is running away, and the same picture unlimited is not (:310) | numbers | `makePictureMeter()` fed a fixed grid; the core meter, offline with no render needed |  |
+| and the page reads a hot chain's limiter pulling it down (:313) | page | `monitorLimiting()` reads the page's Web Audio limiter in `monitorChains` (scope.html:18027); on default the limiter is the core's |  |
+| from %s, nothing goes NaN or infinite (:523) x7 seeds | numbers | `state.resMod/rotateMod/zoomMod`, `phosphor.grid`, `picture.raw`; offline, if the render exposes them |  |
+| from %s, what reaches the speakers never passes full scale (:524) x7 | numbers | analyser after the page chain's clamp; becomes the core's output peak |  |
+| from %s, and the speakers did hear it (:530) x7 | numbers | as above |  |
+| from %s, every destination stays inside the loop's total (:531) x7 | numbers | the mods and `genRoutes` loop totals |  |
+| from %s, and the grid stays inside the phosphor's range (:534) x7 | numbers | `phosphor.grid` max |  |
+| from %s, running away holds the stage's push down, to a quarter at most, and nothing else holds it (:547) x7 | numbers | `pictureMeter.verdict()` count and `pictureStage.hold` |  |
+| from %s, and the loop was really running - it moved what it drives, the stage's fold too (:571) x7 | numbers | ranges of resMod, the pitch total, `FOLD_SLOT` total |  |
+| and the reverb really was in the loop: the generator held Mix, Spread and Size at full to the end (:581) x1 | numbers | `genSettings().reverb*`; the core's generator settings in the render |  |
+| with Scan at its top, its wave was still moving: the table changed by a median of over 0.02 a tenth of a second (:590) x3 | numbers | `genSettings().scanTable`, which only the JS generator hands out; the core must export its table to the render |  |
+| crossed, the run really had two pictures: the layers drew a figure each throughout (:599) x1 | numbers | `layerPictures.live` |  |
+| and B's wave was moving as well as A's (:601) x1 | numbers | `genSettings(1).scanTable` |  |
+| and both depths were held by the lower of the two pictures' holds, never less (:602) x1 | numbers | `scanHold` against `layerPictures.stages[].hold` |  |
+| and Scan's depth was held by the stage's own hold, never less (:606) x2 | numbers | `scanHold` against `pictureStage.hold` |  |
+| no page errors (:610) | page | page health |  |
 
 ### menvtest.py - 1 leg on ?brain=js beside the default - 1/23
 Comment at :153: "On the page's own brain the keyboard is the page's, and a key gone down reaches the audio thread only as the source's own message ... Both, because a message left out on one path passes the other."
@@ -1565,39 +1692,39 @@ Docstring note: the Envelope's dot is to hold "over a note held and let go, on b
 ### modtest.py - wholly on ?brain=js - 31/31
 Docstring note (:7): it "reads the page's own brain - its oscillators' shape and rate, set directly". Most of the suite is the setup codec and restore on the face. On default those already run through the core's codec, since `decodeSetup` is the compiled one there.
 
-| Check | Kind | Why |
-|---|---|---|
-| every preset migrates to the same destination (:75) | page | `loadCorpus`/`applyPreset` then `state.modRoutings`; trivially to default |
-| and the depth comes across with it (:86) | page | as above |
-| one octave down is reached (:130) | numbers | `estimateFrequency` over an LFO sweep on gen.freq (already sends `hostSendSetup`); offline render |
-| one octave up is reached (:131) | numbers | as above |
-| contributions add (:157) | numbers | the claim is the matrix sum, but the evidence is the test summing `genRoutes` itself with `lfos[].value` set by hand; has to be rewritten as a render of two still LFOs, not ported |
-| an unknown destination is skipped (:170) | page | `genRoutes.length` after `compileRoutes()`, page brain; goes, or becomes a core matrix check |
-| but not deleted from the setup (:171) | page | `state.modRoutings.length`; face, trivially to default |
-| nothing changes through encode and decode (:190) | page | snapshot, encode, decode, restore; trivially to default |
-| the routings survive as text (:191) | page | as above |
-| and the code carries the current version (:196) | page | as above |
-| still loads, and points where it said (:210) | page | legacy decode plus restore; trivially to default |
-| a version-4 code loads without the routes from the threshold or to the pluck, and saves without them (:233) | page | decode passes; trivially to default |
-| and the same code marked version 5 keeps them, so the pass is what took them out (:236) | page | as above |
-| a version-9 code with a drawing loads as the waveform, its shape kept, the drawings' fields gone, and ... (:273) | page | `decodeSetupHere`, the page's own fallback codec, deleted in step 6; the same claim on `decodeSetup` is what stays |
-| and one that names no kind at all is given the waveform (:276) | page | as above |
-| and the same code marked version 10 keeps everything, so the pass is what took it (:277) | page | as above |
-| and the site's codec, the compiled core's, reads all three as the page's does (:281) | engines compared | `decodeSetup` (compiled) against `decodeSetupHere` (JS); goes |
-| adding a destination makes the routing (:304) | page | the card editor's DOM; trivially to default |
-| its depth slider sets its amount (:305) | page | as above |
-| and its cross removes it (:306) | page | as above |
-| a rotation really turns the figure (:356) | numbers | principal axis of `capture()` lanes at rotate 0 vs 0.125; core capture/plane offline |
-| with nothing routed every offset is zero (:376) | numbers | `applyModMatrix` offsets; core matrix |
-| and a source cannot push past the range (:378) | numbers | as above, with `lfos[0].value = 1` set by hand |
-| it rises with the signal (:401) | page | `envLive / ENV_FULL`, the output meter's follower as `paintStage` takes it; a face reading, which on default should read the instrument's level |
-| and falls when it stops (:402) | page | as above |
-| but releases slower than it attacks (:403) | page | as above |
-| 2 Hz is 2 Hz on the tone source (:429) | numbers | `lfos[0].phase` wraps against elapsed time; the core LFO's rate in a render |
-| and 2 Hz on the microphone, not 4 (:436) | page | the per-sample and per-frame double-stepping trap exists only on the page brain (`toMic`); goes |
-| every destination's own control drives something (:505) | page | slider moves change `state`/`state.source.settings`; face, becomes a snapshot diff on default |
-| and enough of them were reachable to mean it (:507) | page | as above |
-| no page errors (:510) | page | page health |
+| Check | Kind | Why | Batch 3 (13 Nov) |
+|---|---|---|---|
+| every preset migrates to the same destination (:75) | page | `loadCorpus`/`applyPreset` then `state.modRoutings`; trivially to default |  |
+| and the depth comes across with it (:86) | page | as above |  |
+| one octave down is reached (:130) | numbers | `estimateFrequency` over an LFO sweep on gen.freq (already sends `hostSendSetup`); offline render |  |
+| one octave up is reached (:131) | numbers | as above |  |
+| contributions add (:157) | numbers | the claim is the matrix sum, but the evidence is the test summing `genRoutes` itself with `lfos[].value` set by hand; has to be rewritten as a render of two still LFOs, not ported | to pieces (mod.py: two held sources, the generator's pitch) |
+| an unknown destination is skipped (:170) | page | `genRoutes.length` after `compileRoutes()`, page brain; goes, or becomes a core matrix check |  |
+| but not deleted from the setup (:171) | page | `state.modRoutings.length`; face, trivially to default |  |
+| nothing changes through encode and decode (:190) | page | snapshot, encode, decode, restore; trivially to default |  |
+| the routings survive as text (:191) | page | as above |  |
+| and the code carries the current version (:196) | page | as above |  |
+| still loads, and points where it said (:210) | page | legacy decode plus restore; trivially to default |  |
+| a version-4 code loads without the routes from the threshold or to the pluck, and saves without them (:233) | page | decode passes; trivially to default |  |
+| and the same code marked version 5 keeps them, so the pass is what took them out (:236) | page | as above |  |
+| a version-9 code with a drawing loads as the waveform, its shape kept, the drawings' fields gone, and ... (:273) | page | `decodeSetupHere`, the page's own fallback codec, deleted in step 6; the same claim on `decodeSetup` is what stays |  |
+| and one that names no kind at all is given the waveform (:276) | page | as above |  |
+| and the same code marked version 10 keeps everything, so the pass is what took it (:277) | page | as above |  |
+| and the site's codec, the compiled core's, reads all three as the page's does (:281) | engines compared | `decodeSetup` (compiled) against `decodeSetupHere` (JS); goes |  |
+| adding a destination makes the routing (:304) | page | the card editor's DOM; trivially to default |  |
+| its depth slider sets its amount (:305) | page | as above |  |
+| and its cross removes it (:306) | page | as above |  |
+| a rotation really turns the figure (:356) | numbers | principal axis of `capture()` lanes at rotate 0 vs 0.125; core capture/plane offline | to pieces (capture_cpp `dump`, a diagonal line) |
+| with nothing routed every offset is zero (:376) | numbers | `applyModMatrix` offsets; core matrix | to pieces (matrix_cpp `screen`) |
+| and a source cannot push past the range (:378) | numbers | as above, with `lfos[0].value = 1` set by hand | to pieces |
+| it rises with the signal (:401) | page | `envLive / ENV_FULL`, the output meter's follower as `paintStage` takes it; a face reading, which on default should read the instrument's level |  |
+| and falls when it stops (:402) | page | as above |  |
+| but releases slower than it attacks (:403) | page | as above |  |
+| 2 Hz is 2 Hz on the tone source (:429) | numbers | `lfos[0].phase` wraps against elapsed time; the core LFO's rate in a render |  |
+| and 2 Hz on the microphone, not 4 (:436) | page | the per-sample and per-frame double-stepping trap exists only on the page brain (`toMic`); goes |  |
+| every destination's own control drives something (:505) | page | slider moves change `state`/`state.source.settings`; face, becomes a snapshot diff on default |  |
+| and enough of them were reachable to mean it (:507) | page | as above |  |
+| no page errors (:510) | page | page health |  |
 
 ### morphtest.py - wholly on ?brain=js - 22/22
 Docstring note (:23): it "reads the page's own brain - genSet called directly, and its generator's samples". This is the waveform morph, not the setup morph. Its numbers come from `waveAt` and `makeGeneratorCore`, the JavaScript engine called directly.
@@ -1693,38 +1820,38 @@ Docstring note (:27): it "reads the page's own brain - its voices and routes, re
 ### phototest.py - 1 leg on ?brain=js beside the default (the first 30 checks; the same page is re-opened on the default at :501 for the last 7) - 30/37
 Docstring note (:20): it "reads the page's own brain - genSet called directly". The `genSet` calls drive the figure under each check.
 
-| Check | Kind | Why |
-|---|---|---|
-| in Y-T every lit cell is on the trace and every inked cell is lit (:103) | page | `phosphor.grid` against canvas pixels: the face's agreement; to default |
-| and in X-Y, on a figure that is not its own transpose (:110) | page | as above |
-| the grid fades by one minus the persistence every frame (:177) | numbers | grid decay per frame; the picture engine's (the core's, as wasm) |
-| which is the rate the screen itself fades at (:179) | page | grid rate against canvas ink rate; face agreement |
-| infinite persistence keeps everything, as the screen does (:199) | numbers | grid sum kept |
-| and with persistence off nothing is kept but what was just drawn (:201) | numbers | grid outside the dot |
-| a cell keeps the brighter of two strokes, never their sum (:218) | numbers | `phosphorSegment` compositing; the core engine's segment offline |
-| on the figure it reads bright (:245) | numbers | `photo.value` |
-| and off it, dark (:246) | numbers | as above |
-| the reading moves smoothly as the reticle does - no jump at a cell edge (:247) | numbers | `phosphorRead` continuity |
-| and it is a source while it is on (:249) | page | `MOD_SOURCES.has('photo.1')` |
-| it never moves faster than two full swings a second (:283) | numbers | `photo.value` slew over time |
-| and still gets there (:286) | numbers | as above |
-| since E3, a source reading the picture may reach any destination (:302) | page | `addRouting` acceptance on the face |
-| and starts low (:306) | page | the face's starting amount |
-| an amount past the ceiling is held to it where it is used (:338) | numbers | `applyModMatrix` with `photo.value` forced; core matrix ceiling |
-| and stored back within it, so the control says what applies (:341) | page | `r.amount` after `touchRoutings`; face |
-| a routing that arrives in a code past the ceiling moves its destination no further than the ceiling (:343) | numbers | `state.resMod` |
-| everything stays inside its range and nothing goes NaN (:371) | numbers | 4 s loop on rotate/zoom: mods, `photo.value`, grid |
-| dragging the reticle puts it where it is dropped (:395) | page | real mouse on the reticle; trivially to default |
-| and does not also drag the trigger level under it (:397) | page | as above |
-| its arrow keys move it a cell and leave the timebase alone (:399) | page | as above |
-| over a spectrogram, which no beam draws, it is put away and reads nothing at once (:422) | page | reticle hidden plus `photo.value` zeroed on a display change; face |
-| and the phosphor holds nothing there (:425) | numbers | grid sum on spect (borderline: the engine's spect rule) |
-| with infinite persistence the old figure stays, on the screen and the grid (:461) | page | Clear's fixture, grid and canvas |
-| Clear wipes both at once (:465) | page | the Clear button; to default |
-| and leaves persistence as it was set (:467) | page | as above |
-| off, it is not a source and reads nothing, and its routings wait for it (:489) | page | photo button and registry |
-| a setup code brings it back where it was (:492) | page | snapshot/restore; trivially to default |
-| and a code from before it existed has it off (:494) | page | `restore({})` |
+| Check | Kind | Why | Batch 3 (13 Nov) |
+|---|---|---|---|
+| in Y-T every lit cell is on the trace and every inked cell is lit (:103) | page | `phosphor.grid` against canvas pixels: the face's agreement; to default |  |
+| and in X-Y, on a figure that is not its own transpose (:110) | page | as above |  |
+| the grid fades by one minus the persistence every frame (:177) | numbers | grid decay per frame; the picture engine's (the core's, as wasm) |  |
+| which is the rate the screen itself fades at (:179) | page | grid rate against canvas ink rate; face agreement |  |
+| infinite persistence keeps everything, as the screen does (:199) | numbers | grid sum kept |  |
+| and with persistence off nothing is kept but what was just drawn (:201) | numbers | grid outside the dot |  |
+| a cell keeps the brighter of two strokes, never their sum (:218) | numbers | `phosphorSegment` compositing; the core engine's segment offline |  |
+| on the figure it reads bright (:245) | numbers | `photo.value` |  |
+| and off it, dark (:246) | numbers | as above |  |
+| the reading moves smoothly as the reticle does - no jump at a cell edge (:247) | numbers | `phosphorRead` continuity |  |
+| and it is a source while it is on (:249) | page | `MOD_SOURCES.has('photo.1')` |  |
+| it never moves faster than two full swings a second (:283) | numbers | `photo.value` slew over time |  |
+| and still gets there (:286) | numbers | as above |  |
+| since E3, a source reading the picture may reach any destination (:302) | page | `addRouting` acceptance on the face |  |
+| and starts low (:306) | page | the face's starting amount |  |
+| an amount past the ceiling is held to it where it is used (:338) | numbers | `applyModMatrix` with `photo.value` forced; core matrix ceiling | to pieces (photo.py; held at a half, since at one the loop's total masks the reach) |
+| and stored back within it, so the control says what applies (:341) | page | `r.amount` after `touchRoutings`; face |  |
+| a routing that arrives in a code past the ceiling moves its destination no further than the ceiling (:343) | numbers | `state.resMod` | to pieces |
+| everything stays inside its range and nothing goes NaN (:371) | numbers | 4 s loop on rotate/zoom: mods, `photo.value`, grid |  |
+| dragging the reticle puts it where it is dropped (:395) | page | real mouse on the reticle; trivially to default |  |
+| and does not also drag the trigger level under it (:397) | page | as above |  |
+| its arrow keys move it a cell and leave the timebase alone (:399) | page | as above |  |
+| over a spectrogram, which no beam draws, it is put away and reads nothing at once (:422) | page | reticle hidden plus `photo.value` zeroed on a display change; face |  |
+| and the phosphor holds nothing there (:425) | numbers | grid sum on spect (borderline: the engine's spect rule) |  |
+| with infinite persistence the old figure stays, on the screen and the grid (:461) | page | Clear's fixture, grid and canvas |  |
+| Clear wipes both at once (:465) | page | the Clear button; to default |  |
+| and leaves persistence as it was set (:467) | page | as above |  |
+| off, it is not a source and reads nothing, and its routings wait for it (:489) | page | photo button and registry |  |
+| a setup code brings it back where it was (:492) | page | snapshot/restore; trivially to default |  |
+| and a code from before it existed has it off (:494) | page | `restore({})` |  |
 
 ### picturepresettest.py - wholly on ?brain=js - 10/10
 Its comment (`:45`): on ?brain=js because it "reads the page's own brain - restore() called directly, which the page sends the instrument nothing of". In fact it also calls `loadCorpus`, `heldTone`, `landPhoto`, `movePhoto` and reads `photo.*`, `MOD_SOURCES.get(id).value()` and `pictureMeter.verdict()` - all page-brain state - over 10 s a preset, twice for each loop.
@@ -1851,40 +1978,40 @@ Its comment (`:16`): "reads the page's own brain - its oscillators, set by hand 
 ### scantest.py - wholly on ?brain=js&core=js, with one ?brain=js leg (`:593`) beside two default legs (`:585`) - 55/57
 Sites here count `check(` and its wrapper `null(` (which calls `check("null: " + ...)`): 33 checks and 24 nulls; the `check` inside `def null` (`:52`) is not counted. Its docstring (`:27`): "The core runs on the main thread from `makeGeneratorCore` ... most of the page runs on `?brain=js&core=js`, whose reading and timing are the ones under test, and the C++ port is held to them by parity". The last section opens the default site twice (Scan on/off) and `?brain=js` twice, the latter to prove "the page's own brain on the compiled generator has to send it its tables". Not listed: `:588` (check) and `:590` (null), both default.
 
-| Check | Kind | Why |
-|---|---|---|
-| a reading's table is its harmonics, evened to a peak of one, with no DC (`:143`) + null `:146` | numbers | `scanTables` on a synthetic reading; the core's `scan.h`, through `core/tests/tools/scan_cpp.cpp`, not a setup render. |
-| a picture ten times dimmer reads the same table: the picture cannot make the voice quieter (`:148`) + null `:150` | numbers | As above. |
-| the second level leaves out what the first has past its 32nd harmonic (`:152`) + null `:154` | numbers | As above. |
-| a flat reading is darkness, and so is one under SCAN_DARK: no table, so the last is held (`:155`) + null `:157` | numbers | As above. |
-| an off-centre path reads a three-petalled rose at its fundamental (`:170`) + null `:173` | numbers | `scanRead` on a grid drawn in JS; grid-in, table-out through scan_cpp. |
-| three cells of softness take the spikes out: the share above the 16th harmonic falls tenfold (`:184`) + null `:186` | numbers | `scanRead` softness; as above. |
-| the path follows the figure over about a second: 63 per cent of the way after one (`:197`) + null `:199` | numbers | `scanFollow` over 60 grids; as above. |
-| and holds where it was over darkness (`:200`) | numbers | `scanFollow` on a dark grid. |
-| at %d Hz a table sent anywhere in a tick lands at the next, to the sample (`:219`), x3 rates | numbers | JS engine blocks with `core.set('scanTable', ...)` mid-run; needs a render that can inject a table at a sample, not a setup code. |
-| at %d Hz and one sent a tick later lands a tick later: they part at sample %d (`:225`) + null `:227`, x3 | numbers | As above. |
-| the crossfade is a straight line across one tick, from the last table to the new one (`:242`) + nulls `:245`, `:247` | numbers | As above. |
-| %s: a table at a depth of nought changes nothing, to the bit, either side (`:263`) + null `:265`, x3 voices | numbers | Engine renders with and without a table at depth 0 and 0.01. |
-| Scan plays at the note's pitch: the wave repeats every cycle of the note (`:272`) + null `:274` | numbers | Engine render, periodicity. |
-| depth %.1f under a hold of %.2f keeps %.2f of the shape: the note never loses its fundamental (`:284`) + null `:286`, x3 | numbers | Engine render with `scanHold` set directly; offline needs the hold as an input. |
-| the bend bends what Scan reads, not only the shape under it (`:313`) + null `:314` | numbers | Engine render against a hand computation that calls the page's `waveAt` and `cycleRead`; offline the expectation must be computed in Python or by the core's own functions. |
-| layer B's depth and table play in B's lanes and leave A's to the bit (`:323`) + null `:325` | numbers | Two-layer engine render. The null is vacuous - see Surprises. |
-| under sync it is bounded and finite, and Scan is in nearly every sample, not only the restarts (`:332`) | numbers | Engine render under sync. |
-| Depth writes the layer's scan, and says how much of the voice it is (`:362`) | page | Slider to `genSettings().scan` and the reading's text; default with the setup read back. |
-| Persistence in seconds sets the phosphor's fade, and the menu shows its time when it is not one of the five (`:364`) | page | `state.persistence`, the menu's text; face. |
-| a setup code carries the depth, the softness and that persistence, and brings them back (`:368`) + null `:372` | page | snapshot/restore round trip; codec. |
-| a persistence chosen in the menu moves the slider to its time and hides Memory's own (`:374`) | page | Face only. |
-| for a quarter of a second after a setup lands nothing is read (`:391`) + null `:393` | numbers | Borderline: counts the page brain's posts of a table to its source (`src.set` intercepted). The behaviour is in the core (`scan.h:52`, `kScanFreezeMs = 250`, `freeze()`), so an offline render that counts table changes after a setup lands keeps it. |
-| a voice rebuilt with Scan on is handed its table as tables, every level its full length and finite (`:440`) | page | `AudioWorkletNode` intercepted to read `processorOptions.tone.scanTable` through `genVoice`/`toTone` - the page brain's worklet plumbing. Goes. |
-| and stays finite and sounding (`:442`) + null `:443` | page | Same rebuilt page voice; goes with it (the null is the JSON pitfall of that plumbing). |
-| a screen full of light is running away, and the hold reins Scan's depth in to a quarter, as the stage's (`:458`) + null `:460` | numbers | `genSettings().scanHold` and `pictureStage.hold` with `phosphor.grid.fill(1)` forced every 5 ms; offline needs a fixture that fills the screen (a loud figure) rather than writing the grid. |
-| with a split, Depth edits the layer on the panel and B reads its own figure's picture (`:489`) + null `:491` | numbers | Borderline: `layerPictures.engines[1].cells` read through `scanRead` against what was posted; the panel half is page. Offline as a split render with each layer's table out. |
-| a turning fifth read back moves its timbre: the brightness wanders (`:534`) + null `:535` | numbers | Brightness of `getLatestWindow` over 6 s, loop closed; offline render of the corpus setup. |
-| and within three seconds it is plainly not the fifth without Scan (`:536`) | numbers | As above. |
-| held still - the screen stopped - Scan is an ordinary tone: the brightness stands (`:539`) + null `:541` | numbers | As above, with `setRunning(false)` at 2 s; offline needs a "screen stopped" event in its timeline. |
-| no page errors (`:544`) | page | Page health. |
-| the page's brain on the compiled generator sends it the tables, and it plays them (`:596`) + null `:597` | engines compared | `?brain=js` (default core = wasm): exists to prove the page's brain feeds the compiled generator. Goes; the default legs `:588`/`:590` already hold Scan on the instrument. |
-| no page errors on the site (`:598`) | page | Mixes the two default and two ?brain=js pages' errors; keeps its default half. |
+| Check | Kind | Why | Batch 3 (13 Nov) |
+|---|---|---|---|
+| a reading's table is its harmonics, evened to a peak of one, with no DC (`:143`) + null `:146` | numbers | `scanTables` on a synthetic reading; the core's `scan.h`, through `core/tests/tools/scan_cpp.cpp`, not a setup render. | to pieces (scan.py, `tables`) |
+| a picture ten times dimmer reads the same table: the picture cannot make the voice quieter (`:148`) + null `:150` | numbers | As above. | to pieces |
+| the second level leaves out what the first has past its 32nd harmonic (`:152`) + null `:154` | numbers | As above. | to pieces |
+| a flat reading is darkness, and so is one under SCAN_DARK: no table, so the last is held (`:155`) + null `:157` | numbers | As above. | to pieces |
+| an off-centre path reads a three-petalled rose at its fundamental (`:170`) + null `:173` | numbers | `scanRead` on a grid drawn in JS; grid-in, table-out through scan_cpp. | to pieces (`geometry`, `read`) |
+| three cells of softness take the spikes out: the share above the 16th harmonic falls tenfold (`:184`) + null `:186` | numbers | `scanRead` softness; as above. | to pieces |
+| the path follows the figure over about a second: 63 per cent of the way after one (`:197`) + null `:199` | numbers | `scanFollow` over 60 grids; as above. | to pieces (`follow`) |
+| and holds where it was over darkness (`:200`) | numbers | `scanFollow` on a dark grid. | to pieces; +1 null |
+| at %d Hz a table sent anywhere in a tick lands at the next, to the sample (`:219`), x3 rates | numbers | JS engine blocks with `core.set('scanTable', ...)` mid-run; needs a render that can inject a table at a sample, not a setup code. | to pieces (generator_cpp; tables put at block edges, the page's anywhere) |
+| at %d Hz and one sent a tick later lands a tick later: they part at sample %d (`:225`) + null `:227`, x3 | numbers | As above. | to pieces |
+| the crossfade is a straight line across one tick, from the last table to the new one (`:242`) + nulls `:245`, `:247` | numbers | As above. | to pieces |
+| %s: a table at a depth of nought changes nothing, to the bit, either side (`:263`) + null `:265`, x3 voices | numbers | Engine renders with and without a table at depth 0 and 0.01. | to pieces |
+| Scan plays at the note's pitch: the wave repeats every cycle of the note (`:272`) + null `:274` | numbers | Engine render, periodicity. | to pieces |
+| depth %.1f under a hold of %.2f keeps %.2f of the shape: the note never loses its fundamental (`:284`) + null `:286`, x3 | numbers | Engine render with `scanHold` set directly; offline needs the hold as an input. | to pieces (`set scanHold`) |
+| the bend bends what Scan reads, not only the shape under it (`:313`) + null `:314` | numbers | Engine render against a hand computation that calls the page's `waveAt` and `cycleRead`; offline the expectation must be computed in Python or by the core's own functions. | to pieces (the hand's cycleRead written again in Python); +1 check: the step read at 2 kHz, which the mutation pass found this could not see |
+| layer B's depth and table play in B's lanes and leave A's to the bit (`:323`) + null `:325` | numbers | Two-layer engine render. The null is vacuous - see Surprises. | to pieces; its null, which could not fail, replaced by two that can |
+| under sync it is bounded and finite, and Scan is in nearly every sample, not only the restarts (`:332`) | numbers | Engine render under sync. | to pieces |
+| Depth writes the layer's scan, and says how much of the voice it is (`:362`) | page | Slider to `genSettings().scan` and the reading's text; default with the setup read back. | moved, rewritten: reads `snapshot()`, not `genSettings()` (the page's mirror) |
+| Persistence in seconds sets the phosphor's fade, and the menu shows its time when it is not one of the five (`:364`) | page | `state.persistence`, the menu's text; face. | moved |
+| a setup code carries the depth, the softness and that persistence, and brings them back (`:368`) + null `:372` | page | snapshot/restore round trip; codec. | moved, rewritten: `snapshot()` for the depth and softness |
+| a persistence chosen in the menu moves the slider to its time and hides Memory's own (`:374`) | page | Face only. | moved |
+| for a quarter of a second after a setup lands nothing is read (`:391`) + null `:393` | numbers | Borderline: counts the page brain's posts of a table to its source (`src.set` intercepted). The behaviour is in the core (`scan.h:52`, `kScanFreezeMs = 250`, `freeze()`), so an offline render that counts table changes after a setup lands keeps it. | to pieces (scan_cpp `freeze`; the instrument's own freeze is parity's) |
+| a voice rebuilt with Scan on is handed its table as tables, every level its full length and finite (`:440`) | page | `AudioWorkletNode` intercepted to read `processorOptions.tone.scanTable` through `genVoice`/`toTone` - the page brain's worklet plumbing. Goes. | gone: the page brain's worklet plumbing |
+| and stays finite and sounding (`:442`) + null `:443` | page | Same rebuilt page voice; goes with it (the null is the JSON pitfall of that plumbing). | gone, with :440 |
+| a screen full of light is running away, and the hold reins Scan's depth in to a quarter, as the stage's (`:458`) + null `:460` | numbers | `genSettings().scanHold` and `pictureStage.hold` with `phosphor.grid.fill(1)` forced every 5 ms; offline needs a fixture that fills the screen (a loud figure) rather than writing the grid. | to pieces, in two: picture_cpp's stage held to a quarter on a full screen, and scan_cpp's frame sending it |
+| with a split, Depth edits the layer on the panel and B reads its own figure's picture (`:489`) + null `:491` | numbers | Borderline: `layerPictures.engines[1].cells` read through `scanRead` against what was posted; the panel half is page. Offline as a split render with each layer's table out. | split: the panel half moved (clicks, `snapshot()`); B reading its own picture is parity's and pieces/strike.py's |
+| a turning fifth read back moves its timbre: the brightness wanders (`:534`) + null `:535` | numbers | Brightness of `getLatestWindow` over 6 s, loop closed; offline render of the corpus setup. | gone: the site legs hold it on the instrument |
+| and within three seconds it is plainly not the fifth without Scan (`:536`) | numbers | As above. | moved into the site legs, rewritten from their two runs |
+| held still - the screen stopped - Scan is an ordinary tone: the brightness stands (`:539`) + null `:541` | numbers | As above, with `setRunning(false)` at 2 s; offline needs a "screen stopped" event in its timeline. | left on ?brain=js&core=js (a page of its own): on the site Stop does not reach the instrument, a defect in after-stage-5.md; judged against its own run before the stop |
+| no page errors (`:544`) | page | Page health. | kept, on the default |
+| the page's brain on the compiled generator sends it the tables, and it plays them (`:596`) + null `:597` | engines compared | `?brain=js` (default core = wasm): exists to prove the page's brain feeds the compiled generator. Goes; the default legs `:588`/`:590` already hold Scan on the instrument. | gone: engines compared |
+| no page errors on the site (`:598`) | page | Mixes the two default and two ?brain=js pages' errors; keeps its default half. | kept, its default half |
 
 ### schematest.py - wholly on ?brain=js - 14/14
 No stated reason: it has no "On ?brain=js (5m)" comment at all, and nothing in it needs the page's brain. It holds `SETUP_FIELDS` to `snapshot()` and to the markup's controls, and the readers (`setupField`, `setupOwn`, `restore`). Only `:229`/`:231` read the brain's own engine objects (`plane`, `planeB`, `echo`, `echoB`) and the cover (`:151`) toggles `handLinks` and `planeB.own`.
@@ -1992,28 +2119,28 @@ The docstring: "a finger's tap starts it, on the site's compiled instrument and 
 ### striketest.py - wholly on ?brain=js&core=js for its first page, then three default pages - 32/36
 Sites count `check(` and `null(` (21 and 15; the `check` inside `def null`, `:53`, not counted). Its docstring (`:27`): "Run on the page's own brain (`?brain=js&core=js`), which draws the screen the page shows, and then on the site's instrument, which lays the strike in the core on the grid it draws itself". The first page writes and reads `pictureEngine.cells`, `scan.paths`, `layerPictures.engines/stages` by hand on a stopped screen. Not listed: the site section's `:452`, `:456` (null), `:458` (null), `:460`, all default.
 
-| Check | Kind | Why |
-|---|---|---|
-| Strike at nought lays nothing at all (`:125`) | numbers | Growth of `pictureEngine.cells` after `midiNoteOn` with the screen stopped; offline, the core's grid after a timed note. |
-| and neither does a strike with Scan off, since there is no reading for it to be in (`:126`) | numbers | As above. |
-| null: with Scan on and Strike at half, a note lays light (`:128`) | numbers | As above. |
-| a note lays light as bright as its velocity times the Strike amount (`:130`) + null `:132` | numbers | Peak of the grid after a note at velocity 100. |
-| it is laid where Scan reads: the reading, unblurred, rises by over half the light it laid (`:144`) + null `:146` | numbers | `scanRead` on the grid with `scan.paths[0]` written by hand and a stroke laid by `pictureEngine.segment`; offline needs the path as an input. |
-| each note strikes its own place round the circle: C at the reading's start, F sharp half a lap on (`:149`) + null `:151` | numbers | As above. |
-| a harder note changes the next table more: over twice what a soft one does (`:154`) + null `:156` | numbers | Tables before and after soft and hard notes. |
-| the strike's light fades exactly by the screen's Persistence, frame by frame, as a stroke does (`:183`) + null `:186` | numbers | A cell's value over `pictureEngine.frames`; offline, frame by frame. |
-| the picture meter, which the stage and the running-away hold read, lights with what a strike laid (`:223`) + null `:225` | numbers | `pictureMeter.lit` before and after four notes; offline. |
-| in a split a note above the split strikes B's picture and not A's (`:263`) + null `:265` | numbers | Each layer's `layerPictures.engines[l].cells` growth; offline split render with each layer's grid. |
-| the Reads row is shown while the layers draw a figure each (`:266`) | page | `el.scanReadsRow.hidden`; face, a click on the default. |
-| crossed, A plays a table made from B's picture, and B from A's (`:316`) + null `:318` | numbers | `genSettings(l).scanTable` against `scanTables(scanRead(e[other].cells, ...))` after `scanStep(16)` by hand; offline needs each layer's table and grid out. |
-| reading both, A plays the two pictures' readings averaged (`:319`) + null `:320` | numbers | As above. |
-| a crossed pair's depths are both held by the lower of the two holds (`:321`) + null `:323` | numbers | Borderline: `layerPictures.stages[l].hold` written by hand (1 and 0.3), then `scanHold` read. The rule is the core's; offline it needs a hold as an input or a fixture that runs away on one layer. |
-| and a layer reading both, uncrossed, takes the lower of the two it reads (`:324`) | numbers | As above. |
-| a setup code carries what each layer reads and brings it back (`:326`) + null `:328` | page | snapshot/restore and `scan.reads`; codec, default-ready. |
-| a value a layer's menu does not offer reads its own picture (`:329`) | page | restore's refusal; codec. |
-| unsplit, the Reads row is hidden: there is one picture (`:332`) | page | Face. |
-| Crossed hands: two figures, Scan on both, and the left hand's wave read from the right hand's picture (`:365`) + null `:368` | numbers | Corpus preset, four notes, table against B's picture; offline render. |
-| no page errors (`:370`) | page | Page health. |
+| Check | Kind | Why | Batch 3 (13 Nov) |
+|---|---|---|---|
+| Strike at nought lays nothing at all (`:125`) | numbers | Growth of `pictureEngine.cells` after `midiNoteOn` with the screen stopped; offline, the core's grid after a timed note. | to pieces (strike.py, scan_cpp `laid`) |
+| and neither does a strike with Scan off, since there is no reading for it to be in (`:126`) | numbers | As above. | to pieces |
+| null: with Scan on and Strike at half, a note lays light (`:128`) | numbers | As above. | to pieces |
+| a note lays light as bright as its velocity times the Strike amount (`:130`) + null `:132` | numbers | Peak of the grid after a note at velocity 100. | to pieces |
+| it is laid where Scan reads: the reading, unblurred, rises by over half the light it laid (`:144`) + null `:146` | numbers | `scanRead` on the grid with `scan.paths[0]` written by hand and a stroke laid by `pictureEngine.segment`; offline needs the path as an input. | to pieces |
+| each note strikes its own place round the circle: C at the reading's start, F sharp half a lap on (`:149`) + null `:151` | numbers | As above. | to pieces |
+| a harder note changes the next table more: over twice what a soft one does (`:154`) + null `:156` | numbers | Tables before and after soft and hard notes. | to pieces |
+| the strike's light fades exactly by the screen's Persistence, frame by frame, as a stroke does (`:183`) + null `:186` | numbers | A cell's value over `pictureEngine.frames`; offline, frame by frame. | to pieces (picture_cpp's fade) |
+| the picture meter, which the stage and the running-away hold read, lights with what a strike laid (`:223`) + null `:225` | numbers | `pictureMeter.lit` before and after four notes; offline. | to pieces (picture_cpp's meter) |
+| in a split a note above the split strikes B's picture and not A's (`:263`) + null `:265` | numbers | Each layer's `layerPictures.engines[l].cells` growth; offline split render with each layer's grid. | to pieces (scan_cpp `strike`; the instrument's split is parity's) |
+| the Reads row is shown while the layers draw a figure each (`:266`) | page | `el.scanReadsRow.hidden`; face, a click on the default. | moved (Poly and the split by their controls) |
+| crossed, A plays a table made from B's picture, and B from A's (`:316`) + null `:318` | numbers | `genSettings(l).scanTable` against `scanTables(scanRead(e[other].cells, ...))` after `scanStep(16)` by hand; offline needs each layer's table and grid out. | to pieces (scan_cpp frames) |
+| reading both, A plays the two pictures' readings averaged (`:319`) + null `:320` | numbers | As above. | to pieces |
+| a crossed pair's depths are both held by the lower of the two holds (`:321`) + null `:323` | numbers | Borderline: `layerPictures.stages[l].hold` written by hand (1 and 0.3), then `scanHold` read. The rule is the core's; offline it needs a hold as an input or a fixture that runs away on one layer. | to pieces |
+| and a layer reading both, uncrossed, takes the lower of the two it reads (`:324`) | numbers | As above. | to pieces |
+| a setup code carries what each layer reads and brings it back (`:326`) + null `:328` | page | snapshot/restore and `scan.reads`; codec, default-ready. | moved; reads the menus and `snapshot()` as well |
+| a value a layer's menu does not offer reads its own picture (`:329`) | page | restore's refusal; codec. | moved |
+| unsplit, the Reads row is hidden: there is one picture (`:332`) | page | Face. | moved |
+| Crossed hands: two figures, Scan on both, and the left hand's wave read from the right hand's picture (`:365`) + null `:368` | numbers | Corpus preset, four notes, table against B's picture; offline render. | to pieces (instrument_cpp `reads`) |
+| no page errors (`:370`) | page | Page health. | moved |
 
 ### wasmtest.py - wholly on ?brain=js (and ?core=js legs) - 41/42
 Every page is opened through `open_page`, which appends `&brain=js` to whatever query it is given (`:221`); its comment (`:216`): "this suite reads which core the page's own two worklets and its main thread run - the page's own brain". The legs are `""` (wasm, `:271`, `:613`, `:657`, `:674`) and `?core=js` (`:600`, `:658`). Not listed: `:63`, which opens no page (`core/wasm/build.py --check`, the module's freshness).

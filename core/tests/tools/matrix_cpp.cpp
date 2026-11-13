@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "scope/matrix.h"
+#include "scope/screen.h"
 
 namespace {
 double num(const std::string& w) {
@@ -48,6 +49,8 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   std::array<int, 2> strikes { 0, 0 };
   double clock = 0;
   bool wheeled = false;  // the stage moved by a wheel since the routes were last taken
+  std::unique_ptr<scope::Brain> brain;            // `screen`'s, below
+  std::unique_ptr<scope::PictureRun> screen;
   for (const auto& words : commands) {
     const std::string& cmd = words[0];
     const auto arg = [&](std::size_t i) { return i < words.size() ? words[i] : std::string(); };
@@ -62,6 +65,10 @@ void run(const std::vector<std::vector<std::string>>& commands) {
         else if (f == "stepped") s->stepped = true;
         else if (f == "varies") s->reachVaries = true;
         else if (f == "perlayer") s->perLayered = true;
+        // reach=photo and reach=bored (not matrix_js's: core/tests/pieces/loop.py) are the
+        // core's own kPhotoReach and kBoredReach, so a run need not copy them.
+        else if (f == "reach=photo") s->reach = scope::kPhotoReach;
+        else if (f == "reach=bored") s->reach = scope::kBoredReach;
         else if (f.rfind("reach=", 0) == 0) s->reach = num(f.substr(6));
         else if (f.rfind("index=", 0) == 0) s->index = static_cast<int>(num(f.substr(6)));
       }
@@ -146,12 +153,50 @@ void run(const std::vector<std::vector<std::string>>& commands) {
                 + (r.unipolar ? "1" : "0");
       }
       said = "routes " + (routes.empty() ? std::string("-") : routes) + " ";
+    }
+    // `lroutes`, not matrix_js's: the routes as `routes` prints them with
+    // whether each is the loop's combined route last (1 or 0), which the
+    // generator glides at its destination (core/tests/pieces/loop.py).
+    else if (cmd == "lroutes") {
+      std::string routes;
+      for (const auto& r : m.routes(clock)) {
+        routes += (routes.empty() ? "" : "+") + (r.index < 0 ? std::string("u") : show(r.index)) + "/" + show(r.held) + "/"
+                + show(r.heldB) + "/" + std::to_string(r.slot) + "/" + show(r.amount) + "/" + show(r.amountB) + "/"
+                + (r.unipolar ? "1" : "0") + "/" + (r.loop ? "1" : "0");
+      }
+      said = "routes " + (routes.empty() ? std::string("-") : routes) + " ";
     } else if (cmd == "encode") {
       const std::string code = scope::Matrix::encode(m.routings());
       said = "code " + (code.empty() ? std::string("-") : code) + " ";
     } else if (cmd == "encodeb") {
       const std::string code = scope::Matrix::encodeB(m.routings());
       said = "codeb " + (code.empty() ? std::string("-") : code) + " ";
+    }
+    /* Not matrix_js's (stage 5, step 3, batch 3: core/tests/pieces/lane.py):
+       `screen` registers the instrument's own visual destinations on this
+       matrix - scope::PictureRun's, with a Brain of defaults under them, so
+       their spans, ranges and bases are the core's and not this run's - and
+       `view` prints what they hold after the screen has made its zoom again
+       from the offset (afterMatrix): the zoom's step, offset and zoom, the
+       trigger position, its offset, the trigger level, and the rotation's
+       and the lag's offsets. `vset` puts a
+       base: `vset zoomStep 0`, `vset position 0.1`, `vset level 0.3`.
+       Parity's runs never name them. */
+    else if (cmd == "screen") {
+      brain = std::make_unique<scope::Brain>();
+      screen = std::make_unique<scope::PictureRun>(m, *brain);
+      m.touch();
+    } else if (cmd == "vset") {
+      if (arg(1) == "zoomStep") brain->view.zoomStep = num(arg(2));
+      else if (arg(1) == "position") brain->view.capture.position = num(arg(2));
+      else if (arg(1) == "level") brain->view.capture.level = num(arg(2));
+      else if (arg(1) == "rotate") brain->view.capture.rotate = num(arg(2));
+    } else if (cmd == "view") {
+      screen->afterMatrix();
+      const auto& w = brain->view;
+      said = "view " + show(w.zoomStep) + " " + show(w.zoomMod) + " " + show(w.screen.zoom) + " " + show(w.capture.position) + " "
+           + show(w.capture.positionMod) + " " + show(w.capture.level) + " " + show(w.capture.rotateMod) + " "
+           + show(w.capture.lagMod) + " ";
     } else if (cmd == "dests") {
       std::string list;
       for (const auto& d : m.dests()) {

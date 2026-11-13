@@ -130,32 +130,10 @@ with sync_playwright() as pw:
     check("one octave down is reached", 200 < swept["lo"] < 260, "%.0f Hz" % swept["lo"])
     check("one octave up is reached", 760 < swept["hi"] < 920, "%.0f Hz" % swept["hi"])
 
-    print("\n--- two sources on one destination sum ---")
-    summed = p.evaluate("""() => {
-      loadCorpus('Pure sine');
-      // Both LFOs held still at a known value, pointed at the same parameter.
-      lfos[0].shape = 'square'; lfos[0].rate = 0.0001;
-      lfos[1].shape = 'square'; lfos[1].rate = 0.0001;
-      lfos[0].phase = 0.1; lfos[1].phase = 0.1;          // square -> +0.9 each
-      state.modRoutings = [
-        { sourceId: 'lfo1', destId: 'gen.freq', amount: 0.5 },
-        { sourceId: 'lfo2', destId: 'gen.freq', amount: 0.25 },
-      ];
-      touchRoutings(); compileRoutes();
-      // What the per-sample loop would compute for the frequency slot.
-      lfos[0].value = 0.9; lfos[1].value = 0.9;
-      genMod.fill(0);
-      for (const route of genRoutes) {
-        genMod[route.slot] += route.unipolar
-          ? route.amount * (1 - lfos[route.index].value) / 2
-          : route.amount * lfos[route.index].value;
-      }
-      const sum = genMod[0];
-      state.modRoutings = []; touchRoutings();
-      return { sum, expected: 0.9 * 0.5 + 0.9 * 0.25 };
-    }""")
-    check("contributions add", abs(summed["sum"] - summed["expected"]) < 1e-6,
-          "%.4f vs %.4f" % (summed["sum"], summed["expected"]))
+    # "Contributions add" summed the page's `genRoutes` in the test itself,
+    # with its LFOs held still by hand; it is core/tests/pieces/mod.py's
+    # since stage 5, step 3, batch 3 (13 Nov): two sources held at a value in
+    # the core's matrix, and the pitch the generator plays from what it hands it.
 
     print("\n--- what a routing to nowhere does ---")
     stale = p.evaluate("""() => {
@@ -305,79 +283,14 @@ with sync_playwright() as pw:
     check("its depth slider sets its amount", abs((ui["amount"] or 0) - 0.35) < 1e-9, str(ui["amount"]))
     check("and its cross removes it", ui["cleared"] == 0, str(ui["cleared"]))
 
-    print("\n--- the picture is a destination too ---")
-    # A unison at zero phase draws a 45 degree diagonal. Turning it by an
-    # eighth of a turn should stand it up.
-    #
-    # This used to turn the pair itself before measuring the axis, because
-    # `capture` handed back lanes the draw code was going to rotate later. It
-    # does the rotation now, on a stereo pair, so re-applying the matrix here
-    # turned the figure twice and read 90 degrees. Taking the lanes as they
-    # come is both the fix and a better check: it is the pipeline being
-    # measured rather than this function's own arithmetic.
-    # And the buffer has to hold the signal this claims to be measuring. The
-    # preset draws a circle; the line comes from forcing the phase to nought,
-    # and a ring buffer full of the circle takes a moment to become one. The
-    # old version could skip this wait because it never read the app's
-    # rotation at all - it turned whatever came back by the angle itself, so
-    # the answer was 45 degrees whatever the samples were, and whatever
-    # `capture` did.
-    p.evaluate("""() => {
-      loadCorpus('Circle'); heldTone();
-      el.phase.value = '0'; el.phase.dispatchEvent(new Event('input'));
-      state.modRoutings = []; touchRoutings();
-    }""")
-    p.wait_for_timeout(500)
-    angles = p.evaluate("""() => {
-      // Frozen, so both captures read the same samples and the only thing
-      // that differs between them is the angle.
-      state.running = false;
-      const axis = () => {
-        const f = capture();
-        const x = f.channels[0], y = f.channels[1], n = x.length;
-        let mx = 0, my = 0;
-        for (let i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
-        mx /= n; my /= n;
-        let sxx = 0, syy = 0, sxy = 0;
-        for (let i = 0; i < n; i++) {
-          const px = x[i] - mx, py = y[i] - my;
-          sxx += px * px; syy += py * py; sxy += px * py;
-        }
-        return { deg: 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI,
-                 turned: f.turned };
-      };
-      state.rotate = 0; const flat = axis();
-      state.rotate = 0.125; const turned = axis();
-      state.rotate = 0;
-      state.running = true;
-      return { flat: flat.deg, turned: turned.deg, applied: turned.turned };
-    }""")
-    turn = (angles["turned"] - angles["flat"] + 180) % 180
-    check("a rotation really turns the figure",
-          angles["applied"] and abs(turn - 45) < 3,
-          "%.1f deg from %.1f to %.1f" % (turn, angles["flat"], angles["turned"]))
-
-    offsets = p.evaluate("""() => {
-      state.modRoutings = []; touchRoutings();
-      const f = capture();
-      applyModMatrix(f, 16);
-      const rest = { rotate: state.rotateMod, zoom: state.zoomMod, lag: state.lagMod };
-      // A depth far past the destination's range must stop at the range.
-      state.rotate = 0;
-      state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 99 }];
-      touchRoutings();
-      lfos[0].value = 1;
-      applyModMatrix(f, 16);
-      const pushed = state.rotateMod;
-      state.modRoutings = []; touchRoutings();
-      applyModMatrix(f, 16);
-      return { rest, pushed, max: MOD_DESTS.get('view.rotate').max };
-    }""")
-    check("with nothing routed every offset is zero",
-          offsets["rest"] == {"rotate": 0, "zoom": 0, "lag": 0}, str(offsets["rest"]))
-    check("and a source cannot push past the range",
-          abs(offsets["pushed"] - offsets["max"]) < 1e-9,
-          "%.2f against a limit of %.2f" % (offsets["pushed"], offsets["max"]))
+    # The picture as a destination - a rotation really turns the figure,
+    # nothing routed leaves every offset at nought, and a source cannot push
+    # past the range - read the page's `capture()` with its rotation set by
+    # hand and its `applyModMatrix` with LFO 1 held at one. They are
+    # core/tests/pieces/mod.py's since stage 5, step 3, batch 3: the core's
+    # capture turned and its lanes read whole (a diagonal line, not the
+    # circle, which a rotation leaves alone), and the instrument's own screen
+    # destinations on the core's matrix with a source held at a value.
 
     # The level, a source until F4b and the output meter since: its reading,
     # as paintStage takes it.

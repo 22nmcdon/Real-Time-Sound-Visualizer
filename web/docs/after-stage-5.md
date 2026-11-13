@@ -16,6 +16,18 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   cuts at every status byte and the core's keyboard drops the half message.
   Web MIDI and the plugin's host hand over whole messages, so in practice this
   can hardly happen; low priority. Found by batch 2 (13 Nov).
+- **Stop does not hold the instrument's picture, so Scan goes on moving with the
+  screen stopped.** On the default page Stop (`setRunning(false)`) holds the
+  face's screen and stops what the score and the arpeggiator sent, and tells
+  the instrument nothing: it goes on drawing its own grid and Scan goes on
+  reading it, so a scanned fifth's timbre keeps wandering under a stopped
+  screen (0.0084 held against 0.0079 running, where the page's own brain
+  holds still at 0.0001-0.0002). Scan's docstring, the first-minute test and
+  striketest's description of Stop ("which holds the screen and so the
+  tone") all say it should hold. Whether Stop should reach the instrument -
+  freeze its grid, or its reading - is the owner's call, and the plugin,
+  which has no Stop, may want the same answer. Found by step 3's batch 3 (13
+  Nov); scantest.py's held run stays on `?brain=js&core=js` until then.
 - **The generator still sounding 400 ms after it was set silent.** Strike's
   null once failed with readings reproduced exactly by a generator left
   audible, as if `genSet("amp", 0)` had not landed. It could be a race between

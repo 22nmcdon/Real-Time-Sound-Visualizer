@@ -6541,3 +6541,28 @@ which batch 1 left for `render_cpp`, is often already reachable there.
 batch found and did not fix: Learn's split point moves the face's point and
 not the instrument's, and a MIDI clock byte inside a port's note-on loses the
 note.
+
+**Mutate the core, and the pieces find what the page's checks could not (13
+Nov).** Stage 5's third batch moved Scan's and the strike's numbers, and the
+rows batch 1 left for "a source held at a value", into `core/tests/pieces/`
+(`scan`, `strike`, `lane`, `mod`, `photo`, `loop`). A held value is
+`matrix_cpp`'s scripted source (`value ID V`, with `picture` and
+`reach=photo` or `reach=bored` for the core's own reaches), its `screen`
+command puts the instrument's own visual destinations on the matrix (the
+zoom, the trigger position, the rotation, with screen.h's spans and not a
+copy), and `lroutes` hands the generator its routes with the loop's flag.
+The mutation pass on each piece found four checks the page had carried for
+months that could not fail on the fault they were near, each worth knowing
+before writing the next: a table is evened to its peak, so no reading of
+its shape sees the blur's kernel summing to two (only a figure at the edge
+of darkness does); a table with nothing past the 32nd harmonic reads the
+same from every level, so the bend's check could not see a voice ignoring
+the step; the photocell's reach and the loop's total are both a half, so a
+source held at one cannot tell a ceiling of three quarters from the total
+(hold it at a half); and a level found by reading the code under test
+moves with a mutant of that code (the dim figure's level is a number now).
+The general rule: a fixture at a corner where two bounds meet tests
+neither. And one behaviour the move found that only the page's brain has:
+Stop holds the face's screen and not the instrument's, so Scan keeps
+moving under a stopped screen on the site (`web/docs/after-stage-5.md`).
+`plugin/STAGE5-INVENTORY.md` section 8 has the rest.

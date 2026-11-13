@@ -36,6 +36,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   bool lanes = false;
   std::size_t length = 0;
   std::vector<scope::Lane> buffers;
+  std::vector<scope::Lane> lastFrame;  // the last `cap`'s lanes, for `dump`
   for (const auto& w : commands) {
     const std::string& cmd = w[0];
     const auto arg = [&](std::size_t i) { return i < w.size() ? w[i] : std::string(); };
@@ -59,6 +60,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
           return out;
         });
         const scope::Frame f = scope::capture(v, src);
+        lastFrame = f.channels;
         extra = " trig " + std::to_string(f.triggered ? 1 : 0) + " level " + show(f.levelAt) + " asked " + show(f.asked)
               + " len " + show(f.length) + " pre " + show(f.pre) + " turned " + std::to_string(f.turned ? 1 : 0)
               + " shaped " + show(f.shapedAc) + " " + show(f.shapedFilter) + " lag " + show(f.lagActual)
@@ -112,6 +114,13 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "rotmod") v.rotateMod = num(arg(1));
     else if (cmd == "shaping") v.shaping = arg(1) == "1";
     else if (cmd == "measure") v.measurePost = arg(1) == "1";
+    // `dump`, not capture_js's: the last capture's first two lanes whole, x
+    // then y, for core/tests/pieces/mod.py's principal axis (stage 5, step
+    // 3, batch 3); parity's runs never name it.
+    else if (cmd == "dump") {
+      for (std::size_t c = 0; c < 2 && c < lastFrame.size(); c++)
+        for (const float x : lastFrame[c]) extra += " " + show(x);
+    }
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
     std::printf("%s%s\n", cmd.c_str(), extra.c_str());
   }

@@ -24,6 +24,8 @@
 //                                    layer's, its hold, the shared stage's and its own picture's,
 //                                    and which grid (0 the screen, 1 and 2 A's and B's own) -
 //                                    and whether the layers draw a picture each (native only)
+//   ["reads"]                        which pictures each layer's Scan read last, the depths, and
+//                                    whether the layers draw one each (native only)
 //   ["layers"]                       each layer's picture (P6): whether live, the figures laid
 //                                    out, each layer's raw coverage, stage reads, hold and raw
 //                                    signed area, and
@@ -149,6 +151,15 @@ int main(int argc, char** argv) {
                     layers.stage(l).hold(), grid);
       }
       std::printf(" live %d\n", layers.live() ? 1 : 0);
+    } else if (cmd == "reads") {
+      // ["reads"]: which pictures each layer's Scan read at the last frame (A
+      // as 1, B as 2, nought for a layer not reading), each layer's depth, and
+      // whether the layers draw a picture each. Native only, and not
+      // instrument_js's: core/tests/pieces/strike.py's (stage 5, step 3,
+      // batch 3), for a preset whose left hand reads the right hand's picture.
+      const auto& scan = instrument.scan();
+      std::printf("reads %d %d %.17g %.17g %d\n", scan.reads[0], scan.reads[1], instrument.generator().tone().scan,
+                  instrument.generator().toneB().scan, instrument.layerPictures().live() ? 1 : 0);
     } else if (cmd == "layers") {
       const auto& layers = instrument.layerPictures();
       std::printf("layers %d figures %zu", layers.live() ? 1 : 0, instrument.figures());

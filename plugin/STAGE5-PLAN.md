@@ -209,6 +209,16 @@ the full suite and parity pass.
    learned split point). No `render_cpp` was needed. Two site defects found,
    not fixed: the learned split point reaches only the face, and a clock byte
    inside a port's note-on loses the note. `STAGE5-INVENTORY.md` section 7.
+   **Batch 3 done (13 Nov): `scan`, `strike`, and the rows held for "a source
+   held at a value" in `lane`, `mod`, `photo` and `loop`** - 135 piece checks
+   with their nulls (scan, strike, lane, mod, photo, loop), web checks 285 to
+   177 over the six, `?brain=js` opens 6 to 3 (scan's held run, and mod's,
+   photo's and loop's pages for rows outside the batch); a source is held at
+   a value in `matrix_cpp`, on the instrument's own screen destinations, so
+   still no `render_cpp`. 37 core mutations each seen red, after four checks
+   carried from the page were found unable to fail. One site defect found,
+   not fixed: Stop does not reach the instrument, so Scan keeps moving under
+   a stopped screen. `STAGE5-INVENTORY.md` section 8.
 4. **The constellation, and anything else only the page's brain does.** Port
    it to the core (ways-to-draw's own step 3), or keep it as a look-only
    drawing on the page, seen and not heard, until it is ported. The owner's

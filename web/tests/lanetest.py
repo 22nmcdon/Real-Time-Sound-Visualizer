@@ -24,14 +24,13 @@ many are attached.
 # by hand would be dead - it is gone, and a null with a source that does not
 # move shows the dot is reading a source.
 #
-# Left on ?brain=js (a second page, `q`): the zoom's and the trigger
-# position's offsets, eight checks of numbers the inventory sends to the C++
-# core (screen.h registers both destinations). Each sets LFO 1's value by
-# hand and steps the matrix, which in C++ needs a source held at a value -
-# render_cpp's wider input, not built in this batch. On the default site the
-# page's own matrix applies these two destinations today (the inventory's
-# `visualMatrix.*`, step 5's to decide), so they could move to the default as
-# the face's; they stay where they are until that is decided.
+# The zoom's and the trigger position's offsets, eight checks of numbers
+# that were left here on a ?brain=js page of their own by batch 1 (LFO 1's
+# value set by hand and the page's matrix stepped), are
+# core/tests/pieces/lane.py's since batch 3 (13 Nov): a source held at a
+# value in the core's matrix, on the destinations the instrument's own
+# screen registers, and the capture reading the offset. Which matrix the
+# face's screen follows on the site is step 5's to decide.
 import os, sys
 from playwright.sync_api import sync_playwright
 
@@ -287,83 +286,9 @@ with sync_playwright() as pw:
     p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
     check("the transport's zoom takes a patch", framed is True)
 
-    # The numbers, on the page's own brain (see the top).
-    q = b.new_page(viewport={"width": 1400, "height": 900})
-    q.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
-    q.goto(f"file://{ART}/scope.html?brain=js"); q.wait_for_timeout(700)
-    if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
-    q.evaluate("""() => {
-      setView('bench');
-      state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.zoom', amount: 1 }];
-      touchRoutings();
-    }"""); q.wait_for_timeout(300)
-    zoom = q.evaluate("""() => {
-      setZoom(0);
-      lfos[0].value = 1;
-      const f = capture();
-      applyModMatrix(f, 16);
-      const up = { mod: state.zoomMod, zoom: state.zoom };
-      lfos[0].value = 0;
-      applyModMatrix(capture(), 16);
-      return { up, rest: { mod: state.zoomMod, zoom: state.zoom } };
-    }""")
-    check("full depth is the eight steps it declares",
-          close(zoom["up"]["mod"], 8), str(zoom["up"]["mod"]))
-    check("and it magnifies", zoom["up"]["zoom"] > zoom["rest"]["zoom"] * 1.5,
-          "%.2f vs %.2f" % (zoom["up"]["zoom"], zoom["rest"]["zoom"]))
-    check("with the offset back to nothing at rest", close(zoom["rest"]["mod"], 0),
-          str(zoom["rest"]["mod"]))
-
-    print("\n--- the trigger position slides the window, not the trigger ---")
-    section(q, "Trigger")
-    # The first version of this asserted that `positionMod` held 0.5 and stopped
-    # there - and passed for two releases while NOTHING READ IT. `capture()`
-    # went on using `state.position` raw, so the destination moved a number and
-    # not the picture. What has to be asserted is the window, not the offset.
-    slid = q.evaluate("""() => {
-      state.modRoutings = [{ sourceId: 'lfo1', destId: 'trig.position', amount: 1 }];
-      touchRoutings();
-      el.position.value = '10'; el.position.dispatchEvent(new Event('input'));
-      const level = state.level, pos = state.position;
-
-      // How much of the window sits before the trigger, read off the capture
-      // itself rather than off the offset that is supposed to have moved it.
-      const preOf = (frame) => frame.pre;
-
-      lfos[0].value = 0;
-      applyModMatrix(capture(), 16);
-      const restFrame = capture();
-
-      lfos[0].value = 1;
-      applyModMatrix(capture(), 16);
-      const upFrame = capture();
-
-      const out = { up: state.positionMod, rest: 0, level, pos,
-                    levelAfter: state.level, posAfter: state.position,
-                    restPre: preOf(restFrame), upPre: preOf(upFrame),
-                    length: upFrame.channels[0].length };
-      lfos[0].value = 0;
-      applyModMatrix(capture(), 16);
-      out.rest = state.positionMod;
-      return out;
-    }""")
-    # Full depth is half the window, but the knob is at a tenth and the
-    # destination clamps at the end of its own range: 0.1 + 0.5 cannot pass 1,
-    # so what it actually gets is the 0.5 it asked for.
-    check("full depth moves the offset half a window", close(slid["up"], 0.5),
-          str(slid["up"]))
-    check("and nothing at rest", close(slid["rest"], 0), str(slid["rest"]))
-    # The assertion that matters: the capture itself moved.
-    moved = (slid["upPre"] - slid["restPre"]) / slid["length"]
-    check("and the window actually slides by that much",
-          abs(moved - 0.5) < 0.02,
-          "%.3f of the window (%d -> %d samples of %d)"
-          % (moved, slid["restPre"], slid["upPre"], slid["length"]))
-    check("the trigger level is untouched", close(slid["level"], slid["levelAfter"]),
-          "%s -> %s" % (slid["level"], slid["levelAfter"]))
-    check("and so is the knob it is offset from",
-          close(slid["pos"], slid["posAfter"]), str(slid["posAfter"]))
-    q.close()
+    # Its numbers - full depth the eight steps, and the trigger position's
+    # offset sliding the window and not the trigger - are
+    # core/tests/pieces/lane.py's (see the top).
     section(p, "Display")
 
     # The oscillator's card's editor (the Sources tab until F4), where its

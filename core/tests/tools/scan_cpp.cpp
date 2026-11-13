@@ -16,6 +16,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -141,6 +142,59 @@ int main(int argc, char** argv) {
       const auto eq = w[i].find('=');
       o[w[i].substr(0, eq)] = w[i].substr(eq + 1);
     }
+    // Not scan_js's: the pieces of the reading one at a time, on made-up
+    // grids and readings (stage 5, step 3, batch 3: scantest.py's and
+    // striketest.py's numbers rows, which built these in the page's
+    // JavaScript; core/tests/pieces/scan.py and strike.py). Parity's runs
+    // never name them. `tables pts=v,...` a reading of kScanPoints made into
+    // its tables (7 most count then each level's length and values) or
+    // darkness (8); `geometry g=` a grid's centre and radius (3 cx cy r, or 4
+    // for nothing lit); `follow g= dt=` the path, kept between lines, moved
+    // towards a grid (`follow forget` starts again); `read g= soft= cx= cy=
+    // r=` the grid blurred and read round that path (9 and the points);
+    // `path p= cx= cy= r=` a picture's path put in, as the page's tests wrote
+    // scan.paths; `show g=` a grid's cells; and `laid` below.
+    if (w[0] == "tables") {
+      std::array<double, scope::kScanPoints> points {};
+      const auto v = splitOn(o["pts"], ',');
+      for (std::size_t i = 0; i < points.size() && i < v.size(); i++) points[i] = num(v[i]);
+      scope::CycleTables t = scope::scanTableSet();
+      if (!scope::scanTables(points, t)) { std::printf("8\n"); continue; }
+      std::printf("7 %.17g %zu", t.most, t.levels.size());
+      for (const auto& level : t.levels) { std::printf(" %zu", level.size()); for (const double x : level) std::printf(" %.17g", x); }
+      std::printf("\n");
+      continue;
+    }
+    if (w[0] == "geometry" || w[0] == "follow") {
+      static std::optional<scope::ScanPath> followed;
+      std::optional<scope::ScanPath> got;
+      if (w[0] == "follow" && w.size() > 1 && w[1] == "forget") { followed.reset(); continue; }
+      const auto& g = grids[o["g"]];
+      if (w[0] == "geometry") got = scope::scanGeometry(g.data(), g.size());
+      else got = followed = scope::scanFollow(followed, g.data(), g.size(), num(o["dt"]));
+      if (got) std::printf("3 %.17g %.17g %.17g\n", got->cx, got->cy, got->r); else std::printf("4\n");
+      continue;
+    }
+    if (w[0] == "read") {
+      static scope::ScanReader probe;
+      std::array<double, scope::kScanPoints> points {};
+      const auto& g = grids[o["g"]];
+      probe.read(g.data(), g.size(), scope::ScanPath { num(o["cx"]), num(o["cy"]), num(o["r"]) }, num(o["soft"]), points);
+      std::printf("9");
+      for (const double x : points) std::printf(" %.17g", x);
+      std::printf("\n");
+      continue;
+    }
+    if (w[0] == "path") {
+      reader->paths[static_cast<std::size_t>(num(o["p"]))] = scope::ScanPath { num(o["cx"]), num(o["cy"]), num(o["r"]) };
+      continue;
+    }
+    if (w[0] == "show") {
+      const auto& g = grids[o["g"]];
+      for (std::size_t i = 0; i < g.size(); i++) std::printf(i ? " %.17g" : "%.17g", static_cast<double>(g[i]));
+      std::printf("\n");
+      continue;
+    }
     if (w[0] == "run") { reader = std::make_unique<scope::ScanReader>(); gen = std::make_unique<StandIn>(); soft = num(o["soft"]); continue; }
     if (w[0] == "end") continue;
     if (w[0] == "freeze") { reader->freeze(num(o["now"])); continue; }
@@ -154,6 +208,41 @@ int main(int argc, char** argv) {
     const auto input = scope::scanInput<float>(live, { num(o["d0"]), num(o["d1"]) }, reads, o.count("hs") ? num(o["hs"]) : 1,
                                             { o.count("h0") ? num(o["h0"]) : 1, o.count("h1") ? num(o["h1"]) : 1 },
                                             grid("gs")->data(), { grid("g0")->data(), grid("g1")->data() }, 64 * 64);
+    // `laid into= base= pic=` (not scan_js's either): what a strike with the
+    // same words as `strike` lays in picture `pic` (-1 the shown screen),
+    // through a scope::Phosphor as the instrument lays it, on `base` - each
+    // cell the brighter of the two, as Phosphor::segment keeps it - stored as
+    // the grid `into`; or, with `seg=x0,y0,x1,y1,level`, that one segment
+    // laid instead. Prints the segments laid and the most any cell rose.
+    if (w[0] == "laid") {
+      const auto box = splitOn(o["plot"], ',');
+      const scope::Plot plot { num(box[0]), num(box[1]), num(box[2]), num(box[3]) };
+      scope::Phosphor ph;
+      int count = 0;
+      if (o.count("seg")) {
+        const auto s = splitOn(o["seg"], ',');
+        ph.segment(plot, num(s[0]), num(s[1]), num(s[2]), num(s[3]), num(s[4]));
+        count = 1;
+      } else {
+        const int note = static_cast<int>(num(o["note"]));
+        const int layers = num(o["count"]) < 2 ? 1 : o["split"] == "1" ? (note >= num(o["point"]) ? 2 : 1) : 3;
+        const int pic = static_cast<int>(num(o["pic"]));
+        reader->strike(note, num(o["vel"]), layers, num(o["amount"]), o["spect"] == "1", input, plot,
+                       [&](int p, double x0, double y0, double x1, double y1, double level) {
+                         if (p == pic) { ph.segment(plot, x0, y0, x1, y1, level); count++; }
+                       }, num(o.count("amountB") ? o["amountB"] : o["amount"]));
+      }
+      const std::vector<float> base = o.count("base") ? grids[o["base"]] : none;
+      std::vector<float> out(base.size());
+      double rose = 0;
+      for (std::size_t i = 0; i < out.size(); i++) {
+        out[i] = std::max(base[i], ph.grid()[i]);
+        rose = std::max(rose, static_cast<double>(out[i]) - base[i]);
+      }
+      grids[o["into"]] = out;
+      std::printf("10 %d %.17g\n", count, rose);
+      continue;
+    }
     if (w[0] == "strike") {
       // The keyboard's layersOf, from the line's split and point.
       const int note = static_cast<int>(num(o["note"]));

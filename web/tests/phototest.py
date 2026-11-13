@@ -335,13 +335,14 @@ with sync_playwright() as pw:
     }""")
     print("    amount written as 1: applied %.3f of rotation's span, stored back as %.2f; "
           "a resonance routing written at 0.9 moved it by %s" % (reach["most"], reach["stored"], reach["res"]))
-    check("an amount past the ceiling is held to it where it is used",
-          abs(reach["ratio"] - 0.5) < 1e-9 and reach["most"] > 0.45,
-          "applied %.4f of the value, %.4f of the span" % (reach["ratio"], reach["most"]))
+    # "An amount past the ceiling is held to it where it is used" and "a
+    # routing that arrives in a code past the ceiling moves its destination
+    # no further than the ceiling" read the page's `applyModMatrix` with
+    # `photo.value` forced; they are core/tests/pieces/photo.py's since stage
+    # 5, step 3, batch 3 (13 Nov), on the core's matrix. The face's half
+    # stays: what the control stores back.
     check("and stored back within it, so the control says what applies",
           reach["stored"] == 0.5, str(reach["stored"]))
-    check("a routing that arrives in a code past the ceiling moves its destination no further than the ceiling",
-          0 < reach["res"] <= 0.5 * 50 + 1e-9, str(reach["res"]))
 
     print("\n--- a loop that cannot run away ---")
     loop = p.evaluate("""async () => {
