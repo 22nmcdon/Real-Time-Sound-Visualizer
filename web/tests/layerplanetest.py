@@ -47,7 +47,21 @@ What would go wrong, and what is checked for it:
 Frequencies are read by a Hann-windowed single-bin transform, as polytest
 and layertest do.
 """
-import os, sys
+# On the site's default page since stage 5, step 3, batch 2 (13 Nov). Until
+# then the first page was ?brain=js, and its core part an offline
+# makeGeneratorCore built in the page with routes put in by hand: B's own
+# plane off and on, its mirror, its turn, its share of the heard pair, a
+# routing through B's fade on the twist, the Turn and the echo, B's own echo
+# and chorus - all core/tests/pieces/layerplane.py's now, on the core's own
+# output (parity runs it), as are the screen's rotation against B's own turn
+# (read off the page's beam until then; off the instrument's own grid now)
+# and B's synced echo following the tempo (the page's clockStep called by
+# hand until then; the instrument's echo, found in B's lanes, now). The
+# panel and the codes below are the face, with its hands pressed; where they
+# said the generator was told, they read the setup the face sends the
+# instrument (snapshot()) rather than genSettings, which on the default page
+# is the page's own mirror of it.
+import math, os, sys
 from playwright.sync_api import sync_playwright
 import corpus
 
@@ -62,36 +76,6 @@ def check(name, ok, detail=""):
 
 HZ = lambda note: 440 * 2 ** ((note - 69) / 12)
 
-BIN = """() => { window.__bin = (x, f, rate) => {
-  let re = 0, im = 0;
-  for (let i = 0; i < x.length; i++) {
-    const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (x.length - 1));
-    re += x[i] * w * Math.cos(2 * Math.PI * f * i / rate);
-    im -= x[i] * w * Math.sin(2 * Math.PI * f * i / rate);
-  }
-  return Math.hypot(re, im) / x.length;
-}; }"""
-
-# One core, A a sine chord on X and Y, B a sine note on both axes, and
-# whatever `setup` sets; the last 8192 samples of each lane.
-CORE = """([setup, rounds]) => {
-  const rate = 44100, HZ = (n) => 440 * Math.pow(2, (n - 69) / 12);
-  const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 0.9, depth: 0, phase: 0, held: 0, value: 0 }));
-  const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
-  core.set('shape', 'sine'); core.set('shape', 'sine', 1);
-  core.set('voices', [{ note: 48, freq: HZ(48), velocity: 1, role: 'x' }, { note: 55, freq: HZ(55), velocity: 1, role: 'y' }]);
-  core.set('voices', [{ note: 69, freq: HZ(69), velocity: 1, role: 'xy' }], 1);
-  for (const [field, value, layer] of setup.sets || []) core.set(field, value, layer);
-  if (setup.routes) core.setRoutes(setup.routes.map((r) => Object.assign({ slot: GEN_DESTS.find((d) => d.id === r.dest).slot }, r)));
-  const n = 4096, keep = 8192, lanes = [0, 1, 2, 3, 4, 5].map(() => []);
-  for (let b = 0; b < (rounds || 8); b++) {
-    const a = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(n));
-    core.block(a[0], a[1], n, a[2], a[3], a[4], a[5]);
-    a.forEach((x, k) => lanes[k].push(...x));
-  }
-  return lanes.map((x) => x.slice(-keep));
-}"""
-
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
     p = b.new_page(viewport={"width": 1400, "height": 900})
@@ -99,92 +83,15 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(1200)
     corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    p.evaluate(BIN)
-    core = lambda setup, rounds=8: p.evaluate(CORE, [setup, rounds])
-    lo = lambda x: min(x)
-    peak = lambda x: max(abs(v) for v in x)
-    same = lambda a, b: all(x == y for x, y in zip(a, b))
+    # The core's checks that stood here - B's fields junk with its own plane
+    # off, its mirror, its turn either way, each layer's octave in the heard
+    # pair, a routing reaching B's twist, B's Turn as a destination, B's own
+    # echo halving B's picture and its note, the echo's level routed through
+    # B's fade - are core/tests/pieces/layerplane.py's (batch 2).
 
-    print("\n--- the core: off is the old arithmetic, on is B's own ---")
-    junk = [["planeMirror", 3, 1], ["planeTurn", 1.1, 1], ["planeTwist", 2, 1],
-            ["planeLimit", 2, 1], ["planeRadius", 0.2, 1], ["planeSnap", 3, 1]]
-    a_plane = [["planeTwist", 0.7, 0], ["delayMix", 0.3, 0], ["delayMs", 9, 0]]
-    rest = core({"sets": a_plane})
-    off = core({"sets": a_plane + junk})
-    on = core({"sets": a_plane + junk + [["planeOwn", True, 1]]})
-    check("with B's own off, B's fields set to junk change not one sample of any pair",
-          all(same(rest[k], off[k]) for k in range(6)))
-    check("and with it on the same junk changes B's picture and the sound, and not A's picture",
-          not same(rest[4], on[4]) and not same(rest[2], on[2]) and same(rest[0], on[0]) and same(rest[1], on[1]))
-
-    print("\n--- the core: B's mirror is B's ---")
-    mir = core({"sets": [["planeOwn", True, 1], ["planeMirror", 1, 1]]})
-    mir_off = core({"sets": [["planeMirror", 1, 1]]})
-    print("    lowest X: A %.3f, B %.3f with its own mirror, B %.3f without" % (lo(mir[0]), lo(mir[4]), lo(mir_off[4])))
-    check("B's own mirror folds B's X onto its right half, and A's X keeps its left",
-          lo(mir[4]) > -1e-3 and lo(mir[0]) < -0.1 and peak(mir[4]) > 0.1, "%.4f %.4f" % (lo(mir[4]), lo(mir[0])))
-    check("and the same field with B's own off folds nothing", lo(mir_off[4]) < -0.1, "%.4f" % lo(mir_off[4]))
-
-    print("\n--- the core: B's turn ---")
-    import math
-    flat = core({"sets": [["planeOwn", True, 1]]})
-    turned = core({"sets": [["planeOwn", True, 1], ["planeTurn", math.pi / 4, 1]]})
-    print("    B unturned X %.3f Y %.3f; an eighth of a turn X %.4f Y %.3f"
-          % (peak(flat[4]), peak(flat[5]), peak(turned[4]), peak(turned[5])))
-    check("unturned, B's one note is a diagonal: X and Y the same",
-          peak(flat[4]) > 0.1 and max(abs(x - y) for x, y in zip(flat[4], flat[5])) < 1e-6)
-    check("an eighth of a turn lays it on the Y axis: X nought, Y the diagonal's length",
-          peak(turned[4]) < 1e-3 * peak(flat[4]) and abs(peak(turned[5]) / peak(flat[4]) - math.sqrt(2)) < 0.01,
-          "%.5f %.4f" % (peak(turned[4]), peak(turned[5]) / max(peak(flat[4]), 1e-9)))
-    back = core({"sets": [["planeOwn", True, 1], ["planeTurn", -math.pi / 4, 1]]})
-    check("and the other way lays it on the X axis instead, the same length",
-          peak(back[5]) < 1e-3 * peak(flat[4]) and max(abs(x - y) for x, y in zip(back[4], turned[5])) < 1e-4,
-          "%.5f %.5f" % (peak(back[5]), peak(back[4])))
-
-    print("\n--- the core: each layer's share of the sound through its own plane ---")
-    fa, fb = HZ(48), HZ(69)
-    octaves = lambda lanes: (p.evaluate("([x, f]) => window.__bin(x, f, 44100)", [lanes[2], 2 * fa]),
-                             p.evaluate("([x, f]) => window.__bin(x, f, 44100)", [lanes[2], 2 * fb]))
-    own_b = octaves(core({"sets": [["planeOwn", True, 1], ["planeMirror", 1, 1]]}))
-    both = octaves(core({"sets": [["planeMirror", 1, 0]]}))
-    own_none = octaves(core({"sets": [["planeOwn", True, 1], ["planeMirror", 1, 0]]}))
-    print("    heard left, A's octave and B's: B's own mirror %.4f %.4f; Together %.4f %.4f; A's own %.4f %.4f"
-          % (own_b[0], own_b[1], both[0], both[1], own_none[0], own_none[1]))
-    check("with B's own mirror and none of A's, B's octave is heard and A's is not",
-          own_b[1] > 0.01 and own_b[0] < 0.1 * own_b[1], str(own_b))
-    check("Together, the mirror is both layers' and both octaves are heard",
-          both[0] > 0.01 and both[1] > 0.01, str(both))
-    check("and with the mirror A's alone, A's octave is heard and B's is not",
-          own_none[0] > 0.01 and own_none[1] < 0.1 * own_none[0], str(own_none))
-
-    print("\n--- the core: a routing reaches B's own twist through B's fade ---")
-    route = lambda a, bb: {"sets": [["planeOwn", True, 1]], "routes": [{"dest": "gen.twist", "index": 0, "amount": a, "amountB": bb}]}
-    q = [core(route(0.9, 0)), core(route(0.1, 0)), core(route(0.1, 0.6))]
-    check("B's picture with A's depth on the twist changed and B's still nothing is the same picture",
-          same(q[0][4], q[1][4]) and same(q[0][5], q[1][5]))
-    check("and given a depth of its own, it moves",
-          not same(q[1][4], q[2][4]), "%.4f" % max(abs(x - y) for x, y in zip(q[1][4], q[2][4])))
-
-    print("\n--- the core: B's turn as a destination ---")
-    # A held value of one, so the push is the depth: B's depth a quarter is an
-    # eighth of a turn, which lays B's diagonal on the Y axis, as the slider's
-    # eighth does above. A's depth on it is a different number, and is nothing.
-    turn = lambda own, bb: {"sets": [["planeOwn", own, 1]],
-                            "routes": [{"dest": "gen.turn", "held": 1, "heldB": 1, "amount": 0.9, "amountB": bb}]}
-    t_on, t_none, t_off = core(turn(True, 0.25)), core(turn(True, 0)), core(turn(False, 0.25))
-    print("    B's X and Y peaks: routed %.4f %.3f; B's depth nought %.3f %.3f; B's own off %.3f %.3f"
-          % (peak(t_on[4]), peak(t_on[5]), peak(t_none[4]), peak(t_none[5]), peak(t_off[4]), peak(t_off[5])))
-    check("a routing on Turn at B's depth of a quarter turns B an eighth: its diagonal on the Y axis",
-          peak(t_on[4]) < 1e-3 * peak(t_on[5]) and abs(peak(t_on[5]) / peak(flat[4]) - math.sqrt(2)) < 0.01,
-          "%.5f %.4f" % (peak(t_on[4]), peak(t_on[5])))
-    check("and at B's depth of nought, whatever A's, B is not turned",
-          max(abs(x - y) for x, y in zip(t_none[4], t_none[5])) < 1e-6 and peak(t_none[4]) > 0.1)
-    flat_off = core({"sets": []})
-    check("and with B's own plane off the routing turns nothing",
-          same(t_off[4], flat_off[4]) and same(t_off[5], flat_off[5]))
     # Its way in is its right-click menu since G5b, where it was the shoulder's dots: B's Turn has no words, and has one all the same.
     way = p.evaluate("""() => ({ dest: el.planeTurnRow.dataset.modDest, open: menuControl(el.planeTurnRow.querySelector('input[type=range]')) !== null,
                                  listed: MOD_DESTS.has('gen.turn') && MOD_DESTS.get('gen.turn').slot === 32 })""")
@@ -196,44 +103,6 @@ with sync_playwright() as pw:
     # where it was added, since the core shares it and nothing is closed up.
     check("the Turn row takes a routing like any destination, and it is slot 32, where it was added",
           way == {"dest": "gen.turn", "open": True, "listed": True}, str(way))
-
-    print("\n--- the core: B's own echo and chorus ---")
-    # B's note is 440 Hz: an echo half a period late, at half level, is the
-    # note less half of itself. A's chord is 131 and 196 Hz, which the same
-    # echo moves rather than cancels.
-    half = 1000 / (2 * fb)
-    b_echo = [["delayMix", 0.5, 1], ["delayMs", half, 1], ["delayFeedback", 0, 1]]
-    a_echo = [["delayMix", 0.5, 0], ["delayMs", half, 0], ["delayFeedback", 0, 0]]
-    dry = core({"sets": []})
-    # B's own delay is its bit of timeOwn since G6 (4), where planeOwn gave B every effect at once.
-    e_own = core({"sets": [["timeOwn", 4, 1]] + b_echo})
-    e_off = core({"sets": b_echo})
-    e_both = core({"sets": a_echo})
-    ratio = lambda lanes, k: peak(lanes[k]) / peak(dry[k])
-    print("    B's X against dry: its own echo %.3f, the same fields with B's own off %.3f, A's echo Together %.3f"
-          % (ratio(e_own, 4), ratio(e_off, 4), ratio(e_both, 4)))
-    check("B's own echo half a period late cancels half of B's picture, and leaves A's the same samples",
-          abs(ratio(e_own, 4) - 0.5) < 0.02 and same(e_own[0], dry[0]) and same(e_own[1], dry[1]), "%.4f" % ratio(e_own, 4))
-    check("and with B's own off its echo's fields do nothing", same(e_off[4], dry[4]) and same(e_off[2], dry[2]))
-    check("Together, the same echo as A's halves B's picture as well, and moves A's",
-          abs(ratio(e_both, 4) - 0.5) < 0.02 and not same(e_both[0], dry[0]), "%.4f" % ratio(e_both, 4))
-    hb = lambda lanes, f: p.evaluate("([x, f]) => window.__bin(x, f, 44100)", [lanes[2], f])
-    print("    heard, B's note and A's lower one against dry: B's own echo %.3f %.3f; Together %.3f %.3f"
-          % (hb(e_own, fb) / hb(dry, fb), hb(e_own, fa) / hb(dry, fa), hb(e_both, fb) / hb(dry, fb), hb(e_both, fa) / hb(dry, fa)))
-    check("in the heard pair B's own echo halves B's note and leaves A's",
-          abs(hb(e_own, fb) / hb(dry, fb) - 0.5) < 0.03 and abs(hb(e_own, fa) / hb(dry, fa) - 1) < 1e-3)
-    check("and Together the echo, A's, moves A's note too",
-          abs(hb(e_both, fb) / hb(dry, fb) - 0.5) < 0.03 and abs(hb(e_both, fa) / hb(dry, fa) - 1) > 0.1)
-    # The echo's level routed, with nothing of its own: a held value of one,
-    # so B's depth of one is a push of half - the same half-level echo.
-    eroute = lambda a, bb: {"sets": [["timeOwn", 4, 1], ["delayMs", half, 1], ["delayFeedback", 0, 1]],
-                            "routes": [{"dest": "gen.echo", "held": 1, "heldB": 1, "amount": a, "amountB": bb}]}
-    r_b, r_a = core(eroute(0, 1)), core(eroute(1, 0))
-    print("    B's X against dry, the echo's level routed: through B's fade %.3f, through A's alone %.3f"
-          % (ratio(r_b, 4), ratio(r_a, 4)))
-    check("a routing on the echo's level through B's fade gives B's own echo its level",
-          abs(ratio(r_b, 4) - 0.5) < 0.02, "%.4f" % ratio(r_b, 4))
-    check("and through A's fade alone it leaves B's picture as it was", abs(ratio(r_a, 4) - 1) < 1e-3, "%.4f" % ratio(r_a, 4))
 
     print("\n--- the panel: the Plane's link (G6) ---")
     # Since G6 a link on the Plane's line, where Together, A and B were: the
@@ -247,13 +116,18 @@ with sync_playwright() as pw:
         title: el.planeTitle.textContent, turnRow: el.planeTurnRow.hidden, rotateRow: el.rotateRow.hidden,
         own: planeB.own, edit: midi.layers.edit, bMirror: planeB.mirror, aMirror: plane.mirror, bSnap: planeB.snap,
         aTwist: plane.twist, bTwist: planeB.twist, turn: planeB.turn, shownMirror: el.planeMirror.value,
-        shownTwist: el.planeTwist.value, genA: genSettings(0).planeMirror, genB: genSettings(1).planeMirror,
-        genOwn: genSettings(1).planeOwn, genTurn: genSettings(1).planeTurn });
+        shownTwist: el.planeTwist.value, ...sent() });
+      // What the face sends the instrument, the setup: until batch 2 these
+      // were genSettings(0) and (1), the page's own generator on ?brain=js
+      // and only the page's mirror of the setup on the default page.
+      const sent = () => { const c = snapshot();
+        return { genA: c.planeMirror, genB: c.bPlane ? c.bMirror : c.planeMirror, genOwn: !!c.bPlane, genTurn: c.bPlane ? c.bTurn : 0 }; };
       const out = {};
       out.one = read();
-      setScreenKeys(true); setMidiMode('poly');
+      // Poly pressed, as a hand does (setMidiMode was called directly until batch 2).
+      setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-      midi.layers.point = 60; await wait(80);
+      await wait(80);
       el.planeSnap.value = '5'; el.planeSnap.dispatchEvent(new Event('change'));
       out.layered = read();
       document.getElementById('editHandB').click(); link.click(); await wait(30); out.b = read();
@@ -275,50 +149,24 @@ with sync_playwright() as pw:
     check("unlinked with the upper edited, B has a plane of its own that starts as the hand on the face, shown, its own Turn in the Turn's place",
           pb["own"] and pb["genOwn"] is True and pb["bSnap"] == 5 and pb["said"] == "Upper" and pb["pressed"] == "false"
           and not pb["turnRow"] and pb["rotateRow"] and pb["edit"] == 1, str(pb))
+    check("null: before the link, the setup sent has no plane of B's", lay["genOwn"] is False, str(lay))
     check("a menu and the Turn moved with B's shown are B's, and A's plane is untouched",
           moved["bMirror"] == 1 and moved["aMirror"] == 0 and moved["genB"] == 1 and moved["genA"] == 0
-          and moved["turn"] == 0.25 and abs(moved["genTurn"] - math.pi / 2) < 1e-12, str(moved))
+          and moved["turn"] == 0.25 and moved["genTurn"] == 25, str(moved))
     check("the lower shows A's plane with the screen's Turn, and writes A's alone",
           pa["said"] == "Lower" and pa["turnRow"] and not pa["rotateRow"] and pa["aTwist"] == 0.4 and pa["bTwist"] == 0
           and pa["shownMirror"] == "0" and pa["bMirror"] == 1, str(pa))
     check("the upper chosen again shows B's plane",
           playb["said"] == "Upper" and playb["shownMirror"] == "1" and playb["shownTwist"] == "0", str(playb))
-    check("linked again from the upper, B's plane is copied over A's, B's turn goes, and the generator is told",
+    check("linked again from the upper, B's plane is copied over A's, B's turn goes, and the setup sent says so",
           not both_["own"] and both_["genOwn"] is False and both_["aMirror"] == 1 and both_["aTwist"] == 0
           and both_["bMirror"] == 1 and both_["turn"] == 0 and both_["said"] == "Both", str(both_))
 
-    print("\n--- the screen's rotation, and B turning itself ---")
-    # B's figure is drawn second, so the beam's points after a frame are B's.
-    # Only B holds a note, one, drawn on both axes: a diagonal.
-    spread = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setDisplay('xy'); midiPanic(); midi.layers.pair = 'each'; syncLayers();
-      // A's plane bare, so B's copy of it is too and the diagonal stays one.
-      for (const k of PLANE_SHAPE) plane[k] = { radius: 0.4, scaleX: 1, scaleY: 1 }[k] ?? 0;
-      syncPlanePanel(); syncPlane();
-      midiNoteOn(72, 100); await wait(300);
-      state.rotate = 0.125;
-      const measure = async () => {
-        await wait(250);
-        let n = 0, sx = 0, sy = 0, cx = 0, cy = 0;
-        for (let i = 0; i < BEAM_MAX && Number.isFinite(beamX[i]) && beamX[i] !== 0; i++) { cx += beamX[i]; cy += beamY[i]; n++; }
-        cx /= n; cy /= n;
-        for (let i = 0; i < n; i++) { sx = Math.max(sx, Math.abs(beamX[i] - cx)); sy = Math.max(sy, Math.abs(beamY[i] - cy)); }
-        return { n, x: sx, y: sy };
-      };
-      const link = document.getElementById('linkPlane');
-      link.click(); const own = await measure();
-      link.click(); const together = await measure();
-      state.rotate = 0; midiPanic();
-      return { own, together };
-    }""")
-    print("    B's spread across and up: its own %.1f / %.1f px, linked %.1f / %.1f px"
-          % (spread["own"]["x"], spread["own"]["y"], spread["together"]["x"], spread["together"]["y"]))
-    check("with the Plane the upper's own, the screen's rotation leaves B's figure a diagonal",
-          spread["own"]["n"] > 100 and spread["own"]["x"] > 20 and abs(spread["own"]["x"] - spread["own"]["y"]) < 0.1 * spread["own"]["y"],
-          str(spread["own"]))
-    check("and linked turns it onto the Y axis, as it turns A",
-          spread["together"]["x"] < 0.1 * spread["together"]["y"] and spread["together"]["y"] > 20, str(spread["together"]))
+    # The screen's rotation against B turning itself - kept a diagonal with
+    # the Plane the upper's own, laid on the Y axis linked - was read off the
+    # page's beamX/beamY with state.rotate written by hand, on ?brain=js. It
+    # is core/tests/pieces/layerplane.py's on the instrument's own grid, the
+    # Turn moved on its panel and the link pressed (batch 2).
 
     print("\n--- setup codes ---")
     codes = p.evaluate("""async () => {
@@ -330,11 +178,11 @@ with sync_playwright() as pw:
       const saved = { ...planeB }, code = encodeSetup(snapshot());
       link.click(); await wait(20);
       const offCode = encodeSetup(snapshot());
-      restore(decodeSetup(code)); await wait(20);
+      loadCode(code); await wait(20);
       const back = { ...planeB };
-      restore({ bPlane: true, bMirror: 2, planeSnap: 5 });
+      loadCode(encodeSetup({ bPlane: true, bMirror: 2, planeSnap: 5 }));
       const partial = { ...planeB };
-      restore({ planeSnap: 5 });
+      loadCode(encodeSetup({ planeSnap: 5 }));
       const old = { ...planeB };
       return { saved, back, partial, old, offHas: JSON.stringify(decodeSetup(offCode)).includes('bPlane'),
                onHas: Object.keys(decodeSetup(code)).filter((k) => /^b(Plane|Mirror|Turn|Snap)$/.test(k)).sort() };
@@ -355,12 +203,20 @@ with sync_playwright() as pw:
       const link = document.getElementById('linkDelay');
       const read = () => ({ said: link.textContent, own: !linked('delay'), planeOwn: planeB.own,
         edit: midi.layers.edit, aMix: echo.mix, bMix: echoB.mix, aMs: echo.ms, bMs: echoB.ms, aChorus: echo.chorus, bChorus: echoB.chorus,
-        shownMix: el.delayMix.value, shownMs: el.delayMs.value, genA: genSettings(0).delayMix, genB: genSettings(1).delayMix,
-        genBMs: genSettings(1).delayMs, genBChorus: genSettings(1).chorusMix, timeOwn: genSettings(1).timeOwn });
+        shownMix: el.delayMix.value, shownMs: el.delayMs.value, ...sent() });
+      // What the face sends the instrument, the setup, where until batch 2
+      // this read genSettings(0) and (1): B's delay its own is its fields in
+      // the code (bDelay...), and nothing else of B's - no chorus, no plane -
+      // is what timeOwn's 4 said. (bPlane is there with any of B's rack
+      // fields, the way a code says B has fields of its own at all.)
+      const sent = () => { const c = snapshot(), own = 'bDelayMix' in c;
+        return { genA: c.delayMix / 100, genB: (own ? c.bDelayMix : c.delayMix) / 100, genBMs: own ? c.bDelayMs : c.delayMs,
+                 genBChorus: ('bChorusMix' in c ? c.bChorusMix : c.chorusMix) / 100,
+                 timeOwn: own && !Object.keys(c).some((k) => /^b(Chorus|Phaser|Reverb|Mirror|Turn|Snap|Twist)/.test(k)) ? 4 : own ? -1 : 0 }; };
       const slide = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
       const out = {};
       // The codes above loaded setups with the layers off, and with nothing of B's in the rack.
-      setScreenKeys(true); setMidiMode('poly');
+      setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(50);
       document.getElementById('editHandA').click(); await wait(20);
       slide('delayMix', 30); out.together = read();
@@ -368,22 +224,24 @@ with sync_playwright() as pw:
       slide('delayMs', 120); slide('chorusMix', 60); out.bMoved = read();
       document.getElementById('editHandA').click(); await wait(20); slide('delayMix', 70); out.a = read();
       document.getElementById('editHandB').click(); await wait(20); out.playB = read();
-      // B's synced to the tempo, and the tempo moved: the time follows, as A's does.
+      // B's synced to a crotchet. That its time then follows the tempo was
+      // read here off genSettings(1).delayMs after setTempo and the page's
+      // clockStep called by hand, on ?brain=js; the instrument's echo,
+      // found in B's lanes at 120 and 60, is core/tests/pieces/layerplane.py's
+      // (batch 2). What stays is the face: B's synced, A's free.
       el.delaySync.value = '1/4'; el.delaySync.dispatchEvent(new Event('change'));
-      setTempo(120); clockStep(performance.now()); const at120 = genSettings(1).delayMs;
-      setTempo(60); clockStep(performance.now()); const at60 = genSettings(1).delayMs;
-      out.tempo = { at120, at60, aSync: echo.sync, bSync: echoB.sync };
+      out.tempo = { aSync: echo.sync, bSync: echoB.sync, sent: snapshot().bDelaySync, sentA: snapshot().delaySync };
       const code = encodeSetup(snapshot()), saved = { ...echoB };
       link.click(); await wait(20); out.both = read();
       const offCode = encodeSetup(snapshot());
-      restore(decodeSetup(code)); await wait(20);
+      loadCode(code); await wait(20);
       out.back = { ...echoB }; delete out.back.sent; delete saved.sent; out.saved = saved;
-      restore({ bPlane: true, bDelayMix: 45, delayMix: 20, delayFeedback: 60 });
+      loadCode(encodeSetup({ bPlane: true, bDelayMix: 45, delayMix: 20, delayFeedback: 60 }));
       out.partial = { ...echoB };
       // The delay's nine - five, and F5c's tone, low cut, width and wow - and none of the chorus's, which stayed linked.
       out.onHas = Object.keys(decodeSetup(code)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
       out.offHas = Object.keys(decodeSetup(offCode)).filter((k) => /^bDelay|^bChorus/.test(k)).length;
-      restore({});
+      loadCode(encodeSetup({}));
       return out;
     }""")
     tog, tb, tbm, ta, tplay, tboth = (tp[k] for k in ("together", "b", "bMoved", "a", "playB", "both"))
@@ -400,9 +258,9 @@ with sync_playwright() as pw:
           and ta["shownMs"] == "375", str(ta))
     check("the upper chosen again shows B's echo",
           tplay["said"] == "Upper" and tplay["shownMix"] == "30" and tplay["shownMs"] == "120", str(tplay))
-    check("B's own echo synced to a crotchet follows the tempo: 500 ms at 120, 1000 at 60, and A's stays free",
-          tp["tempo"] == {"at120": 500, "at60": 1000, "aSync": "", "bSync": "1/4"}, str(tp["tempo"]))
-    check("linked again from the upper, B's echo is copied over A's, and the generator is told B has none of its own",
+    check("B's own echo synced to a crotchet is B's, and A's stays free",
+          tp["tempo"] == {"aSync": "", "bSync": "1/4", "sent": "1/4", "sentA": ""}, str(tp["tempo"]))
+    check("linked again from the upper, B's echo is copied over A's, and the setup sent has none of B's own",
           not tboth["own"] and tboth["aMix"] == 0.3 and tboth["bMix"] == 0.3 and tboth["genA"] == 0.3
           and tboth["timeOwn"] == 0 and tboth["said"] == "Both", str(tboth))
     check("B's own echo is written into a code and read back as it was",

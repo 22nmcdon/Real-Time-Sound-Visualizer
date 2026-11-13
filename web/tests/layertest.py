@@ -26,10 +26,20 @@ What would go wrong, and what is checked for it:
 Frequencies are read by a Hann-windowed single-bin transform, as polytest
 does and for its reason: a sum of notes crosses zero at the rate of none.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its voices and
-# worklet, and setMidiMode called directly - which core/tests/parity.py holds
-# the instrument to, sample for sample. The instrument, the site's default
-# since 5m, is braintest.py's and hosttest.py's.
+# On the site's default page since stage 5, step 3, batch 2 (13 Nov): the
+# instrument, the site's compiled core, with its hands pressed on the face.
+# Until then the whole suite was on ?brain=js, reading the page's own brain -
+# its voices and worklet, setMidiMode called directly. What it held of the
+# engine and the keyboard - one step of the oscillators a sample, each layer's
+# picture and the heard pair, B's shape and envelope, the envelope a source
+# reads and B's voices let go, which layer a note goes to, each layer's draw
+# rule, A against B - is core/tests/pieces/layer.py's now, asserted on the
+# core's own output (parity runs it). What is left here is the face: the
+# lanes it lays out and names, the learn button, the readout, the drawing,
+# the panel and setup codes - and where a check asks whether the instrument
+# heard, it reads the lanes the instrument drew (state.source.getLatestWindow
+# on the default page), never the page's mirror of the setup, which the
+# page's own MIDI apply writes whatever the instrument does.
 import os, sys
 from playwright.sync_api import sync_playwright
 
@@ -56,6 +66,13 @@ BIN_SRC = """(x, f, rate) => {
   return Math.hypot(re, im) / x.length;
 }"""
 
+# The lanes the instrument drew, by their bins, at each note.
+LANES = """async (ns) => {
+  await new Promise((r) => setTimeout(r, 600));
+  const w = state.source.getLatestWindow(16384), rate = state.source.sampleRate;
+  return w.map((x) => ns.map((n) => window.__bin(x, 440 * Math.pow(2, (n - 69) / 12), rate)));
+}"""
+
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME,
                            args=["--autoplay-policy=no-user-gesture-required"])
@@ -68,264 +85,146 @@ with sync_playwright() as pw:
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(1200)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate(BIN, BIN_SRC)
+    lanes = lambda ns: p.evaluate(LANES, ns)
 
-    print("\n--- the core: one step of the oscillators a sample, however many layers ---")
-    # A 1 Hz oscillator from phase nought, a quarter of a second of samples:
-    # a quarter turn with one step a sample, half a turn with two.
-    lfo = p.evaluate("""() => {
-      const rate = 44100;
-      const run = (layered) => {
-        const lfos = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-        const core = makeGeneratorCore(rate, GEN_SLOTS, lfos);
-        const chord = [{ note: 48, freq: 130.8, velocity: 1, role: 'x' }];
-        core.set('voices', chord);
-        if (layered) core.set('voices', [{ note: 72, freq: 523.3, velocity: 1, role: 'xy' }], 1);
-        const n = rate / 4, a = new Float32Array(n), c = new Float32Array(n);
-        core.block(a, c, n, null, null, new Float32Array(n), new Float32Array(n));
-        return lfos[0].phase / (2 * Math.PI);
-      };
-      return { one: run(false), two: run(true) };
-    }""")
-    print("    turns in 0.25 s at 1 Hz: one layer %.4f, two layers %.4f" % (lfo["one"], lfo["two"]))
-    check("two layers step the oscillators once a sample, not twice",
-          abs(lfo["two"] - 0.25) < 1e-3 and abs(lfo["one"] - 0.25) < 1e-3, str(lfo))
+    # The core's checks - the oscillators stepped once a sample with two
+    # layers, each layer's picture and the heard pair (A's lanes and B's
+    # summed), B's own shape and envelope, the envelope a source reads and B's
+    # voices let go - were run here on the page's makeGeneratorCore on
+    # ?brain=js until batch 2; core/tests/pieces/layer.py holds them on the
+    # core. One went rather than moved: "a caller that asks for no lanes of
+    # B's hears exactly the same" was the page's core, whose B lanes were
+    # optional arguments; the core computes B whether or not they are asked
+    # for, and the instrument asks for them with the heard pair.
 
-    print("\n--- the core: each layer's picture, and one sound ---")
-    A = [{"note": 48, "freq": HZ(48), "velocity": 1, "role": "x"},
-         {"note": 55, "freq": HZ(55), "velocity": 1, "role": "y"}]
-    B = [{"note": 76, "freq": HZ(76), "velocity": 1, "role": "xy"}]
-    core = p.evaluate("""([A, B]) => {
-      const rate = 44100;
-      const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
-      core.set('shape', 'sine'); core.set('shape', 'square', 1);
-      // Layer B slow to speak and A quick, so an envelope shared between them
-      // shows as B arriving at A's speed.
-      core.set('attackMs', 2); core.set('attackMs', 400, 1);
-      core.set('voices', A); core.set('voices', B, 1);
-      const n = Math.round(rate * 0.8);
-      const al = new Float32Array(n), ar = new Float32Array(n);
-      const hl = new Float32Array(n), hr = new Float32Array(n);
-      const bl = new Float32Array(n), br = new Float32Array(n);
-      core.block(al, ar, n, hl, hr, bl, br);
-      const tail = (x) => x.subarray(n - 16384);
-      const f = (x, hz) => window.__bin(tail(x), hz, rate);
-      const peak = (x, from, to) => { let m = 0; for (let i = from; i < to; i++) m = Math.max(m, Math.abs(x[i])); return m; };
-      const hz = { c: A[0].freq, g: A[1].freq, e: B[0].freq };
-      return {
-        aX: [f(al, hz.c), f(al, hz.g), f(al, hz.e)],
-        aY: [f(ar, hz.c), f(ar, hz.g), f(ar, hz.e)],
-        bX: [f(bl, hz.c), f(bl, hz.g), f(bl, hz.e)],
-        heard: [f(hl, hz.c), f(hl, hz.g), f(hl, hz.e)],
-        // A square has its third harmonic at a third of the fundamental; a
-        // sine has none.
-        bThird: f(bl, 3 * hz.e) / Math.max(1e-9, f(bl, hz.e)),
-        aThird: f(al, 3 * hz.c) / Math.max(1e-9, f(al, hz.c)),
-        // 40 ms in: A's 2 ms attack is long done, B's 400 ms one is not.
-        aEarly: peak(al, Math.round(rate * 0.03), Math.round(rate * 0.05)),
-        bEarly: peak(bl, Math.round(rate * 0.03), Math.round(rate * 0.05)),
-        bLate: peak(bl, n - 4096, n),
-        // Since P4 the heard pair is the lanes summed and nothing else; the
-        // null is A's lanes alone. Not B's crossed: B's note is on both, so
-        // its two lanes are one signal and crossing them proves nothing.
-        // And a caller that does not ask for B's lanes still hears B: the
-        // same chord again, from a second core, with only the heard pair.
-        alone: (() => {
-          const again = makeGeneratorCore(rate, GEN_SLOTS, quiet);
-          again.set('shape', 'sine'); again.set('shape', 'square', 1);
-          again.set('attackMs', 2); again.set('attackMs', 400, 1);
-          again.set('voices', A); again.set('voices', B, 1);
-          const x = new Float32Array(n), y = new Float32Array(n), h = new Float32Array(n), k = new Float32Array(n);
-          again.block(x, y, n, h, k);
-          let w = 0; for (let i = 0; i < n; i++) w = Math.max(w, Math.abs(h[i] - hl[i]));
-          return w;
-        })(),
-        sum: (() => { let w = 0, z = 0; for (let i = 0; i < n; i++) {
-          w = Math.max(w, Math.abs(hl[i] - al[i] - bl[i]), Math.abs(hr[i] - ar[i] - br[i]));
-          z = Math.max(z, Math.abs(hl[i] - al[i])); } return { w, z }; })(),
-      };
-    }""", [A, B])
-    print("    C, G, E  - A's X %s, A's Y %s, B's X %s, heard %s"
-          % (rounded(core["aX"]), rounded(core["aY"]), rounded(core["bX"]), rounded(core["heard"])))
-    top = max(core["aX"][0], 1e-9)
-    check("layer A's picture has A's notes and not B's",
-          core["aX"][0] > 0.05 and core["aY"][1] > 0.05
-          and core["aX"][2] < top * 0.01 and core["aY"][2] < top * 0.01, str(core))
-    check("layer B's picture has B's note and not A's",
-          core["bX"][2] > 0.05 and core["bX"][0] < top * 0.01 and core["bX"][1] < top * 0.01,
-          str(rounded(core["bX"])))
-    # The left ear, where G leans in at half its level: 0.048 of A's 0.096.
-    check("and the heard pair has all three",
-          min(core["heard"]) > 0.03, str(rounded(core["heard"])))
-    check("because it is A's lanes and B's summed, sample for sample",
-          core["sum"]["w"] < 1e-6, "worst %.3g" % core["sum"]["w"])
-    check("and the comparison fails with B left out", core["sum"]["z"] > 0.05, "%.3g" % core["sum"]["z"])
-    check("and a caller that asks for no lanes of B's hears exactly the same",
-          core["alone"] < 1e-6, "worst %.3g" % core["alone"])
-    print("    third harmonic over fundamental: B %.3f, A %.3f" % (core["bThird"], core["aThird"]))
-    check("layer B plays its own shape - a square under A's sine",
-          0.25 < core["bThird"] < 0.4 and core["aThird"] < 0.02, str(core))
-    print("    40 ms in: A %.3f, B %.3f; B at the end %.3f" % (core["aEarly"], core["bEarly"], core["bLate"]))
-    check("and speaks with its own envelope - slow where A's is quick",
-          core["aEarly"] > 0.3 and core["bEarly"] < core["bLate"] * 0.4, str(core))
-
-    life = p.evaluate("""() => {
-      const rate = 44100;
-      const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
-      core.set('releaseMs', 50, 1);
-      // A chord on layer A with nothing in it, and one note on layer B: the
-      // envelope a player hears is B's.
-      core.set('voices', []);
-      core.set('voices', [{ note: 76, freq: 659.3, velocity: 1, role: 'xy' }], 1);
-      const n = rate / 2, s = () => new Float32Array(n);
-      core.block(s(), s(), n, null, null, s(), s());
-      const held = { envelope: core.envelope, voices: core.voicesB.length };
-      core.set('voices', [], 1);
-      core.block(s(), s(), n, null, null, s(), s());
-      return { held, released: { envelope: core.envelope, voices: core.voicesB.length } };
-    }""")
-    print("    %s" % life)
-    check("the envelope a source reads includes layer B's notes",
-          life["held"]["envelope"] > 0.5 and life["held"]["voices"] == 1, str(life))
-    check("and layer B's voices are let go once their release is over",
-          life["released"]["voices"] == 0 and life["released"]["envelope"] < 1e-3, str(life))
-
-    print("\n--- the keyboard: which layer a note goes to ---")
+    print("\n--- the keyboard: the lanes a split lays out ---")
+    # Which layer each note goes to (`>` against `>=` at the point, out of
+    # pitch order) was read off genSettings(layer).voices, put there by the
+    # page's own keyboard on ?brain=js; it is pieces/layer.py's on the core's
+    # keyboard now. What stays is the lanes the face lays out: Poly pressed and
+    # the split chosen, as a hand does, so the instrument is told (setMidiMode
+    # called directly, as this was, never reached it).
     route = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setScreenKeys(true); setMidiMode('poly');
+      setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-      midi.layers.point = 60;
-      await wait(60);
-      // Out of pitch order, and 60 - the point itself - among them.
+      await wait(200);
       for (const n of [72, 59, 60, 48]) midiNoteOn(n, 100);
-      await wait(60);
-      const notes = (layer) => genSettings(layer).voices.map((v) => v.note).sort((a, b) => a - b);
-      const split = { on: layersOn(), a: notes(0), b: notes(1), channels: state.source.channels,
-                      lanes: laneCount(), names: [0, 1, 2, 3].map(laneName),
-                      figures: state.source.figures() };
-      el.midiLayers.value = 'layer'; el.midiLayers.dispatchEvent(new Event('change'));
-      await wait(60);
-      const layered = { a: notes(0), b: notes(1) };
+      await wait(300);
+      const out = { kind: state.source.kind, channels: state.source.channels, lanes: laneCount(),
+                    names: [0, 1, 2, 3].map(laneName), figures: state.source.figures() };
       midiPanic();
-      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-      return { split, layered };
-    }""")
-    print("    split at C4: A %s, B %s; layered: A %s, B %s"
-          % (route["split"]["a"], route["split"]["b"], route["layered"]["a"], route["layered"]["b"]))
-    check("a split sends notes below the point to A and the point upwards to B",
-          route["split"]["on"] and route["split"]["a"] == [48, 59] and route["split"]["b"] == [60, 72],
-          str(route["split"]))
-    check("and offers four lanes, named for their layers, as two figures",
-          route["split"]["channels"] == 4 and route["split"]["lanes"] == 4
-          and route["split"]["names"] == ["A · X", "A · Y", "B · X", "B · Y"]
-          and route["split"]["figures"] == [[0, 1], [2, 3]], str(route["split"]))
-    check("layered sends every note to both",
-          route["layered"]["a"] == [48, 59, 60, 72] and route["layered"]["b"] == [48, 59, 60, 72],
-          str(route["layered"]))
-
-    learn = p.evaluate("""async () => {
-      el.midiSplitLearn.click();
-      const asking = el.midiSplitLearn.textContent;
-      midiNoteOn(65, 100);
-      const out = { asking, point: midi.layers.point, learning: midi.layers.learning,
-                    said: el.midiSplitLearn.textContent,
-                    played: midi.notes.map((n) => n.note), b: genSettings(1).voices.map((v) => v.note) };
-      midiPanic(); midi.layers.point = 60; syncMidi();
       return out;
     }""")
-    print("    %s" % learn)
-    check("the split point is learned from the next key, which still plays",
-          learn["asking"] == "play a key" and learn["point"] == 65 and not learn["learning"]
-          and learn["said"] == "at F4" and learn["played"] == [65] and learn["b"] == [65], str(learn))
+    print("    %s" % route)
+    check("a split offers four lanes, named for their layers, as two figures",
+          route["kind"] == "host" and route["channels"] == 4 and route["lanes"] == 4
+          and route["names"] == ["A · X", "A · Y", "B · X", "B · Y"]
+          and route["figures"] == [[0, 1], [2, 3]], str(route))
 
-    print("\n--- each layer its own draw rule ---")
+    # The split point learned from the next key stays on ?brain=js (its own
+    # page, at the end), and is listed in plugin/STAGE5-INVENTORY.md: on the
+    # default page the Learn button and the next key move the face's point
+    # ("at G3") and not the instrument's - G3 learned, A3 still lands in A's
+    # lanes, where the point is C4 - so the check as it stood, reading the
+    # page's midi.layers.point and genSettings(1).voices, passed on the default
+    # for the page's reason. It cannot move without a change to the page.
+
+    print("\n--- each layer its own draw rule: the readout ---")
+    # Which notes each layer draws is pieces/layer.py's on the core's
+    # keyboard; it was midi.draws written by hand on the page, which the
+    # instrument never hears. The rule is chosen here as a hand chooses it,
+    # each hand's Draw menus with that hand on the face. The readout is the
+    # face's own reckoning of it, from the page's note list; the lanes cannot
+    # say which notes are drawn, since a note not drawn (role u) is still in
+    # both of its layer's lanes, so the instrument's half is the pieces'.
     rules = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      midi.draws[0] = { count: 2, which: 'lowest' };
-      midi.draws[1] = { count: 2, which: 'highest' };
+      const pick = (id, v) => { el[id].value = v; el[id].dispatchEvent(new Event('change')); };
+      document.getElementById('editHandA').click(); await wait(30);
+      pick('midiDrawCount', '2'); pick('midiDrawWhich', 'lowest');
+      document.getElementById('editHandB').click(); await wait(30);
+      pick('midiDrawCount', '2'); pick('midiDrawWhich', 'highest');
+      document.getElementById('editHandA').click(); await wait(30);
       for (const n of [52, 48, 55, 79, 72, 76]) midiNoteOn(n, 100);
       await wait(60);
-      const drawn = (layer) => genSettings(layer).voices.filter((v) => v.role !== 'u')
-        .map((v) => v.note).sort((a, b) => a - b);
-      const out = { a: drawn(0), b: drawn(1), readout: null };
       state.lastReadout = 0; await wait(400);
-      out.readout = el.readoutDetail.textContent;
+      const out = { readout: el.readoutDetail.textContent };
       midiPanic();
-      midi.draws[0] = { count: 2, which: 'outer' }; midi.draws[1] = { count: 2, which: 'outer' };
+      for (const h of ['editHandA', 'editHandB']) {
+        document.getElementById(h).click(); await wait(30); pick('midiDrawWhich', 'outer');
+      }
+      document.getElementById('editHandA').click();
       return out;
     }""")
-    print("    A (lowest two) draws %s, B (highest two) draws %s" % (rules["a"], rules["b"]))
-    check("layer A draws by its rule and layer B by its own",
-          rules["a"] == [48, 52] and rules["b"] == [76, 79], str(rules))
-    check("and the readout says each layer's outline",
+    print("    %s" % rules["readout"][:200])
+    check("the readout says each layer's outline",
           "outline A 2 of 3, B 2 of 3" in rules["readout"] and "split at C4" in rules["readout"],
           rules["readout"][:200])
 
     print("\n--- A against B ---")
+    # That A against B is A's drawn notes on X and B's on Y is
+    # pieces/layer.py's, on the instrument's own lanes; here the face names it.
     against = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      genSet('shape', 'sine'); genSet('shape', 'sine', 1);
       el.midiLayerPair.value = 'against'; el.midiLayerPair.dispatchEvent(new Event('change'));
-      for (const n of [48, 55, 76]) midiNoteOn(n, 100);
-      await wait(700);
-      const rate = state.source.sampleRate;
-      const w = state.source.getLatestWindow(16384);
-      const hz = [48, 55, 76].map((n) => 440 * Math.pow(2, (n - 69) / 12));
-      const out = { channels: state.source.channels, figures: state.source.figures(),
-        names: [laneName(0), laneName(1)], xyOff: el.xyX.disabled,
-        x: hz.map((f) => window.__bin(w[0], f, rate)), y: hz.map((f) => window.__bin(w[1], f, rate)) };
-      midiPanic();
+      await wait(200);
+      const out = { channels: state.source.channels, names: [laneName(0), laneName(1)], xyOff: el.xyX.disabled };
       el.midiLayerPair.value = 'each'; el.midiLayerPair.dispatchEvent(new Event('change'));
+      await wait(200);
+      out.eachNames = [laneName(0), laneName(1)];
       return out;
     }""")
-    print("    C, G, E - X %s, Y %s" % (rounded(against["x"]), rounded(against["y"])))
-    xtop = max(against["x"][0], 1e-9)
-    check("A against B is one pair: both of A's drawn notes on X, B's on Y",
-          against["channels"] == 2 and against["figures"] is None
-          and against["x"][0] > 0.03 and against["x"][1] > 0.03 and against["x"][2] < xtop * 0.01
-          and against["y"][2] > 0.03 and against["y"][0] < xtop * 0.01 and against["y"][1] < xtop * 0.01,
-          str(against))
     check("named for the layers, with the X-Y menus back",
-          against["names"] == ["Layer A", "Layer B"] and not against["xyOff"], str(against))
+          against["channels"] == 2 and against["names"] == ["Layer A", "Layer B"] and not against["xyOff"], str(against))
+    check("null: drawn a figure each, the lanes are not named for the layers", against["eachNames"] != ["Layer A", "Layer B"],
+          str(against["eachNames"]))
 
     print("\n--- two figures, both drawn ---")
-    # Only layer B holds notes, so layer A's figure is a dot at the centre and
-    # anything else lit on the screen is layer B's.
+    # The face's drawing of the instrument's lanes: the page's own grid, which
+    # on the default page draws what the instrument sends. Only layer B holds
+    # notes, so layer A's figure is a dot at the centre and anything else lit
+    # is layer B's. X-Y pressed (setDisplay was called directly until batch 2),
+    # and the phase left at the slider's 90, where genSet put it by hand.
     figs = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setDisplay('xy'); state.persistence = 0; el.persistence.value = '0';
+      el.dispXY.click(); state.persistence = 0; el.persistence.value = '0';
       // Full ink for every stroke. The beam's shading keeps a slowly adapting
       // reference per figure, and after a switch it is still tuned to whatever
       // that figure drew before - a dot, here - so a shaded comparison between
       // the two layouts measures the adaptation rather than the drawing.
       const shaded = state.beamXY; state.beamXY = false;
-      genSet('phase', Math.PI / 2);
       for (const n of [72, 79]) midiNoteOn(n, 100);
-      await wait(600);
+      await wait(800);
       const lit = (g) => g.reduce((a, v) => a + (v > 0.2 ? 1 : 0), 0) / g.length;
-      const out = { each: lit(phosphor.grid), xyOff: el.xyX.disabled };
+      const out = { each: lit(phosphor.grid), xyOff: el.xyX.disabled, phase: el.phase.value };
       // The same notes in one layer and no split, drawn as a single figure:
       // what B's figure should look like on its own.
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
-      await wait(600);
+      await wait(800);
       out.alone = lit(phosphor.grid);
-      midiPanic();
+      midiPanic(); await wait(300);
+      out.dark = lit(phosphor.grid);
       state.beamXY = shaded;
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      await wait(200);
       return out;
     }""")
-    print("    lit with only layer B playing %.3f; the same notes as one layer %.3f"
-          % (figs["each"], figs["alone"]))
+    print("    lit with only layer B playing %.3f; the same notes as one layer %.3f; let go %.3f"
+          % (figs["each"], figs["alone"], figs["dark"]))
     check("layer B's figure is drawn beside A's, not just A's",
           figs["each"] > figs["alone"] * 0.5 and figs["alone"] > 0.02, str(figs))
+    check("null: with every note let go the screen is not lit like that", figs["dark"] < 0.5 * figs["each"], str(figs))
     check("and the X-Y menus step aside while the layers choose the figures", figs["xyOff"], str(figs))
 
+    # The lag is the face's: it lays out the lanes the page draws, from what
+    # the instrument sends, and a modulation of it (state.lagMod) is the
+    # page's visual matrix, which moves the screen's own destinations on the
+    # default page as on ?brain=js. Moved as it was.
     lag = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event('change'));
@@ -359,43 +258,16 @@ with sync_playwright() as pw:
           not m["idle"]["lag"] and m["idle"]["figures"] == [[0, 1], [2, 3]]
           and m["lag"] and m["lanes"] == 4 and m["figures"] is None, str(m))
 
-    print("\n--- through the worklet ---")
-    heard = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      genSet('shape', 'sine'); genSet('shape', 'sine', 1);
-      await applyGeneratorSound();
-      for (const n of [48, 55, 76]) midiNoteOn(n, 100);
-      const chain = Array.from(monitorChains)[0];
-      const ctx = chain.input.context;
-      const tap = ctx.createAnalyser(); tap.fftSize = 16384;
-      chain.input.connect(tap);
-      await wait(900);
-      const x = new Float32Array(tap.fftSize); tap.getFloatTimeDomainData(x);
-      const w = state.source.getLatestWindow(16384);
-      const rate = ctx.sampleRate;
-      const hz = [48, 55, 76].map((n) => 440 * Math.pow(2, (n - 69) / 12));
-      const out = { audible: state.source.audible(), chains: monitorChains.size,
-        heard: hz.map((f) => window.__bin(x, f, rate)),
-        aX: hz.map((f) => window.__bin(w[0], f, rate)),
-        bX: hz.map((f) => window.__bin(w[2], f, rate)) };
-      midiPanic();
-      { const v = genVoice(); if (v) await v.setSound(false); syncGeneratorSound(); }
-      return out;
-    }""")
-    print("    C, G, E - heard %s; A's X %s; B's X %s"
-          % (rounded(heard["heard"]), rounded(heard["aX"]), rounded(heard["bX"])))
-    htop = max(heard["aX"][0], 1e-9)
-    check("the worklet sounds both layers", heard["audible"] and min(heard["heard"]) > 0.01, str(heard))
-    check("and posts layer B's picture back apart from A's",
-          heard["bX"][2] > 0.03 and heard["bX"][0] < htop * 0.01
-          and heard["aX"][0] > 0.03 and heard["aX"][2] < htop * 0.01, str(heard))
+    # "The worklet sounds both layers" and "posts layer B's picture back apart
+    # from A's" went with batch 2: they tapped the page brain's own worklet
+    # and its monitor chain on ?brain=js, plumbing only that brain has. The
+    # instrument's worklet is braintest.py's, and its B lanes are read above.
 
     print("\n--- the panel edits one layer at a time ---")
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const input = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };
       input('amp', 50); input('envRelease', 300);
-      const a0 = { amp: genSettings().amp, rel: genSettings().releaseMs };
       /* The upper hand, and the Generator and the Amp envelope its own (G6):
          linked, as every section is until a link is pressed, the controls
          would write both hands - handstest.py holds that. Until G6 every
@@ -407,49 +279,55 @@ with sync_playwright() as pw:
                        ampShown: getComputedStyle(el.amp.closest('.menu-row')).display !== 'none' };
       input('amp', 90); input('envRelease', 1200);
       el.shape.value = 'triangle'; el.shape.dispatchEvent(new Event('change'));
-      const out = { a0, showsB,
-        a: { amp: genSettings().amp, rel: genSettings().releaseMs, shape: genSettings().shape },
-        b: { amp: genSettings(1).amp, rel: genSettings(1).releaseMs, shape: genSettings(1).shape } };
       // A code written while B is on screen is layer A's controls and B's
       // sound, each in its own place.
-      out.code = snapshot();
+      const out = { showsB, code: snapshot() };
       document.getElementById('editHandA').click(); await wait(30);
       out.backToA = { amp: el.amp.value, rel: el.envRelease.value, shape: el.shape.value,
                       title: el.genTitle.firstChild.textContent + " / " + document.getElementById('linkGen').textContent };
       return out;
     }""")
-    print("    %s" % panel)
+    print("    %s" % {k: panel[k] for k in ("showsB", "backToA")})
     check("with B shown and the Generator its own, its link says so and the panel shows only what B has",
-          panel["showsB"]["title"] == "Generator / Upper\u2019s own" and not panel["showsB"]["freqShown"]
+          panel["showsB"]["title"] == "Generator / Upper’s own" and not panel["showsB"]["freqShown"]
           and panel["showsB"]["ampShown"], str(panel["showsB"]))
+    code = panel["code"]
+    # Until batch 2 this read genSettings(0) and genSettings(1), the page's
+    # generator on ?brain=js. On the default page they are the page's mirror
+    # of the setup, so it reads the setup the face sends the instrument.
     check("and its controls write layer B, leaving A alone",
-          abs(panel["b"]["amp"] - 0.9) < 1e-9 and panel["b"]["rel"] == 1200 and panel["b"]["shape"] == "triangle"
-          and abs(panel["a"]["amp"] - 0.5) < 1e-9 and panel["a"]["rel"] == 300 and panel["a"]["shape"] != "triangle",
-          str(panel))
+          code["bAmp"] == 90 and code["bRel"] == 1200 and code["bShape"] == "triangle"
+          and code["amp"] == 50 and code["rel"] == 300 and code["shape"] != "triangle",
+          str({k: code[k] for k in ("amp", "rel", "shape", "bAmp", "bRel", "bShape")}))
     check("the lower hand chosen puts A's values back on the controls, and the link names it",
           panel["backToA"]["amp"] == "50" and panel["backToA"]["rel"] == "300"
-          and panel["backToA"]["shape"] != "triangle" and panel["backToA"]["title"] == "Generator / Lower\u2019s own",
+          and panel["backToA"]["shape"] != "triangle" and panel["backToA"]["title"] == "Generator / Lower’s own",
           str(panel["backToA"]))
-    code = panel["code"]
     check("a code taken with B on screen keeps A's controls as A's",
           code["amp"] == 50 and code["rel"] == 300 and code["bAmp"] == 90 and code["bRel"] == 1200
           and code["bShape"] == "triangle" and code["layers"] == "split", str({k: code[k] for k in
           ("amp", "rel", "bAmp", "bRel", "bShape", "layers")}))
 
     print("\n--- the setup code carries the layers ---")
+    # Each code loaded as the setup box loads one (loadCode), which restores
+    # the face and sends the code to the instrument; until batch 2 restore()
+    # was called directly, which on the default page changes the face alone.
+    # midi.layers, midi.draws and genSettings are the face's copy of the setup
+    # on the default page, so these hold the face's decode, and "reaches the
+    # generator" is that copy; that the core's restore gives the instrument
+    # the same fields is parity's "restore" section.
     trip = p.evaluate("""async ([code]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      midi.draws[1] = { count: 3, which: 'recent' };
       const snap = Object.assign({}, code, snapshot());
-      snap.layerPair = 'against'; snap.splitAt = 67;
+      snap.layerPair = 'against'; snap.splitAt = 67; snap.midiDrawCountB = 3; snap.midiDrawWhichB = 'recent';
       // Not the defaults: restored with the defaults, A's release and the
       // core's own are both 180 ms, and B getting its own defaults instead of
       // A's values passed this check - the mutation pass found it.
-      restore({ midiMode: 'dyad', rel: 900, amp: 30 });
+      loadCode(encodeSetup({ midiMode: 'dyad', rel: 900, amp: 30 }));
       await wait(60);
       const reset = { layers: midi.layers.mode, b: genSettings(1).amp, bRel: genSettings(1).releaseMs,
                       aRel: genSettings().releaseMs, a: genSettings().amp };
-      restore(snap);
+      loadCode(encodeSetup(snap));
       await wait(60);
       return { reset, mode: midi.layers.mode, point: midi.layers.point, pair: midi.layers.pair,
                drawB: { ...midi.draws[1] }, bAmp: genSettings(1).amp, bRel: genSettings(1).releaseMs,
@@ -468,57 +346,76 @@ with sync_playwright() as pw:
           and abs(trip["reset"]["b"] - 0.3) < 1e-9, str(trip["reset"]))
 
     print("\n--- the layers go when what made them possible does ---")
+    # Dyad and Poly pressed, as a hand does: until batch 2 setMidiMode was
+    # called directly, which the instrument never hears. What the dyad leaves
+    # is read off the lanes the instrument sends - two, not four - and
+    # Poly's splitting the held notes again off B's lanes, where it read the
+    # page's genSettings voices.
     gone = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setMidiMode('poly'); el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-      midi.layers.pair = 'each';
+      midiPanic();
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      el.midiLayerPair.value = 'each'; el.midiLayerPair.dispatchEvent(new Event('change'));
       document.getElementById('editHandB').click();
       for (const n of [48, 72]) midiNoteOn(n, 100);
-      await wait(60);
-      const before = { on: layersOn(), channels: state.source.channels, edit: el.toneRows.dataset.layerEdit };
-      setMidiMode('dyad'); await wait(60);
-      const dyad = { on: layersOn(), b: genSettings(1).voices, channels: state.source.channels,
-                     layout: state.source.layout, edit: el.toneRows.dataset.layerEdit,
-                     rowHidden: el.midiLayerRow.hidden };
-      setMidiMode('poly'); await wait(60);
-      const back = { on: layersOn(), b: genSettings(1).voices.map((v) => v.note),
-                     a: genSettings().voices.map((v) => v.note) };
-      midiPanic();
-      return { before, dyad, back };
+      await wait(400);
+      const before = { channels: state.source.channels, lanes: state.source.getLatestWindow(256).length,
+                       edit: el.toneRows.dataset.layerEdit };
+      el.midiDyad.click(); await wait(400);
+      const dyad = { channels: state.source.channels, lanes: state.source.getLatestWindow(256).length,
+                     layout: state.source.layout, edit: el.toneRows.dataset.layerEdit, rowHidden: el.midiLayerRow.hidden };
+      el.midiPoly.click(); await wait(200);
+      return { before, dyad };
     }""")
-    print("    %s" % gone)
+    back = lanes([48, 72])
+    p.evaluate("() => midiPanic()")
+    print("    %s; back in poly, C3 and C5 in A's X %s, B's X %s" % (gone, [round(v, 4) for v in back[0]],
+                                                                    [round(v, 4) for v in back[2]]))
     check("leaving poly ends layer B and gives the page two lanes and layer A's panel",
-          gone["before"]["on"] and gone["before"]["channels"] == 4 and gone["before"]["edit"] == "b"
-          and not gone["dyad"]["on"] and gone["dyad"]["b"] is None and gone["dyad"]["channels"] == 2
+          gone["before"]["channels"] == 4 and gone["before"]["lanes"] == 4 and gone["before"]["edit"] == "b"
+          and gone["dyad"]["channels"] == 2 and gone["dyad"]["lanes"] == 2
           and gone["dyad"]["layout"] == "one" and gone["dyad"]["edit"] == "a" and gone["dyad"]["rowHidden"],
           str(gone))
-    check("and coming back to poly splits the held notes again",
-          gone["back"]["on"] and gone["back"]["a"] == [48] and gone["back"]["b"] == [72], str(gone["back"]))
+    split_again = lambda r: r[0][0] > 0.02 and r[0][1] < 0.1 * r[0][0] and r[2][1] > 0.02 and r[2][0] < 0.1 * r[2][1]
+    check("and coming back to poly splits the held notes again: C3 in A's lanes and C5 in B's", split_again(back), str(back))
+    check("null: A's lanes and B's swapped are not that split", not split_again([back[2], back[3], back[0], back[1]]))
 
-    # While the input is drawn the generator cannot lay out two figures. Asked
-    # under a stand-in source that says so, synchronously so no frame runs
-    # with it installed; the null is the same split on the generator's own,
-    # which applies it. Until P5 this built a rack's generator lane.
-    kept = p.evaluate("""() => {
-      const saved = state.source;
-      syncMidi();
-      const own = { on: layersOn(), note: el.midiLayersNote.hidden ? '' : el.midiLayersNote.textContent };
-      state.source = Object.create(saved, { layoutable: { value: false }, drawsInput: { value: true } });
-      let drawn;
-      try {
-        syncMidi();
-        drawn = { on: layersOn(), mode: midi.layers.mode,
-                  note: el.midiLayersNote.hidden ? '' : el.midiLayersNote.textContent };
-      } finally { state.source = saved; syncMidi(); }
-      return { own, drawn };
-    }""")
-    print("    %s" % kept)
-    check("with the input drawn a split is kept, not applied, and the panel says why",
-          not kept["drawn"]["on"] and kept["drawn"]["mode"] == "split" and "one layer" in kept["drawn"]["note"]
-          and kept["own"]["on"] and kept["own"]["note"] == "", str(kept))
+    # "With the input drawn a split is kept, not applied" went with batch 2:
+    # it installed a stand-in state.source on the page (Object.create over
+    # the generator's, layoutable false) and asked the page's own syncMidi,
+    # a path only the page's brain had. The instrument's input drawn with the
+    # layers is parity's "layered input" run.
 
     if bad: print("    first error inside the page: %s" % p.evaluate("() => window.__errs[0]"))
     check("no page errors", not bad, "; ".join(bad[:3]))
+    p.close()
+
+    print("\n--- the split point learned (the page's own brain, ?brain=js) ---")
+    # Left on ?brain=js in batch 2: the Learn button does not reach the
+    # instrument on the default page (above), so this holds the page's own
+    # keyboard until the page sends the learned point.
+    p = b.new_page(viewport={"width": 1400, "height": 900})
+    p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    learn = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      setScreenKeys(true); setMidiMode('poly');
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      midi.layers.point = 60;
+      await wait(60);
+      el.midiSplitLearn.click();
+      const asking = el.midiSplitLearn.textContent;
+      midiNoteOn(65, 100);
+      return { asking, point: midi.layers.point, learning: midi.layers.learning,
+               said: el.midiSplitLearn.textContent,
+               played: midi.notes.map((n) => n.note), b: genSettings(1).voices.map((v) => v.note) };
+    }""")
+    print("    %s" % learn)
+    check("the split point is learned from the next key, which still plays",
+          learn["asking"] == "play a key" and learn["point"] == 65 and not learn["learning"]
+          and learn["said"] == "at F4" and learn["played"] == [65] and learn["b"] == [65], str(learn))
+    check("no page errors on the page's own brain", not bad, "; ".join(bad[:3]))
     b.close()
 
 print()

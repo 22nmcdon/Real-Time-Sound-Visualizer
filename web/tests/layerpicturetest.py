@@ -24,12 +24,18 @@ wrong, and what is checked for it:
   governor, from a layer's own verdict, holds that layer and not the other;
 - the menus showing where they mean nothing, and a setup losing them.
 
-All of that on ?brain=js, whose page computes the routes itself. The default
-page plays the site's compiled instrument, which computes its routes in the
-core - held to the page by parity - and draws its own grids; the last leg
-reads them back from it: each layer's screen of its own there too, measuring
-its own figure, and the menus reaching it. Its null is the same split with
-the layers off.
+Since stage 5, step 3, batch 2 (13 Nov) the numbers are the core's own:
+the unsplit routes, each layer's screen measuring its own figure, whose sound
+each picture moves, layerPush's averaging and crossing and holds, and a
+layer's own governor are core/tests/pieces/layerpicture.py's, on
+scope::LayerPictures through picture_cpp (parity runs it). Until then they
+were here on ?brain=js, reading the page's own layer screens over real
+seconds, its stages written by hand and its route compiler stepped. What is
+left is the face, on the default page, which plays the site's compiled
+instrument: the menus where they mean something, a setup carrying them, and
+the instrument's own layer screens read back from it, each measuring its own
+figure, with the menus reaching it. Its null is the same split with the
+layers off.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -44,156 +50,31 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
-# The two layers set up: A a fifth turning (equal temperament), B one note;
-# `quiet` silences one layer, so its figure is a dot that does not move.
-SPLIT = """async (quiet) => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  midiPanic(); setDisplay('xy'); setScreenKeys(true); setMidiMode('poly');
-  el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-  midi.layers.point = 60;
-  genSet('just', false); genSet('just', false, 1);
-  genSet('amp', quiet === 0 ? 0 : 0.8, 0); genSet('amp', quiet === 1 ? 0 : 0.8, 1);
-  for (const n of [48, 55, 72, 79]) midiNoteOn(n, 100);
-  await wait(3000);
-  const r = (x) => ({ cover: x.raw.cover, change: x.raw.change });
-  return { live: layerPictures.live, a: r(layerPictures.values[0]), b: r(layerPictures.values[1]), shared: r(picture) };
-}"""
-
-# The loop's combined routes as stepRoutes leaves them, with the frame loop
-# stopped so the stages hold what a check puts in them.
-ROUTES = """() => { stepRoutes(); return genRoutes.filter((x) => x.loopTotal).map((x) => [x.slot, x.held, x.heldB]); }"""
-
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
     p = b.new_page(viewport={"width": 1400, "height": 900})
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(1200)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(1500)
     corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
-    print("\n--- unsplit, nothing changes ---")
-    plain = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setDisplay('xy'); setScreenKeys(true); setMidiMode('poly'); genSet('just', false);
-      for (const n of [48, 55]) midiNoteOn(n, 100);
-      await wait(2000);
-      stepRoutes();
-      const loops = genRoutes.filter((x) => x.loopTotal);
-      return { live: layerPictures.live, made: layerPictures.engines !== null, routes: loops.length,
-               same: loops.every((x) => x.heldB === x.held && x.held === x.source.value()),
-               moving: loops.some((x) => x.held !== 0), row: !el.pictureMovesRow.hidden };
+    # The checks that stood here until batch 2 - unsplit, every loop route
+    # carrying the one shared push; each layer's screen moving with its own
+    # figure and not the other's; B's stage moving B's push and not A's;
+    # a sound hearing both pictures taking their average, own, crossed and
+    # neither, a crossed pair held by the lower governor; a layer that runs
+    # away held by its own governor - read the page's layerPictures and its
+    # route compiler on ?brain=js, with stages written by hand. They are
+    # core/tests/pieces/layerpicture.py's, on the core's own output.
+
+    # A split in X-Y, pressed as a hand does: until batch 2 setDisplay and
+    # setMidiMode were called directly, which the instrument never hears.
+    p.evaluate("""async () => {
+      el.dispXY.click(); setScreenKeys(true); el.midiPoly.click();
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 300));
     }""")
-    print("    %s" % plain)
-    check("unsplit, the layer screens are never made and every loop route carries the one shared push to both layers",
-          not plain["live"] and not plain["made"] and plain["routes"] >= 2 and plain["same"] and plain["moving"]
-          and not plain["row"], str(plain))
-
-    # The second generator, with no split, laid out a figure each too - its
-    # figure in layer B's lanes - and was not a layer: the layer screens
-    # stayed off. Held here until G2 took it; the split's own condition is
-    # what is left, and the unsplit case above holds it.
-
-    print("\n--- each layer's screen measures its own figure ---")
-    a_moves = p.evaluate(SPLIT, 1)
-    b_moves = p.evaluate(SPLIT, 0)
-    print("    B silent: A %s, B %s, shared %s" % (a_moves["a"], a_moves["b"], a_moves["shared"]))
-    print("    A silent: A %s, B %s, shared %s" % (b_moves["a"], b_moves["b"], b_moves["shared"]))
-    # Activity, coverage times change: a still dot covering a quarter of a per
-    # cent of its screen reads a large relative change from the tail of the
-    # notes it has just let go, so change alone is noise there; what moves is
-    # how much lit screen changes. Twenty times, and five times the coverage.
-    # The floor under the moving screen's change is only that it changes at
-    # all: it read 0.016 to 0.13 over five runs, and a still dot's change
-    # read up to 0.134, so it is the two ratios that tell them apart. The
-    # floor was 0.02, and the moving screen failed it once at 0.016 (6 Nov).
-    act = lambda x: x["cover"] * x["change"]
-    def follows(r, moving, still):
-        return (r["live"] and r[moving]["change"] > 0.01 and act(r[moving]) > 20 * act(r[still])
-                and r[moving]["cover"] > 5 * r[still]["cover"])
-    check("with B silent, A's screen moves and B's does not", follows(a_moves, "a", "b"), str(a_moves))
-    check("and with A silent, B's moves and A's does not", follows(b_moves, "b", "a"), str(b_moves))
-    check("and the check fails on the shared screen read for the still layer",
-          not follows(dict(a_moves, b=a_moves["shared"]), "a", "b"), str(a_moves["shared"]))
-
-    print("\n--- whose sound each picture moves ---")
-    p.evaluate(SPLIT, -1)
-    p.evaluate("() => { state.running = false; }")
-    p.wait_for_timeout(200)
-    moved = p.evaluate("""(ROUTES) => {
-      const routes = eval(ROUTES);
-      const set = (l, glow, motion, memory, hold) => Object.assign(layerPictures.stages[l], { glow, motion, memory, hold });
-      const out = {};
-      layerPictures.live = true;
-      layerPictures.moves = ['A', 'B'];
-      set(0, 0.8, 0.6, 0.4, 1); set(1, 0.2, 0.1, 0.3, 1);
-      out.before = routes();
-      set(1, 0.9, 0.9, 0.9, 1);
-      out.bChanged = routes();
-      layerPictures.moves = ['A', 'both'];     // B's picture to both: A's sound hears it too
-      out.aHearsBoth = routes();
-      return out;
-    }""", ROUTES)
-    def by_slot(rows): return {r[0]: (r[1], r[2]) for r in rows}
-    bef, aft, both = by_slot(moved["before"]), by_slot(moved["bChanged"]), by_slot(moved["aHearsBoth"])
-    print("    slot: (A's push, B's push) before %s; B's stage changed %s; A's picture to both %s" % (bef, aft, both))
-    a_same = all(abs(bef[k][0] - aft[k][0]) < 1e-12 for k in bef)
-    b_moved = any(abs(bef[k][1] - aft[k][1]) > 0.01 for k in bef)
-    check("each picture moving its own sound: B's stage changing moves B's push and not A's", a_same and b_moved,
-          str((bef, aft)))
-    check("and with B's picture heard by A as well, it moves A's push too - the check can see it",
-          any(abs(both[k][0] - aft[k][0]) > 0.01 for k in aft), str(both))
-
-    pushes = p.evaluate("""() => {
-      const set = (l, glow, hold) => Object.assign(layerPictures.stages[l], { glow, hold });
-      layerPictures.live = true;
-      const at = (moves) => { layerPictures.moves = moves; return [layerPush('glow', 0), layerPush('glow', 1)]; };
-      set(0, 0.8, 1); set(1, 0.2, 1);
-      const out = { both: at(['both', 'both']), own: at(['A', 'B']), swapped: at(['B', 'A']), none: at(['B', 'B']) };
-      set(0, 0.8, 1); set(1, 0.2, 0.25);
-      out.heldBoth = at(['both', 'both']);
-      out.heldCross = at(['B', 'A']);
-      out.heldOneWay = at(['both', 'B']);
-      return out;
-    }""")
-    print("    glow pushes [A's sound, B's sound]: %s" % pushes)
-    near = lambda x, y: abs(x - y) < 1e-12
-    check("a sound that hears both pictures takes their average", near(pushes["both"][0], 0.5) and near(pushes["both"][1], 0.5),
-          str(pushes["both"]))
-    check("and not their sum, which the check would read as wrong", not near(pushes["both"][0], 1.0))
-    check("own, crossed and neither: each sound hears exactly the pictures its menu sends it",
-          near(pushes["own"][0], 0.8) and near(pushes["own"][1], 0.2) and near(pushes["swapped"][0], 0.2)
-          and near(pushes["swapped"][1], 0.8) and near(pushes["none"][0], 0) and near(pushes["none"][1], 0.5),
-          str(pushes))
-    # B's hold at a quarter: in the crossed pair each cross term carries the
-    # lower hold - A's sound hears B's picture at 0.2 x 0.25, B's hears A's at
-    # 0.8 x 0.25 - while A's own term keeps A's hold of one. One way only (A's
-    # picture to both, B's to B alone) is not a crossed pair: B's term into
-    # nothing, A's into B at A's own hold.
-    check("a crossed pair is held by the lower governor in its cross terms, and an own term by its own",
-          near(pushes["heldBoth"][0], (0.8 + 0.2 * 0.25) / 2) and near(pushes["heldBoth"][1], (0.2 * 0.25 + 0.8 * 0.25) / 2)
-          and near(pushes["heldCross"][0], 0.2 * 0.25) and near(pushes["heldCross"][1], 0.8 * 0.25)
-          and near(pushes["heldOneWay"][1], (0.8 + 0.2 * 0.25) / 2), str(pushes))
-    check("and the check fails on a cross term that ignored the hold",
-          not near(pushes["heldCross"][1], 0.8), str(pushes["heldCross"]))
-
-    print("\n--- a layer's own governor ---")
-    p.evaluate("() => { state.running = true; layerPictures.moves = ['A', 'B']; }")
-    governed = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      // B's screen held full every frame: its meter reads a screen saturated,
-      // which is running away, and its governor holds - A's figure is untouched.
-      const step = window.layerPicturesStep;
-      window.layerPicturesStep = function (...a) { if (layerPictures.live) layerPictures.engines[1].cells.fill(1); return step.apply(this, a); };
-      for (const s of layerPictures.stages) s.hold = 1;
-      await wait(7000);
-      window.layerPicturesStep = step;
-      return { a: layerPictures.stages[0].hold, b: layerPictures.stages[1].hold,
-               verdicts: layerPictures.engines.map((e) => e.meter.verdict()) };
-    }""")
-    print("    %s" % governed)
-    check("a layer whose screen runs away is held to the floor by its own governor, and the other layer is not",
-          governed["verdicts"][1] == "running away" and abs(governed["b"] - 0.25) < 1e-9 and governed["a"] == 1, str(governed))
 
     print("\n--- the menus, and a setup ---")
     menus = p.evaluate("""async () => {
@@ -209,33 +90,37 @@ with sync_playwright() as pw:
       el.pictureMovesA.value = 'both'; el.pictureMovesA.dispatchEvent(new Event('change'));
       el.pictureMovesB.value = 'A'; el.pictureMovesB.dispatchEvent(new Event('change'));
       const code = encodeSetup(snapshot());
-      restore({});
-      out.reset = layerPictures.moves.slice();
-      restore(decodeSetup(code));
-      out.back = layerPictures.moves.slice();
-      out.menus = [el.pictureMovesA.value, el.pictureMovesB.value];
-      restore({ pictureMovesA: 'B', pictureMovesB: 'nonsense' });
-      out.odd = layerPictures.moves.slice();
-      restore({});
+      // Until batch 2 each of these read layerPictures.moves, the page's own
+      // on ?brain=js and only its mirror on the default page. They read the
+      // menus, what the face shows, and the instrument's own reading of
+      // whose sound each picture moves, sent back with its samples - after a
+      // split put back, since a code from before layers has none. Each code
+      // is loaded as the setup box loads one (loadCode), which sends it to
+      // the instrument: restore() called directly, as this was, changes the
+      // face alone on the default page.
+      const split = async () => { el.midiPoly.click(); el.midiLayers.value = 'split';
+        el.midiLayers.dispatchEvent(new Event('change')); await wait(800); };
+      const menus = () => [el.pictureMovesA.value, el.pictureMovesB.value];
+      const heard = () => state.source.layerPictures && state.source.layerPictures.moves;
+      loadCode(encodeSetup({})); await split();
+      out.reset = menus(); out.resetHeard = heard();
+      loadCode(code); await wait(800);
+      out.back = menus(); out.backHeard = heard();
+      loadCode(encodeSetup({ pictureMovesA: 'B', pictureMovesB: 'nonsense' })); await split();
+      out.odd = menus(); out.oddHeard = heard();
+      loadCode(encodeSetup({})); await split();
       return out;
     }""")
     print("    %s" % menus)
     check("the menus show while the layers draw a figure each, and not for A against B or with no split",
           menus["split"] and not menus["against"] and not menus["off"], str(menus))
-    check("a setup carries both, an old code is each picture moving its own sound, and nonsense falls back",
-          menus["back"] == ["both", "A"] and menus["menus"] == ["both", "A"] and menus["reset"] == ["A", "B"]
-          and menus["odd"] == ["B", "B"], str(menus))
+    check("a setup carries both, an old code is each picture moving its own sound, and nonsense falls back - on the face and in the instrument",
+          menus["back"] == ["both", "A"] and menus["reset"] == ["A", "B"] and menus["odd"] == ["B", "B"]
+          and menus["backHeard"] == ["both", "A"] and menus["resetHeard"] == ["A", "B"] and menus["oddHeard"] == ["B", "B"],
+          str(menus))
+    check("null: the code's menus are not the old code's", menus["backHeard"] != menus["resetHeard"], str(menus))
 
-    check("no page errors", not bad, "; ".join(bad[:3]))
-    p.close()
-
-    print("\n--- the site's compiled instrument (the default page) ---")
-    p = b.new_page(viewport={"width": 1400, "height": 900})
-    bad = []
-    p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
-    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(1500)
-    corpus.old_opening(p)  # the opening it was written against (P8h)
-    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    print("\n--- the site's compiled instrument: each layer's screen ---")
     # The hands go to the instrument as a hand's would - clicks on its buttons
     # and changes on its menus - and what it measures comes back with its
     # samples (the bridge's readings). Layer A a fifth turning, B one note.
