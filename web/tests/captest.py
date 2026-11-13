@@ -1,9 +1,18 @@
 import sys
 from playwright.sync_api import sync_playwright
-# On ?brain=js (5m): this suite reads the page's own brain - what capture()
-# asks the page's own sources for - which core/tests/parity.py holds the
-# instrument to, sample for sample. The instrument, the site's default since
-# 5m, is braintest.py's and hosttest.py's.
+# On the default page since stage 5's step 3 (13 Nov). On ?brain=js (5m to
+# then) the source was the page's own Mic, opened by calling `toMic()`, with an
+# analyser of 32768 samples. Called on the default page, `toMic()` still leaves
+# the instrument for that same page source, so every check here passed there
+# for the old reason. The Mic button is pressed instead, which keeps the
+# instrument (`hostToMic`): the source is the instrument drawing the input,
+# whose ring is two seconds (`makeBrainSource`). That changes what the first
+# checks can see. At 44.1 kHz the longest window with 40 ms of lag asks for
+# 32634 samples, a third of the ring, so "never asks for more than the buffer
+# holds" and "granted in full" cannot fail for want of room; a null below
+# holds the same asks to the old 24000-sample squeeze to show the reading
+# would see an over-ask. The give-way order is the forced squeeze's, which
+# narrows the buffer by hand and so reads the same policy on either source.
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)                    # web/, which holds scope.html
@@ -17,6 +26,9 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def null(name, red, detail=""):
+    check("null: " + name, red, detail)
 
 with sync_playwright() as pw:
     # The microphone, faked: the one real graph source with a ring of its own
@@ -32,12 +44,12 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
-    p.evaluate("() => toMic()"); p.wait_for_timeout(2000)
+    p.evaluate("() => el.srcMic.click()"); p.wait_for_timeout(2000)
     # And until the buffer has been written all the way back: a ring not yet
     # full reads as exact zeros at its oldest end, which is the flatline the
     # check below looks for in capture. Two seconds was always enough alone;
@@ -45,7 +57,7 @@ with sync_playwright() as pw:
     # 0.74 s window at 50 ms/div began with 40 unwritten samples (9 Nov).
     filled = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      for (let k = 0; k < 80; k++) {
+      for (let k = 0; k < 120; k++) {
         const w = state.source.getLatestWindow(state.source.capacity)[0];
         if (w && w.length && w.subarray(0, 8).some((v) => v !== 0)) return k * 100;
         await wait(100);
@@ -54,12 +66,13 @@ with sync_playwright() as pw:
     }""")
 
     info = p.evaluate("""() => ({ kind: state.source.kind, rate: state.source.sampleRate,
-                                  cap: state.source.capacity })""")
+                                  cap: state.source.capacity, input: !!state.source.drawsInput })""")
     print("\n--- the source under test ---")
     print("  %s at %d Hz, buffer holds %d samples (%.0f ms)"
           % (info["kind"], info["rate"], info["cap"], info["cap"] / info["rate"] * 1000))
-    check("a real graph source is loaded, and its buffer written all the way back", info["kind"] == "mic"
-          and info["cap"] == 32768 and filled >= 0, "filled after %d ms more" % filled)
+    check("the instrument draws the microphone, and its two-second ring is written all the way back",
+          info["kind"] == "host" and info["input"] and info["cap"] == round(2 * info["rate"]) and filled >= 0,
+          "filled after %d ms more" % filled)
 
     print("\n--- what capture asks for, at every timebase and trigger position ---")
     rows = p.evaluate("""() => {
@@ -92,6 +105,8 @@ with sync_playwright() as pw:
     over = [r for r in rows if r["over"] > 0]
     check("never asks for more than the buffer holds", over == [],
           "worst: %s" % (over[0] if over else ""))
+    null("the same asks against a buffer of 24000 would be over it, so the reading sees an ask",
+         any(r["ask"] > 24000 for r in rows), "largest ask %d" % max(r["ask"] for r in rows))
     check("no flatline at the left edge", all(r["flat"] < 8 for r in rows),
           "worst %d samples" % max(r["flat"] for r in rows))
     check("no NaN anywhere", all(r["finite"] for r in rows))
@@ -114,6 +129,9 @@ with sync_playwright() as pw:
     squeeze = p.evaluate("""() => {
       const src = state.source;
       let fake = 32768;
+      // The instrument's source has `capacity` as its own getter: kept, and
+      // put back after, where deleting it would leave the page without one.
+      const own = Object.getOwnPropertyDescriptor(src, 'capacity');
       Object.defineProperty(src, 'capacity', { configurable: true, get: () => fake });
       const real = src.getLatestWindow.bind(src);
       let worst = 0;
@@ -131,6 +149,8 @@ with sync_playwright() as pw:
       }
       state.lagOn = false; state.timebase = 4; state.position = 0.1;
       delete src.capacity;
+      if (own) Object.defineProperty(src, 'capacity', own);
+      src.getLatestWindow = real;
       return out;
     }""")
     for r in squeeze:

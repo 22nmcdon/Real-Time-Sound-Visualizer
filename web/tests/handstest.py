@@ -8,7 +8,8 @@ What would go wrong, and what is checked for it, each with a null:
 - a section without its link, or a link shown with one hand: one on each of
   the eleven the design lists, in the section it names;
 - linked, a hand moved and the other left behind; unlinked, both moved. Read
-  off the generator's two layers, not off the panel, which shows one;
+  off each hand's settings as the face holds them (genSettings), not off the
+  panel, which shows one;
 - unlinking that does not start the other hand as a copy, or linking again
   that does not copy the hand on the face over the other;
 - a new split starting with a section already parted, and a code from
@@ -16,14 +17,27 @@ What would go wrong, and what is checked for it, each with a null:
   first knob moved on it move the other hand too; and a code without B
   values loading parted;
 - the Picture amount and Strike shared where the hands should each have
-  their own: heard per hand, as the stage's routes the generator is given
-  and as the light a note lays where Scan reads;
+  their own: each hand's kept and shown, and carried by a code (what each
+  is heard to do is parity's, below);
 - a routing on a linked control moving one hand, or on an unlinked one
   moving both, and its row not saying which;
 - the tab cards not saying what differs, or saying it with one hand.
 
-On ?brain=js: the generator's two layers, its routes and Scan's strike are
-the page's own brain's (core/tests/parity.py holds the instrument to them).
+On the default page since stage 5's step 3 (13 Nov); on ?brain=js until
+then, where `genSettings(0/1)` were the page generator's two layers. Here they
+are the page's mirror of the setup (makeGeneratorMirror), which the face
+writes through the links and sends to the instrument: so these checks hold
+the face's linked editing, and that the instrument links the same moves the
+same way is core/tests/parity.py's "the hands on the panel (G6)", which plays
+random hands through the page's handlers and the core's and compares them.
+That is a narrower claim than "read off the generator", said so here rather
+than left to look the same. Four checks of numbers went to parity's native
+instrument then, as assertions on the core's own output ("Each hand's Picture
+Amount and Strike"): the stage's routes pushing both hands at one Amount
+linked and the upper not at all at its own nought (with their null), read
+here off the page's route compiler with the stage's glow put in by hand; and
+a note's strike at each hand's own Strike, read here off the page's scanStrike
+with its picture's segment hooked. Neither runs on the default site.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -46,7 +60,7 @@ with sync_playwright() as pw:
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text) if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(800)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(800)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     # Two hands want a keyboard and poly; each case starts from the base, linked throughout.
@@ -180,44 +194,22 @@ with sync_playwright() as pw:
     pic = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       __fresh('split'); await wait(50);
-      // The stage's glow at a half, held: what its routes hand the generator is the Amount's.
-      const fold = () => {
-        pictureStage.glow = 0.5; pictureStage.hold = 1; layerPictures.live = false;
-        touchRoutings(); compileRoutes();
-        const r = workletRoutes().find((x) => x.slot === FOLD_SLOT && x.index === undefined);
-        return r ? [r.held, r.heldB] : null;
-      };
-      __input('pictureAmount', 100); const linked2 = fold();
+      __input('pictureAmount', 100);
       __click('editHandB'); __click('linkPicture');
       __input('pictureAmount', 0); __input('scanStrike', 0);
-      const own = fold(), hands = pictureHands.map((h) => [h.amount, h.strike]);
+      const hands = pictureHands.map((h) => [h.amount, h.strike]);
       const title = el.pictureHandName.textContent;
       const shown = { amount: el.pictureAmount.value, strike: el.scanStrike.value };
       __click('editHandA'); const shownA = { amount: el.pictureAmount.value, strike: el.scanStrike.value };
-      // A note's strike on each hand's half, both read by Scan: the light each lays.
-      for (const l of [0, 1]) genSet('scan', 0.8, l);
-      const laid = [];
-      const was = pictureEngine.segment;
-      pictureEngine.segment = function (plot, x0, y0, x1, y1, level) { laid.push(level); return was.apply(this, arguments); };
-      setDisplay('xy');
-      scanStrike(48, 1); const lower = laid.splice(0);
-      scanStrike(72, 1); const upper = laid.splice(0);
-      pictureEngine.segment = was;
       const code = snapshot();
-      return { linked2, own, hands, title, shown, shownA, lower, upper,
+      return { hands, title, shown, shownA,
                code: { a: code.pictureAmount, b: code.bPictureAmount, sa: code.scanStrike, sb: code.bScanStrike } };
     }""")
-    check("linked, the stage's routes push both hands at the one Amount",
-          pic["linked2"] and pic["linked2"][0] > 0.1 and pic["linked2"][0] == pic["linked2"][1], str(pic["linked2"]))
-    check("the Picture its own, the upper's Amount at nought: the lower's sound pushed, the upper's not",
-          pic["own"] and pic["own"][0] == pic["linked2"][0] and pic["own"][1] == 0, str(pic["own"]))
-    null("the upper's at nought is not what linked gave it", pic["own"][1] != pic["linked2"][1])
+    # The stage's routes per hand at one Amount, and its null: parity's now (see the top).
     check("each hand keeps its own Amount and Strike, the sliders show the hand on the face, and the title says which",
           pic["hands"] == [[100, 50], [0, 0]] and pic["shown"] == {"amount": "0", "strike": "0"}
           and pic["shownA"] == {"amount": "100", "strike": "50"} and pic["title"] == " · Upper", str(pic))
-    check("a note on the lower half lights where Scan reads at the lower's Strike, one on the upper's at its nought lays nothing",
-          len(pic["lower"]) > 0 and all(abs(v - 0.5) < 1e-9 for v in pic["lower"]) and pic["upper"] == [],
-          "%r %r" % (pic["lower"][:3], pic["upper"][:3]))
+    # A note's strike at each hand's own Strike: parity's now (see the top).
     check("and a code carries each hand's Amount and Strike", pic["code"] == {"a": 100, "b": 0, "sa": 50, "sb": 0}, str(pic["code"]))
 
     print("\n--- routings follow the link ---")
@@ -225,15 +217,20 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       __fresh('split'); state.modRoutings = []; touchRoutings(); await wait(30);
       const route = (dest) => state.modRoutings.find((r) => r.sourceId === 'lfo1' && r.destId === dest);
-      const sent = (slot) => { compileRoutes(); const r = workletRoutes().find((x) => x.slot === slot); return r ? [r.amount, r.amountB] : null; };
+      /* Each hand's depth as the face keeps it and a code carries it (mod,
+         and modB for the upper's own), which is what the instrument is sent.
+         On ?brain=js this read the page's route compiler for its own worklet
+         (workletRoutes), which the default site never runs; the core's per-hand
+         depth is the matrix's, held by parity. */
+      const sent = (dest) => { const r = route(dest); return r ? [r.amount, r.amountB === undefined ? r.amount : r.amountB] : null; };
       const tags = () => { openModCard('lfo1'); const t = [...el.srcDetail.querySelectorAll('.mod-edit')].map((l) =>
         (l.querySelector('.hand-tag') || {}).textContent || ''); closeModCard(); return t; };
       __click('editHandB');
       addRouting('lfo1', 'gen.fm'); setDepth(route('gen.fm'), 40, true);
-      const linkedFm = sent(FM_SLOT), linkedTags = tags(), linkedB = route('gen.fm').amountB;
+      const linkedFm = sent('gen.fm'), linkedTags = tags(), linkedB = route('gen.fm').amountB;
       __click('linkOsc');
       setDepth(route('gen.fm'), -20, true);
-      const ownFm = sent(FM_SLOT), ownTags = tags();
+      const ownFm = sent('gen.fm'), ownTags = tags();
       // A new routing on an unlinked control, the upper hand on the face: the upper's alone.
       addRouting('lfo1', 'gen.drive'); __click('linkShp');
       state.modRoutings = state.modRoutings.filter((r) => r.destId !== 'gen.drive');

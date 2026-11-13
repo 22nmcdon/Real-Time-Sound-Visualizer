@@ -15,10 +15,23 @@ The other half of this is the thing the split thumb it replaces got wrong: the
 lane draws ONE source, whichever is armed, so what it shows never depends on how
 many are attached.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its oscillators,
-# set by hand between frames - which core/tests/parity.py holds the instrument
-# to, sample for sample. The instrument, the site's default since 5m, is
-# braintest.py's and hosttest.py's.
+# On the default page since stage 5's step 3 (13 Nov), but for two sections;
+# wholly on ?brain=js from 5m to then. The laws, the ring, the cap and the
+# editor's rows are the face's and read the same here. The live tick read the
+# page's own oscillator, its rate set by hand; on the default page the
+# instrument posts its oscillators into the same `lfos` (makeBrainSource's
+# absorb), so the dot is driven by the instrument's LFO 1 and the rate written
+# by hand would be dead - it is gone, and a null with a source that does not
+# move shows the dot is reading a source.
+#
+# Left on ?brain=js (a second page, `q`): the zoom's and the trigger
+# position's offsets, eight checks of numbers the inventory sends to the C++
+# core (screen.h registers both destinations). Each sets LFO 1's value by
+# hand and steps the matrix, which in C++ needs a source held at a value -
+# render_cpp's wider input, not built in this batch. On the default site the
+# page's own matrix applies these two destinations today (the inventory's
+# `visualMatrix.*`, step 5's to decide), so they could move to the default as
+# the face's; they stay where they are until that is decided.
 import os, sys
 from playwright.sync_api import sync_playwright
 
@@ -35,6 +48,9 @@ def check(name, ok, detail=""):
 def close(a, b, tol=1e-6):
     return a is not None and b is not None and abs(a - b) <= tol
 
+
+def null(name, red, detail=""):
+    check("null: " + name, red, detail)
 
 def section(page, name):
     # The section's tab brought forward: the rail names tasks, not sections,
@@ -54,7 +70,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.evaluate("() => { setView('bench'); state.modRoutings = []; touchRoutings(); }")
     p.wait_for_timeout(300)
@@ -215,7 +231,6 @@ with sync_playwright() as pw:
     section(p, "Display")
     moved = p.evaluate("""async () => {
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.rotate', amount: 0.9 }];
-      lfos[0].rate = 4;
       focusSource = null;
       paintRoutings();
       await new Promise((d) => requestAnimationFrame(d));
@@ -236,6 +251,21 @@ with sync_playwright() as pw:
     # The lane reads and nothing else now: what used to be a drag target on it
     # is gone, and the editor does the editing.
     check("and the lane has no handle at all", moved["grabs"] == 0, str(moved["grabs"]))
+    still = p.evaluate("""async () => {
+      // The note's envelope, with no note held: a source at rest.
+      state.modRoutings = [{ sourceId: 'env.note', destId: 'view.rotate', amount: 0.9 }];
+      focusSource = null; paintRoutings();
+      await new Promise((d) => requestAnimationFrame(d));
+      const face = el.rotate.parentElement.querySelector('.knob-face');
+      const seen = new Set();
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+        seen.add(Math.round(parseFloat(face.style.getPropertyValue('--now'))));
+      }
+      return seen.size;
+    }""")
+    null("from a source at rest the same dot stays in one place, so the places above are the oscillator's",
+         still <= 4, "%d places" % still)
 
     print("\n--- an unpatched control draws no lane ---")
     bare = p.evaluate("""() => {
@@ -253,7 +283,21 @@ with sync_playwright() as pw:
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.zoom', amount: 1 }];
       touchRoutings();
     }"""); p.wait_for_timeout(300)
-    zoom = p.evaluate("""() => {
+    framed = p.evaluate("""() => document.querySelector('[data-mod-dest="view.zoom"]').classList.contains('modulated')""")
+    p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
+    check("the transport's zoom takes a patch", framed is True)
+
+    # The numbers, on the page's own brain (see the top).
+    q = b.new_page(viewport={"width": 1400, "height": 900})
+    q.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
+    q.goto(f"file://{ART}/scope.html?brain=js"); q.wait_for_timeout(700)
+    if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+    q.evaluate("""() => {
+      setView('bench');
+      state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.zoom', amount: 1 }];
+      touchRoutings();
+    }"""); q.wait_for_timeout(300)
+    zoom = q.evaluate("""() => {
       setZoom(0);
       lfos[0].value = 1;
       const f = capture();
@@ -261,11 +305,8 @@ with sync_playwright() as pw:
       const up = { mod: state.zoomMod, zoom: state.zoom };
       lfos[0].value = 0;
       applyModMatrix(capture(), 16);
-      return { up, rest: { mod: state.zoomMod, zoom: state.zoom },
-               framed: document.querySelector('[data-mod-dest="view.zoom"]')
-                 .classList.contains('modulated') };
+      return { up, rest: { mod: state.zoomMod, zoom: state.zoom } };
     }""")
-    check("the transport's zoom takes a patch", zoom["framed"] is True)
     check("full depth is the eight steps it declares",
           close(zoom["up"]["mod"], 8), str(zoom["up"]["mod"]))
     check("and it magnifies", zoom["up"]["zoom"] > zoom["rest"]["zoom"] * 1.5,
@@ -274,12 +315,12 @@ with sync_playwright() as pw:
           str(zoom["rest"]["mod"]))
 
     print("\n--- the trigger position slides the window, not the trigger ---")
-    section(p, "Trigger")
+    section(q, "Trigger")
     # The first version of this asserted that `positionMod` held 0.5 and stopped
     # there - and passed for two releases while NOTHING READ IT. `capture()`
     # went on using `state.position` raw, so the destination moved a number and
     # not the picture. What has to be asserted is the window, not the offset.
-    slid = p.evaluate("""() => {
+    slid = q.evaluate("""() => {
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'trig.position', amount: 1 }];
       touchRoutings();
       el.position.value = '10'; el.position.dispatchEvent(new Event('input'));
@@ -322,7 +363,7 @@ with sync_playwright() as pw:
           "%s -> %s" % (slid["level"], slid["levelAfter"]))
     check("and so is the knob it is offset from",
           close(slid["pos"], slid["posAfter"]), str(slid["posAfter"]))
-    p.evaluate("() => { state.modRoutings = []; touchRoutings(); }")
+    q.close()
     section(p, "Display")
 
     # The oscillator's card's editor (the Sources tab until F4), where its

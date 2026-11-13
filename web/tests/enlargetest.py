@@ -14,28 +14,36 @@ What would go wrong, and what is checked for it:
   trigger's marks - as ink on the canvas away from the trace, on a screen
   that is cleared every frame so only this frame's ruling is there. Each with
   its null: Picture only off, where all of it is back;
-- hiding them changing the sound. On the page's own brain (?brain=js), where
-  the phosphor grid the page draws is the one Scan reads, with the scope
-  stopped and the screen cleared, so a frame's grid is that frame's deposit
-  and nothing else, and the beam's shading off, since it varies a held
-  figure's levels by itself: the grid is compared with Picture only on and
-  off, and with Which hands on one hand and on both (each hand's grid too),
-  to the bit, and Scan's table to the drift of a settled path. The null is
-  the same comparison after one step of zoom, which moves every stroke and
-  must be seen. (The site's instrument and the plugin draw their own grids
-  in the core from the lanes, which nothing here reaches.);
-- the Trail touching what Scan reads, or not shortening what is seen: a
-  figure is drawn and taken off the screen, and the canvas's deep ink and the
-  grid's light are read ten frames apart at As heard, Half and Short, and on
-  the face with Half chosen. The grid's fade a frame is the Persistence's at
-  all of them; the canvas's is the grid's at As heard and on the face, its
-  square at Half, Short's or faster at Short. The nulls: the grid's fade is
-  not Half's, and Half's canvas does not fade as the grid does;
-- opening or closing wiping the light Scan reads, as any resize does: light
-  left by a figure taken off the screen goes on fading at the Persistence
-  across both. The null is Clear, which wipes it;
+- hiding them changing the sound. On the site's instrument, which draws and
+  reads its own grid in the core from the lanes it plays, nothing the face
+  shows reaches what is heard unless the face sends it: so Picture only,
+  Enlarge and Which hands are pressed by hand with every message to the
+  instrument counted, and must send none. The null is a knob turned the same
+  way, which sends one. (Until stage 5's step 3, 13 Nov, this was read on
+  the page's own brain, ?brain=js, where the grid the page drew was the one
+  Scan read: the grid compared to the bit with Picture only on and off and
+  with Which hands on one hand and on both, and Scan's table to the drift
+  of a settled path, with a step of zoom as the null. On the default page
+  that grid is the face's own copy, fed from the instrument's lanes, which
+  nothing heard reads; comparing it would pass and say nothing about the
+  sound, so it went.);
+- the Trail touching the grid, or not shortening what is seen: a figure is
+  drawn and taken off the screen, and the canvas's deep ink and the grid's
+  light are read ten frames apart at As heard, Half and Short, and on the
+  face with Half chosen. The grid's fade a frame is the Persistence's at all
+  of them; the canvas's is the grid's at As heard and on the face, its square
+  at Half, Short's or faster at Short. The nulls: the grid's fade is not
+  Half's, and Half's canvas does not fade as the grid does. On the default
+  page since stage 5's step 3 (13 Nov): the grid is the page's own, fed from
+  the instrument's lanes, the face's reference for the Persistence and what
+  its read bars and photocell show - no longer what Scan reads, which is the
+  instrument's own and which the Trail cannot reach (the message count above);
+- opening or closing wiping that grid's light, as any resize does: light left
+  by a figure taken off the screen goes on fading at the Persistence across
+  both. The null is Clear, which wipes it;
 - Which hands drawing the wrong figure, or both: a split with each hand's
-  figure in its ink, and each ink counted on the canvas at Both, A and B;
+  figure in its ink, and each ink counted on the canvas at Both, A and B; and
+  sending the instrument nothing as it is pressed;
 - the panes not where the design puts them: beside the enlarged screen with
   Picture only off, and nowhere on the face or with Picture only on;
 - Enlarge at the plugin's minimum window (960x600 at Auto's 90): the screen
@@ -107,20 +115,6 @@ INK_OFF_TRACE = """() => {
   }
   return inked;
 }"""
-
-# A frame's grid and Scan's table, from a stopped scope just cleared: the
-# grid is then exactly the held frame's deposit.
-GRID = """async () => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  wipeScreen = true; await wait(1200);
-  const t = scan.tables[0] && scan.tables[0].levels && scan.tables[0].levels[0];
-  return { grid: Array.from(phosphor.grid), table: t ? Array.from(t) : null,
-           b: layerPictures.engines ? Array.from(layerPictures.engines[1].cells) : null };
-}"""
-
-def worst(a, b):
-    if a is None or b is None or len(a) != len(b): return float("inf")
-    return max((abs(x - y) for x, y in zip(a, b)), default=0.0)
 
 bad = []
 with sync_playwright() as pw:
@@ -251,44 +245,35 @@ with sync_playwright() as pw:
          p.evaluate("() => undoHistory.undo.length") == 1, str(p.evaluate("() => undoHistory.undo.length")))
     p.close()
 
-    # --- what is heard, on the page's own brain --------------------------
-    print("\n--- hiding changes nothing Scan reads ---")
-    p = open_page(b, 1400, 900, "?brain=js")
-    # The beam's shading off: it follows a median of the strokes over time, so
-    # with it on two frames of one held figure differ by a level (0.125) of
-    # their own accord, and no comparison could be to the bit.
-    # Under a note held in Mono, which keeps the setup's fifth: the site waits
-    # for a note since 10 Nov, and this read the figure it drew with none.
-    # Let go first and struck after, since a note held in Dyad over a setup
-    # makes its fifth a unison.
-    p.evaluate("""() => { midiPanic(); hostQuietly(() => restore({ shape: 'sine', freq: 220, interval: 7, just: false, display: 'xy',
-                                                       persistence: 0.12, pictureAmount: 0, oscScan: 60, beam: 'off' })); hostSendSetup();
-                          el.midiMono.click(); midiNoteOn(57, 127); }""")
-    p.wait_for_timeout(1500)
-    p.locator("#enlargeButton").click(); p.wait_for_timeout(600)
-    # Held, and left eight seconds: Scan's path follows the figure with a time
-    # constant of a second (SCAN_FOLLOW), and from the moving figure it was
-    # still drifting by a fifth of the table's range between reads a second apart.
-    p.evaluate("() => setRunning(false)"); p.wait_for_timeout(8000)
-    on = p.evaluate(GRID)
+    # --- what is heard: nothing the face only shows reaches the instrument --
+    print("\n--- hiding sends the instrument nothing ---")
+    p = open_page(b, 1400, 900)
+    # Every message the face sends the instrument, counted: the host's calls
+    # (sliders, setups, menus, switches, clicks, routings, the fade) and MIDI.
+    # The state read back is a question, not a message, and is not counted.
+    p.evaluate("""() => {
+      window.__sent = [];
+      const call = scopeHost.call, midi = scopeHost.midi;
+      scopeHost.call = function (name, ...a) { if (name !== 'scopeState' && name !== 'scopeHost') __sent.push(name + ' ' + a[0]); return call.apply(this, [name, ...a]); };
+      scopeHost.midi = function (bytes, at) { __sent.push('midi ' + Array.from(bytes).join(',')); return midi.apply(this, [bytes, at]); };
+    }""")
+    SENT = "() => __sent.splice(0)"
+    p.evaluate("() => { midiPanic(); el.midiMono.click(); midiNoteOn(57, 127); }"); p.wait_for_timeout(800)
+    p.evaluate(SENT)
+    p.locator("#enlargeButton").click(); p.wait_for_timeout(300)
     p.locator("#pictureOnly").click(); p.wait_for_timeout(300)
-    off = p.evaluate(GRID)
-    lit = sum(1 for v in on["grid"] if v > 0.05)
-    check("with the scope held and the screen cleared, the frame lights the grid and Scan has a table",
-          lit > 40 and on["table"] is not None, "%d cells lit" % lit)
-    check("Picture only on and off: the phosphor grid is the same to the bit", on["grid"] == off["grid"],
-          "worst %.3g" % worst(on["grid"], off["grid"]))
-    check("and so is the table Scan plays, to the drift of a settled path", worst(on["table"], off["table"]) < 1e-3,
-          "worst %.3g" % worst(on["table"], off["table"]))
-    p.evaluate("() => { el.zoom.value = String(Number(el.zoom.value) + 1); el.zoom.dispatchEvent(new Event('input')); }")
-    moved = p.evaluate(GRID)
-    null("one step of zoom moves the grid and the table, so the comparison can see a change",
-         moved["grid"] != off["grid"] and worst(moved["table"], off["table"]) > 1e-3,
-         "grid worst %.3g, table worst %.3g" % (worst(moved["grid"], off["grid"]), worst(moved["table"], off["table"])))
-    p.evaluate("() => { el.zoom.value = String(Number(el.zoom.value) - 1); el.zoom.dispatchEvent(new Event('input')); setRunning(true); }")
+    p.locator("#pictureOnly").click(); p.wait_for_timeout(300)
+    p.locator("#enlargeTrail").select_option("short"); p.wait_for_timeout(200)
+    p.locator("#enlargeTrail").select_option("heard"); p.wait_for_timeout(200)
     p.keyboard.press("Escape"); p.wait_for_timeout(300)
+    hid = p.evaluate(SENT)
+    check("Enlarge, Picture only and the Trail, pressed by hand, send the instrument nothing", hid == [], str(hid))
+    p.evaluate("() => { showControl('freq'); el.freq.focus(); }")
+    p.keyboard.press("ArrowUp"); p.wait_for_timeout(300)
+    turned = p.evaluate(SENT)
+    null("a knob turned by a key sends it something, so the count is being kept", len(turned) > 0, str(turned[:3]))
 
-    print("\n--- the Trail fades the screen and not what Scan reads ---")
+    print("\n--- the Trail fades the screen and not the grid ---")
     # Long (0.04 a frame), read over about ten frames from the moment the
     # figure is taken off the screen: both lanes offset fifty full scales, so
     # from the next frame nothing is drawn or laid into the grid at all, and
@@ -358,7 +343,7 @@ with sync_playwright() as pw:
           abs(got["face"]["canvas"] - got["face"]["grid"]) < 0.008 and abs(got["face"]["grid"] - 0.96) < 0.003,
           "%.4f against %.4f" % (got["face"]["canvas"], got["face"]["grid"]))
 
-    print("\n--- opening and closing keep the light Scan reads ---")
+    print("\n--- opening and closing keep the grid's light ---")
     # Opening resizes the canvas, and a resized canvas is wiped. The grid is
     # not: a figure taken off the screen leaves light that only fades, and
     # across Enlarge opening and then closing it goes on fading at the
@@ -392,13 +377,20 @@ with sync_playwright() as pw:
     SPLIT = """async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       hostQuietly(() => restore({ shape: 'sine', display: 'xy', persistence: 0, pictureAmount: 0, oscScan: 0, beam: 'off' })); hostSendSetup();
-      midiPanic(); setScreenKeys(true); setMidiMode('poly');
+      /* Poly by its button, which the instrument hears (setMidiMode, the
+         page's call this used on ?brain=js, it does not: it stayed in the
+         Mono clicked above and drew no upper hand). The split at the
+         default's 60. The two hands' levels and temperament were set on the
+         page's own generator; they never reached the instrument, and the
+         inks below need neither. */
+      midiPanic(); setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-      midi.layers.point = 60;
-      genSet('just', false); genSet('just', false, 1); genSet('amp', 0.8, 0); genSet('amp', 0.3, 1);
       for (const n of [48, 55, 72, 79]) midiNoteOn(n, 100);
       await wait(1500);
-      return { figures: (sourceFigures() || []).length, live: layerPictures.live, inks: [figureInk(0, 0), figureInk(1, 2)] };
+      // Whether each hand draws its own figure: the instrument's reading (each
+      // layer's picture), where it was the page's own layerPictures.live.
+      const layers = state.source.layerPictures;
+      return { figures: (sourceFigures() || []).length, live: !!(layers && layers.live), inks: [figureInk(0, 0), figureInk(1, 2)] };
     }"""
     split = p.evaluate(SPLIT)
     check("a split draws a figure for each hand, in two inks", split["figures"] == 2 and split["live"]
@@ -424,17 +416,15 @@ with sync_playwright() as pw:
     check("A draws A's figure and none of B's", counts["handsA"][0] > 200 and counts["handsA"][1] < 10, str(counts["handsA"]))
     check("B draws B's figure and none of A's", counts["handsB"][1] > 200 and counts["handsB"][0] < 10, str(counts["handsB"]))
     null("Both draws both", counts["handsBoth"][0] > 200 and counts["handsBoth"][1] > 200, str(counts["handsBoth"]))
-    # And what Scan reads is both, whichever is drawn: the grids held and cleared as above.
-    p.evaluate("() => setRunning(false)"); p.wait_for_timeout(200)
-    one = p.evaluate(GRID)
-    p.locator("#handsBoth").click(); p.wait_for_timeout(200)
-    both = p.evaluate(GRID)
-    check("with only B drawn, the shared grid and each hand's are the same to the bit as with both",
-          one["grid"] == both["grid"] and one["b"] == both["b"] and one["b"] is not None,
-          "worst %.3g, %.3g" % (worst(one["grid"], both["grid"]), worst(one["b"], both["b"])))
-    p.evaluate("() => { el.zoom.value = String(Number(el.zoom.value) + 1); el.zoom.dispatchEvent(new Event('input')); }")
-    zoomed = p.evaluate(GRID)
-    null("one step of zoom moves them", zoomed["grid"] != both["grid"] and zoomed["b"] != both["b"])
+    # And what Scan reads is both, whichever is drawn: on the site's
+    # instrument, Which hands sends it nothing. (On ?brain=js until 13 Nov the
+    # page's grid and each hand's were compared to the bit with B alone drawn
+    # and with both, a step of zoom the null; see the top.)
+    p.evaluate(SENT)
+    for hands in ("handsA", "handsB", "handsBoth"):
+        p.locator("#" + hands).click(); p.wait_for_timeout(200)
+    picked = p.evaluate(SENT)
+    check("Which hands, pressed through A, B and Both, sends the instrument nothing", picked == [], str(picked))
     p.close()
 
     check("no page errors", not bad, "; ".join(bad[:3]))
