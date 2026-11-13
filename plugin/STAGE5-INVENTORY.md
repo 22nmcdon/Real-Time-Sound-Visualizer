@@ -1106,51 +1106,51 @@ Docstring: "On the page's own brain (?brain=js), where the phosphor grid the pag
 ### envtest.py - wholly on ?brain=js - 33/33
 Comment: "On ?brain=js (5m): this suite reads the page's own brain - its gate and envelope, read and set directly." Its offline renders build the generator worklet from `generatorModuleSource()` with no `wasm` in `processorOptions`, so they render the JavaScript engine; the rest are `makeGeneratorCore` in the page, `state.source.gated`, `MOD_SOURCES` and the readout (page :100).
 
-| Check | Kind | Why |
-|---|---|---|
-| `a core nobody has gated is wide open and says so` (:126) | numbers | Borderline: `core.gated`/`core.envelope` of a JS core; the claim (ungated is a multiply by one) is a core unit check. |
-| `and its amplitude is the slider, from the first sample to the last` (:128) | numbers | Peaks of an ungated core; render or unit. |
-| `and the page opens with the generator gated before any keyboard is there` (:135) | page | `state.source.gated`, `kind == "tone"`; on the default it is the instrument's gate - braintest :159 holds "silent until a note" there. |
-| `and the reading fails against the page as it opened until 10 Nov, ungated` (:137) | page | Its null. |
-| `it starts from nothing` (:197) | numbers | Envelope off an offline render; the model `render_cpp` move, with gate on/off at frames. |
-| `and is open within the attack it was given` (:203) | numbers | Same. |
-| `then falls to the sustain it was given` (:206) | numbers | Same. |
-| `and is gone within the release it was given` (:209) | numbers | Same. |
-| `the attack takes the time it says, not a time constant` (:230) | numbers | Same. |
-| `and the decay arrives at the sustain when it said it would` (:233) | numbers | Same. |
-| `and the release is over when it said it would be` (:237) | numbers | Same. |
-| `a note-on is doing something inside the block after it` (:250) | numbers | Same, first 128 frames after the gate. |
-| `the gate opening is not a step` (:267) | numbers | Largest step at the edge; render. |
-| `nor the gate closing` (:270) | numbers | Same. |
-| `a second key over a held one does not restart the envelope` (:314) | numbers | `core.envelope` after a second `gate(true)`; render with two note-ons in Mono, envelope read off the level. |
-| `and does not take its velocity either` (:317) | numbers | Same. |
-| `a release runs all the way out` (:320) | numbers | Same. |
-| `and the next key starts it again, at its own velocity` (:326) | numbers | Same. |
-| `a glide takes the same time whether a note is holding or not` (:358) | numbers | `estimateFrequency` on two JS cores; render with and without a held note. |
-| `it is registered, and the level is not, since F4b made it the output meter` (:372) | page | `MOD_SOURCES` keys; the face's registry, trivially the default. |
-| `and reads nothing while nothing is gated` (:374) | page | `env.note` source's value on the page brain. |
-| `with no glide the pitch is simply the new one` (:398) | numbers | Pitch after a jump; render. |
-| `and with a glide it is still on its way there` (:401) | numbers | Same. |
-| `connecting a keyboard that drives the generator gates it` (:457) | page | `midiConnect`, `state.source.gated`, `env.note` value; on the default the instrument's gate and the Envelope card. |
-| `a key opens the envelope, at the velocity it was played` (:460) | page | `env.note` value after a port note; braintest :612 holds the envelope source on the default. |
-| `and letting go closes it` (:464) | page | Same. |
-| `a key held while the gate is handed over from an input sounds straight away` (:466) | page | `toMic()` then `toTone()` builds a new page generator under a held key; only the page's brain hands a gate over like this - goes. |
-| `and the keyboard going leaves the generator gated and silent, waiting for a note` (:471) | page | `midi.access = null`, page gate. |
-| `and the trace is silent with it, and a note brings it back` (:489) | page | Window peak with no keyboard; braintest :159 holds the same on the default. |
-| `and the silence reading fails on the note's trace` (:491) | page | Its null. |
-| `a gate held open with nothing played says why the screen is empty` (:525) | page | Readout line; braintest :651 holds it on the default. |
-| `and stops saying it once a note is held` (:527) | page | Same. |
-| `no page errors` (:533) | page | Errors. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| `a core nobody has gated is wide open and says so` (:126) | numbers | Borderline: `core.gated`/`core.envelope` of a JS core; the claim (ungated is a multiply by one) is a core unit check. | to pieces (env.py): envelope one and env.note nought, null a core gated with no note |
+| `and its amplitude is the slider, from the first sample to the last` (:128) | numbers | Peaks of an ungated core; render or unit. | to pieces |
+| `and the page opens with the generator gated before any keyboard is there` (:135) | page | `state.source.gated`, `kind == "tone"`; on the default it is the instrument's gate - braintest :159 holds "silent until a note" there. | rewritten: the default page, the instrument's gate (`kind` host), read off its own reading |
+| `and the reading fails against the page as it opened until 10 Nov, ungated` (:137) | page | Its null. | moved (its null) |
+| `it starts from nothing` (:197) | numbers | Envelope off an offline render; the model `render_cpp` move, with gate on/off at frames. | to pieces |
+| `and is open within the attack it was given` (:203) | numbers | Same. | to pieces |
+| `then falls to the sustain it was given` (:206) | numbers | Same. | to pieces |
+| `and is gone within the release it was given` (:209) | numbers | Same. | to pieces |
+| `the attack takes the time it says, not a time constant` (:230) | numbers | Same. | to pieces; null: the same samples against twice the times |
+| `and the decay arrives at the sustain when it said it would` (:233) | numbers | Same. | to pieces |
+| `and the release is over when it said it would be` (:237) | numbers | Same. | to pieces |
+| `a note-on is doing something inside the block after it` (:250) | numbers | Same, first 128 frames after the gate. | to pieces; null: the block before is silent |
+| `the gate opening is not a step` (:267) | numbers | Largest step at the edge; render. | to pieces |
+| `nor the gate closing` (:270) | numbers | Same. | to pieces; null: an attack and release of nothing |
+| `a second key over a held one does not restart the envelope` (:314) | numbers | `core.envelope` after a second `gate(true)`; render with two note-ons in Mono, envelope read off the level. | to pieces |
+| `and does not take its velocity either` (:317) | numbers | Same. | to pieces; null: a key from silence takes its velocity |
+| `a release runs all the way out` (:320) | numbers | Same. | to pieces; null: 23 ms into the release |
+| `and the next key starts it again, at its own velocity` (:326) | numbers | Same. | to pieces; and new, from the mutation pass: the heard level at a quarter velocity |
+| `a glide takes the same time whether a note is holding or not` (:358) | numbers | `estimateFrequency` on two JS cores; render with and without a held note. | to pieces; null: a 100 ms glide under a note |
+| `it is registered, and the level is not, since F4b made it the output meter` (:372) | page | `MOD_SOURCES` keys; the face's registry, trivially the default. | moved |
+| `and reads nothing while nothing is gated` (:374) | page | `env.note` source's value on the page brain. | moved: the instrument's envelope read back, nought with no note |
+| `with no glide the pitch is simply the new one` (:398) | numbers | Pitch after a jump; render. | to pieces |
+| `and with a glide it is still on its way there` (:401) | numbers | Same. | to pieces |
+| `connecting a keyboard that drives the generator gates it` (:457) | page | `midiConnect`, `state.source.gated`, `env.note` value; on the default the instrument's gate and the Envelope card. | rewritten: gated from the first frame whatever is connected; at nought before a key |
+| `a key opens the envelope, at the velocity it was played` (:460) | page | `env.note` value after a port note; braintest :612 holds the envelope source on the default. | rewritten: the controls (heard), not `state.source.set`; tightened to the sustain times the velocity, with a key at full as its null |
+| `and letting go closes it` (:464) | page | Same. | moved |
+| `a key held while the gate is handed over from an input sounds straight away` (:466) | page | `toMic()` then `toTone()` builds a new page generator under a held key; only the page's brain hands a gate over like this - goes. | gone: only the page's brain hands a gate over from an input |
+| `and the keyboard going leaves the generator gated and silent, waiting for a note` (:471) | page | `midi.access = null`, page gate. | moved (`midiPanic` reaches the instrument) |
+| `and the trace is silent with it, and a note brings it back` (:489) | page | Window peak with no keyboard; braintest :159 holds the same on the default. | moved |
+| `and the silence reading fails on the note's trace` (:491) | page | Its null. | moved |
+| `a gate held open with nothing played says why the screen is empty` (:525) | page | Readout line; braintest :651 holds it on the default. | moved |
+| `and stops saying it once a note is held` (:527) | page | Same. | moved |
+| `no page errors` (:533) | page | Errors. | moved |
 
 ### fadetest.py - 1 leg on ?brain=js beside the default - 4/54
 A second page `js` opened on `?picture=0&brain=js` (:486) so that "a sound loaded ... heard so on either brain" (docstring); the leg is one loop of two checks over both pages and one check that the two are the two.
 
-| Check | Kind | Why |
-|---|---|---|
-| `on %s a held note is steady before, and the tremolo is whole within two seconds of the load, as deep as it settles` (:491, ?brain=js leg) | engines compared | Both-brains loop; the default leg (`p`) already holds it on the instrument, so the leg goes. |
-| `null: on %s the same routing patched by hand is not whole within two seconds` (:494, ?brain=js leg) | engines compared | Same. |
-| `and the two brains are the two: the instrument, then the page's own` (:496) | engines compared | Exists only to say the two pages are the two brains. Goes. |
-| `no page errors` (:790) | page | `bad` includes `pageerror (?brain=js)` from the leg; it stays, reading the default alone. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| `on %s a held note is steady before, and the tremolo is whole within two seconds of the load, as deep as it settles` (:491, ?brain=js leg) | engines compared | Both-brains loop; the default leg (`p`) already holds it on the instrument, so the leg goes. | gone; the default leg holds it |
+| `null: on %s the same routing patched by hand is not whole within two seconds` (:494, ?brain=js leg) | engines compared | Same. | gone; the default leg holds it |
+| `and the two brains are the two: the instrument, then the page's own` (:496) | engines compared | Exists only to say the two pages are the two brains. Goes. | rewritten: "what was heard is the instrument's", off the run's own source, seen red on the boot frames |
+| `no page errors` (:790) | page | `bad` includes `pageerror (?brain=js)` from the leg; it stays, reading the default alone. | moved: the default page's alone |
 
 50 sites read only default pages.
 
@@ -1311,9 +1311,9 @@ Lines 24-26: "The voices are the page's own core here (makeGeneratorCore); the c
 ### hosttest.py - 1 leg on ?brain=js beside the default - 1/50 (49 default or fake-bridge sites not listed)
 Line 131: "with ?brain=js no host at all". The ?brain=js page (134) is used once, as the null half of the first check.
 
-| Check | Kind | Why |
-|---|---|---|
-| on its own the page is the website: the site's instrument, not the plugin's, and with ?brain=js its own generator (the null) (136) | page | Reads `state.source.kind == "tone"` and `scopeHost === null` on ?brain=js beside the default's `kind == "host"`. Once ?brain=js goes, the null half goes; the null needs another source, e.g. the bridged page's `rate`/`said` as the contrast. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| on its own the page is the website: the site's instrument, not the plugin's, and with ?brain=js its own generator (the null) (136) | page | Reads `state.source.kind == "tone"` and `scopeHost === null` on ?brain=js beside the default's `kind == "host"`. Once ?brain=js goes, the null half goes; the null needs another source, e.g. the bridged page's `rate`/`said` as the contrast. | rewritten: the null is the same reading inside the plugin, which must not be the website's |
 
 ### inputtest.py - wholly on ?brain=js - 11/11
 Lines 22-26: "this suite reads the page's own brain - its rule that an input opens only while it can be heard, where the instrument hears its input always". It opens at `?brain=js` (line 90). The first six are offline `makeGeneratorCore` renders with `core.setInput(x)`.
@@ -1639,9 +1639,9 @@ Docstring note (:31): it "reads the page's own brain - its generator's routes an
 ### menvtest.py - 1 leg on ?brain=js beside the default - 1/23
 Comment at :153: "On the page's own brain the keyboard is the page's, and a key gone down reaches the audio thread only as the source's own message ... Both, because a message left out on one path passes the other."
 
-| Check | Kind | Why |
-|---|---|---|
-| and on the page's own brain, sounding, the same: restarted on Every note, not on Phrase, not on a lift (:170) | page | the page keyboard's message to its own worklet, a path only the page's brain has; goes, and the default leg's :148 and :151 keep the claim |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| and on the page's own brain, sounding, the same: restarted on Every note, not on Phrase, not on a lift (:170) | page | the page keyboard's message to its own worklet, a path only the page's brain has; goes, and the default leg's :148 and :151 keep the claim | gone; :148 and :151 hold it on the instrument |
 
 ### miditest.py - wholly on ?brain=js - 50/50
 Docstring note (:13): it "reads the page's own brain - its keyboard's flags, set directly". The parsing and panic checks read `midi.notes`. The default page keeps that stack as well: `midiBytes` runs `midiBytesHere` before forwarding to the core (scope.html:9697). So those checks move by dropping `&brain=js`, though they then test the face's copy, not the core's keyboard.
@@ -1702,11 +1702,11 @@ Docstring note (:13): it "reads the page's own brain - its keyboard's flags, set
 ### modrowtest.py - 1 leg on ?brain=js beside the default - 3/46
 Docstring note: the Envelope's dot is to hold "over a note held and let go, on both brains". The `js` page (:582) runs the same TRACE as the default, inside a `for label, page` loop (:585).
 
-| Check | Kind | Why |
-|---|---|---|
-| on %s in %s, %s: over a note held and let go the dot goes attack, decay, sustain, release, only forward... (:593) x4 on the js page (2 modes × 2 envelopes) | page | the card's `_drawn` dot reading the page brain's envelope stage; goes, the default leg keeps it |
-| on %s, over notes in a row in Poly, the dot goes back only into a new note's attack, and stays on the curve (:598) | page | as above |
-| and its height is the source's level, what a routing from it is given (:602) | page | `MOD_SOURCES.get('env.note').value()` against the drawn dot; as above |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| on %s in %s, %s: over a note held and let go the dot goes attack, decay, sustain, release, only forward... (:593) x4 on the js page (2 modes × 2 envelopes) | page | the card's `_drawn` dot reading the page brain's envelope stage; goes, the default leg keeps it | gone; the default leg holds it |
+| on %s, over notes in a row in Poly, the dot goes back only into a new note's attack, and stays on the curve (:598) | page | as above | gone; the default leg holds it |
+| and its height is the source's level, what a routing from it is given (:602) | page | `MOD_SOURCES.get('env.note').value()` against the drawn dot; as above | gone; the default leg holds it |
 
 ### modtest.py - wholly on ?brain=js - 31/31
 Docstring note (:7): it "reads the page's own brain - its oscillators' shape and rate, set directly". Most of the suite is the setup codec and restore on the face. On default those already run through the core's codec, since `decodeSetup` is the compiled one there.
@@ -2118,22 +2118,22 @@ Its comment (`:23`): "reads the page's own brain - genSet called directly". That
 ### soundstarttest.py - 3 legs on ?brain=js beside the default (one `?brain=js&core=js`, two loop iterations `?brain=js`) - 14/21
 The docstring: "a finger's tap starts it, on the site's compiled instrument and on the page's own brain", and the silence-until-a-note rule "on both brains". The two loops (`:127`, `:169`) run the same checks once on `""` (host) and once on `?brain=js` (tone); each site below is listed for its ?brain=js iteration and also runs on the default. Not listed: the finger on the default (`:82`, `:88`, `:89`, `:90`) and the mouse (`:108`, `:112`, `:113`).
 
-| Check | Kind | Why |
-|---|---|---|
-| before any press the page's own brain is not heard either (`:96`) | engines compared | `?brain=js&core=js`: the JavaScript engine's start under the autoplay rule - a ?core=js fallback check. Goes (step 5 gives such a browser a line instead). |
-| one tap starts the page's own brain too (`:101`) | engines compared | As above. |
-| no page errors (`:102`) | engines compared | That leg's health; goes with it. |
-| opened and unpressed, nothing is drawn and the empty screen says how to play a note, the ways that are true here (`:132`), x2 | page | The ?brain=js iteration reads the page brain's gate (`state.source.gated`, kind `tone`); the default iteration already asserts it on the instrument. The ?brain=js entry of the loop goes. |
-| pressed, the sound is on and still nothing sounds, with no keyboard there: no drone before a note (`:142`), x2 | page | As above. |
-| and with the keys opened the line names them and still nothing sounds (`:147`), x2 | page | As above. |
-| a typed A is C3 and sounds, and the line is gone with it (`:157`), x2 | page | As above. |
-| and K is the C above, so the line's A to K is an octave of keys (`:159`), x2 | page | As above. |
-| and the line stays gone once the notes are let go (`:160`), x2 | page | As above. |
-| and the silence reading fails on the note's window, and the line's on its hidden line (`:162`), x2 | page | As above (the null). |
-| no page errors (`:164`), x2 | page | As above. |
-| a key as the first press starts the sound, and is heard while it is held (`:181`), x2 | page | As above, second loop. |
-| and the reading fails on the page before the press (`:182`), x2 | page | As above. |
-| no page errors (`:183`), x2 | page | As above. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| before any press the page's own brain is not heard either (`:96`) | engines compared | `?brain=js&core=js`: the JavaScript engine's start under the autoplay rule - a ?core=js fallback check. Goes (step 5 gives such a browser a line instead). | gone: a fallback step 5 replaces with a line |
+| one tap starts the page's own brain too (`:101`) | engines compared | As above. | gone: a fallback step 5 replaces with a line |
+| no page errors (`:102`) | engines compared | That leg's health; goes with it. | gone: a fallback step 5 replaces with a line |
+| opened and unpressed, nothing is drawn and the empty screen says how to play a note, the ways that are true here (`:132`), x2 | page | The ?brain=js iteration reads the page brain's gate (`state.source.gated`, kind `tone`); the default iteration already asserts it on the instrument. The ?brain=js entry of the loop goes. | gone; the default iteration holds it |
+| pressed, the sound is on and still nothing sounds, with no keyboard there: no drone before a note (`:142`), x2 | page | As above. | gone; the default iteration holds it |
+| and with the keys opened the line names them and still nothing sounds (`:147`), x2 | page | As above. | gone; the default iteration holds it |
+| a typed A is C3 and sounds, and the line is gone with it (`:157`), x2 | page | As above. | gone; the default iteration holds it |
+| and K is the C above, so the line's A to K is an octave of keys (`:159`), x2 | page | As above. | gone; the default iteration holds it |
+| and the line stays gone once the notes are let go (`:160`), x2 | page | As above. | gone; the default iteration holds it |
+| and the silence reading fails on the note's window, and the line's on its hidden line (`:162`), x2 | page | As above (the null). | gone; the default iteration holds it |
+| no page errors (`:164`), x2 | page | As above. | gone; the default iteration holds it |
+| a key as the first press starts the sound, and is heard while it is held (`:181`), x2 | page | As above, second loop. | gone; the default iteration holds it |
+| and the reading fails on the page before the press (`:182`), x2 | page | As above. | gone; the default iteration holds it |
+| no page errors (`:183`), x2 | page | As above. | gone; the default iteration holds it |
 
 ### striketest.py - wholly on ?brain=js&core=js for its first page, then three default pages - 32/36
 Sites count `check(` and `null(` (21 and 15; the `check` inside `def null`, `:53`, not counted). Its docstring (`:27`): "Run on the page's own brain (`?brain=js&core=js`), which draws the screen the page shows, and then on the site's instrument, which lays the strike in the core on the grid it draws itself". The first page writes and reads `pictureEngine.cells`, `scan.paths`, `layerPictures.engines/stages` by hand on a stopped screen. Not listed: the site section's `:452`, `:456` (null), `:458` (null), `:460`, all default.
