@@ -6448,3 +6448,16 @@ amount five eighths as strong without anyone moving it, which version 11's
 decode pass puts back (`PICTURE_AMOUNT_V11`, page and core; parity holds the
 two). The lesson for a check of a swell: compare the passage with what came
 just before it, not only with the same passage at nought.
+
+**A counter in the page's brain is a call parity lifts too (13 Nov).** Stage
+5's inventory (`plugin/STAGE5-INVENTORY.md`) counts each per-frame step of the
+page's brain, and the first version called `brainCount` directly wherever the
+code was thought to be the page's alone - `applyModMatrix` among them, which
+no harness lifts by name. The web suite passed all 97 suites over it.
+Parity's matrix runner lifts the visual loop *out of* `applyModMatrix` as a
+span, and threw. So anything added inside the page's brain, however small,
+has to be callable from text evaluated with none of the page around it: the
+counters are `globalThis.__brainCount?.(...)` for that reason, and run
+`core/tests/tools/matrix_js.mjs` (seconds) before the whole of parity. The
+counters themselves, per suite: `python3 tests/run.py --brain-counts DIR`,
+then `python3 tests/braincounts.py --sum DIR`.

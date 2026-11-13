@@ -5802,10 +5802,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
    still work on the default site, where the instrument is the brain, and
    step 5 of STAGE5-PLAN.md can require them at nought. A count is all they
    do: nothing reads them but a test, and an increment a step a frame costs
-   nothing anyone could measure. Inside a function the page shares with
-   parity's harness the call is through `globalThis` and optional, because
-   the harness lifts the function's text alone and has no counters; at a
-   call site only the page has, it is direct. */
+   nothing anyone could measure. Every call is through `globalThis` and
+   optional, because parity's harness lifts the page's text - whole
+   functions, and spans out of `applyModMatrix` - and has no counters: a
+   direct call in the lifted visual matrix threw there, the one place parity
+   saw these at all. */
 const brainCounts = Object.create(null);
 function brainCount(name) { brainCounts[name] = (brainCounts[name] || 0) + 1; }
 globalThis.__brainCount = brainCount;
@@ -8562,8 +8563,8 @@ Promise.resolve().then(syncFadePanel);
    staircase; every other source has no per-sample loop at all, so they are
    stepped here instead. Doing both would run every rate at double. */
 function applyModMatrix(frame, elapsed) {
-  brainCount("frames");
-  brainCount("frames." + (state.source ? state.source.kind : "none"));
+  globalThis.__brainCount?.("frames");
+  globalThis.__brainCount?.("frames." + (state.source ? state.source.kind : "none"));
   /* The driver rather than the source kind. They said the same thing while
      the generator's loop was the only per-sample loop there was; once that
      loop can be in a worklet instead, "is the source a tone" stops being the
@@ -8576,11 +8577,11 @@ function applyModMatrix(frame, elapsed) {
      the fade's dot, which follows the page's own reckoning of each note's
      envelope, stood still. The page reckons them anyway, for what it shows:
      the instrument's are the same arithmetic, held to these by parity. */
-  if (state.source && state.source.kind === "host" && fade.mode !== "off") { brainCount("stepRoutes.host"); stepRoutes(); }
+  if (state.source && state.source.kind === "host" && fade.mode !== "off") { globalThis.__brainCount?.("stepRoutes.host"); stepRoutes(); }
   fadeDotStep(performance.now());
   if (lfoDriver() === "main") {
     assertLfoDriver("main");
-    brainCount("lfoStep.main");
+    globalThis.__brainCount?.("lfoStep.main");
     const perSecond = 1000 / Math.max(1, elapsed);
     lfoStep(lfos[0], perSecond);
     lfoStep(lfos[1], perSecond);
@@ -8606,7 +8607,7 @@ function applyModMatrix(frame, elapsed) {
       if (routing.destId !== dest.id) continue;
       const source = MOD_SOURCES.get(routing.sourceId);
       if (source && routingAllowed(source, dest)) {
-        brainCount("visualMatrix." + dest.id);
+        globalThis.__brainCount?.("visualMatrix." + dest.id);
         const push = sourceNow(source) * routingAmount(source, routing.amount) * fadeGain(routeKey(routing));
         if (source.fromPicture) loop += push; else sum += push;
       }
@@ -15179,7 +15180,7 @@ function makeBrainSource() {
     get standing() { return !!stand; },
     tick(now) {
       if (!stand) return;
-      brainCount("standIn.tick");
+      globalThis.__brainCount?.("standIn.tick");
       const last = standAt;
       standAt = now;
       if (last === null) return;
@@ -20061,7 +20062,7 @@ function frameLoop(now) {
 
   // The generator runs on its own clock and fills its buffer here; the
   // microphone's is filled by the audio thread and has nothing to do.
-  if (state.running) { brainCount("sourceTick." + state.source.kind); state.source.tick(now / 1000); }
+  if (state.running) { globalThis.__brainCount?.("sourceTick." + state.source.kind); state.source.tick(now / 1000); }
   // Whether a live input's effects should be there, every frame and running
   // or not: a switch thrown while the scope is stopped still takes.
   syncLiveFx();

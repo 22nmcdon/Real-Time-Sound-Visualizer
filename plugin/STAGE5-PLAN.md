@@ -175,7 +175,11 @@ the full suite and parity pass.
    per-frame functions do anything on the default site, with a counter each,
    over the full suite; and sort every `?brain=js` check into *numbers*,
    *page* and *engines compared*. *Removes:* nothing. *Checked by:* the list,
-   which the next steps are measured against.
+   which the next steps are measured against. **Done (13 Nov):
+   `STAGE5-INVENTORY.md`** - the counters (`brainCount`, `braincounts.py`,
+   `run.py --brain-counts`), what works on the default site (the page's own
+   picture grid on every frame, the face reading it), 1,165 checks sorted, and
+   what it changes in steps 3 and 5.
 2. **Golden renders.** Parity writes what the JavaScript produced for each
    scenario into `core/tests/golden/`, and gains a mode that compares the core
    with the files. For as long as both exist, it compares all three, so the
