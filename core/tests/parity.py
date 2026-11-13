@@ -59,7 +59,16 @@ check("the comparison sees a NaN against a number, after a number and before one
 check("and NaN against NaN, or an infinity against itself, as the same",
       worst([nan, inf, -inf], [nan, inf, -inf]) == 0 and worst([inf], [-inf]) == inf)
 
-print("\n--- the envelope ---")
+# Golden files (stage 5, step 2): what the page's JavaScript answered for each
+# scenario of the port-is-the-original job, so the core can be held to it once
+# the JavaScript is gone. Every section that has one names it below; the
+# face-and-core sections have none. See golden_runs.py for the three modes and
+# core/tests/golden/README.md for regenerating them.
+sys.path.insert(0, HERE)
+from golden_runs import Golden
+golden = Golden(HERE, sys.argv[1:], TOL, check, fails)
+
+golden.section("the envelope", "envelope")
 exe = build("envelope_cpp")
 scenarios = sorted(glob.glob(os.path.join(HERE, "scenarios", "envelope_*.txt")))
 for path in scenarios:
@@ -71,7 +80,7 @@ for path in scenarios:
     check("%s: %d samples, the same to %g" % (name, len(js), TOL), worst(js, cpp) <= TOL and moved > 0.5,
           "worst %.3g, range %.3f" % (worst(js, cpp), moved))
 
-print("\n--- the nulls ---")
+golden.section("the nulls", "envelope")
 path = os.path.join(HERE, "scenarios", "envelope_adsr.txt")
 js = values(["node", os.path.join(HERE, "tools", "envelope_js.mjs"), path])
 cpp = values([exe, path])
@@ -84,7 +93,7 @@ with open(path) as f, open(altered, "w") as g:
 check("and against a release a millisecond longer", worst(values([exe, altered]), js) > 1e-6,
       "worst %.3g" % worst(values([exe, altered]), js))
 
-print("\n--- the waveforms and the functions under them ---")
+golden.section("the waveforms and the functions under them", "functions")
 import random, math
 rng = random.Random(20261001)   # fixed, so a failure is the same failure next time
 TWO_PI = 2 * math.pi
@@ -911,7 +920,7 @@ check("and against a pulse of 0.3 answered as one of 0.31",
                                 _one(lines[pulse][:-3] + "0.31")], check=True, capture_output=True, text=True).stdout),
             row(cpp_rows[pulse])) > 1e-6)
 
-print("\n--- the whole generator ---")
+golden.section("the whole generator", "generator")
 # Slots, as GEN_DESTS has them. 4 to 6, 26 and 29 to 31 were the drawings'
 # (the figure's detail, the solid's spin rate, perspective and three spins,
 # the pendulums' energy) and are empty since G2: nothing after them moved.
@@ -1777,7 +1786,7 @@ check("and a block on it is the step's, to a millionth, where during the walk it
 check("and the comparison fails against the page's runs a line out of step",
       min(worst(row(a), row(b)) for a, b in zip(gjs[1:] + gjs[:1], gcpp)) > 1e-3)
 
-print("\n--- the keyboard ---")
+golden.section("the keyboard", "keyboard")
 # The page's own `midi` functions and scope::Keyboard, each playing a generator
 # that writes down every call made of it, through the same commands. A line a
 # command: what each call was, then the keyboard's sources, its readout, the
@@ -2121,7 +2130,7 @@ knull("dyad-hold", "hold 1", "hold 0", "Hold left off")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(kjs.strip().split("\n")[1:]), "\n".join(kcpp.strip().split("\n")[:-1])) is not None)
 
-print("\n--- the matrix ---")
+golden.section("the matrix", "matrix")
 # The page's routings, fades, events and routes, lifted by name, and
 # scope::Matrix, through the same commands. A line a command: the events
 # fired and the picture's offsets written, the routes the generator is given
@@ -2554,7 +2563,7 @@ check("and the comparison sees them pictured", strip_sources(lpon) != strip_sour
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(mjs.strip().split("\n")[1:]), "\n".join(mcpp.strip().split("\n")[:-1])) is not None)
 
-print("\n--- setup codes ---")
+golden.section("setup codes", "setup")
 # The page's DEFAULTS, encodeSetup, decodeSetup and migrateSetup, lifted by
 # name and run in strict mode, against scope/setup.h: a line a command, the
 # code or the setup read back, compared character for character.
@@ -2900,7 +2909,7 @@ with open(swrong, "w", encoding="utf-8") as f:
     f.write("\n".join(c.replace('"freq":330', '"freq":331') for c in scmds) + "\n")
 check("and against the commands with a frequency a hertz higher", swasm(swrong) != sjs)
 
-print("\n--- the clock ---")
+golden.section("the clock", "clock")
 # The page's tempo, bar, tap, MIDI clock and locked oscillators, lifted by
 # name, and scope::Clock as the Brain holds it, through the same commands. A
 # line a command: what reached the score and the delay, then the tempo, where
@@ -3083,7 +3092,7 @@ cnull("layer B's echo followed while B has none of its own", "echo-b", "echob 0 
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(cjs.split("\n")[1:]), "\n".join(ccpp.split("\n")[:-1])) is not None)
 
-print("\n--- the level ---")
+golden.section("the level", "level")
 # The page's `env.live` - an envelope follower over the screen's signal lane -
 # lifted by name, against scope::Level, through the same commands. A line a
 # command: the follower and the source's value. K1's threshold, which watched
@@ -3157,7 +3166,7 @@ lvnull("a frame a millisecond longer", "level-full", "frame 50", "frame 51")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(lvjs.split("\n")[1:]), "\n".join(lvcpp.split("\n")[:-1])) is not None)
 
-print("\n--- the capture ---")
+golden.section("the capture", "capture")
 # The page's capture - the window and the search span behind it, the AC
 # coupling, the filter, the lag lane, mid and side, the turn and the trigger -
 # lifted by name, against scope/capture.h, through the same commands. A line
@@ -3328,7 +3337,7 @@ cpnull("turn", "rot 0.25", "rot 0.251", "a turn a thousandth further")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(cpjs.strip().split("\n")[1:]), "\n".join(cpcpp.strip().split("\n")[:-1])) is not None)
 
-print("\n--- the beam's walk ---")
+golden.section("the beam's walk", "beam")
 # What the page's renderer lays into the phosphor grid - drawMain's Y-T lanes,
 # as peak bars and as the polyline, and drawXY's figure or figures, with the
 # beam's shading on either - against scope/beam.h, each frame taken by the
@@ -3504,7 +3513,7 @@ bmnull("anchor", "draw 500", "draw 501", "a frame a millisecond longer")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(bmjs.strip().split("\n")[1:]), "\n".join(bmcpp.strip().split("\n")[:-1])) is not None)
 
-print("\n--- the picture's sources ---")
+golden.section("the picture's sources", "picture")
 # The page's phosphor grid, the beam's moments, the picture meter, the drawn
 # pair's shape, the photocell and pictureStep, lifted by name, against
 # scope/picture.h through the same commands. What the renderer would deposit
@@ -4003,7 +4012,7 @@ pcnull("strained", "limit -8", "limit -5", "a limiter under six decibels")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(pcjs.strip().split("\n")[1:]), "\n".join(pccpp.strip().split("\n")[:-1])) is not None)
 
-print("\n--- Scan's reading of the screen ---")
+golden.section("Scan's reading of the screen", "scan")
 # P7a: the page's scanStep - the path following the figure, the grid blurred
 # by the softness and read round the off-centre circle into tables, the hold
 # sent past 0.005, nothing on a dark path, nothing for a quarter of a second
@@ -4221,7 +4230,7 @@ check("once made, reading the screen allocates nothing: %s in the making, %s in 
 check("and never writes a table the generator is reading - its latest, or the two it is fading between",
       int(salloc[7]) == 0 and int(salloc[5]) >= 200, "%s clashes" % salloc[7])
 
-print("\n--- the hearing, on the audio thread ---")
+golden.section("the hearing, on the audio thread")
 # The plugin steps the hearing once a block on the audio thread, where an
 # allocation can wait on a lock. Made once, it must allocate nothing after:
 # a steady tone, so the period estimator runs every other frame, and the
@@ -4267,7 +4276,7 @@ check("the morph's walk over each of its %d sliders, all of them together, and t
       and walked[-len(host_walked) - 1][0] == "all" and host_walked == host_sliders and len(host_sliders) >= 8,
       "%d made; allocating: %s; unmoved: %s; host walked %s, the plugin's %s" % (made, spent[:4], still[:4], host_walked, host_sliders))
 
-print("\n--- a steady block, on the audio thread ---")
+golden.section("a steady block, on the audio thread")
 # G8: a steady block of the whole instrument allocates nothing - the capture,
 # the picture's meter, the voices' budget, the rack, the morph walked by an
 # LFO, notes struck and let go, the arpeggio, the score and the wheels - where before it
@@ -4323,7 +4332,7 @@ check("a voice born on what a retired voice left sounds as one made new, to the 
       _bsame[0] == 0 and _bsame[1] == 0 and _bsame[2] and _bsofter[0] > 0.01 and _bsofter[1] > 0.01,
       "apart by %r; the softer by %r" % (_bsame[:2], _bsofter[:2]))
 
-print("\n--- the hearing ---")
+golden.section("the hearing", "hearing")
 def midi_hz(note): return 440 * 2 ** ((note - 69) / 12)
 # The page's hearing - a window of the sound analysed once a frame into a
 # pitch, a brightness, four bands, a width, a flux and an onset - lifted by
@@ -4521,7 +4530,7 @@ hnull("a hearing never rested", "hear-rest", "routed 0", "routed 1")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(hjs.split("\n")[1:]), "\n".join(hcpp.split("\n")[:-1])) is not None)
 
-print("\n--- the score and MIDI out ---")
+golden.section("the score and MIDI out", "score")
 # The page's score and its MIDI out, on its bar, lifted by name, and scope's
 # on a scope::Clock, through the same commands. A line a command: what was
 # struck and every byte sent, then the playhead, the chord, what is sounding
@@ -4673,7 +4682,7 @@ snull("another channel", "out-notes", "port 1 6", "port 1 7")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(sjs.split("\n")[1:]), "\n".join(scpp.split("\n")[:-1])) is not None)
 
-print("\n--- restore ---")
+golden.section("restore")
 # The page's own `restore`, in a browser (restore_page.py), against
 # scope::restoreSetup: every preset the page ships and random setups, each
 # loaded in turn as the page loads them, and what each leaves in the
@@ -5235,7 +5244,7 @@ snull_page, _ = rboth([_json.dumps(dict(SILENT_MADE[0], modSilent="lfo2"))], "re
 check("null: the page told LFO 2 silenced where the port was told LFO 1 disagrees with it",
       rdiff(_json.loads(snull_page[0]), _json.loads(silent_port[0])) != [])
 
-print("\n--- the morph ---")
+golden.section("the morph")
 # A hand on the sliders, the morph's ends stored and the fader moved - by hand
 # and by the matrix - through the page's own handlers against
 # scope::moveSlider, morphStore and morphStep (the macros' knobs were here
@@ -5447,7 +5456,7 @@ mnull("a push a point stronger", 10, lambda o: o | {"value": 0.26})
 mnull("the end stored without the cutoff", 16, lambda o: o | {"value": 667})
 check("and the comparison fails against the page's operations one out of step", rbad(mpg[1:], mpt[:-1]) != [])
 
-print("\n--- menus, switches and buttons ---")
+golden.section("menus, switches and buttons")
 # A hand on a menu, a switch, a text box or a button that reaches the sound,
 # through the page's own "change" and "click" handlers against
 # scope::controlChange and controlClick - what the page in the plugin sends
@@ -5591,7 +5600,7 @@ cnull("the just button where equal was pressed again", 30, lambda o: o | {"id": 
 cnull("the switch the other way", 13, lambda o: o | {"value": False})
 check("and the comparison fails against the page's operations one out of step", rbad(cpg[1:], cpt[:-1]) != [])
 
-print("\n--- the hands on the panel (G6) ---")
+golden.section("the hands on the panel (G6)")
 # With the layers on, the header's Editing chooses which hand the panel's
 # voice controls show (scope::showLayerOnPanel and the keyboard's editLayer),
 # and each section's link whether they write both hands or that one: linked,
@@ -5694,7 +5703,7 @@ lnull("the Generator left linked, the Amp envelope unlinked in its place", 7, la
 lnull("the layers split where they were layered", 15, lambda o: o | {"value": "split"})
 check("and the comparison fails against the page's operations one out of step", rbad(lpg[1:], lpt[:-1]) != [])
 
-print("\n--- the rack's links on the panel (G6) ---")
+golden.section("the rack's links on the panel (G6)")
 # Each module's link (G6), in place of Together, A and B, which gave B its
 # plane and every effect at once: the Plane's, B given a plane of its own, a
 # copy of the hand on the face, and its controls writing whichever hand's it
@@ -5855,7 +5864,7 @@ tnull("the Chorus unlinked where the Delay was", 6, lambda o: o | {"id": "linkCh
 tnull("the Reverb linked again where the Delay was", 12, lambda o: o | {"id": "linkReverb"})
 check("and the comparison fails against the page's operations one out of step", rbad(tpg[1:], tpt[:-1]) != [])
 
-print("\n--- the fade from the plugin ---")
+golden.section("the fade from the plugin")
 # The fade the page keeps in its own storage, sent whole to the plugin when
 # it is saved and handed back by the plugin's state: the page's own
 # fadeFromHost against scope::fadeFromPage, with what the page sends and
@@ -5914,7 +5923,7 @@ def fnull(what, index, change):
 fnull("an attack a tenth longer", 1, lambda o: {"op": "fade", "value": {"mode": "both", "envs": [dict(FULL, attack=1.6), o["value"]["envs"][1]]}})
 fnull("fading in only", 1, lambda o: {"op": "fade", "value": dict(o["value"], mode="in")})
 
-print("\n--- the view ---")
+golden.section("the view")
 # What the screen is set to draw - the capture's settings and the walk's - as
 # the page's restore, its sliders and its menus, switches and buttons leave
 # them, against the core's: what the plugin draws its own grid by, for the
@@ -6003,7 +6012,7 @@ with open(vpath, "w", encoding="utf-8") as f: f.write("\n".join(vwrong) + "\n")
 vwport = subprocess.run([rexe, vpath, rsources], check=True, capture_output=True, text=True).stdout.strip().split("\n")
 check("and the comparison fails against a zoom a step further", bool(rbad(vpg, vwport)))
 
-print("\n--- the generator in WebAssembly ---")
+golden.section("the generator in WebAssembly")
 # Stage 5a: the core's generator compiled for the browser, the module the page
 # carries, driven through the page's own `makeWasmCore` - the bridge the
 # worklet uses - and held to the page's JavaScript generator driven the same
@@ -6089,7 +6098,7 @@ def wnull_effect():
     check("and every effect run fails against a module that hands the input back", sorted(off) == sorted(fxed), ", ".join(off))
 wnull_effect()
 
-print("\n--- the instrument, compiled (5f) ---")
+golden.section("the instrument, compiled (5f)")
 # The plugin's instrument whole (scope/instrument.h) - brain and engine, as
 # the plugin plays it - natively, and as the page carries it compiled, played
 # through the page's own wrapper (makeWasmBrain, which the site's worklet
@@ -6905,6 +6914,7 @@ inull("the heard pair handed back as the picture pair",
 inull("a state never published", "  if (!instrument->changed()) return -1;", "  return -1;", ["hands", "presets"])
 inull("a switch read as off", "scope::Json::boolean(kind == 2)", "scope::Json::boolean(false)", ["hands"])
 
+golden.finish()
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
