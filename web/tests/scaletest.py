@@ -13,10 +13,18 @@ produced, exactly - not nearly - because everything downstream is measured
 against that baseline, and a baseline that has moved makes every later
 comparison a comparison with a moving target.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its oscillators,
-# set by hand between frames - which core/tests/parity.py holds the instrument
-# to, sample for sample. The instrument, the site's default since 5m, is
-# braintest.py's and hosttest.py's.
+# On the default page since stage 5's step 3 (13 Nov); on ?brain=js from 5m
+# to then. Nearly all of it is the display's own arithmetic - gainOf,
+# fsDetent, fullScaleDb, capture(), measure() - and the codec, which are the
+# face's and run the same whatever plays the sound. The three checks that set
+# an oscillator by hand and step applyModMatrix read the page's matrix on the
+# screen's own destinations, which on the default site is what moves a full
+# scale today (the inventory's `visualMatrix.*`, step 5's to decide); the
+# oscillator's value written by hand is not overwritten inside one evaluate,
+# though the instrument posts its own between frames. The last two checks
+# read silence on both brains until this move - the page waits for a note
+# since 10 Nov - and so passed whatever capture did to the samples; they now
+# read a held note, with a check that there is one.
 import math, os, sys
 from playwright.sync_api import sync_playwright
 import corpus
@@ -44,7 +52,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -259,6 +267,10 @@ with sync_playwright() as pw:
     check("a setup saved now comes back in decibels", trip == [-18, -3], str(trip))
 
     print("\n--- and the lanes themselves are still untouched ---")
+    # A note held, struck at the instrument as a port's would be: with nothing
+    # sounding both captures are zeros and the comparison below holds of any
+    # capture at all.
+    p.evaluate("() => midiBytes(new Uint8Array([0x90, 57, 100]))"); p.wait_for_timeout(800)
     lanes = p.evaluate("""() => {
       state.running = false;
       state.trigSource = 0;
@@ -278,8 +290,13 @@ with sync_playwright() as pw:
       }
       state.channels[1].fsDb = 0; state.channels[1].fsMod = 0;
       state.running = true;
-      return { worst, peak: [a.peak, c.peak], rms: [a.rms, c.rms] };
+      let lit = 0;
+      for (const v of flat.channels[1]) lit = Math.max(lit, Math.abs(v));
+      return { worst, peak: [a.peak, c.peak], rms: [a.rms, c.rms], lit };
     }""")
+    p.evaluate("() => midiBytes(new Uint8Array([0x80, 57, 0]))")
+    check("the fixture: the lane compared is sounding, so a change to its samples would show",
+          lanes["lit"] > 0.05, "peak %.3f" % lanes["lit"])
     check("a modulated full scale does not touch the captured samples",
           lanes["worst"] == 0, "worst %.3g" % lanes["worst"])
     check("so dBFS and the clipping verdict are still about the input",

@@ -27,7 +27,16 @@ not tell:
   and its frame costs under two milliseconds there.
 
 On the site's instrument, which reads its own grid in the core and hands its
-paths, heads and tables back with its readings, and on the page's own brain.
+paths, heads and tables back with its readings. Until stage 5's step 3 (13
+Nov) the whole of it ran a second time on the page's own brain (?brain=js),
+twenty-one checks and seven nulls, each the twin of one here: the same
+toggle, ring, head, badge and storage, and the table read off the page's own
+Scan (`scan.tables`), which only the page's brain has. The pass went: every
+claim it made about the overlay is made here against the site's instrument,
+and what it held about the page's own Scan is a brain that is being retired.
+(One check here still measures the figure's centre off the page's own grid,
+`scanGeometry(pictureEngine.cells)`, which the default site feeds from the
+instrument's lanes; it is the face's grid the inventory names for step 5.)
 Serial: the frame cost is a cost in milliseconds.
 """
 import math, os, sys
@@ -104,7 +113,7 @@ def spread(hs):
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
 
-    for label, query in [("the site's instrument", ""), ("the page's own brain", "?brain=js")]:
+    for label, query in [("the site's instrument", "")]:
         print("\n=== %s ===" % label)
         ctx = b.new_context(viewport={"width": 1400, "height": 900})
         c, p, bad = open_page(b, query, ctx=ctx)
@@ -164,38 +173,27 @@ with sync_playwright() as pw:
              "wanders %s of a turn" % moving)
 
         print("\n--- the table being played ---")
-        if d["kind"] == "tone":
-            # The page's own: the newest table read, which the voice takes at
-            # the next tick. Caught between two, the old one kept for the null.
-            t = p.evaluate("""async () => {
-              const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-              let prev = scan.tables[0], now = prev;
-              for (let i = 0; i < 100 && now === prev; i++) { await wait(5); now = scan.tables[0]; }
-              // Drawn by the page's own frame, which reads and then draws:
-              // straight after it, what it drew against what it read.
-              await new Promise((r) => requestAnimationFrame(() => r()));
-              return { drawn: loopOverlay.drawn.thumbs[0], now: loopThumb(scan.tables[0]), prev: loopThumb(prev) };
-            }""")
-        else:
-            # The instrument's: the newest table its readings carried, caught
-            # as they arrive rather than read back from where the source keeps
-            # it (which is what is under test), and the one before for the null.
-            t = p.evaluate("""async () => {
-              const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-              const src = state.source, real = src.absorb;
-              let raw = null, rawPrev = null;
-              src.absorb = function (lanes, r) {
-                if (r && r.scan && r.scan.tables[0] !== undefined) { rawPrev = raw; raw = r.scan.tables[0]; }
-                return real.call(this, lanes, r);
-              };
-              await wait(500);
-              const first = raw;
-              for (let i = 0; i < 100 && raw === first; i++) await wait(5);
-              await new Promise((r) => requestAnimationFrame(() => r()));
-              const out = { drawn: loopOverlay.drawn.thumbs[0], now: raw, prev: rawPrev };
-              src.absorb = real;
-              return out;
-            }""")
+        # (The page's own brain's branch, which read `scan.tables`, went with
+        # its pass.) The instrument's: the newest table its readings carried,
+        # caught as they arrive rather than read back from where the source
+        # keeps it (which is what is under test), and the one before for the null.
+        check("the source is the instrument, whose readings carry the table", d["kind"] == "host", d["kind"])
+        t = p.evaluate("""async () => {
+          const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+          const src = state.source, real = src.absorb;
+          let raw = null, rawPrev = null;
+          src.absorb = function (lanes, r) {
+            if (r && r.scan && r.scan.tables[0] !== undefined) { rawPrev = raw; raw = r.scan.tables[0]; }
+            return real.call(this, lanes, r);
+          };
+          await wait(500);
+          const first = raw;
+          for (let i = 0; i < 100 && raw === first; i++) await wait(5);
+          await new Promise((r) => requestAnimationFrame(() => r()));
+          const out = { drawn: loopOverlay.drawn.thumbs[0], now: raw, prev: rawPrev };
+          src.absorb = real;
+          return out;
+        }""")
         same = t["drawn"] is not None and t["now"] is not None and len(t["drawn"]) == 128 and \
             max(abs(a - b2) for a, b2 in zip(t["drawn"], t["now"])) == 0
         check("the thumbnail is the newest table, point for point", same)

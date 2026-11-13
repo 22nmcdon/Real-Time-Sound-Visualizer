@@ -6503,3 +6503,20 @@ owner's. And striketest's null at Strike nought, which once read 0.00073 ->
 0.00098, reads exactly that with the generator left audible at 0.3: in that
 run the generator was not silent when it should have been, and why is not
 yet known.
+
+**A check moved off `?brain=js` that passes unchanged has to be read again
+(13 Nov).** Stage 5's first batch dropped `&brain=js` from ten suites and
+found all but three checks still green - and the green was not all earned.
+Called directly, `toMic()` swaps the default page's source for the page's own
+Mic, the very source `?brain=js` read, so a capture suite passed unchanged
+and tested nothing of the site; the Mic button keeps the instrument
+(`hostToMic`). `state.source.settings` on the default is the page's mirror of
+the setup, which the page's own MIDI apply writes when a key goes down, so a
+check of "the generator plays E3" passed on the page's arithmetic; the pitch
+is read off the lanes the instrument drew now. `workletRoutes()` and
+`phosphor.grid` both still answer on the default, and neither is what the
+instrument plays or Scan reads. Two ways to catch it: print every check's
+details on both brains and read the diff (`cap` drew from a 32768-sample
+buffer on "the default" - the page's Mic, not the instrument's two-second
+ring), and for each reading ask what writes it on the default. The batch's
+list is section 6 of `plugin/STAGE5-INVENTORY.md`.

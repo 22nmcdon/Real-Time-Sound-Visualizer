@@ -6827,6 +6827,48 @@ l_crossed0 = istrike(SPLIT, 72, extra=[["control", "scanReadsB", "A"]], late=NOS
 check("in a split, the upper note lands in B's picture and leaves A's alone; with B reading A's, in A's and not B's",
       l_own[2] > l_none[2] and l_own[0:2] == l_none[0:2] and l_crossed[0] > l_crossed0[0]
       and l_crossed[2:4] == l_crossed0[2:4], "own %r against %r; crossed %r against %r" % (l_own, l_none, l_crossed, l_crossed0))
+# Each hand's Picture Amount and Strike (G6), on the core's output alone.
+# These were handstest.py's on the page's own brain until stage 5's step 3
+# (13 Nov): there the stage's glow was put in by hand and the page's route
+# compiler (workletRoutes) read for the fold's push per hand, and the page's
+# scanStrike called with its picture's segment hooked. Here the instrument's
+# own routes and grids, from the same moves on its panel. The fold hears
+# Amount/100 times its weight of 0.5 times each layer's glow through its hold.
+def hfold(read, amounts):
+    return bool(read) and all(abs(r["fold"][k] - amounts[k] / 100 * 0.5 * own_glow(k)(r)) < 1e-12 for r in read for k in (0, 1))
+OWN_PICTURE = [["click", "editHandB"], ["click", "linkPicture"]]
+h_linked = ilayers(["slider", "pictureAmount", "100"])
+h_own = ilayers(["slider", "pictureAmount", "100"], *OWN_PICTURE, ["slider", "pictureAmount", "0"])
+check("linked, the stage's routes push both hands at the one Amount: each layer's fold is 100 per cent of its own glow",
+      hfold(h_linked, (100, 100)) and all(r["fold"][1] > 0 for r in h_linked) and any(r["fold"][1] > 0.01 for r in h_linked),
+      "; ".join("%.4f/%.4f" % r["fold"] for r in h_linked[:4]))
+check("the Picture the upper hand's own at Amount nought: the lower's sound pushed at 100, the upper's not at all",
+      hfold(h_own, (100, 0)) and any(r["fold"][0] > 0.01 for r in h_own) and all(r["fold"][1] == 0 for r in h_own),
+      "; ".join("%.4f/%.4f" % r["fold"] for r in h_own[:4]))
+check("null: the upper's at nought is not what linked gave it, and the linked reading fails on it",
+      not hfold(h_own, (100, 100)) and not hfold(h_linked, (100, 0)))
+# A note's strike per hand: the lower's Strike at the base's 50, the upper's
+# its own at nought from the start. Each measured note against the same run
+# with every Strike taken to nought just before it (`late`, after the held
+# notes have struck alike in both), so a difference is that note's strike.
+# On SPLIT without its bScan: a B value of the Picture's loads that section as
+# the hand's own already (linksSettle), and the link clicked below would then
+# join the hands rather than part them - which the first draft of these did,
+# its every write landing on the wrong hand and its null passing regardless.
+STRIKE_SPLIT = {k: v for k, v in SPLIT.items() if k != "bScan"}
+B_STRIKE0 = OWN_PICTURE + NOSTRIKE
+ALL_LATE0 = [["click", "editHandA"]] + NOSTRIKE + [["click", "editHandB"]] + NOSTRIKE
+h_up, h_up0 = istrike(STRIKE_SPLIT, 72, extra=B_STRIKE0, read="lgrid", held=HELD), \
+    istrike(STRIKE_SPLIT, 72, extra=B_STRIKE0, late=ALL_LATE0, read="lgrid", held=HELD)
+h_lo, h_lo0 = istrike(STRIKE_SPLIT, 57, extra=B_STRIKE0, read="lgrid", held=HELD), \
+    istrike(STRIKE_SPLIT, 57, extra=B_STRIKE0, late=ALL_LATE0, read="lgrid", held=HELD)
+h_upB, h_upB0 = istrike(STRIKE_SPLIT, 72, extra=OWN_PICTURE, read="lgrid", held=HELD), \
+    istrike(STRIKE_SPLIT, 72, extra=OWN_PICTURE, late=ALL_LATE0, read="lgrid", held=HELD)
+check("each hand's own Strike: a lower note lights A's picture at the lower's 50, an upper one at the upper's nought lays nothing in either",
+      h_lo[0] > h_lo0[0] and h_lo[2:4] == h_lo0[2:4] and h_up == h_up0,
+      "lower %r against %r; upper %r against %r" % (h_lo, h_lo0, h_up, h_up0))
+check("null: with the upper's own Strike left at the 50 it was copied from, the same upper note lights B's",
+      h_upB[2] > h_upB0[2] and h_upB != h_upB0, "%r against %r" % (h_upB, h_upB0))
 lu = ilayers(split=False, notes=(48, 55))
 lt = ilayers(display="dispYT")
 shared_fold = lambda r: abs(r["fold"][0] - I_FOLD * r["shared"][0] * r["shared"][3]) < 1e-12 and r["fold"][0] == r["fold"][1]

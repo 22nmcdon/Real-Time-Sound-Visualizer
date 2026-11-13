@@ -28,6 +28,13 @@ That the core reads by the same table is parity's: core/tests/parity.py
 holds core/include/scope/schema.h to this table character for character,
 and its random setups load to the same instrument on both sides.
 """
+# On the default page since stage 5's step 3 (13 Nov). It opened ?brain=js
+# until then with no reason given, and nothing in it needed the page's brain:
+# the table, snapshot(), the markup's controls and the readers are the face's
+# and the codec's, and restore() writes the plane and echo objects read below
+# whatever plays the sound (scope.html's restore, not the brain). Each check
+# read the same page code on ?brain=js as it reads here, which the restore
+# check's null below now proves by breaking the reader restore goes through.
 import json, os, sys
 from playwright.sync_api import sync_playwright
 
@@ -39,6 +46,9 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def null(name, red, detail=""):
+    check("null: " + name, red, detail)
 
 
 # The fields whose control is under another id. A ruled field neither under
@@ -137,7 +147,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
@@ -230,6 +240,23 @@ with sync_playwright() as pw:
           loaded["a"] == {"snap": 0, "radius": 1, "sync": ""}, str(loaded["a"]))
     check("and B's own falls back to A's as it stands - its snap of 3 bits is A's 5, its unknown sync A's 1/4",
           loaded["bOwn"] == {"snap": 5, "radius": 0.3, "sync": "1/4"}, str(loaded["bOwn"]))
+    # The null, added as the suite moved to the default: restore with the
+    # table's reader made to take any value, so the cut snap and the unknown
+    # sync come through as given. Were restore on this page not reading by
+    # the table - a second restore somewhere, or plane written from elsewhere -
+    # the check above would pass either way; this shows it reading the rule.
+    loose = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const real = setupField;
+      setupField = (s, key) => (s[key] !== undefined ? s[key] : SETUP_FIELDS[key][0]);
+      try { restore({ planeSnap: 3, planeRadius: 400, delaySync: "1/5" }); await wait(30); }
+      finally { setupField = real; }
+      const a = { snap: plane.snap, radius: plane.radius, sync: echo.sync };
+      restore({}); await wait(30);
+      return a;
+    }""")
+    null("with the table's reader made to take anything, restore keeps the cut snap and the unknown sync, and the check above fails",
+         loose != {"snap": 0, "radius": 1, "sync": ""} and loose["snap"] == 3, str(loose))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

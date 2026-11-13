@@ -194,6 +194,12 @@ the full suite and parity pass.
    Each moved check is null-tested as it lands. *Removes:* `?brain=js` from
    each suite in the batch. *Checked by:* every moved check seen to fail on a
    known-wrong value, and a mutation pass on the core per batch.
+   **Batch 1 done (13 Nov): `cap`, `scale`, `schema`, `hands`, `hand`, `keys`,
+   `lane`, `contract`, and the Enlarge and overlay legs** - `?brain=js` page
+   opens from 11 to 1 (lane's eight numbers rows wait for `render_cpp`), 344
+   checks to 318 and parity +5; six kinds of check found passing on the
+   default for the page's reason (or reading silence on both), each rewritten. `STAGE5-INVENTORY.md` section 6 and its
+   "Batch 1" columns.
 4. **The constellation, and anything else only the page's brain does.** Port
    it to the core (ways-to-draw's own step 3), or keep it as a look-only
    drawing on the page, seen and not heard, until it is ported. The owner's

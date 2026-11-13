@@ -48,6 +48,22 @@ Against the way it would fail:
   compiled instrument draws the pulled figure, nearer the pointer; null,
   the figure before the pull fails the same measure.
 """
+# Every leg on the default page since stage 5's step 3 (13 Nov). The desktop
+# and phone legs opened ?brain=js until then, with no reason given, beside a
+# default leg of five checks; every check in them is a gesture on the face and
+# a reading of the figure the face drew, and they pass here for that reason.
+# Three things changed with the move:
+# - the split's fixture called setMidiMode('poly'), which the instrument does
+#   not hear (it stayed in the Mono that SETUP clicked, and drew no upper
+#   hand at all); it clicks Poly now, as a player does;
+# - the bass's moment was fitted at the frequencies the page brain's voices
+#   gave (polyVoices); they are worked out here from the notes held, in equal
+#   temperament as the keyboard tunes them, so the fit needs nothing of the
+#   page's but the drawn samples, and fails if the instrument plays otherwise;
+# - VALUES reads each hand's Bend off the page's mirror of the setup
+#   (genSettings), which the face writes and sends: the face's record of
+#   which hand a grab moved. That the instrument draws the pull is the last
+#   leg's, and that it links the hands as the face does is parity's G6.
 import math, os, sys
 import numpy as np
 from playwright.sync_api import sync_playwright
@@ -150,7 +166,7 @@ def open_page(b, query, **kw):
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
-    p, bad = open_page(b, "picture=0&brain=js")
+    p, bad = open_page(b, "picture=0")
     p.evaluate(SETUP, "sine")
 
     print("\n--- the grab's moment is the grabbed point's ---")
@@ -401,7 +417,7 @@ with sync_playwright() as pw:
     print("\n--- split, the grab bends the figure's own layer ---")
     p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      midiPanic(); setScreenKeys(true); setMidiMode('poly');
+      midiPanic(); setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       midi.layers.point = 60;
       el.midiLayerPair.value = 'each'; el.midiLayerPair.dispatchEvent(new Event('change'));
@@ -436,8 +452,10 @@ with sync_playwright() as pw:
         mine, other = (fb, fa) if figure == 1 else (fa, fb)
         q = lone(mine, other)
         sep = nearest(other["pts"], q[0], q[1])
-        # The notes' frequencies as the keyboard tuned them, and the rate the lanes run at.
-        notes, rate = p.evaluate("(layer) => [polyVoices(layer).map((v) => v.freq).sort((a, b) => a - b), xyView.frame.rate]", figure)
+        # The notes' frequencies, equal-tempered from the notes this hand holds,
+        # and the rate the lanes run at.
+        notes = [440 * 2 ** ((n - 69) / 12) for n in ((72, 79) if figure == 1 else (48, 55))]
+        rate = p.evaluate("() => xyView.frame.rate")
         bass, _ = voice_moment(mine, mine["pts"].index(q), notes, rate)
         d = max(1.0, math.hypot(q[0] - mine["cx"], q[1] - mine["cy"]))
         pull(p, q[0], q[1], -(q[0] - mine["cx"]) / d * 15, -(q[1] - mine["cy"]) / d * 15)
@@ -457,7 +475,7 @@ with sync_playwright() as pw:
             null("a grab on A's figure (%.0f px from B's) moves A's, not B's, and puts the panel back on A" % sep,
                  moved_own and not moved_other and layers1["edit"] == 0, "%s -> %s" % (layers0, layers1))
     p.evaluate("""() => { setRunning(true); midiPanic(); el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); setMidiMode('mono'); }""")
-    check("no page errors on the page's own brain", not bad, "; ".join(bad[:3]))
+    check("no page errors on the desktop leg", not bad, "; ".join(bad[:3]))
     p.close()
 
     print("\n--- a finger on the figure bends it and does not scroll ---")
@@ -465,7 +483,7 @@ with sync_playwright() as pw:
     t = ctx.new_page()
     tbad = []
     t.on("pageerror", lambda e: tbad.append("pageerror: " + str(e)))
-    t.goto(f"file://{ART}/scope.html?picture=0&brain=js"); t.wait_for_timeout(1000)
+    t.goto(f"file://{ART}/scope.html?picture=0"); t.wait_for_timeout(1000)
     if t.locator("#helpClose").is_visible(): t.locator("#helpClose").click()
     t.evaluate(SETUP, "sine")
     t.evaluate("() => { el.trace.scrollIntoView({ block: 'center' }); }"); t.wait_for_timeout(300)

@@ -12,11 +12,22 @@ shift releasing the wrong note, two ways of holding one key where lifting one
 ends it, and letters that fire the shortcut as well as the note. (And a note
 played into a rack that reached nothing, until P5 cut the rack.)
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its gate, read
-# directly - which core/tests/parity.py holds the instrument to, sample for
-# sample. The instrument, the site's default since 5m, is braintest.py's and
-# hosttest.py's.
-import os, sys
+# On the default page since stage 5's step 3 (13 Nov); on ?brain=js from 5m
+# to then. The keys, the stack and the lit keys are the face's and read the
+# same here. Three readings changed with the move:
+# - the gate (`state.source.gated`) was the page generator's own flag; here it
+#   is the instrument's, from its readings. Either way it says the generator
+#   is one that waits for notes, not that it is silent now, so the claim that
+#   the waveform waits is also read off the lane the instrument drew: silent
+#   with no note, and (the null) sounding with one;
+# - "the generator plays it" read `state.source.settings.freq`, and the
+#   dyad's interval `settings.interval`. On the default those are the page's
+#   mirror of the setup, written by the page's own MIDI apply
+#   (midiApplyNotesTo), not by anything the instrument does, so they passed
+#   here unchanged and for the old reason. Both are read now off the lanes the
+#   instrument drew: the pitch of a held E3, and the ratio of a latched
+#   fifth's two channels.
+import math, os, sys
 from playwright.sync_api import sync_playwright
 import corpus
 
@@ -31,6 +42,22 @@ def check(name, ok, detail=""):
 
 HZ = lambda note: 440 * 2 ** ((note - 69) / 12)
 
+def null(name, red, detail=""):
+    check("null: " + name, red, detail)
+
+def pitch(xs, rate):
+    """A lane's frequency from its rising zero crossings, placed between
+    samples: worked out here from the samples the instrument drew, so it needs
+    nothing of the page's but the ring."""
+    m = sum(xs) / len(xs)
+    xs = [x - m for x in xs]
+    ups = [i - 1 + (-xs[i - 1]) / (xs[i] - xs[i - 1]) for i in range(1, len(xs)) if xs[i - 1] < 0 <= xs[i]]
+    if len(ups) < 3: return 0.0
+    return rate * (len(ups) - 1) / (ups[-1] - ups[0])
+
+DRAWN = """(n) => ({ rate: state.source.sampleRate,
+  lanes: state.source.getLatestWindow(n).slice(0, 2).map((x) => Array.from(x)) })"""
+
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME,
@@ -40,7 +67,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -73,7 +100,9 @@ with sync_playwright() as pw:
     # to watch. It shut between notes only while something could play one
     # until 10 Nov, which on the site was a drone before a port could connect;
     # since then it waits for a note with the keys shut too, as the plugin does.
+    QUIET = "() => { let m = 0; for (const v of state.source.getLatestWindow(4096)[0]) m = Math.max(m, Math.abs(v)); return m; }"
     before = p.evaluate("() => ({ present: keyboardPresent(), gated: state.source.gated })")
+    before["peak"] = p.evaluate(QUIET)
     # Things that are on the screen. The first draft measured the lag's mix
     # slider, which lives in the closed Settings panel: its box is all noughts
     # open or shut, so the check could not fail.
@@ -89,14 +118,15 @@ with sync_playwright() as pw:
       playing: !el.midiPlayingRow.hidden, label: el.keysOpen.textContent,
     })""")
     opened["moved"] = p.evaluate(BOXES)
+    opened["peak"] = p.evaluate(QUIET)
     print("    closed %s; open %s" % (before, opened))
     waits = lambda r, present: r["present"] is present and r["gated"] is True
     check("with no port and no keys there is no keyboard, and the waveform waits for a note all the same",
-          waits(before, False), str(before))
+          waits(before, False) and before["peak"] == 0, str(before))
     # The null: the reading as the page opened until 10 Nov, ungated.
     check("and the reading fails against an ungated generator", not waits(dict(before, gated=False), False))
     check("opening the keys makes a keyboard present, and the waveform still waits for a note",
-          waits(opened, True), str(opened))
+          waits(opened, True) and opened["peak"] == 0, str(opened))
     check("two octaves and the C that closes them, twenty-five keys",
           opened["shown"] and opened["keys"] == 25, str(opened["keys"]))
     check("and the Playing line shows, as it does for a port",
@@ -109,16 +139,25 @@ with sync_playwright() as pw:
     # E3, not A3: the generator starts at 220 Hz, which is A3, so a key that
     # did nothing would pass a check on A3.
     press(52)
-    down = p.evaluate("""() => ({ notes: midi.notes.map((n) => [n.note, n.velocity]),
-                                  freq: state.source.settings.freq })""")
+    down = p.evaluate("""() => ({ notes: midi.notes.map((n) => [n.note, n.velocity]) })""")
     lit_down = lit()
+    # Held, long enough for the instrument to have drawn it: its pitch read off
+    # what it drew, and its gate, which a held note opens.
+    p.wait_for_timeout(500)
+    drawn = p.evaluate(DRAWN, 8192)
+    down["freq"] = pitch(drawn["lanes"][0], drawn["rate"])
+    held_peak = p.evaluate(QUIET)
     lift()
     print("    E3 down: %s, lit %s; released: %s" % (down, lit_down, held()))
     check("pressing E3 puts E3 on the stack at the slider's velocity",
           down["notes"] == [[52, 100 / 127]], str(down["notes"]))
-    check("and the generator plays it",
-          abs(down["freq"] - HZ(52)) < 1e-6 and abs(down["freq"] - 220) > 1,
-          "%.3f Hz against %.3f" % (down["freq"], HZ(52)))
+    # Within a twentieth of a semitone of E3, read off the instrument's lane
+    # (the page's mirror was exact, but it was the page's arithmetic); A3, the
+    # old opening's pitch, and D3 and F3 either side are all well outside it.
+    check("and the instrument plays it: the lane it drew is E3",
+          abs(math.log2(down["freq"] / HZ(52)) * 12) < 0.05, "%.3f Hz against %.3f" % (down["freq"], HZ(52)))
+    null("the same reading taken against D#3 fails", abs(math.log2(down["freq"] / HZ(51)) * 12) >= 0.05, "%.3f Hz" % down["freq"])
+    null("and a held note sounds, so the silence read with none is the waiting and not a dead lane", held_peak > 0.05, "peak %.3f" % held_peak)
     check("the key is lit, and only that key", lit_down == [52], str(lit_down))
     check("and lifting the finger releases it", held() == [] and lit() == [], str(held()))
 
@@ -147,8 +186,12 @@ with sync_playwright() as pw:
     print("\n--- latch, which is how one mouse holds a dyad ---")
     latch(True)
     tap(48); tap(55)
-    fifth = p.evaluate("""() => ({ notes: midi.notes.map((n) => n.note).sort((a, b) => a - b),
-      interval: state.source.settings.interval, octaves: state.source.settings.octaves })""")
+    fifth = p.evaluate("""() => ({ notes: midi.notes.map((n) => n.note).sort((a, b) => a - b) })""")
+    p.wait_for_timeout(500)
+    drawn = p.evaluate(DRAWN, 8192)
+    lo_hz, hi_hz = (pitch(x, drawn["rate"]) for x in drawn["lanes"])
+    fifth["ratio"] = hi_hz / lo_hz if lo_hz else 0
+    fifth["hz"] = [round(lo_hz, 2), round(hi_hz, 2)]
     tap(48)
     after_toggle = held()
     latch(False)
@@ -157,8 +200,12 @@ with sync_playwright() as pw:
           % (fifth, after_toggle, after_off))
     check("two taps under latch hold both notes after the mouse is up",
           fifth["notes"] == [48, 55], str(fifth["notes"]))
-    check("and the dyad is the interval between them - seven semitones, a fifth",
-          fifth["interval"] == 55 - 48 and fifth["octaves"] == 0, str(fifth))
+    # The fifth just or tempered, as the setup tunes it (1.5 or 1.4983): within
+    # a twentieth of a semitone of seven, which a fourth or a sixth is not.
+    semis = lambda r: 12 * math.log2(r) if r > 0 else 0
+    check("and the dyad the instrument draws is the interval between them - seven semitones, a fifth, on C3",
+          abs(semis(fifth["ratio"]) - (55 - 48)) < 0.05 and abs(math.log2(lo_hz / HZ(48)) * 12) < 0.05, str(fifth))
+    null("the same reading against a fourth fails", abs(semis(fifth["ratio"]) - 5) >= 0.05, "%.3f semitones" % semis(fifth["ratio"]))
     check("tapping a latched key again lets it go", after_toggle == [55], str(after_toggle))
     check("and turning latch off lets go of the rest", after_off == [], str(after_off))
 

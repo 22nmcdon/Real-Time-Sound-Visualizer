@@ -28,10 +28,14 @@ That every reader honoured a lane's `delay`, the rack's alignment, the
 generator as a real lane beside files, the lane budget, and the generator and
 a live input as lanes of one rack were checked here until P5 cut them.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its lanes'
-# contract - which core/tests/parity.py holds the instrument to,
-# sample for sample. The instrument, the site's default since 5m, is
-# braintest.py's and hosttest.py's.
+# On the default page since stage 5's step 3 (13 Nov). On ?brain=js (5m to
+# then) the band split was the page's own Mic split by `makeLiveBandSource`,
+# opened by calling `toMic()` - which on the default page would leave the
+# instrument for the page's own source, so it would pass here for the old
+# reason without testing the site. The Mic and Bands buttons are pressed
+# instead: on the default they keep the instrument (`hostToMic`, `hostSplit`),
+# whose band split the face reads through `makeHostBandLanes`. The second
+# half, a lane made of three functions, never needed a brain.
 import os, sys
 from playwright.sync_api import sync_playwright
 
@@ -45,12 +49,16 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
+def null(name, red, detail=""):
+    check("null: " + name, red, detail)
+
 
 CONTRACT = """() => {
   const source = state.source;
-  if (!source || !source.lanes) return { lanes: 0 };
+  if (!source || !source.lanes) return { lanes: 0, kind: source && source.kind, input: !!(source && source.drawsInput) };
   return {
     kind: source.kind,
+    input: !!source.drawsInput,
     lanes: source.lanes.length,
     // The three members, and the absence of the fourth.
     keeps: source.lanes.every((lane) =>
@@ -73,7 +81,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     # The source buttons live inside the menu, and a click on a hidden control
     # waits thirty seconds and then says "not visible" rather than saying that.
@@ -82,14 +90,21 @@ with sync_playwright() as pw:
     print("\n--- every lane of the band split ---")
     # The faked microphone, split into bands. A rack of stems was checked here
     # too, the other source that built lanes its own way, until P5 cut it.
-    p.evaluate("() => toMic()"); p.wait_for_timeout(1500)
+    p.evaluate("() => el.srcMic.click()"); p.wait_for_timeout(1500)
+    whole = p.evaluate(CONTRACT)
     p.evaluate("() => el.micBands.click()"); p.wait_for_timeout(800)
     bands = p.evaluate(CONTRACT)
     print("    %-6s %d lanes, %d frames each, capacity %d, reads %s"
           % (bands["kind"], bands["lanes"], bands["frames"], bands["capacity"],
              bands["reads"]))
-    check("a band split's lanes keep it too",
-          bands["lanes"] == 4 and bands["keeps"] and bands["hides"], str(bands))
+    # The instrument drawing the input it splits, not the page's own Mic. That
+    # no lane has a `scratch` is true of the instrument's lanes by how they are
+    # built (`makeHostBandLanes` never had one); it was the page's own lanes'
+    # check, and is kept as the contract's statement rather than as evidence.
+    check("a band split's lanes keep it too, on the instrument drawing the input",
+          bands["kind"] == "host" and bands["input"] and bands["lanes"] == 4 and bands["keeps"] and bands["hides"], str(bands))
+    null("the input whole has no lanes, so the reading above has something to find",
+         whole["kind"] == "host" and whole["input"] and whole["lanes"] == 0, str(whole))
     check("and return what was asked for",
           bands["reads"] == [777] * 4, str(bands["reads"]))
 
