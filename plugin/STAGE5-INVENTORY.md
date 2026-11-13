@@ -826,7 +826,10 @@ right relative to the others" (the filter at 0.48 of the median under three
 suites at once; `{}` alone, twice), and honesty's reverb-on pass (Bass under
 the tine piano), which failed again alone on Bass under the pad: the two
 presets `after-stage-5.md` already names as sitting on their headings' edges
-with the reverb on. Nothing honesty runs changed in this batch.
+with the reverb on. Nothing honesty runs changed in this batch, and it fails
+the same way on ca69583 alone (Bass under the tine piano): in three runs alone
+here it failed every time, so on this container it is no longer an
+occasional flake but the parked question of those two presets.
 Parity passed, 1,664 checks.
 
 ### Checks that passed on the default for the wrong reason, or could not fail
