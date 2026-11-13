@@ -11,6 +11,7 @@
 
 #include <map>
 
+#include "scope/cycles.h"
 #include "scope/lfo.h"
 #include "scope/noise.h"
 #include "scope/osc.h"
@@ -354,6 +355,27 @@ int main(int argc, char** argv) {
         plane.step(scope::Plane::A, x, y); out.insert(out.end(), { plane.x, plane.y });
         // Each layer's pair once: since P4 there is no heard pair of its own.
         plane.step(scope::Plane::B, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });
+      }
+      show(out);
+      continue;
+    }
+    // Not functions_js's: a run of waveAt with the phase carried as aliastest.py
+    // carried it on the page (stage 5, step 3, batch 2; core/tests/pieces/),
+    // `waveRun shape hz samples rate corrected amount points`: corrected 1
+    // passes the step, 0 passes nought (the code before band-limiting, the
+    // control); points "-" or 256 values, a drawn cycle made into its tables.
+    if (name == "waveRun") {
+      const double inc = scope::kTwoPi * num(w[2]) / num(w[4]), dt = num(w[5]) == 1 ? num(w[2]) / num(w[4]) : 0;
+      scope::CycleTables cycle;
+      scope::WaveTables bars;
+      if (w[7] != "-") { cycle = scope::cycleTables(numbers(w[7])); bars.cycle = &cycle; }
+      const scope::Shape shape = scope::shapeNamed(w[1]);
+      std::vector<double> out;
+      double a = 0;
+      for (long i = 0; i < static_cast<long>(num(w[3])); i++) {
+        out.push_back(scope::waveAt(shape, a, dt, bars, num(w[6])));
+        a += inc;
+        if (a >= scope::kTwoPi) a -= scope::kTwoPi;
       }
       show(out);
       continue;

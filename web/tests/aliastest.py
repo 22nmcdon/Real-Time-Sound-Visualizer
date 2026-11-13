@@ -6,93 +6,33 @@ audible every harmonic above Nyquist folds back to a frequency that is a
 multiple of nothing. This page ships a Harmonics and THD preset, so an aliased
 generator is the instrument lying in the place it claims to measure.
 
-The analysis here is numpy's, not the page's. Asking the page for a spectrum
-and then agreeing with it would test nothing: these are the samples the page
-produced, transformed by something that has never heard of it.
-
-The floors asserted below are measured numbers with a couple of decibels of
-slack, not aspirations. They are stated in full so a later reader can see what
-changed rather than only that something did.
+The floors are numpy's analysis of the core's samples, not the page's, in
+core/tests/pieces/alias.py since stage 5 (below): asking the page for a
+spectrum and then agreeing with it would test nothing. What is left here is
+the page's own analysis, the harmonics pane, read over a square the site's
+instrument plays.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its generator's
-# own samples and reswing - which core/tests/parity.py holds the instrument
-# to, sample for sample. The instrument, the site's default since 5m, is
-# braintest.py's and hosttest.py's.
+# Stage 5, step 3, batch 2 (13 Nov): until then this suite opened ?brain=js
+# and called the page's own JavaScript waveAt, cycleTables and lfoStep, and
+# read the page's own generator's window. Those numbers - every floor, the
+# drawn cycle's tables, the pulse, the LFO shapes and rate, the generator
+# passing its step, the four samples a cycle the correction touches - are
+# asserted on the core now, each with its null, in core/tests/pieces/alias.py
+# (parity runs it; alone, core/tests/pieces/run.py alias). What is left here
+# is the harmonics pane, which is the face's, read over the site's instrument
+# on the default page.
 import math, os, sys
-import numpy as np
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
-RATE = 44100
-N = 32768
-BH = [0.35875, 0.48829, 0.14128, 0.01168]     # the window the page uses too
-
 fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
-
-def window(n):
-    i = np.arange(n)
-    return (BH[0] - BH[1] * np.cos(2 * np.pi * i / n)
-            + BH[2] * np.cos(4 * np.pi * i / n) - BH[3] * np.cos(6 * np.pi * i / n))
-
-
-def alias_floors(samples, f0, rate=RATE, against="fundamental"):
-    """Everything that is not a harmonic of f0, in dB below the fundamental.
-
-    Two numbers, because they answer different questions. The worst peak
-    anywhere includes whatever lands just under Nyquist, which two-point
-    polyBLEP can do least about and nobody can hear; the worst below 10 kHz is
-    the one that would be audible and the one the spectrum pane is read at.
-    """
-    x = np.asarray(samples, dtype=float)
-    n = len(x)
-    spec = np.abs(np.fft.rfft(x * window(n)))
-    hz = np.arange(len(spec)) * rate / n
-    near = 4 * rate / n                       # the window's own main lobe
-
-    harmonic = np.zeros(len(spec), dtype=bool)
-    harmonic[:6] = True                       # DC, and the skirt around it
-    k = 1
-    while k * f0 < rate / 2:
-        harmonic |= np.abs(hz - k * f0) < near
-        k += 1
-
-    # A drawn figure's loudest partial is not the one at its trace rate - a
-    # five-pointed star puts most of its energy in the fifth - so those are
-    # measured against the loudest component instead. For a waveform the two
-    # are the same thing.
-    ref = spec.max() if against == "loudest" else spec[np.abs(hz - f0) < near].max()
-    db = lambda v: 20 * math.log10(max(float(v), 1e-12) / ref)
-    return db(spec[~harmonic].max()), db(spec[~harmonic & (hz < 10000)].max())
-
-
-# What was measured when this landed, in dB below the fundamental, for the
-# audible half of the spectrum. The assertion allows 3 dB of slack on each.
-WANT = {
-    ("square", 440): -62.1, ("square", 2000): -58.5, ("square", 4000): -46.2,
-    ("ramp", 440): -61.1, ("ramp", 2000): -52.4, ("ramp", 4000): -46.2,
-    ("triangle", 440): -99.5, ("triangle", 2000): -84.1, ("triangle", 4000): -65.2,
-}
-
-RENDER = """([shape, f0, n, rate]) => {
-  const inc = TWO_PI * f0 / rate, dt = f0 / rate;
-  const limited = [], naive = [];
-  let a = 0, c = 0;
-  for (let i = 0; i < n; i++) {
-    limited.push(waveAt(shape, a, dt)); a += inc; if (a >= TWO_PI) a -= TWO_PI;
-    // The same loop with no step is the code as it was before band-limiting,
-    // which makes it the control rather than a second implementation to
-    // disagree with.
-    naive.push(waveAt(shape, c, 0)); c += inc; if (c >= TWO_PI) c -= TWO_PI;
-  }
-  return { limited, naive };
-}"""
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME,
@@ -104,165 +44,18 @@ with sync_playwright() as pw:
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
-    print("\n--- what the correction is worth ---")
-    for shape in ("square", "ramp", "triangle"):
-        for f0 in (440, 2000, 4000):
-            pair = p.evaluate(RENDER, [shape, f0, N, RATE])
-            naive_peak, naive_audible = alias_floors(pair["naive"], f0)
-            peak, audible = alias_floors(pair["limited"], f0)
-            want = WANT[(shape, f0)]
-
-            check("%s at %d Hz folds back at %.0f dB or less" % (shape, f0, want),
-                  audible <= want + 3,
-                  "%.1f dB below 10 kHz, %.1f dB anywhere" % (audible, peak))
-            check("%s at %d Hz is at least 20 dB better than uncorrected"
-                  % (shape, f0), audible - naive_audible <= -20,
-                  "was %.1f dB, now %.1f" % (naive_audible, audible))
-
-    # G2's drawn cycle, a square drawn at 0.9, band-limited by its tables
-    # rather than corrected at its edges. Measured at -99 dB wherever it is
-    # played, against -17 to -37 for the richest table read at every pitch -
-    # which is what the step of nought gives, and so the control. Held to -90,
-    # and to fifty decibels better than that control.
-    DRAWN = """([f0, n, rate]) => {
-      const tables = cycleTables(Array.from({ length: CYCLE_POINTS }, (_, i) => i < CYCLE_POINTS / 2 ? 0.9 : -0.9));
-      const inc = TWO_PI * f0 / rate, dt = f0 / rate, limited = [], naive = [];
-      let a = 0, c = 0;
-      for (let i = 0; i < n; i++) {
-        limited.push(waveAt('drawn', a, dt, tables)); a += inc; if (a >= TWO_PI) a -= TWO_PI;
-        naive.push(waveAt('drawn', c, 0, tables)); c += inc; if (c >= TWO_PI) c -= TWO_PI;
-      }
-      return { limited, naive };
-    }"""
-    for f0 in (440, 2000, 4000):
-        pair = p.evaluate(DRAWN, [f0, N, RATE])
-        peak, audible = alias_floors(pair["limited"], f0)
-        npeak, naudible = alias_floors(pair["naive"], f0)
-        check("a drawn square at %d Hz folds back at -90 dB or less, fifty better than its richest table" % f0,
-              peak <= -90 and audible - naudible <= -50,
-              "%.1f dB anywhere, %.1f below 10 kHz; the richest table %.1f" % (peak, audible, naudible))
-
-    # The pulse, with the square's correction at both edges. At a half it is
-    # the square, checked in pulsetest.py; narrower, its fundamental is
-    # weaker - sin(pi w) of the square's - and against that fundamental the
-    # same correction reads higher. Measured when it landed, in dB below the
-    # fundamental below 10 kHz, and held with 3 dB of slack; and at least 20
-    # better than the pulse uncorrected, which measured 23 to 32 better.
-    PULSE = """([w, f0, n, rate]) => {
-      const inc = TWO_PI * f0 / rate, dt = f0 / rate, limited = [], naive = [];
-      let a = 0, c = 0;
-      for (let i = 0; i < n; i++) {
-        limited.push(waveAt('pulse', a, dt, null, w)); a += inc; if (a >= TWO_PI) a -= TWO_PI;
-        naive.push(waveAt('pulse', c, 0, null, w)); c += inc; if (c >= TWO_PI) c -= TWO_PI;
-      }
-      return { limited, naive };
-    }"""
-    PULSE_WANT = {(0.25, 440): -58.1, (0.25, 2000): -49.4, (0.25, 4000): -46.2,
-                  (0.1, 440): -55.5, (0.1, 2000): -46.8, (0.1, 4000): -46.2,
-                  (0.05, 440): -55.2, (0.05, 2000): -44.4, (0.05, 4000): -30.1}
-    for (w, f0), want in PULSE_WANT.items():
-        pair = p.evaluate(PULSE, [w, f0, N, RATE])
-        peak, audible = alias_floors(pair["limited"], f0)
-        npeak, naudible = alias_floors(pair["naive"], f0)
-        check("a pulse of %d%% at %d Hz folds back at %.0f dB or less, 20 better than uncorrected" % (w * 100, f0, want),
-              audible <= want + 3 and audible - naudible <= -20,
-              "%.1f dB below 10 kHz; uncorrected %.1f" % (audible, naudible))
-
-    print("\n--- the LFOs are left alone ---")
-    # A shape is a shape whether it runs at 220 Hz or at a fifth of one, and an
-    # oscillator at 0.2 Hz has no aliasing to correct: a correction applied to
-    # it would be a dent in the shape it exists to draw.
-    lfo = p.evaluate("""() => {
-      const square = new Set(), ramp = [], triangle = [];
-      for (let i = 0; i < 1000; i++) {
-        const phase = i * TWO_PI / 1000;
-        square.add(waveAt('square', phase));
-        let t = (phase / TWO_PI) % 1; if (t < 0) t += 1;
-        ramp.push(Math.abs(waveAt('ramp', phase) - (t * 2 - 1)));
-        triangle.push(Math.abs(waveAt('triangle', phase)
-                               - (2 / Math.PI) * Math.asin(Math.sin(phase))));
-      }
-      return { square: Array.from(square).sort(), ramp: Math.max(...ramp),
-               triangle: Math.max(...triangle) };
-    }""")
-    check("a square with no step given is still two values",
-          lfo["square"] == [-0.9, 0.9], str(lfo["square"]))
-    check("and the ramp and triangle are bit for bit what they were",
-          lfo["ramp"] == 0 and lfo["triangle"] == 0,
-          "%r, %r" % (lfo["ramp"], lfo["triangle"]))
-
-    rates = p.evaluate("""async () => {
-      // The rate an LFO actually runs at, which is the thing this project has
-      // got wrong before. Stepped at 1000 a second for one second - and the
-      // values it hands back are collected too, because `lfoStep` is the path
-      // that would be broken by passing it a step it does not need.
-      const lfo = { shape: 'square', rate: 2, depth: 1, phase: 0, held: 0, value: 0 };
-      const seen = new Set();
-      let crossings = 0, last = lfoStep(lfo, 1000);
-      seen.add(last);
-      for (let i = 1; i < 1000; i++) {
-        const now = lfoStep(lfo, 1000);
-        seen.add(now);
-        if (now > 0 && last <= 0) crossings++;
-        last = now;
-      }
-      return { crossings, seen: Array.from(seen).sort() };
-    }""")
-    check("a 2 Hz square LFO still completes two cycles a second",
-          rates["crossings"] == 2, "%d cycles" % rates["crossings"])
-    check("and steps between two values, with no correction in it",
-          rates["seen"] == [-0.9, 0.9], str(rates["seen"]))
-
-    print("\n--- and the generator passes its own step ---")
-    # The one that matters. Everything above tests `waveAt`; this tests that
-    # `fill` tells it how fast it is running. With that argument left off, the
-    # unit checks all pass and the instrument aliases anyway. A note held in
-    # Mono, since the site waits for one (10 Nov): in Mono the Frequency
-    # slider moves the held note, as it moved the sound with no note before.
-    p.evaluate("""() => {
-      el.midiMono.click(); midiNoteOn(69, 127);
-      el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change'));
-      el.freq.value = '4000'; el.freq.dispatchEvent(new Event('input'));
-      el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
-    }""")
-    p.wait_for_timeout(1000)          # the ring buffer has to turn over first
-    out = p.evaluate("""(n) => Array.from(state.source.getLatestWindow(n)[0])""", N)
-    peak, audible = alias_floors(out, 4000)
-    check("the generator's own samples are band-limited, not just waveAt",
-          audible <= -40, "%.1f dB below 10 kHz, %.1f dB anywhere" % (audible, peak))
-
-    # The drawn generators - the figures, the solids and the harmonograph,
-    # parametric paths polyBLEP could not reach - were measured here against
-    # the corrected square's floor until G2 took them; the waveform is all
-    # the generator plays now, and everything above holds it.
-
-    print("\n--- what it costs the picture ---")
-    # The generator is a picture first and will be a sound second, so it is
-    # worth stating exactly where the correction lands: one sample either side
-    # of each edge and nowhere else. A square has two edges a cycle, so four
-    # samples a cycle move and the rest are bit for bit what they were. At
-    # 220 Hz that is four samples in two hundred - an edge the screen draws as
-    # a vertical line either way.
-    touched = p.evaluate("""([f0, rate, n]) => {
-      const inc = TWO_PI * f0 / rate, dt = f0 / rate;
-      let a = 0, c = 0, moved = 0, worst = 0;
-      for (let i = 0; i < n; i++) {
-        const x = waveAt('square', a, dt), y = waveAt('square', c, 0);
-        if (Math.abs(x - y) > 1e-12) moved++;
-        else worst = Math.max(worst, Math.abs(x - y));
-        a += inc; c += inc;
-        if (a >= TWO_PI) a -= TWO_PI;
-        if (c >= TWO_PI) c -= TWO_PI;
-      }
-      return { moved, worst, cycles: n * f0 / rate };
-    }""", [220, RATE, 8192])
-    check("the correction touches four samples a cycle and no others",
-          abs(touched["moved"] - 4 * touched["cycles"]) <= 4 and touched["worst"] == 0,
-          "%d samples over %.1f cycles" % (touched["moved"], touched["cycles"]))
+    # Here stood, on ?brain=js: the nine floors of the square, ramp and
+    # triangle and their twenty decibels over the uncorrected waveAt; the
+    # drawn square's -90 against its richest table; the pulse's nine; the
+    # LFO's square still two values, the ramp and triangle bit for bit, a
+    # 2 Hz square LFO two cycles a second; the page's generator's own window
+    # at 4 kHz under -40 dB; and the correction touching four samples a cycle.
+    # Each is core/tests/pieces/alias.py's now, on the core's waveAt, lfoStep
+    # and generator, with a null beside it.
 
     print("\n--- the pane still reads a square as a square ---")
     # 431 Hz, not 440, and the reason is worth knowing. The pane walks a grid
@@ -274,8 +67,16 @@ with sync_playwright() as pw:
     # every harmonic lands on one. That is the pane's own resolution and has
     # nothing to do with band-limiting, but it catches anyone who tries this
     # with a round number.
+    # A note held in Mono, by its button, which the site's instrument hears
+    # (the README's rule: setMidiMode alone it does not), so the Frequency
+    # slider moves the held note; the square and the level by their controls.
+    # On ?brain=js the note was the page's own generator's; here the pane
+    # reads the instrument's lanes (null below: the pane with no note is
+    # silent, so what it reads is the note the instrument plays).
     p.evaluate("""() => {
+      el.midiMono.click(); midiNoteOn(69, 127);
       el.shape.value = 'square'; el.shape.dispatchEvent(new Event('change'));
+      el.amp.value = '100'; el.amp.dispatchEvent(new Event('input'));
       el.freq.value = '431'; el.freq.dispatchEvent(new Event('input'));
       state.panesExtra.harmonics = true; syncPanes();
     }""")
@@ -290,11 +91,14 @@ with sync_playwright() as pw:
     want_odd = [20 * math.log10(1 / k) for k in (3, 5, 7)]
     check("it finds the fundamental where it was put",
           pane and abs(pane["hz"] - 431) <= 22, str(pane and pane["hz"]))
+    # With no pane both lists are empty and all() of nothing is true: these
+    # two passed with the pane reading nothing until stage 5 (13 Nov), when
+    # the note-off null showed it. Each needs its partials now.
     check("the odd harmonics are the textbook 1/k, to a decibel",
-          all(abs(a - b) < 1.0 for a, b in zip(odd, want_odd)),
+          len(odd) == 3 and all(abs(a - b) < 1.0 for a, b in zip(odd, want_odd)),
           "%s against %s" % (odd, [round(v, 1) for v in want_odd]))
     check("and the even ones are not there",
-          all(v < -40 for v in even), str(even))
+          len(even) == 4 and all(v < -40 for v in even), str(even))
     # Eight partials of a square: sqrt(1/9 + 1/25 + 1/49) = 41.4%. The whole
     # series is 48.3%, and the pane stops at eight - so a reading near 48 would
     # mean it had found energy that is not a harmonic.
@@ -302,10 +106,16 @@ with sync_playwright() as pw:
           pane and abs(pane["thd"] - 0.414) < 0.02,
           "%.1f%%" % (pane["thd"] * 100 if pane else -1))
 
+    p.evaluate("() => midiNoteOff(69)")
+    p.wait_for_timeout(1500)
+    quiet = p.evaluate("() => analyseHarmonics(state.source.sampleRate)")
+    check("null: with the note let go, the pane finds no fundamental: it was reading the note the instrument played",
+          quiet is None, str(quiet and round(quiet["hz"])))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("the generator is band-limited")
+print("the pane reads the instrument's square as a square")
