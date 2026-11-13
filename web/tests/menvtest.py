@@ -150,26 +150,12 @@ with sync_playwright() as pw:
           and abs(phs["second"] - phs["settled"]) < 0.02, "%s / %s" % (evs, phs))
     check("and sounding, lifting one of two keys starts nothing there either",
           abs(evs["lifted"] - evs["resettled"]) < 0.03, "%.3f then %.3f" % (evs["resettled"], evs["lifted"]))
-    # On the page's own brain the keyboard is the page's, and a key gone down
-    # reaches the audio thread only as the source's own message; on the
-    # instrument's, above, the core's keyboard sends itself the restrike.
-    # Both, because a message left out on one path passes the other.
-    j = b.new_page(viewport={"width": 1400, "height": 900})
-    j.on("pageerror", lambda e: bad.append("pageerror (brain=js): " + str(e)))
-    j.goto(f"file://{ART}/scope.html?brain=js"); j.wait_for_timeout(700)
-    if j.locator("#helpClose").is_visible(): j.locator("#helpClose").click()
-    j.locator("#trace").click(position={"x": 5, "y": 5}); j.wait_for_timeout(500)
-    j.evaluate("() => setView('bench')"); j.wait_for_timeout(200)
-    j.locator('.mod-card[data-source="env.note"]').click(); j.wait_for_timeout(200)
-    # The page's own keyboard gates the generator only with a keyboard to
-    # play it: the screen's keys, here, as polytest.py has them.
-    j.evaluate("() => setScreenKeys(true)"); j.wait_for_timeout(200)
-    evj = j.evaluate(SOUNDED, [True])
-    phj = j.evaluate(SOUNDED, [False])
-    j.close()
-    check("and on the page's own brain, sounding, the same: restarted on Every note, not on Phrase, not on a lift",
-          evj["audible"] and evj["second"] > evj["settled"] + 0.2 and abs(phj["second"] - phj["settled"]) < 0.02
-          and abs(evj["lifted"] - evj["resettled"]) < 0.03, "%s / %s" % (evj, phj))
+    # Until stage 5, step 3, batch 4 (13 Nov) a second page on ?brain=js ran
+    # the same SOUNDED twice and asserted "on the page's own brain, sounding,
+    # the same: restarted on Every note, not on Phrase, not on a lift" - the
+    # page keyboard's message to its own worklet, a path only the page's
+    # brain has. It went with that brain's retirement; the two checks above
+    # hold the claim on the instrument, whose own keyboard sends the restrike.
 
     print("\n--- what it moves ---")
     moved = p.evaluate("""async () => {

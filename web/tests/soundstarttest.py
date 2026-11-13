@@ -18,20 +18,26 @@ So this file runs Chromium with the rule ON, which Chromium enforces as WebKit
 does for this purpose, and holds both:
 - before any press nothing is heard (the null that proves the rule is on here -
   with it off, every check below would pass whatever the page did);
-- a finger's tap starts it, on the site's compiled instrument and on the page's
-  own brain, and samples reach the screen through the heard path;
+- a finger's tap starts it, on the site's compiled instrument, and samples
+  reach the screen through the heard path;
 - a mouse click starts it;
 - and what a press starts is silence until a note (10 Nov, the owner's call):
-  on both brains, the site is as the plugin is, nothing sounding or drawn
+  the site is as the plugin is, nothing sounding or drawn
   until a key goes down, and the empty screen says how to play one until the
   first has. A press that is not a note is where the drone used to begin, so
   the silence is read after one, with the sound on - a press on the title,
   since opening the keys would itself have gated the old drone, and a check
   made after it could not fail; then the keys opened, a typed A and K are the
   notes the line says they are, and the line is gone and stays gone;
-- and a key that is itself the first press sounds, held, on both brains: the
+- and a key that is itself the first press sounds, held: the
   sound it starts arrives after the key, which nothing checked while the
   generator sounded with no note.
+
+Until stage 5, step 3, batch 4 (13 Nov) each of these also ran on the page's
+own brain: a finger on ?brain=js&core=js (its JavaScript engine under the
+autoplay rule, a fallback step 5 replaces with a line), and the two loops
+below once more on ?brain=js, reading that brain's gate. Those legs went with
+the brain; the site's legs hold every claim.
 """
 import os, sys, threading, functools
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -90,18 +96,6 @@ with sync_playwright() as pw:
     check("no page errors", not bad, "; ".join(bad[:3]))
     c.close()
 
-    print("\n--- a finger, on the page's own brain ---")
-    c, p, bad = open_page(b, True, "?brain=js&core=js")
-    before = p.evaluate(STATE)
-    check("before any press the page's own brain is not heard either", before["audible"] is False, str(before))
-    p.touchscreen.tap(195, 300)
-    p.wait_for_timeout(1500)
-    after = p.evaluate(STATE)
-    print("    after a tap:", after)
-    check("one tap starts the page's own brain too", after["audible"] is True and not after["fault"], str(after))
-    check("no page errors", not bad, "; ".join(bad[:3]))
-    c.close()
-
     print("\n--- a mouse ---")
     c, p, bad = open_page(b, False)
     before = p.evaluate(STATE)
@@ -124,8 +118,8 @@ with sync_playwright() as pw:
       return { peak, hint: !el.playHint.hidden, text: el.playHint.textContent, gated: !!state.source.gated,
                audible: !!(v && v.audible && v.audible()), held: midi.notes.map((h) => h.note), kind: state.source.kind }; }"""
     quiet = lambda r: r["peak"] < 1e-6 and r["hint"]
-    for query, brain in (("", "host"), ("?brain=js", "tone")):
-        print("\n--- nothing until a note, on %s ---" % ("the site's instrument" if brain == "host" else "the page's own brain"))
+    for query, brain in (("", "host"),):
+        print("\n--- nothing until a note, on the site's instrument ---")
         c, p, bad = open_page(b, False, query)
         first = p.evaluate(SILENT)
         print("    opened:", first)
@@ -166,8 +160,8 @@ with sync_playwright() as pw:
 
     # The first press a key on the screen's keys, held. The keys opened from
     # code, which is no press, so the key is the one that starts the sound.
-    for query, brain in (("", "host"), ("?brain=js", "tone")):
-        print("\n--- a key as the first press, on %s ---" % ("the site's instrument" if brain == "host" else "the page's own brain"))
+    for query, brain in (("", "host"),):
+        print("\n--- a key as the first press, on the site's instrument ---")
         c, p, bad = open_page(b, False, query)
         p.evaluate("() => setScreenKeys(true)"); p.wait_for_timeout(300)
         unpressed = p.evaluate(SILENT)

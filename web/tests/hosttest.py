@@ -128,13 +128,16 @@ with sync_playwright() as pw:
     p = b.new_page(viewport={"width": 1400, "height": 900})
     # Since 5m the website is the instrument in a worklet, which answers the
     # same calls the plugin does; without the bridge it is that, and not the
-    # plugin's - nothing fetched - and with ?brain=js no host at all.
+    # plugin's - nothing fetched. Until stage 5, step 3, batch 4 (13 Nov) the
+    # null half of this check opened ?brain=js and read the page's own
+    # generator there ("tone", no host at all); that brain is being retired,
+    # so the null is now the same reading inside the plugin, below, which
+    # must not be the website's.
+    WHO = "() => ({ kind: state.source.kind, site: !!state.source.devices, fetched: !!state.source.timing })"
+    WEBSITE = {"kind": "host", "site": True, "fetched": False}
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(800)
-    alone = p.evaluate("() => ({ kind: state.source.kind, site: !!state.source.devices, fetched: !!state.source.timing })")
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(800)
-    own = p.evaluate("() => ({ kind: state.source.kind, host: scopeHost === null })")
-    check("on its own the page is the website: the site's instrument, not the plugin's, and with ?brain=js its own generator (the null)",
-          alone == {"kind": "host", "site": True, "fetched": False} and own == {"kind": "tone", "host": True}, "%s %s" % (alone, own))
+    alone = p.evaluate(WHO)
+    check("on its own the page is the website: the site's instrument, not the plugin's", alone == WEBSITE, str(alone))
     p.close()
 
     print("\n--- inside the plugin ---")
@@ -147,6 +150,9 @@ with sync_playwright() as pw:
     seen = p.evaluate("""() => ({ kind: state.source.kind, rate: state.source.sampleRate, said: el.credit.textContent,
                                   asked: window.__hostTest.calls.slice(0, 1), sound: state.genSound })""")
     print("    %s" % seen)
+    bridged = p.evaluate(WHO)
+    check("null: inside the plugin the same reading is not the website's: the plugin's, fetched",
+          bridged != WEBSITE and bridged["kind"] == "host" and not bridged["site"] and bridged["fetched"], str(bridged))
     check("it asks the plugin what it is, and switches to the plugin's output at the plugin's rate",
           seen["kind"] == "host" and seen["rate"] == 44100 and seen["asked"] == ["scopeHost"]
           and "plugin" in seen["said"] and seen["sound"] is False, str(seen))

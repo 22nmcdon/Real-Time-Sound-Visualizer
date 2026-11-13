@@ -28,11 +28,16 @@ LEGATO. A second note over a held one changes the pitch and leaves the
 envelope alone, which is what makes a run of notes a phrase. After a release
 has finished, the same second note has to start it again.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its gate and
-# envelope, read and set directly - which core/tests/parity.py holds the
-# instrument to, sample for sample. The instrument, the site's default since
-# 5m, is braintest.py's and hosttest.py's.
-import math, os, sys
+# Stage 5, step 3, batch 4 (13 Nov): until then this suite opened the page on
+# ?brain=js and read the page's own brain - a makeGeneratorCore built in the
+# page and stepped by hand, and the generator's worklet rendered offline from
+# generatorModuleSource(), the page's JavaScript engine both ways. Those
+# renders - IT IS NOT THERE UNTIL IT IS ASKED FOR, THE SHAPE, NO STEP and
+# LEGATO, and the glide's own time - are core/tests/pieces/env.py now, on the
+# core's own generator, each with its null. What is left here is the site:
+# the default page, a key on a real keyboard reaching the instrument, and the
+# Envelope (env.note) the face reads off the instrument's own reading.
+import os, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -61,304 +66,28 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 
-# The envelope as it can be measured off rendered audio: the peak of each
-# window, which for a window holding a couple of periods is the amplitude.
-# Coarser than reading a variable and that is the point - it is the only thing
-# a listener could hear.
-ENVELOPE_OF = """(samples, rate, windowMs) => {
-  const per = Math.max(8, Math.round(windowMs * rate / 1000));
-  const out = [];
-  for (let at = 0; at + per <= samples.length; at += per) {
-    let peak = 0;
-    for (let i = at; i < at + per; i++) peak = Math.max(peak, Math.abs(samples[i]));
-    out.push(peak);
-  }
-  return out;
-}"""
-
-# The largest step between one sample and the next, which is what a click is.
-WORST_STEP = """(samples, from, to) => {
-  let worst = 0, at = -1;
-  for (let i = Math.max(1, from); i < Math.min(samples.length, to); i++) {
-    const step = Math.abs(samples[i] - samples[i - 1]);
-    if (step > worst) { worst = step; at = i; }
-  }
-  return { worst, at };
-}"""
-
 with sync_playwright() as pw:
-    # A fake microphone, for the gate handed over from an input to the generator.
-    b = pw.chromium.launch(executable_path=CHROME,
-                           args=["--autoplay-policy=no-user-gesture-required",
-                                 "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"])
+    b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
     p = b.new_page(viewport={"width": 1400, "height": 900})
     p.add_init_script(STUB)
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(1500)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
-    p.evaluate("([a, b]) => { window.__env = eval(a); window.__step = eval(b); }",
-               [ENVELOPE_OF, WORST_STEP])
 
     print("\n--- it is not there until it is asked for ---")
-    ungated = p.evaluate("""() => {
-      // A core of its own, with oscillators of its own, so nothing here
-      // touches the two the page is using.
-      const own = () => [
-        { shape: 'sine', rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 },
-        { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
-      ];
-      const rate = 44100, n = 4410;
-      const core = makeGeneratorCore(rate, GEN_SLOTS, own());
-      core.set('shape', 'sine');
-      const l = new Float32Array(n), r = new Float32Array(n);
-      core.block(l, r, n);
-
-      let peakEarly = 0, peakLate = 0;
-      for (let i = 0; i < 441; i++) peakEarly = Math.max(peakEarly, Math.abs(l[i]));
-      for (let i = n - 441; i < n; i++) peakLate = Math.max(peakLate, Math.abs(l[i]));
-      return { gated: core.gated, envelope: core.envelope,
-               peakEarly, peakLate, amp: core.tone.amp };
-    }""")
-    check("a core nobody has gated is wide open and says so",
-          ungated["gated"] is False and ungated["envelope"] == 1, str(ungated))
-    check("and its amplitude is the slider, from the first sample to the last",
-          abs(ungated["peakEarly"] - ungated["amp"]) < 1e-3
-          and abs(ungated["peakLate"] - ungated["amp"]) < 1e-3,
-          "%.4f then %.4f against %.4f"
-          % (ungated["peakEarly"], ungated["peakLate"], ungated["amp"]))
-    # The page as it opens: no keyboard, and gated all the same - it waits for a note.
+    # The page as it opens: no keyboard, and the instrument gated all the
+    # same - it waits for a note. On ?brain=js until batch 4 this read the
+    # page's own tone source ("tone"); on the site the gate is the
+    # instrument's own reading, which the face takes with its envelope.
     opens = p.evaluate("() => ({ kind: state.source.kind, gated: state.source.gated, present: keyboardPresent() })")
-    check("and the page opens with the generator gated before any keyboard is there",
-          opens == {"kind": "tone", "gated": True, "present": False}, str(opens))
+    check("and the page opens with the instrument gated before any keyboard is there",
+          opens == {"kind": "host", "gated": True, "present": False}, str(opens))
     check("and the reading fails against the page as it opened until 10 Nov, ungated",
-          not dict(opens, gated=False) == {"kind": "tone", "gated": True, "present": False})
-
-    print("\n--- the shape, off the samples the worklet produced ---")
-    # Timing an event inside an offline render is not obvious and the obvious
-    # way is wrong. A message posted before `startRendering` is never
-    # processed: the render runs to completion and the port is drained
-    # afterwards, so the first version of this measured a whole second of
-    # silence and four of its checks passed on the zeros. A message posted
-    # from inside a `suspend` callback does arrive, exactly at the frame the
-    # suspend named, which is the only way to place one.
-    STAGED = """async ([seconds, holdSeconds, gated, patch]) => {
-      const rate = 44100, frames = Math.round(rate * seconds);
-      const ctx = new OfflineAudioContext(2, frames, rate);
-      await ctx.audioWorklet.addModule(
-        'data:application/javascript,' + encodeURIComponent(generatorModuleSource()));
-      /* One voice, the gate's, and no chord: the page opens in Poly, and
-         since 10 Nov it plays a chord there with no keyboard too, so the
-         settings copied carry an empty chord (`voices: []`), under which a
-         gate opens on nothing. Until then they carried none. */
-      const tone = Object.assign(
-        JSON.parse(JSON.stringify(state.source.settings)),
-        { shape: 'sine', freq: 220, amp: 0.55, voices: null }, patch || {});
-      const node = new AudioWorkletNode(ctx, 'generator', {
-        numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
-        processorOptions: { slots: GEN_SLOTS, lfos: [
-          { shape: 'sine', rate: 0.2, depth: 0.5 },
-          { shape: 'sine', rate: 0.5, depth: 0.3 },
-        ], tone, routes: [], gated },
-      });
-      node.connect(ctx.destination);
-
-      // Frame boundaries, because a render quantum is 128 and a suspend
-      // between two of them is not a thing that can happen.
-      const onAt = 128;
-      const offAt = Math.round(holdSeconds * rate / 128) * 128;
-      if (gated) {
-        ctx.suspend(onAt / rate).then(() => {
-          node.port.postMessage({ gate: { open: true, velocity: 1 } });
-          ctx.resume();
-        });
-        ctx.suspend(offAt / rate).then(() => {
-          node.port.postMessage({ gate: { open: false, velocity: 0 } });
-          ctx.resume();
-        });
-      }
-      const out = await ctx.startRendering();
-      return { left: Array.from(out.getChannelData(0)), rate, frames, onAt, offAt };
-    }"""
-
-    shaped = p.evaluate(STAGED, [1.0, 0.45, True, {
-        "attackMs": 50, "decayMs": 100, "sustain": 0.5, "releaseMs": 200,
-    }])
-    env = p.evaluate("""([left, rate]) => window.__env(Float32Array.from(left), rate, 10)""",
-                     [shaped["left"], shaped["rate"]])
-    amp = 0.55
-    at = lambda ms: env[int(ms / 10)]
-    print("    10 ms windows, as a fraction of the amplitude:")
-    print("      " + "  ".join("%.0fms %.2f" % (ms, at(ms) / amp)
-                               for ms in (0, 20, 60, 120, 300, 440, 500, 700, 950)))
-    check("it starts from nothing", at(0) / amp < 0.35, "%.3f" % (at(0) / amp))
-    # The peak and when it happened, rather than the value at one window. The
-    # attack ends and the decay starts in the same sample, so a window chosen
-    # a little late is already on the way down - which is true of the signal
-    # and not a fault in it.
-    peak_at = max(range(len(env)), key=lambda i: env[i])
-    check("and is open within the attack it was given",
-          env[peak_at] / amp > 0.9 and peak_at * 10 <= 70,
-          "%.3f, reached at %d ms, attack 50" % (env[peak_at] / amp, peak_at * 10))
-    check("then falls to the sustain it was given",
-          abs(at(300) / amp - 0.5) < 0.04 and abs(at(440) / amp - 0.5) < 0.04,
-          "%.3f at 300 ms, %.3f at 440" % (at(300) / amp, at(440) / amp))
-    check("and is gone within the release it was given",
-          at(700) / amp < 0.02,
-          "%.4f at 700 ms, released at 450 with 200 ms" % (at(700) / amp))
-
-    # The numbers on the sliders, as durations rather than as shapes. A
-    # one-pole aimed at its own target never arrives, so "50 ms" used to mean
-    # a 50 ms time constant and a 90 ms attack; each stage works out its own
-    # span in time constants at the edge, from where the envelope actually is,
-    # so the label is now the duration. Measured at 10 ms resolution, which is
-    # the window this envelope is read through.
-    settled = next((i for i in range(len(env))
-                    if abs(env[i] / amp - 0.5) < 0.02), None)
-    silent = next((i for i in range(int(shaped["offAt"] / shaped["rate"] * 100),
-                                    len(env)) if env[i] / amp < 0.01), None)
-    gate_on_ms = shaped["onAt"] / shaped["rate"] * 1000
-    gate_off_ms = shaped["offAt"] / shaped["rate"] * 1000
-    print("    gate opened at %.0f ms and closed at %.0f; peak at %d, "
-          "sustain by %s, silent by %s"
-          % (gate_on_ms, gate_off_ms, peak_at * 10,
-             settled * 10 if settled is not None else "never",
-             silent * 10 if silent is not None else "never"))
-    check("the attack takes the time it says, not a time constant",
-          abs(peak_at * 10 - (gate_on_ms + 50)) <= 12,
-          "peaked %d ms after the gate, asked for 50" % (peak_at * 10 - gate_on_ms))
-    check("and the decay arrives at the sustain when it said it would",
-          settled is not None and abs(settled * 10 - (gate_on_ms + 150)) <= 25,
-          "settled %d ms after the gate, asked for 50 + 100"
-          % ((settled or 0) * 10 - gate_on_ms))
-    check("and the release is over when it said it would be",
-          silent is not None and abs(silent * 10 - (gate_off_ms + 200)) <= 30,
-          "silent %d ms after the release, asked for 200"
-          % ((silent or 0) * 10 - gate_off_ms))
-
-    # The plan's own wording: within one block. 128 frames at 44.1 kHz is
-    # 2.9 ms, so the first block has to be moving rather than silent.
-    first = p.evaluate("""([left, onAt]) => {
-      const s = Float32Array.from(left);
-      let peak = 0;
-      for (let i = onAt; i < onAt + 128; i++) peak = Math.max(peak, Math.abs(s[i]));
-      return peak;
-    }""", [shaped["left"], shaped["onAt"]])
-    check("a note-on is doing something inside the block after it",
-          first > 1e-4, "peak %.5f in the 128 frames after the gate" % first)
-
-    print("\n--- no step at any edge ---")
-    # What a click is measured against: the waveform's own steepest slope. A
-    # 220 Hz sine at 0.55 moves 0.0172 between samples at its zero crossing,
-    # so anything the envelope adds has to disappear into that.
-    slope = 0.55 * 2 * math.pi * 220 / 44100
-    edges = p.evaluate("""([left, offAt]) => {
-      const s = Float32Array.from(left);
-      return {
-        onset: window.__step(s, 0, 4410 + 128),
-        release: window.__step(s, offAt - 441, offAt + 4410),
-        whole: window.__step(s, 0, s.length),
-      };
-    }""", [shaped["left"], shaped["offAt"]])
-    print("    steepest slope of the tone itself: %.4f per sample" % slope)
-    check("the gate opening is not a step",
-          edges["onset"]["worst"] < slope * 1.2,
-          "%.4f at sample %d" % (edges["onset"]["worst"], edges["onset"]["at"]))
-    check("nor the gate closing",
-          edges["release"]["worst"] < slope * 1.2,
-          "%.4f at sample %d" % (edges["release"]["worst"], edges["release"]["at"]))
-
-    # The harmonograph's restart, the one B1 flagged, was rendered here and
-    # held to a fade until G2 took the drawings.
-
-    print("\n--- legato, and what is not legato ---")
-    legato = p.evaluate("""() => {
-      const own = () => [
-        { shape: 'sine', rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 },
-        { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
-      ];
-      const rate = 44100;
-      const core = makeGeneratorCore(rate, GEN_SLOTS, own());
-      core.set('shape', 'sine');
-      core.set('attackMs', 20); core.set('decayMs', 40);
-      core.set('sustain', 0.5); core.set('releaseMs', 60);
-      core.setGated(true);
-      const l = new Float32Array(4410), r = new Float32Array(4410);
-      const run = (ms) => core.block(l, r, Math.round(ms * rate / 1000));
-
-      core.gate(true, 1);
-      run(200);                                    // well into sustain
-      const held = core.envelope;
-
-      // A second key while the first is down: quieter, and it must change
-      // nothing about the envelope.
-      core.gate(true, 0.25);
-      run(5);
-      const overlaid = core.envelope;
-
-      core.gate(false, 0);
-      run(300);                                    // all the way out
-      const after = core.envelope;
-
-      // And now the same second key, from silence, does start it.
-      core.gate(true, 0.25);
-      run(60);
-      const again = core.envelope;
-      return { held, overlaid, after, again };
-    }""")
-    print("    sustain %.4f, after a second key %.4f, released %.4f, retriggered %.4f"
-          % (legato["held"], legato["overlaid"], legato["after"], legato["again"]))
-    check("a second key over a held one does not restart the envelope",
-          abs(legato["overlaid"] - legato["held"]) < 0.02,
-          "%.4f against %.4f" % (legato["overlaid"], legato["held"]))
-    check("and does not take its velocity either",
-          legato["overlaid"] > 0.4,
-          "%.4f, which would be about 0.125 if it had" % legato["overlaid"])
-    check("a release runs all the way out",
-          legato["after"] == 0, str(legato["after"]))
-    # Sustain times velocity, exactly: 0.5 at a quarter is 0.125, against the
-    # 0.5 the first key held. Stated as the arithmetic rather than as a band,
-    # now that the stages take the time they say and 60 ms is long enough for
-    # a 20 ms attack and a 40 ms decay to have finished.
-    check("and the next key starts it again, at its own velocity",
-          abs(legato["again"] - 0.5 * 0.25) < 0.005,
-          "%.4f, which is the 0.5 sustain at a quarter velocity" % legato["again"])
-
-    # The glide's own time, and that it is its own. `poleFor` used to be
-    # shared with the envelope and scaled by whichever stage the envelope was
-    # in, so a portamento measured on an ungated core was right and the same
-    # portamento under a note was not.
-    gated_glide = p.evaluate("""() => {
-      const own = () => [
-        { shape: 'sine', rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 },
-        { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
-      ];
-      const rate = 44100;
-      const measure = (gated) => {
-        const core = makeGeneratorCore(rate, GEN_SLOTS, own());
-        core.set('shape', 'sine');
-        core.set('glideMs', 200);
-        core.set('sustain', 1);
-        core.set('attackMs', 1); core.set('decayMs', 1);
-        core.set('freq', 220);
-        if (gated) { core.setGated(true); core.gate(true, 1); }
-        const l = new Float32Array(rate), r = new Float32Array(rate);
-        core.block(l, r, 4410);                    // settle, and open the gate
-        core.set('freq', 440);
-        core.block(l, r, 2205);
-        return estimateFrequency(l.subarray(441, 2205), rate);
-      };
-      return { open: measure(false), held: measure(true) };
-    }""")
-    print("    50 ms into a glide: %.1f Hz ungated, %.1f Hz under a note"
-          % (gated_glide["open"] or 0, gated_glide["held"] or 0))
-    check("a glide takes the same time whether a note is holding or not",
-          gated_glide["open"] is not None and gated_glide["held"] is not None
-          and abs(gated_glide["open"] - gated_glide["held"]) < 8,
-          "%.1f against %.1f" % (gated_glide["open"], gated_glide["held"]))
+          not dict(opens, gated=False) == {"kind": "host", "gated": True, "present": False})
 
     print("\n--- the envelope as something to point at ---")
     source = p.evaluate("""() => {
@@ -371,36 +100,10 @@ with sync_playwright() as pw:
     # meter now: the null is that it is no longer listed.
     check("it is registered, and the level is not, since F4b made it the output meter",
           source["hasNote"] and "env.live" not in source["listed"], str(source["listed"]))
-    check("and reads nothing while nothing is gated",
+    # On the default it is the instrument's envelope, read back (playingKind
+    # is "tone" for the instrument's generator): nought with no note held.
+    check("and reads nothing while no note is held",
           source["ungated"] == 0, str(source["ungated"]))
-
-    glide = p.evaluate("""() => {
-      const own = () => [
-        { shape: 'sine', rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 },
-        { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 },
-      ];
-      const rate = 44100;
-      const measure = (glideMs) => {
-        const core = makeGeneratorCore(rate, GEN_SLOTS, own());
-        core.set('shape', 'sine');
-        core.set('glideMs', glideMs);
-        core.set('freq', 220);
-        const l = new Float32Array(rate), r = new Float32Array(rate);
-        core.block(l, r, 2205);                    // 50 ms at 220
-        core.set('freq', 440);
-        core.block(l, r, 2205);                    // the next 50 ms
-        return estimateFrequency(l.subarray(441, 2205), rate);
-      };
-      return { off: measure(0), on: measure(200) };
-    }""")
-    print("    the 50 ms after a jump to 440: %s off, %s with a 200 ms glide"
-          % (glide["off"], glide["on"]))
-    check("with no glide the pitch is simply the new one",
-          glide["off"] is not None and abs(glide["off"] - 440) < 12,
-          str(glide["off"]))
-    check("and with a glide it is still on its way there",
-          glide["on"] is not None and glide["on"] < 400,
-          str(glide["on"]))
 
     print("\n--- and a key on a real keyboard, end to end ---")
     # None of the above presses a key. The envelope could be perfect and the
@@ -408,11 +111,12 @@ with sync_playwright() as pw:
     # exists to make.
     played = p.evaluate("""async () => {
       await midiConnect();
-      el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
-      state.source.set('attackMs', 10);
-      state.source.set('decayMs', 20);
-      state.source.set('sustain', 0.8);
-      state.source.set('releaseMs', 40);
+      /* Through the controls, which the instrument hears; on ?brain=js until
+         batch 4 these were state.source.set on the page's own generator,
+         which on the site would set the face's mirror and nothing heard. */
+      setControl('shape', 'sine');
+      setControl('envAttack', 10); setControl('envDecay', 20);
+      setControl('envSustain', 80); setControl('envRelease', 40);
       const read = () => MOD_SOURCES.get('env.note').value();
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -424,23 +128,18 @@ with sync_playwright() as pw:
       window.__send([0x80, 69, 0]);                // and up
       await wait(200);
       const gone = { gated: state.source.gated, env: read() };
-
-      /* A key already down when the gate is HANDED OVER has to sound, and the
-         obvious way for it to be wrong is for the gate to open and then wait
-         for a key that is already there. Until G2 the handover was ticking
-         Drives while holding a note, and until 10 Nov the keyboard arriving
-         (`midi.access` given back); the generator is gated from the first
-         frame now, so the one handover left is the generator coming back from
-         an input: the microphone drawn, a key struck, and the waveform chosen
-         again - a new generator, not yet gated, under a key already down. */
-      await toMic();
-      await wait(300);
-      window.__send([0x90, 69, 100]);
-      await wait(80);
-      const beforeHandover = { kind: state.source.kind, gated: !!state.source.gated };
-      toTone();
+      // The null for the velocity: the same key at full, 0.8 and not 0.63.
+      window.__send([0x90, 69, 127]);
       await wait(160);
-      const afterHandover = { kind: state.source.kind, gated: state.source.gated, env: read() };
+      const hard = { gated: state.source.gated, env: read() };
+      window.__send([0x80, 69, 0]);
+      await wait(200);
+
+      /* Until batch 4 a key held while the gate was HANDED OVER from an input
+         was checked here: toMic(), a key, toTone() - a new page generator,
+         not yet gated, under a key already down. Only the page's brain hands
+         a gate over like that; the instrument has one generator, gated from
+         the first frame, whatever the screen draws. So it went. */
 
       // The keyboard going leaves the generator waiting for a note, not freed.
       const access = window.__access = midi.access;
@@ -449,25 +148,29 @@ with sync_playwright() as pw:
       await wait(600);
       const handedBack = { gated: state.source.gated, env: read() };
       const line = el.readoutDetail.textContent;
-      return { idle, held, gone, handedBack, line,
-               beforeHandover, afterHandover };
+      return { idle, held, gone, hard, handedBack, line };
     }""")
     print("    idle %s, held %s, released %s, keyboard gone %s"
           % (played["idle"], played["held"], played["gone"], played["handedBack"]))
-    check("connecting a keyboard that drives the generator gates it",
+    # Until batch 4: "connecting a keyboard that drives the generator gates
+    # it", on the page's own generator, which until 10 Nov went ungated
+    # without one. The instrument is gated from its first frame whatever is
+    # connected, so what is left to hold is that a connected keyboard finds it
+    # gated and at nought before a key (the key's reading below is the null).
+    check("with a keyboard connected the instrument is gated, at nought before a key",
           played["idle"]["gated"] is True and played["idle"]["env"] == 0,
           str(played["idle"]))
+    # Tightened in batch 4 from "between 0.5 and 0.85", which a key at full
+    # velocity (0.8) also passed.
+    at_velocity = lambda env, vel: abs(env - 0.8 * vel / 127) < 0.04
     check("a key opens the envelope, at the velocity it was played",
-          played["held"]["env"] > 0.5 and played["held"]["env"] < 0.85,
+          at_velocity(played["held"]["env"], 100),
           "%.4f, against a 0.8 sustain at velocity %.2f"
           % (played["held"]["env"], 100 / 127))
+    check("null: the same key at full velocity is not read as the one at 100",
+          not at_velocity(played["hard"]["env"], 100) and at_velocity(played["hard"]["env"], 127), str(played["hard"]))
     check("and letting go closes it",
           played["gone"]["env"] == 0, str(played["gone"]))
-    check("a key held while the gate is handed over from an input sounds straight away",
-          played["beforeHandover"] == {"kind": "mic", "gated": False}
-          and played["afterHandover"]["kind"] == "tone" and played["afterHandover"]["gated"] is True
-          and played["afterHandover"]["env"] > 0.5,
-          "%s then %s" % (played["beforeHandover"], played["afterHandover"]))
     check("and the keyboard going leaves the generator gated and silent, waiting for a note",
           played["handedBack"]["gated"] is True and played["handedBack"]["env"] == 0,
           str(played["handedBack"]))

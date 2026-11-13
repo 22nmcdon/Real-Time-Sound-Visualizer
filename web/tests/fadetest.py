@@ -23,7 +23,7 @@ the fade. The failures to guard against:
 - a sound loaded that arrives over the fade rather than at once - its knobs
   walked from the last sound's, its routings faded in, the ones it drops
   fading out as ghosts - by any of the ways a sound is loaded, and heard so
-  on either brain;
+  on the instrument;
 - the setting stored in the setup code, where every preset load would put it
   back to off before its routings could fade.
 
@@ -429,7 +429,7 @@ with sync_playwright() as pw:
           landed["bad"] == [] and landed["moved"] > landed["total"] * 0.65 and landed["routed"] > 20,
           "%d of %d moved a slider, %d had routings; %s" % (landed["moved"], landed["total"], landed["routed"], landed["bad"][:3]))
 
-    print("\n--- heard: a preset's tremolo, on both brains ---")
+    print("\n--- heard: a preset's tremolo, on the instrument ---")
     # What the instrument plays, not what the page says: a held note, the
     # fade's attack at eight seconds, and a preset whose one routing is an LFO
     # at twelve hertz on the level at 0.9. Read off the picture every 50 ms
@@ -441,7 +441,7 @@ with sync_playwright() as pw:
     # more with other suites beside it, and the instrument hears the setup
     # after it, so it is given two seconds; faded in, it would be a quarter of
     # the way at two seconds, about 0.8, and under 0.3 at six. The null on
-    # each brain: the same routing patched by a hand, which a fade eases.
+    # the same routing patched by a hand, which a fade eases.
     HEARD = """async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const depth = () => {
@@ -480,12 +480,14 @@ with sync_playwright() as pw:
         return { kind: state.source.kind, still, loaded, settled, patched };
       } finally { PRESETS.shift(); }
     }"""
-    js = ctx.new_page()
-    js.add_init_script(STUB)
-    js.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
-    js.goto(f"file://{ART}/scope.html?picture=0&brain=js"); js.wait_for_timeout(1500)
-    if js.locator("#helpClose").is_visible(): js.locator("#helpClose").click()
-    for label, page in (("the instrument", p), ("the page's own brain", js)):
+    # Until stage 5, step 3, batch 4 (13 Nov) this ran on a second page on
+    # ?picture=0&brain=js as well, the page's own generator, and then checked
+    # "the two brains are the two: the instrument, then the page's own". That
+    # brain is being retired; the instrument's leg holds both claims, and what
+    # is left of the pair is that the leg is the instrument's - read off the
+    # source the run itself reports, since a page still on its boot tone
+    # would hear the page's generator and pass.
+    for label, page in (("the instrument", p),):
         got = page.evaluate(HEARD)
         print("    %s: %s" % (label, got))
         check("on %s a held note is steady before, and the tremolo is whole within two seconds of the load, as deep as it settles" % label,
@@ -493,9 +495,7 @@ with sync_playwright() as pw:
               and got["settled"] is not None and abs(got["loaded"]["d"] - got["settled"]) < 0.08, str(got))
         check("null: on %s the same routing patched by hand is not whole within two seconds" % label,
               got["patched"]["ms"] is None and got["patched"]["d"] is not None and got["patched"]["d"] > 0.5, str(got))
-    check("and the two brains are the two: the instrument, then the page's own",
-          p.evaluate("() => state.source.kind") == "host" and js.evaluate("() => state.source.kind") == "tone")
-    js.close()
+    check("and what was heard is the instrument's", got["kind"] == "host", got["kind"])
 
     print("\n--- the envelope: two times and two shapes ---")
     env = run(p, """

@@ -23,7 +23,7 @@ What would go wrong, and what is checked for it:
   move with Play's attack and not with its own, and the other way round
   with its own, each with its null;
 - the Envelope's dot jumping about its card (the owner, 11 Nov): over a note
-  held and let go, on both brains, in Mono and Poly, following Play and its
+  held and let go, on the instrument, in Mono and Poly, following Play and its
   own, read every frame, the dot must go through attack, decay, sustain and
   release in that order and only forwards, and sit on the curve drawn; over
   notes in a row it may go back only into a new note's attack. The null is
@@ -577,12 +577,11 @@ with sync_playwright() as pw:
         if not any(f["stage"] == "release" for f in trace): wrong.append("never a release")
         return wrong
 
-    js = b.new_page(viewport={"width": 1400, "height": 900})
-    js.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
-    js.goto(f"file://{ART}/scope.html?brain=js"); js.wait_for_timeout(1200)
-    if js.locator("#helpClose").is_visible(): js.locator("#helpClose").click()
-    js.evaluate("() => { setView('bench'); setBenchTab('play'); }")
-    for label, page in (("the instrument", p), ("the page's own brain", js)):
+    # Until stage 5, step 3, batch 4 (13 Nov) these ran twice, here and on a
+    # second page on ?brain=js, where the dot read the page brain's own
+    # envelope stage and level: six checks, the same claims. That brain is
+    # being retired and the instrument's leg holds every claim, so the leg went.
+    for label, page in (("the instrument", p),):
         for mode in ("mono", "poly"):
             for own in (False, True):
                 trace = page.evaluate(TRACE, [mode, own, False])
@@ -609,7 +608,6 @@ with sync_playwright() as pw:
     p.evaluate("() => { window.stepEnvWhere = window.__stepEnvWhere; }")
     null("the old guess, put back, fails the same reading over a held note", along(guessed) != [], "; ".join(along(guessed)))
     null("and over notes in a row", phrase(guessedRow) != [], "; ".join(phrase(guessedRow)))
-    js.close()
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
