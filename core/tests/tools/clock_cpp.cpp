@@ -46,6 +46,23 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     // Whether B's echo is its own: the Delay's link since G6, where it was B's own plane and effects at once.
     else if (cmd == "echob") { brain.handOwn[scope::kHandDelay] = arg(1) == "1"; brain.echoB.sync = arg(2) == "-" ? "" : arg(2); brain.echoB.ms = num(3); }
     else if (cmd == "phase") lfos[static_cast<std::size_t>(num(1))].phase = num(2);
+    // Stage 5's pieces only (core/tests/pieces/clock.py; clock_js has no such
+    // command): MS of audio through the generator that steps the oscillators,
+    // counting the first one's rising crossings of nought, so a locked rate is
+    // read off the oscillator going round rather than off its field. The clock
+    // does not move while it plays: the frame's time is the run's.
+    else if (cmd == "play") {
+      const int n = static_cast<int>(num(1) * 48);
+      std::vector<float> l(static_cast<std::size_t>(n)), r(static_cast<std::size_t>(n));
+      int crossings = 0;
+      double last = lfos[0].value;
+      for (int k = 0; k < n; k++) {
+        gen.block(l.data() + k, r.data() + k, 1);
+        if (last < 0 && lfos[0].value >= 0) crossings++;
+        last = lfos[0].value;
+      }
+      log.push_back("crossings " + std::to_string(crossings));
+    }
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
 
     std::string line = cmd;

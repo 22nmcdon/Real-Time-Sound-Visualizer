@@ -18,11 +18,24 @@ Against the way each would fail:
   sending when the scope stops or the page is hidden;
 - a rate limit that is not one: a hundred note-ons at once are forty sent.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its sources'
-# functions, bound directly - which core/tests/parity.py holds the instrument
-# to, sample for sample. The instrument, the site's default since 5m, is
-# braintest.py's and hosttest.py's.
-import math, os
+# Stage 5, step 3, batch 2 (13 Nov). Sixteen of this suite's twenty checks
+# called the page's own scoreColumn, scorePitches, keyMask and scoreTick on
+# grids written by hand, built its makeGeneratorCore for the struck voice,
+# and fed its midiOutNote a stubbed port: reading a column, the playhead at
+# the tempo, the voice heard and not drawn, and MIDI out's channel, note-offs
+# and rate limit. They are core/tests/pieces/score.py's now, asserted on the
+# core's score, MidiOut and generator with a null each, and parity runs
+# them; each old site below says what it was.
+#
+# What is left stays on ?brain=js: Stop's and a hidden page's all-notes-off,
+# and the box ticked with real frames. Each reads the page's own score and
+# MIDI out (score.steps, a wrapped state.source.strike, setRunning and the
+# page's visibilitychange calling midiOutPanic). On the default the score and
+# its MIDI out are the instrument's (Instrument::midiOut), while the page
+# still steps its own score every frame beside it, so which of the two sends
+# what reaches the port is step 5's to settle (STAGE5-INVENTORY.md, section
+# 4: Stop's all-notes-off); moved now, these would pass on the page's score.
+import os
 from playwright.sync_api import sync_playwright
 import corpus
 
@@ -61,140 +74,21 @@ with sync_playwright() as pw:
     corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
 
-    print("\n--- reading a column ---")
-    cols = p.evaluate("""() => {
-      const N = PHOSPHOR_N, grid = () => new Float32Array(N * N);
-      const chrom = scorePitches(48, 3, keyMask(0, 'chromatic'));
-      const dorian = scorePitches(50, 2, keyMask(2, 'dorian'));
-      // One row lit, a quarter of the way up.
-      const one = grid(); for (let c = 0; c < N; c++) one[48 * N + c] = 0.8;
-      const row = [0, 17, 63].map((c) => scoreColumn(one, N, c, chrom, 2));
-      // A diagonal, bottom left to top right.
-      const diag = grid(); for (let c = 0; c < N; c++) diag[(N - 1 - c) * N + c] = 1;
-      const rising = [], dor = [];
-      for (let c = 0; c < N; c++) {
-        const a = scoreColumn(diag, N, c, chrom, 1), d = scoreColumn(diag, N, c, dorian, 1);
-        rising.push(a.length ? a[0][0] : null); dor.push(d.length ? d[0][0] : null);
-      }
-      // Four lit at once, two voices; and a smudge below the floor.
-      const four = grid(); [[10, 0.9], [20, 0.3], [30, 0.7], [40, 0.5]].forEach(([r, g]) => { four[r * N + 5] = g; });
-      const smudge = grid(); smudge[30 * N + 5] = 0.1;
-      const empty = scoreColumn(grid(), N, 5, chrom, 4);
-      return { row, rising, dor, dorianSet: dorian, two: scoreColumn(four, N, 5, chrom, 2),
-               smudge: scoreColumn(smudge, N, 5, chrom, 4), empty, want: chrom[Math.floor(15 * 36 / 64)] };
-    }""")
-    print("    one row: %s (want %d at 0.8)" % (cols["row"][0], cols["want"]))
-    check("a single lit row is one note in every column, the one its height names, at its brightness",
-          all(len(c) == 1 and c[0][0] == cols["want"] and abs(c[0][1] - 0.8) < 1e-6 for c in cols["row"]),
-          str(cols["row"]))
-    rising = cols["rising"]
-    steps = [b2 - a2 for a2, b2 in zip(rising, rising[1:])]
-    check("a diagonal is a rising scale, every note from C3 to B5 and none twice out of order",
-          None not in rising and all(s >= 0 for s in steps) and rising[0] == 48 and rising[-1] == 83
-          and sorted(set(rising)) == list(range(48, 84)), "%s ... %s" % (rising[:5], rising[-3:]))
-    # Written out here, not asked of the page: checked against the page's own
-    # list, a key that was ignored agreed with itself and passed.
-    DORIAN = [50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72]
-    check("and in D dorian every note of it is in D dorian, the whole scale climbed",
-          cols["dorianSet"] == DORIAN and sorted(set(cols["dor"])) == DORIAN, "%s" % sorted(set(cols["dor"])))
-    two = cols["two"]
-    check("with two voices the chord is the two brightest, loudest first",
-          len(two) == 2 and abs(two[0][1] - 0.9) < 1e-6 and abs(two[1][1] - 0.7) < 1e-6, str(two))
-    check("and a smudge under the floor plays nothing, as an empty column plays nothing",
-          cols["smudge"] == [] and cols["empty"] == [], "%s, %s" % (cols["smudge"], cols["empty"]))
-
-    print("\n--- the playhead ---")
-    tick = p.evaluate("""() => {
-      const saved = phosphor.grid.slice(), N = PHOSPHOR_N;
-      phosphor.grid.fill(0); for (let c = 0; c < N; c++) phosphor.grid[40 * N + c] = 0.9;
-      const src = state.source, strike = src.strike.bind(src), got = [];
-      src.strike = (notes) => { got.push(notes.map((n) => n[0])); strike(notes); };
-      const run = (bpm) => {
-        // The bar started at t0: the score's columns are the bar's now, and
-        // it used to be enough to clear the score's own start.
-        setTempo(bpm); got.length = 0; score.on = true;
-        const t0 = 100000, cols = []; transportStart(t0);
-        for (let t = 0; t <= 1000; t += 10) { scoreTick(t0 + t); cols.push(score.col); }
-        score.on = false; scoreStop();
-        return { strikes: got.length, lastCol: cols[cols.length - 1], hz: got[0] && got[0][0] };
-      };
-      const fast = run(120), slow = run(60);
-      // An empty grid, played for the same second: nothing struck.
-      phosphor.grid.fill(0); const none = run(120);
-      phosphor.grid.set(saved); src.strike = strike; setTempo(120);
-      // Back on the page's own time, or its frames find the bar started a
-      // hundred seconds from now and stood still until then.
-      transportStart(performance.now());
-      return { fast, slow, none };
-    }""")
-    print("    %s" % tick)
-    check("at 120 BPM in semiquavers a second from nought is nine steps, each striking the lit row's note",
-          tick["fast"]["strikes"] == 9 and tick["fast"]["lastCol"] == 8, str(tick["fast"]))
-    check("and at 60 BPM it is five: the playhead keeps the tempo", tick["slow"]["strikes"] == 5, str(tick["slow"]))
-    check("and an empty grid strikes nothing", tick["none"]["strikes"] == 0, str(tick["none"]))
-
-    print("\n--- the voice ---")
-    voice = p.evaluate("""() => {
-      const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const make = () => { const c = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
-                           c.set('amp', 0.3); c.set('freq', 110); return c; };
-      const run = (struck) => {
-        const core = make(), n = 44100;
-        if (struck) core.strike(1000, 1);
-        const L = new Float32Array(n), R = new Float32Array(n), HL = new Float32Array(n), HR = new Float32Array(n);
-        core.block(L, R, n, HL, HR);
-        return { L, R, HL, HR };
-      };
-      const a = run(false), b = run(true);
-      // Heard and not drawn: the picture untouched by the strike, and what
-      // is heard beyond the picture the note alone, the same in both ears.
-      // The null for the first is the heard pair read as the picture.
-      let picture = 0, misread = 0, beyond = 0, ears = 0, early = 0, late = 0;
-      for (let i = 0; i < 44100; i++) {
-        picture = Math.max(picture, Math.abs(b.L[i] - a.L[i]), Math.abs(b.R[i] - a.R[i]));
-        misread = Math.max(misread, Math.abs(b.HL[i] - a.L[i]));
-        beyond = Math.max(beyond, Math.abs(b.HL[i] - b.L[i]));
-        ears = Math.max(ears, Math.abs((b.HL[i] - b.L[i]) - (b.HR[i] - b.R[i])));
-      }
-      // The heard difference is the struck note alone: its peak just after
-      // the strike, and after one decay time of 400 ms.
-      for (let i = 200; i < 2400; i++) early = Math.max(early, Math.abs(b.HL[i] - a.HL[i]));
-      for (let i = 17640; i < 17640 + 441; i++) late = Math.max(late, Math.abs(b.HL[i] - a.HL[i]));
-      return { picture, misread, beyond, ears, early, late };
-    }""")
-    print("    picture moved %.2e; heard beyond the picture %.4f, left against right %.2e; heard note %.4f just "
-          "after the strike (want 0.2), %.4f at 400 ms (want %.4f)" % (voice["picture"], voice["beyond"], voice["ears"],
-                                                                      voice["early"], voice["late"], 0.2 / math.e))
-    check("a struck note is heard at its level, 0.4 times its velocity over two",
-          abs(voice["early"] - 0.2) < 0.005, str(voice))
-    check("and it is not drawn: the picture is untouched, and what is heard beyond it is the note, in both ears alike",
-          voice["picture"] == 0 and voice["beyond"] > 0.15 and voice["ears"] < 1e-6, str(voice))
-    check("and the picture check fails with the heard pair read as the picture", voice["misread"] > 0.15, str(voice))
-    check("and it dies away to 1/e over its 400 ms", abs(voice["late"] - 0.2 / math.e) < 0.006, str(voice))
+    # Were, on ?brain=js: reading a column (a lit row is one note, a diagonal
+    # a rising scale, D dorian's notes, the two brightest, the floor), the
+    # playhead (nine steps at 120, five at 60, none from an empty grid) and the
+    # voice (heard at 0.4 times velocity over two, not drawn, its null, 1/e at
+    # 400 ms). core/tests/pieces/score.py's now.
 
     print("\n--- MIDI out ---")
     p.evaluate("() => midiConnect()"); p.wait_for_timeout(300)
     out = p.evaluate("""async () => {
       el.midiOut.value = 'out1'; el.midiOutCh.value = '2';
       el.midiOut.dispatchEvent(new Event('change'));
-      __sent.length = 0;
       const saved = phosphor.grid.slice(), N = PHOSPHOR_N;
       phosphor.grid.fill(0); for (let c = 0; c < N; c++) phosphor.grid[40 * N + c] = 1;
-      setTempo(120); score.on = true; transportStart(200000);
-      scoreTick(200000); scoreTick(200130);
-      const played = __sent.map((m) => m.slice());
-      /* Two rows in turn, so each step's note differs from the last: the
-         last must be ended as the next begins. With one row the new note-on
-         of the same note ended it anyway, and nothing checked the rest. */
-      score.on = false; scoreStop(); __sent.length = 0;
-      phosphor.grid.fill(0);
-      for (let c = 0; c < N; c++) phosphor.grid[(c % 2 ? 10 : 50) * N + c] = 1;
-      score.on = true; transportStart(210000);
-      scoreTick(210000); scoreTick(210130);
-      const turns = __sent.map((m) => m.slice());
-      score.on = false; scoreStop();
-      phosphor.grid.fill(0); for (let c = 0; c < N; c++) phosphor.grid[40 * N + c] = 1;
-      score.on = true; transportStart(220000); scoreTick(220000);
+      setTempo(120); score.on = true; transportStart(220000); scoreTick(220000);
+      const sounding = __sent.filter((m) => m[0] === 0x92).map((m) => m[1]).pop();
       // Stopping the scope ends what was sent.
       __sent.length = 0; setRunning(false);
       const stopped = __sent.map((m) => m.slice());
@@ -206,40 +100,21 @@ with sync_playwright() as pw:
       document.dispatchEvent(new Event('visibilitychange'));
       Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
       const hidden = __sent.map((m) => m.slice());
-      // A hundred note-ons at once.
-      __sent.length = 0; midiOut.times = []; midiOut.dropped = 0;
-      const t = performance.now();
-      for (let i = 0; i < 100; i++) midiOutNote(40 + (i % 40), 0.5, t);
-      const burst = { ons: __sent.filter((m) => (m[0] & 0xf0) === 0x90).length, dropped: midiOut.dropped };
-      midiOutPanic();
-      // An empty grid, played: nothing sent.
-      phosphor.grid.fill(0); __sent.length = 0; score.on = true; transportStart(300000);
-      for (let k = 0; k < 20; k++) scoreTick(300000 + k * 60);
-      const quiet = __sent.filter((m) => (m[0] & 0xf0) === 0x90).length;
-      score.on = false; scoreStop(); phosphor.grid.set(saved);
-      const status = el.midiOutStatus.textContent;
+      phosphor.grid.set(saved);
       transportStart(performance.now());
-      return { played, turns, stopped, hidden, burst, quiet, status };
+      return { sounding, stopped, hidden };
     }""")
-    print("    played %s; stopped %s; hidden %s; burst %s; empty grid sent %d" %
-          (out["played"], out["stopped"], out["hidden"], out["burst"], out["quiet"]))
-    ons = [m for m in out["played"] if m[0] == 0x92]
-    offs = [m for m in out["played"] if m[0] == 0x82]
-    check("the score's notes go out on the chosen channel, the last one ended before the next begins",
-          len(ons) == 2 and len(offs) == 1
-          and out["played"] == [[0x92, ons[0][1], 127], [0x82, ons[0][1], 0], [0x92, ons[0][1], 127]],
-          str(out["played"]))
-    t = out["turns"]
-    check("and when the next step's note is another, the last is ended before it begins",
-          len(t) == 3 and t[0][0] == 0x92 and t[1] == [0x82, t[0][1], 0] and t[2][0] == 0x92 and t[2][1] != t[0][1],
-          str(t))
+    print("    stopped %s; hidden %s" % (out["stopped"], out["hidden"]))
+    # Were, on ?brain=js: the score's notes on the chosen channel with the
+    # last ended before the next begins, the same when the next note is
+    # another, a hundred note-ons being forty sent and sixty dropped, and an
+    # empty grid sending nothing. core/tests/pieces/score.py's now, on the
+    # core's MidiOut.
+    n = out["sounding"]
     check("stopping the scope ends the sounding note and sends all-notes-off on that channel",
-          [0x82, ons[0][1], 0] in out["stopped"] and [0xB2, 123, 0] in out["stopped"], str(out["stopped"]))
+          n is not None and [0x82, n, 0] in out["stopped"] and [0xB2, 123, 0] in out["stopped"], str(out["stopped"]))
     check("hiding the page does the same", [0x82, 64, 0] in out["hidden"] and [0xB2, 123, 0] in out["hidden"],
           str(out["hidden"]))
-    check("a hundred note-ons at once are forty sent and sixty dropped, and none of the note-offs",
-          out["burst"] == {"ons": 40, "dropped": 60}, str(out["burst"]))
-    check("and an empty grid sends nothing at all", out["quiet"] == 0, str(out["quiet"]))
 
     # With real frames: the box ticked, a figure drawn, a second of playing.
     live = p.evaluate("""async () => {

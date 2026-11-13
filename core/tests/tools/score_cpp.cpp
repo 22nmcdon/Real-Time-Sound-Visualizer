@@ -1,6 +1,7 @@
 // The core's score, MIDI out and notes out, as the Brain holds them and on
 // its clock, linked as linkClock links them, through the same runs as
 // score_js.mjs, one result line per command. See that file for the language.
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -62,6 +63,20 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     else if (cmd == "panic") out.panic();
     else if (cmd == "note") out.noteOut(static_cast<int>(num(arg(1))), num(arg(2)), now);
     else if (cmd == "off") out.noteOutOff(static_cast<int>(num(arg(1))));
+    // Stage 5's pieces only (core/tests/pieces/score.py; score_js has no such
+    // commands): the grid cleared, and a column read as a chord - scoreColumn
+    // over scorePitches in a key, as the score's frame reads it - or the
+    // pitches alone, so a column's reading is held without a playhead.
+    else if (cmd == "clear") std::fill(grid.begin(), grid.end(), 0.0f);
+    else if (cmd == "column" || cmd == "pitches") {
+      const auto pitches = scope::scorePitches(num(arg(cmd == "column" ? 3 : 1)), num(arg(cmd == "column" ? 4 : 2)),
+                                               scope::keyMask(num(arg(cmd == "column" ? 5 : 3)), arg(cmd == "column" ? 6 : 4)));
+      std::string said = cmd;
+      if (cmd == "pitches") for (const int p : pitches) said += " " + std::to_string(p);
+      else for (const auto& [n, v] : scope::scoreColumn(grid.data(), 64, static_cast<int>(num(arg(1))), pitches, num(arg(2))))
+        said += " " + std::to_string(n) + "/" + show(v);
+      log.push_back(said);
+    }
     else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); std::exit(2); }
 
     std::string line = cmd;
