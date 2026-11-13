@@ -212,7 +212,7 @@ the full suite and parity pass.
    **Batch 3 done (13 Nov): `scan`, `strike`, and the rows held for "a source
    held at a value" in `lane`, `mod`, `photo` and `loop`** - 135 piece checks
    with their nulls (scan, strike, lane, mod, photo, loop), web checks 285 to
-   177 over the six, `?brain=js` opens 6 to 3 (scan's held run, and mod's,
+   176 over the six, `?brain=js` pages 9 to 5 (scan's held run, and mod's,
    photo's and loop's pages for rows outside the batch); a source is held at
    a value in `matrix_cpp`, on the instrument's own screen destinations, so
    still no `render_cpp`. 37 core mutations each seen red, after four checks

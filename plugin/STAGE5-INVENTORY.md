@@ -640,13 +640,13 @@ reach names in `matrix_cpp`; `dump` in `capture_cpp`; `reads` in
 
 | Suite | Web checks before | after | pieces checks (nulls) | `?brain=js` opens | Rows: to pieces / moved / rewritten / split / gone / left |
 |---|---|---|---|---|---|
-| scan | 71 | 16 | 58 (28) | 1 to 1 (`?brain=js&core=js`, the held run alone; and the `?brain=js` site legs gone) | 19 / 4 / 3 / 1 / 4 / 1 |
+| scan | 71 | 15 | 58 (28) | 3 to 1 (`?brain=js&core=js`, the held run alone; the `?brain=js` site legs and the page section's own page gone) | 19 / 4 / 3 / 1 / 4 / 1 |
 | strike | 36 | 11 | 27 (13) | 1 to 0 | 15 / 5 / 0 / 0 / 0 / 0 |
 | lane | 35 | 27 | 14 (6) | 1 to 0 | 8 / 0 / 0 / 0 / 0 / 0 |
 | mod | 31 | 27 | 8 (4) | 1 to 1 | 4 / 0 / 0 / 0 / 0 / 0 |
 | photo | 37 | 35 | 4 (2) | 1 to 1 | 2 / 0 / 0 / 0 / 0 / 0 |
-| loop | 75 | 61 | 24 (10) | 1 to 1 | 10 / 0 / 4 / 0 / 0 / 0 |
-| **six suites** | **285** | **177** | **135 (63)** | **6 to 3** | **58 / 9 / 7 / 1 / 4 / 1** |
+| loop | 75 | 61 | 24 (10) | 2 to 2 | 10 / 0 / 4 / 0 / 0 / 0 |
+| **six suites** | **285** | **176** | **135 (63)** | **9 to 5** | **58 / 9 / 7 / 1 / 4 / 1** |
 
 (Web counts are checks run, a loop's iterations each. "Rewritten" rows on
 loop are its page-compiler rows, :147, :149, :186 and :188, now asked of the
@@ -654,7 +654,26 @@ core's matrix in the pieces rather than dropped as the inventory proposed.
 mod, photo and loop keep their `?brain=js` pages for the rows outside this
 batch.)
 
-The counters over the six suites (`run.py --brain-counts`): BRAINCOUNTS
+The counters over the six suites (`run.py --brain-counts`, before on
+6358eb8's parent with the same page, and after): pages on `?brain=js` 9 to
+5; frames the page's brain stepped there 31,539 to 25,027, of which loop's
+stability runs, outside this batch, are 25,477 and 22,584 (they read the
+stage over seconds of real frames and are render_cpp's); scan's 3,430 to
+562, strike's 594 to 0, lane's 91 to 0, mod's 871 to 829 and photo's 1,076
+to 1,052 (their pages stay for rows outside the batch, so few frames go
+with the rows that left). `scanStep` there 31,273 to 24,759. On the default
+the six suites' frames went from 2,630 to 3,404: scan's page section and
+strike's Reads row moved to the default page, the face's own.
+
+The parent's run failed scan's "the page's brain on the compiled generator
+sends it the tables, and it plays them" (0.0035), one of the known flaky
+legs; it is one of the `?brain=js` site legs this batch removed.
+
+The full run after (97 suites, 55 minutes, 2,748 checks passed): one
+failure, looptest's "with Scan at its top, its wave was still moving" at a
+median of 0.043 under three suites at once, a row this batch left on the
+page; alone, twice, it passed (0.078 and 0.098 on the same reading).
+Parity passed, 1,443 checks.
 
 ### Checks that passed on the default for the wrong reason, or could not fail
 
