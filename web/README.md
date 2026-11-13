@@ -6520,3 +6520,24 @@ details on both brains and read the diff (`cap` drew from a 32768-sample
 buffer on "the default" - the page's Mic, not the instrument's two-second
 ring), and for each reading ask what writes it on the default. The batch's
 list is section 6 of `plugin/STAGE5-INVENTORY.md`.
+
+**`restore()` is unheard too, and a route's held value needs no render (13
+Nov).** Stage 5's second batch moved nine suites' numbers into
+`core/tests/pieces/`, assertions on the core's own output through parity's
+tools, run alone with `python3 core/tests/pieces/run.py [name]` and by parity
+as its last section; `PIECES_INCLUDE=<copy>/include` builds them against a
+scratch copy of the core, which is how to mutate a header without leaving a
+diff. Three things a later batch would otherwise find again. `restore()`
+called directly changes only the face on the default: only `loadCode` and a
+preset's load send the instrument the setup, so a fixture that restores a
+code by hand tests the page's mirror (layerpicture's did, until its null went
+red). A check over a list - `all(...)` of the partials the pane found - passes
+on an empty list, so a null that removes the signal (the note let go) is the
+one that shows whether the check reads anything (alias's two did not). And
+`generator_cpp` takes a route with its held value put in (`routes
+-1/held/heldB/slot/amount/amountB/flags`), so "a source held at a value",
+which batch 1 left for `render_cpp`, is often already reachable there.
+`plugin/STAGE5-INVENTORY.md` section 7 has the rest, and two site defects the
+batch found and did not fix: Learn's split point moves the face's point and
+not the instrument's, and a MIDI clock byte inside a port's note-on loses the
+note.

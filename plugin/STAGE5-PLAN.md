@@ -200,6 +200,15 @@ the full suite and parity pass.
    checks to 318 and parity +5; six kinds of check found passing on the
    default for the page's reason (or reading silence on both), each rewritten. `STAGE5-INVENTORY.md` section 6 and its
    "Batch 1" columns.
+   **Batch 2 done (13 Nov): `alias`, `drawbar`, `pulse`, `score`, `shape`,
+   `clock`, `layer`, `layerplane`, `layerpicture`** - their numbers rows as
+   assertions on the core alone in `core/tests/pieces/` (parity's last
+   section, or `pieces/run.py` in a minute), 304 checks with their nulls;
+   web checks 290 to 121, `?brain=js` opens 9 to 4 (the clock's and score's
+   panels, which draw the page's own brain, shape's survey and layer's
+   learned split point). No `render_cpp` was needed. Two site defects found,
+   not fixed: the learned split point reaches only the face, and a clock byte
+   inside a port's note-on loses the note. `STAGE5-INVENTORY.md` section 7.
 4. **The constellation, and anything else only the page's brain does.** Port
    it to the core (ways-to-draw's own step 3), or keep it as a look-only
    drawing on the page, seen and not heard, until it is ported. The owner's

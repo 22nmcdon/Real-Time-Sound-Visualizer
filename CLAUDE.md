@@ -44,6 +44,7 @@ python3 web/tests/run.py                                    # everything, ~37 mi
 python3 web/tests/run.py lane patch                         # just those
 python3 web/tests/run.py -j1                                # one at a time, ~43 min
 python3 core/tests/parity.py                                # the C++ core against the page
+python3 core/tests/pieces/run.py [name]                     # the engine's pieces by their own numbers, a minute (parity runs them too)
 python3 core/tests/parity.py --write-golden                 # after a change that means the sound to change: regenerate the golden files (refuses a section unless the page and the core agree on it); core/tests/golden/README.md
 python3 core/wasm/build.py                                  # after any change to core/: the page carries it compiled
 python3 core/tests/tools/write_schema.py                    # after any change to SETUP_FIELDS: the core reads setups by it
