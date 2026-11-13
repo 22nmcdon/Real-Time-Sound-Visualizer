@@ -333,9 +333,10 @@ What was decided, and the cost:
   to the same `1e-12`; what it cannot catch is two values moved within one
   block so both sums cancel, which only the large bulk renders are sketched and
   no plausible port fault produces. Kept whole the files were 75 MB; the sketch
-  for the large renders brings the total to **about 6 MB** (the generator and
-  the functions are about 1.9 MB and 1.5 MB of it, Scan 0.4 MB). The existing
-  tolerance and the `worst()` NaN rule are carried in unchanged.
+  for the large renders brings the total to **5.3 MB** (5,540,975 bytes across
+  fourteen files; the generator and the functions are 1.9 MB and 1.5 MB of it,
+  the picture 0.8 MB, Scan 0.4 MB). The existing tolerance and the `worst()` NaN
+  rule are carried in unchanged.
 
 - **Regeneration.** `parity.py --write-golden`, one command, which **refuses to
   overwrite a section unless the page and the core agreed on it** that run, and
@@ -343,7 +344,17 @@ What was decided, and the cost:
   leaves the files and the diff alone). Documented in the README and in a
   CLAUDE.md line under the command list.
 
-- **Running time.** [filled in from the paired runs once they finish]
+- **Running time.** Parity was 22.3 minutes with the golden layer off
+  (`GOLDEN_OFF=1`, the baseline). The default three-way run - the page's
+  JavaScript, the core, the two compared, *and* each run against its golden file
+  and the core against the file directly - is **25.9 minutes** (+3.5, about 16
+  per cent), the cost of reading the files and the extra section of core-vs-file
+  checks. `--golden`, which does not run the JavaScript at all, is **23.0
+  minutes**: close to the baseline because the page runs dominate and are gone,
+  but the core still renders everything and is compared against the files. Check
+  counts: 999 in the three-way run, 985 in `--golden` (the fourteen fewer are
+  the JS-vs-core comparisons that have no page under them in `--golden`), 0
+  failures either way.
 
 - **Nulls seen red** (plan's three, by hand, plus the standing ones parity now
   runs every time): one value changed in a file - golden mode red, naming the

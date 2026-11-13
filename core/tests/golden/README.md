@@ -2,9 +2,9 @@
 
 What the page's JavaScript answered for each parity scenario, so the core can
 be held to it once the JavaScript engine is gone (stage 5 of
-`plugin/STAGE5-PLAN.md`, step 2). One gzipped file a parity section; about
-6 MB in all. `core/tests/golden_runs.py` writes and reads them, and the top of
-that file is the long version of what follows.
+`plugin/STAGE5-PLAN.md`, step 2). One gzipped file a parity section; 5.3 MB in
+all. `core/tests/golden_runs.py` writes and reads them, and the top of that file
+is the long version of what follows.
 
 ## Why they exist
 
