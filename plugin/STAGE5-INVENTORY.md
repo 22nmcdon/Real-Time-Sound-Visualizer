@@ -764,6 +764,189 @@ remembers).
   value and read the matrix or the generator after it can use `matrix_cpp`
   with `screen` and `lroutes`, and `generator_cpp` behind it.
 
+## 9. Step 3, batch 4 (13 Nov)
+
+The plainer suites still on `?brain=js` - `env`, `filter`, `harmony`, `midi`,
+`morph`, `onset`, `arp`, `perform`, `plane`, `picturepresets` - and the single
+legs in `fade`, `host`, `menv`, `modrow` and `soundstart`. Every row in their
+appendix tables has a "Batch 4" column. Nothing in `scope.html` or
+`core/include` changed; `git diff core/include` is empty. Still no
+`render_cpp`: what needed one stays, listed below.
+
+New commands, no existing one changed: `biquad` in `functions_cpp`; `lane`
+in `capture_cpp`; `filter` and `vset cutoff` in `matrix_cpp`; and `tone`,
+`meter` and `routed` in `instrument_cpp` (native only, as `grid` is: the
+generator's pitch fields, the keyboard's held notes and each layer's voices;
+the instrument's own picture meter; each routing in its matrix with its
+source's value).
+
+| Suite | Web checks before | after | pieces checks (nulls) | `?brain=js` opens | Rows: to pieces / moved / rewritten / gone / left |
+|---|---|---|---|---|---|
+| env | 33 | 14 | 30 (10) | 1 to 0 | 19 / 10 / 3 / 1 / 0 |
+| filter | 32 | 19 | 21 (9) | 1 to 0 | 11 / 16 / 3 / 2 / 0 |
+| plane | 37 | 11 | 46 (20) | 1 to 0 | 26 / 4 / 7 / 0 / 0 |
+| morph | 22 | 13 | 18 (8) | 1 to 0 | 9 / 5 / 7 / 1 / 0 |
+| picturepresets | 10 | 10 | 0 | 1 to 1 (and a default page) | 0 / 4 / 0 / 0 / 5, one split |
+| midi | 50 | 32 | 41 (12) | 1 to 0 | 23 / 26 / 0 / 1 / 0 |
+| arp | 25 | 5 | 29 (10) | 2 to 0 | 19 / 2 / 0 / 2 / 0 |
+| harmony | 24 | 16 | 12 (6) | 1 to 1 | 4 / 8 / 6 / 0 / 2 |
+| onset | 12 | 6 | 18 (8) | 1 to 0 | 8 / 4 / 0 / 0 / 0 |
+| perform | 12 | 8 | 6 (3) | 1 to 1 | 4 / 4 / 0 / 0 / 4 |
+| fade | 62 | 60 | - | 1 to 0 | 0 / 1 / 1 / 2 / 0 |
+| host | 50 | 51 | - | 1 to 0 | 0 / 0 / 1 / 0 / 0 |
+| menv | 23 | 22 | - | 1 to 0 | 0 / 0 / 0 / 1 / 0 |
+| modrow | 72 | 66 | - | 1 to 0 | 0 / 0 / 0 / 3 / 0 |
+| soundstart | 32 | 18 | - | 3 to 0 | 0 / 0 / 0 / 14 / 0 |
+| **fifteen suites** | **496** | **351** | **221 (86)** | **18 to 3** | **123 / 84 / 28 / 27 / 11, one split (274 rows)** |
+
+(Web counts are checks run, a loop's iterations each, the "before" from a run
+of the fifteen on ca69583: everything passed, 14.2 minutes. The row counts
+are rows of the appendix tables, where one row may be several checks.)
+
+What stays on `?brain=js`, and why: picturepresets' five run rows (`:241` to
+`:256`, the corpus played with the loop closed over ten seconds, which is
+`render_cpp`'s); harmony's two meter rows (`:195`, `:196`), which do not hold
+on the instrument's meter (below); and perform's four microphone rows (`:231`
+to `:265`), the input through the page's effects insert, which need input
+samples and the question of section 3 answered first.
+
+COUNTS_PLACEHOLDER
+
+### Checks that passed on the default for the wrong reason, or could not fail
+
+1. **The page's arpeggiator still steps on the default** (section 1's
+   `arpTick`), so every order row in arptest would have passed on the page's
+   arpeggio, not the instrument's. They run on the core's keyboard now, and an
+   `instrument_cpp` render holds the steps on the audio clock, as MIDI bytes.
+2. **The page's mirror once more.** midi's dyad and mono rows read
+   `state.source.settings`, which the page's own MIDI apply writes; morph's
+   and plane's rows read `genSettings()`. They read the instrument (`tone`),
+   or `snapshot()` for what the face sends. harmony's readout was driven by
+   `setMidiMode` and `genSet`, which the instrument never hears; it clicks
+   the mode buttons and the menus now, and still reads the face's mirror
+   (`harmonySaid`), which is step 5's.
+3. **A registry read empty.** On the default the onset hears the generator
+   and the registry offers it nothing, so onset's "dropping an event on a
+   value makes no routing" passed on an empty list. The Mic is pressed now,
+   with a check that the source stays the instrument's and the onset hears
+   the input, and a new null.
+4. **`toMic()` once more, and a hook too late.** filtertest's chain check,
+   moved unchanged, would have measured the page's own Mic and then a page
+   tone (`toMic()`, then the old `srcTone` click: two chains on a `tone`
+   source, seen red in its null); and its speaker hook, installed after load,
+   missed the instrument's chain, which is built as the page starts. The
+   Mic and Bands buttons, and the hook at init.
+5. **A loose band.** envtest's "a key opens the envelope at the velocity it
+   was played" was between 0.5 and 0.85, which a key at full velocity (0.8)
+   passed too. It is the sustain times the velocity now, with that key as
+   its null. Its fixture set the envelope with `state.source.set`, the page's
+   generator; it moves the controls now.
+6. **morph's key at full would fail at the page's figure.** The instrument's
+   heard pair is not flat between 220 and 440 Hz (drawbar found the same in
+   batch 2), so a station and a half reads -17.3 dB against the bare
+   generator's -13.2. Restated as the same as Morph at 1.5 in the setup,
+   within 0.3 dB, with the bare generator held to the half-saw separately.
+7. **Fade's two brains.** "The two brains are the two" goes with the leg;
+   what is left, that the leg is the instrument's, is read off the run's own
+   source and seen red on the default page's boot frames (`tone`). Host's
+   null, which opened `?brain=js` for "tone", is the same reading inside the
+   plugin now.
+
+Checks the mutation pass found could not fail, each strengthened:
+
+- the envelope's legato rows read its level, not the samples, so a voice
+  dropping the velocity from what is heard passed (a heard-level check now);
+- the filter's priming was read behind the search span, on a sine starting
+  near nought, where an unprimed filter has nothing to ring at (the source
+  holds the window only, the sine on a 0.5 offset);
+- two unfiltered lanes agree with each other, so "the lag lane is filtered
+  too" could not see the filter skipped (the signal lane must be filtered as
+  well);
+- the hidden lane was compared at one sample of windows whose trigger moved
+  with the cutoff (triggered on the hidden lane, compared whole);
+- no check could see the cutoff slider's law, every cutoff found through the
+  page's own `cutoffHz` (step 500 is 632.5 Hz, and the swing 40 Hz to 10 kHz);
+- a clock byte before a status byte could not catch a parser that cancelled
+  running status;
+- a chord struck twice with every voice gone could not see a phase taken
+  from a voice still releasing;
+- the onset's threshold under fixtures whose flux was always about one
+  (a smaller rise, 0.57, added);
+- an event source with no value could not show the rule keeping it off a
+  value.
+
+Two mutations stayed green, as the pieces say: the joining voice's
+reference taken from the highest held voice instead of the lowest, which for
+voices born in step is the same phase; and the onset's threshold at 0.6,
+just above the new fixture's 0.57.
+
+### Nulls and mutations seen red
+
+Every piece check has its null beside it, seen red. Every moved or rewritten
+web check was run against a known-wrong fixture and seen red: the default
+page's boot frames (fade), `toMic()` put back, a GainNode to the speakers,
+the routing removed before the sweep, the slider written without its event
+(filter); the hands' link removed, a code field dropped, OS4 unclicked, the
+twist on `change` (morph, plane); a key at full velocity (env); the face's
+stack cleared alone, which left the instrument at 0.303 (midi's panic);
+onset's registry without the Mic; arp's code before the menus moved;
+harmony's readout pairs. The core was mutated in scratch copies
+(`PIECES_INCLUDE`), 77 ways, each turning at least one check red but the
+two above: `envelope.h` and `generator.h` eight (an attack by time
+constant, legato restarting, the velocity taken over a held key, a release
+short of nought, a gated core open, the glide's pole by the envelope's
+stage, the ungated level, the heard level without the velocity); `wave.h`,
+`osc.h` and `generator.h` five for the morph and nine for the plane;
+`capture.h`, `screen.h` and `functions` seven for the filter (Q linear,
+unprimed, skipped under a lag, hidden lanes filtered, the cutoff's span,
+`cutoffHz`'s law, the notch's b2); `keyboard.h` 26 for midi and the
+arpeggio; `screen.h` two for the lag lock; `wave.h` and `generator.h` two for
+just tuning; `voices.h` six; `picture.h` two for the meter; `hearing.h` six
+for the onset; `matrix.h` six for the events; and `setup.h`, `sources.h` and
+the split one each.
+
+### What it finds about the site and the core
+
+- **A port's notes under one running status lose the third note.** `90 3C
+  64 40 64 43 64` is cut by the page's `midiBytes` into three-byte pieces
+  and the core's keyboard drops the half message: in Mono the face holds 60,
+  64 and 67 and the instrument plays E4. Batch 2's clock byte by the same
+  mechanism; low priority, since Web MIDI hands over whole messages. In
+  `web/docs/after-stage-5.md`. miditest's running-status row reads the
+  face's stack, which parses it right, and says so at the site.
+- **The instrument's picture meter calls a still figure "cycling".** A held
+  just fifth of the Harmonic tone reads 0.02 to 0.05 change a frame on the
+  instrument (the page's meter, on its own grid, 0.0055 and "settled"); a
+  still unison of the same tone 0.058; a plain sine's unison nought. The
+  core's grid flickers frame to frame on a figure with detail. Nothing heard
+  reads the verdict (the stage uses only "running away"), but step 5 points
+  the face's verdict at the instrument, and still figures would read
+  "cycling". harmony's two meter rows wait on `?brain=js` until it is
+  decided; in `after-stage-5.md` and step 5.
+- **`syncMonitor` stays** (section 1 asked): on the default the
+  instrument's sound reaches the speakers through the page's own Web Audio
+  chain - filter, limiter and clamp - so it is the face's audio carrying the
+  heard sound.
+- **The filter's sweep on the screen rides the page's visual matrix.**
+  filtertest's glide check moves `filter.cutoff` through the page's matrix
+  (`visualMatrix.filter.cutoff` read nought on the default in section 1 only
+  because no default suite routed the cutoff). It joins scale's three and
+  lane's eight in following step 5's decision.
+
+### What still needs `render_cpp`, and with what input
+
+- **picturepresets `:241` to `:256`**: the old library's waveform presets in
+  its two picture sections (twelve), each loaded with A3 held in Mono at full
+  sustain for about ten seconds with the loop closed; the first section again
+  with its picture routings removed, the photocell at the same cell; readings
+  every 150 ms of the photocell's raw reading at its stored cell, each routed
+  picture source, `photo.1` and the meter's verdict; the reticle's landing
+  rule for a stored cell that reads dark; the meter reset at each start.
+- **perform `:231` to `:265`**: a microphone's samples through the
+  instrument, once it is confirmed the instrument puts an input through its
+  effects at all (section 3); with input and livefx.
+- **harmony `:195`, `:196`**: not a render, the meter's question above.
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the
@@ -844,31 +1027,31 @@ Docstring: "On ?brain=js (5m): this suite reads the page's own brain - its gener
 ### arptest.py - wholly on ?brain=js, its last two checks a loop over the default and ?brain=js - 23/23
 Comment: "On ?brain=js (5m): this suite reads the page's own brain - its sources' functions, bound directly." It drives `arpTick` at synthetic times and reads `genSettings().voices`, `midi.notes`, `src.gate` wrapped by hand (page :103; the loop at :281 opens `""` and `&brain=js`).
 
-| Check | Kind | Why |
-|---|---|---|
-| `the first key waits for the rest of the chord rather than striking alone` (:120) | numbers | The 25 ms gather (`keyboard.h:32` has it); offline, no note in the first 25 ms of a render. |
-| `up is C E G and round again, one note at a time` (:123) | numbers | Step order; offline from the core's `midiOut` hook or the pitch per step. |
-| `down is G E C` (:124) | numbers | As above. |
-| `up-down goes up and back without playing either end twice in a row` (:125) | numbers | As above. |
-| `as played is the order the keys went down` (:127) | numbers | As above. |
-| `two octaves climb the chord and the same an octave up` (:129) | numbers | As above. |
-| `random plays only what is held, and more than one of it` (:132) | numbers | The core's seeded walk (`keyboard.h:38`). |
-| `each step closes the gate and opens it again, so every note is struck` (:151) | numbers | Wraps `src.gate`; offline, an envelope restart per step in the rendered level. |
-| `and the hands are still the whole chord: three held` (:154) | page | `midi.notes.length`, the page's note stack; no audio consequence a render shows. Goes, or reads the instrument's held count if it publishes one. |
-| `120 BPM in quavers is a step every 250 ms: five in the first second, counting the first` (:181) | numbers | Step times from a render with timed MIDI. |
-| `and a minute on the step count is the clock's, 241, not a drifted one` (:183) | numbers | Synthetic `arpTick` a minute on; offline, a 60 s render (cheap) counting steps. |
-| `and at 90 BPM a quaver is 333 ms, four steps in the first second` (:184) | numbers | As :181 at 90. |
-| `in the dyad each step pairs the lowest held note with the arpeggio's: unison, major third, fifth` (:199) | numbers | `genSettings().interval`; offline, the second lane's pitch ratio per step. |
-| `its notes go out as MIDI, each ended as the next begins` (:227) | numbers | Bytes to a stubbed port; the core has `hooks.midiOut` (`instrument.h:66`), so a render can return them. |
-| `letting go stops it, and the note that went out is ended` (:229) | numbers | Note-off bytes (and `arp.start`); via `midiOut`. |
-| `switched off with keys down, the generator has the whole chord again` (:231) | numbers | Voices after `arpSet` off; offline, the chord's pitches after the switch. |
-| `and a setup code carries the mode, the step and the octaves` (:233) | page | `snapshot()` of the panel; a face check, moves to the default as is. |
-| `when the layers change mid-arpeggio the generator is still given the step, not the whole chord` (:252) | numbers | Borderline: calls page `syncLayers()` directly; kept as numbers because the core's keyboard does the same reapplication and a render can switch layers mid-run. |
-| `switched off after a step, the held chord is struck: the gate closes and opens, and the generator has all of it` (:274) | numbers | Gate edges and voices on switching off (`keyboard.h:336`). |
-| `null: switched off inside the gather, before any step, the chord it never took is not struck again` (:276) | numbers | Its null, same harness. |
-| `on %s, a key held through an arpeggiated setup and into a plain one sounds at the plain one's level` (:293, x2) | engines compared | The ?brain=js leg of a both-brains loop; the default leg already holds it on the instrument. The leg goes. |
-| `null: on %s a key struck under a sustain of 0.3 and held into the same setup keeps its lower level` (:295, x2) | engines compared | As above. |
-| `no page errors` (:298) | page | Errors of both pages. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| `the first key waits for the rest of the chord rather than striking alone` (:120) | numbers | The 25 ms gather (`keyboard.h:32` has it); offline, no note in the first 25 ms of a render. | to pieces (arp.py, keyboard_cpp at the page's synthetic times) |
+| `up is C E G and round again, one note at a time` (:123) | numbers | Step order; offline from the core's `midiOut` hook or the pitch per step. | to pieces (arp.py, keyboard_cpp at the page's synthetic times) |
+| `down is G E C` (:124) | numbers | As above. | to pieces (arp.py, keyboard_cpp at the page's synthetic times) |
+| `up-down goes up and back without playing either end twice in a row` (:125) | numbers | As above. | to pieces (arp.py, keyboard_cpp at the page's synthetic times) |
+| `as played is the order the keys went down` (:127) | numbers | As above. | to pieces (arp.py, keyboard_cpp at the page's synthetic times) |
+| `two octaves climb the chord and the same an octave up` (:129) | numbers | As above. | to pieces (arp.py, keyboard_cpp at the page's synthetic times) |
+| `random plays only what is held, and more than one of it` (:132) | numbers | The core's seeded walk (`keyboard.h:38`). | to pieces (arp.py, keyboard_cpp at the page's synthetic times) |
+| `each step closes the gate and opens it again, so every note is struck` (:151) | numbers | Wraps `src.gate`; offline, an envelope restart per step in the rendered level. | to pieces |
+| `and the hands are still the whole chord: three held` (:154) | page | `midi.notes.length`, the page's note stack; no audio consequence a render shows. Goes, or reads the instrument's held count if it publishes one. | to pieces (the core keyboard's notes; was page) |
+| `120 BPM in quavers is a step every 250 ms: five in the first second, counting the first` (:181) | numbers | Step times from a render with timed MIDI. | to pieces; and an instrument_cpp render: note-ons every 250 ms on the audio clock, as bytes |
+| `and a minute on the step count is the clock's, 241, not a drifted one` (:183) | numbers | Synthetic `arpTick` a minute on; offline, a 60 s render (cheap) counting steps. | to pieces |
+| `and at 90 BPM a quaver is 333 ms, four steps in the first second` (:184) | numbers | As :181 at 90. | to pieces |
+| `in the dyad each step pairs the lowest held note with the arpeggio's: unison, major third, fifth` (:199) | numbers | `genSettings().interval`; offline, the second lane's pitch ratio per step. | to pieces |
+| `its notes go out as MIDI, each ended as the next begins` (:227) | numbers | Bytes to a stubbed port; the core has `hooks.midiOut` (`instrument.h:66`), so a render can return them. | to pieces |
+| `letting go stops it, and the note that went out is ended` (:229) | numbers | Note-off bytes (and `arp.start`); via `midiOut`. | to pieces |
+| `switched off with keys down, the generator has the whole chord again` (:231) | numbers | Voices after `arpSet` off; offline, the chord's pitches after the switch. | to pieces |
+| `and a setup code carries the mode, the step and the octaves` (:233) | page | `snapshot()` of the panel; a face check, moves to the default as is. | moved; null the code before the menus moved |
+| `when the layers change mid-arpeggio the generator is still given the step, not the whole chord` (:252) | numbers | Borderline: calls page `syncLayers()` directly; kept as numbers because the core's keyboard does the same reapplication and a render can switch layers mid-run. | to pieces |
+| `switched off after a step, the held chord is struck: the gate closes and opens, and the generator has all of it` (:274) | numbers | Gate edges and voices on switching off (`keyboard.h:336`). | to pieces |
+| `null: switched off inside the gather, before any step, the chord it never took is not struck again` (:276) | numbers | Its null, same harness. | to pieces |
+| `on %s, a key held through an arpeggiated setup and into a plain one sounds at the plain one's level` (:293, x2) | engines compared | The ?brain=js leg of a both-brains loop; the default leg already holds it on the instrument. The leg goes. | the ?brain=js leg gone, the default kept |
+| `null: on %s a key struck under a sustain of 0.3 and held into the same setup keeps its lower level` (:295, x2) | engines compared | As above. | the ?brain=js leg gone, the default kept |
+| `no page errors` (:298) | page | Errors of both pages. | moved |
 
 ### braintest.py - 3 legs on ?brain=js / ?core=js beside the default - 4/76
 Docstring: "?core=js turns the switch off - each read from the source the page is drawing"; the loop at :88 opens `?brain=js` and `?brain=core&core=js`, and the ?brain=js leg also records the website's skew for the default to be held to. The stage-5 counters section (:881) opens `?brain=js` on purpose as a null.
@@ -1285,28 +1468,28 @@ It opens at `?picture=0&brain=js` on the desktop (153) and on a phone (468), and
 ### harmonytest.py - wholly on ?brain=js - 20/20
 Lines 24-26: "The voices are the page's own core here (makeGeneratorCore); the compiled one is held to it by core/tests/parity.py". It opens at `?brain=js&picture=0` (line 75). The first six checks never touch the page's live brain: they build a `makeGeneratorCore` offline in the page.
 
-| Check | Kind | Why |
-|---|---|---|
-| layer %s: the chord built a note at a time draws the struck chord's figure, sample for sample (96) x3 | numbers | An offline `makeGeneratorCore` render. Becomes a core render: voices joining in step. |
-| layer %s: and the comparison fails out of step (98) x3 | numbers | The null of the same render. |
-| a chord struck twice, with other notes and time between, draws the same figure (106) | numbers | Offline render. |
-| and the comparison fails with the second strike out of step (107) | numbers | Null. |
-| a just fifth is a fifth, still (119) | page | `harmonyText`, a pure face function for the readout's words. Brain-free; stays as is. |
-| an equal fifth turns at \|2 f_high - 3 f_low\|, 0.745 a second at A3 (120) | page | `harmonyOf(...).rate`, a face formula. |
-| and not at the rate a wrong ratio would give (122) | page | The same. |
-| an equal third turns nearly nine times a second (123) | page | `harmonyText`. |
-| octaves are counted and the interval named within them (125) | page | `harmonyText`. |
-| a tritone has no simple ratio, and says so (127) | page | `harmonyText`. |
-| the order of the two notes does not matter (128) | page | `harmonyText`. |
-| the dyad's pair: an equal fifth, turning (160) | page | `el.readoutDetail` after `genSet` and `midiNoteOn`. The readout's `harmonySaid` reads `genSettings` and `polyVoices`, which are page-side. |
-| and just, still - where the readout used to say nothing (161) | page | The same. |
-| and at unison, nothing (162) | page | The same. |
-| poly's outline: the lowest note against the highest, the inner one left out (163) | page | The same, through `polyVoices(0)`. |
-| with a split, each layer's outline: A a fifth, B a minor sixth (165) | page | The same. |
-| and A against B, A's lowest against B's highest (167) | page | The same. |
-| a held just fifth reads still to the picture: settled (195) | numbers | `pictureMeter` verdict over 6 s of the page's picture. Becomes the core's picture meter on an offline render. |
-| and an equal third, turning, reads moving, changing more a frame (196) | numbers | `pictureMeter.change` and its verdict. |
-| no page errors (199) | page | Housekeeping. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| layer %s: the chord built a note at a time draws the struck chord's figure, sample for sample (96) x3 | numbers | An offline `makeGeneratorCore` render. Becomes a core render: voices joining in step. | to pieces (harmony.py, generator_cpp); and new: a chord struck while the last rings out is born at nought |
+| layer %s: and the comparison fails out of step (98) x3 | numbers | The null of the same render. | to pieces |
+| a chord struck twice, with other notes and time between, draws the same figure (106) | numbers | Offline render. | to pieces |
+| and the comparison fails with the second strike out of step (107) | numbers | Null. | to pieces |
+| a just fifth is a fifth, still (119) | page | `harmonyText`, a pure face function for the readout's words. Brain-free; stays as is. | moved (pure face functions) |
+| an equal fifth turns at \|2 f_high - 3 f_low\|, 0.745 a second at A3 (120) | page | `harmonyOf(...).rate`, a face formula. | moved (pure face functions) |
+| and not at the rate a wrong ratio would give (122) | page | The same. | moved (pure face functions) |
+| an equal third turns nearly nine times a second (123) | page | `harmonyText`. | moved (pure face functions) |
+| octaves are counted and the interval named within them (125) | page | `harmonyText`. | moved (pure face functions) |
+| a tritone has no simple ratio, and says so (127) | page | `harmonyText`. | moved (pure face functions) |
+| the order of the two notes does not matter (128) | page | `harmonyText`. | moved (pure face functions) |
+| the dyad's pair: an equal fifth, turning (160) | page | `el.readoutDetail` after `genSet` and `midiNoteOn`. The readout's `harmonySaid` reads `genSettings` and `polyVoices`, which are page-side. | rewritten: the mode buttons, interval menu and tuning switch, not `setMidiMode`/`genSet`; reads the face's mirror (step 5) |
+| and just, still - where the readout used to say nothing (161) | page | The same. | rewritten: the mode buttons, interval menu and tuning switch, not `setMidiMode`/`genSet`; reads the face's mirror (step 5) |
+| and at unison, nothing (162) | page | The same. | rewritten: the mode buttons, interval menu and tuning switch, not `setMidiMode`/`genSet`; reads the face's mirror (step 5) |
+| poly's outline: the lowest note against the highest, the inner one left out (163) | page | The same, through `polyVoices(0)`. | rewritten: the mode buttons, interval menu and tuning switch, not `setMidiMode`/`genSet`; reads the face's mirror (step 5) |
+| with a split, each layer's outline: A a fifth, B a minor sixth (165) | page | The same. | rewritten: the mode buttons, interval menu and tuning switch, not `setMidiMode`/`genSet`; reads the face's mirror (step 5) |
+| and A against B, A's lowest against B's highest (167) | page | The same. | rewritten: the mode buttons, interval menu and tuning switch, not `setMidiMode`/`genSet`; reads the face's mirror (step 5) |
+| a held just fifth reads still to the picture: settled (195) | numbers | `pictureMeter` verdict over 6 s of the page's picture. Becomes the core's picture meter on an offline render. | left on ?brain=js: on the instrument's meter it does not hold (section 9) |
+| and an equal third, turning, reads moving, changing more a frame (196) | numbers | `pictureMeter.change` and its verdict. | left on ?brain=js as :195's twin; the core's comparative twin in pieces |
+| no page errors (199) | page | Housekeeping. | moved |
 
 ### hosttest.py - 1 leg on ?brain=js beside the default - 1/50 (49 default or fake-bridge sites not listed)
 Line 131: "with ?brain=js no host at all". The ?brain=js page (134) is used once, as the null half of the first check.
@@ -1646,58 +1829,58 @@ Comment at :153: "On the page's own brain the keyboard is the page's, and a key 
 ### miditest.py - wholly on ?brain=js - 50/50
 Docstring note (:13): it "reads the page's own brain - its keyboard's flags, set directly". The parsing and panic checks read `midi.notes`. The default page keeps that stack as well: `midiBytes` runs `midiBytesHere` before forwarding to the core (scope.html:9697). So those checks move by dropping `&brain=js`, though they then test the face's copy, not the core's keyboard.
 
-| Check | Kind | Why |
-|---|---|---|
-| a routing from the keyboard made before it was plugged in is heard once it is, and not before (:104) | page | `stepRoutes()` and `genRoutes` of the page brain; goes, or becomes a core render with a `midi.key` routing |
-| a port is opened and its messages are listened to (:109) | page | `midi.status`, stub port; trivially to default |
-| and it is named in the panel (:111) | page | `midi.ports`; trivially to default |
-| a note-on holds the note (:116) | page | `midi.notes`; trivially to default |
-| a note-on at velocity zero is a note-off (:118) | page | as above |
-| running status: one status byte, three notes (:121) | page | as above |
-| and again on the way out (:125) | page | as above |
-| the same note twice does not stack twice (:129) | page | as above |
-| so one release ends it (:131) | page | as above |
-| a clock byte is not mistaken for a note (:135) | page | as above |
-| losing the window releases everything (:139) | page | blur panic on `midi.notes`; trivially to default |
-| and so does being hidden without losing it (:147) | page | visibilitychange panic; trivially to default |
-| all-notes-off releases them and does not learn as a controller (:155) | page | `midi.notes`, `MOD_SOURCES` |
-| nothing held is a closed gate (:167) | page | `midi.key`, the page's gate flag |
-| one note is a unison at its own pitch (:171) | numbers | `state.source.settings.freq/interval/octaves`; core keyboard plus generator, MIDI in and pitch out |
-| two notes are the lower pitch and the interval above it (:180) | numbers | as above |
-| and the press order does not turn the figure over (:182) | numbers | as above |
-| the interval menu says what is being played (:185) | page | `el.interval.value`, face |
-| a third note displaces the older of the pair (:190) | numbers | dyad settings |
-| releasing one of the pair promotes what was under it (:195) | numbers | as above |
-| back to one note is back to a unison (:201) | numbers | as above |
-| with Hold on the interval stays above the one note (:210) | numbers | as above, with `midi.hold` set directly |
-| and walks with it (:212) | numbers | as above |
-| nineteen semitones is a fifth plus an octave (:219) | numbers | settings.interval/octaves |
-| and the credit line says so (:221) | page | `el.credit` text |
-| a wide dyad is 3:1 in just tuning (:232) | numbers | `intervalRatio()`, a pure page function; becomes the core's tuning ratio (borderline: arithmetic rather than a render) |
-| and 2^(19/12) in equal (:234) | numbers | as above |
-| a played fifth is exactly 3:2 in just tuning (:249) | numbers | as above |
-| and the tempered ratio in equal (:251) | numbers | as above |
-| and the note is in the samples, not only in the state (:263) | numbers | `estimateFrequency` on samples; offline render |
-| in equal the samples carry the tempered ratio (:290) | numbers | samples |
-| and the figure turns at the rate a tempered fifth beats at (:293) | numbers | samples |
-| in just it is 3:2 and stands still (:296) | numbers | samples |
-| mono takes the newest note as the pitch (:309) | numbers | settings.freq |
-| and leaves the interval to the menu (:311) | numbers | settings.interval |
-| and does not inherit the dyad's octaves (:324) | numbers | settings.octaves |
-| controllers moved are learned as nothing, and the cards are still the four (:353) | page | `MOD_SOURCES` keys and `.mod-card`; face |
-| null: the wheel still sets the vibrato (:355) | numbers | `genSettings().vibrato` after CC1; the core keyboard's wheel |
-| an old code's controller routing and names are dropped, and an oscillator's kept (:368) | page | `restore(decodeSetup())` then `state.modRoutings`; trivially to default (decodeSetup is the core's codec there) |
-| with a note held the lag is a quarter period of the note, exactly (:390) | numbers | `lagLockUpdate()`, `lagLock`; the core has the lag lock (capture.h:166, instrument.h:464) |
-| and without it the estimator is back, on the signal that is there (:402) | numbers | as above |
-| the timebase follows the note, four periods across (:418) | page | `midiFollowTimebase()`, `state.timebase`: scope display, not in the core |
-| and the slider says what the screen is doing (:422) | page | `el.timebase.value` |
-| the tuner has a played note to read against, and it is the note (:439) | page | `midiPitch()`, `midiPitchHz()` |
-| every keyboard setting comes back, and a code carries no drive or play (:455) | page | snapshot/restore of `midi.*`; trivially to default |
-| and the panel says so (:458) | page | `aria-checked` |
-| a setup written before the keyboard existed restores the defaults (:464) | page | `restore({})`; trivially to default |
-| Velocity reads Level and strike on the base, and FM on a preset that routes velocity to FM (:495) | page | face menu over routings; trivially to default |
-| choosing FM adds velocity's routing onto the FM depth beside what is there, and Level and strike takes ... (:497) | page | as above |
-| no page errors (:506) | page | page health |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| a routing from the keyboard made before it was plugged in is heard once it is, and not before (:104) | page | `stepRoutes()` and `genRoutes` of the page brain; goes, or becomes a core render with a `midi.key` routing | gone: the page registers Key when a port opens; the core's matrix has it from the start, so the site has no "before" |
+| a port is opened and its messages are listened to (:109) | page | `midi.status`, stub port; trivially to default | moved |
+| and it is named in the panel (:111) | page | `midi.ports`; trivially to default | moved |
+| a note-on holds the note (:116) | page | `midi.notes`; trivially to default | moved, reading the face's stack (said at the site); the core's parse is in pieces |
+| a note-on at velocity zero is a note-off (:118) | page | as above | moved, reading the face's stack (said at the site); the core's parse is in pieces |
+| running status: one status byte, three notes (:121) | page | as above | moved, reading the face's stack (said at the site); the core's parse is in pieces |
+| and again on the way out (:125) | page | as above | moved, reading the face's stack (said at the site); the core's parse is in pieces |
+| the same note twice does not stack twice (:129) | page | as above | moved, reading the face's stack (said at the site); the core's parse is in pieces |
+| so one release ends it (:131) | page | as above | moved, reading the face's stack (said at the site); the core's parse is in pieces |
+| a clock byte is not mistaken for a note (:135) | page | as above | moved, reading the face's stack (said at the site); the core's parse is in pieces |
+| losing the window releases everything (:139) | page | blur panic on `midi.notes`; trivially to default | moved; and new: the instrument hears the panic (silent after, sounding before as its null) |
+| and so does being hidden without losing it (:147) | page | visibilitychange panic; trivially to default | moved |
+| all-notes-off releases them and does not learn as a controller (:155) | page | `midi.notes`, `MOD_SOURCES` | moved |
+| nothing held is a closed gate (:167) | page | `midi.key`, the page's gate flag | moved (the face's gate flag) |
+| one note is a unison at its own pitch (:171) | numbers | `state.source.settings.freq/interval/octaves`; core keyboard plus generator, MIDI in and pitch out | to pieces (instrument_cpp `tone`) |
+| two notes are the lower pitch and the interval above it (:180) | numbers | as above | to pieces (instrument_cpp `tone`) |
+| and the press order does not turn the figure over (:182) | numbers | as above | to pieces (instrument_cpp `tone`) |
+| the interval menu says what is being played (:185) | page | `el.interval.value`, face | moved, by clicks, null on one note |
+| a third note displaces the older of the pair (:190) | numbers | dyad settings | to pieces (instrument_cpp `tone`) |
+| releasing one of the pair promotes what was under it (:195) | numbers | as above | to pieces (instrument_cpp `tone`) |
+| back to one note is back to a unison (:201) | numbers | as above | to pieces (instrument_cpp `tone`) |
+| with Hold on the interval stays above the one note (:210) | numbers | as above, with `midi.hold` set directly | to pieces (instrument_cpp `tone`) |
+| and walks with it (:212) | numbers | as above | to pieces (instrument_cpp `tone`) |
+| nineteen semitones is a fifth plus an octave (:219) | numbers | settings.interval/octaves | to pieces (instrument_cpp `tone`) |
+| and the credit line says so (:221) | page | `el.credit` text | moved (the face's credit line), null on a fifth |
+| a wide dyad is 3:1 in just tuning (:232) | numbers | `intervalRatio()`, a pure page function; becomes the core's tuning ratio (borderline: arithmetic rather than a render) | to pieces (functions_cpp `intervalRatio` over the instrument's interval and octaves) |
+| and 2^(19/12) in equal (:234) | numbers | as above | to pieces (functions_cpp `intervalRatio` over the instrument's interval and octaves) |
+| a played fifth is exactly 3:2 in just tuning (:249) | numbers | as above | to pieces (functions_cpp `intervalRatio` over the instrument's interval and octaves) |
+| and the tempered ratio in equal (:251) | numbers | as above | to pieces (functions_cpp `intervalRatio` over the instrument's interval and octaves) |
+| and the note is in the samples, not only in the state (:263) | numbers | `estimateFrequency` on samples; offline render | to pieces (the heard pair's pitch by zero crossings) |
+| in equal the samples carry the tempered ratio (:290) | numbers | samples | to pieces (the heard pair's pitch by zero crossings) |
+| and the figure turns at the rate a tempered fifth beats at (:293) | numbers | samples | to pieces (the heard pair's pitch by zero crossings) |
+| in just it is 3:2 and stands still (:296) | numbers | samples | to pieces (the heard pair's pitch by zero crossings) |
+| mono takes the newest note as the pitch (:309) | numbers | settings.freq | to pieces (instrument_cpp `tone`) |
+| and leaves the interval to the menu (:311) | numbers | settings.interval | to pieces (instrument_cpp `tone`) |
+| and does not inherit the dyad's octaves (:324) | numbers | settings.octaves | to pieces (instrument_cpp `tone`) |
+| controllers moved are learned as nothing, and the cards are still the four (:353) | page | `MOD_SOURCES` keys and `.mod-card`; face | moved; its null a source put in the registry by hand |
+| null: the wheel still sets the vibrato (:355) | numbers | `genSettings().vibrato` after CC1; the core keyboard's wheel | to pieces (midi.py: the wheel on the instrument; null CC16 sets nothing) |
+| an old code's controller routing and names are dropped, and an oscillator's kept (:368) | page | `restore(decodeSetup())` then `state.modRoutings`; trivially to default (decodeSetup is the core's codec there) | moved |
+| with a note held the lag is a quarter period of the note, exactly (:390) | numbers | `lagLockUpdate()`, `lagLock`; the core has the lag lock (capture.h:166, instrument.h:464) | to pieces (the instrument's lag lock; each the other's null) |
+| and without it the estimator is back, on the signal that is there (:402) | numbers | as above | to pieces (as :390) |
+| the timebase follows the note, four periods across (:418) | page | `midiFollowTimebase()`, `state.timebase`: scope display, not in the core | moved |
+| and the slider says what the screen is doing (:422) | page | `el.timebase.value` | moved |
+| the tuner has a played note to read against, and it is the note (:439) | page | `midiPitch()`, `midiPitchHz()` | moved |
+| every keyboard setting comes back, and a code carries no drive or play (:455) | page | snapshot/restore of `midi.*`; trivially to default | moved |
+| and the panel says so (:458) | page | `aria-checked` | moved |
+| a setup written before the keyboard existed restores the defaults (:464) | page | `restore({})`; trivially to default | moved |
+| Velocity reads Level and strike on the base, and FM on a preset that routes velocity to FM (:495) | page | face menu over routings; trivially to default | moved |
+| choosing FM adds velocity's routing onto the FM depth beside what is there, and Level and strike takes ... (:497) | page | as above | moved |
+| no page errors (:506) | page | page health | moved |
 
 ### modrowtest.py - 1 leg on ?brain=js beside the default - 3/46
 Docstring note: the Envelope's dot is to hold "over a note held and let go, on both brains". The `js` page (:582) runs the same TRACE as the default, inside a `for label, page` loop (:585).
@@ -1776,20 +1959,20 @@ Docstring note (:23): it "reads the page's own brain - genSet called directly, a
 ### onsettest.py - wholly on ?brain=js - 12/12
 Docstring note (:20): it "reads the page's own brain - its sources' functions, bound directly". It registers stand-in event destinations on the page, because nothing struck exists since G2.
 
-| Check | Kind | Why |
-|---|---|---|
-| the page itself has no event destination left (G2 took Swing again and Kick) (:84) | page | page `MOD_DESTS` registry |
-| an onset reaches only what is struck, and only events reach that (:100) | page | `routingAllowed` over page registry with stand-ins; the core matrix's event rule would need a test destination |
-| and dropping an event on a value, or a value on an event, makes no routing (:103) | page | `addRouting` on the face |
-| one attack is one onset however long it is held, and a release is none (:149) | numbers | `hear.onset` count on a fake mic; core `Hearing::onsetStep` (hearing.h:347) offline |
-| eight strikes are eight onsets, the click of each cut-off not counted (:151) | numbers | as above |
-| and a flux held high through a 400 ms swell is one onset, and fires again once it has fallen (:154) | numbers | drives `hearing.fluxRaw` and `onsetStep` by hand; the core function directly is a cleaner test |
-| and a flux flickering every millisecond fires no faster than the 80 ms gap allows (:156) | numbers | as above (`kOnsetGap`) |
-| a routing does not fire when it is made, only on a count it has not seen (:184) | page | `fireEvents` with a stand-in source and destinations registered on the page; no real destination exists anywhere |
-| then a new count strikes each destination once, at its depth (:186) | page | as above |
-| and three counts in one frame are one strike, not three (:188) | page | as above |
-| and an onset hearing the generator it would strike is refused (:189) | page | `routingAllowed` on the page registry |
-| no page errors (:193) | page | page health |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| the page itself has no event destination left (G2 took Swing again and Kick) (:84) | page | page `MOD_DESTS` registry | moved |
+| an onset reaches only what is struck, and only events reach that (:100) | page | `routingAllowed` over page registry with stand-ins; the core matrix's event rule would need a test destination | moved, with the Mic pressed |
+| and dropping an event on a value, or a value on an event, makes no routing (:103) | page | `addRouting` on the face | moved, with the Mic pressed and a new null |
+| one attack is one onset however long it is held, and a release is none (:149) | numbers | `hear.onset` count on a fake mic; core `Hearing::onsetStep` (hearing.h:347) offline | to pieces (onset.py, hearing_cpp) |
+| eight strikes are eight onsets, the click of each cut-off not counted (:151) | numbers | as above | to pieces (onset.py, hearing_cpp) |
+| and a flux held high through a 400 ms swell is one onset, and fires again once it has fallen (:154) | numbers | drives `hearing.fluxRaw` and `onsetStep` by hand; the core function directly is a cleaner test | to pieces (onset.py, hearing_cpp) |
+| and a flux flickering every millisecond fires no faster than the 80 ms gap allows (:156) | numbers | as above (`kOnsetGap`) | to pieces (onset.py, hearing_cpp) |
+| a routing does not fire when it is made, only on a count it has not seen (:184) | page | `fireEvents` with a stand-in source and destinations registered on the page; no real destination exists anywhere | to pieces (matrix_cpp event destinations and counts) |
+| then a new count strikes each destination once, at its depth (:186) | page | as above | to pieces (matrix_cpp event destinations and counts) |
+| and three counts in one frame are one strike, not three (:188) | page | as above | to pieces (matrix_cpp event destinations and counts) |
+| and an onset hearing the generator it would strike is refused (:189) | page | `routingAllowed` on the page registry | to pieces (matrix_cpp event destinations and counts) |
+| no page errors (:193) | page | page health | moved |
 
 ### overlaytest.py - 1 leg on ?brain=js beside the default - 21/27
 Docstring note (:29): it runs "On the site's instrument ... and on the page's own brain". The whole body from :112 to :298 runs once per label (:107). The phone-width section (:301 to :321) is on the default only. The page-brain leg also has 7 `null()` sites (:124, :149, :163, :203, :212, :244, :287), not counted as rows here.
@@ -1821,20 +2004,20 @@ Docstring note (:29): it runs "On the site's instrument ... and on the page's ow
 ### performtest.py - wholly on ?brain=js - 12/12
 Docstring note (:27): it "reads the page's own brain - its voices and routes, read directly". The first three checks read only the corpus data and touch no brain at all.
 
-| Check | Kind | Why |
-|---|---|---|
-| the sections for playing, each with a routing a hand moves in every preset (:96) | page | reads `CORPUS` and `decodeRoutings` only; could run with no browser, or trivially on default |
-| and every preset in Split is a split, and every one in Layer a layer (:99) | page | as above |
-| and a section of effects for live inputs, landing on whatever is playing (:100) | page | as above |
-| every routing in them reaches the generator, is still at rest, and moves when played (:166) | numbers | `MOD_SOURCES` values at rest and under a chord, plus `genRoutes` compiled; offline render with the core's source readings out |
-| and those whose every routing came from a cut source load with none (:168) | page | `state.modRoutings` after `loadCorpus`; trivially to default |
-| and the null: a source spelt wrong is caught by the same measurement (:179) | numbers | the null of :166, same measurement |
-| each split and layer sounds both layers from one chord across the keyboard (:185) | numbers | `midi.poly.layers[].sounding`, the page keyboard's voices; the core keyboard's layers in a render |
-| every live-effects preset puts the effects insert in a microphone's path, and says so (:231) | page | `state.source.fx.active` on the page's mic source and `el.planeWhere`; on default it becomes a click on the instrument's live input |
-| and the two whose only effect was cut leave the input alone (:235) | page | as above |
-| the octave-up folds the input's troughs up (:241) | numbers | min of the processed mic samples; offline render with an input |
-| every Listening preset routes a source that hears, and on a microphone it is live and no loop (:265) | page | registry facts (`family`, `fromPicture`) and `genRoutes`; the hearing family is parked |
-| no page errors (:268) | page | page health |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| the sections for playing, each with a routing a hand moves in every preset (:96) | page | reads `CORPUS` and `decodeRoutings` only; could run with no browser, or trivially on default | moved |
+| and every preset in Split is a split, and every one in Layer a layer (:99) | page | as above | moved |
+| and a section of effects for live inputs, landing on whatever is playing (:100) | page | as above | moved |
+| every routing in them reaches the generator, is still at rest, and moves when played (:166) | numbers | `MOD_SOURCES` values at rest and under a chord, plus `genRoutes` compiled; offline render with the core's source readings out | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
+| and those whose every routing came from a cut source load with none (:168) | page | `state.modRoutings` after `loadCorpus`; trivially to default | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
+| and the null: a source spelt wrong is caught by the same measurement (:179) | numbers | the null of :166, same measurement | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
+| each split and layer sounds both layers from one chord across the keyboard (:185) | numbers | `midi.poly.layers[].sounding`, the page keyboard's voices; the core keyboard's layers in a render | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
+| every live-effects preset puts the effects insert in a microphone's path, and says so (:231) | page | `state.source.fx.active` on the page's mic source and `el.planeWhere`; on default it becomes a click on the instrument's live input | left on ?brain=js: the microphone through the page's insert; needs input samples |
+| and the two whose only effect was cut leave the input alone (:235) | page | as above | left on ?brain=js: the microphone through the page's insert; needs input samples |
+| the octave-up folds the input's troughs up (:241) | numbers | min of the processed mic samples; offline render with an input | left on ?brain=js: the microphone through the page's insert; needs input samples |
+| every Listening preset routes a source that hears, and on a microphone it is live and no loop (:265) | page | registry facts (`family`, `fromPicture`) and `genRoutes`; the hearing family is parked | left on ?brain=js: the microphone through the page's insert; needs input samples |
+| no page errors (:268) | page | page health | moved |
 
 ### phototest.py - 1 leg on ?brain=js beside the default (the first 30 checks; the same page is re-opened on the default at :501 for the last 7) - 30/37
 Docstring note (:20): it "reads the page's own brain - genSet called directly". The `genSet` calls drive the figure under each check.

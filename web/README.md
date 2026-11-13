@@ -6566,3 +6566,22 @@ neither. And one behaviour the move found that only the page's brain has:
 Stop holds the face's screen and not the instrument's, so Scan keeps
 moving under a stopped screen on the site (`web/docs/after-stage-5.md`).
 `plugin/STAGE5-INVENTORY.md` section 8 has the rest.
+
+**The page's arpeggiator, a registry and a hook can all pass on the
+default for the page's reason (13 Nov).** Stage 5's fourth batch moved
+fifteen suites' rows to `core/tests/pieces/` (env, filter, plane, morph,
+midi, arp, harmony, onset, perform) or the default page. Three new ways a
+moved check passes without reading the instrument, worth knowing before the
+next: the page's `arpTick` still steps on the default, so an arpeggio's order
+read off the page's notes is the page's arpeggio, not the one heard (the
+core's keyboard has it, `keyboard_cpp`, and `instrument_cpp`'s `out` lines
+are its MIDI on the audio clock); a registry question asked of a source the
+registry offers nothing (the onset hearing the generator) reads an empty
+list, which "makes no routing" passes; and a hook on Web Audio installed
+after load misses the chain the instrument built as the page started, so put
+it in with `add_init_script`. `instrument_cpp` gained `tone` (the
+generator's pitch fields, the held notes, each layer's voices), `meter` and
+`routed`, native only, which carry most "what does the instrument play"
+questions without `render_cpp`. And a moved check's band deserves reading:
+envtest's velocity was "between 0.5 and 0.85", which a key at full (0.8)
+passed. `plugin/STAGE5-INVENTORY.md` section 9 has the rest.

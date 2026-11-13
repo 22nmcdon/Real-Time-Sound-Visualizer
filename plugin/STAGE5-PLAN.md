@@ -219,6 +219,16 @@ the full suite and parity pass.
    carried from the page were found unable to fail. One site defect found,
    not fixed: Stop does not reach the instrument, so Scan keeps moving under
    a stopped screen. `STAGE5-INVENTORY.md` section 8.
+   **Batch 4 done (13 Nov): `env`, `filter`, `harmony`, `midi`, `morph`,
+   `onset`, `arp`, `perform`, `plane`, `picturepresets`, and the single legs in
+   `fade`, `host`, `menv`, `modrow` and `soundstart`** - 221 piece checks with
+   their nulls (env, filter, plane, morph, midi, arp, harmony, onset,
+   perform), web checks 496 to 351 over the fifteen, `?brain=js` opens 18 to
+   3 (picturepresets' run rows, `render_cpp`'s; harmony's meter rows, below;
+   perform's microphone rows, input samples). Still no `render_cpp`. 77 core
+   mutations seen red, after nine checks carried from the page were found
+   unable to fail. One site defect found, not fixed: a port's notes under one
+   running status lose the third. `STAGE5-INVENTORY.md` section 9.
 4. **The constellation, and anything else only the page's brain does.** Port
    it to the core (ways-to-draw's own step 3), or keep it as a look-only
    drawing on the page, seen and not heard, until it is ported. The owner's
@@ -230,6 +240,27 @@ the full suite and parity pass.
    so, as it would from the plugin, instead of the JavaScript engine.
    *Removes:* the switch, the per-frame duplicate work. *Checked by:* the full
    suite on the default, and the step 1 counters at nought.
+   **To decide before it, found by step 3's batches:**
+   - *Stop* (batch 3): the face's Stop holds the face's screen and tells the
+     instrument nothing, so Scan goes on reading a moving grid under a
+     stopped screen; whether Stop freezes the instrument's grid or its
+     reading, and what the plugin, which has no Stop, does. scantest's held
+     run waits on it.
+   - *The visual matrix* (step 1): which matrix moves the screen's own
+     destinations on the site. scale's three, lane's eight and (batch 4)
+     filtertest's sweep of the cutoff follow the answer together.
+   - *The picture meter's verdict* (batch 4): the instrument's meter calls a
+     still figure with detail "cycling" (0.02 to 0.05 change a frame for a
+     held just fifth of the Harmonic tone, where the page's meter reads
+     0.0055 and "settled"), because the core's grid flickers frame to frame.
+     Pointing the face's verdict at the instrument as it is would show still
+     figures as cycling. harmonytest's two meter rows wait on it.
+   - *The interval readout* (batch 4): `harmonySaid` reads the face's mirror
+     of the generator; it should read the instrument's (`instrument_cpp`'s
+     `tone` shows what that reading carries).
+   - *`syncMonitor` stays* (answered by batch 4): the instrument's sound
+     reaches the speakers through the page's own monitor chain, so it is the
+     face's audio and not a second brain.
 6. **Delete.** The engine, the wrappers, the page's worklets, the fallback
    codec and picture engine, parity's JavaScript harness (`*_js.mjs`,
    `js_core.mjs`), and the README's and PLAN's paragraphs about two brains.

@@ -28,6 +28,24 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   freeze its grid, or its reading - is the owner's call, and the plugin,
   which has no Stop, may want the same answer. Found by step 3's batch 3 (13
   Nov); scantest.py's held run stays on `?brain=js&core=js` until then.
+- **A port's notes under one running status lose the third.** A message
+  carrying several notes under one status byte (`90 3C 64 40 64 43 64`) is cut
+  by the page's `midiBytes` into three-byte pieces, and the core's keyboard
+  drops the half message: in Mono the face holds 60, 64 and 67 and the
+  instrument plays E4 (329.6 Hz). The same mechanism as the clock byte above;
+  low priority, since Web MIDI hands over whole messages. Found by step 3's
+  batch 4 (13 Nov); miditest's running-status row reads the face's stack and
+  says so.
+- **The instrument's picture meter calls a still figure "cycling".** A held
+  just fifth of the Harmonic tone reads 0.02 to 0.05 change a frame on the
+  instrument's own meter (the page's meter, on the page's own grid: 0.0055,
+  "settled"); a still unison of the same tone 0.058; a plain sine's unison
+  nought. So the core's grid flickers frame to frame on a figure with detail.
+  Nothing heard reads the verdict (the stage uses only "running away"), but
+  once the face's verdict reads the instrument (step 5), still figures would
+  say "cycling". Whether the grid or the meter is at fault is not known.
+  Found by batch 4 (13 Nov); harmonytest's two meter rows stay on
+  `?brain=js` until it is decided.
 - **The generator still sounding 400 ms after it was set silent.** Strike's
   null once failed with readings reproduced exactly by a generator left
   audible, as if `genSet("amp", 0)` had not landed. It could be a race between
