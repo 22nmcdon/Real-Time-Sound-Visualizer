@@ -8,6 +8,10 @@ moved off the page's JavaScript; see pieces/kit.py), or those named:
     PIECES_INCLUDE=/tmp/x/include python3 core/tests/pieces/run.py alias   # against a mutated copy of the core
 
 Parity runs them all as one of its sections, so a full parity run holds them.
+A piece that needs the whole instrument playing - a setup with the loop
+closed, an input, readings over seconds of audio - renders it with
+`kit.render` (core/tests/tools/render_cpp.cpp; core/tests/golden/README.md
+says how), which pieces/render.py proves deterministic first.
 No browser and no JavaScript: what each asserts is the core's output alone.
 """
 import glob, importlib, os

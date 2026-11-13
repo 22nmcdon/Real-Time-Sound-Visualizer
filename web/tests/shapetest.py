@@ -26,11 +26,14 @@ add none. Edge contact, the candidate it was chosen over, was cut in P5.
 # shapeOfPair and picture sources on ?brain=js. They are the core's now,
 # asserted on its output alone with a null each: core/tests/pieces/shape.py,
 # which parity runs. What is left is the face on the site's default (the
-# picture's sources registered with the photocell, the readout), and the
-# survey that chose the sixth source, which plays corpus setups with the loop
-# closed for four seconds each and reads the page's own sources' entropies:
-# that needs a render of the core with the loop closed and its sources read
-# out (render_cpp, not built yet), so it stays on a ?brain=js page of its own.
+# picture's sources registered with the photocell, the readout). The survey
+# that chose the sixth source, which played corpus setups with the loop closed
+# for four seconds each and read the page's own sources' entropies, stayed on
+# a ?brain=js page of its own until batch 5 (13 Nov), when render_cpp could
+# render the instrument with the loop closed and read its sources every
+# sixtieth of a second of audio: it is pieces/shape.py's `survey` now, with
+# survey.js's arithmetic. survey.js is left as it was, the record of how the
+# page asked it, and reads the page's own brain, so it goes with that brain.
 import os, sys
 from playwright.sync_api import sync_playwright
 import corpus
@@ -38,7 +41,6 @@ import corpus
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
-SURVEY = os.path.join(HERE, "survey.js")
 
 fails = []
 def check(name, ok, detail=""):
@@ -139,32 +141,9 @@ with sync_playwright() as pw:
     check("no page errors on the default", not bad, "; ".join(bad[:3]))
     b.close()
 
-    # The survey, on the page's own brain: it reads the page's sources over
-    # four seconds of each corpus setup with the loop closed, which the core
-    # cannot be asked for yet without render_cpp (a render with the loop
-    # closed and the six sources read out as it goes).
-    b, p, bad = open_page(pw, "&brain=js")
-    # survey.js reads the old library's setups, from before P8g, by corpusSetup.
-    corpus.install(p)
-    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    p.wait_for_timeout(200)
-    print("\n--- the sixth slot, surveyed with the loop closed ---")
-    p.evaluate("() => setPhoto(true)")
-    survey = p.evaluate(open(SURVEY).read(), [4])
-    for name, r in survey["result"].items():
-        print("    %-7s entropy %.2f bits; shares %s; adds %.2f bits; not nought %.0f%% of the time"
-              % (name, r["entropy"], r["shared"], r["adds"], 100 * r["nonzero"]))
-    chosen = p.evaluate("() => SIXTH")
-    # Half a bit: when it was chosen Direction added 1.6 and edge contact 0.7.
-    check("the source in the sixth slot adds what the other five do not hold, half a bit or more",
-          chosen == "signed" and survey["result"][chosen]["adds"] > 0.5, "%.2f bits" % survey["result"][chosen]["adds"])
-    check("and a copy of roundness, the null, adds nothing", abs(survey["result"]["copy of round"]["adds"]) < 0.01,
-          "%.3f bits" % survey["result"]["copy of round"]["adds"])
-
-    check("no page errors on ?brain=js", not bad, "; ".join(bad[:3]))
-    b.close()
+    # The survey (:387, :389) is core/tests/pieces/shape.py's since batch 5.
 
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("the picture's sources are on the photocell and the readout, and the sixth adds what the five do not")
+print("the picture's sources are on the photocell and the readout (the sixth's survey is pieces/shape.py's)")

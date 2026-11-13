@@ -24,7 +24,7 @@ at C4. Their sequence, in time:
 and the same soft notes from a fresh start: the second chord at 0.5 s, the
 soft notes from 6.5 s on the same spacing.
 
-Rendered by the compiled core offline (response_cpp, a 128-frame step at a
+Rendered by the compiled core offline (render_cpp --response, a 128-frame step at a
 time at 48 kHz with each message at its own sample), which parity holds the
 page to sample for sample; so this is the site's sound and the plugin's.
 The swell is the heard level against the same performance at Picture nought,
@@ -114,9 +114,11 @@ INST = os.path.join(BUILD, "instrument_cpp")
 subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(CORE, "include"),
                 os.path.join(CORE, "tests", "tools", "instrument_cpp.cpp"), "-o", INST], check=True)
 BANK = subprocess.run([INST, "--code", "Crossed hands"], check=True, capture_output=True, text=True).stdout.strip()
-EXE = os.path.join(BUILD, "response_cpp")
+# render_cpp's --response is response_cpp's run to the byte; render_cpp grew
+# from it in stage 5, step 3, batch 5, and response_cpp went.
+EXE = os.path.join(BUILD, "render_cpp")
 subprocess.run(["g++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-I", os.path.join(CORE, "include"),
-                os.path.join(CORE, "tests", "tools", "response_cpp.cpp"), "-o", EXE], check=True)
+                os.path.join(CORE, "tests", "tools", "render_cpp.cpp"), "-o", EXE], check=True)
 
 def on(t, n, v): return (t, 0x90, n, v)
 def off(t, n): return (t, 0x80, n, 0)
@@ -144,7 +146,7 @@ def render(events, seconds, patch):
     path = os.path.join(BUILD, "events-%d.txt" % os.getpid())
     with open(path, "w") as f:
         for e in events: f.write("%.6f %d %d %d\n" % e)
-    out = subprocess.run([EXE, OWNER, json.dumps(patch), path, str(seconds)], check=True, capture_output=True, text=True).stdout
+    out = subprocess.run([EXE, "--response", OWNER, json.dumps(patch), path, str(seconds)], check=True, capture_output=True, text=True).stdout
     level, band, stage = [], [], []
     for line in out.split("\n"):
         w = line.split()

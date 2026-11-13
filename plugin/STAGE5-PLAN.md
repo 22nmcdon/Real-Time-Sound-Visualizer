@@ -229,6 +229,20 @@ the full suite and parity pass.
    mutations seen red, after nine checks carried from the page were found
    unable to fail. One site defect found, not fixed: a port's notes under one
    running status lose the third. `STAGE5-INVENTORY.md` section 9.
+   **Batch 5 done (13 Nov): `render_cpp`, and `loop`, `shape`'s survey,
+   `picturepresets`' runs, `input`, `livefx` and `perform`'s microphone** -
+   `core/tests/tools/render_cpp.cpp`, grown from `response_cpp` (which it
+   replaced, byte for byte) and `instrument_cpp` (whose readings both print
+   from `instrument_reads.h`): a setup code, the hands, MIDI at its sample,
+   an input, readings at an interval of audio and files of the heard pair,
+   lanes and grid; the same to the bit run twice, and reading moves nothing,
+   each with its null. 127 piece checks with their nulls (loop's seven
+   stability seeds among them), web checks 120 to 36 over the six,
+   `?brain=js` opens 7 to 0. 22 core mutations seen red. Every page bound
+   held offline, unmoved; the fold's "saturated" exemption, which the page
+   leaned on, is not needed. The instrument puts an input through its
+   effects; it has no limiter, so the plugin hands a host up to 3.2 times
+   full scale. `STAGE5-INVENTORY.md` section 10.
 4. **The constellation, and anything else only the page's brain does.** Port
    it to the core (ways-to-draw's own step 3), or keep it as a look-only
    drawing on the page, seen and not heard, until it is ported. The owner's
@@ -258,6 +272,15 @@ the full suite and parity pass.
    - *The interval readout* (batch 4): `harmonySaid` reads the face's mirror
      of the generator; it should read the instrument's (`instrument_cpp`'s
      `tone` shows what that reading carries).
+   - *The limiter and the meter* (batch 5): the instrument has no limiter
+     and hands its meter no limiting, so its "running away" comes only from
+     a screen lit past a third, and the plugin's output is unlimited (3.2
+     times full scale with the reverb in the loop at full). On the site the
+     face's monitor chain limits and clamps the sound and the face's meter
+     reads that limiter. When the face's verdict reads the instrument's,
+     either the site's limiter reading is handed to the instrument's meter,
+     or the instrument gets a limiter of its own (which the plugin wants
+     anyway), or the rule is let go. `web/docs/after-stage-5.md`.
    - *`syncMonitor` stays* (answered by batch 4): the instrument's sound
      reaches the speakers through the page's own monitor chain, so it is the
      face's audio and not a second brain.

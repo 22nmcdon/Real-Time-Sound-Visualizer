@@ -89,3 +89,90 @@ def run(kit):
           len(splits) >= 5 and uneven == [], str(uneven or [(r["preset"], r["layers"]) for r in splits]))
     flat = [r for r in played if not r["split"]]
     null("and a preset with no layers sounds one", all(r["layers"][1] == 0 for r in flat) and flat, str([r["layers"] for r in flat][:4]))
+
+    microphone(kit)
+
+
+# --- the microphone through the instrument (performtest :231 to :265), batch 5 ---
+
+def microphone(kit):
+    """The Live effects and Listening presets on a microphone, through the
+    instrument. On `?brain=js` until batch 5 these put the stub's microphone
+    through the page's own effects insert (`state.source.fx`) and asked the
+    page's compiler; here render_cpp draws an input through the instrument
+    (srcMic, as the site's Mic button sends it): one oscillator, 220 Hz at
+    0.8, in one channel, which the instrument takes as a mono input. Each
+    preset is loaded over it as a setup, as `loadCorpus` sends one - these
+    are display presets, landing on whatever is playing - and held for ten
+    and a half seconds: what is drawn, against the input itself at the same
+    samples, over the last ten of them, and the last 4410 samples' trough
+    and the distance between the lanes, as the page read its window 1.2 s
+    on. Ten seconds, not the page's 1.2: the page asked whether its insert
+    was in the path; here the samples are asked, and Echoes that come and go
+    puts its echo on an oscillator at a tenth of a hertz, which leaves the
+    input alone for five seconds in every ten. A preset with no effect in it
+    draws the input exactly, the whole time."""
+    import numpy as np
+    from pieces.kit import BUILD
+    check, null = kit.check, kit.null
+    rate = 48000
+    x = (0.8 * np.sin(2 * np.pi * 220 * np.arange(rate * 140) / rate)).astype("<f4")
+    os.makedirs(BUILD, exist_ok=True)
+    mic, lanes = os.path.join(BUILD, "perform-mic.f32"), os.path.join(BUILD, "perform-lanes.f32")
+    x.tofile(mic)
+    names = [n for n, _, _ in next(s for s in library() if s[0] == "Live effects")[1]]
+    setups = {n: s for sec in library() for n, s, _ in sec[1]}
+    plain = "Playing, waveform"
+    base = base64.b64encode(json.dumps({"v": 11, "pictureAmount": 0}).encode()).decode().rstrip("=")
+    lines = [["make", rate, base], ["click", "srcMic"], ["input", "file", mic, 1], ["record", "lanes", lanes]]
+    HOLD = 10.5
+    for i, n in enumerate(names + [plain]):
+        lines += [["setup", code(setups[n])], ["to", (i + 1) * HOLD]]
+    kit.render(lines)
+    drawn = np.fromfile(lanes, "<f4").reshape(-1, 6)
+    rows = {}
+    for i, n in enumerate(names + [plain]):
+        start, end = int(round((i * HOLD + 0.5) * rate)), int(round((i + 1) * HOLD * rate))
+        w, given = drawn[start:end], x[start:end].astype(float)
+        last = drawn[end - 4410:end]
+        rows[n] = {"low": float(last[:, 0].min()), "apart": float(np.max(np.abs(last[:, 0] - last[:, 1]))),
+                   "changed": float(max(np.max(np.abs(w[:, 0] - given)), np.max(np.abs(w[:, 1] - given))))}
+        print("    %-28s low %.3f, apart %.3f, against the input %.3f" % (n, rows[n]["low"], rows[n]["apart"], rows[n]["changed"]))
+    # Your input, kaleidoscope had nothing but the kaleidoscope, cut on 7 Nov,
+    # and Your level, swirling nothing but the level on the twist, a source cut
+    # in F4b: they load as the plain input now, and are held to that.
+    CUT_ONES = ("Your input, kaleidoscope", "Your level, swirling")
+    kept = [n for n in names if n not in CUT_ONES]
+    check("every live-effects preset puts a microphone through the instrument's effects: what is drawn is not the input",
+          len(kept) >= 10 and all(rows[n]["changed"] > 0.01 for n in kept) and rows[plain]["changed"] == 0,
+          str([(n, round(rows[n]["changed"], 3)) for n in kept]))
+    null("the plain display preset draws the input to the bit", rows[plain]["changed"] == 0 and rows[plain]["apart"] == 0)
+    check("and the two whose only effect was cut leave the input alone", all(rows[n]["changed"] == 0 for n in CUT_ONES),
+          str([(n, rows[n]["changed"]) for n in CUT_ONES]))
+    null("which a preset with an effect does not", rows["Twisted input"]["changed"] > 0.01)
+    octave = rows["Octave up, on your input"]
+    check("the octave-up folds the input's troughs up", octave["low"] > -0.02 and rows[plain]["apart"] < 1e-3, str(octave))
+    null("the plain input's troughs are not folded", rows[plain]["low"] < -0.7, "%.3f" % rows[plain]["low"])
+
+    # Listening: every routing from a source that hears, live on a microphone
+    # and no loop - on the page asked of its registry's `family` and
+    # `fromPicture`; here the instrument's matrix (`loopof`): the source
+    # registered, not the picture's while it hears the input, and its
+    # destination one the instrument has. The null: the same presets with the
+    # generator drawn, where a hearing source hears the instrument's own sound
+    # and is the loop's.
+    listening = [n for n, _, _ in next(s for s in library() if s[0] == "Listening")[1]]
+    def heard(drawn_from):
+        out = []
+        for n in listening:
+            got = kit.render([["make", rate, code(setups[n])], ["click", drawn_from], ["input", "file", mic, 1], ["to", 0.3], ["read", "loopof"]])
+            for w in got[-1]["loopof"]:
+                pair, known, pic, kind = w.rsplit(":", 3)
+                out.append({"preset": n, "source": pair.split(">")[0], "known": known == "1", "loop": pic == "1", "kind": kind})
+        return out
+    mic_rows, tone_rows = heard("srcMic"), heard("srcTone")
+    for r in mic_rows: print("    %-26s %-12s registered %s, loop %s, to %s" % (r["preset"], r["source"], r["known"], r["loop"], r["kind"]))
+    ok = lambda r: r["source"].startswith("hear.") and r["known"] and not r["loop"] and r["kind"] in ("a", "v")
+    check("every Listening preset routes a source that hears, and on a microphone it is live and no loop",
+          len(mic_rows) >= 5 and all(ok(r) for r in mic_rows), str([r for r in mic_rows if not ok(r)][:3]))
+    null("on the generator the same routings are the loop's", all(r["loop"] for r in tone_rows) and tone_rows, str([r["loop"] for r in tone_rows]))

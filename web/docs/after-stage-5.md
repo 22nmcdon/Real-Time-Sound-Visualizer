@@ -52,6 +52,18 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   the page and the audio engine; it did not recur in four runs alone. Found by
   the flaky-test pass (13 Nov).
 
+- **The plugin's output is not limited, and the instrument's meter never
+  hears a limiter.** The instrument (`scope/instrument.h`) has no limiter of
+  its own: on the site the face's monitor chain (limiter and clamp,
+  `syncMonitor`) holds what the speakers get, but the plugin hands its host
+  the heard pair as the core makes it. Rendered offline with the loop at its
+  top (`core/tests/pieces/loop.py`), it peaks at 0.94 to 1.09 plain, 2.02
+  with the phaser at its top, 2.74 with a crossed split at Scan's top and
+  3.24 with the reverb at full - ten decibels over full scale into a DAW.
+  And since the instrument hands its picture meter no limiting, the meter's
+  rule that a strained limiter means running away never fires there.
+  Found by step 3's batch 5 (13 Nov); step 5's list has the decision.
+
 ## Sounds and presets
 
 - **Bass under the tine piano and Bass under the pad sit on their headings'
@@ -64,11 +76,17 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
 
 ## Tests
 
-- **The loop suite's fold check** passes only through its "saturated"
+- **The loop suite's fold check** passed only through its "saturated"
   exemption on the crossed split and the reverb at full, reading 0.032 to 0.043
-  against a 0.05 bound, and goes red when a run misses saturation. It needs a
+  against a 0.05 bound, and went red when a run missed saturation. It needs a
   better rule for what passing means, not a moved bound. Its Scan read-count
-  check counts timer reads in real seconds and once failed at exactly its bound.
+  check counted timer reads in real seconds and once failed at exactly its
+  bound. Since batch 5 (13 Nov) both are `core/tests/pieces/loop.py`'s,
+  rendered offline and the same every run: every seed moves the fold by 0.30
+  to 0.50 and passes without the exemption, Scan's table moves by a median of
+  0.082 to 0.335 a tenth against the 0.02 bound, and the read count is always
+  297 of 300. The exemption and the bounds are kept as they were, the owner's
+  to change.
 - **The hand suite's split fit** does not go red for the lower hand with the
   bass a semitone off (the upper hand's does): at 131 Hz a semitone moves the
   fit too little in a 10 ms window. Noted at the site by batch 1.

@@ -967,6 +967,213 @@ the split one each.
   effects at all (section 3); with input and livefx.
 - **harmony `:195`, `:196`**: not a render, the meter's question above.
 
+## 10. Step 3, batch 5 (13 Nov)
+
+`render_cpp`, and the rows that waited for it: loop's stability runs and the
+rest of loop on `?brain=js`, shape's survey, picturepresets' runs, input,
+livefx and perform's microphone rows. Every row in those six appendix tables
+has a "Batch 5" column. Nothing in `scope.html` or `core/include` changed;
+`git diff core/include` is empty. Budget, the constellation, worklet, wasm,
+brain and step 5's decisions are not this batch's.
+
+### render_cpp
+
+`core/tests/tools/render_cpp.cpp`: the instrument (`scope/instrument.h`, as
+the plugin and the site play it) rendered offline. It **grew from**
+`response_cpp`, whose run it still makes byte for byte (`--response`; the two
+were run on responsetest's three performances and on `--decode` and gave the
+same bytes, and `response_cpp.cpp` went, responsetest pointing at
+`render_cpp --response`), and from `instrument_cpp`, whose script it speaks
+and whose native readings both now print from one header,
+`core/tests/tools/instrument_reads.h` (instrument_cpp's output on a script
+using every reading was the same to the byte before and after). It is built
+by the pieces' kit, so by parity's harness; how to use it is in
+`core/tests/golden/README.md` and at the top of the file.
+
+It takes a script of JSON lines, time moving only by `to`:
+
+- a setup code with fields laid over it (`make`), and the hands a player has
+  - `slider`, `setup`, `control`, `click`, `routings`, `fade` - at the sample
+    reached;
+- MIDI at its own sample (`midi` after `to`), so held notes, a hammer every
+  90 ms, and a chord let go at a stated sample;
+- the loop closed for as long as asked (30 s a seed here), with a meter reset
+  (`reset meter`) and a layer's hold put in (`hold`) where a run wants them;
+- an input, as a host's input bus or the site's microphone hands it over: a
+  file of float32, mono or stereo, a sine, or instrument_cpp's saw
+  (`input`); drawn whole with `click srcMic` or into the generator's input
+  modes. **The instrument does put an input through its effects**, which
+  batches 3 and 4 asked: drawing the input, its render runs it through the
+  generator's `effect` - the plane and the time effects, phaser, chorus,
+  delay and reverb - and what comes out is both drawn and heard (a click
+  comes back 150 ms on with the delay at full mix, and not without it;
+  pieces/render.py). It has no insert to switch: what the page's livefx rows
+  held about its insert's life has no counterpart.
+- readings at a stated interval of audio (`every`) or once (`read`): the
+  heard pair (peaks, RMS, non-finite count), each stage's reads and hold,
+  the meter's verdict and each layer's, the loop's routes per slot and the
+  view's offsets, each layer's Scan table whole, the picture's sources raw
+  and slewed with the photocell's reading, the grid's statistics, the
+  generator's effects settings, which sources count as the loop's
+  (`loopof`), and instrument_cpp's `grid`, `lgrid`, `hearing`, `scan`,
+  `reads`, `tone`, `routed`, `meter` and `layers`; and files of float32
+  (`record`) for the heard pair, the six ring lanes a sample and the grid at
+  each reading that asks (`griddump`), per frame or decimated.
+
+**Determinism, proved** (pieces/render.py): twelve seconds of the heaviest
+script the batch has - a crossed split at Scan's top, the reverb full, the
+picture's sources routed, a random oscillator on the twist, an input ridden
+into the generator, every reading every tenth of a second and every record -
+run twice: every reading, the heard pair, the lanes and the grid the same to
+the bit (SHA-256 of each). The nulls: a note struck at 126 rather than 127,
+and one input sample moved by a thousandth three seconds in, each a different
+run by the same comparison. Reading moves nothing: read every 7 ms (never on
+a step's edge) or never, the heard pair and lanes are the same to the bit,
+because the instrument steps every 128 frames whatever block it is handed. A
+mutation that stepped at every host block's top turned that red, and one
+that seeded the generator from the processor's clock turned the twin-run
+check red (it was green until the heavy script had a random source in it:
+nothing had drawn on the generator's random numbers).
+
+**Running time:** the heavy twelve seconds render in 1.5 to 1.8 s on this
+container (about seven times real time with every reading); a plain loop
+seed of 30 s in 1.2 to 2.1 s, the crossed one in 4. The compile is about 15 s,
+once a run.
+
+### What moved
+
+| Suite | Web checks before | after | pieces checks (nulls) | `?brain=js` opens | Rows: to pieces / moved / rewritten / gone / left |
+|---|---|---|---|---|---|
+| loop | 61 | 5 | 67 (14) new, 91 (24) in all | 2 to 0 | 13 / 2 / 1 / 0 / 0 |
+| shape | 13 | 10 | 6 (3) new, 56 (28) in all | 1 to 0 | 2 / 0 / 0 / 1 / 0 |
+| picturepresets | 10 | 5 | 10 (5) | 1 to 0 | 5 / 0 / 0 / 1 / 0 |
+| input | 11 | 5 | 13 (7) | 1 to 0 | 6 / 2 / 1 / 2 / 0 |
+| livefx | 17 | 7 | 15 (8) | 1 to 0 | 7 / 4 / 1 / 5 / 0 |
+| perform | 8 | 4 | 8 (4) new, 14 (7) in all | 1 to 0 | 4 / 0 / 0 / 1 / 0 |
+| render_cpp itself | - | - | 8 (4) | - | - |
+| **six suites** | **120** | **36** | **127 (45) new** | **7 to 0** | **37 / 8 / 3 / 10 / 0 (58 rows)** |
+
+(Web counts are checks run, a loop's iterations each. "Moved" includes a
+default page's own "no page errors". inputtest's six numbers rows needed no
+render: generator_cpp already hands the core's Generator an input, and they
+are pieces/input.py.)
+
+### Offline against the page's bounds
+
+Every bound is the page's, unmoved. Offline, each seed is the same every run,
+so none of these holds by luck of timing any more; what they read:
+
+- **The fold's "saturated" exemption is no longer used.** On the page the
+  loop's "really running" row passed on the crossed split and the full
+  reverb only by its exemption, reading 0.032 to 0.043 against 0.05, and
+  failed when a run missed saturation (after-stage-5.md). Offline every seed
+  moves the fold by 0.30 to 0.50 and passes without it. The exemption is
+  kept, as the bound is the owner's; the check says when it was used.
+- **Scan's table moves with room.** "With Scan at its top, its wave was
+  still moving" read 0.043 under three suites at once and 0.078 to 0.098
+  alone on the page, against 0.02; offline 0.082 (full scale), 0.335 (struck)
+  and 0.100 (crossed, B's 0.149). It never held by luck so much as by the
+  page's load, but the margin was a factor of two at worst there.
+- **The holds land exactly.** The stage's hold reaches 0.250 in every seed
+  that runs away (52 to 260 tenths of 300), and 1.000 in the silence that
+  never does; Scan's hold follows it to 0.250 (0.251 crossed, by its 0.005
+  step).
+- **What reaches the speakers was never the instrument's to hold.** The
+  page's "never passes full scale" read its own monitor chain's clamp. The
+  instrument has no limiter: its heard pair peaks at 0.94 to 1.09 in the
+  plain seeds, 2.02 with the phaser, 2.74 crossed and 3.24 with the reverb
+  at full. On the site the face's chain (limiter and clamp, `syncMonitor`)
+  still holds it, and looptest holds that on the default page (fed twelve
+  times full scale: 0.96 out of the clamp, 1.12 before it). In the plugin
+  nothing does - after-stage-5.md.
+
+### Checks that passed for the wrong reason, or could not fail
+
+1. **My own harness, the ring's width.** pieces/livefx.py first read the
+   recorded lanes as eight a sample; the ring has six (`kMaxLanes`). The
+   mirror and the angle checks passed on that interleaved garbage; only the
+   delay's timing, read off the same lanes, went wrong (a cycle of 0.375 s
+   where the bursts were 0.5 s apart). render_cpp's own comment said eight
+   too. Both fixed; the delay check is why it was seen.
+2. **A still screen that was not still.** The first null for "Scan's table
+   is moving" was Scan at its top with nothing routed and no Picture, on a
+   sine: its table moved 0.11 a tenth, because Scan reading a screen its own
+   wave draws is a loop by itself. The page's null for this was the screen
+   held by Stop (scantest), which is step 5's. Scan at a depth of one in a
+   hundred, all but still (0.0008), is the null now.
+3. **An echo that comes and goes.** perform's "every live-effects preset
+   puts the input through the effects" read the page's insert being there;
+   read from the samples 1.2 s after a load, Echoes that come and go drew
+   the input unchanged - its echo is an oscillator's at a tenth of a hertz,
+   away five seconds in ten. Each preset is held ten and a half seconds now.
+4. **Two checks the mutation pass found could not see the fault.** A meter
+   whose saturation was raised to 0.95 never ran away and so never held the
+   stage, which "running away holds the stage down, and nothing else holds
+   it" allows: a check is added that a screen the hammer keeps full is
+   called running away for nine tenths of what the meter says (260 of 260),
+   with the plain run's 52 of 260 as its null. And boredom that never rose
+   left picturepresets green, since "the picture's sources move" takes the
+   most-moving source, as the page did, and boredom is routed only beside
+   livelier ones; batch 3's boredom checks catch it. Making it every source
+   would be a new claim the presets do not meet (roundness 0.032, change
+   0.048, boredom 0.010 in the presets that route them), so it is left, and
+   said here.
+
+The rows the page's brain alone had, which went: input's open-only-while-
+heard rule (the instrument hears its input always), and livefx's insert -
+no node until an effect, the running worklet told a change, the per-frame
+routing message, the lane rows refitted round it, the node let go of with
+the source. The site's microphone reaching the instrument's effects at all,
+and the face's words for each source, are held on the default page.
+
+### Nulls and mutations seen red
+
+Every piece check has its null beside it, seen red. Every moved or rewritten
+web check has one too, seen red: a quiet chain and the sound before the clamp
+(loop), the input ridden at a depth of nought and its code (input), the
+microphone as it is and the two sources' words (livefx). The core was mutated
+in scratch copies (`PIECES_INCLUDE`), 22 ways, each turning at least one
+check red: `picture.h` eight (the hold's floor, running away never holding,
+saturation at 0.95, strained at -12 dB, the layers never live, Direction read
+as roundness, the photocell read across, never wandering; boredom never
+rising, red on batch 3's loop rows only, above); `matrix.h` the loop's total;
+`scan.h` two (a hold of one sent, the tables never handed over);
+`generator.h` six (the reverb's size not set, the ride at 1.9, FM at three,
+the clock never restarting, the seed from the processor's clock); `plane.h`
+two (Y never mirrored, the delay a hundredth long); `instrument.h` two (a
+drawn input skipping the effects, a step at every host block's top);
+`hearing.h` one (a hearing source always the loop's). Three were first green
+for my harness's sake, not the checks': the floor's mutant did not compile
+(an unused name under `-Werror`), two wrote livefx's input files before the
+scratch build's directory existed.
+
+### What it finds
+
+- **The instrument has no limiter, so the plugin hands a host whatever the
+  loop makes** - 3.2 times full scale with the reverb in the loop at full,
+  2.7 crossed. On the site the face's monitor chain limits and clamps it.
+  And the instrument's meter is handed no limiting ("with no limiter to
+  read, the output being the owner's"), so its "running away" comes only
+  from a screen lit past a third; the meter's rule for a strained limiter
+  (held by pieces/loop.py on picture_cpp's meter) never fires in the
+  instrument. In `web/docs/after-stage-5.md`, and step 5's list: when the
+  face's verdict reads the instrument's, the site's limiter reading no
+  longer reaches it.
+- **Scan alone moves its own table.** With nothing routed and no Picture, a
+  sine at Scan's top moves its table by 0.11 a tenth: Scan reading a screen
+  its own wave draws is a loop of its own. Not a defect - it is what Scan is
+  - but it means Stop (step 5) is the only still screen Scan has, which is
+  why scantest's held run waits on it.
+
+### What is left on `?brain=js`
+
+Besides budget, the constellation, worklet, wasm and brain (and braincounts'
+own leg), and step 5's decisions (scan's held run for Stop, harmony's two
+meter rows): clock's and score's panels, which draw the page's own brain
+(batch 2); layer's learned split point (batch 2, a site defect); mod's and
+photo's pages for their page rows outside batch 3; and the whole of
+`livetest.py`, which no batch has taken (5 numbers, 35 page).
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the
@@ -1521,19 +1728,19 @@ Line 131: "with ?brain=js no host at all". The ?brain=js page (134) is used once
 ### inputtest.py - wholly on ?brain=js - 11/11
 Lines 22-26: "this suite reads the page's own brain - its rule that an input opens only while it can be heard, where the instrument hears its input always". It opens at `?brain=js` (line 90). The first six are offline `makeGeneratorCore` renders with `core.setInput(x)`.
 
-| Check | Kind | Why |
-|---|---|---|
-| with the mode off, or a ride at a depth of nought, the input changes nothing at all (102) | numbers | Offline core render with input samples. `render_cpp` must take an input lane. |
-| a ride scales every sample by (1 + 2 depth x): the sound rides on the outline (112) | numbers | The same. |
-| FM is a factor on the rate: a steady quarter at full depth draws what twice the pitch draws (120) | numbers | The same. |
-| and a deep enough negative input stops the waveform rather than running it backwards (124) | numbers | The same. |
-| a waveform clocked by the input plays at the input's pitch, and runs free at its own when the input stops (141) | numbers | The same. |
-| and each of the input's upward crossings restarts the cycle... (152) | numbers | The same. |
-| not heard, it says so and opens nothing: the input would have nowhere to go (189) | page | The page brain's rule (`liveStreams`, `genVoice().setSound(false)`), which the instrument does not have. Goes. |
-| heard, the input is opened and connected, and the drawn size swings with it from near nought to twice (191) | page | Mostly the same rule (`inputConnected`, opened streams). The size swing is already held by 112. |
-| and a setup code carries the mode and the depth (195) | page | `snapshot()`. Brain-free. |
-| switched off, the input is let go of and disconnected (196) | page | The page-only rule. Goes. |
-| no page errors (199) | page | Housekeeping. |
+| Check | Kind | Why | Batch 5 (13 Nov) |
+|---|---|---|---|
+| with the mode off, or a ride at a depth of nought, the input changes nothing at all (102) | numbers | Offline core render with input samples. `render_cpp` must take an input lane. | to pieces (input.py: generator_cpp's `input`); null a ride at a half |
+| a ride scales every sample by (1 + 2 depth x): the sound rides on the outline (112) | numbers | The same. | to pieces; null a ride that shifts |
+| FM is a factor on the rate: a steady quarter at full depth draws what twice the pitch draws (120) | numbers | The same. | to pieces; null at half the depth |
+| and a deep enough negative input stops the waveform rather than running it backwards (124) | numbers | The same. | to pieces; null an eighth below |
+| a waveform clocked by the input plays at the input's pitch, and runs free at its own when the input stops (141) | numbers | The same. | to pieces; nulls unclocked, and a stalled clock |
+| and each of the input's upward crossings restarts the cycle... (152) | numbers | The same. | to pieces; null unclocked |
+| not heard, it says so and opens nothing: the input would have nowhere to go (189) | page | The page brain's rule (`liveStreams`, `genVoice().setSound(false)`), which the instrument does not have. Goes. | gone: the page brain's rule |
+| heard, the input is opened and connected, and the drawn size swings with it from near nought to twice (191) | page | Mostly the same rule (`inputConnected`, opened streams). The size swing is already held by 112. | rewritten on the default: the site's input reaching the instrument, its figure from 0.003 to 0.77; null at a depth of nought |
+| and a setup code carries the mode and the depth (195) | page | `snapshot()`. Brain-free. | moved to the default; null the code at nought |
+| switched off, the input is let go of and disconnected (196) | page | The page-only rule. Goes. | gone: the page brain's rule |
+| no page errors (199) | page | Housekeeping. | stays, on the default page |
 
 ### keystest.py - wholly on ?brain=js - 37/37
 Lines 15-18: "this suite reads the page's own brain - its gate, read directly". It opens at `?brain=js` (line 43). Everything is driven by real mouse and keys on the on-screen keyboard and read off `midi.notes` and the lit keys, which are face and page MIDI-stack state that the default has too. Only the gate (`state.source.gated`, lines 76, 87, 294) and the generator's pitch and interval (`state.source.settings.freq/interval`, 113, 151) are the page's brain.
@@ -1735,25 +1942,25 @@ Lines 29-32: "this suite reads the page's own brain - its voices and worklet, an
 ### livefxtest.py - wholly on ?brain=js - 17/17
 Lines 29-32: "this suite reads the page's own brain - its live input's insert". It opens at `?picture=0&brain=js` (line 89). The insert (`state.source.fx`, its worklet, `setMonitor`) is the page's. The arithmetic is the generator's, so it moves to a core render only if `render_cpp` takes input samples.
 
-| Check | Kind | Why |
-|---|---|---|
-| a microphone with no effect on has no effects node in its path, and draws its input as it is (101) | page | `state.source.fx.active`: the page insert's lifecycle. Goes. |
-| mirrored, the input is drawn with no negative half on either axis (134) | numbers | The plane's mirror on input samples. A core render with input in. |
-| and a change made while it runs reaches it: X alone folded, Y given back its negative half (136) | page | The page telling its running insert worklet. Goes. |
-| and the speakers are handed the same: what reaches the monitor chain is mirrored too (138) | numbers | Borderline. Read from an analyser on the page's monitor chain. What is held is that the heard pair is mirrored, which is the core's heard output. |
-| and the section says it is on your input, drawn and heard (141) | page | `el.planeWhere` text. |
-| the mirror on both folds every angle of the input into 0 to pi/2, as the generator's does (159) | numbers | Angles of the drawn pair. |
-| and the two channels arrive as two: the folded input fills the quadrant rather than one ray of it (164) | numbers | The same. |
-| with the last effect off, the effects node is gone and the input is drawn as it is again (172) | page | `fx.active`. Goes. |
-| an oscillator on the twist swirls a mono input's diagonal off itself, from a slider at nought (211) | numbers | lfo1 routed to `gen.twist` (with `lfos[0].depth/rate` written by hand) on input samples. A core render with input and a routing. |
-| and a routing turned to nought mid-stream stops swirling it: the worklet follows the page every frame (213) | page | The page's per-frame message to its insert. Goes. |
-| a mono input is one lane, two while the effect is on, and one again when the routing goes with the node (218) | page | `state.source.channels`, lane rows. |
-| a delay on a live input puts the repeat 150 ms after the burst, to within 2 samples (260) | numbers | Echo onsets on input samples. A core render with input. |
-| and its effects are drawn (263) | page | Text. |
-| a band split gets no effects insert, and the sections say why (284) | page | `'fx' in state.source`, text. |
-| and the source it replaced has let its effects node go, rather than leave it running on a closed input (286) | page | Insert lifecycle. Goes. |
-| and on the tone the effects are the generator's (288) | page | Text. |
-| no page errors (290) | page | Housekeeping. |
+| Check | Kind | Why | Batch 5 (13 Nov) |
+|---|---|---|---|
+| a microphone with no effect on has no effects node in its path, and draws its input as it is (101) | page | `state.source.fx.active`: the page insert's lifecycle. Goes. | rewritten on the default: the site's Mic drawn by the instrument (`host`), as it is; the insert's part gone |
+| mirrored, the input is drawn with no negative half on either axis (134) | numbers | The plane's mirror on input samples. A core render with input in. | to pieces (livefx.py: render_cpp drawing the input) and on the default (the site's mirror reaching the instrument); nulls as it is |
+| and a change made while it runs reaches it: X alone folded, Y given back its negative half (136) | page | The page telling its running insert worklet. Goes. | to pieces, as X alone folded; the running worklet's part gone |
+| and the speakers are handed the same: what reaches the monitor chain is mirrored too (138) | numbers | Borderline. Read from an analyser on the page's monitor chain. What is held is that the heard pair is mirrored, which is the core's heard output. | to pieces (the heard pair); null unmirrored |
+| and the section says it is on your input, drawn and heard (141) | page | `el.planeWhere` text. | moved to the default, the face's words for a microphone |
+| the mirror on both folds every angle of the input into 0 to pi/2, as the generator's does (159) | numbers | Angles of the drawn pair. | to pieces; null unfolded |
+| and the two channels arrive as two: the folded input fills the quadrant rather than one ray of it (164) | numbers | The same. | to pieces; null one channel in both |
+| with the last effect off, the effects node is gone and the input is drawn as it is again (172) | page | `fx.active`. Goes. | gone: the insert's life |
+| an oscillator on the twist swirls a mono input's diagonal off itself, from a slider at nought (211) | numbers | lfo1 routed to `gen.twist` (with `lfos[0].depth/rate` written by hand) on input samples. A core render with input and a routing. | to pieces; null routed at nought |
+| and a routing turned to nought mid-stream stops swirling it: the worklet follows the page every frame (213) | page | The page's per-frame message to its insert. Goes. | gone: the page's per-frame message |
+| a mono input is one lane, two while the effect is on, and one again when the routing goes with the node (218) | page | `state.source.channels`, lane rows. | gone: the lane rows round the insert |
+| a delay on a live input puts the repeat 150 ms after the burst, to within 2 samples (260) | numbers | Echo onsets on input samples. A core render with input. | to pieces; nulls no delay, and 160 ms |
+| and its effects are drawn (263) | page | Text. | gone: the face's words are :141's |
+| a band split gets no effects insert, and the sections say why (284) | page | `'fx' in state.source`, text. | moved to the default, the words and the four lanes; the insert's part gone |
+| and the source it replaced has let its effects node go, rather than leave it running on a closed input (286) | page | Insert lifecycle. Goes. | gone: the insert's life |
+| and on the tone the effects are the generator's (288) | page | Text. | moved to the default; null the two words differ |
+| no page errors (290) | page | Housekeeping. | stays, on the default page |
 
 ---
 
@@ -1806,38 +2013,38 @@ Docstring note (:8): it "reads the page's own brain - its microphone and band-sp
 ### looptest.py - wholly on ?brain=js (two pages: `?brain=js` :58, and `?brain=js&core=js` :502 for the Scan runs) - 30/30
 Docstring note (:31): it "reads the page's own brain - its generator's routes and worklet". The comment at :496 says the Scan runs need `core=js` because "the run reads the tables that brain sends, which the site's instrument reads inside its worklet and never hands out". So the `core=js` page is there to reach page data, not to compare engines. Several checks force a source by hand (`MOD_SOURCES.get(id).value = () => 1`), which an offline render can only do if the core gets a hook for it.
 
-| Check | Kind | Why | Batch 3 (13 Nov) |
-|---|---|---|---|
-| three picture sources at full move a destination by the loop's total, not three times it (:92) | numbers | `state.rotateMod` after `applyModMatrix` with sources forced to 1; the core matrix's loop total, given a source-override hook | to pieces (loop.py, matrix_cpp) |
-| and a source that is not the loop is not caught in the loop's bound (:94) | numbers | as above, with a registered test source | to pieces |
-| the loop's routes into a generator parameter cross into the audio loop as one (:147) | page | counts `genRoutes` with `loopTotal`, the page brain's hand-over to its engine; goes, since :150 carries the claim | rewritten, to pieces: the core's matrix hands one route, the loop's (`lroutes`) |
-| carrying the bounded total (:149) | page | `route.source.value()` of the page's combined route; goes | rewritten, to pieces |
-| and the generator plays the bounded pitch, not three sources' worth (:150) | numbers | DFT energy at 220·2^0.5 vs 2^1.5 in the samples; offline render | to pieces (generator_cpp) |
-| two on amplitude at full ask for no duck, through the combined route (:186) | page | `genRoutes` held value; goes | rewritten, to pieces |
-| and at nought they duck, by no more than the loop's total (:188) | page | as above | rewritten, to pieces |
-| and the generator is quieter at nought than at full (:190) | numbers | RMS of samples; offline render | to pieces |
-| boredom rises while the picture is stuck (:227) | numbers | `picture.bored` over 10 s; the core's picture reads, rendered offline | to pieces (picture_cpp, a stuck figure then a moving one) |
-| no faster than a quarter a second - it cannot slam (:234) | numbers | slope of `picture.raw.bored` | to pieces |
-| and never past one (:236) | numbers | peak of `picture.bored` | to pieces |
-| routed at full it moves a destination by its own reach, lower than the photocell's (:237) | numbers | `state.rotateMod / picture.bored` | to pieces (`reach=bored`) |
-| and it drains when the picture moves again (:239) | numbers | `picture.bored` after 5 s of a moving fifth | to pieces |
-| the photocell moves the pitch you hear, through the worklet (:276) | numbers | DFT of the monitor chain with `photo.1` forced to 0.6; offline render with a source override | to pieces |
-| a picture held under ten decibels of limiting is running away, and the same picture unlimited is not (:310) | numbers | `makePictureMeter()` fed a fixed grid; the core meter, offline with no render needed |  |
-| and the page reads a hot chain's limiter pulling it down (:313) | page | `monitorLimiting()` reads the page's Web Audio limiter in `monitorChains` (scope.html:18027); on default the limiter is the core's |  |
-| from %s, nothing goes NaN or infinite (:523) x7 seeds | numbers | `state.resMod/rotateMod/zoomMod`, `phosphor.grid`, `picture.raw`; offline, if the render exposes them |  |
-| from %s, what reaches the speakers never passes full scale (:524) x7 | numbers | analyser after the page chain's clamp; becomes the core's output peak |  |
-| from %s, and the speakers did hear it (:530) x7 | numbers | as above |  |
-| from %s, every destination stays inside the loop's total (:531) x7 | numbers | the mods and `genRoutes` loop totals |  |
-| from %s, and the grid stays inside the phosphor's range (:534) x7 | numbers | `phosphor.grid` max |  |
-| from %s, running away holds the stage's push down, to a quarter at most, and nothing else holds it (:547) x7 | numbers | `pictureMeter.verdict()` count and `pictureStage.hold` |  |
-| from %s, and the loop was really running - it moved what it drives, the stage's fold too (:571) x7 | numbers | ranges of resMod, the pitch total, `FOLD_SLOT` total |  |
-| and the reverb really was in the loop: the generator held Mix, Spread and Size at full to the end (:581) x1 | numbers | `genSettings().reverb*`; the core's generator settings in the render |  |
-| with Scan at its top, its wave was still moving: the table changed by a median of over 0.02 a tenth of a second (:590) x3 | numbers | `genSettings().scanTable`, which only the JS generator hands out; the core must export its table to the render |  |
-| crossed, the run really had two pictures: the layers drew a figure each throughout (:599) x1 | numbers | `layerPictures.live` |  |
-| and B's wave was moving as well as A's (:601) x1 | numbers | `genSettings(1).scanTable` |  |
-| and both depths were held by the lower of the two pictures' holds, never less (:602) x1 | numbers | `scanHold` against `layerPictures.stages[].hold` |  |
-| and Scan's depth was held by the stage's own hold, never less (:606) x2 | numbers | `scanHold` against `pictureStage.hold` |  |
-| no page errors (:610) | page | page health |  |
+| Check | Kind | Why | Batch 3 (13 Nov) | Batch 5 (13 Nov) |
+|---|---|---|---|---|
+| three picture sources at full move a destination by the loop's total, not three times it (:92) | numbers | `state.rotateMod` after `applyModMatrix` with sources forced to 1; the core matrix's loop total, given a source-override hook | to pieces (loop.py, matrix_cpp) | - |
+| and a source that is not the loop is not caught in the loop's bound (:94) | numbers | as above, with a registered test source | to pieces | - |
+| the loop's routes into a generator parameter cross into the audio loop as one (:147) | page | counts `genRoutes` with `loopTotal`, the page brain's hand-over to its engine; goes, since :150 carries the claim | rewritten, to pieces: the core's matrix hands one route, the loop's (`lroutes`) | - |
+| carrying the bounded total (:149) | page | `route.source.value()` of the page's combined route; goes | rewritten, to pieces | - |
+| and the generator plays the bounded pitch, not three sources' worth (:150) | numbers | DFT energy at 220·2^0.5 vs 2^1.5 in the samples; offline render | to pieces (generator_cpp) | - |
+| two on amplitude at full ask for no duck, through the combined route (:186) | page | `genRoutes` held value; goes | rewritten, to pieces | - |
+| and at nought they duck, by no more than the loop's total (:188) | page | as above | rewritten, to pieces | - |
+| and the generator is quieter at nought than at full (:190) | numbers | RMS of samples; offline render | to pieces | - |
+| boredom rises while the picture is stuck (:227) | numbers | `picture.bored` over 10 s; the core's picture reads, rendered offline | to pieces (picture_cpp, a stuck figure then a moving one) | - |
+| no faster than a quarter a second - it cannot slam (:234) | numbers | slope of `picture.raw.bored` | to pieces | - |
+| and never past one (:236) | numbers | peak of `picture.bored` | to pieces | - |
+| routed at full it moves a destination by its own reach, lower than the photocell's (:237) | numbers | `state.rotateMod / picture.bored` | to pieces (`reach=bored`) | - |
+| and it drains when the picture moves again (:239) | numbers | `picture.bored` after 5 s of a moving fifth | to pieces | - |
+| the photocell moves the pitch you hear, through the worklet (:276) | numbers | DFT of the monitor chain with `photo.1` forced to 0.6; offline render with a source override | to pieces | - |
+| a picture held under ten decibels of limiting is running away, and the same picture unlimited is not (:310) | numbers | `makePictureMeter()` fed a fixed grid; the core meter, offline with no render needed |  | to pieces (loop.py: picture_cpp's meter fed looptest's sparse picture under `mlimit -10`); null at -2 dB |
+| and the page reads a hot chain's limiter pulling it down (:313) | page | `monitorLimiting()` reads the page's Web Audio limiter in `monitorChains` (scope.html:18027); on default the limiter is the core's |  | moved to the default: the face's chain carrying the instrument's sound, fed twelve times full scale (-23 dB read); null a quiet chain |
+| from %s, nothing goes NaN or infinite (:523) x7 seeds | numbers | `state.resMod/rotateMod/zoomMod`, `phosphor.grid`, `picture.raw`; offline, if the render exposes them |  | to pieces (loop.py: render_cpp, 30 s of audio a seed, read every 0.1 s of it); null a reading gone NaN |
+| from %s, what reaches the speakers never passes full scale (:524) x7 | numbers | analyser after the page chain's clamp; becomes the core's output peak |  | rewritten: the clamp is the face's, held on the default page (0.96 after the clamp; null 1.12 before it); the instrument's heard peak is reported, 0.94 to 3.24 - it has no limiter (after-stage-5.md) |
+| from %s, and the speakers did hear it (:530) x7 | numbers | as above |  | to pieces, as "the instrument was heard"; null the silence never brought up |
+| from %s, every destination stays inside the loop's total (:531) x7 | numbers | the mods and `genRoutes` loop totals |  | to pieces; null an oscillator at full on the rotation beside the loop (1.498) |
+| from %s, and the grid stays inside the phosphor's range (:534) x7 | numbers | `phosphor.grid` max |  | to pieces; null a grid past one |
+| from %s, running away holds the stage's push down, to a quarter at most, and nothing else holds it (:547) x7 | numbers | `pictureMeter.verdict()` count and `pictureStage.hold` |  | to pieces; nulls each run's verdicts with another's hold; strengthened (a mutation): a screen kept full is called running away |
+| from %s, and the loop was really running - it moved what it drives, the stage's fold too (:571) x7 | numbers | ranges of resMod, the pitch total, `FOLD_SLOT` total |  | to pieces; null nothing routed and no Picture; every seed passed without the "saturated" exemption (fold 0.30 to 0.50) |
+| and the reverb really was in the loop: the generator held Mix, Spread and Size at full to the end (:581) x1 | numbers | `genSettings().reverb*`; the core's generator settings in the render |  | to pieces (`settings`); null the plain run's |
+| with Scan at its top, its wave was still moving: the table changed by a median of over 0.02 a tenth of a second (:590) x3 | numbers | `genSettings().scanTable`, which only the JS generator hands out; the core must export its table to the render |  | to pieces (`table`): medians 0.082, 0.335, 0.100 against the page's 0.043 to 0.098; null Scan at a depth of one (0.0008) |
+| crossed, the run really had two pictures: the layers drew a figure each throughout (:599) x1 | numbers | `layerPictures.live` |  | to pieces; null the unsplit struck run (0 of 300) |
+| and B's wave was moving as well as A's (:601) x1 | numbers | `genSettings(1).scanTable` |  | to pieces; null the unsplit run's B |
+| and both depths were held by the lower of the two pictures' holds, never less (:602) x1 | numbers | `scanHold` against `layerPictures.stages[].hold` |  | to pieces (`scan`, `stage`); null against the silence's stage |
+| and Scan's depth was held by the stage's own hold, never less (:606) x2 | numbers | `scanHold` against `pictureStage.hold` |  | to pieces; null against the silence's stage |
+| no page errors (:610) | page | page health |  | stays, on the default page |
 
 ### menvtest.py - 1 leg on ?brain=js beside the default - 1/23
 Comment at :153: "On the page's own brain the keyboard is the page's, and a key gone down reaches the audio thread only as the source's own message ... Both, because a message left out on one path passes the other."
@@ -2024,20 +2231,20 @@ Docstring note (:29): it runs "On the site's instrument ... and on the page's ow
 ### performtest.py - wholly on ?brain=js - 12/12
 Docstring note (:27): it "reads the page's own brain - its voices and routes, read directly". The first three checks read only the corpus data and touch no brain at all.
 
-| Check | Kind | Why | Batch 4 (13 Nov) |
-|---|---|---|---|
-| the sections for playing, each with a routing a hand moves in every preset (:96) | page | reads `CORPUS` and `decodeRoutings` only; could run with no browser, or trivially on default | moved |
-| and every preset in Split is a split, and every one in Layer a layer (:99) | page | as above | moved |
-| and a section of effects for live inputs, landing on whatever is playing (:100) | page | as above | moved |
-| every routing in them reaches the generator, is still at rest, and moves when played (:166) | numbers | `MOD_SOURCES` values at rest and under a chord, plus `genRoutes` compiled; offline render with the core's source readings out | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
-| and those whose every routing came from a cut source load with none (:168) | page | `state.modRoutings` after `loadCorpus`; trivially to default | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
-| and the null: a source spelt wrong is caught by the same measurement (:179) | numbers | the null of :166, same measurement | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
-| each split and layer sounds both layers from one chord across the keyboard (:185) | numbers | `midi.poly.layers[].sounding`, the page keyboard's voices; the core keyboard's layers in a render | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) |
-| every live-effects preset puts the effects insert in a microphone's path, and says so (:231) | page | `state.source.fx.active` on the page's mic source and `el.planeWhere`; on default it becomes a click on the instrument's live input | left on ?brain=js: the microphone through the page's insert; needs input samples |
-| and the two whose only effect was cut leave the input alone (:235) | page | as above | left on ?brain=js: the microphone through the page's insert; needs input samples |
-| the octave-up folds the input's troughs up (:241) | numbers | min of the processed mic samples; offline render with an input | left on ?brain=js: the microphone through the page's insert; needs input samples |
-| every Listening preset routes a source that hears, and on a microphone it is live and no loop (:265) | page | registry facts (`family`, `fromPicture`) and `genRoutes`; the hearing family is parked | left on ?brain=js: the microphone through the page's insert; needs input samples |
-| no page errors (:268) | page | page health | moved |
+| Check | Kind | Why | Batch 4 (13 Nov) | Batch 5 (13 Nov) |
+|---|---|---|---|---|
+| the sections for playing, each with a routing a hand moves in every preset (:96) | page | reads `CORPUS` and `decodeRoutings` only; could run with no browser, or trivially on default | moved | - |
+| and every preset in Split is a split, and every one in Layer a layer (:99) | page | as above | moved | - |
+| and a section of effects for live inputs, landing on whatever is playing (:100) | page | as above | moved | - |
+| every routing in them reaches the generator, is still at rest, and moves when played (:166) | numbers | `MOD_SOURCES` values at rest and under a chord, plus `genRoutes` compiled; offline render with the core's source readings out | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) | - |
+| and those whose every routing came from a cut source load with none (:168) | page | `state.modRoutings` after `loadCorpus`; trivially to default | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) | - |
+| and the null: a source spelt wrong is caught by the same measurement (:179) | numbers | the null of :166, same measurement | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) | - |
+| each split and layer sounds both layers from one chord across the keyboard (:185) | numbers | `midi.poly.layers[].sounding`, the page keyboard's voices; the core keyboard's layers in a render | to pieces (perform.py, instrument_cpp `routed` and `tone`, 70 corpus presets) | - |
+| every live-effects preset puts the effects insert in a microphone's path, and says so (:231) | page | `state.source.fx.active` on the page's mic source and `el.planeWhere`; on default it becomes a click on the instrument's live input | left on ?brain=js: the microphone through the page's insert; needs input samples | to pieces (perform.py `microphone`: render_cpp, each held 10.5 s, drawn against the input); null the plain preset to the bit |
+| and the two whose only effect was cut leave the input alone (:235) | page | as above | left on ?brain=js: the microphone through the page's insert; needs input samples | to pieces; null a preset with an effect |
+| the octave-up folds the input's troughs up (:241) | numbers | min of the processed mic samples; offline render with an input | left on ?brain=js: the microphone through the page's insert; needs input samples | to pieces; null the plain input's troughs |
+| every Listening preset routes a source that hears, and on a microphone it is live and no loop (:265) | page | registry facts (`family`, `fromPicture`) and `genRoutes`; the hearing family is parked | left on ?brain=js: the microphone through the page's insert; needs input samples | to pieces (`loopof`); null the same on the generator, the loop's |
+| no page errors (:268) | page | page health | moved | the ?brain=js page's goes; the default's stays |
 
 ### phototest.py - 1 leg on ?brain=js beside the default (the first 30 checks; the same page is re-opened on the default at :501 for the last 7) - 30/37
 Docstring note (:20): it "reads the page's own brain - genSet called directly". The `genSet` calls drive the figure under each check.
@@ -2078,18 +2285,18 @@ Docstring note (:20): it "reads the page's own brain - genSet called directly". 
 ### picturepresettest.py - wholly on ?brain=js - 10/10
 Its comment (`:45`): on ?brain=js because it "reads the page's own brain - restore() called directly, which the page sends the instrument nothing of". In fact it also calls `loadCorpus`, `heldTone`, `landPhoto`, `movePhoto` and reads `photo.*`, `MOD_SOURCES.get(id).value()` and `pictureMeter.verdict()` - all page-brain state - over 10 s a preset, twice for each loop.
 
-| Check | Kind | Why | Batch 4 (13 Nov) |
-|---|---|---|---|
-| a section of the picture playing itself, and one played with it (`:128`) | page | Counts entries in `CORPUS` on the page; pure data, no brain. Becomes a Python read of `corpus.LIBRARY` (or any page); nothing to render. | moved to a default page: data only |
-| every preset in them turns the photocell on and routes something the picture says (`:131`) | page | `decodeRoutings` over the corpus setups plus a null on Circle; data only. Moves to Python or the default page trivially. | moved to a default page: data only |
-| four presets use five sources or more, and two of them the picture's with at least three others (`:134`) | page | Counts distinct sources over `CORPUS` and `PRESETS`; data only, as above. | moved to a default page: data only |
-| the library uses sources together: thirty with two or more, twelve with three or more (`:137`) | page | Same counting, with its null; data only. | moved to a default page: data only |
-| at most two presets needed the reticle pressed onto their figure, so the stored placements are read (`:241`) | numbers | Reads `photo.raw` (the photocell's reading at the stored cell) after a load and held note; an offline render of the core's picture with the photocell gives the same number. `landPhoto` is page-side, but only the "dark" test is needed. | left: needs render_cpp |
-| in every one, the picture's sources are there, move, and are routed onto what they alter (`:244`) | numbers | Spread of each picture source's value over 10 s; an offline render's picture-source readings over time. | left: needs render_cpp |
-| and each loop changes what the picture does, against itself without the loop: the verdicts or the reading (`:249`) | numbers | Picture meter's verdict histogram and photo.1's swing, looped against unlooped (the setup with its picture routings removed); offline renders of two setup codes. | left: needs render_cpp |
-| and none of them ends running away (`:252`) | numbers | `pictureMeter.verdict()` at the end; the core has the meter (`core/include/scope/picture.h`). | left: needs render_cpp |
-| the wandering preset wanders because of its loop: wandering most with it, and not without it (`:256`) | numbers | Verdict histogram for one preset, looped and not; offline render. | left: needs render_cpp |
-| no page errors (`:260`) | page | The page's own health on ?brain=js; goes with the leg (the default page has its own). | split: a page each |
+| Check | Kind | Why | Batch 4 (13 Nov) | Batch 5 (13 Nov) |
+|---|---|---|---|---|
+| a section of the picture playing itself, and one played with it (`:128`) | page | Counts entries in `CORPUS` on the page; pure data, no brain. Becomes a Python read of `corpus.LIBRARY` (or any page); nothing to render. | moved to a default page: data only | - |
+| every preset in them turns the photocell on and routes something the picture says (`:131`) | page | `decodeRoutings` over the corpus setups plus a null on Circle; data only. Moves to Python or the default page trivially. | moved to a default page: data only | - |
+| four presets use five sources or more, and two of them the picture's with at least three others (`:134`) | page | Counts distinct sources over `CORPUS` and `PRESETS`; data only, as above. | moved to a default page: data only | - |
+| the library uses sources together: thirty with two or more, twelve with three or more (`:137`) | page | Same counting, with its null; data only. | moved to a default page: data only | - |
+| at most two presets needed the reticle pressed onto their figure, so the stored placements are read (`:241`) | numbers | Reads `photo.raw` (the photocell's reading at the stored cell) after a load and held note; an offline render of the core's picture with the photocell gives the same number. `landPhoto` is page-side, but only the "dark" test is needed. | left: needs render_cpp | to pieces (picturepresets.py: render_cpp, the landing rule on the instrument's grid; one of twelve pressed); null the stored cells before any note |
+| in every one, the picture's sources are there, move, and are routed onto what they alter (`:244`) | numbers | Spread of each picture source's value over 10 s; an offline render's picture-source readings over time. | left: needs render_cpp | to pieces (`routed`); null the same with no note |
+| and each loop changes what the picture does, against itself without the loop: the verdicts or the reading (`:249`) | numbers | Picture meter's verdict histogram and photo.1's swing, looped against unlooped (the setup with its picture routings removed); offline renders of two setup codes. | left: needs render_cpp | to pieces; null each loop against itself |
+| and none of them ends running away (`:252`) | numbers | `pictureMeter.verdict()` at the end; the core has the meter (`core/include/scope/picture.h`). | left: needs render_cpp | to pieces; null the loop's struck run, which does |
+| the wandering preset wanders because of its loop: wandering most with it, and not without it (`:256`) | numbers | Verdict histogram for one preset, looped and not; offline render. | left: needs render_cpp | to pieces; null the other way round |
+| no page errors (`:260`) | page | The page's own health on ?brain=js; goes with the leg (the default page has its own). | split: a page each | the ?brain=js page's goes; the default's stays |
 
 ### planetest.py - wholly on ?brain=js - 37/37
 Its comment (`:26`): "reads the page's own brain - midiControl called directly". In practice the first 23 checks never touch the page's brain at all: they build `makeGeneratorCore(44100, GEN_SLOTS, ...)` - the JavaScript engine itself - inside the page and render blocks from it (`CORE`, `:78`). The rest drive the panel and read `genSettings()`, `state.source.getLatestWindow()`, `restore`/`snapshot`/`migrateSetup`.
@@ -2286,37 +2493,37 @@ Batch 2 (13 Nov): 20 checks to 4 here, all left on `?brain=js` (the page's own s
 ### shapetest.py - wholly on ?brain=js - 29/29 (batch 2: a default page, and the survey's ?brain=js page)
 Its comment (`:23`): "reads the page's own brain - genSet called directly". That applies to the live section; the first twenty checks call `makeMoments`, `makePictureMeter`, `shapeOfPair` on grids built in JS (`HELPERS`), which is what `core/tests/tools/picture_cpp.cpp` already runs against `picture.h` for parity.
 
-| Check | Kind | Why | Batch 2 (13 Nov) |
-|---|---|---|---|
-| a circle is round and a line is not (`:147`) | numbers | `makeMoments().roundness()` on built strokes; picture_cpp-style grid/stroke-in run. | gone to parity: pieces/shape.py, the core's `Moments` on the same path (picture_cpp `mring`); null the two the other way round |
-| a 2:1 ellipse reads the same whichever way it is turned (`:151`) | numbers | As above. | gone to parity: pieces/shape.py, `mring` upright and turned; null a 0.6 by 0.32 ellipse turned |
-| a circle is a circle however unevenly the beam divides it into strokes (`:153`) | numbers | As above. | gone to parity: pieces/shape.py, the same 612 strokes (`msegs`); null the strokes weighted by segment, which reads 0.497 |
-| its blind spot, asserted so a change to the measure changes the plan's sentence: a square is as round as a circle (`:155`) | numbers | As above. | gone to parity: pieces/shape.py, `msegs` box; null a 2:1 box |
-| and a dark screen is nought, not 0/0 (`:157`) | numbers | As above. | gone to parity: pieces/shape.py, `mempty`; null NaN |
-| fading to nothing is a slope, not a cliff (`:169`) | numbers | As above, shrinking ring. | gone to parity: pieces/shape.py, 31 shrinking rings; null the series with a perfect tiny circle then nought |
-| coverage moves a little when every cell crosses one half - it is not a count over a threshold (`:189`) | numbers | `makePictureMeter().update(grid)`; grid-in. | gone to parity: pieces/shape.py, the core's `PictureMeter` on picture_cpp's `ellipse ... nudged` fixture; null the two as a count over a half would read them |
-| change is nought for the same picture and one for a different one (`:191`) | numbers | As above. | gone to parity: pieces/shape.py, `mupd` pairs; null the two exchanged |
-| and small for a small difference (`:193`) | numbers | As above. | gone to parity: pieces/shape.py, null the different picture's change |
-| novelty rises with how far the picture has gone from before, a step at a time (`:213`) | numbers | 15 s of grids through the meter; grid-in. | gone to parity: pieces/shape.py, 900 frames then 21 openings; null the readings as a yes-or-no against the novelty floor |
-| a circle travelled one way reads one, the other way minus one (`:236`) | numbers | `shapeOfPair` with `state.xyPair` and a channel's `offset` written - page display state as inputs; the core's picture source offline. | gone to parity: pieces/shape.py, the core's `shapeOfPair` on `__pair` (`mpair`), at the unit gains `pairOfFrame` hands the default lanes, not `state.xyPair` written; null the two exchanged |
-| a line has no direction (`:238`) | numbers | As above. | gone to parity: pieces/shape.py, null the pair a tenth of a radian off a line |
-| and it passes through nought smoothly as the travel reverses (`:239`) | numbers | As above. | gone to parity: pieces/shape.py, null the readings as a sign |
-| wherever on the screen the figure sits (`:241`) | numbers | As above, with `state.channels[0].offset = 0.3`. | gone to parity: pieces/shape.py, the offset handed to `shapeOfPair` as `pairOfFrame` would (`state.channels[0].offset` on the page); null the other way round's reading |
-| a %s picture is %s, and no other fixture is (`:293`), x4 | numbers | Meter verdicts on built sequences; grid-in. | gone to parity: pieces/shape.py, the same five sequences, frame by frame through `mupd`; null the frozen and repeating verdicts exchanged, or the one verdict made `listening` |
-| and nothing is said until there is history to say it from (`:296`) | numbers | As above. | gone to parity: pieces/shape.py, null the frozen fixture's verdict after ten seconds |
-| the same motion in bursts is judged as it is evenly, and not as settled (`:307`) | numbers | As above. | gone to parity: pieces/shape.py, null the bursts judged by the old per-frame median (settled) |
-| where its median per-frame change, the old reading, is under the floor (`:310`) | numbers | As above. | gone to parity: pieces/shape.py, null the even motion's median |
-| the rate is the change per sixtieth of a second: a frame's mean at sixty, the same at a hundred and twenty (`:318`) | numbers | As above. | gone to parity: pieces/shape.py, null the rate taken per frame (the 120 run's mean) |
-| and at a hundred and twenty a frame does change about half as much, so per frame would not do (`:321`) | numbers | As above. | gone to parity: pieces/shape.py, null the even run's own mean |
-| the five come with the photocell, under the same rules as it (`:365`) | page | `MOD_SOURCES` registered on the photocell button; the face's registry, a click on the default. | moved: a face registry, the photocell a click; the fixture rewritten as gestures the instrument hears (Mono and X-Y clicked, the Persistence by its input, the note through `midiNoteOn`) where it was `setMidiMode`/`setDisplay`/`genSet`/`state.persistence`; + a check that the source is the host's; null the registry before the photocell |
-| since E3 a picture source may reach the filter too (`:367`) | page | `addRouting` accepted; face. | moved: the face's rule; null a source the page does not have, refused |
-| the readout says what the loop is doing (`:368`) | page | `el.readoutDetail` text after 6.5 s; on the default the face reads the instrument's verdict (a step-5 hazard). | moved: reads the page's own `pictureMeter` of the face's grid on both brains (a step-5 lean, section 4); null the readout before any picture routing is heard, which says no loop |
-| and only the photocell goes when it is switched off: the picture's stay (`:371`) | page | Registry after a second click; face. | moved; null the registry with the photocell still on |
-| roundness follows the picture as the screen forgets the old one (`:375`) | numbers | `picture.round` and `picture.raw.round` over 2.5 s of frames after `genSet('phase', ...)`; offline render with a phase change mid-run. | gone to parity: pieces/shape.py, restated: the core's `PictureSources` at made-up 16 ms frames with Persistence off, a circle deposited until the value caught up and then a line (picture_cpp `poly`/`step`), where the page did `genSet('phase')` over 2.5 s of real frames; null a value held at the circle's |
-| and no faster than two full swings a second (`:377`) | numbers | The slew; same run. | gone to parity: pieces/shape.py, the same run, now exact (no fall over two swings a second, where the page allowed 0.07 for frame timing); null the raw roundness, which falls in a frame |
-| the source in the sixth slot adds what the other five do not hold, half a bit or more (`:387`) | numbers | `survey.js`: corpus setups with loops closed, 4 s each, entropies of the six sources; offline renders of those setups. | left on ?brain=js: corpus setups with the loop closed, the six sources read over 4 s each - needs `render_cpp` with the sources read out; a page of its own |
-| and a copy of roundness, the null, adds nothing (`:389`) | numbers | Same survey. | left on ?brain=js: as (:387) |
-| no page errors (`:392`) | page | Page health. | split: one for the default page, one for the survey's ?brain=js page |
+| Check | Kind | Why | Batch 2 (13 Nov) | Batch 5 (13 Nov) |
+|---|---|---|---|---|
+| a circle is round and a line is not (`:147`) | numbers | `makeMoments().roundness()` on built strokes; picture_cpp-style grid/stroke-in run. | gone to parity: pieces/shape.py, the core's `Moments` on the same path (picture_cpp `mring`); null the two the other way round | - |
+| a 2:1 ellipse reads the same whichever way it is turned (`:151`) | numbers | As above. | gone to parity: pieces/shape.py, `mring` upright and turned; null a 0.6 by 0.32 ellipse turned | - |
+| a circle is a circle however unevenly the beam divides it into strokes (`:153`) | numbers | As above. | gone to parity: pieces/shape.py, the same 612 strokes (`msegs`); null the strokes weighted by segment, which reads 0.497 | - |
+| its blind spot, asserted so a change to the measure changes the plan's sentence: a square is as round as a circle (`:155`) | numbers | As above. | gone to parity: pieces/shape.py, `msegs` box; null a 2:1 box | - |
+| and a dark screen is nought, not 0/0 (`:157`) | numbers | As above. | gone to parity: pieces/shape.py, `mempty`; null NaN | - |
+| fading to nothing is a slope, not a cliff (`:169`) | numbers | As above, shrinking ring. | gone to parity: pieces/shape.py, 31 shrinking rings; null the series with a perfect tiny circle then nought | - |
+| coverage moves a little when every cell crosses one half - it is not a count over a threshold (`:189`) | numbers | `makePictureMeter().update(grid)`; grid-in. | gone to parity: pieces/shape.py, the core's `PictureMeter` on picture_cpp's `ellipse ... nudged` fixture; null the two as a count over a half would read them | - |
+| change is nought for the same picture and one for a different one (`:191`) | numbers | As above. | gone to parity: pieces/shape.py, `mupd` pairs; null the two exchanged | - |
+| and small for a small difference (`:193`) | numbers | As above. | gone to parity: pieces/shape.py, null the different picture's change | - |
+| novelty rises with how far the picture has gone from before, a step at a time (`:213`) | numbers | 15 s of grids through the meter; grid-in. | gone to parity: pieces/shape.py, 900 frames then 21 openings; null the readings as a yes-or-no against the novelty floor | - |
+| a circle travelled one way reads one, the other way minus one (`:236`) | numbers | `shapeOfPair` with `state.xyPair` and a channel's `offset` written - page display state as inputs; the core's picture source offline. | gone to parity: pieces/shape.py, the core's `shapeOfPair` on `__pair` (`mpair`), at the unit gains `pairOfFrame` hands the default lanes, not `state.xyPair` written; null the two exchanged | - |
+| a line has no direction (`:238`) | numbers | As above. | gone to parity: pieces/shape.py, null the pair a tenth of a radian off a line | - |
+| and it passes through nought smoothly as the travel reverses (`:239`) | numbers | As above. | gone to parity: pieces/shape.py, null the readings as a sign | - |
+| wherever on the screen the figure sits (`:241`) | numbers | As above, with `state.channels[0].offset = 0.3`. | gone to parity: pieces/shape.py, the offset handed to `shapeOfPair` as `pairOfFrame` would (`state.channels[0].offset` on the page); null the other way round's reading | - |
+| a %s picture is %s, and no other fixture is (`:293`), x4 | numbers | Meter verdicts on built sequences; grid-in. | gone to parity: pieces/shape.py, the same five sequences, frame by frame through `mupd`; null the frozen and repeating verdicts exchanged, or the one verdict made `listening` | - |
+| and nothing is said until there is history to say it from (`:296`) | numbers | As above. | gone to parity: pieces/shape.py, null the frozen fixture's verdict after ten seconds | - |
+| the same motion in bursts is judged as it is evenly, and not as settled (`:307`) | numbers | As above. | gone to parity: pieces/shape.py, null the bursts judged by the old per-frame median (settled) | - |
+| where its median per-frame change, the old reading, is under the floor (`:310`) | numbers | As above. | gone to parity: pieces/shape.py, null the even motion's median | - |
+| the rate is the change per sixtieth of a second: a frame's mean at sixty, the same at a hundred and twenty (`:318`) | numbers | As above. | gone to parity: pieces/shape.py, null the rate taken per frame (the 120 run's mean) | - |
+| and at a hundred and twenty a frame does change about half as much, so per frame would not do (`:321`) | numbers | As above. | gone to parity: pieces/shape.py, null the even run's own mean | - |
+| the five come with the photocell, under the same rules as it (`:365`) | page | `MOD_SOURCES` registered on the photocell button; the face's registry, a click on the default. | moved: a face registry, the photocell a click; the fixture rewritten as gestures the instrument hears (Mono and X-Y clicked, the Persistence by its input, the note through `midiNoteOn`) where it was `setMidiMode`/`setDisplay`/`genSet`/`state.persistence`; + a check that the source is the host's; null the registry before the photocell | - |
+| since E3 a picture source may reach the filter too (`:367`) | page | `addRouting` accepted; face. | moved: the face's rule; null a source the page does not have, refused | - |
+| the readout says what the loop is doing (`:368`) | page | `el.readoutDetail` text after 6.5 s; on the default the face reads the instrument's verdict (a step-5 hazard). | moved: reads the page's own `pictureMeter` of the face's grid on both brains (a step-5 lean, section 4); null the readout before any picture routing is heard, which says no loop | - |
+| and only the photocell goes when it is switched off: the picture's stay (`:371`) | page | Registry after a second click; face. | moved; null the registry with the photocell still on | - |
+| roundness follows the picture as the screen forgets the old one (`:375`) | numbers | `picture.round` and `picture.raw.round` over 2.5 s of frames after `genSet('phase', ...)`; offline render with a phase change mid-run. | gone to parity: pieces/shape.py, restated: the core's `PictureSources` at made-up 16 ms frames with Persistence off, a circle deposited until the value caught up and then a line (picture_cpp `poly`/`step`), where the page did `genSet('phase')` over 2.5 s of real frames; null a value held at the circle's | - |
+| and no faster than two full swings a second (`:377`) | numbers | The slew; same run. | gone to parity: pieces/shape.py, the same run, now exact (no fall over two swings a second, where the page allowed 0.07 for frame timing); null the raw roundness, which falls in a frame | - |
+| the source in the sixth slot adds what the other five do not hold, half a bit or more (`:387`) | numbers | `survey.js`: corpus setups with loops closed, 4 s each, entropies of the six sources; offline renders of those setups. | left on ?brain=js: corpus setups with the loop closed, the six sources read over 4 s each - needs `render_cpp` with the sources read out; a page of its own | to pieces (shape.py `survey`: render_cpp, the five pictures read every sixtieth of a second for 4 s; 1.40 bits) |
+| and a copy of roundness, the null, adds nothing (`:389`) | numbers | Same survey. | left on ?brain=js: as (:387) | to pieces (0.000 bits); null Direction's own |
+| no page errors (`:392`) | page | Page health. | split: one for the default page, one for the survey's ?brain=js page | the ?brain=js page's goes with the page; the default's stays |
 
 ### soundstarttest.py - 3 legs on ?brain=js beside the default (one `?brain=js&core=js`, two loop iterations `?brain=js`) - 14/21
 The docstring: "a finger's tap starts it, on the site's compiled instrument and on the page's own brain", and the silence-until-a-note rule "on both brains". The two loops (`:127`, `:169`) run the same checks once on `""` (host) and once on `?brain=js` (tone); each site below is listed for its ?brain=js iteration and also runs on the default. Not listed: the finger on the default (`:82`, `:88`, `:89`, `:90`) and the mouse (`:108`, `:112`, `:113`).

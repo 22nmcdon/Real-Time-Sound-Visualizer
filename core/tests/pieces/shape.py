@@ -232,3 +232,89 @@ def run(kit):
          lambda xs: "%.3f -> %.3f" % (xs[59], xs[-1]))
     # Null: the raw roundness, which with Persistence off falls in a frame.
     held("and no faster than two full swings a second", lambda xs: over(xs) <= 1e-12, vals, raws, lambda xs: "%.4f" % over(xs))
+
+    survey(kit)
+
+
+# --- the survey that chose the sixth source (shapetest :387, :389), batch 5 ---
+
+def survey(kit):
+    """web/tests/survey.js on the core. Five kinds of picture with the loop
+    closed - the old library's setups, each under a note held in Mono (A3 at
+    full velocity, the Frequency put back), the photocell on, the Picture held
+    at nought (shapetest opened ?picture=0), two routings at a half - read
+    every sixtieth of a second for four seconds after eight tenths' settling:
+    the photocell's raw reading and the picture's raw roundness, coverage,
+    change, novelty and signed area. Then, as survey.js: each variable binned
+    in eight over its own range, and for each candidate its entropy less the
+    most it shares with any one of the other five. Direction (signed) has to
+    add half a bit or more; a copy of roundness has to add none.
+
+    It ran on `?brain=js` until batch 5: real animation frames, the page's
+    own photocell and picture sources. Here render_cpp, the instrument's own,
+    the same every run."""
+    import base64, json
+    from pieces.perform import library
+
+    def corpus(name):
+        return next(dict(e[1]) for s in library() for e in s[1] if e[0] == name)
+
+    def code(setup):
+        return base64.b64encode(json.dumps(setup).encode()).decode().rstrip("=")
+
+    configs = [
+        ("lag X-Y, roundness on the lag", {"timebase": 3}, {"lagOn": True, "display": "xy"},
+         [("picture.round", "view.lag"), ("photo.1", "view.rotate")]),
+        ("equal fifth drifting", corpus("Tumbling"), {"just": False}, [("photo.1", "view.zoom"), ("picture.cover", "view.rotate")]),
+        ("supersaw fifth", corpus("Supersaw"), {}, [("photo.1", "view.zoom"), ("picture.novelty", "view.rotate")]),
+        ("wavetable pad", corpus("Wavetable pad"), {}, [("picture.novelty", "view.rotate"), ("picture.round", "view.zoom")]),
+        ("folded third", corpus("Coverage folds the sound"), {}, [("photo.1", "view.rotate"), ("picture.change", "view.zoom")]),
+    ]
+    rows = []
+    for name, setup, more, routes in configs:
+        patch = dict(more, photoOn=True, pictureAmount=0, midiMode="mono", mod=";".join("%s>%s@0.500" % r for r in routes))
+        freq = str(setup.get("freq", 220))
+        lines = [["make", 48000, code(dict(setup, v=7)), patch], ["midi", 0x90, 57, 127], ["slider", "freq", freq],
+                 ["reset", "meter"], ["to", 0.8], ["every", 1 / 60, "sources"], ["to", 4.8]]
+        for r in kit.render(lines):
+            w = [float(x) for x in r["sources"]]
+            rows.append([w[0]] + w[2:7] + [w[2]])   # photo raw; round cover change novelty signed raw; a copy of round
+    BINS = 8
+
+    def binned(k):
+        v = [r[k] for r in rows]
+        lo, hi = min(v), max(v)
+        return [0 if hi - lo < 1e-9 else min(BINS - 1, math.floor((x - lo) / (hi - lo) * BINS)) for x in v]
+
+    def H(a):
+        counts = {}
+        for x in a: counts[x] = counts.get(x, 0) + 1
+        return -sum(n / len(a) * math.log2(n / len(a)) for n in counts.values())
+
+    def I(a, b):
+        return H(a) + H(b) - H([x * BINS + y for x, y in zip(a, b)])
+
+    names = ["photo", "round", "cover", "change", "novelty", "signed", "copy of round"]
+    cols = [binned(k) for k in range(len(names))]
+    result = {}
+    for cand in (5, 6):
+        shared = [I(cols[cand], cols[j]) for j in range(5)]
+        result[names[cand]] = {"entropy": H(cols[cand]), "adds": H(cols[cand]) - max(shared),
+                               "shared": dict(zip(names[:5], (round(x, 3) for x in shared)))}
+    for name, r in result.items():
+        print("    %-13s entropy %.2f bits; shares %s; adds %.2f bits" % (name, r["entropy"], r["shared"], r["adds"]))
+    print("    %d readings over five pictures" % len(rows))
+    # Direction is the instrument's own source, under the name the page's
+    # SIXTH gives it: registered, by the routed reading's flag. Its null, a
+    # name the instrument has not got.
+    flags = kit.render([["make", 48000, code({"v": 11, "mod": "picture.signed>view.zoom@0.500;picture.sign>view.zoom@0.500"})],
+                        ["to", 0.1], ["read", "routed"]])[-1]["routed"]
+    kit.check("the sixth slot is the instrument's own Direction, picture.signed, registered", flags[1] == "1", " ".join(flags))
+    kit.null("a source it has not got is not", flags[5] == "0", " ".join(flags))
+    kit.check("the source in the sixth slot adds what the other five do not hold, half a bit or more",
+              result["signed"]["adds"] > 0.5 and len(rows) >= 5 * 230, "%.2f bits" % result["signed"]["adds"])
+    kit.check("and a copy of roundness, the null, adds nothing", abs(result["copy of round"]["adds"]) < 0.01,
+              "%.3f bits" % result["copy of round"]["adds"])
+    kit.null("and Direction's, which the same bound would call nothing, is not", not (abs(result["signed"]["adds"]) < 0.01))
+    # The null of the first: roundness itself put up as the sixth adds what its copy does, nothing.
+    kit.null("roundness itself in the sixth slot would add nothing", not (result["copy of round"]["adds"] > 0.5))

@@ -56,6 +56,28 @@ class Kit:
         """instrument_cpp on a script of JSON lines; its output's lines."""
         return self.run("instrument_cpp", "\n".join(json.dumps(l) for l in lines)).split("\n")
 
+    def render(self, lines, raw=False):
+        """render_cpp on a script of JSON lines (core/tests/tools/render_cpp.cpp
+        lists its commands and readings): each reading's `at` as a dict of
+        its readings' words, the time under "t" - or the text whole, `raw`.
+        A table's two lines are "tableA" and "tableB"."""
+        out = self.run("render_cpp", "\n".join(json.dumps(l) for l in lines))
+        if raw: return out
+        rows = []
+        for line in out.split("\n"):
+            w = line.split()
+            if not w: continue
+            if w[0] == "at": rows.append({"t": float(w[1])})
+            elif w[0] == "no": raise RuntimeError("render_cpp refused: " + line)
+            elif w[0] == "table": rows[-1]["table" + w[1]] = None if w[2] == "-" else [float(x) for x in w[3:]]
+            elif rows: rows[-1][w[0]] = w[1:]
+        return rows
+
+    def slots(self):
+        """The generator's slot numbers by name, as render_cpp prints them."""
+        w = subprocess.run([self.build("render_cpp"), "--slots"], check=True, capture_output=True, text=True).stdout.split()
+        return {w[i]: int(w[i + 1]) for i in range(0, len(w), 2)}
+
     def preset_codes(self):
         """Every bank preset's setup code, by name, as the instrument writes it."""
         exe = self.build("instrument_cpp")

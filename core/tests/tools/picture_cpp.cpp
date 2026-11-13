@@ -58,6 +58,9 @@ scope::Phosphor::Grid fixture(const std::vector<std::string>& w, std::size_t at)
   } else if (kind == "full") {
     g.fill(0.8f);
     g[static_cast<std::size_t>(static_cast<long>(std::floor(a(1) * 60)) % (N * N))] = 0;
+  } else if (kind == "sparse") {
+    // looptest :310's picture: COUNT cells lit at one, every STRIDE-th (batch 5).
+    for (int i = 0; i < static_cast<int>(a(1)); i++) g[static_cast<std::size_t>((i * static_cast<long>(a(2))) % (N * N))] = 1;
   } else { std::fprintf(stderr, "unknown fixture %s\n", kind.c_str()); std::exit(2); }
   return g;
 }
@@ -72,7 +75,7 @@ void run(const std::vector<std::vector<std::string>>& commands) {
   bool layersOn = false, twoFigures = false, layerFramed = false, madeLayers = false;
   std::array<std::vector<float>, 4> layerLanes;
   scope::Plot plot;
-  double persistence = 0.12, limiting = 0, gx = 1, gy = 1, ox = 0, oy = 0, spin = 0;
+  double persistence = 0.12, limiting = 0, gx = 1, gy = 1, ox = 0, oy = 0, spin = 0, meterLimit = 0;
   std::array<scope::StageResponse, 2> responses;  // how each hand's picture responds, the page's pictureHands
   const auto respond = [&] { auto r = responses; for (auto& x : r) x.persistence = persistence; return r; };
   bool spect = false, hasFrame = false;
@@ -174,8 +177,11 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     // only; picture_js.mjs has no twin of them, and parity's runs never
     // name them. The fixtures are shapetest's HELPERS, line for line.
     else if (cmd == "mnew") meter = scope::PictureMeter {};
+    // How hard the monitor chains' limiters work, in dB, for the meters `mupd`
+    // feeds from now on (batch 5, looptest :310); nought until it is given.
+    else if (cmd == "mlimit") meterLimit = num(arg(1));
     else if (cmd == "mupd") {
-      meter.update(fixture(w, 2), num(arg(1)), 0);
+      meter.update(fixture(w, 2), num(arg(1)), meterLimit);
       extra = " meter " + show(meter.coverage()) + " " + show(meter.lit()) + " " + show(meter.change()) + " "
             + show(meter.novelty()) + " " + show(meter.drift()) + " " + underscored(meter.verdict());
     } else if (cmd == "mring" || cmd == "msegs" || cmd == "mempty") {

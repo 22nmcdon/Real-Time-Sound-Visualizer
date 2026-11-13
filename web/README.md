@@ -6585,3 +6585,27 @@ generator's pitch fields, the held notes, each layer's voices), `meter` and
 questions without `render_cpp`. And a moved check's band deserves reading:
 envtest's velocity was "between 0.5 and 0.85", which a key at full (0.8)
 passed. `plugin/STAGE5-INVENTORY.md` section 9 has the rest.
+
+**Offline, a loop is the same every run; and a moved check can pass on its
+own harness's garbage (13 Nov).** Stage 5's fifth batch built `render_cpp`
+(the instrument rendered offline from a setup code, the hands, MIDI at its
+sample and an input, read at an interval of audio) and moved the loop's
+stability runs, shape's survey, the picture presets' runs, input, livefx and
+perform's microphone rows onto it, into `core/tests/pieces/`. The page's
+versions were the flakiest rows in the suite, and offline every seed holds
+every bound with room and the same numbers each run - the fold moved by
+0.30 to 0.50 where the page's crossed and reverb runs passed only by their
+"saturated" exemption. Three things worth knowing before the next such
+move. A recorded file read at the wrong width still passes most checks:
+the ring is six lanes (`kMaxLanes`), read as eight the mirror and angle
+checks passed on interleaved samples and only a delay's timing caught it -
+check one reading against an independent number (a gap in samples) before
+trusting the rest. A check that asked whether the page's insert *was there*
+becomes, on samples, a question of *when*: an echo on an oscillator at a
+tenth of a hertz is away five seconds in ten, so hold for the slowest
+oscillator's period. And Scan at its top moves its own table with nothing
+routed, since it reads a screen its own wave draws: a still screen for a
+Scan null is Stop's (step 5), or a depth of one. The instrument has no
+limiter (the face's chain limits on the site); the plugin hands a host up to
+3.2 times full scale (`web/docs/after-stage-5.md`). `plugin/STAGE5-INVENTORY.md`
+section 10 has the rest.

@@ -104,3 +104,28 @@ changed in a file (the golden comparison goes red naming the scenario, line,
 value and gap); the core mutated (both the JS-vs-core comparison and the
 core-vs-file comparison go red); and a NaN fed into a file (red, whole and
 sketch).
+
+## Rendering the instrument offline (render_cpp)
+
+The golden files hold the port to what the page's JavaScript answered. What a
+sound *should* do is held by the core's own tests, `core/tests/pieces/`, and
+the ones that need the whole instrument playing - a setup with the loop
+closed for thirty seconds, a microphone through the effects, a preset held
+under a note - render it offline with `core/tests/tools/render_cpp.cpp`
+(stage 5, step 3, batch 5). In a piece:
+
+```
+rows = kit.render([["make", 48000, CODE, {"pictureAmount": 0}],   # a setup code, fields laid over it
+                   ["midi", 0x90, 57, 127],                         # at the sample reached
+                   ["every", 0.1, "heard", "stage", "meter"],       # readings each tenth of a second of audio
+                   ["to", 30]])                                     # render to thirty seconds
+```
+
+Each row is a reading's moment (`t`) and its readings' words. The file's
+header lists every command (the hands, an input from a file or a sine,
+`record` for the heard pair, the lanes and the grid as float32) and every
+reading. A run is the same to the bit every time, and reading does not move
+what is rendered; `core/tests/pieces/render.py` proves both, with their
+nulls, before anything else stands on it. It is native only, like
+instrument_cpp's own readings, so nothing it prints is compared with the
+page.

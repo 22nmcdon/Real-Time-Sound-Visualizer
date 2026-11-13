@@ -44,15 +44,16 @@ asked, since the browser no longer has that menu or the section.
 """
 # Stage 5, step 3, batch 4 (13 Nov): the four counts of what the sections
 # are read only the corpus, the bank and the page's routing grammar, no brain
-# at all, and moved to the site's default page unchanged. The runs stay on
-# ?brain=js, a page of their own: they hold each preset for ten seconds of
+# at all, and moved to the site's default page unchanged. The runs stayed on
+# ?brain=js until batch 5 (13 Nov): they held each preset for ten seconds of
 # real time and read the page's own photocell (photo.raw, landPhoto,
 # movePhoto), its picture sources' values and its picture meter's verdicts,
-# and restore() a setup without its loop, which the instrument would never
-# hear. The core has every one of those (photo, the picture's sources, the
-# meter in picture.h), but no tool here plays a corpus setup with the loop
-# closed for seconds and reads them back: that is render_cpp's, the batch
-# that builds it (STAGE5-INVENTORY.md, batch 4).
+# and restore()d a setup without its loop, which the instrument would never
+# hear. They are core/tests/pieces/picturepresets.py's now: render_cpp plays
+# each corpus setup with the loop closed for ten seconds of audio and reads
+# the instrument's own photocell, sources and meter every 150 ms of it, the
+# reticle landed by the page's rule on the instrument's grid; the setup
+# without its loop is a code whose routings leave the picture's out.
 import os, sys
 from playwright.sync_api import sync_playwright
 import corpus
@@ -60,7 +61,6 @@ import corpus
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
-SECONDS = float(os.environ.get("PICTURE_SECONDS", "10"))
 
 fails = []
 def check(name, ok, detail=""):
@@ -68,19 +68,6 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 SECTIONS = ["The picture plays itself", "Played with the picture"]
-WANDERER = "The organ registers itself"
-# The sections' drawings - harmonographs, roses, solids - are not run. Since
-# G2 they load as the waveform with their drawings' routings dropped, which is
-# not the loop they were and not a loop at all, so every check below would
-# fail on them for a reason that is not the loop's. They are named here from
-# the corpus itself rather than listed, so none is skipped by a slip. (Two of
-# them, the pendulums, were held to their sources moving and no more: a
-# harmonograph ran down and started again by itself.)
-DRAWN = sorted(e[0] for s, entries, _ in corpus.LIBRARY if s in SECTIONS
-               for e in entries if e[1].get("gen", "wave") != "wave")
-RUN = sum(1 for s, entries, _ in corpus.LIBRARY if s in SECTIONS for e in entries) - len(DRAWN)
-# The first section's, which are run again without their loops: 16 until G2, 9 of them waveforms.
-LOOPS = sum(1 for s, entries, _ in corpus.LIBRARY if s == SECTIONS[0] for e in entries if e[1].get("gen", "wave") == "wave")
 PICTURE = "/^(photo\\.|picture\\.)/"
 
 with sync_playwright() as pw:
@@ -146,129 +133,7 @@ with sync_playwright() as pw:
           shape["two"] >= 30 and shape["three"] >= 12 and shape["most"] >= 4 and shape["nullTwo"] == 0,
           "%d with two, %d with three, at most %d, of %d walked" % (shape["two"], shape["three"], shape["most"], shape["walked"]))
 
-    # Then ?brain=js for the runs (above, and STAGE5-INVENTORY.md's batch 4).
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
-    corpus.install(p)
-    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-
-    print("\n--- each one run: alive, and not running away ---")
-    print("    not run, being drawings the waveform now stands in for: %s" % ", ".join(DRAWN))
-    runs = p.evaluate("""async ([names, secs, drawn]) => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const picture = """ + PICTURE + """;
-      const out = [];
-      for (const name of names) {
-        for (const [preset] of CORPUS.find(([s]) => s === name)[1]) {
-          if (drawn.includes(preset)) continue;
-          /* The meter cleared first, every run: it keeps fifteen seconds of
-             pictures and loading a preset does not clear it, so without this
-             each run began with the one before it still in its history - and
-             the organ, run without its loop straight after running with it,
-             read as wandering on what the loop had drawn. */
-          /* Under a note held in Mono (corpus.held_tone), let go and struck
-             again round every load: the site waits for a note since 10 Nov,
-             and these loops were the tone it drew with none. A note held over
-             a load in Dyad would make every interval a unison. At full
-             sustain, as the drone was at its Level: the stored reticles were
-             placed on figures that size, and under the envelope's 0.7 three
-             of twelve fell off theirs. */
-          midiPanic(); loadCorpus(preset); heldTone(57, true); await wait(300);
-          /* A cell in the dark pressed onto the figure, as a player presses
-             the reticle (landPhoto). Only one in the dark - under a
-             thousandth after a second and a half - since landPhoto's own
-             rule, a quarter of the brightest, moved fourteen of the
-             twenty-one stored cells and measured something else. A preset's placement is its own
-             and restoring it never moves the cell, which is right for the
-             instrument and left one preset here a knife edge: The fifth
-             detunes itself is a just fifth, whose figure stands still, so
-             whether its stored cell is lit depends on the phase the two notes
-             inherit from what played before - a faint glow, moving nothing,
-             for 45 s on one load, lit on another (9 Nov). Pressed after a
-             second and a half, since a figure just loaded (the first
-             preset's pendulums) has not drawn yet. Which presets moved is
-             reported, and more than two fails, so the stored placements are
-             still what is read. */
-          let landed = null;
-          if (photo.on) await wait(1500);
-          if (photo.on && photo.raw < 1e-3) {
-            const was = [photo.u, photo.v];
-            landPhoto(); await wait(300);
-            if (photo.u !== was[0] || photo.v !== was[1]) landed = [photo.u, photo.v];
-          }
-          pictureMeter.reset();
-          const ids = [...new Set(state.modRoutings.map((r) => r.sourceId).filter((id) => picture.test(id)))];
-          const lo = {}, hi = {}, verdicts = {};
-          const reading = () => { const s = MOD_SOURCES.get('photo.1'); return s ? s.value() : 0; };
-          let rlo = Infinity, rhi = -Infinity;
-          const t0 = performance.now();
-          while (performance.now() - t0 < secs * 1000) {
-            await wait(150);
-            rlo = Math.min(rlo, reading()); rhi = Math.max(rhi, reading());
-            for (const id of ids) {
-              const s = MOD_SOURCES.get(id); if (!s) continue;
-              const v = s.value(); lo[id] = Math.min(lo[id] ?? v, v); hi[id] = Math.max(hi[id] ?? v, v);
-            }
-            const v = pictureMeter.verdict(); verdicts[v] = (verdicts[v] || 0) + 1;
-          }
-          if (modDirty) compileRoutes();
-          const compiled = ids.every((id) => MOD_SOURCES.has(id));
-          const moved = Math.max(0, ...ids.map((id) => (hi[id] ?? 0) - (lo[id] ?? 0)));
-          const row = { preset, section: name, compiled, moved: +moved.toFixed(3), verdict: pictureMeter.verdict(), verdicts,
-                        swing: +(rhi - rlo).toFixed(3), landed: landed !== null };
-          // The same preset without its picture routings, for the loop's own effect.
-          if (name === names[0]) {
-            const setup = corpusSetup(preset);
-            const kept = decodeRoutings(setup.mod || '').filter((r) => !picture.test(r.sourceId));
-            midiPanic(); restore(Object.assign({}, setup, { mod: encodeRoutings(kept) })); heldTone(57, true);
-            // Without the loop from where the loop was measured: the landed cell, if it was.
-            if (landed) movePhoto(landed[0], landed[1]);
-            await wait(300); pictureMeter.reset();
-            const open = {};
-            let olo = Infinity, ohi = -Infinity;
-            const t1 = performance.now();
-            while (performance.now() - t1 < secs * 1000) {
-              await wait(150); const v = pictureMeter.verdict(); open[v] = (open[v] || 0) + 1;
-              olo = Math.min(olo, reading()); ohi = Math.max(ohi, reading());
-            }
-            row.open = open; row.openSwing = +(ohi - olo).toFixed(3);
-          }
-          out.push(row);
-        }
-      }
-      midiPanic(); restore({}); await wait(100);
-      return out;
-    }""", [SECTIONS, SECONDS, DRAWN])
-    def share(v):
-        v = {k: n for k, n in v.items() if k != "listening"}
-        total = sum(v.values()) or 1
-        return {k: n / total for k, n in v.items()}
-    def apart(a, b):
-        a, b = share(a), share(b)
-        return sum(abs(a.get(k, 0) - b.get(k, 0)) for k in set(a) | set(b)) / 2
-    for r in runs:
-        extra = ("  unlooped %s, apart %.2f, reading %.2f against %.2f"
-                 % (r["open"], apart(r["verdicts"], r["open"]), r["swing"], r["openSwing"])) if "open" in r else ""
-        print("    %-32s moved %.2f  ends %-12s %s%s" % (r["preset"], r["moved"], r["verdict"], r["verdicts"], extra))
-    landed = [r["preset"] for r in runs if r["landed"]]
-    print("    pressed onto their figures, their stored cells dark: %s" % (landed or "none"))
-    check("at most two presets needed the reticle pressed onto their figure, so the stored placements are read",
-          len(landed) <= 2 and len(runs) == RUN and RUN >= 10, "%d of %d: %s" % (len(landed), len(runs), landed))
-    dead = [(r["preset"], r["moved"]) for r in runs if not (r["compiled"] and r["moved"] >= 0.05)]
-    check("in every one, the picture's sources are there, move, and are routed onto what they alter",
-          dead == [], str(dead))
-    loops = [r for r in runs if "open" in r]
-    same = [(r["preset"], round(apart(r["verdicts"], r["open"]), 2), r["swing"], r["openSwing"]) for r in loops
-            if apart(r["verdicts"], r["open"]) < 0.25 and r["swing"] - r["openSwing"] < 0.2]
-    check("and each loop changes what the picture does, against itself without the loop: the verdicts or the reading",
-          same == [] and len(loops) == LOOPS and LOOPS >= 8, str(same))
-    away = [r["preset"] for r in runs if r["verdict"] == "running away"]
-    check("and none of them ends running away", away == [], str(away))
-    wander = next((r for r in runs if r["preset"] == WANDERER), None) or {}
-    heard = {k: v for k, v in wander.get("verdicts", {}).items() if k != "listening"}
-    unheard = {k: v for k, v in wander.get("open", {}).items() if k != "listening"}
-    check("the wandering preset wanders because of its loop: wandering most with it, and not without it",
-          bool(heard) and max(heard, key=heard.get) == "wandering"
-          and bool(unheard) and max(unheard, key=unheard.get) != "wandering", "%s; without: %s" % (heard, unheard))
+    # The runs (:241 to :256) are core/tests/pieces/picturepresets.py's since batch 5.
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
@@ -276,4 +141,4 @@ with sync_playwright() as pw:
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("the picture plays itself, and every loop in it is alive")
+print("the sections are what they say (their runs are pieces/picturepresets.py's)")
