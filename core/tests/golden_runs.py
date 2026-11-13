@@ -62,7 +62,10 @@ def _tokens_differ(p, q, tol):
 # A number wherever it appears, so that `45/0.551+76/1.000000000000` and
 # `45/0.551+76/1`, which the JavaScript and the core print for the same
 # keyboard state, are the same; the text around the numbers is compared exactly.
-NUM = re.compile(r"([-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?|NaN|-?Infinity|-?inf|nan)")
+# A minus is the number's, a plus never is (`u+-0.0005` and `u+0.0005` must
+# both be text `u+` and a number, or a minus nought on one side moves the
+# text); and the C library's `-nan` is the JavaScript's `NaN`.
+NUM = re.compile(r"(-?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?|-?NaN|-?Infinity|-?inf|-?nan)")
 def split(line):
     """A line as (text, numbers): the text with each number replaced by `#`."""
     parts = NUM.split(line)
