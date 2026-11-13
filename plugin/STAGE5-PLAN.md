@@ -185,7 +185,9 @@ the full suite and parity pass.
    with the files. For as long as both exist, it compares all three, so the
    files are proven against the JavaScript before they replace it. *Removes:*
    nothing yet. *Checked by:* the files agreeing with the live page, and a
-   null - one value in a file changed - failing.
+   null - one value in a file changed - failing. **Done (13 Nov):
+   `core/tests/golden_runs.py` and `core/tests/golden/` (README there).** What
+   was decided, below.
 3. **The suites, one batch at a time.** The *numbers* checks go to offline
    renders of the core (a general `render_cpp` grown from `response_cpp`); the
    *page* checks to clicks on the default; the *engines compared* checks go.
@@ -304,3 +306,57 @@ own. If step 1 finds the face leaning on the page's brain in many places, step
   stage, built on each voice's real cycle sent from the core, with the painting's brush.
 - Step 1 starts once the note-click fix and the picture's swell have landed, so this
   stage does not collide with them.
+
+## Step 2 settled (13 Nov)
+
+The golden layer is `core/tests/golden_runs.py`; the files are
+`core/tests/golden/*.json.gz` with a `README.md` beside them. Parity is
+unchanged but for a `golden.section(...)` call in place of each section's
+`print`, which names the file a port-is-the-original section's runs belong to.
+What was decided, and the cost:
+
+- **Which sections get a file.** The thirteen port-is-the-original sections
+  only: the envelope, the waveforms and functions, the generator, the keyboard,
+  the matrix, setup codes, the clock, the level, the capture, the beam, the
+  picture's sources, Scan, the hearing, the score. The face-and-core sections
+  (restore, the morph, the menus and switches, the hands' and the rack's
+  panels, the fade, the view, the WebAssembly and compiled-instrument checks)
+  get none and are untouched: they compare the page's face with the core, not
+  an engine, and stay whatever happens to the JavaScript.
+
+- **Format and size.** One gzipped JSON file a section, keyed by tool and a
+  hash of the scenario (paths removed, so it travels between checkouts). A run
+  is kept whole where that is cheap, and as a *sketch* where it is not - per
+  line, the text with numbers removed, and per block of 64 numbers the sum, the
+  position-weighted sum and the largest, with any non-finite value kept in
+  place. The sketch names the line, block, moved value and gap on a mismatch,
+  to the same `1e-12`; what it cannot catch is two values moved within one
+  block so both sums cancel, which only the large bulk renders are sketched and
+  no plausible port fault produces. Kept whole the files were 75 MB; the sketch
+  for the large renders brings the total to **about 6 MB** (the generator and
+  the functions are about 1.9 MB and 1.5 MB of it, Scan 0.4 MB). The existing
+  tolerance and the `worst()` NaN rule are carried in unchanged.
+
+- **Regeneration.** `parity.py --write-golden`, one command, which **refuses to
+  overwrite a section unless the page and the core agreed on it** that run, and
+  rewrites nothing for a section whose runs did not move (so an unrelated change
+  leaves the files and the diff alone). Documented in the README and in a
+  CLAUDE.md line under the command list.
+
+- **Running time.** [filled in from the paired runs once they finish]
+
+- **Nulls seen red** (plan's three, by hand, plus the standing ones parity now
+  runs every time): one value changed in a file - golden mode red, naming the
+  scenario, line, value and gap, for a file kept whole and one kept as a sketch;
+  the core mutated - both the JS-vs-core comparison and the core-vs-file
+  comparison red; a NaN fed into a file - red, whole and sketch.
+
+- **No surprise for the later steps.** The read path (`--golden`) and the write
+  guard are in place and exercised; step 3 can move a suite's numbers checks to
+  offline core renders against these files as the plan has it, and step 5's
+  switch is unaffected. The one thing worth noting for step 6: `--golden` hands
+  parity's own comparison the file's text for a whole run, but for a *sketched*
+  run it compares the core against the sketch here and lets parity's comparison
+  see the core against itself - so when the JavaScript harness is deleted, the
+  sketched sections rest entirely on the core-against-file check, which is why
+  that check is a section of its own and null-tested.

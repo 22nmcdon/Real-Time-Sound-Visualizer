@@ -4023,6 +4023,23 @@ generator twice.
   pair back as the picture pair could not fail on any run but the preset
   sweep: on a plain wave, a harmonograph or the photocell's pendulums the two
   are the same signal to the bit. 265 of the 281 presets are not.
+- *A golden file must write the same bytes twice, or git churns.* The golden
+  files (stage 5, step 2, `core/tests/golden/`) are regenerated from scenarios
+  seeded by fixed random seeds, so the same code writes the same numbers; but
+  gzip stamps the mtime and the source filename into its header, so two
+  identical payloads still differed in eight bytes and every regeneration was a
+  diff. `GzipFile(mtime=0, filename="")` fixes it; `--write-golden` also leaves
+  a section's file untouched when its runs have not moved, so an unrelated
+  change does not rewrite all fourteen.
+- *A sketch of a render can be fooled by a cancelling pair, so keep the small
+  ones whole.* The golden files store a large render as per-block sums (the
+  text, and per 64 numbers the sum, the weighted sum and the largest), which
+  names a moved value and its position but is blind to two values moved within
+  one block so both sums cancel - opposite signs in the ratio of their
+  positions. That is invisible to a port fault, which moves a whole render, but
+  a deliberate one could hide in it, so only runs too large to keep whole are
+  sketched; the decision and what the sketch can and cannot see are in
+  `core/tests/golden/README.md`.
 
 **The instrument's input, and the two sources.** Stage 5g gave the
 instrument an input pair and made the page's Tone and Mic buttons a hand on

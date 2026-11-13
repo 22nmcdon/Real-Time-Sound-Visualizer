@@ -10,7 +10,11 @@ because its first rule is that a feature has to act on the loop it describes.
 (A native Python/PyQt6 build, `oscilloscope-poc/`, was retired in that plan's
 P0; it is in the history.) The core is a port held to the page sample for sample by
 `core/tests/parity.py`; a ported piece is not done until it passes that, with
-its nulls. How it looks is `DESIGN.md`: which parts are the brand it shares with the
+its nulls. Parity also records what the page's JavaScript answered into
+`core/tests/golden/` (stage 5, step 2), so the core can be held to it once the
+page's engine is retired; a change that means the sound to change regenerates
+those with `--write-golden`, which refuses a file unless the page and the core
+still agree (`core/tests/golden/README.md`). How it looks is `DESIGN.md`: which parts are the brand it shares with the
 jazz and guitar learning apps (not this repository's to change alone) and which
 are the oscilloscope's own. A new colour token goes into one of its tables, or
 `designtest.py` fails. Read `web/README.md` before changing the web build — most of it is a list
@@ -40,6 +44,7 @@ python3 web/tests/run.py                                    # everything, ~37 mi
 python3 web/tests/run.py lane patch                         # just those
 python3 web/tests/run.py -j1                                # one at a time, ~43 min
 python3 core/tests/parity.py                                # the C++ core against the page
+python3 core/tests/parity.py --write-golden                 # after a change that means the sound to change: regenerate the golden files (refuses a section unless the page and the core agree on it); core/tests/golden/README.md
 python3 core/wasm/build.py                                  # after any change to core/: the page carries it compiled
 python3 core/tests/tools/write_schema.py                    # after any change to SETUP_FIELDS: the core reads setups by it
 python3 web/tools/write_words.py                            # after any change to web/docs/what-each-control-says.md: the info line's words
