@@ -810,7 +810,24 @@ on the instrument's meter (below); and perform's four microphone rows (`:231`
 to `:265`), the input through the page's effects insert, which need input
 samples and the question of section 3 answered first.
 
-COUNTS_PLACEHOLDER
+The counters over the fifteen suites (`run.py --brain-counts`, before on
+ca69583 and after): frames the page's brain stepped on `?brain=js` 34,426 to
+15,574 (`?brain=js&core=js` 253 to nought), of which picturepresets' run
+rows are 14,034, perform's microphone rows 846 and harmony's meter rows 694;
+perform's went from 9,439, modrow's 3,588 to nought. `arpTick.step` there
+114 to nought. On the default the same suites' frames went from 14,992 to
+17,305, the face's own. arptest's default page still shows `arpTick.step`
+(seven steps): the page's arpeggiator stepping beside the instrument's, as
+section 1 found, which is step 5's to stop.
+
+The full run after (97 suites, 50.6 minutes, 2,593 checks passed): two
+failures outside the batch - budget's "the model has each feature's cost
+right relative to the others" (the filter at 0.48 of the median under three
+suites at once; `{}` alone, twice), and honesty's reverb-on pass (Bass under
+the tine piano), which failed again alone on Bass under the pad: the two
+presets `after-stage-5.md` already names as sitting on their headings' edges
+with the reverb on. Nothing honesty runs changed in this batch.
+Parity passed, 1,664 checks.
 
 ### Checks that passed on the default for the wrong reason, or could not fail
 
