@@ -11,8 +11,8 @@ questions the later steps are measured against:
 
 It was taken on 13 Nov at `testing` e59179a plus the counters. The full web
 suite ran once with them, through `braincounts.py`: 97 suites, everything
-passes, 3,042 checks, in 53.3 minutes. Parity passed as well (the figures are
-in the last section).
+passes, 3,042 checks, in 53.3 minutes. Parity passed as well, 947 checks
+(the last section says how it was red first).
 
 ## In short
 
@@ -363,8 +363,8 @@ and the design of `render_cpp` larger than "grown from `response_cpp`".
 - `extract.py` and `node --check`: clean.
 - Parity: red on its first run, because `matrix_js.mjs` threw on a direct
   `brainCount` in the lifted visual loop (section 1). Every call was made
-  optional, then parity was run again, whole; its figures are in the commit
-  message. Since then the page has changed only in that spelling, and
+  optional, then parity was run again, whole: 947 checks, every one passes
+  ("the C++ core is the page's, sample for sample"). Since then the page has changed only in that spelling, and
   braintest and the matrix's runner were run again over it.
 
 ## Appendix: the counters, summed
