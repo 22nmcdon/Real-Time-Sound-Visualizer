@@ -6956,6 +6956,17 @@ inull("the heard pair handed back as the picture pair",
 inull("a state never published", "  if (!instrument->changed()) return -1;", "  return -1;", ["hands", "presets"])
 inull("a switch read as off", "scope::Json::boolean(kind == 2)", "scope::Json::boolean(false)", ["hands"])
 
+# The engine's pieces, held by their own numbers (stage 5, step 3, batch 2):
+# the web suites' "numbers" rows that drove a piece of the engine from the
+# page (waveAt, cycleTables, makeGeneratorCore, scoreColumn, the picture's
+# meter, the clock at made-up times), asserted here against the core's own
+# output through the tools above, each with its null. No JavaScript under
+# them, so no golden file: they say what the sound should be, not that it is
+# what the page made. Runnable alone, in seconds: core/tests/pieces/run.py.
+golden.section("the engine's pieces, by their own numbers")
+import pieces as _pieces
+_pieces.run_all(check)
+
 golden.finish()
 print()
 if fails:
