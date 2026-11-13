@@ -27,7 +27,43 @@ std::vector<std::string> split(const std::string& s, char c) {
   return out;
 }
 
+constexpr double kPiM = 3.14159265358979323846;
+// A made-up grid from the words from `at` on, as shapetest's HELPERS build
+// them: `ellipse a b level turn`, the same with `nudged` after it (each lit
+// cell 0.02 brighter), `dot u v` (three cells square) and `full t` (every
+// cell 0.8 but one, which moves with t). Each cell rounded to a float as the
+// page's Float32Array rounds it.
+scope::Phosphor::Grid fixture(const std::vector<std::string>& w, std::size_t at) {
+  constexpr int N = scope::kPhosphorN;
+  scope::Phosphor::Grid g {};
+  const std::string& kind = w[at];
+  const auto a = [&](std::size_t k) { return num(w[at + k]); };
+  if (kind == "ellipse") {
+    const double ra = a(1), rb = a(2), level = a(3), t0 = a(4);
+    for (int k = 0; k < 4000; k++) {
+      const double t = k / 4000.0 * 2 * kPiM, x = ra * std::cos(t), y = rb * std::sin(t);
+      const double u = x * std::cos(t0) - y * std::sin(t0), v = x * std::sin(t0) + y * std::cos(t0);
+      const int cx = static_cast<int>(std::floor((u + 1) / 2 * N)), cy = static_cast<int>(std::floor((1 - (v + 1) / 2) * N));
+      if (cx >= 0 && cy >= 0 && cx < N && cy < N) g[static_cast<std::size_t>(cy * N + cx)] = static_cast<float>(level);
+    }
+    if (w.size() > at + 5 && w[at + 5] == "nudged")
+      for (auto& c : g) if (c > 0) c = static_cast<float>(static_cast<double>(c) + 0.02);
+  } else if (kind == "dot") {
+    const int cx = std::max(0, std::min(N - 1, static_cast<int>(std::floor(a(1) * N))));
+    const int cy = std::max(0, std::min(N - 1, static_cast<int>(std::floor(a(2) * N))));
+    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+      const int x = cx + dx, y = cy + dy;
+      if (x >= 0 && y >= 0 && x < N && y < N) g[static_cast<std::size_t>(y * N + x)] = 1;
+    }
+  } else if (kind == "full") {
+    g.fill(0.8f);
+    g[static_cast<std::size_t>(static_cast<long>(std::floor(a(1) * 60)) % (N * N))] = 0;
+  } else { std::fprintf(stderr, "unknown fixture %s\n", kind.c_str()); std::exit(2); }
+  return g;
+}
+
 void run(const std::vector<std::vector<std::string>>& commands) {
+  scope::PictureMeter meter;
   scope::Phosphor phosphor;
   scope::PictureSources sources;
   scope::PictureStage stage;
@@ -132,6 +168,47 @@ void run(const std::vector<std::vector<std::string>>& commands) {
     }
     else if (cmd == "view") { gx = num(arg(1)); gy = num(arg(2)); ox = num(arg(3)); oy = num(arg(4)); spin = num(arg(5)); }  // the zoom, arg 6, fed only edge contact, cut in P5
     else if (cmd == "limit") limiting = num(arg(1));
+    // The meter, the moments and the pair's direction on made-up fixtures
+    // (stage 5, step 3, batch 2: shapetest.py's numbers rows, which built
+    // these in the page's JavaScript). Read by core/tests/pieces/shape.py
+    // only; picture_js.mjs has no twin of them, and parity's runs never
+    // name them. The fixtures are shapetest's HELPERS, line for line.
+    else if (cmd == "mnew") meter = scope::PictureMeter {};
+    else if (cmd == "mupd") {
+      meter.update(fixture(w, 2), num(arg(1)), 0);
+      extra = " meter " + show(meter.coverage()) + " " + show(meter.lit()) + " " + show(meter.change()) + " "
+            + show(meter.novelty()) + " " + show(meter.drift()) + " " + underscored(meter.verdict());
+    } else if (cmd == "mring" || cmd == "msegs" || cmd == "mempty") {
+      scope::Moments m;
+      if (cmd == "mring") {
+        const double a = num(arg(1)), b = num(arg(2)), t0 = num(arg(3));
+        constexpr int K = 720;
+        double px = 0, py = 0;
+        for (int k = 0; k <= K; k++) {
+          const double t = static_cast<double>(k) / K * 2 * kPiM, x = a * std::cos(t), y = b * std::sin(t);
+          const double u = x * std::cos(t0) - y * std::sin(t0), v = x * std::sin(t0) + y * std::cos(t0);
+          if (k > 0) m.add(px, py, u, v, 1);
+          px = u; py = v;
+        }
+      } else if (cmd == "msegs") {
+        // Each segment `x0,y0,x1,y1` or with a level after it, as the beam's shading gives one.
+        for (const auto& s : split(arg(1), ';')) {
+          const auto q = split(s, ',');
+          m.add(num(q[0]), num(q[1]), num(q[2]), num(q[3]), q.size() > 4 ? num(q[4]) : 1);
+        }
+      }
+      extra = " moments " + show(m.roundness());
+    } else if (cmd == "mpair") {
+      // shapetest's __pair: four turns of a sine against itself at a phase, as floats, drawn unturned.
+      constexpr std::size_t n = 2048;
+      std::vector<float> l(n), r(n);
+      const double phase = num(arg(1)), amp = num(arg(2));
+      for (std::size_t i = 0; i < n; i++) {
+        const double t = static_cast<double>(i) / n * 2 * kPiM * 4;
+        l[i] = static_cast<float>(amp * std::sin(t)); r[i] = static_cast<float>(amp * std::sin(t + phase));
+      }
+      extra = " signed " + show(scope::shapeOfPair(l.data(), r.data(), n, 1, 1, num(arg(3)), 0, 0).signed_);
+    }
     else if (cmd == "step") {
       const double elapsed = num(arg(1));
       sources.photoStep(phosphor, elapsed, spect);
