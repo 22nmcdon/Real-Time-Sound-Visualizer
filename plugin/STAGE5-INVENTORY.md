@@ -1157,40 +1157,40 @@ A second page `js` opened on `?picture=0&brain=js` (:486) so that "a sound loade
 ### filtertest.py - wholly on ?brain=js - 32/32
 Lines 8-11: "this suite reads the page's own brain - its oscillators set by hand, and its speakers' graph". It opens once, at `?picture=0&brain=js` (line 71). Most of it is pure page functions (`biquadCoefficients`, `cutoffHz`, `capture()`) and the Web Audio monitor chain. The default site has that chain too: the host path builds one at `scope.html:14971`.
 
-| Check | Kind | Why |
-|---|---|---|
-| agreement within a tenth of a decibel (116) | numbers | The page's `biquadCoefficients` checked against Web Audio's `getFrequencyResponse`. It becomes core `biquadCoefficients` (capture.h) against an analytic RBJ response, since Web Audio is not there offline. |
-| resonance nought is maximally flat (129) | numbers | -3.01 dB at the corner, from the coefficient law. Core capture.h has the same law. |
-| and the linear value in a dB slot would not be (131) | numbers | The trap's null, the same law fed 0.707. |
-| the tone source is the silent one (169) | page | Reads `state.source.kind == "tone"`. Only the page's brain has this. Goes. |
-| the signal really is a square (170) | numbers | Fixture check on the steepest step of `capture()`. Offline: the core's capture of a held square. |
-| a low pass really rounds the corners off it (175) | numbers | Steepest edge of `capture()` with `state.filter` on. Core capture.h `filterInPlace`. |
-| the first samples are not louder than the rest (195) | numbers | The filter primed at the window's left edge. Core `filterInPlace` primes the same way. |
-| and nothing is NaN (198) | numbers | The same capture, all finite. |
-| the lag lane is filtered too (215) | numbers | Lag lane peak against signal lane peak, from `capture()`. Core capture has the lag. |
-| it fits in a frame (239) | page | Milliseconds of the page's own JS `capture()`. A cost, not a number the engine makes. It goes, or becomes a core benchmark. |
-| still fits a frame at full width, on the band split's four lanes (264) | page | The same, with a faked microphone (`toMic`, `micBands`). |
-| a shown lane is filtered (300) | numbers | `getLatestWindow` stubbed on the page's source, then `capture()`. Offline: core capture with a lane's `on` flag. |
-| a hidden lane is not filtered at all (301) | numbers | The same, with the lane hidden. |
-| a source sweeps the cutoff (323) | numbers | Borderline. `lfos[0].value` is set by hand, then `applyModMatrix` and `filterNow().hz`. What it holds is the matrix's offset on the cutoff, so it becomes a render with lfo1 routed to `filter.cutoff`, reading the filter's Hz at the LFO's extremes. |
-| the filter survives a round trip (335) | page | `snapshot`/`restore`/`encodeSetup` called directly. Brain-free; moves to the default as it is. |
-| with its type and switch (336) | page | The same round trip. |
-| the only thing touching the speakers is the output clamp (369) | page | Hooks `AudioNode.connect` on the page's Web Audio graph. The host has a monitor chain too, so it moves to the default. |
-| there is exactly one chain for the source (371) | page | `monitorChains.size`. |
-| with a limiter set as a brickwall, not a compressor (372) | page | The page's DynamicsCompressor settings. |
-| and a clamp behind it, because a compressor has no lookahead (375) | page | The page's WaveShaper. |
-| and the filter starts out of the monitor path (377) | page | `chain.wet.gain`. |
-| picture only leaves the speakers dry (399) | page | `setAnalyseAt`/`setMonitorAt` and the chain's wet gain. |
-| both filtered brings the speakers in (402) | page | The same. |
-| and the screen can read the input while the ears do not (404) | page | The same. |
-| no AudioParam is assigned during a sweep (436) | page | The page's `applyModMatrix`, with LFOs set by hand, driving the monitor chain's AudioParams. Who does this on the default needs step 1's counter. |
-| they are all glided (438) | page | The same, counting `setTargetAtTime` calls. |
-| unlimited it would be far past full scale (485) | page | An OfflineAudioContext render through `makeMonitorChain`: a Web Audio graph, not the engine. Brain-free. |
-| the chain holds it under full scale (486) | page | The same render, through the chain. |
-| post-filter is stated (493) | page | `el.readoutDetail` text. |
-| and not when the screen reads the input (496) | page | The same. |
-| the chain goes when the source does, and only the new source's own is left (509) | page | `el.srcTone`, `kind == "tone"`, chains rebuilt by the page's brain. Goes. |
-| no page errors (512) | page | Housekeeping. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| agreement within a tenth of a decibel (116) | numbers | The page's `biquadCoefficients` checked against Web Audio's `getFrequencyResponse`. It becomes core `biquadCoefficients` (capture.h) against an analytic RBJ response, since Web Audio is not there offline. | to pieces (filter.py): the core's biquad against the Cookbook response as Web Audio's spec writes it, 560 points |
+| resonance nought is maximally flat (129) | numbers | -3.01 dB at the corner, from the coefficient law. Core capture.h has the same law. | to pieces (functions_cpp `biquad`) |
+| and the linear value in a dB slot would not be (131) | numbers | The trap's null, the same law fed 0.707. | to pieces (functions_cpp `biquad`) |
+| the tone source is the silent one (169) | page | Reads `state.source.kind == "tone"`. Only the page's brain has this. Goes. | gone: only the page's brain has a tone source |
+| the signal really is a square (170) | numbers | Fixture check on the steepest step of `capture()`. Offline: the core's capture of a held square. | to pieces (capture_cpp, a square under a 200 Hz low pass) |
+| a low pass really rounds the corners off it (175) | numbers | Steepest edge of `capture()` with `state.filter` on. Core capture.h `filterInPlace`. | to pieces |
+| the first samples are not louder than the rest (195) | numbers | The filter primed at the window's left edge. Core `filterInPlace` primes the same way. | to pieces, strengthened: the source holds the window only and the sine sits on 0.5, so an unprimed filter rings |
+| and nothing is NaN (198) | numbers | The same capture, all finite. | to pieces |
+| the lag lane is filtered too (215) | numbers | Lag lane peak against signal lane peak, from `capture()`. Core capture has the lag. | to pieces, strengthened: the signal lane must be filtered too (two unfiltered lanes agree) |
+| it fits in a frame (239) | page | Milliseconds of the page's own JS `capture()`. A cost, not a number the engine makes. It goes, or becomes a core benchmark. | moved: the face's capture() over the instrument's lanes, the source asserted the instrument's |
+| still fits a frame at full width, on the band split's four lanes (264) | page | The same, with a faked microphone (`toMic`, `micBands`). | rewritten: the Mic and Bands buttons, not `toMic()`; four lanes on the instrument |
+| a shown lane is filtered (300) | numbers | `getLatestWindow` stubbed on the page's source, then `capture()`. Offline: core capture with a lane's `on` flag. | to pieces |
+| a hidden lane is not filtered at all (301) | numbers | The same, with the lane hidden. | to pieces, strengthened: triggered on the hidden lane and compared whole |
+| a source sweeps the cutoff (323) | numbers | Borderline. `lfos[0].value` is set by hand, then `applyModMatrix` and `filterNow().hz`. What it holds is the matrix's offset on the cutoff, so it becomes a render with lfo1 routed to `filter.cutoff`, reading the filter's Hz at the LFO's extremes. | to pieces (matrix_cpp `screen` and `filter`); and new, the cutoff slider's law |
+| the filter survives a round trip (335) | page | `snapshot`/`restore`/`encodeSetup` called directly. Brain-free; moves to the default as it is. | moved |
+| with its type and switch (336) | page | The same round trip. | moved |
+| the only thing touching the speakers is the output clamp (369) | page | Hooks `AudioNode.connect` on the page's Web Audio graph. The host has a monitor chain too, so it moves to the default. | rewritten: the hook at init, so the instrument's chain is seen; every node to the speakers a clamp |
+| there is exactly one chain for the source (371) | page | `monitorChains.size`. | rewritten: one chain, the source the instrument's |
+| with a limiter set as a brickwall, not a compressor (372) | page | The page's DynamicsCompressor settings. | moved |
+| and a clamp behind it, because a compressor has no lookahead (375) | page | The page's WaveShaper. | moved |
+| and the filter starts out of the monitor path (377) | page | `chain.wet.gain`. | moved |
+| picture only leaves the speakers dry (399) | page | `setAnalyseAt`/`setMonitorAt` and the chain's wet gain. | moved |
+| both filtered brings the speakers in (402) | page | The same. | moved |
+| and the screen can read the input while the ears do not (404) | page | The same. | moved |
+| no AudioParam is assigned during a sweep (436) | page | The page's `applyModMatrix`, with LFOs set by hand, driving the monitor chain's AudioParams. Who does this on the default needs step 1's counter. | moved |
+| they are all glided (438) | page | The same, counting `setTargetAtTime` calls. | moved, strengthened: the sweep must move the cutoff |
+| unlimited it would be far past full scale (485) | page | An OfflineAudioContext render through `makeMonitorChain`: a Web Audio graph, not the engine. Brain-free. | moved |
+| the chain holds it under full scale (486) | page | The same render, through the chain. | moved |
+| post-filter is stated (493) | page | `el.readoutDetail` text. | moved, with a note held |
+| and not when the screen reads the input (496) | page | The same. | moved, with a note held |
+| the chain goes when the source does, and only the new source's own is left (509) | page | `el.srcTone`, `kind == "tone"`, chains rebuilt by the page's brain. Goes. | gone: only the page's brain has a source to drop |
+| no page errors (512) | page | Housekeeping. | moved |
 
 ### handstest.py - wholly on ?brain=js - 39/39 (28 check, 11 null)
 Lines 25-26: "the generator's two layers, its routes and Scan's strike are the page's own brain's". It opens at `?picture=0&brain=js` (line 49). Nearly all of it is the face: the selector, the links, the tab cards, and codes through `restore()`.
@@ -1748,30 +1748,30 @@ Docstring note (:7): it "reads the page's own brain - its oscillators' shape and
 ### morphtest.py - wholly on ?brain=js - 22/22
 Docstring note (:23): it "reads the page's own brain - genSet called directly, and its generator's samples". This is the waveform morph, not the setup morph. Its numbers come from `waveAt` and `makeGeneratorCore`, the JavaScript engine called directly.
 
-| Check | Kind | Why |
-|---|---|---|
-| at 0, 1, 2 and 3 the morph is the sine, the triangle, the saw and the square, exactly (:107) | numbers | `waveAt()` per sample; core wave offline |
-| a thousandth of a station moves no sample by more than two thousandths (:126) | numbers | as above |
-| it never falls below the saw's own, 0.64 of the sine's - the lowest station (:137) | numbers | `makeGeneratorCore` block spectrum; core render |
-| and between the triangle and the saw it goes smoothly from one to the other (:139) | numbers | as above |
-| half-way between each pair, at 4 kHz, nothing folds back above -45 dB (:156) | numbers | alias floor; core render |
-| and with an oscillator sweeping it end to end, still nothing above -45 dB (:165) | numbers | as above, with an LFO route on MORPH_SLOT |
-| the Morph row is on Play only with Morph chosen (:194) | page | face row hidden; trivially to default |
-| it starts half-way from the triangle to the saw, and says where it is (:196) | page | `el.morphValue` text plus `genSettings().morph`; to default via the snapshot |
-| and every reading fits beside the slider, in a Bench column (:200) | page | layout; trivially to default |
-| a controller on Morph moves the sound: a sine with none of the saw's second harmonic (:236) | numbers | spectrum of `getLatestWindow` with a `midi.key` route; core render |
-| and at full, a station and a half on, exactly the half-saw's %.1f dB (:238) | numbers | as above |
-| without writing the slider's own position (:240) | page | `genSettings().morph` after modulation; becomes the snapshot on default |
-| full depth is a station and a half, stopped at both ends (:242) | page | `MOD_DESTS.get('gen.morph').reach()`, the face's reach; trivially to default |
-| editing B writes B's position and leaves A's (:267) | page | hands editing; `genSettings(0/1)`, to default via snapshot `morph`/`bMorph` |
-| and back on A the slider is A's, with the code carrying both (:269) | page | slider plus snapshot; trivially to default |
-| and B sounds its own: A's square has its third harmonic at -9.5 dB, B's sine none (:292) | numbers | two-layer `makeGeneratorCore` block; core render |
-| a code's position reaches the slider and the generator, and B takes A's when it has none (:312) | page | restore, then `genSettings` and slider; to default via snapshot or core |
-| and B its own when it has one (:314) | page | as above |
-| a code from before the morph loads with the default (:316) | page | as above |
-| a generator built later, from the panel, takes the slider's position on both layers (:328) | page | `toTone()`/`generatorFromPanel`, page brain only; goes |
-| timbre finds it (:337) | page | bench search; trivially to default |
-| no page errors (:339) | page | page health |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| at 0, 1, 2 and 3 the morph is the sine, the triangle, the saw and the square, exactly (:107) | numbers | `waveAt()` per sample; core wave offline | to pieces (morph.py, functions_cpp `waveAt`) |
+| a thousandth of a station moves no sample by more than two thousandths (:126) | numbers | as above | to pieces |
+| it never falls below the saw's own, 0.64 of the sine's - the lowest station (:137) | numbers | `makeGeneratorCore` block spectrum; core render | to pieces (generator_cpp) |
+| and between the triangle and the saw it goes smoothly from one to the other (:139) | numbers | as above | to pieces |
+| half-way between each pair, at 4 kHz, nothing folds back above -45 dB (:156) | numbers | alias floor; core render | to pieces |
+| and with an oscillator sweeping it end to end, still nothing above -45 dB (:165) | numbers | as above, with an LFO route on MORPH_SLOT | to pieces: an LFO 1 route on the morph slot |
+| the Morph row is on Play only with Morph chosen (:194) | page | face row hidden; trivially to default | moved |
+| it starts half-way from the triangle to the saw, and says where it is (:196) | page | `el.morphValue` text plus `genSettings().morph`; to default via the snapshot | rewritten: snapshot |
+| and every reading fits beside the slider, in a Bench column (:200) | page | layout; trivially to default | moved |
+| a controller on Morph moves the sound: a sine with none of the saw's second harmonic (:236) | numbers | spectrum of `getLatestWindow` with a `midi.key` route; core render | to pieces (instrument_cpp) |
+| and at full, a station and a half on, exactly the half-saw's %.1f dB (:238) | numbers | as above | to pieces, restated: the same as Morph at 1.5 in the setup, within 0.3 dB; the bare half-saw held separately |
+| without writing the slider's own position (:240) | page | `genSettings().morph` after modulation; becomes the snapshot on default | rewritten: slider and code, with a null that the routing was there |
+| full depth is a station and a half, stopped at both ends (:242) | page | `MOD_DESTS.get('gen.morph').reach()`, the face's reach; trivially to default | moved |
+| editing B writes B's position and leaves A's (:267) | page | hands editing; `genSettings(0/1)`, to default via snapshot `morph`/`bMorph` | rewritten: the Poly and Dyad buttons, snapshot `morph`/`bMorph` |
+| and back on A the slider is A's, with the code carrying both (:269) | page | slider plus snapshot; trivially to default | rewritten: as :267 |
+| and B sounds its own: A's square has its third harmonic at -9.5 dB, B's sine none (:292) | numbers | two-layer `makeGeneratorCore` block; core render | to pieces |
+| a code's position reaches the slider and the generator, and B takes A's when it has none (:312) | page | restore, then `genSettings` and slider; to default via snapshot or core | rewritten: snapshot and slider; B taking A's is parity's restore section |
+| and B its own when it has one (:314) | page | as above | rewritten: as :312 |
+| a code from before the morph loads with the default (:316) | page | as above | rewritten: as :312 |
+| a generator built later, from the panel, takes the slider's position on both layers (:328) | page | `toTone()`/`generatorFromPanel`, page brain only; goes | gone: `toTone()` building a generator from the panel is the page's brain only |
+| timbre finds it (:337) | page | bench search; trivially to default | moved |
+| no page errors (:339) | page | page health | moved |
 
 ### onsettest.py - wholly on ?brain=js - 12/12
 Docstring note (:20): it "reads the page's own brain - its sources' functions, bound directly". It registers stand-in event destinations on the page, because nothing struck exists since G2.
@@ -1875,61 +1875,61 @@ Docstring note (:20): it "reads the page's own brain - genSet called directly". 
 ### picturepresettest.py - wholly on ?brain=js - 10/10
 Its comment (`:45`): on ?brain=js because it "reads the page's own brain - restore() called directly, which the page sends the instrument nothing of". In fact it also calls `loadCorpus`, `heldTone`, `landPhoto`, `movePhoto` and reads `photo.*`, `MOD_SOURCES.get(id).value()` and `pictureMeter.verdict()` - all page-brain state - over 10 s a preset, twice for each loop.
 
-| Check | Kind | Why |
-|---|---|---|
-| a section of the picture playing itself, and one played with it (`:128`) | page | Counts entries in `CORPUS` on the page; pure data, no brain. Becomes a Python read of `corpus.LIBRARY` (or any page); nothing to render. |
-| every preset in them turns the photocell on and routes something the picture says (`:131`) | page | `decodeRoutings` over the corpus setups plus a null on Circle; data only. Moves to Python or the default page trivially. |
-| four presets use five sources or more, and two of them the picture's with at least three others (`:134`) | page | Counts distinct sources over `CORPUS` and `PRESETS`; data only, as above. |
-| the library uses sources together: thirty with two or more, twelve with three or more (`:137`) | page | Same counting, with its null; data only. |
-| at most two presets needed the reticle pressed onto their figure, so the stored placements are read (`:241`) | numbers | Reads `photo.raw` (the photocell's reading at the stored cell) after a load and held note; an offline render of the core's picture with the photocell gives the same number. `landPhoto` is page-side, but only the "dark" test is needed. |
-| in every one, the picture's sources are there, move, and are routed onto what they alter (`:244`) | numbers | Spread of each picture source's value over 10 s; an offline render's picture-source readings over time. |
-| and each loop changes what the picture does, against itself without the loop: the verdicts or the reading (`:249`) | numbers | Picture meter's verdict histogram and photo.1's swing, looped against unlooped (the setup with its picture routings removed); offline renders of two setup codes. |
-| and none of them ends running away (`:252`) | numbers | `pictureMeter.verdict()` at the end; the core has the meter (`core/include/scope/picture.h`). |
-| the wandering preset wanders because of its loop: wandering most with it, and not without it (`:256`) | numbers | Verdict histogram for one preset, looped and not; offline render. |
-| no page errors (`:260`) | page | The page's own health on ?brain=js; goes with the leg (the default page has its own). |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| a section of the picture playing itself, and one played with it (`:128`) | page | Counts entries in `CORPUS` on the page; pure data, no brain. Becomes a Python read of `corpus.LIBRARY` (or any page); nothing to render. | moved to a default page: data only |
+| every preset in them turns the photocell on and routes something the picture says (`:131`) | page | `decodeRoutings` over the corpus setups plus a null on Circle; data only. Moves to Python or the default page trivially. | moved to a default page: data only |
+| four presets use five sources or more, and two of them the picture's with at least three others (`:134`) | page | Counts distinct sources over `CORPUS` and `PRESETS`; data only, as above. | moved to a default page: data only |
+| the library uses sources together: thirty with two or more, twelve with three or more (`:137`) | page | Same counting, with its null; data only. | moved to a default page: data only |
+| at most two presets needed the reticle pressed onto their figure, so the stored placements are read (`:241`) | numbers | Reads `photo.raw` (the photocell's reading at the stored cell) after a load and held note; an offline render of the core's picture with the photocell gives the same number. `landPhoto` is page-side, but only the "dark" test is needed. | left: needs render_cpp |
+| in every one, the picture's sources are there, move, and are routed onto what they alter (`:244`) | numbers | Spread of each picture source's value over 10 s; an offline render's picture-source readings over time. | left: needs render_cpp |
+| and each loop changes what the picture does, against itself without the loop: the verdicts or the reading (`:249`) | numbers | Picture meter's verdict histogram and photo.1's swing, looped against unlooped (the setup with its picture routings removed); offline renders of two setup codes. | left: needs render_cpp |
+| and none of them ends running away (`:252`) | numbers | `pictureMeter.verdict()` at the end; the core has the meter (`core/include/scope/picture.h`). | left: needs render_cpp |
+| the wandering preset wanders because of its loop: wandering most with it, and not without it (`:256`) | numbers | Verdict histogram for one preset, looped and not; offline render. | left: needs render_cpp |
+| no page errors (`:260`) | page | The page's own health on ?brain=js; goes with the leg (the default page has its own). | split: a page each |
 
 ### planetest.py - wholly on ?brain=js - 37/37
 Its comment (`:26`): "reads the page's own brain - midiControl called directly". In practice the first 23 checks never touch the page's brain at all: they build `makeGeneratorCore(44100, GEN_SLOTS, ...)` - the JavaScript engine itself - inside the page and render blocks from it (`CORE`, `:78`). The rest drive the panel and read `genSettings()`, `state.source.getLatestWindow()`, `restore`/`snapshot`/`migrateSetup`.
 
-| Check | Kind | Why |
-|---|---|---|
-| mirroring X makes X its own absolute value, to the last bit, and leaves Y alone (`:116`) | numbers | JS engine block at 1x, a 3:2 figure; the same setup rendered by the core offline. |
-| and both folds both (`:120`) | numbers | As above, planeMirror 3. |
-| the radial clip makes every pair's length r tanh(\|v\|/r), to float precision (`:131`) | numbers | Rendered clip against the formula. |
-| never longer than the radius, from a figure that reaches 1.13 (`:133`) | numbers | Same render. |
-| and turns no pair: every one keeps its direction (`:135`) | numbers | Same render. |
-| scale and shear are the matrix [sx sx*k; 0 sy], to float precision, with no delay at 2x (`:145`) | numbers | Render at 2x against the matrix. |
-| the twist turns each point by k times its length, to float precision (`:160`) | numbers | Render against the per-point rotation. |
-| and keeps every length (`:162`) | numbers | Same render. |
-| the fold reflects each length at the radius, as often as it takes - 2r - m past it, m inside (`:173`) | numbers | Render against the fold formula. |
-| never outside the radius, and every point keeps its direction (`:176`) | numbers | Same render. |
-| snap at 5 bits puts both channels on a grid of 1/16 - the nearest point of it (`:185`) | numbers | Render against the grid. |
-| all four together are applied in the stated order (`:203`) | numbers | Render against the composed formula. |
-| its fundamental is 440 and its odd harmonics of 220 are gone, 100 dB down (`:212`) | numbers | Spectrum of a mirrored sine, 1.1 s render. |
-| at 2x, the default, mirror, clip and twist clear the square's floor: under -58.5 at 2 kHz and -46.2 at 4 (`:234`) | numbers | Alias floors from 30 renders (op x freq x OS). |
-| and for those three each doubling is worth at least 10 dB, at both (`:237`) | numbers | Same floors. |
-| the fold and the snap are no worse than when they were measured (`:252`) | numbers | Same floors against pins; the pins were measured on the JS engine and need re-measuring on the core (parity makes them near-identical). |
-| and oversampling still buys the fold 20 dB from 1x to 4x, at both (`:255`) | numbers | Same floors. |
-| outside poly what is heard is exactly what is drawn - the pair is not done twice (`:261`) | numbers | The engine's heard pair (HL/HR) against its picture pair; the offline render must expose both outputs. |
-| in poly layer A's picture and layer B's are each mirrored, and so what is heard (`:275`) | numbers | Voices set directly on the engine, two layers; offline render with timed MIDI and the layers' outputs. |
-| and what is heard is the two mirrored pictures summed, sample for sample (`:284`) | numbers | Same render, heard against A+B. |
-| and not the sum mirrored, which the comparison tells apart (`:286`) | numbers | Same render, the null. |
-| 2x and 4x both delay the pair 31 samples, 0.7 ms, as the code says (`:304`) | numbers | Lag between renders at 1x/2x/4x. |
-| sixteen voices over two layers with both operations at 4x run in under half of real time (`:324`) | numbers | Borderline: a wall-clock cost of the JS engine's `block`. The assertion (cost under half real time) is worth keeping for the core, but as written it times the engine step 6 deletes; offline it becomes a timing of the C++ render, a much easier bar. |
-| the section is on the Effects tab and its controls reach the generator - the radius shown and used only with the clip on (`:379`) | page | Panel rows plus `genSettings()` (the page brain's settings). Becomes clicks on the default with the instrument's setup read back. |
-| on the page the figure is mirrored and clipped once, not twice: longest %.4f (`:383`) | numbers | `getLatestWindow` under `midiNoteOn` on the page's tone; the setup and a held note rendered offline give the same longest radius. |
-| a source on Clip radius opens it: at full depth the figure is held at 0.75, not 0.25 (`:389`) | numbers | Key velocity routed to gen.radius via `addRouting`; offline render of a setup with that routing and a note at 127. |
-| twist, snap, scale and shear reach the generator in its own units - a quarter-turn a unit reads 90 degrees (`:436`) | page | Slider to `genSettings()` units and a reading's text; becomes slider moves on the default with the setup read back. |
-| a source on Twist swirls a figure whose slider is at nought (`:439`) | numbers | Same pattern as `:389`, gen.twist; offline render. |
-| a code's plane reaches the generator (`:468`) | page | `restore()` then `genSettings()` and the menu's value; becomes a code pasted on the default. |
-| a code carries it, and no box any more (`:470`) | page | `snapshot()` fields; the page's codec, kept after step 5. |
-| and a code from before has the plane off, at 2x (`:471`) | page | `restore({})` then `genSettings()`. |
-| a code carries the twist, snap and matrix both ways (`:475`) | page | restore/snapshot/genSettings round trip. |
-| and a code from before has them all at rest (`:479`) | page | As above. |
-| a version-3 code with the clip ticked loads as Clip, at its radius (`:480`) | page | `migrateSetup` v3 pass then `genSettings()`; the core has its own decode pass, which parity holds. |
-| and one without it as off, the box's field gone (`:482`) | page | `migrateSetup` output; page-only function, no brain needed - moves to the default trivially. |
-| rectifier finds the mirror (`:491`) | page | The bench search; face only, nothing of the brain - moves to the default as is. |
-| no page errors (`:493`) | page | Page health on the leg. |
+| Check | Kind | Why | Batch 4 (13 Nov) |
+|---|---|---|---|
+| mirroring X makes X its own absolute value, to the last bit, and leaves Y alone (`:116`) | numbers | JS engine block at 1x, a 3:2 figure; the same setup rendered by the core offline. | to pieces (plane.py, generator_cpp) |
+| and both folds both (`:120`) | numbers | As above, planeMirror 3. | to pieces (plane.py, generator_cpp) |
+| the radial clip makes every pair's length r tanh(\|v\|/r), to float precision (`:131`) | numbers | Rendered clip against the formula. | to pieces (plane.py, generator_cpp) |
+| never longer than the radius, from a figure that reaches 1.13 (`:133`) | numbers | Same render. | to pieces (plane.py, generator_cpp) |
+| and turns no pair: every one keeps its direction (`:135`) | numbers | Same render. | to pieces (plane.py, generator_cpp) |
+| scale and shear are the matrix [sx sx*k; 0 sy], to float precision, with no delay at 2x (`:145`) | numbers | Render at 2x against the matrix. | to pieces (plane.py, generator_cpp) |
+| the twist turns each point by k times its length, to float precision (`:160`) | numbers | Render against the per-point rotation. | to pieces (plane.py, generator_cpp) |
+| and keeps every length (`:162`) | numbers | Same render. | to pieces (plane.py, generator_cpp) |
+| the fold reflects each length at the radius, as often as it takes - 2r - m past it, m inside (`:173`) | numbers | Render against the fold formula. | to pieces (plane.py, generator_cpp) |
+| never outside the radius, and every point keeps its direction (`:176`) | numbers | Same render. | to pieces (plane.py, generator_cpp) |
+| snap at 5 bits puts both channels on a grid of 1/16 - the nearest point of it (`:185`) | numbers | Render against the grid. | to pieces (plane.py, generator_cpp) |
+| all four together are applied in the stated order (`:203`) | numbers | Render against the composed formula. | to pieces (plane.py, generator_cpp) |
+| its fundamental is 440 and its odd harmonics of 220 are gone, 100 dB down (`:212`) | numbers | Spectrum of a mirrored sine, 1.1 s render. | to pieces |
+| at 2x, the default, mirror, clip and twist clear the square's floor: under -58.5 at 2 kHz and -46.2 at 4 (`:234`) | numbers | Alias floors from 30 renders (op x freq x OS). | to pieces; pins measured again on the core, identical |
+| and for those three each doubling is worth at least 10 dB, at both (`:237`) | numbers | Same floors. | to pieces; pins measured again on the core, identical |
+| the fold and the snap are no worse than when they were measured (`:252`) | numbers | Same floors against pins; the pins were measured on the JS engine and need re-measuring on the core (parity makes them near-identical). | to pieces; pins measured again on the core, identical |
+| and oversampling still buys the fold 20 dB from 1x to 4x, at both (`:255`) | numbers | Same floors. | to pieces; pins measured again on the core, identical |
+| outside poly what is heard is exactly what is drawn - the pair is not done twice (`:261`) | numbers | The engine's heard pair (HL/HR) against its picture pair; the offline render must expose both outputs. | to pieces: heard pair against the pictures |
+| in poly layer A's picture and layer B's are each mirrored, and so what is heard (`:275`) | numbers | Voices set directly on the engine, two layers; offline render with timed MIDI and the layers' outputs. | to pieces |
+| and what is heard is the two mirrored pictures summed, sample for sample (`:284`) | numbers | Same render, heard against A+B. | to pieces |
+| and not the sum mirrored, which the comparison tells apart (`:286`) | numbers | Same render, the null. | to pieces |
+| 2x and 4x both delay the pair 31 samples, 0.7 ms, as the code says (`:304`) | numbers | Lag between renders at 1x/2x/4x. | to pieces |
+| sixteen voices over two layers with both operations at 4x run in under half of real time (`:324`) | numbers | Borderline: a wall-clock cost of the JS engine's `block`. The assertion (cost under half real time) is worth keeping for the core, but as written it times the engine step 6 deletes; offline it becomes a timing of the C++ render, a much easier bar. | to pieces: the core's generator_cpp timed, 89 ms a second against 500 |
+| the section is on the Effects tab and its controls reach the generator - the radius shown and used only with the clip on (`:379`) | page | Panel rows plus `genSettings()` (the page brain's settings). Becomes clicks on the default with the instrument's setup read back. | rewritten: `snapshot()`, not `genSettings` |
+| on the page the figure is mirrored and clipped once, not twice: longest %.4f (`:383`) | numbers | `getLatestWindow` under `midiNoteOn` on the page's tone; the setup and a held note rendered offline give the same longest radius. | to pieces (instrument_cpp, a key at 127) |
+| a source on Clip radius opens it: at full depth the figure is held at 0.75, not 0.25 (`:389`) | numbers | Key velocity routed to gen.radius via `addRouting`; offline render of a setup with that routing and a note at 127. | to pieces (instrument_cpp, a key at 127) |
+| twist, snap, scale and shear reach the generator in its own units - a quarter-turn a unit reads 90 degrees (`:436`) | page | Slider to `genSettings()` units and a reading's text; becomes slider moves on the default with the setup read back. | rewritten: the panel's units through `snapshot()`; the generator's units are parity's restore section |
+| a source on Twist swirls a figure whose slider is at nought (`:439`) | numbers | Same pattern as `:389`, gen.twist; offline render. | to pieces (instrument_cpp) |
+| a code's plane reaches the generator (`:468`) | page | `restore()` then `genSettings()` and the menu's value; becomes a code pasted on the default. | rewritten: snapshot |
+| a code carries it, and no box any more (`:470`) | page | `snapshot()` fields; the page's codec, kept after step 5. | moved |
+| and a code from before has the plane off, at 2x (`:471`) | page | `restore({})` then `genSettings()`. | rewritten: snapshot |
+| a code carries the twist, snap and matrix both ways (`:475`) | page | restore/snapshot/genSettings round trip. | rewritten: snapshot |
+| and a code from before has them all at rest (`:479`) | page | As above. | rewritten: snapshot |
+| a version-3 code with the clip ticked loads as Clip, at its radius (`:480`) | page | `migrateSetup` v3 pass then `genSettings()`; the core has its own decode pass, which parity holds. | rewritten: snapshot |
+| and one without it as off, the box's field gone (`:482`) | page | `migrateSetup` output; page-only function, no brain needed - moves to the default trivially. | moved |
+| rectifier finds the mirror (`:491`) | page | The bench search; face only, nothing of the brain - moves to the default as is. | moved |
+| no page errors (`:493`) | page | Page health on the leg. | moved |
 
 ### pulsetest.py - wholly on ?brain=js - 24/24
 Its comment (`:22`): "reads the page's own brain - midiControl and genSet called directly". As in planetest, the spectral checks build `makeGeneratorCore` and call `waveAt` (the JS engine's wave function) directly, with `setRoutes` on `WIDTH_SLOT`/`SYNC_SLOT` (`:79`).
