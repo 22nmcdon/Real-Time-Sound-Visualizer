@@ -7473,7 +7473,7 @@ function hearingStep(elapsed) {
   /* The instrument's hearing, while it plays (5b's second half): its values
      into the page's, for the hearing's sources as the face shows them, and
      nothing heard twice. Its onsets counted as the instrument counted them. */
-  const face = instrumentFace();
+  const face = (typeof instrumentFace === "function" ? instrumentFace() : null);
   if (face) {
     const h = face.hearing;
     hearing.pitch = h.pitch; hearing.bright = h.bright; hearing.width = h.width; hearing.flux = h.flux;
@@ -8144,7 +8144,7 @@ function fadeGain(key, layer = 0) {
   // amount is their gain, and a fade-in that had never seen them held them at nought.
   if (fade.mode === "off" || isStageKey(key)) return 1;
   // The instrument's, while it plays (5b's second half: Instrument::fadeServed), in place of the page's fadeStep.
-  const served = instrumentFadeGains();
+  const served = (typeof instrumentFadeGains === "function" ? instrumentFadeGains() : null);
   if (served) {
     const found = served.find((g) => g.key === key);
     return found ? found.gains[layer === 1 ? 1 : 0] : fadesIn() ? 0 : 1;
@@ -8172,7 +8172,7 @@ function instrumentFadeGains() {
 function routingsHeard() {
   const stage = stageRoutings();
   // With the instrument's gains, its ghosts: the routings it still hears fading out.
-  const served = instrumentFadeGains();
+  const served = (typeof instrumentFadeGains === "function" ? instrumentFadeGains() : null);
   if (served) {
     const ghosts = fadesOut() ? served.filter((g) => !g.inSetup).map((g) => g.routing) : [];
     return ghosts.length || stage.length ? state.modRoutings.concat(stage, ghosts) : state.modRoutings;
@@ -8194,7 +8194,7 @@ function routingsHeard() {
 function fadeStep() {
   if (fade.mode === "off") return;
   // The instrument steps its own (Matrix::fadeStep), and serves what the face reads of it.
-  if (instrumentFace()) return;
+  if ((typeof instrumentFace === "function" ? instrumentFace() : null)) return;
   globalThis.__brainCount?.("fadeStep");
   const now = performance.now();
   const here = new Set();
@@ -8506,7 +8506,7 @@ function fadeDotStep(now) {
   if (fade.shownLayered !== fadeLayered()) drawFadeEnvelope();
   /* The instrument's dot while it plays (5b's second half, Matrix::dot), in
      place of the page's own reckoning of the fade it no longer steps. */
-  const face = instrumentFace();
+  const face = (typeof instrumentFace === "function" ? instrumentFace() : null);
   const last = face ? face.dots[fade.editing] : fade.last[fade.editing];
   if (fade.mode === "off" || !last) { dot.setAttribute("visibility", "hidden"); return; }
   const phase = face ? last : last.gate ? gatePhase(last.gate, now) : rampPhase(last.ramp, now);
@@ -8633,7 +8633,7 @@ function applyModMatrix(frame, elapsed) {
      the instrument's are the same arithmetic, held to these by parity. */
   /* Until 5b's second half, when the instrument serves where its dot is
      (Matrix::dot): stepped here only for an instrument that serves no face. */
-  if (state.source && state.source.kind === "host" && fade.mode !== "off" && !instrumentFace()) { globalThis.__brainCount?.("stepRoutes.host"); stepRoutes(); }
+  if (state.source && state.source.kind === "host" && fade.mode !== "off" && !(typeof instrumentFace === "function" ? instrumentFace() : null)) { globalThis.__brainCount?.("stepRoutes.host"); stepRoutes(); }
   fadeDotStep(performance.now());
   if (lfoDriver() === "main") {
     assertLfoDriver("main");
@@ -8649,7 +8649,7 @@ function applyModMatrix(frame, elapsed) {
   arpTick(performance.now());
   syncMidiOut();
   // The instrument's picture, when it has posted one, is the face's (takeFace).
-  const face = instrumentFace();
+  const face = (typeof instrumentFace === "function" ? instrumentFace() : null);
   if (!face) {
     photoStep(elapsed);
     pictureStep(frame, elapsed);
@@ -17284,7 +17284,7 @@ const PHOSPHOR_N = 64;
    memory it is a view that has to be made after anything that could grow it. */
 const phosphor = {
   // The instrument's, while it plays (5b's second half): the page's engine is then faded and laid by nothing.
-  get grid() { return instrumentGrid() || pictureEngine.cells; },
+  get grid() { return (typeof instrumentGrid === "function" ? instrumentGrid() : null) || pictureEngine.cells; },
   get frames() { return pictureEngine.frames; },   // fades applied, which is what a decay test counts
   cost: 0,                                         // milliseconds of the last frame's deposits
 };
@@ -17299,7 +17299,7 @@ function instrumentGrid() {
 }
 
 function phosphorFade(resized) {
-  if (instrumentGrid()) return;
+  if ((typeof instrumentGrid === "function" ? instrumentGrid() : null)) return;
   globalThis.__brainCount?.("phosphorFade");
   phosphor.cost = 0;
   pictureEngine.fade(state.persistence, resized);
@@ -17327,7 +17327,7 @@ function phosphorFadeInto(grid, moments, persistence, resized) {
 /* A segment in canvas pixels, laid into the cells it crosses. Sampled at half a
    cell, which cannot skip a cell a segment passes through. */
 function phosphorSegment(x0, y0, x1, y1, level) {
-  if (instrumentGrid()) return;
+  if ((typeof instrumentGrid === "function" ? instrumentGrid() : null)) return;
   const started = performance.now();
   pictureEngine.segment(plot, x0, y0, x1, y1, level);
   phosphor.cost += performance.now() - started;
@@ -17401,7 +17401,7 @@ function phosphorSegmentInto(g, moments, plot, x0, y0, x1, y1, level) {
 /* A polyline in the renderer's scratch arrays. `steps`, when given, is the
    beam's per-segment step, and a segment deposits what it was drawn at. */
 function phosphorDeposit(xs, ys, count, steps) {
-  if (instrumentGrid()) return;
+  if ((typeof instrumentGrid === "function" ? instrumentGrid() : null)) return;
   globalThis.__brainCount?.("phosphorDeposit");
   const started = performance.now();
   pictureEngine.deposit(plot, xs, ys, count, steps);
@@ -17414,7 +17414,7 @@ function phosphorDeposit(xs, ys, count, steps) {
    plan requires of every source before it may be routed: a single nearest
    cell would jump as the reticle crossed a cell boundary. */
 function phosphorRead(u, v) {
-  const grid = instrumentGrid();
+  const grid = (typeof instrumentGrid === "function" ? instrumentGrid() : null);
   return grid ? phosphorReadGrid(grid, u, v) : pictureEngine.read(u, v);
 }
 function phosphorReadGrid(g, u, v) {
@@ -26372,7 +26372,7 @@ function arpStop() {
 // frame, which would add up to another frame to the wait.
 function arpHeld() {
   // The instrument walks its own (Keyboard::arpTick), and the face follows its notes (arpFollow).
-  if (instrumentFace()) { if (midi.notes.length === 0) { arp.current = []; arp.shown = ""; arpApply(); } return; }
+  if ((typeof instrumentFace === "function" ? instrumentFace() : null)) { if (midi.notes.length === 0) { arp.current = []; arp.shown = ""; arpApply(); } return; }
   if (midi.notes.length === 0) { if (arp.start !== null) arpStop(); else arpApply(); return; }
   if (arp.start === null) {
     arp.start = performance.now() + ARP_GATHER; arp.steps = 0; arp.index = -1;
@@ -26380,7 +26380,7 @@ function arpHeld() {
   }
 }
 function arpTick(now) {
-  if (!arpActive() || arp.start === null || instrumentFace()) return;
+  if (!arpActive() || arp.start === null || (typeof instrumentFace === "function" ? instrumentFace() : null)) return;
   if (midi.notes.length === 0) { arpStop(); return; }
   if (now < arp.start) return;
   const due = Math.floor((now - arp.start) / arpStepMs());
