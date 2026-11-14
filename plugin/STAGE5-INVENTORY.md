@@ -1362,7 +1362,16 @@ Step 3 is done. Left, each for a reason step 3 could not answer:
 - **step 5 or 6, the engines compared**: wasm and worklet whole, which hold
   the two engines together and go with the switch.
 
-RUNS_PLACEHOLDER
+**The runs (14 Nov).** The full web suite, with `--brain-counts`: 97 suites in
+41.3 minutes, 2,490 checks passed and one failed - honesty's reverb-on pass,
+the known flaky one (*Bass under the pad*, 36 frames), which passed alone twice
+(10.3 minutes each). Parity: 1,871 checks, every one passed, in 27 minutes,
+the pieces with it. The page's own brain is now opened by 9 suites
+(brain, clock, constellation, harmony, layer, scan, score, wasm, worklet), 29
+pages in all. Of this batch's seven suites, 3 open it, where 7 did:
+livetest, modtest, phototest and budgettest open only the default page
+(744, 814, 1,061 frames of the page's brain before, none after), and
+layertest, clocktest and scoretest open it once each, as they did.
 
 ## Appendix: the counters, summed
 
