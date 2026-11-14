@@ -139,6 +139,14 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   bass a semitone off (the upper hand's does): at 131 Hz a semitone moves the
   fit too little in a 10 ms window. Noted at the site by batch 1.
 
+- **Two checks that failed under load in step 4's full run (14 Nov) and
+  passed alone twice each**, neither on the known-flaky list: scan's *on the
+  site's instrument, the turning fifth read back moves its timbre* (0.0038)
+  and arp's *a key held through an arpeggiated setup and into a plain one
+  sounds at the plain one's level* (0.4172 against 0.3850). Neither suite
+  touches anything step 4 changed. Worth watching for a second time before
+  either is added to the list, or made to tolerate a loaded machine.
+
 ## Owner's list
 
 - A few minor things from trying the click, swell and Width fixes on the testing

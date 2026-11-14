@@ -1375,6 +1375,36 @@ livetest, modtest, phototest and budgettest open only the default page
 (744, 814, 1,061 frames of the page's brain before, none after), and
 layertest, clocktest and scoretest open it once each, as they did.
 
+## 12. Step 4: the constellation removed (14 Nov)
+
+Taken out of the page by the owner's decision (`STAGE5-PLAN.md`, "Decided"):
+Draw's way, Place, Hands and Reseed, `drawConstellation` and its helpers (370
+lines of `scope.html`), the help sheet's paragraph and the four controls'
+words. No core side and no stored field, so no decode pass; `drawgonetest.py`
+(14 checks with their nulls, parallel) replaced `constellationtest.py`'s 42.
+
+**The runs.** Parity: 1,871 checks, all passed. The full web suite with
+`--brain-counts`: 97 suites in 38.8 minutes, 2,448 checks passed and two
+failed under load - scan's turning fifth on the site's instrument and arp's
+key held into a plain setup - each of which passed alone twice
+(`web/docs/after-stage-5.md`, Tests). The plugin's shell test under
+`xvfb-run -a`: 267 passed.
+
+**What the counters say now.** `drawConstellation` is gone with the page's
+code, so it is no longer a count. Of the page-brain steps that remain, one
+now runs on **no suite at all**: `fireEvents.fire` (15 on `?brain=js` on 13
+Nov), whose only caller was onset's stand-in destinations, moved to the
+pieces in step 3 - the constellation was not its reason, but step 5 should
+know it is unwatched by the web suite. Three run only on `?brain=js`, none of
+them for the constellation: `layerPicturesStep` (2,954), `scanStep.table`
+(5,998, and 465 on `?brain=js&core=js`) and `clockStep.clockLost` (1). The
+constellation was the only reason for none of the counted steps: the page's
+grid it drew into (`phosphorDeposit`, `phosphorFade`) is still worked on every
+address. The page's own brain is now opened by 9 suites (brain, clock,
+drawgone, harmony, layer, scan, score, wasm, worklet): drawgone opens it to
+hold the prototype's address, `?brain=js&draw=constellation`, and goes with
+the switch in step 5.
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the
