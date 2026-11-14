@@ -151,7 +151,8 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
 
 - Each voice's real cycle sent from the core to the page, which is what brings
   the constellation back honestly (`ways-to-draw.md`, "The prototype's
-  shortcut, and what fixes it").
+  shortcut, and what fixes it"). The prototype was removed in step 4 (14 Nov),
+  its design kept in `ways-to-draw.md`, "Removed, 14 Nov".
 - Closing the painting loop: Scan reading the painting live while the phrase
   plays, and the painting painted from the changed sound
   (`painting-the-sound.md`).

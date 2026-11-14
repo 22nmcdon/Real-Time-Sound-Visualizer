@@ -6444,6 +6444,24 @@ the core has no place for, failed it the first time round. They have no ids:
 the script finds them by `data-draw` into `el`, and the info line by
 `SAY_KEYS`. Buttons and links are not read, so *Reseed* keeps its id.
 
+**The constellation was removed on 14 Nov (stage 5, step 4), and the four
+entries above are its record, not the page.** The owner's call (12 Nov): drawn
+from a description of each note rather than its sound, it comes back after stage
+5 drawn from each voice's real cycle sent from the core (`docs/ways-to-draw.md`,
+"Removed, 14 Nov"). Two things worth knowing for whoever takes out the next
+page-only feature. First, it stored nothing, so there was no decode pass to
+write: a setup code made while it drew is an ordinary code, and the address it
+handed out, `?draw=constellation`, is simply not read now. Before deciding a
+removal needs no migration, make a code with the feature on and look inside it
+(it is base64 JSON): this one held `v`, the shape, display, persistence,
+timebase, poly, the quarter turn and the Picture amount, and nothing of the
+prototype's. `drawgonetest.py` keeps that code as a literal and loads it. Second,
+the check that nothing of it remains reads the page for the names it defined
+(`constellation`, `drawConstellation`, `constellationLive`, `paintDraw`) as
+well as its menus and options, and was run against the page before the removal
+to see it go red on all three, because a check that only looks for the menus
+would pass a page whose markup was taken out and whose frame loop still drew.
+
 **A swell measured against nought can hide that the playing no longer makes
 it (12 Nov).** The owner, on Crossed hands after the picture's response was
 built: the swell they played for had gone. `responsetest.py` had passed it,

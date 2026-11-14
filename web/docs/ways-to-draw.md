@@ -2,8 +2,10 @@
 
 Agreed with the owner on 10 November, to build **after the redesign** (the second pass's
 G6 and G7, and the silent start). This is what to build and why, so the ideas are not lost.
-**Step 2 is built** (12 Nov): a page-only prototype of the constellation, *Note* figures on
-the three places, still, behind a switch - see *The prototype*, below. Nothing else is.
+**Step 2 was built** (12 Nov): a page-only prototype of the constellation, *Note* figures on
+the three places, still, behind a switch - see *The prototype*, below. **It was removed on
+14 Nov** (stage 5, step 4, the owner's call): see *Removed, 14 Nov*, at the end. Nothing of
+this is on the page now; the design is kept here for its return.
 
 ## The problem
 
@@ -230,3 +232,26 @@ Scan's effect on a note shows in its figure; a note moves when its sound moves a
 only when its sound is. The painting's brush wants the same per-voice data, so it is built
 once for both. Ripples and Pairs, which add motion and interaction between notes, come
 after it.
+
+## Removed, 14 Nov
+
+The owner decided on 12 Nov (`plugin/STAGE5-PLAN.md`, "Decided") that the prototype goes
+rather than staying as a look-only drawing, because the shortcut above is the real fault: a
+figure drawn from a description of the note is not the note's sound. Stage 5's step 4 took
+it out of the page on 14 Nov: Draw's way, Place, Hands and Reseed on the Keyboard's *Draw*
+row, `drawConstellation` and its helpers after `drawMain`, the tone source's empty list of
+figures while it drew, the help sheet's paragraph and the four controls' words. The core
+never had a side of it, and it stored nothing, so no setup code needed a decode pass: a code
+made while it drew is an ordinary code, and the address it handed out
+(`?draw=constellation`) is now ignored and opens on the one figure (`drawgonetest.py` holds
+both, with a code taken from the prototype's page). `constellationtest.py` went with it;
+its measurements are kept above and in `web/README.md`, and the code is in the history at
+`22db003` for whoever builds it again.
+
+**What it comes back as**, after stage 5: the same design - *Note* figures on the three
+places, the clock's radius and sizes that let Scan's circle cross every note, pitch's
+figures small enough to stay apart on the 64-cell grid, one each or shared - but each
+figure drawn from its voice's own cycle, sent from the core every frame, with the
+painting's brush (`painting-the-sound.md`), so it is heard on the site's default brain and
+in the plugin and not only on the page's. Ported to the core, with parity, a voice budget
+and honesty for any preset that uses it, as step 3 always said.

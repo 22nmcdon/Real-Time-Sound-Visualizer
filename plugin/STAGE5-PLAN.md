@@ -267,6 +267,15 @@ the full suite and parity pass.
    it to the core (ways-to-draw's own step 3), or keep it as a look-only
    drawing on the page, seen and not heard, until it is ported. The owner's
    call; see section 5. *Removes:* the last reason to open `?brain=js`.
+   **Done 14 Nov: removed**, by the owner's decision below. Draw's way, Place,
+   Hands and Reseed went from the Keyboard's Draw row, and `drawConstellation`
+   and its helpers from the frame loop; the core never had a side of it, and it
+   stored nothing, so no setup needed a decode pass (`SETUP_VERSION` is
+   unchanged). `constellationtest.py` became `drawgonetest.py`: a code made on
+   the prototype's page loads unchanged and the address it handed out opens on
+   the one figure, on both brains. The design waits in `ways-to-draw.md`,
+   "Removed, 14 Nov". Nothing else was found that only the page's brain does
+   and no suite reaches; `STAGE5-INVENTORY.md` section 12 has the counts.
 5. **Switch the page's brain off.** `?brain=js` and `?core=js` go; the page
    stops stepping its brain beside the instrument, and the face reads what it
    shows (the dots, the readouts, the photocell's numbers) from the

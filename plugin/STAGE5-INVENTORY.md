@@ -281,7 +281,8 @@ and the design of `render_cpp` larger than "grown from `response_cpp`".
 
 - **The constellation**: 39 of constellation's 42 checks, and
   `drawConstellation`'s 2,549 frames, all on `?brain=js`. Removed in step 4,
-  by the owner's decision.
+  by the owner's decision: gone from the page on 14 Nov (section 12), with
+  `constellationtest.py`.
 - **Each layer's own picture, on the page** (`layerPicturesStep`, never on the
   default). The instrument has its own per-layer pictures, so the
   layer-picture checks are numbers about the core, not a page-only feature.
@@ -1351,7 +1352,8 @@ governed runs hold the model's terms.
 
 Step 3 is done. Left, each for a reason step 3 could not answer:
 
-- **step 4**: the constellation (removed by the owner's decision).
+- **step 4**: the constellation (removed by the owner's decision; done 14 Nov,
+  section 12).
 - **step 5**: scan's held run (Stop), harmony's two meter rows (the meter's
   verdict), layer's learned split point (a site defect: only the face learns
   it), clock's LFO card, tempo row and Bar row and score's Stop, hidden page
