@@ -40,7 +40,10 @@ def split(kit, inputs, mix=None, seconds=1.0, tag="probe"):
     lanes, heard = os.path.join(BUILD, "live-%s-lanes.f32" % tag), os.path.join(BUILD, "live-%s-heard.f32" % tag)
     lines = [["make", RATE, code()], ["click", "srcMic"], ["control", "srcBands", "1"], inputs]
     if mix: lines.append(["control", "laneMix", mix])
-    lines += [["record", "lanes", lanes], ["record", "heard", heard], ["to", seconds]]
+    # The heard pair as it stands before the limiter (5a), which puts it 6 ms
+    # late and bends its peaks: what is held here is what the instrument makes
+    # of its input, sample for sample, which the limiter after it does not change.
+    lines += [["record", "lanes", lanes], ["record", "prelimit", heard], ["to", seconds]]
     kit.render(lines)
     half = RATE // 2
     d = np.fromfile(lanes, "<f4").reshape(-1, 6)[-half:]

@@ -595,6 +595,21 @@ EXPORT(brain_readings) double* brainReadings() {
     if (now != scanSeen[static_cast<std::size_t>(l)]) { scanSeen[static_cast<std::size_t>(l)] = now; scanStamp[static_cast<std::size_t>(l)] += 1; }
     brainRead.push_back(scanStamp[static_cast<std::size_t>(l)]);
   }
+  /* And since 5a the instrument's clock and its limiter (Instrument::
+     clockServed): each oscillator's rate, the tempo in force and the
+     slider's, where it comes from, whether the bar runs and where it is, the
+     score's on, column and steps; then the limiter's reduction and what the
+     meter is handed. */
+  for (const double v : instrument->clockServed()) brainRead.push_back(v);
+  /* And the instrument's own picture meter (5a), the shared picture's: its
+     verdict (nought listening, one settled, two cycling, three wandering,
+     four running away), its change this frame, and the change as the eye
+     sees it at the verdict's rate - for the face's verdict to read in 5b,
+     and harmonytest now. */
+  const auto& meter = instrument->picture().pictures().meter();
+  const std::string verdict = meter.verdict();
+  brainRead.insert(brainRead.end(), { verdict == "settled" ? 1.0 : verdict == "cycling" ? 2.0 : verdict == "wandering" ? 3.0
+                                      : verdict == "running away" ? 4.0 : 0.0, meter.change(), meter.seenRate() });
   return brainRead.data();
 }
 /* The table layer `layer`'s voice is playing - the one it fades to at each

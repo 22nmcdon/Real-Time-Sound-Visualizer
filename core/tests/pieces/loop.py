@@ -310,9 +310,7 @@ def stability(kit):
     print("\n    running away, as the limiter sees it (looptest :310)")
     # picture_cpp's meter fed a sparse fixed picture for ten seconds under ten
     # decibels of limiting, and the same unlimited: the page's makePictureMeter
-    # fixture, line for line. (The instrument itself hands its meter no
-    # limiting - it has no limiter; the face's monitor chain has - so in the
-    # instrument only a screen lit past saturation runs away.)
+    # fixture, line for line.
     fixture = "sparse 300 7"
     strained = kit.run("picture_cpp", "run\nmnew\nmlimit -10\n" + "\n".join("mupd %r %s" % (1 / 60, fixture) for _ in range(600)) + "\nend")
     calm = kit.run("picture_cpp", "run\nmnew\n" + "\n".join("mupd %r %s" % (1 / 60, fixture) for _ in range(600)) + "\nend")
@@ -321,6 +319,28 @@ def stability(kit):
           last(strained) == "running_away" and last(calm) != "running_away", "%s, %s" % (last(strained), last(calm)))
     gentle = kit.run("picture_cpp", "run\nmnew\nmlimit -2\n" + "\n".join("mupd %r %s" % (1 / 60, fixture) for _ in range(600)) + "\nend")
     null("two decibels of limiting is not running away", last(gentle) != "running_away", last(gentle))
+
+    # And on the instrument's own meter (5a), which until then was handed
+    # nought, the instrument having no limiter: a chord of six sines at full
+    # Level, in Poly, strains the limiter past six decibels with the screen
+    # far from full, and the meter says running away; the same chord with the
+    # limiter switched off (the harness's `limiter` control) wanders, and a
+    # plain sine at the same Level, under the threshold, is not running away.
+    def chord(notes, off=False, seconds=8):
+        base = {"v": 11, "shape": "sine", "amp": 100, "midiMode": "poly", "pictureAmount": 0}
+        lines = [["make", 48000, code(base)]] + ([["control", "limiter", "0"]] if off else []) \
+            + [["midi", 0x90, n, 127] for n in notes] + [["every", 1, "meter", "limiter", "heard"], ["to", seconds]]
+        r = kit.render(lines)[-1]
+        verdict = " ".join(r["meter"][1:3]) if r["meter"][1] == "running" else r["meter"][1]
+        return verdict, float(r["limiter"][1]), float(r["meter"][-2])
+    SIX = [45, 52, 57, 61, 64, 69]
+    six, six_off, sine = chord(SIX), chord(SIX, off=True), chord([57])
+    check("a chord of six that strains the instrument's own limiter past six decibels is running away on its meter",
+          six[0] == "running away" and six[1] < -6, "%s, %.2f dB" % six[:2])
+    null("the same chord with the limiter off is not running away (the screen alone does not say it)",
+         six_off[0] != "running away" and six_off[1] == 0, "%s, %.2f dB, lit %.3f" % six_off)
+    null("and a plain sine at the same Level is not: the limiter hardly works", sine[0] != "running away" and sine[1] > -1,
+         "%s, %.4f dB" % sine[:2])
 
     print("\n    the stability runs, %d s from each seed, read every tenth of a second" % SECONDS)
     runs = {}
@@ -335,11 +355,13 @@ def stability(kit):
               % (mv["res"][0], mv["res"][1], mv["rot"][0], mv["rot"][1], mv["freq"][0], mv["freq"][1], mv["fold"][0], mv["fold"][1],
                  run["leastHold"]))
         check("from %s, nothing goes NaN or infinite" % seed, not w["nan"] and run["reads"] == SECONDS * 10, str(run["reads"]))
-        # What reaches the speakers passing full scale was the page's monitor
-        # chain's to hold - its limiter and clamp, which on the site are the
-        # face's (syncMonitor) and stay: looptest holds them on the default
-        # page. The instrument has no limiter; its heard peak is reported.
         check("from %s, and the instrument was heard" % seed, w["post"] > 0.1, "peak %.4f" % w["post"])
+        # What reaches the speakers, or a host, passing full scale: the
+        # page's monitor chain held it, and since 5a the instrument's own
+        # limiter and clamp do (limiter.h), so the plugin's output is held as
+        # the site's. The clamp's table tops out at its ceiling.
+        check("from %s, and what the instrument hands out never reaches full scale: under the clamp's ceiling" % seed,
+              w["post"] <= 0.99, "peak %.4f" % w["post"])
         check("from %s, every destination stays inside the loop's total" % seed, inside(w), str(w))
         check("from %s, and the grid stays inside the phosphor's range" % seed, w["grid"] <= 1, str(w["grid"]))
         check("from %s, running away holds the stage's push down, to a quarter at most, and nothing else holds it" % seed,
@@ -382,6 +404,13 @@ def stability(kit):
           "%d of %d" % (strike["verdicts"].get("running away", 0), said(strike)))
 
     # --- the nulls, each a run or a reading the check above must call wrong ---
+    # The three worst seeds with the instrument's limiter switched off: what
+    # the plugin handed its host before 5a, each past full scale.
+    for seed, mode in SEEDS[4:]:
+        bare = script("full", mode, 100 if "Scan" in seed else 0)
+        bare.insert(1, ["control", "limiter", "0"])
+        peak = measure(kit, bare, slots, split=mode == "cross")["worst"]["post"]
+        null("from %s with the limiter off, the instrument passes full scale" % seed, peak > 1, "peak %.3f" % peak)
     full, silence = runs["full scale"][0], runs["silence"][0]
     nan = dict(full, worst=dict(full["worst"], nan=True))
     null("a reading that went NaN is caught", nan["worst"]["nan"])

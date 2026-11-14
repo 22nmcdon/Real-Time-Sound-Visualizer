@@ -16,10 +16,12 @@
 //   a second has gone, so the meter's clock, the slews and the beam's anchor
 //   see the page's rate rather than the host's block size.
 // - The limiter. The page's verdict reads how hard its monitor chains'
-//   limiters work - Web Audio nodes on the way to the speakers, which the
-//   plugin does not have; the host's output is the host's. The owner passes
-//   nought, so a picture cannot read as running away by the limiter here,
-//   only by its ink.
+//   limiters work, Web Audio nodes on the way to the speakers. Since stage
+//   5a the instrument has the same limiter on its own output (limiter.h) and
+//   passes its reduction, as the page's `monitorLimiting` does; until then
+//   it passed nought, and a picture could read as running away only by its
+//   ink. A harness that makes a PictureRun of its own still passes what it
+//   likes.
 // - The automatic lag's lock, which listens every fifth of a second from the
 //   first frame, where the page's counts from when it loaded. The held note
 //   it locks to is the one the owner says, as the page asks `midiPitchHz`.
@@ -223,9 +225,12 @@ class PictureRun {
        anything has been held, the sweep. Captured into the frame not shown
        and then swapped, so each keeps its lanes from frame to frame and a
        steady one allocates nothing (G8). */
-    captureInto(view, source, fresh_, scratch_);
-    if (brain_.view.mode == "auto" || fresh_.triggered) { std::swap(frame_, fresh_); held_ = true; }
-    else if (!held_) std::swap(frame_, fresh_);
+    // Stopped (5a), the frame held stays, as the page's frame loop keeps state.held.
+    if (!stopped_) {
+      captureInto(view, source, fresh_, scratch_);
+      if (brain_.view.mode == "auto" || fresh_.triggered) { std::swap(frame_, fresh_); held_ = true; }
+      else if (!held_) std::swap(frame_, fresh_);
+    }
     const bool spect = brain_.view.screen.display == "spect";
     pics_.photoStep(phosphor_, elapsed_, spect);
     const Screen& sc = brain_.view.screen;
@@ -277,6 +282,7 @@ class PictureRun {
   // The frame's second half, after the matrix: the deposits, on the canvas,
   // wiped rather than faded when the Clear button asked or the canvas changed.
   void draw(const CaptureSource& source, const Canvas& canvas) {
+    if (stopped_) return;  // held: no fade and nothing laid, so what Scan reads stands
     Brain::ViewState& w = brain_.view;
     if (w.restored != restored_) { restored_ = w.restored; beam_.clear(); }
     Canvas c = canvas;
@@ -290,6 +296,7 @@ class PictureRun {
      estimator was made with room for the probe, so after its first pass it
      allocates nothing, and nor does its fetch, into lanes kept here (G8). */
   void readout(const CaptureSource& source, std::optional<double> playedHz) {
+    if (stopped_) return;
     if (readAt_ < 0) readAt_ = last_;
     if (last_ - readAt_ < kReadoutMs) return;
     readAt_ = last_;
@@ -303,6 +310,11 @@ class PictureRun {
   const PictureSources& pictures() const { return pics_; }
   const PictureStage& stage() const { return stage_; }
   const LayerPictures& layers() const { return layers_; }
+  /* The site's Stop (5a): the picture held - the frame, the grids and the
+     lag's lock - while the reads, the photocell, the stage and the meter go
+     on reading what stands, as the page's frame does under Stop. */
+  void hold(bool stopped) { stopped_ = stopped; }
+  bool stopped() const { return stopped_; }
   // Whether the keyboard has two layers, which is what gives each figure a picture of its own.
   void setLayered(bool on) { layered_ = on; }
   const Frame& frame() const { return frame_; }
@@ -339,7 +351,7 @@ class PictureRun {
   CaptureScratch scratch_;
   std::vector<Lane> lagLanes_;
   Plot plot_;
-  bool registered_ = false, held_ = false, layered_ = false;
+  bool registered_ = false, held_ = false, layered_ = false, stopped_ = false;
   int restored_ = -1;
   double last_ = -1, next_ = 0, elapsed_ = 16;
   double readAt_ = -1;

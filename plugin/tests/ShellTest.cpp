@@ -57,7 +57,13 @@ std::string exact(double v) { char b[64]; std::snprintf(b, sizeof b, "%.12g", v)
    an input passed through untouched, takes the stage out, as it would take
    out any routing its reference does not make. The stage, which is on in
    everything the plugin plays, has its own checks under the picture. */
-void unstaged(ScopeProcessor& p) { p.pageSlider("pictureAmount", u"0"); }
+/* The instrument as a reference renders it: the picture stage at nought, and
+   since 5a its limiter off (the harness's `limiter` control, which nothing on
+   the page sends), since the references are the core's generator, keyboard
+   and matrix, which end before it. What the limiter does is parity's, and the
+   loop's renders hold the plugin's output under full scale. */
+void unlimited(ScopeProcessor& p) { p.pageControl("limiter", scope::Json::string(std::string_view("0"))); }
+void unstaged(ScopeProcessor& p) { p.pageSlider("pictureAmount", u"0"); unlimited(p); }
 
 /* The preset library as it stood before P8g, 268 presets kept whole as a
    corpus of real setups (core/tests/scenarios/library-p8f.json, which parity
@@ -503,6 +509,7 @@ int main() {
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     oldBoot();
+    unlimited(p);  // the first sound to the sample: the limiter's lookahead would put it 288 later
     std::vector<float> got;
     juce::AudioBuffer<float> buf(2, block);
     for (int start = 0; start < static_cast<int>(rate); start += block) {
@@ -1367,6 +1374,7 @@ int main() {
       ScopeProcessor p;
       if (opening) p.setStateInformation(opening->data(), static_cast<int>(opening->size()));
       p.prepareToPlay(rate, block);
+      unlimited(p);  // a quarter to the sample: the Output's, before the limiter, which is not linear
       std::vector<float> got;
       auto* knob = id ? p.knob(std::string_view(id)) : nullptr;
       juce::AudioBuffer<float> buf(2, block);
@@ -1973,6 +1981,7 @@ int main() {
     ScopeProcessor split;
     split.enableAllBuses();
     split.prepareToPlay(rate, block);
+    unlimited(split);  // the four summed against the input, sample for sample, as the instrument makes them
     long long at = 0;
     // A second of blocks with the duo on both inputs, the output's left kept.
     const auto run = [&](ScopeProcessor& p, int blocks) {
@@ -3639,7 +3648,8 @@ int main() {
       if (index >= 0) lat.setCurrentProgram(index);
       blocks(12);
       lat.reportLatency();
-      return std::make_pair(lat.getLatencySamples(), lat.stageDelayNow());
+      // Less the limiter's lookahead (5a), which is told on top of the stages' whatever loads.
+      return std::make_pair(lat.getLatencySamples() - lat.limiterLatency(), lat.stageDelayNow());
     };
     const auto base = told(-1);
     const auto breathing = told(program("Harmonic tone"));
@@ -3648,6 +3658,10 @@ int main() {
     const std::string settledCode = lat.pageState().code;  // its setup code, for the page to load below
     const auto pad = told(program("Slow pad"));
     const auto pair = [](std::pair<int, int> p) { return std::to_string(p.first) + " (stages " + std::to_string(p.second) + ")"; };
+    // The limiter's lookahead first: 6 ms, as the page's DynamicsCompressorNode has it.
+    check("and the limiter's lookahead is told too: 6 ms at this rate",
+          lat.limiterLatency() == static_cast<int>(0.006f * static_cast<float>(rate)) && lat.limiterLatency() > 0,
+          std::to_string(lat.limiterLatency()) + " frames at " + std::to_string(rate));
     check("the host is told the stages' latency once a setup loads: the base and a Settled sound 0, the radial clip 31, a Breathing sound 62",
           base == std::make_pair(0, 0) && settled == std::make_pair(0, 0) && tines == std::make_pair(31, 31)
           && breathing == std::make_pair(62, 62) && pad == std::make_pair(62, 62),
@@ -3657,7 +3671,7 @@ int main() {
     static_cast<juce::AudioProcessorParameter*>(amount)->setValue(amount->convertTo0to1(0));
     blocks(40);
     lat.reportLatency();
-    const int moved = lat.getLatencySamples(), stages = lat.stageDelayNow();
+    const int moved = lat.getLatencySamples() - lat.limiterLatency(), stages = lat.stageDelayNow();
     check("null: the Picture amount taken to nought by the host is no load - the stages go, and the host is still told what the load said",
           stages == 0 && moved == 62, "told " + std::to_string(moved) + ", the stages now " + std::to_string(stages));
     // And a setup the page loads - a preset, a code, an undo step - is a load like a program: the Settled code, told 0 again.
@@ -3665,6 +3679,35 @@ int main() {
     const auto paged = told(-1);
     check("a setup loaded from the page is read again too: the Settled sound's code, told 0 after the 62 the null left",
           taken && paged == std::make_pair(0, 0), (taken ? "taken, " : "refused, ") + pair(paged));
+  }
+
+  std::printf("\n--- the limiter, last on what the host gets (5a) ---\n");
+  {
+    /* Since stage 5, step 5a the instrument limits and clamps its own output,
+       the page's limiter ported (scope/limiter.h), so a host is never handed
+       more than full scale: before it, a chord of six sines at full Level in
+       Poly reaches 3.7 here without it. The null is the same chord with the limiter off. */
+    const auto hot = [&](bool limited) {
+      setenv("SCOPE_PRESET", R"({"v":11,"shape":"sine","amp":100,"midiMode":"poly","pictureAmount":0})", 1);
+      ScopeProcessor p;
+      p.prepareToPlay(rate, block);
+      oldBoot();
+      if (!limited) unlimited(p);
+      juce::AudioBuffer<float> buf(2, block);
+      float most = 0;
+      for (int k = 0; k < 200; ++k) {
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 1) for (const int n : { 45, 52, 57, 61, 64, 69 }) m.addEvent(juce::MidiMessage::noteOn(1, n, 1.0f), 10);
+        p.processBlock(buf, m);
+        most = std::fmax(most, std::fmax(buf.getMagnitude(0, 0, block), buf.getMagnitude(1, 0, block)));
+      }
+      return most;
+    };
+    const float held = hot(true), bare = hot(false);
+    check("a chord of six at full Level reaches the host under full scale: under the clamp's ceiling", held > 0.5 && held <= 0.99f,
+          "peak " + num(held));
+    check("null: the same chord with the limiter off passes full scale", bare > 1, "peak " + num(bare));
   }
 
   std::printf("\n--- the Envelope card's dot, on the plugin's face ---\n");

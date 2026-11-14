@@ -38,9 +38,10 @@ what each control actually does:
    the dimmed strokes are what goes into the light Scan, the reads, the photocell and the
    score read (page and core alike). Move the Beam out of *Only the look*, or have the
    grid take undimmed strokes?
-4. **Stop may not hold the tone in the compiled instrument.** The help sheet says Stop
-   holds the screen and so the tone; the core does not hear Run. Should Stop hold Scan's
-   tone in the plugin, as it does in the page?
+4. ~~**Stop may not hold the tone in the compiled instrument.**~~ - settled 14 Nov (the
+   owner, stage 5's step 5 decisions; built in 5a): on the site Stop holds the picture the
+   instrument reads, so the tone holds while notes sound on; the plugin has no Stop and is
+   unchanged.
 5. ~~**The Photocell can be switched on but not routed by hand**~~ - settled in G5a: it
    is a card, routed as the others are, and its switch is *On* in its editor.
 6. ***A against B* puts layer A in the left ear only and B in the right.** Nothing on the
@@ -559,7 +560,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| run | Stop | Holds the trace where it is; press again to run. Stopping also silences the score and ends every note sent out over MIDI. | 121 | - |
+| run | Stop | Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent. | 144 | - |
 | modeAuto | Auto | Draws whatever arrives, triggered or not, so the trace never stops. A grey trace is free-running, not a fault. | 110 | - |
 | modeNormal | Normal | Holds the last triggered picture while nothing crosses the level, rather than drawing an untriggered one. | 105 | - |
 | modeSingle | Single | Waits for one edge, draws it and stops: how to catch a transient. Run arms it again. | 84 | - |

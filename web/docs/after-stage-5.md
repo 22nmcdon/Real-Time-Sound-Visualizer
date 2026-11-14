@@ -16,8 +16,10 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   cuts at every status byte and the core's keyboard drops the half message.
   Web MIDI and the plugin's host hand over whole messages, so in practice this
   can hardly happen; low priority. Found by batch 2 (13 Nov).
-- **Stop does not hold the instrument's picture, so Scan goes on moving with the
-  screen stopped.** On the default page Stop (`setRunning(false)`) holds the
+- ~~**Stop does not hold the instrument's picture, so Scan goes on moving with the
+  screen stopped.**~~ Fixed in step 5a (14 Nov), as the owner decided: Stop tells the
+  instrument (`scopeRunning`), which holds the picture it reads; scantest's held run is
+  on the default page and reads 0.0001 held against 0.0066 running. What was found: On the default page Stop (`setRunning(false)`) holds the
   face's screen and stops what the score and the arpeggiator sent, and tells
   the instrument nothing: it goes on drawing its own grid and Scan goes on
   reading it, so a scanned fifth's timbre keeps wandering under a stopped
@@ -36,7 +38,13 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   low priority, since Web MIDI hands over whole messages. Found by step 3's
   batch 4 (13 Nov); miditest's running-status row reads the face's stack and
   says so.
-- **The instrument's picture meter calls a still figure "cycling".** A held
+- ~~**The instrument's picture meter calls a still figure "cycling".**~~ Fixed in step 5a
+  (14 Nov): the grid was not at fault - at the same persistence the two grids change
+  alike, 0.0064 and 0.0054 a frame, and the piece had loaded none where the page loaded
+  the old library's 0.12 - but the verdict read change frame against frame, and each frame
+  is one trigger-placed window that a figure with detail lands in a little differently.
+  The verdict reads change over the eye's time now (`METER_EYE`), page and core;
+  harmonytest's rows are on the default. What was found: A held
   just fifth of the Harmonic tone reads 0.02 to 0.05 change a frame on the
   instrument's own meter (the page's meter, on the page's own grid: 0.0055,
   "settled"); a still unison of the same tone 0.058; a plain sine's unison
@@ -52,8 +60,10 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   the page and the audio engine; it did not recur in four runs alone. Found by
   the flaky-test pass (13 Nov).
 
-- **The plugin's output is not limited, and the instrument's meter never
-  hears a limiter.** The instrument (`scope/instrument.h`) has no limiter of
+- ~~**The plugin's output is not limited, and the instrument's meter never
+  hears a limiter.**~~ Fixed in step 5a (14 Nov): the page's limiter and clamp are
+  ported to the instrument (`scope/limiter.h`), the same to the bit as the browser's
+  nodes, and its reduction is the meter's. What was found: The instrument (`scope/instrument.h`) has no limiter of
   its own: on the site the face's monitor chain (limiter and clamp,
   `syncMonitor`) holds what the speakers get, but the plugin hands its host
   the heard pair as the core makes it. Rendered offline with the loop at its
@@ -94,7 +104,33 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   Found by batch 6 (14 Nov), when a piece of mine sent numpy's repr of a
   float and a check went red on it.
 
+- **The bar's Start and Stop reach the face's clock only.** `transportPlay` is not a
+  hand the instrument is sent (it is in neither HOST_CONTROLS nor HOST_CLICKS), so the
+  instrument's bar runs from when the instrument was made and the face's from its own
+  Start: clocktest's new rows found them 1.9 beats apart, going at the same tempo. Until
+  5b nothing heard reads the face's bar (the instrument's score and arpeggiator play on
+  its own), but once 5b points the Bar row at the instrument's posted beat, the face's
+  Start must reach it or the button will appear to do nothing. Found by step 5a (14 Nov).
+- **What Scope & measure's "Speakers get: Shaped" adds after the instrument is not
+  limited.** Since 5a the instrument limits its own output and the page's chain for it has
+  no limiter, only a backstop that is the identity up to 0.995 and holds anything above
+  under one. With the speakers on the shaped side, the trace filter (up to 18 dB of
+  resonance), the coupling, the lag and the rotation still act after the instrument, and a
+  resonant peak there is caught by the backstop rather than compressed. Default is *Input*,
+  where the chain is the identity. Whether those belong in the instrument (they are the
+  face's measuring tools) is a question for after stage 5. Found by step 5a (14 Nov).
+- **The plugin's page is not served the instrument's clock or meter.** 5a posts them on
+  the site (`brain_readings`); the plugin's page has `lfos.bin` and gets neither, so 5b
+  must serve `Instrument::clockServed` and the meter's verdict there too before its panels
+  read them. Found by step 5a (14 Nov).
+
 ## Sounds and presets
+
+- **The plugin is 1.7 dB louder since 5a, and limited.** The page's limiter has a make-up
+  gain (Chromium's, at -3 dB and 20:1: 1.218 on everything), and the site has always had
+  it; the plugin now does too, so a quiet sound in a DAW is 1.7 dB louder than before
+  5a, and the loudest are held under 0.99 where they reached 3.2. The owner may want to
+  hear it in a host; nothing on the site changed. Found by step 5a (14 Nov).
 
 - **Bass under the tine piano and Bass under the pad sit on their headings'
   edges with the reverb switched on.** Rendered offline through the core, the

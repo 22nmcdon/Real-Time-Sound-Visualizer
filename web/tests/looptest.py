@@ -42,11 +42,11 @@ what is left here is the speakers' chain on the site, which the page owns.
 # and read every tenth of a second of it, the same every run, where here they
 # were thirty real seconds a seed and the flakiest rows in the suite; and the
 # meter's rule that a limited picture is running away, on picture_cpp's meter.
-# What is left is the face's: the monitor chain every sound reaches the
-# speakers through, on the site the instrument's (syncMonitor) - its limiter,
-# which the face's verdict reads, and its clamp, which is what kept every seed
-# here under full scale. The instrument has no limiter of its own (the
-# pieces report its heard peak, and web/docs/after-stage-5.md the plugin's).
+# What is left is the face's: the monitor chain the instrument's sound reaches
+# the speakers through (syncMonitor), which since stage 5, step 5a has no
+# limiter of its own - the instrument limits and clamps itself, and the
+# pieces hold every seed under full scale - and the face's meter reading the
+# instrument's limiter.
 import os, sys
 from playwright.sync_api import sync_playwright
 import corpus
@@ -84,41 +84,54 @@ with sync_playwright() as pw:
     # the stability runs and the limited meter's verdict since batch 5.
 
     print("\n--- the speakers' chain, as the limiter sees it ---")
-    # The reading itself. Asserting only that it is nought or negative passed
-    # for a monitorLimiting that always answered nought, which is also what a
-    # quiet chain answers - so it could never fail. Here a chain is fed a tone
-    # at twelve times full scale, which the limiter has to pull down by tens of
-    # decibels, and the face must see that; and what leaves the clamp for the
-    # speakers must still be under full scale, which before the clamp it is
-    # not. On ?brain=js until batch 5 this was the page's own chain; on the
-    # default it is the face's chain carrying the instrument's sound, the one
-    # the speakers hear on the site.
+    # Since stage 5, step 5a the limiter is the instrument's own (scope/
+    # limiter.h, held to the browser's node to the bit by parity), and the
+    # face's chain for its sound has none: what the face's meter reads is the
+    # instrument's reduction, posted with its readings. So the instrument is
+    # driven hot - a chord of six at full Level in Poly, which strains it past
+    # six decibels - and the face must see that; a held sine is the null.
+    # The reading itself matters: asserting only that it was nought or below
+    # passed for a monitorLimiting that always answered nought.
     hot = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      await wait(600);
       const quiet = monitorLimiting();
+      el.midiPoly.click();
+      el.amp.value = '100'; el.amp.dispatchEvent(new Event('input', { bubbles: true }));
+      for (const n of [45, 52, 57, 61, 64, 69]) midiNoteOn(n, 127);
+      await wait(1500);
+      const limiting = monitorLimiting(), posted = state.source.limiting;
+      for (const n of [45, 52, 57, 61, 64, 69]) midiNoteOff(n);
+      await wait(300);
+      return { quiet, hot: limiting, posted, chains: monitorChains.size, own: [...monitorChains].map((c) => !!c.limiter) };
+    }""")
+    print("    %s" % hot)
+    check("the face reads the instrument's limiter pulling a hot chord down",
+          hot["hot"] < -6 and hot["hot"] == hot["posted"] and hot["own"] == [False], str(hot))
+    check("null: and a held sine's not", hot["quiet"] > -1, str(hot["quiet"]))
+    # And the chain's backstop: fed twelve times full scale after the
+    # instrument (as "Speakers get: Shaped" can lift a peak), what leaves for
+    # the speakers is still under one, where before it the sound is not.
+    back = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const chain = [...monitorChains][0];
-      if (!chain) return { quiet, chains: 0 };
+      if (!chain) return {};
       const ctx = chain.ctx, osc = ctx.createOscillator(), gain = ctx.createGain();
       const pre = ctx.createAnalyser(), post = ctx.createAnalyser();
       pre.fftSize = post.fftSize = 2048;
-      chain.limiter.connect(pre); chain.clamp.connect(post);
+      chain.merger.connect(pre); chain.clamp.connect(post);
       const buf = new Float32Array(2048);
       const peakOf = (a) => { a.getFloatTimeDomainData(buf); let m = 0; for (const v of buf) m = Math.max(m, Math.abs(v)); return m; };
       gain.gain.value = 12; osc.connect(gain); gain.connect(chain.input); osc.start();
       let most = { pre: 0, post: 0 };
       for (let k = 0; k < 8; k++) { await wait(50); most.pre = Math.max(most.pre, peakOf(pre)); most.post = Math.max(most.post, peakOf(post)); }
-      const limiting = monitorLimiting();
       osc.stop(); gain.disconnect(); pre.disconnect(); post.disconnect();
       await wait(300);
-      return { quiet, chains: monitorChains.size, hot: limiting, pre: most.pre, post: most.post };
+      return most;
     }""")
-    print("    %s" % hot)
-    check("the face reads a hot chain's limiter pulling it down",
-          hot.get("hot") is not None and hot["hot"] < -6, str(hot))
-    check("null: and a quiet chain's not", hot["quiet"] > -1, str(hot["quiet"]))
     check("what leaves the chain for the speakers never passes full scale, fed twelve times it",
-          hot.get("post") is not None and 0.1 < hot["post"] <= 1.0 + 1e-6, str(hot.get("post")))
-    check("null: before the clamp the same sound does pass full scale", hot.get("pre", 0) > 1.0, str(hot.get("pre")))
+          back.get("post") is not None and 0.1 < back["post"] < 1.0, str(back))
+    check("null: before the backstop the same sound does pass full scale", back.get("pre", 0) > 1.0, str(back.get("pre")))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

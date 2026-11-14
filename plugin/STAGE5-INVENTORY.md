@@ -1405,6 +1405,57 @@ drawgone, harmony, layer, scan, score, wasm, worklet): drawgone opens it to
 hold the prototype's address, `?brain=js&draw=constellation`, and goes with
 the switch in step 5.
 
+## 13. Step 5a (14 Nov)
+
+Step 5 split in two: 5a gives the instrument what the owner decided it must do
+before the page's brain is switched off; 5b switches it off. Nothing here
+changes which brain a suite opens, and `?brain=js` is untouched.
+
+| What | Built | Held by | Its nulls |
+|---|---|---|---|
+| The limiter | `scope/limiter.h`: Chromium 153's DynamicsCompressor and WaveShaper in floats, glibc 2.39's `logf`, `log10f`, `powf`; `Instrument::limit`, after the Output and Width; `latency()`; the meter handed `limiting()` | parity's new section, the page's chain in an OfflineAudioContext against the core: 0 apart on 576,000 samples a run, three runs; reductions to 4e-8; pieces/loop.py: every seed under 0.99 (0.922 to 0.961), a chord of six at -10.1 dB running away | release 0.11 s, a sample late, the pair before the limiter (parity); the limiter off on three seeds, 2.02 to 3.24 (loop); the chord with the limiter off (wandering) and a sine (-0.0001 dB) not running away |
+| The site with it | the instrument's chain without the page's limiter, a backstop for its clamp (`BACKSTOP_CURVE`); `monitorLimiting` reads the instrument's | parity: the backstop moves 9 to 10 per cent of samples by one float step, 1.2e-7 | the page's limiter in series: -24 to -28 dB of error, -0.3 to +0.1 dB of level |
+| Stop | `scopeRunning` (setRunning, the site only); `PictureRun::hold`: capture, draw and readout held; strikes, the score and the hearing stopped | pieces/stop.py: the table 0.00003 against 0.109, the grid's sum and Direction unmoved, the heard pair sounding, Run moving again, a strike laying nothing; scantest's held run on the default, 0.0001 against 0.0066 | never stopped; running grid and Direction moving; a strike running against none |
+| The meter | `METER_EYE` (45 ms) and `METER_EYE_KEEP`, page and core: the verdict's rate reads each frame against the grid of the eye's time ago | pieces/harmony.py: at persistence 0 and 0.12 a just fifth, a unison and a sine's unison settled (0.0001 to 0.0072); harmonytest's two rows on the default (0.005 settled, 0.037 cycling) | an equal third and an equal fifth, turning, cycling at both persistences; the fifth's verdict is not the third's |
+| The clock | `Instrument::clockServed` (12), posted after the readings, with the meter's verdict, change and eye's rate (3); the bridge's `clock`, `limiter`, `meter` | clocktest: rates, tempo, slider tempo, source and running equal to the page's; the bar at 84.4 BPM; the score on and its playhead moving | a tempo told the page alone; the rates swapped; the bar at the old 96 |
+
+The mutation pass, in scratch copies (`PIECES_INCLUDE`), 13 ways, all red: the
+limiter skipped, its clamp's ceiling at 1.2, its threshold at nought (green in
+the pieces, red in parity's limiter section, six checks), the meter handed
+nought, the limiting not clipped at nought; Stop's draw, strike, capture
+(which needed a new check - Direction held - before it went red) and
+message dropped; the eye's baseline a frame, the verdict on the raw change,
+and the span not shared out.
+
+Found, and written down in `web/docs/after-stage-5.md`: the transport's Start
+and Stop reach the face's clock only (the bars 1.9 beats apart); what
+"Speakers get: Shaped" adds after the instrument is backstopped, not limited;
+the plugin's page is served neither the clock nor the meter; and the plugin
+is 1.7 dB louder (the node's make-up gain) and held under full scale.
+
+What 5b must know: the face's verdict can read the instrument's meter
+(`state.source.meter`) and its panels the instrument's clock
+(`state.source.clock`); the Bar row needs the transport's Start sent first;
+the plugin needs both served beside `lfos.bin`.
+
+**The runs (14 Nov).** Parity: 1,919 checks, none failed, in 24 minutes
+(three-way, the pieces with it), after one `--write-golden` that rewrote
+`picture.json.gz` alone: one run of eleven, thirty verdicts "wandering" now
+"settled", every number the same; the other twelve files kept. The full web
+suite: 97 suites in 39.1 minutes, 2,499 checks passed and two failed, both on
+the known-flaky list - brain's "synced delay's repeats", which passed alone
+twice, and honesty's reverb-on pass on *Bass under the pad*, which failed alone
+twice more (once its reverb-off pass) and fails the same way, twice, on the
+commit before 5a: its late motion reads 0.019 to 0.027 against Breathing's
+0.02 floor in every run, either side of 5a, the edge `after-stage-5.md`
+already records. The plugin's shell test under `xvfb-run -a`: 273 checks, none
+failed. Suites changed for the limiter (each now holds the instrument before
+its limiter where it holds the heard pair to the sample, and says so): output,
+width, note, brain's band split, filter's and loop's speakers' chain, response
+(render_cpp's `--response` with the limiter off, as response_cpp played it),
+and in parity the Output, input and band-split runs; in the pieces live,
+livefx and render read `prelimit`.
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the
