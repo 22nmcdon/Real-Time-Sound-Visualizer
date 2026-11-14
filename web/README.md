@@ -6760,3 +6760,16 @@ now, through `tests/compiled_core.js` - the bridge the page's worklets drove
 it by, moved there whole - and `core_tests.py` holds that bridge to the
 native core run for run, so a check that passed on the page's engine passes
 on the core for the same reason.
+
+The full run found one more kind of check that leaned on the engine: one
+that tests a *part* the page built and still builds. ratetest and
+rotatetest rendered `makeMonitorChain(ctx)` itself and read off its
+limiter's lookahead and make-up gain. The function survived step 6 because
+the instrument plays through it, but its default had been the limited chain,
+which only the page's brain was heard through. With that chain gone, both
+read nought. Nothing on the page was wrong, and both checks were about a
+limiter that is the instrument's now. So when a builder survives a deletion
+with a narrower job, look for the suites that build it themselves. They now
+test what the part does in its new job (here: nothing, no delay and unity
+after the instrument), and what it used to do goes to the core
+(`core/tests/pieces/lookahead.py`, the instrument's limiter at four rates).

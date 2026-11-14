@@ -700,8 +700,8 @@ serves.
 
 | | Before step 6 | After | Removed |
 |---|---|---|---|
-| `web/scope.html` | 31,361 | @@PAGE@@ | @@PAGEDEL@@ |
-| Harness (`core/tests`) | | | @@HARNESS@@ net |
-| Web suites (`web/tests`) | | | @@WEB@@ net |
+| `web/scope.html` | 31,361 | 25,371 | 6,415 (5,990 net) |
+| Harness (`core/tests`, the recordings aside) | | | 3,089 (2,167 net) |
+| Web suites (`web/tests`) | | | 2,405 (1,779 net) |
 
 Against the plan's estimates (about 4,400 lines of the page and 2,500 of harness), the page lost more. The step deleted engines the face had stopped reading during 5b, not only the brain.
