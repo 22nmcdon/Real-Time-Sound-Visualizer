@@ -340,9 +340,15 @@ with sync_playwright() as pw:
       await new Promise((r) => setTimeout(r, 700));
       const before = photo.value;
       __display('spect'); await frame(); await frame();
-      // At once, not slewed down: the slew would take a third of a second.
-      const out = { before, hidden: el.photoReticle.hidden, value: photo.value,
-                    grid: phosphor.grid.reduce((a, v) => a + v, 0) };
+      const hidden = el.photoReticle.hidden, grid = phosphor.grid.reduce((a, v) => a + v, 0);
+      /* At once, not slewed down: the slew, two whole swings a second, takes
+         a quarter of a second from 0.47. Since stage 5, step 5b the value is
+         the instrument's, read as its readings come back from the worklet - a
+         block and a picture frame after the click - so it is waited for, to
+         100 ms, where a slewed value would still be over a quarter. */
+      const t0 = performance.now();
+      while (photo.value !== 0 && performance.now() - t0 < 100) await frame();
+      const out = { before, hidden, value: photo.value, grid, ms: Math.round(performance.now() - t0) };
       await new Promise((r) => setTimeout(r, 300));
       __display('xy'); await new Promise((r) => setTimeout(r, 100));
       out.back = !el.photoReticle.hidden;

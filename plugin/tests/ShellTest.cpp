@@ -2364,11 +2364,13 @@ int main() {
     ScopeProcessor osc;
     osc.prepareToPlay(rate, block);
     juce::AudioBuffer<float> buf(2, block);
+    // Ten, then since 5b the clock's twelve and the face's picture, read below.
+    constexpr std::size_t kLfosBin = (10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed) * sizeof(double);
     const auto served = [&] {
       // The oscillators' six first; the envelope's four after them since 12 Nov, read below.
       const auto r = scopeResource("/lfos.bin", osc);
       std::array<double, 6> v {};
-      if (r && r->data.size() == 10 * sizeof(double)) std::memcpy(v.data(), r->data.data(), sizeof v);
+      if (r && r->data.size() >= 10 * sizeof(double)) std::memcpy(v.data(), r->data.data(), sizeof v);
       return std::make_pair(v, r ? r->data.size() : 0);
     };
     for (int k = 0; k < 3; ++k) { buf.clear(); juce::MidiBuffer m; osc.processBlock(buf, m); }
@@ -2382,7 +2384,7 @@ int main() {
     const double off2 = std::fabs(after[3] - before[3] - osc.lfoRate(1) * step);
     const double asOther = std::fabs(after[0] - before[0] - osc.lfoRate(1) * step);
     check("the page is served the plugin's oscillators: each a block on by its own rate, the bytes the values at the newest frame",
-          size == 80 && sizeAfter == 80 && off1 < 1e-12 && off2 < 1e-12 && asOther > 1e-4 && before[0] > 0
+          size == kLfosBin && sizeAfter == kLfosBin && off1 < 1e-12 && off2 < 1e-12 && asOther > 1e-4 && before[0] > 0
           && after == osc.lfosServed() && osc.lfoRate(0) != osc.lfoRate(1),
           "LFO 1 off by " + num(off1) + ", LFO 2 by " + num(off2) + "; LFO 1 at LFO 2's rate would be off by " + num(asOther));
     /* And each value in its place. Past two seconds LFO 2, at half a hertz,
@@ -2393,7 +2395,7 @@ int main() {
     const auto [late, lateSize] = served();
     const double sineOff = std::fmax(std::fabs(late[2] - std::sin(late[0])), std::fabs(late[5] - std::sin(late[3])));
     check("and each one's phase, held value and value in its place: LFO 2 round once and holding, LFO 1 not yet",
-          lateSize == 80 && sineOff < 1e-12 && late[1] == 0 && late[4] != 0 && late[3] < late[0]
+          lateSize == kLfosBin && sineOff < 1e-12 && late[1] == 0 && late[4] != 0 && late[3] < late[0]
           && std::fabs(late[0] - std::sin(late[2])) > 1e-3,
           "phases " + num(late[0]) + ", " + num(late[3]) + "; held " + num(late[1]) + ", " + num(late[4])
           + "; values off their sines by " + num(sineOff));
@@ -2408,7 +2410,7 @@ int main() {
     const auto envServed = [&] {
       const auto r = scopeResource("/lfos.bin", osc);
       std::array<double, 10> v {};
-      if (r && r->data.size() == sizeof v) std::memcpy(v.data(), r->data.data(), sizeof v);
+      if (r && r->data.size() >= sizeof v) std::memcpy(v.data(), r->data.data(), sizeof v);
       return v;
     };
     const auto rest = envServed();
@@ -2437,6 +2439,35 @@ int main() {
     check("null: before any note the same bytes are at rest, stage nought and level nought",
           rest[8] == 0 && rest[6] == 0 && !(rest[8] == 1 || rest[8] == 2),
           num(rest[6]) + " " + num(rest[7]) + " " + num(rest[8]) + " " + num(rest[9]));
+    /* And since 5b, after the envelope, what the face reads of the clock and
+       the picture, in the order the site's brain_readings carries them, so
+       the plugin's face shows the instrument's panels, verdict and screen
+       and steps none of its own (servedReadings in scope.html): the clock's
+       twelve, the oscillators' rates first, then the face's. Each read in
+       its place: the rates are the two oscillators' (a fifth and a half,
+       not the same), the tempo the slider's 120 and internal, the bar
+       running; the verdict a whole number of the five, the stage's hold at
+       one with nothing running away. The null is the same bytes read one
+       place off, where the rates are a rate and a tempo. */
+    const auto tail = [&] {
+      const auto r = scopeResource("/lfos.bin", osc);
+      std::vector<double> v(kLfosBin / sizeof(double));
+      if (r && r->data.size() == kLfosBin) std::memcpy(v.data(), r->data.data(), kLfosBin);
+      return v;
+    }();
+    const auto clockNow = osc.clockServed();
+    const auto faceNow = osc.faceServed();
+    const std::size_t c = 10, f = 10 + scope::Instrument::kClockServed;
+    const bool clockIn = std::equal(clockNow.begin(), clockNow.end(), tail.begin() + c);
+    const bool faceIn = std::equal(faceNow.begin(), faceNow.end(), tail.begin() + static_cast<std::ptrdiff_t>(f));
+    check("and after the envelope the instrument's clock and the face's picture, each in its place",
+          clockIn && faceIn && tail[c] == osc.lfoRate(0) && tail[c + 1] == osc.lfoRate(1) && tail[c] != tail[c + 1]
+          && tail[c + 2] == 120 && tail[c + 3] == 120 && tail[c + 4] == 0 && tail[c + 5] == 1
+          && whole(tail[f]) && tail[f] >= 0 && tail[f] <= 4 && tail[f + 8] == 1,
+          "rates " + num(tail[c]) + " " + num(tail[c + 1]) + ", tempo " + num(tail[c + 2]) + ", verdict " + num(tail[f])
+          + ", hold " + num(tail[f + 8]));
+    check("null: read one place off, the rates are a rate and a tempo",
+          !(tail[c + 1] == osc.lfoRate(0) && tail[c + 2] == osc.lfoRate(1)), num(tail[c + 1]) + " " + num(tail[c + 2]));
   }
 
   std::printf("\n--- the automatic lag ---\n");

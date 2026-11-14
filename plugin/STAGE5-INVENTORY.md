@@ -1456,6 +1456,47 @@ width, note, brain's band split, filter's and loop's speakers' chain, response
 and in parity the Output, input and band-split runs; in the pieces live,
 livefx and render read `prelimit`.
 
+## 14. Step 5b, first half (14 Nov)
+
+The face pointed at the instrument's readings, the switch left in place:
+`?brain=js` and `?core=js` behave as before and no suite that opens them
+changed. What the instrument posts for the face is one block,
+`Instrument::faceServed` (24 values, published with the oscillators), read
+by one function on both faces, `servedReadings` - after `brain_readings`' own
+on the site, after the envelope in the plugin's `lfos.bin`, which carries
+`clockServed` there too.
+
+| Lean | Now reads | Held by | Its null (the page's own value where the two differ) |
+|---|---|---|---|
+| The Picture section's three bars and its held loop (`paintStage`, `pictureStage`) | the shared stage's reads and hold (`takeFace`) | facetest: the page's stage the instrument's to the bit, the bars its values | the page's stage left holding 0.123, 0.456 and a hold of 0.5: gone at the next reading (a page stepping its own slews from them: 0.576 and 0.515 under the mutant) |
+| The photocell's card, reticle and value (`photo.value`) | the instrument's photocell | facetest: aimed at a held fifth, 0.11, the card and the reticle's `--lit` saying so | the page's photocell left at 0.987: gone (0.687, slewing, under the mutant) |
+| The readout's "loop ...", the overlay's badge (`pictureMeter.verdict()`) | the instrument's meter (`loopVerdict`) | facetest: "loop settled" on a held fifth; overlaytest's badge | the page's own meter, unfed, says "listening" under it |
+| The visual matrix on the screen's own destinations (`view.rotate` and the rest) | the offsets the instrument's matrix wrote (screen.h) | facetest: LFO 1 on the turn, the face's offset the instrument's frame by frame | a routing told to the page alone turns nothing; the page's sum would turn it by 0.64 |
+| The LFO cards' rate reading | `clock.rates` | clocktest: 2.00 Hz at 1/4 and 120, 1.50 at 90 by the slider, 0.37 let go | `setTempo(60)` on the page alone: the page's lock would read 1.00 Hz |
+| The tempo row | `clock.bpm`, `set`, `from` | clocktest: a MIDI clock's tempo from the instrument, internal half a second after | the page's transport put on a clock at 200 |
+| The Bar row, its button and reading | `clock.running`, `beat`; the button a press to the instrument (`transportPlay`) | clocktest: stopped at 1.3, held, a code leaves it stopped, started from the one | the page's own transport still running under a row that says stopped |
+| A tap | the slider's tempo and `tempoTap` sent to the instrument | clocktest: its tempo the taps' gaps', and the tap the one on the instrument's bar (7.6 beats, then 0.7) | the click not sent: 10.9 beats on |
+| The score's playhead (`drawScorePlayhead`) | `clock.score.col` | clocktest: drawn at the instrument's column | a column given the page's score by hand |
+| The plugin's page | `lfos.bin` with the clock and the face | the shell test: the tail equal to `clockServed` and `faceServed`, the rates in their places | read one place off, the rates are a rate and a tempo |
+
+Each null was also seen red with the code mutated: the face back on the
+page's picture (`instrumentFace` null, no `takeFace`, the page's meter) turned
+eight of facetest's rows red; `syncClockPanel`, `drawScorePlayhead` and the
+Bar row's listener on the page's clock turned six of clocktest's; the tap
+not sent to the instrument, two; the lock row's null went red with
+`instrumentClock` null.
+
+What the counters say on the default, over facetest's held note: 192 frames on
+the instrument, `pictureStep`, `photoStep` and `visualMatrix.view.rotate` at
+nought, against eight `pictureStep` frames at boot.
+
+Not repointed yet, for the second half: the boot frames, the page's grid
+(`phosphorFade`, `phosphorDeposit`), `hearingStep`, `arpTick`, `morphStep` and
+the morph's fader, the fade and its dot, `harmonySaid`, `sourceFigures`, and
+lanes past the second.
+
+**The runs (14 Nov).** RUNS-HERE
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the

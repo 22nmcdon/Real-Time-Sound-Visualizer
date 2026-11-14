@@ -181,13 +181,25 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
      moved in the plugin. After the oscillators rather than a resource of
      their own, so the dot costs the page no second fetch a frame: it comes
      at the rate the oscillators already do, once a picture. The name stays,
-     being what the page and the host's tests already ask for. */
+     being what the page and the host's tests already ask for.
+
+     Then, since 5b, the instrument's clock and limiter (twelve, as
+     Instrument::clockServed has them) and what the face shows of its
+     picture (Instrument::faceServed: the meter, the photocell, the stage,
+     the picture's sources, the screen's offsets, the figures), in the order
+     the site's brain_readings carries them after its own, so the plugin's
+     face reads its panels, its verdict and its screen from the instrument as
+     the site's does, and steps nothing of its own. */
   if (path == "/lfos.bin") {
     const auto lfos = processor.lfosServed();
     const auto env = processor.envelopeServed();
-    std::array<double, 10> out {};
+    const auto clock = processor.clockServed();
+    const auto face = processor.faceServed();
+    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed> out {};
     std::copy(lfos.begin(), lfos.end(), out.begin());
     std::copy(env.begin(), env.end(), out.begin() + 6);
+    std::copy(clock.begin(), clock.end(), out.begin() + 10);
+    std::copy(face.begin(), face.end(), out.begin() + 10 + static_cast<std::ptrdiff_t>(clock.size()));
     return bytes(out.data(), out.size() * sizeof(double), "application/octet-stream");
   }
   return std::nullopt;

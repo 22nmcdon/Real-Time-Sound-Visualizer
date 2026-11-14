@@ -204,10 +204,14 @@ with sync_playwright() as pw:
         # The stage is at nought here, so the readout says nothing of the loop
         # and the badge is the meter's own word; with the stage up, the
         # readout says it too and they must agree.
-        v = p.evaluate("() => { drawLoopOverlay(); return { badge: loopOverlay.drawn.badge, verdict: pictureMeter.verdict() }; }")
-        check("with Scan alone closing the loop, the badge is the meter's verdict", v["badge"] is not None and v["badge"] == v["verdict"], str(v))
+        # Since stage 5, step 5b the meter is the instrument's (state.source.meter,
+        # loopVerdict in scope.html): the page's own is no longer fed on the site.
+        v = p.evaluate("""() => { drawLoopOverlay(); return { badge: loopOverlay.drawn.badge, verdict: state.source.meter.verdict,
+                                                           page: pictureMeter.verdict() }; }""")
+        check("with Scan alone closing the loop, the badge is the instrument's meter's verdict", v["badge"] is not None and v["badge"] == v["verdict"], str(v))
         other = [x for x in ["listening", "running away", "settled", "cycling", "wandering"] if x != v["badge"]][0]
         null("another verdict is not the meter's", other != v["verdict"], other)
+        null("and the page's own meter, unfed, is not what the badge says", v["page"] != v["badge"], v["page"])
         # Read from the one frame: the badge is drawn every frame and the
         # readout written every READOUT_MS, so a badge drawn now against the
         # readout as last written disagreed once while the verdict moved,

@@ -27,17 +27,12 @@ What would go wrong, and what is checked for it:
 # asserted on the core's clock (clock_cpp, score_cpp, keyboard_cpp) with a
 # null each, and parity runs them. Each old site below says what it was.
 #
-# What is left is the face. Two pages:
-# - ?brain=js, for what the face says about the tempo: the LFO card's
-#   reading and its Rate slider, the tempo row's readings and the Bar row's
-#   button and reading. All of them are drawn from the page's own `lfos` and
-#   `transport` (lfoRateReading, syncClockPanel), which on the default site
-#   is the page's brain stepping beside the instrument's clock, and nothing
-#   the instrument publishes writes them. On the default they would pass for
-#   the page's reason, so they stay here until step 5 points the face at the
-#   instrument's clock (STAGE5-INVENTORY.md, section 4, the face's leans).
-# - the default, for setup codes, read off the face's setup (snapshot), with
-#   the tempo and the locks set by real input events.
+# What is left is the face, on the default page since stage 5, step 5b: the
+# LFO card's reading and its Rate slider, the tempo row, the Bar row and the
+# score's playhead, drawn from the instrument's posted clock, each with a
+# null that tells the page's own clock something alone; and setup codes,
+# read off the face's setup (snapshot), with the tempo and the locks set by
+# real input events.
 import os, sys
 from playwright.sync_api import sync_playwright
 
@@ -52,6 +47,15 @@ def check(name, ok, detail=""):
 
 
 with sync_playwright() as pw:
+    # Stage 5, step 5b (14 Nov): the face's clock is the instrument's. The LFO
+    # card's reading, the tempo row and the Bar row were drawn from the page's
+    # own lfos and transport, beside the instrument's clock, and were checked
+    # on ?brain=js for that reason. They read what the instrument posts now
+    # (Instrument::clockServed, instrumentClock in scope.html), so they are
+    # checked on the default, moved by real input events and the bytes a port
+    # would hand over - and every row has a null that tells the page's own
+    # clock something the instrument is not told, so a face that still read
+    # the page's would follow it and go red.
     b = pw.chromium.launch(executable_path=CHROME,
                            args=["--autoplay-policy=no-user-gesture-required"])
     p = b.new_page(viewport={"width": 1400, "height": 900})
@@ -59,140 +63,173 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    p.wait_for_timeout(200)
+    p.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
+    p.wait_for_timeout(900)
 
     print("\n--- an oscillator locked to the tempo ---")
-    lock = p.evaluate("""() => {
-      setView('bench'); openModCard('lfo1');
-      const sync = document.getElementById('lfoSync0'), rate = document.getElementById('lfoRate0');
-      rate.value = '37'; rate.dispatchEvent(new Event('input'));       // 0.37 Hz, free
-      setTempo(120);
-      const at = (v) => { sync.value = v; sync.dispatchEvent(new Event('change'));
-                          return Math.round(lfos[0].rate * 1000) / 1000; };
-      const out = { quarter: at('1/4'), bar: at('1'), triplet: at('1/8t'), four: at('4') };
-      at('1/4');
-      out.reading = document.getElementById('lfoRateValue0').textContent;
-      out.disabled = document.getElementById('lfoRate0').disabled;
-      setTempo(90);
-      clockStep(performance.now());
-      out.at90 = Math.round(lfos[0].rate * 1000) / 1000;
-      at('');
-      out.readingFree = document.getElementById('lfoRateValue0').textContent;
+    lock = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
+      const reading = () => document.getElementById('lfoRateValue0').textContent;
+      showControl('tempo'); fire('tempo', '120', 'input');
+      openModCard('lfo1');
+      fire('lfoRate0', '37', 'input');       // 0.37 Hz, free
+      fire('lfoSync0', '1/4', 'change');
+      await wait(400);
+      const out = { host: state.source.kind, served: !!instrumentClock(), reading: reading(),
+                    disabled: document.getElementById('lfoRate0').disabled };
+      /* The null: the page's own clock told a tempo the instrument is not
+         (setTempo, no input event, so no message). The page's lock would be
+         1.00 Hz at 60; the face says what the instrument plays. */
+      setTempo(60); await wait(400);
+      out.pageAlone = { reading: reading(), pageBpm: transport.bpm };
+      showControl('tempo'); fire('tempo', '90', 'input'); await wait(400);
+      out.at90 = reading();
+      openModCard('lfo1'); fire('lfoSync0', '', 'change'); await wait(400);
+      out.readingFree = reading();
       out.enabled = !document.getElementById('lfoRate0').disabled;
-      setTempo(120);
+      showControl('tempo'); fire('tempo', '120', 'input');
       return out;
     }""")
     print("    %s" % lock)
-    # Were: "at 120, 1/4 is 2 Hz, a bar 0.5, a quaver triplet 6 and four bars
-    # 0.125" and "it follows the tempo: 1/4 at 90 is 1.5 Hz", the page's
-    # lfos[0].rate on ?brain=js - core/tests/pieces/clock.py's now.
+    check("the default page plays the instrument, and the face has its clock", lock["host"] == "host" and lock["served"], str(lock))
+    # Was, on ?brain=js, the page's own lfos[0] (lfoRateReading). The rate's
+    # number is the instrument's own now (core/tests/pieces/clock.py has it).
     check("the reading says so, and the Rate slider stands aside while it is locked",
           lock["reading"] == "2.00 Hz · 1/4" and lock["disabled"], str(lock))
-    # Was "and let go, it is back at the slider's 0.37 Hz", lfos[0].rate with
-    # the slider enabled. The rate's half is the core's menu path (restore.h's
-    # lfoSync, which parity's menus section holds to the page's); the face's
-    # half stays: the slider given back, and its reading the slider's.
+    check("null: a tempo told to the page's clock alone moves the page's and not the reading",
+          lock["pageAlone"]["pageBpm"] == 60 and lock["pageAlone"]["reading"] == "2.00 Hz · 1/4", str(lock["pageAlone"]))
+    check("and the tempo slider, which the instrument hears, does: 1/4 at 90 is 1.50 Hz",
+          lock["at90"] == "1.50 Hz · 1/4", lock["at90"])
     check("and let go, the Rate slider is back and reads the slider's 0.37 Hz",
           lock["enabled"] and lock["readingFree"].startswith("0.37 Hz"), str(lock))
 
-    # Was "and the running oscillator goes round at it: 1/8 at 120, four times
-    # a second", lfos[0].value's crossings counted over two real seconds on
-    # ?brain=js. core/tests/pieces/clock.py counts them over two seconds of
-    # the core's generator stepping its oscillators, with no timers.
-
     # Tap tempo was four checks here on ?brain=js, the page's clockTap at
-    # made-up times: taps half a second apart are 120 and restart the locked
-    # oscillator, one tap is no tempo, the mean of the last four gaps is 129,
-    # and after a pause it starts again at 150 (with the tempo slider reading
-    # 150). The first four are core/tests/pieces/clock.py's; the slider's
-    # reading went with them, since it is syncClockPanel writing the page's
-    # own transport.set, which a direct clockTap set and no tap on the site
-    # sends to the instrument.
+    # made-up times; they are core/tests/pieces/clock.py's. A tap on the
+    # site reaches the instrument as the tempo slider moved (5b, the tap's
+    # listener), which the next row reads.
+    print("\n--- a tap ---")
+    tap = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      showControl('tempoTap');
+      const at = [], beforeBeat = instrumentClock().beat;
+      for (let i = 0; i < 4; i++) { at.push(performance.now()); document.getElementById('tempoTap').click(); if (i < 3) await wait(400); }
+      await wait(300);
+      // The last tap is the one on the instrument's bar (tempoTap): 300 ms after it, under a beat in.
+      const afterBeat = instrumentClock().beat;
+      // The tempo the taps' own gaps make, as clockTap works it out: about 150 at 400 ms, more with a click's latency.
+      const want = Math.round(60000 / ((at[3] - at[0]) / 3));
+      return { row: el.tempoValue.textContent, inst: instrumentClock().set, want, beforeBeat, afterBeat };
+    }""")
+    print("    %s" % tap)
+    check("taps about 400 ms apart reach the instrument, which takes their tempo, and the row says it",
+          abs(tap["inst"] - tap["want"]) <= 1 and 100 < tap["inst"] <= 150 and tap["row"] == "%d BPM" % round(tap["inst"]), str(tap))
+    check("null: and not the 120 it was at", tap["inst"] != 120 and tap["row"] != "120 BPM", str(tap))
+    check("and the tap is the one on the instrument's bar, which was beats on before it",
+          tap["beforeBeat"] > 1.5 and 0 <= tap["afterBeat"] < 1.2, "%.2f, then %.2f" % (tap["beforeBeat"], tap["afterBeat"]))
 
     print("\n--- MIDI clock ---")
     midiclock = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setTempo(90);
-      lfos[0].sync = '1/4';
-      // 25 ticks at 120 BPM - a crotchet is 24 of them, 20.833 ms apart -
-      // with the jitter USB gives them, ending now.
-      const now = performance.now(), gap = 60000 / 120 / 24;
-      for (let i = 24; i >= 0; i--) {
-        const jitter = (i % 3 === 0 ? 4 : i % 3 === 1 ? -3 : -1);
-        midiBytes(Uint8Array.from([0xf8]), now - i * gap + (i === 0 || i === 24 ? 0 : jitter));
+      const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
+      showControl('tempo'); fire('tempo', '90', 'input'); await wait(200);
+      // 30 ticks at 120 BPM, a crotchet being 24 of them, 20.833 ms apart, as a port hands them over in time.
+      const gap = 60000 / 120 / 24, t0 = performance.now();
+      for (let i = 0; i < 30; i++) {
+        while (performance.now() < t0 + i * gap) await wait(1);
+        midiBytes(Uint8Array.from([0xf8]), performance.now());
       }
-      clockStep(performance.now());
-      const running = { bpm: Math.round(transport.bpm * 10) / 10, from: transport.from,
-                        rate: lfos[0].rate, disabled: el.tempo.disabled,
-                        reading: el.tempoValue.textContent, clock: el.clockFrom.textContent };
-      await wait(700);
-      clockStep(performance.now());
-      const stopped = { bpm: transport.bpm, from: transport.from, disabled: el.tempo.disabled,
-                        clock: el.clockFrom.textContent };
-      lfos[0].sync = '';
-      return { running, stopped };
+      await wait(150);
+      const row = () => ({ disabled: el.tempo.disabled, reading: el.tempoValue.textContent, clock: el.clockFrom.textContent });
+      const running = Object.assign(row(), { inst: instrumentClock().bpm, from: instrumentClock().from });
+      await wait(800);
+      const stopped = Object.assign(row(), { from: instrumentClock().from });
+      // The null: the page's own transport told it is on a MIDI clock at 200, which the instrument is not.
+      transport.from = 'midi'; transport.bpm = 200; transport.ticks = [performance.now()];
+      await wait(300);
+      const pageAlone = row();
+      transport.from = 'internal'; transport.bpm = transport.set; transport.ticks = [];
+      return { running, stopped, pageAlone };
     }""")
     print("    %s" % midiclock)
     r = midiclock["running"]
-    # Were, on ?brain=js: "25 ticks at 120, jittered, read as 120", the
-    # locked oscillator's rate following it, the tempo handed back half a
-    # second after, "Start restarts the locked oscillators, and Continue does
-    # not", and "a clock byte in the middle of a note-on is a tick, and the
-    # note lands with its own velocity" (the page's midiBytes). All
-    # core/tests/pieces/clock.py's now. What stays is what the tempo row
-    # says while a clock runs and once it stops - the page's transport, as
-    # the top of this file says.
-    check("while a MIDI clock runs the tempo slider stands aside and the row says the clock's tempo",
-          r["disabled"] and r["reading"] == "120 BPM" and r["clock"] == "from MIDI clock", str(r))
-    s = midiclock["stopped"]
-    check("half a second after the last tick the slider is back and the row says internal",
-          s == {"bpm": 90, "from": "internal", "disabled": False, "clock": "internal"}, str(s))
-
-    # The bar was seventeen checks here on ?brain=js, the page's transport*,
-    # midiRealtime, clockStep, clockTap and scoreTick at times far ahead of
-    # its frames, phosphor.grid lit by hand and the source's strike wrapped:
-    # the bar moving from nought, a tempo change going on from where it is,
-    # Stop standing, Start the one with the locked oscillators restarted, the
-    # score joining the bar mid-bar, Start bringing it to column nought, the
-    # score stopped striking nothing, a MIDI Start waiting for the first tick,
-    # the bar counted in ticks and never guessed past the next, Stop and
-    # Continue, a clock that stops, a Start no clock follows, and taps while
-    # running and stopped. Every one is core/tests/pieces/clock.py's now, on
-    # the core's clock and score at the run's times.
+    # Were, on ?brain=js: the clock read from its gaps and handed back, Start
+    # and Continue, a clock byte inside a note (the page's midiBytes): all
+    # core/tests/pieces/clock.py's. What stays is what the tempo row says.
+    check("while a MIDI clock runs the tempo slider stands aside and the row says the instrument's clock's tempo",
+          # About 120: a page's timers land ticks on a 4 ms grid, so the clock's
+          # own reading of 120 is core/tests/pieces/clock.py's, to the tick.
+          r["disabled"] and r["from"] == "midi" and abs(r["inst"] - 120) < 12
+          and r["reading"] == "%d BPM" % round(r["inst"]) and r["clock"] == "from MIDI clock", str(r))
+    s_ = midiclock["stopped"]
+    check("half a second after the last tick the slider is back and the row says internal, at the slider's 90",
+          s_ == {"disabled": False, "reading": "90 BPM", "clock": "internal", "from": "internal"}, str(s_))
+    check("null: the page's own transport put on a clock at 200 leaves the row the instrument's",
+          midiclock["pageAlone"] == {"disabled": False, "reading": "90 BPM", "clock": "internal"}, str(midiclock["pageAlone"]))
 
     print("\n--- the Bar row ---")
+    # The bar's Start and Stop reach the instrument since 5b (HOST_CLICKS'
+    # transportPlay, Instrument::press); until then they reached the page's
+    # transport alone and the two bars were 1.9 beats apart (5a).
     panel = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
+      showControl('tempo'); fire('tempo', '120', 'input'); await wait(200);
       showControl('transportPlay');
       const shown = el.transportPlay.offsetHeight > 0;
-      // A second in first, so the bar has somewhere to stand other than the
-      // 1.1 a reading that never moved would also show.
-      // At 120: the bar section that ran before this until batch 2 left the
-      // tempo there, and the MIDI clock's left it at 90.
-      setTempo(120); transport.bpm = transport.set;
-      transportStart(performance.now()); await wait(1100);
-      el.transportPlay.click(); await wait(100);
-      const stopped = [el.transportPlay.textContent, el.transportAt.textContent, transport.running];
+      // Stopped and started, so the bar runs from the one; a second in, it is
+      // somewhere other than the 1.1 a reading that never moved would show.
+      if (instrumentClock().running) { el.transportPlay.click(); await wait(200); }
+      el.transportPlay.click(); await wait(1100);
+      el.transportPlay.click(); await wait(150);
+      const stopped = [el.transportPlay.textContent, el.transportAt.textContent, instrumentClock().running, transport.running];
       await wait(600);
       const stillStopped = el.transportAt.textContent;
-      restore(snapshot()); await wait(50);
-      const afterRestore = transport.running;
+      restore(snapshot()); hostSendSetup(); await wait(300);
+      const afterRestore = instrumentClock().running;
       el.transportPlay.click(); await wait(1150);
-      const running = [el.transportPlay.textContent, el.transportAt.textContent, transport.running];
+      const running = [el.transportPlay.textContent, el.transportAt.textContent, instrumentClock().running];
       return { shown, stopped, stillStopped, afterRestore, running };
     }""")
     print("    %s" % panel)
-    check("the Bar row's button stops the bar, and the reading says where it stood",
+    check("the Bar row's button stops the instrument's bar, and the reading says where it stood",
           panel["shown"] and panel["stopped"][0] == "Start" and panel["stopped"][1].startswith("stopped at ")
           and panel["stopped"][2] is False and panel["stillStopped"] == panel["stopped"][1]
           and panel["stopped"][1] == "stopped at 1.3", str(panel))
+    # The page's own transport was never told, and runs on: a face that read
+    # it would say Stop, and a bar moving.
+    check("null: the page's own transport is still running under a row that says stopped",
+          panel["stopped"][3] is True, str(panel["stopped"]))
     check("loading a setup code leaves the bar stopped: the transport is playing, not the patch",
           panel["afterRestore"] is False, str(panel["afterRestore"]))
     check("and started again, it runs from the one: a little over a second at 120 is bar 1, beat 3",
           panel["running"][0] == "Stop" and panel["running"][1] == "1.3" and panel["running"][2] is True,
           str(panel["running"]))
+
+    print("\n--- the score's playhead ---")
+    head = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      showControl('scoreOn'); const box = document.getElementById('scoreOn'); box.checked = true; box.dispatchEvent(new Event('change'));
+      await wait(900);
+      // Where drawScorePlayhead puts the line, caught as it strokes, for a column of the page's own told by hand.
+      const ctx = el.trace.getContext('2d'), moveTo = ctx.moveTo;
+      let x = null;
+      ctx.moveTo = function (a, b) { x = a; return moveTo.call(this, a, b); };
+      score.col = 7;
+      const col = instrumentClock().score.col;
+      drawScorePlayhead();
+      ctx.moveTo = moveTo;
+      const at = (c) => plot.x + (c + 0.5) / PHOSPHOR_N * plot.w;
+      const out = { col, x, inst: at(col), page: at(7), steps: instrumentClock().score.steps, pageCol: score.col };
+      box.checked = false; box.dispatchEvent(new Event('change'));
+      return out;
+    }""")
+    print("    %s" % head)
+    check("the playhead is drawn at the instrument's column, which has moved",
+          head["col"] >= 0 and head["steps"] > 0 and head["x"] is not None and abs(head["x"] - head["inst"]) < 1e-6, str(head))
+    check("null: and not at a column the page's own score was given", head["col"] == 7 or abs(head["x"] - head["page"]) > 1, str(head))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
@@ -246,71 +283,10 @@ with sync_playwright() as pw:
           codes["back"] == codes["code"], str(codes["back"]))
     check("null: the code from before the clock is not the code restored", codes["old"] != {"bpm": 96, "l1y": "1/2"})
 
-    print("\n--- the instrument reports its clock (5a), beside the page's own ---")
-    # Since stage 5, step 5a the instrument posts its clock with its
-    # readings (Instrument::clockServed): each oscillator's rate, the tempo
-    # in force and the slider's, where the tempo comes from, whether the bar
-    # runs and where it is, and the score's playhead. The face's panels still
-    # draw the page's own lfos, transport and score until 5b points them at
-    # these; this holds the two together as they stand. Set by real input
-    # events, which reach both: the tempo, LFO 1 locked, LFO 2 free at its
-    # slider, the score on.
-    p.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
-    p.wait_for_timeout(900)
-    clk = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
-      const read = () => {
-        const c = state.source.clock, now = performance.now();
-        return { inst: c && { rates: c.rates, bpm: c.bpm, set: c.set, from: c.from, running: c.running, beat: c.beat,
-                              score: c.score },
-                 page: { rates: [lfos[0].rate, lfos[1].rate], bpm: transport.bpm, set: transport.set, from: transport.from,
-                         running: transport.running, beat: transportBeat(now), score: { on: score.on, col: score.col } },
-                 t: now };
-      };
-      showControl('tempo'); fire('tempo', '84', 'input');
-      openModCard('lfo1'); fire('lfoSync0', '1/8', 'change');
-      openModCard('lfo2'); fire('lfoSync1', '', 'change'); fire('lfoRate1', '37', 'input');
-      showControl('scoreOn'); const box = document.getElementById('scoreOn'); box.checked = true; box.dispatchEvent(new Event('change'));
-      await wait(700);
-      const a = read(); await wait(1000); const b = read();
-      // The null: a tempo the page alone is told (setTempo, no input event, so no message).
-      setTempo(100); await wait(400);
-      const c = read();
-      return { a, b, c, host: state.source.kind };
-    }""")
-    a, bb, c = clk["a"], clk["b"], clk["c"]
-    print("    instrument %s\n    page       %s" % (a["inst"], a["page"]))
-    ok = a["inst"] is not None
-    same = lambda r: (r["inst"]["rates"] == r["page"]["rates"] and r["inst"]["bpm"] == r["page"]["bpm"]
-                      and r["inst"]["set"] == r["page"]["set"] and r["inst"]["from"] == r["page"]["from"]
-                      and r["inst"]["running"] == r["page"]["running"])
-    check("the instrument posts its clock, and it is the page's: both rates, the tempo in force and the slider's, where it comes from, running",
-          clk["host"] == "host" and ok and same(a) and a["inst"]["rates"] == [84 / 60 * 2, 0.37] and a["inst"]["bpm"] == 84,
-          "%s against %s" % (a["inst"], a["page"]))
-    check("null: a tempo told to the page alone is told apart", ok and not same(c) and c["inst"]["bpm"] == 84 and c["page"]["bpm"] == 100,
-          "%s against %s" % (c["inst"] and c["inst"]["bpm"], c["page"]["bpm"]))
-    swapped = dict(a, inst=dict(a["inst"], rates=a["inst"]["rates"][::-1])) if ok else a
-    check("null: and the comparison fails with the two oscillators' rates the wrong way round", not same(swapped))
-    # The bar: the instrument's goes round at the tempo, a beat every 60/84
-    # of a second, and so does the page's. Where each is differs - the
-    # page's from its own Start, the instrument's from when it was made, the
-    # transport's Start and Stop being the page's alone (not a hand the
-    # instrument is sent; 5b's) - so the two are held to the same speed, and
-    # the gap is printed for 5b.
-    secs = (bb["t"] - a["t"]) / 1000
-    inst_bpm = (bb["inst"]["beat"] - a["inst"]["beat"]) / secs * 60 if ok else 0
-    page_bpm = (bb["page"]["beat"] - a["page"]["beat"]) / secs * 60
-    print("    the bar: the instrument's at beat %.2f, the page's at %.2f; over %.2f s each went at %.1f and %.1f BPM"
-          % (a["inst"]["beat"], a["page"]["beat"], secs, inst_bpm, page_bpm))
-    check("the instrument's bar goes round at the tempo it posts, as the page's does, to a twentieth",
-          abs(inst_bpm - 84) < 84 / 20 and abs(page_bpm - 84) < 84 / 20, "%.1f and %.1f" % (inst_bpm, page_bpm))
-    check("null: and not at the slider's old 96", abs(inst_bpm - 96) > 84 / 20, "%.1f" % inst_bpm)
-    # The score's playhead: on in both, and moving in both.
-    si, sp = (bb["inst"]["score"], bb["page"]["score"]) if ok else ({}, {})
-    check("the score is on in both, and the instrument's playhead posted and moving",
-          ok and si["on"] and sp["on"] and si["col"] >= 0 and (si["col"] != a["inst"]["score"]["col"] or si["steps"] != a["inst"]["score"]["steps"]),
-          "instrument %s, page %s" % (si, sp))
+    # The 5a rows that held the instrument's posted clock to the page's own
+    # (rates, tempo, source, running, the bar's speed, the score's playhead)
+    # went in 5b: the face reads the posted clock now, and the rows above
+    # hold it there, each against the page's clock told something alone.
     check("no page errors on the default", not bad, "; ".join(bad[:3]))
     b.close()
 

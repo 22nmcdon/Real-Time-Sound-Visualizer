@@ -604,12 +604,13 @@ EXPORT(brain_readings) double* brainReadings() {
   /* And the instrument's own picture meter (5a), the shared picture's: its
      verdict (nought listening, one settled, two cycling, three wandering,
      four running away), its change this frame, and the change as the eye
-     sees it at the verdict's rate - for the face's verdict to read in 5b,
-     and harmonytest now. */
-  const auto& meter = instrument->picture().pictures().meter();
-  const std::string verdict = meter.verdict();
-  brainRead.insert(brainRead.end(), { verdict == "settled" ? 1.0 : verdict == "cycling" ? 2.0 : verdict == "wandering" ? 3.0
-                                      : verdict == "running away" ? 4.0 : 0.0, meter.change(), meter.seenRate() });
+     sees it at the verdict's rate - for the face's verdict, and harmonytest. */
+  /* Since 5b the rest of what the face shows of the instrument's picture
+     (Instrument::faceServed), the meter's three first, where 5a put them:
+     the photocell, the shared stage's reads and hold, the picture's
+     sources, the offsets on the screen's own destinations and the figures
+     laid out - the same numbers the plugin serves its page in lfos.bin. */
+  for (const double v : instrument->faceServed()) brainRead.push_back(v);
   return brainRead.data();
 }
 /* The table layer `layer`'s voice is playing - the one it fades to at each

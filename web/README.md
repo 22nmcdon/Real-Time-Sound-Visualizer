@@ -79,7 +79,8 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `drawbartest.py` | the saw on the menu, and the drawbars: each bar's footage, Nyquist, the level law, a controller on a bar, each layer's registration, setup codes |
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
-| `clocktest.py` | the clock: locked oscillators counted running, tap tempo, MIDI clock read through jitter, Start and Continue, a clock byte inside a note; the bar - its tempo changes, Stop and Start, the score on it, MIDI Start on the first tick, ticks rather than time, a clock that stops, a tap as the one |
+| `clocktest.py` | the clock as the face shows it, the instrument's since 5b: the LFO card's locked rate, a tap's tempo and the one, a MIDI clock's tempo and its handing back, the Bar row's Stop and Start and a code leaving it stopped, the score's playhead at the instrument's column, each against the page's own clock told something alone; and setup codes carrying the tempo and the locks |
+| `facetest.py` | the face reads the instrument (5b): the Picture section's bars and held loop, the photocell's card and reticle, the readout's verdict and the screen's turn are what the instrument posts, against values the page's own picture was left holding, its unfed meter and a routing told to the page alone; and the page's picture, photocell and screen matrix counted at nought |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a tone at two hertz, the readout, Autoset and the lag |
 | `onsettest.py` | Onset and the events it fires, against stand-in destinations the suite registers since G2 took Swing again and Kick: events only to what is struck, one attack one onset, the gap, a strike once a count |
 | `schematest.py` | the setup's table of fields (`SETUP_FIELDS`): snapshot and the table key for key, every menu and range its control's, every default its own rule's, the readers and restore through them, each with its null |
@@ -108,7 +109,9 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | Tone over a tone, and a microphone that is denied |
 
-**Two brains, and which suite runs on which.** Since stage 5m the site plays
+**Two brains, and which suite runs on which.** (Since stage 5, step 5b the
+face reads what it shows from the instrument even where the page's brain is
+still there to read, `facetest.py`; the switch goes in 5b's second half.) Since stage 5m the site plays
 through the instrument (`plugin/PLAN.md`): the plugin's brain and sound,
 compiled, in a worklet, with the page as its face. `?brain=js` is the page's
 own brain, written in JavaScript, and it is not a leftover:
@@ -6688,3 +6691,28 @@ motion with the jitter. When two tests disagree about a meter, compare their
 setups before their code: the piece had loaded no persistence where the page
 had the old library's 0.12, and that alone was most of the difference.
 `plugin/STAGE5-INVENTORY.md` section 12 has the rest.
+
+**A face that reads two brains passes on the one it should not (14 Nov).**
+Stage 5's step 5b, first half, pointed the face at the instrument: the
+Picture section's reads, the photocell, the loop's verdict, the screen's own
+destinations, the clock's and the score's panels, on the site and in the
+plugin, from one block the instrument posts (`Instrument::faceServed`, read
+by `servedReadings` on both faces). Three things worth knowing before the
+second half. A face reading copied into the page's own objects as the
+readings arrive (`takeFace`, as the oscillators always were) keeps every
+reader of those objects working, but it means a check that compares the
+face with the instrument passes just as well when the page's own brain still
+steps and happens to agree - on a held fifth the page's photocell and the
+instrument's read the same 0.1125 - so every such check needs a null that
+tells the two apart: a value left in the page's object by hand, which a face
+still stepping its own slews from instead of dropping, or something told to
+the page alone (a tempo by `setTempo`, a routing pushed without
+`touchRoutings`), which a face still reading the page's follows. A panel
+refreshed only when its text changes misses a number that is not in its
+text: the clock row's refresh keyed on the bar and the tempo, so a lock let
+go - a rate and nothing else - showed the locked rate until the next beat.
+And moving a face onto the instrument finds every control that only ever
+reached the page: the Bar row's Start and Stop and a tapped tempo had never
+reached the instrument, which nobody saw while the panel read the page's
+clock (`web/docs/after-stage-5.md`). `plugin/STAGE5-INVENTORY.md` section 14
+has the rest.

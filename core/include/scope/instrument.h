@@ -706,6 +706,27 @@ class Instrument {
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = clockServed_[i].load(std::memory_order_relaxed);
     return out;
   }
+  /* What the face shows of the instrument's picture (5b), as it stood at the
+     picture's newest frame, so the face reads the instrument's and steps no
+     picture of its own: the picture meter's verdict (nought listening, one
+     settled, two cycling, three wandering, four running away), its change a
+     frame and as the eye sees it; the photocell's slewed value and its
+     reading under the reticle; the shared picture stage's Glow, Motion,
+     Memory and hold; the picture's six sources (round, cover, change,
+     novelty, signed, bored); the offsets the matrix wrote on the screen's own
+     destinations (the turn, the lag, the trace filter's cutoff and
+     resonance, the zoom, the trigger point, each lane's full scale), which
+     the face draws with in place of a matrix of its own; and how many
+     figures the screen lays out. Published with the oscillators, as
+     cheaply. The site's page has the same from brain_readings, the plugin's
+     after the clock in lfos.bin. */
+  static constexpr std::size_t kFaceServed = 24;
+  std::array<double, kFaceServed> faceServed() const {
+    pictureAt_.load(std::memory_order_acquire);
+    std::array<double, kFaceServed> out {};
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = faceServed_[i].load(std::memory_order_relaxed);
+    return out;
+  }
   // How many lanes the picture has: two, or four for a figure a layer or the band split.
   int pictureLanes() const { return pictureSource_.channels; }
   // How late the oversampled stages put the sound, as the setup stands (Generator::stageDelay).
@@ -851,6 +872,28 @@ class Instrument {
 
   void press(const std::string& id) {
     if (id == "srcTone" || id == "srcMic") { if (bands_) { bands_ = false; drawLanes(0); } drawFrom(id == "srcMic"); return; }
+    /* The bar's Start and Stop (5b), the page's transportStart and
+       transportStop: the one, now, and the synced oscillators restarted; or
+       the bar standing where it is and the score letting go. Not kept, as
+       the page keeps none of it in a setup: the transport is playing, not
+       the patch. In a host whose transport plays, the host's next block
+       says again whether the bar runs. */
+    if (id == "transportPlay") {
+      Clock& c = brain_->clock;
+      if (c.running) c.stop(c.now());
+      else c.start(c.now());
+      return;
+    }
+    /* A tap that made a tempo (5b): the page works the tempo out from its
+       taps' gaps and sends it as the tempo slider, then this, the rest of
+       the page's clockTap - the locked oscillators back to the top, and the
+       tap the one while the bar runs. Not kept, as a press of Start is not. */
+    if (id == "tempoTap") {
+      Clock& c = brain_->clock;
+      c.restart();
+      if (c.running) c.anchor(c.now());
+      return;
+    }
     if (!controlClick(id, *brain_, *core_, *keyboard_, matrix_.get())) return;
     // The Clear button wipes the next frame and leaves nothing to keep.
     if (id == "clearButton") return;
@@ -1153,6 +1196,26 @@ class Instrument {
       static_cast<double>(limiter_.reduction()), limiting(),
     };
     for (std::size_t i = 0; i < kClockServed; ++i) clockServed_[i].store(clock[i], std::memory_order_relaxed);
+    if (pictureRun_) {
+      const PictureRun& run = *pictureRun_;
+      const PictureSources& pics = run.pictures();
+      const PictureMeter& meter = pics.meter();
+      const std::string verdict = meter.verdict();  // a literal's length, inside the string's own room: nothing allocated
+      const PictureStage& st = run.stage();
+      const PictureValues& pv = pics.values();
+      const View& v = brain_->view.capture;
+      const auto fs = [&v](std::size_t i) { return v.channels.size() > i ? v.channels[i].fsMod : 0.0; };
+      const double face[kFaceServed] = {
+        verdict == "settled" ? 1.0 : verdict == "cycling" ? 2.0 : verdict == "wandering" ? 3.0 : verdict == "running away" ? 4.0 : 0.0,
+        meter.change(), meter.seenRate(),
+        pics.photo(), pics.photoRaw(),
+        st.glow(), st.motion(), st.memory(), st.hold(),
+        pv.round, pv.cover, pv.change, pv.novelty, pv.signed_, pv.bored,
+        v.rotateMod, v.lagMod, v.cutoffMod, v.resMod, brain_->view.zoomMod, v.positionMod, fs(0), fs(1),
+        static_cast<double>(brain_->view.screen.figures.size()),
+      };
+      for (std::size_t i = 0; i < kFaceServed; ++i) faceServed_[i].store(face[i], std::memory_order_relaxed);
+    }
     pictureAt_.store(ring, std::memory_order_release);
   }
   void render(float* left, float* right, int from, int to) {
@@ -1322,6 +1385,7 @@ class Instrument {
   std::array<std::atomic<double>, 6> lfosServed_ {};
   std::array<std::atomic<double>, 4> envServed_ {};
   std::array<std::atomic<double>, kClockServed> clockServed_ {};
+  std::array<std::atomic<double>, kFaceServed> faceServed_ {};
   Limiter limiter_;          // the page's limiter and clamp, on the heard pair (5a)
   bool limiterOn_ = true;    // off only for a harness's null
   bool running_ = true;      // the site's Stop and Run (5a)

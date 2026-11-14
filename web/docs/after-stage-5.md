@@ -104,7 +104,12 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   Found by batch 6 (14 Nov), when a piece of mine sent numpy's repr of a
   float and a check went red on it.
 
-- **The bar's Start and Stop reach the face's clock only.** `transportPlay` is not a
+- ~~**The bar's Start and Stop reach the face's clock only.**~~ Fixed in step 5b (14 Nov),
+  since the switch could not be made without it: the Bar row reads the instrument's clock
+  now, so Start and Stop go to it (`transportPlay`, a press the core handles and does not
+  keep in a state), and so does a tap, which reached the page's clock alone too: its tempo
+  as the slider, then `tempoTap` (the locked oscillators restarted and the one). What was
+  found: `transportPlay` is not a
   hand the instrument is sent (it is in neither HOST_CONTROLS nor HOST_CLICKS), so the
   instrument's bar runs from when the instrument was made and the face's from its own
   Start: clocktest's new rows found them 1.9 beats apart, going at the same tempo. Until
@@ -119,7 +124,9 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   resonant peak there is caught by the backstop rather than compressed. Default is *Input*,
   where the chain is the identity. Whether those belong in the instrument (they are the
   face's measuring tools) is a question for after stage 5. Found by step 5a (14 Nov).
-- **The plugin's page is not served the instrument's clock or meter.** 5a posts them on
+- ~~**The plugin's page is not served the instrument's clock or meter.**~~ Fixed in step 5b
+  (14 Nov): `lfos.bin` carries the clock and what the face shows of the picture after the
+  envelope, read as the site's are (`servedReadings`). What was found: 5a posts them on
   the site (`brain_readings`); the plugin's page has `lfos.bin` and gets neither, so 5b
   must serve `Instrument::clockServed` and the meter's verdict there too before its panels
   read them. Found by step 5a (14 Nov).

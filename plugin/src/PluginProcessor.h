@@ -124,6 +124,9 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   std::array<double, 6> lfosServed() const { return instrument_.lfosServed(); }
   // And the envelope at the same frame - level, gate, stage, velocity - for the Envelope card's dot.
   std::array<double, 4> envelopeServed() const { return instrument_.envelopeServed(); }
+  // And (5b) the clock, the limiter and what the face shows of the picture, as the site's page reads them.
+  std::array<double, scope::Instrument::kClockServed> clockServed() const { return instrument_.clockServed(); }
+  std::array<double, scope::Instrument::kFaceServed> faceServed() const { return instrument_.faceServed(); }
   bool bands() const { return instrument_.bands(); }
   int lanes() const { return instrument_.lanes(); }
   double bandGain(int lane) const { return instrument_.bandGain(lane); }

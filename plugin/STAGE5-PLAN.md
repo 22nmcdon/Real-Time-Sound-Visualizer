@@ -365,6 +365,45 @@ the full suite and parity pass.
      1.9 beats apart, since the transport's Start is the face's alone - for
      5b, with the plugin's page, which is served none of this yet
      (`web/docs/after-stage-5.md`).
+   **5b, first half, done (14 Nov): the face reads the instrument**, the
+   switch still in place (`?brain=js` and `?core=js` work as before, and
+   every suite that opens them is unchanged). `STAGE5-INVENTORY.md` section 14.
+   - *The picture.* The instrument posts what the face shows of its picture
+     (`Instrument::faceServed`, 24 values: the meter's verdict, change and
+     eye's rate; the photocell's value and reading; the shared stage's Glow,
+     Motion, Memory and hold; the picture's six sources; the offsets its
+     matrix wrote on the screen's own destinations; the figures laid out),
+     published with the oscillators. The page writes it into its own
+     `photo`, `pictureStage` and `picture` as the readings arrive
+     (`takeFace`), and with it in hand steps neither `pictureStep` nor
+     `photoStep`: the Picture section's bars and held loop, the photocell's
+     card and reticle and the readout's and overlay's verdict (`loopVerdict`)
+     are the instrument's. The page's grid is still faded and deposited (the
+     score, the overlay's tests and Scan's tone source read it); it goes in
+     the second half.
+   - *The visual matrix* is the instrument's: the turn, the lag, the trace
+     filter, the zoom, the trigger point and the first two lanes' full scale
+     are drawn at the offsets it posts; the morph's fader and a lane past the
+     second are not posted and the page still sums them.
+   - *The clock.* The LFO cards' rates, the tempo row, the Bar row and the
+     score's playhead read `source.clock` (`instrumentClock`); the page's
+     transport, locks, delay-follow and score do not step while it is there.
+     The Bar row's Start and Stop reach the instrument (`transportPlay`, a
+     press the core handles and does not keep), and so does a tap: the tempo
+     as the slider, then `tempoTap` (the locked oscillators restarted, the
+     one), which until now reached the page's clock alone.
+   - *The plugin's page* is served the same: `lfos.bin` carries the clock's
+     twelve and the face's twenty-four after the envelope, read by the same
+     `servedReadings` as the site's `brain_readings`.
+
+   **Left for 5b's second half:** the boot (the page's ~20 frames on its tone
+   source), the page's grid and its remaining per-frame steps (`hearingStep`,
+   `arpTick` with the face reading the instrument's notes, `morphStep`, the
+   fade and its dot, which need the instrument's fade state posted),
+   `harmonySaid` from the instrument's tone and `sourceFigures` from its
+   figures; then the switches themselves, the suites' last `?brain=js` legs,
+   braintest :175/:178, the counters at nought with a standing check, and the
+   line for a browser without WebAssembly.
 6. **Delete.** The engine, the wrappers, the page's worklets, the fallback
    codec and picture engine, parity's JavaScript harness (`*_js.mjs`,
    `js_core.mjs`), and the README's and PLAN's paragraphs about two brains.
