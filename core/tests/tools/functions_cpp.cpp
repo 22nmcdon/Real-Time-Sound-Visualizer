@@ -459,6 +459,26 @@ int main(int argc, char** argv) {
       std::vector<double> out;
       for (const double x : numbers(w[4])) out.push_back(scope::svfStep(s, x, num(w[1]), num(w[2]), static_cast<int>(num(w[3]))));
       show(out);
+    }
+    // `svfSweep N Q RATE`: the voice filter's low pass on a seeded noise
+    // (Park and Miller's), its cutoff swept every sample from 50 Hz to 18 kHz
+    // three thousand times a second, as vcftest.py swept the page's own
+    // svfStep until stage 5's step 6. The largest output and whether every
+    // sample was finite. Not parity's: core/tests/pieces/vcf.py's.
+    else if (name == "svfSweep") {
+      scope::SvfState s;
+      const int n = static_cast<int>(num(w[1]));
+      const double q = num(w[2]), rate = num(w[3]);
+      double most = 0, seed = 7, finite = 1;
+      for (int i = 0; i < n; i++) {
+        seed = std::fmod(seed * 16807, 2147483647.0);
+        const double x = seed / 2147483647.0 * 2 - 1;
+        const double fc = 50 * std::pow(360.0, 0.5 + 0.5 * std::sin(2 * std::acos(-1.0) * 3000 * i / rate));
+        const double y = scope::svfStep(s, x, scope::svfG(fc, rate), 1 / q, 1);
+        if (!std::isfinite(y)) finite = 0;
+        most = std::max(most, std::fabs(y));
+      }
+      show({ most, finite });
     } else if (name == "cycleRead") {
       const auto c = tables(w[1].substr(2));
       show({ scope::cycleRead(&c, num(w[2]), num(w[3])) });

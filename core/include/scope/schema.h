@@ -4,7 +4,7 @@
 // each rule means, beside the table; setup.h reads them the same way.
 //
 // Written out by core/tests/tools/write_schema.py, never by hand, and held
-// to the page character for character by core/tests/parity.py. That is what
+// to the page character for character by core/tests/core_tests.py. That is what
 // it is for: the menus and ranges were written into restore.h once each,
 // beside the page's, and after the kaleidoscope's removal layer B's snap
 // here still offered 1 to 4 bits that the page had dropped (7 Nov).

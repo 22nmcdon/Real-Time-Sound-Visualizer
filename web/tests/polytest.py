@@ -28,6 +28,8 @@ from playwright.sync_api import sync_playwright
 import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
@@ -55,7 +57,7 @@ BIN_SRC = """(x, f, rate) => {
 CORE = """([voices, seconds, shape]) => {
   const rate = 44100;
   const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-  const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
+  const core = compiledGenerator(rate, GEN_SLOTS, quiet);
   core.set('shape', shape || 'sine');
   core.set('voices', voices);
   window.__core = core;
@@ -100,6 +102,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     corpus.old_opening(p)  # the opening it was written against (P8h)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
@@ -173,7 +176,7 @@ with sync_playwright() as pw:
     jump = p.evaluate("""([C]) => {
       const rate = 44100;
       const quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
+      const core = compiledGenerator(rate, GEN_SLOTS, quiet);
       core.set('shape', 'square');
       core.set('voices', [{ note: 48, freq: C, velocity: 1, role: 'x' }]);
       const a = [0, 1, 2, 3].map(() => new Float32Array(8820));
@@ -192,6 +195,13 @@ with sync_playwright() as pw:
     check("and the check fails on a step", not glides(dict(jump, first=jump["later"])))
 
     print("\n--- each voice has its own envelope ---")
+    # Read by the sound since stage 5's step 6: the page's own generator,
+    # whose voices could be read back stage by stage, went with its engine, and
+    # the compiled core rendered here hands back samples and readings, not its
+    # voices. Each note's energy, at its own frequency, over the last 8192
+    # samples of a run. That a note added to a chord does not restart the
+    # others' envelopes is held now by core/tests/core_tests.py's generator
+    # runs, recorded from the page's (its voicesRun chords change mid-note).
     env = p.evaluate("""([chord]) => {
       const core = window.__core;
       const rate = 44100;
@@ -201,34 +211,21 @@ with sync_playwright() as pw:
         core.block(a[0], a[1], n, a[2], a[3]);
         return a;
       };
+      const levels = (a) => { const x = a[2].subarray(a[2].length - 8192); return chord.map((v) => window.__bin(x, v.freq, rate)); };
       core.set('voices', null);
       core.set('releaseMs', 60);
       core.set('voices', chord);
-      run(0.3);
-      const before = core.voices.map((v) => [v.note, v.stage]);
+      const before = levels(run(0.3));
       core.set('voices', chord.filter((v) => v.note !== 52));   // E released
-      const during = core.voices.map((v) => [v.note, v.stage, v.held]);
-      const tail = run(0.4);
-      const after = core.voices.map((v) => [v.note, v.stage]);
-      const x = tail[2].subarray(tail[2].length - 8192);
-      const add = chord.concat([{ note: 60, freq: 261.6, velocity: 1, role: 'u' }]);
-      core.set('voices', add.filter((v) => v.note !== 52));
-      const retrigger = core.voices.map((v) => [v.note, v.stage]);
-      return { before, during, after, retrigger,
-               e: window.__bin(x, chord[1].freq, rate), c: window.__bin(x, chord[0].freq, rate) };
+      const after = levels(run(0.4));
+      return { before, after };
     }""", [chord])
-    print("    held %s; E released %s; after its release %s; C still %.4f, E %.5f"
-          % (env["before"], env["during"], env["after"], env["c"], env["e"]))
-    print("    a fourth note added: %s" % env["retrigger"])
-    check("releasing one note releases that voice and no other",
-          [s for n, s, h in env["during"] if n == 52] == ["release"]
-          and all(s == "sustain" for n, s, h in env["during"] if n != 52), str(env["during"]))
-    check("and once its release is over it is gone, while the rest sound on",
-          [n for n, s in env["after"]] == [48, 55] and env["e"] < env["c"] * 0.01,
-          "voices %s, E at %.5f of C's %.4f" % (env["after"], env["e"], env["c"]))
-    check("a note added to a chord does not restart the others",
-          dict((n, s) for n, s in env["retrigger"])[48] == "sustain"
-          and dict((n, s) for n, s in env["retrigger"])[60] == "attack", str(env["retrigger"]))
+    print("    held %s; E released %s" % (rounded(env["before"]), rounded(env["after"])))
+    (c0, e0, g0), (c1, e1, g1) = env["before"], env["after"]
+    check("releasing one note releases that voice and no other: E falls silent, C and G sound on at their level",
+          e0 > 0.05 and e1 < c1 * 0.01 and abs(c1 / c0 - 1) < 0.05 and abs(g1 / g0 - 1) < 0.05,
+          "C %.4f -> %.4f, E %.4f -> %.5f, G %.4f -> %.4f" % (c0, c1, e0, e1, g0, g1))
+    check("null: and the reading sees a voice still sounding: E before its release is not silent", not (e0 < c0 * 0.01), "%.4f" % e0)
 
     print("\n--- the draw rules, through the keyboard ---")
     # The top note pressed first, so outer, highest and most recent disagree.
@@ -490,7 +487,7 @@ with sync_playwright() as pw:
     # at G4 from the start, so the early reading can tell a glide from none.
     GLIDE = """(glideMs) => {
       const rate = 44100, quiet = [0, 1].map(() => ({ shape: 'sine', rate: 1, depth: 0, phase: 0, held: 0, value: 0 }));
-      const core = makeGeneratorCore(rate, GEN_SLOTS, quiet);
+      const core = compiledGenerator(rate, GEN_SLOTS, quiet);
       core.set('shape', 'sine'); core.set('glideMs', glideMs); core.set('releaseMs', 2);
       const run = (sec) => { const n = Math.round(rate * sec), a = [0, 1, 2, 3].map(() => new Float32Array(n));
                              core.block(a[0], a[1], n, a[2], a[3]); return a[2]; };

@@ -22,6 +22,8 @@ import numpy as np
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
@@ -75,7 +77,7 @@ def bessel_j(n, x):
 
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  const core = compiledGenerator(44100, GEN_SLOTS, [still(), still()]);
   core.set('amp', 0.5); core.set('interval', 0); core.set('phase', 0);
   core.set('shape', 'sine');
   for (const k in setup.tone) core.set(k, setup.tone[k]);
@@ -101,6 +103,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -224,7 +227,7 @@ with sync_playwright() as pw:
           "B %.4f, A %.2e" % (line(lay["BL"], 1320), line(lay["L"], 660)))
     cost = p.evaluate("""() => {
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+      const core = compiledGenerator(44100, GEN_SLOTS, [still(), still()]);
       core.set('shape', 'ramp');
       const v = [];
       for (let k = 0; k < 8; k++) v.push({ note: 48 + k * 3, freq: 130.81 * Math.pow(2, k / 4), velocity: 1, role: k ? 'u' : 'x' });

@@ -1,41 +1,52 @@
 # The golden files
 
-What the page's JavaScript answered for each parity scenario, so the core can
-be held to it once the JavaScript engine is gone (stage 5 of
-`plugin/STAGE5-PLAN.md`, step 2). One gzipped file a parity section; 5.3 MB in
-all. `core/tests/golden_runs.py` writes and reads them, and the top of that file
-is the long version of what follows.
+What the page's JavaScript answered for each scenario of the core's tests,
+recorded while it still ran, so the core can be held to it now that the
+JavaScript engine is gone (`plugin/STAGE5-PLAN.md`): one gzipped file a
+section, fifteen in all, 6.5 MB. The thirteen of the port-is-the-original job
+were written in stage 5's step 2, from the page's engine; `restore.json.gz`,
+what the page's own `restore` left in its brain for every setup the restore,
+morph, menus, hands, rack, fade and view sections load, was written in step 6,
+the day before that brain was deleted. `core/tests/golden_runs.py` writes and
+reads them, and the top of that file is the long version of what follows.
 
 ## Why they exist
 
-Parity does two jobs (`plugin/STAGE5-PLAN.md`, section 2). One is *the port is
-the same as the original*: a scenario through the page's `makeEnvelope` (and
+The core began as a port of the page's own engine, and the test that mattered
+was whether it was the SAME: a scenario through the page's `makeEnvelope` (and
 the generator, keyboard, matrix, clock, level, capture, beam, picture sources,
-Scan, hearing, score, setup codec) and through the C++, compared sample for
-sample. The other is *the face and the core agree*, which compares the page's
-controls with the core's panel and has no JavaScript engine under it.
+Scan, hearing, score, setup codec and restore) and through the C++, compared
+sample for sample. Once the page's engine went there was nothing to compare
+against; these files are that comparison kept on disk - the JavaScript's
+answer, proven against the live page on every run until the last, and now the
+answer the core is held to. Where `core_tests.py` called the page's runner, it
+now asks for the recording (`golden.recorded("envelope", path)`), and holds the
+core's own run on the same scenario to it, to 1e-12.
 
-When the engine goes, the first job has nothing to compare against. These files
-are that comparison kept on disk: the JavaScript's answer, recorded while both
-still exist and proven against the live page every run, so the core can be held
-to it after the page's engine is deleted. Only the thirteen port-is-the-original
-sections have a file; the face-and-core sections have none and do not change.
+The other two jobs of `core_tests.py` have no recording: the face and the core
+agree (the page's controls, bank, sources and codec against the core's panel,
+presets, schema and codec, read off the page as it is now), and the engine's
+pieces hold by their own numbers (`core/tests/pieces/`).
 
 ## What is in a file
 
-A list of runs in the order parity made them. Each is `{tool, input, hash}`
+A list of runs in the order the tests made them. Each is `{tool, input, hash}`
 with either
 
-- `output` - the tool's text exactly, for a run short enough to keep whole; or
+- `output` - the tool's text exactly, for a run short enough to keep whole
+  (and every restore run, which is read field by field as JSON); or
 - `sketch` and `chars` - for a long run (the generator's 130 runs alone are
   95 MB of digits). The sketch is, per line, the text with the numbers taken
   out, and per block of 64 numbers three figures: their sum, their sum weighted
   by position, and the largest in size. A number that is not finite is kept
   where it sits, so a NaN is never summed away.
 
-A run is keyed by its tool and a hash of the scenario's text (the checkout's
-paths removed, so the hash is the same in any checkout), not by the scenario's
-file name - parity reuses names like `one.txt` for hundreds of runs.
+A run is keyed by the tool that recorded it and a hash of the scenario's text
+(the checkout's paths removed, so the hash is the same in any checkout), not by
+the scenario's file name - the tests reuse names like `one.txt` for hundreds of
+runs. The tools are named as they were when they recorded (`envelope_js.mjs`
+and the rest, `restore_page.py`), though they were deleted in step 6: the files
+did not have to be rewritten when the runners went.
 
 **What the sketch can and cannot see.** One value moved by `g` moves the block
 sum by `g`, held to the same `1e-12` tolerance the whole-text comparison uses;
@@ -47,63 +58,68 @@ both sums cancel - two changes of opposite sign in the ratio of their positions
 - which no plausible port fault produces and a deliberate one could. Where a
 mismatch has to be exact, the run is kept whole; the sketch is only for the
 runs too large to keep whole, and those are bulk renders where a fault moves
-thousands of samples, not two in a cancelling pair.
+thousands of samples, not two in a cancelling pair. A sketched run cannot be
+handed to a section's own comparison as text, so there the core's answer is
+held to the sketch directly and the section sees the core against itself: the
+sketched sections rest wholly on that direct comparison, which is a check of
+its own in every section and null-tested at the end of every run.
 
-The NaN rule is parity's `worst()`: a NaN anywhere is a failure, never skipped,
-and the tolerance is `1e-12` relative to the larger of one and the value.
-
-## Regenerating a file (when the sound is meant to change)
-
-```
-CHROME=/opt/pw-browsers/chromium python3 core/tests/parity.py --write-golden
-```
-
-One command, and it **refuses to overwrite a section's file unless every check
-in that section passed** - that is, unless the page's JavaScript and the C++
-core agreed on it, the same `1e-12`. So a regenerated file is never merely
-believed: it is the JavaScript's answer, confirmed by the core, recorded. A
-section with a failure prints `REFUSED` and keeps its old file. A section whose
-runs are unchanged prints `KEPT` and rewrites nothing, so an unrelated change
-leaves the files - and the git diff - alone. Because the files are gzipped and
-not readable as a diff, `--write-golden` prints, for each run that moved, where
-it first differs from the old file.
-
-The scenarios are built from fixed random seeds, so a regeneration with no
-intended change writes identical bytes. Commit the changed `.json.gz` with the
-code that changed the sound, and say in the commit why the sound moved.
+The NaN rule is the tests' `worst()`: a NaN anywhere is a failure, never
+skipped, and the tolerance is `1e-12` relative to the larger of one and the value.
 
 ## Running against the files
 
 ```
-CHROME=/opt/pw-browsers/chromium python3 core/tests/parity.py            # all three
-CHROME=/opt/pw-browsers/chromium python3 core/tests/parity.py --golden   # the core against the files, no page
+CHROME=/opt/pw-browsers/chromium python3 core/tests/core_tests.py
 ```
 
-With no flag, parity runs all three: the page's JavaScript as before, the core
-as before, the two compared as before, *and* each run checked against its
-golden file and the core checked against the file directly. This is what proves
-the files still match the live page, and it is what runs before a push while
-the JavaScript is still here.
+Every section with a file holds the core to it, and closes with two checks of
+its own: that the file holds no run the tests no longer ask for, and that the
+core's runs against the file directly found nothing (and were made at all). A
+scenario the file has no run for fails, naming it.
 
-`--golden` is what parity becomes once the engine is gone: the JavaScript is not
-run, the files stand in for it, and the core is held to them. A run kept whole
-is handed to parity's own comparison as the JavaScript's text would have been; a
-run kept as a sketch cannot be (a sketch is not text), so for those the core's
-answer is compared with the sketch here, and parity's own comparison sees the
-core against itself. `--golden` needs the C++ tools built, which parity does.
+## Writing them again (when the sound is meant to change)
+
+```
+CHROME=/opt/pw-browsers/chromium python3 core/tests/core_tests.py --write-golden --because "what changed in the sound, and why"
+```
+
+Until step 6 a rewrite was refused unless the page's JavaScript and the core
+agreed on the section, so a new file was never merely believed. With no page
+left to confirm the core, the guard is the reason: `--write-golden` refuses to
+run without `--because`, and every rewrite appends a line to the log below -
+the date, the reason, and which files moved by how many runs - so a
+regenerated file is never anonymous and its reason sits beside it in the same
+commit. A section is still refused if any check of its own failed (with the
+files out of the way, those are the checks of what the sound should be, and
+their nulls: a change that breaks one is not the change that was meant). A
+section whose runs did not move prints `KEPT` and rewrites nothing, so an
+unrelated change leaves the files - and the git diff - alone; for each run that
+moved, it prints where it first differs from the old file, since a gzipped
+file is not readable as a diff.
+
+Why a reason and not a bound: refusing a rewrite past some size of change
+would stop the changes worth making and pass the small wrong ones. A reason
+that has to be written down puts the judgement with whoever meant the change,
+and leaves it on the record for whoever reads the diff.
+
+The scenarios are built from fixed random seeds, so a rewrite with no change to
+the sound writes identical bytes.
 
 ## The nulls
 
-The comparison is null-tested every run (in `--golden` and the three-way
-default, at the end): a value in a file moved by a billionth, and a NaN put in
-its place, must each fail and name the line and value, for a run kept whole and
-a run kept as a sketch; a NaN against a NaN is no difference; and a value moved
-by a tenth of the tolerance is none either. Beyond those standing nulls, the
-three the plan asked for were seen red by hand as the mode was built: one value
-changed in a file (the golden comparison goes red naming the scenario, line,
-value and gap); the core mutated (both the JS-vs-core comparison and the
-core-vs-file comparison go red); and a NaN fed into a file (red, whole and
-sketch).
+The comparison is null-tested every run, at the end: a value in a file moved by
+a billionth, and a NaN put in its place, must each fail and name the line and
+value, for a run kept whole and a run kept as a sketch; a NaN against a NaN is
+no difference; and a value moved by a tenth of the tolerance is none either.
+Beyond those, the nulls that broke a copy of the page and ran its JavaScript
+(a page that kept a delay line through a switch, read the Key as its gate,
+dropped the arpeggiator's strike, walked a long segment whole) break the same
+line in a copy of the core now (`mutant` in `core_tests.py`), and the recorded
+answer must be told from the broken core's. Step 2's three, seen red by hand as
+the files were built: one value changed in a file (red, naming the scenario,
+line, value and gap); the core mutated (red in the section's comparison and in
+the direct one); and a NaN fed into a file (red, whole and sketch).
 
 ## Rendering the instrument offline (render_cpp)
 
@@ -140,3 +156,7 @@ before the limiter, or switches the limiter off with the harness's
 reason of its own was 5a's `picture.json.gz`: one run of eleven, thirty of
 the meter's verdicts "wandering" become "settled" (the meter's verdict reads
 change over the eye's time since 5a), every number in it unmoved.
+
+## The log
+
+Each rewrite of a file since stage 5's step 6, as `--write-golden --because` writes it.

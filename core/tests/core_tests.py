@@ -1,20 +1,36 @@
-"""The C++ core against the page's JavaScript, sample for sample.
+"""The core's tests: the C++ core held to what it is meant to do, three ways.
 
-The core is a port of code that already works and is already tested
-(web/tests), so the test that matters is not whether the C++ is reasonable
-but whether it is the SAME: the same scenario through `makeEnvelope`, read
-out of web/scope.html itself, and through scope::Envelope, compared a sample
-at a time. A copy of the JavaScript kept here would be a second thing to
-drift, so the runner lifts the function from the page by name.
+python3 core/tests/core_tests.py (CHROME=/opt/pw-browsers/chromium in a cloud
+session, for the face's sections, which read the page in a browser).
 
-Held to 1e-12 rather than to equality. The two agree on every operation's
-order, but `Math.exp` and `Math.log` are V8's and `std::exp` and `std::log`
-are the C library's, and the two are allowed to differ in the last place.
+1. The port is the original. The core began as a port of the page's own
+   JavaScript engine, held to it sample for sample by this file, which was
+   parity.py until stage 5's step 6 deleted that engine. What the
+   JavaScript answered for every scenario here was recorded while it still
+   ran (core/tests/golden/, golden_runs.py; and the page's own `restore`, the
+   day before it went), and each section of this kind now holds the core to
+   the recording, to 1e-12: `golden.recorded("envelope", path)` stands where
+   the page's runner was called. A change that means the sound to change
+   rewrites the files with `--write-golden --because "why"`, which is
+   refused without a reason and logs the reason in the golden README.
+2. The face and the core agree. The page's controls, its bank, its base, its
+   sources and its setup codec against the core's panel, presets, schema and
+   codec; the compiled module the page carries against the native core, run
+   for run, through the page's own wrappers (the instrument whole, the
+   generator through the bridge the web suites use). These read the page as
+   it is now, in a browser or lifted by name, and have no recording.
+3. The engine's pieces, by their own numbers (core/tests/pieces/, also
+   runnable alone): what each piece should do, asserted against the core's
+   output with a null beside each.
 
-Null tests, as the web suite has them: the same comparison against the page's
-values shifted by one sample, and against a run with one tone value changed,
-must both fail - a comparison that could not tell those apart would pass
-whatever the port did.
+Held to 1e-12 rather than to equality where a recorded answer is compared:
+`Math.exp` and `Math.log` were V8's and `std::exp` and `std::log` are the C
+library's, and the two are allowed to differ in the last place.
+
+Null tests, as the web suite has them: each comparison is also run against
+something it must not accept - the recorded values shifted by one sample, a
+scenario with one value changed, a copy of the core with one line broken
+(`mutant`) - and must fail.
 """
 import os, re, subprocess, sys, glob, math
 
@@ -34,6 +50,25 @@ def build(tool):
     src = os.path.join(HERE, "tools", tool + ".cpp")
     subprocess.run(["g++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-I", os.path.join(CORE, "include"),
                     src, "-o", exe], check=True)
+    return exe
+
+# A tool built against a copy of the core with one line changed: the null
+# a check of the core is seen red against, where until stage 5's step 6 a copy
+# of the page was broken the same way and its JavaScript run. The tool is
+# named for what was broken, never `_cpp`, so a run of it is never taken for
+# the core's own.
+import shutil
+def mutant(tool, header, old, new, name):
+    root = os.path.join(BUILD, "mutant-" + name)
+    if os.path.isdir(root): shutil.rmtree(root)
+    shutil.copytree(os.path.join(CORE, "include"), os.path.join(root, "include"))
+    path = os.path.join(root, "include", "scope", header)
+    with open(path, encoding="utf-8") as f: text = f.read()
+    assert text.count(old) == 1, (header, old)
+    with open(path, "w", encoding="utf-8") as f: f.write(text.replace(old, new))
+    exe = os.path.join(root, tool[:-len("_cpp")] + "_" + name)
+    subprocess.run(["g++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror", "-I", os.path.join(root, "include"),
+                    os.path.join(HERE, "tools", tool + ".cpp"), "-o", exe], check=True)
     return exe
 
 def values(cmd):
@@ -59,11 +94,11 @@ check("the comparison sees a NaN against a number, after a number and before one
 check("and NaN against NaN, or an infinity against itself, as the same",
       worst([nan, inf, -inf], [nan, inf, -inf]) == 0 and worst([inf], [-inf]) == inf)
 
-# Golden files (stage 5, step 2): what the page's JavaScript answered for each
-# scenario of the port-is-the-original job, so the core can be held to it once
-# the JavaScript is gone. Every section that has one names it below; the
-# face-and-core sections have none. See golden_runs.py for the three modes and
-# core/tests/golden/README.md for regenerating them.
+# Golden files (stage 5, steps 2 and 6): what the page's JavaScript answered
+# for each scenario of the port-is-the-original job, recorded while it ran.
+# Every section that has one names it below; the face-and-core sections have
+# none. See golden_runs.py, and core/tests/golden/README.md for writing them
+# again when the sound is meant to change.
 sys.path.insert(0, HERE)
 from golden_runs import Golden
 golden = Golden(HERE, sys.argv[1:], TOL, check, fails)
@@ -73,7 +108,7 @@ exe = build("envelope_cpp")
 scenarios = sorted(glob.glob(os.path.join(HERE, "scenarios", "envelope_*.txt")))
 for path in scenarios:
     name = os.path.basename(path)[len("envelope_"):-4]
-    js = values(["node", os.path.join(HERE, "tools", "envelope_js.mjs"), path])
+    js = [float(v) for v in golden.recorded("envelope", path).stdout.split()]
     cpp = values([exe, path])
     # A scenario that never moves proves nothing about the stages.
     moved = max(js) - min(js) if js else 0
@@ -82,7 +117,7 @@ for path in scenarios:
 
 golden.section("the nulls", "envelope")
 path = os.path.join(HERE, "scenarios", "envelope_adsr.txt")
-js = values(["node", os.path.join(HERE, "tools", "envelope_js.mjs"), path])
+js = [float(v) for v in golden.recorded("envelope", path).stdout.split()]
 cpp = values([exe, path])
 shifted = js[1:] + js[-1:]
 check("the comparison fails against the page's values a sample late", worst(shifted, cpp) > 1e-6,
@@ -604,8 +639,7 @@ lines = calls()
 listed = os.path.join(BUILD, "calls.txt")
 with open(listed, "w") as f: f.write("\n".join(lines) + "\n")
 fexe = build("functions_cpp")
-js_rows = subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), listed], check=True,
-                         capture_output=True, text=True).stdout.splitlines()
+js_rows = golden.recorded("functions", listed).stdout.splitlines()
 cpp_rows = subprocess.run([fexe, listed], check=True, capture_output=True, text=True).stdout.splitlines()
 def row(r): return [float(v) for v in r.split()]
 by_name, worst_line = {}, ("", 0.0)
@@ -674,8 +708,7 @@ check("the core: a chord built a note at a time draws the struck chord's figure"
 check("and the comparison fails against it struck 37 samples late", worst(built[4800:], late[4800:]) > 0.05,
       "%.3g" % worst(built[4800:], late[4800:]))
 def js_one(call):
-    return row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(call)], check=True,
-                              capture_output=True, text=True).stdout)
+    return row(golden.recorded("functions", _one(call)).stdout)
 moved = next(i for i, l in enumerate(lines) if "set:releaseMs" in l)
 check("and against a release slider that was never moved",
       worst(js_one(lines[moved].replace(";1200:set:releaseMs:40", "")), row(cpp_rows[moved])) > 1e-6)
@@ -820,32 +853,27 @@ check("and against B's own repeats given A's tone",
 # every sample of both pairs is nought on each side - B's lines too, through
 # A's settings or its own. Two nulls: the same run with the module left on
 # through the silence still sounds there, so the run can show a kept line;
-# and the page with its emptying taken out (timeRuns without timeFresh) keeps
-# one, so it is the emptying these hold and not something else that falls
-# silent.
-fresh_page = os.path.join(BUILD, "scope_fresh_null.html")
-with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: fresh_text = f.read()
-assert fresh_text.count("    if (!(fx.was & bit)) timeFresh(fx, bit);\n") == 1
-with open(fresh_page, "w", encoding="utf-8") as f: f.write(fresh_text.replace("    if (!(fx.was & bit)) timeFresh(fx, bit);\n", ""))
+# and a core with its emptying taken out (plane.h's timeRuns without
+# timeFresh) keeps one, so it is the emptying these hold and not something
+# else that falls silent.
+fresh_core = mutant("functions_cpp", "plane.h", "    if (!(fx.was & bit)) timeFresh(fx, bit);\n", "", "unemptied")
 for over in FRESH_RUNS:
     k = next(i for i, l in enumerate(lines) if l == plane_call(over))
     off, back = over["ev"].split(";")
     at, what = int(back.split(":")[0]), back.split(":")[1]
     after = {side: row(rows_[k])[4 * at:] for side, rows_ in (("page", js_rows), ("core", cpp_rows))}
     kept = js_one(lines[k].replace("ev=" + over["ev"], "ev=" + back))[4 * at:]
-    stale = row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(lines[k])], check=True,
-                               capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=fresh_page)).stdout)[4 * at:]
-    check("%s switched off and on again over silence: nothing after, on the page's side and the core's" % what,
+    stale = row(subprocess.run([fresh_core, _one(lines[k])], check=True, capture_output=True, text=True).stdout)[4 * at:]
+    check("%s switched off and on again over silence: nothing after, in the page's recorded run and the core's" % what,
           after["page"] and max(abs(v) for v in after["page"]) == 0 and max(abs(v) for v in after["core"]) == 0,
           "%.3g, %.3g" % (max(abs(v) for v in after["page"]), max(abs(v) for v in after["core"])))
-    check("null: left on through the silence it still sounds there, and a page that kept the line through the switch plays it",
+    check("null: left on through the silence it still sounds there, and a core that kept the line through the switch plays it",
           max(abs(v) for v in kept) > 1e-3 and max(abs(v) for v in stale) > 1e-3,
           "%.3g, %.3g" % (max(abs(v) for v in kept), max(abs(v) for v in stale)))
 for over in FRESH_PLAYING:
     k = next(i for i, l in enumerate(lines) if l == plane_call(over))
-    stale = row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"), _one(lines[k])], check=True,
-                               capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=fresh_page)).stdout)
-    check("and against a page that kept the four's lines through the switch, with the pairs still playing%s"
+    stale = row(subprocess.run([fresh_core, _one(lines[k])], check=True, capture_output=True, text=True).stdout)
+    check("and against a core that kept the four's lines through the switch, with the pairs still playing%s"
           % (" (B's own)" if " bown=1 " in lines[k] else ""), worst(stale, row(cpp_rows[k])) > 1e-6)
 # P9, the reverb. First what it does, read off the core's runs; then each run
 # against the page's with one thing moved, which must not pass.
@@ -916,8 +944,7 @@ held = next(i for i, l in enumerate(lines) if l.startswith("lfoRun random 300.0"
 check("and against a random LFO from another seed",
       worst(js_one(lines[held].replace(" 4 2000", " 5 2000")), row(cpp_rows[held])) > 1e-6)
 check("and against a pulse of 0.3 answered as one of 0.31",
-      worst(row(subprocess.run(["node", os.path.join(HERE, "tools", "functions_js.mjs"),
-                                _one(lines[pulse][:-3] + "0.31")], check=True, capture_output=True, text=True).stdout),
+      worst(row(golden.recorded("functions", _one(lines[pulse][:-3] + "0.31")).stdout),
             row(cpp_rows[pulse])) > 1e-6)
 
 golden.section("the whole generator", "generator")
@@ -1390,8 +1417,7 @@ runs = gen_runs()
 listed = os.path.join(BUILD, "generator.txt")
 with open(listed, "w") as f: f.write("\n".join(r for _, r in runs) + "\n")
 gexe = build("generator_cpp")
-gjs = subprocess.run(["node", os.path.join(HERE, "tools", "generator_js.mjs"), listed], check=True,
-                     capture_output=True, text=True).stdout.splitlines()
+gjs = golden.recorded("generator", listed).stdout.splitlines()
 gcpp = subprocess.run([gexe, listed], check=True, capture_output=True, text=True).stdout.splitlines()
 check("every run answered by both: %d runs" % len(runs), len(gjs) == len(gcpp) == len(runs))
 gworst = {}
@@ -1511,8 +1537,7 @@ check("the runs can show the source: an envelope, and an ungated one",
 def gjs_one(text):
     path = os.path.join(BUILD, "one_gen.txt")
     with open(path, "w") as f: f.write(text + "\n")
-    return row(subprocess.run(["node", os.path.join(HERE, "tools", "generator_js.mjs"), path], check=True,
-                              capture_output=True, text=True).stdout)
+    return row(golden.recorded("generator", path).stdout)
 def gnull(name, old, new, what):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     assert old in runs[i][1], old
@@ -1540,15 +1565,16 @@ check("and B's own delay, longer, is heard on B's figure alone",
       max(abs(x - y) for x, y in zip(col(grow("time-own-delay")[0], 4), col(grow("time-own-delay-off")[0], 4))) > 1e-3
       and max(abs(x - y) for x, y in zip(col(grow("time-own-delay")[0], 0), col(grow("time-own-delay-off")[0], 0))) == 0)
 gnull("time-own-delay", "set timeOwn 4 1", "set timeOwn 0 1", "B's delay shared, played at A's settings")
-# The layers back under a delay: the page with its emptying taken out (the
+# The layers back under a delay: a core with its emptying taken out (the
 # plane's null, above) keeps B's line through the gap and plays it, which the
-# core must not match - so these two runs can tell a line emptied from one kept.
+# page's recorded run must not match - so these two runs can tell a line
+# emptied from one kept.
+fresh_gen = mutant("generator_cpp", "plane.h", "    if (!(fx.was & bit)) timeFresh(fx, bit);\n", "", "unemptied")
 for name in ("layers-back", "layers-back-own"):
     i = next(k for k, (n, _) in enumerate(runs) if n == name)
     with open(os.path.join(BUILD, "one_gen.txt"), "w") as f: f.write(runs[i][1] + "\n")
-    kept = row(subprocess.run(["node", os.path.join(HERE, "tools", "generator_js.mjs"), os.path.join(BUILD, "one_gen.txt")],
-                              check=True, capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=fresh_page)).stdout)
-    check("and against a page whose layer B kept its line through the layers' gap (%s)" % name, worst(kept, row(gcpp[i])) > 1e-6)
+    kept = row(subprocess.run([fresh_gen, os.path.join(BUILD, "one_gen.txt")], check=True, capture_output=True, text=True).stdout)
+    check("and against a core whose layer B kept its line through the layers' gap (%s)" % name, worst(kept, row(gjs[i])) > 1e-6)
 # Legato: a second note while it is open leaves it exactly where one note
 # does. Following Play, the same two runs differ - the second voice is a new
 # envelope - which is what shows the comparison can see a second note at all.
@@ -1813,8 +1839,7 @@ def kdiff(a, b):
 def kboth(text, name="keyboard_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "keyboard_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("keyboard", path).stdout
     return js, subprocess.run([kexe, path], check=True, capture_output=True, text=True).stdout
 
 def krun(*commands, head=""):
@@ -1993,17 +2018,13 @@ kk = kkeys("key-release")
 check("the Key rings out: held through the release at the last held key's velocity while the envelope is up, nought once it is down",
       kk[2] == kk[3] == 100 / 127 and kk[4] == 80 / 127 and kk[5] == kk[6] == kk[7] == kk[8] == 100 / 127
       and kk[9] == kk[10] == 0 and kk[11] == kk[12] == kk[13] == 50 / 127 and kk[14] == kk[15] == 0, str(kk))
-# Its null: the page with the Key read as its gate, as before 12 Nov, does
-# not pass for the core's, or the run could not tell.
-gate_page = os.path.join(BUILD, "scope_key_null.html")
-with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: key_text = f.read()
-assert key_text.count("    value: keyHeard,") == 1
-with open(gate_page, "w", encoding="utf-8") as f: f.write(key_text.replace("    value: keyHeard,", "    value: () => midi.key,"))
+# Its null: a core with the Key read as its gate, as before 12 Nov, does
+# not pass for the page's recorded run, or the run could not tell.
+gate_core = mutant("keyboard_cpp", "keyboard.h", "    if (key_ > 0 || struck_ <= 0) return key_;", "    return key_;", "keygate")
 with open(os.path.join(BUILD, "keyboard_key_null.txt"), "w") as f: f.write(dict(kruns)["key-release"])
-kkn = subprocess.run(["node", os.path.join(HERE, "tools", "keyboard_js.mjs"), os.path.join(BUILD, "keyboard_key_null.txt")], check=True,
-                     capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=gate_page)).stdout
-check("null: a page whose Key is its gate, nought the moment the keys are up, is not the core's",
-      kdiff(kkn, kslice(kcpp, next(k for k, (n, _) in enumerate(kruns) if n == "key-release"))) is not None)
+kkn = subprocess.run([gate_core, os.path.join(BUILD, "keyboard_key_null.txt")], check=True, capture_output=True, text=True).stdout
+check("null: a core whose Key is its gate, nought the moment the keys are up, is not the page's",
+      kdiff(kkn, kslice(kjs, next(k for k, (n, _) in enumerate(kruns) if n == "key-release"))) is not None)
 check("the dyad sets an interval wider than an octave, and clamps the pitch at both ends",
       "set octaves 2." in kout("dyad") and "set freq 4000.0" in kout("dyad-edges") and "set freq 30.00" in kout("dyad-edges"))
 check("a chord leaves notes heard and not drawn, by every rule",
@@ -2095,17 +2116,13 @@ check("switched off once it has stepped, a held key is struck: the gate closes, 
       offs[0][:200] if offs else "")
 check("null: switched off inside the gather, before any step, the keys it never took are not struck again",
       len(offs) == 2 and "gate 0" not in offs[1] and "noteDown" not in offs[1], offs[1][:200] if len(offs) > 1 else "")
-# And the page with that strike taken out (arpSet as it was before 11 Nov):
-# its lines must not pass for the core's, or the run could not tell.
-unstruck = os.path.join(BUILD, "scope_arp_null.html")
-with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: arp_text = f.read()
-assert arp_text.count("  if (stepped && !arpActive() && midi.notes.length) {") == 1
-with open(unstruck, "w", encoding="utf-8") as f: f.write(arp_text.replace("  if (stepped && !arpActive() && midi.notes.length) {", "  if (false) {"))
+# And a core with that strike taken out (arpSet as it was before 11 Nov):
+# its lines must not pass for the page's recorded run, or the run could not tell.
+unstruck = mutant("keyboard_cpp", "keyboard.h", "    if (stepped && !arpActive() && !notes_.empty()) {", "    if (stepped && false) {", "unstruck")
 with open(os.path.join(BUILD, "keyboard_null.txt"), "w") as f: f.write(dict(kruns)["arp-off-held"])
-kn = subprocess.run(["node", os.path.join(HERE, "tools", "keyboard_js.mjs"), os.path.join(BUILD, "keyboard_null.txt")], check=True,
-                    capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=unstruck)).stdout
-check("and against a page that only gave the held key back, unstruck, as it did before 11 Nov",
-      kdiff(kn, kslice(kcpp, next(k for k, (n, _) in enumerate(kruns) if n == "arp-off-held"))) is not None)
+kn = subprocess.run([unstruck, os.path.join(BUILD, "keyboard_null.txt")], check=True, capture_output=True, text=True).stdout
+check("and against a core that only gave the held key back, unstruck, as it did before 11 Nov",
+      kdiff(kn, kslice(kjs, next(k for k, (n, _) in enumerate(kruns) if n == "arp-off-held"))) is not None)
 last_off = next(l for l in S if l.startswith("off") and " - 3 - -" in l.split(" arp ")[-1])
 check("letting go of the last key stops it: the generator is told nothing is held, and the last note out is let go",
       "outoff 67" in last_off and "gate 0" in last_off, last_off[:120])
@@ -2139,8 +2156,7 @@ mexe = build("matrix_cpp")
 def mboth(text, name="matrix_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "matrix_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("matrix", path).stdout
     return js, subprocess.run([mexe, path], check=True, capture_output=True, text=True).stdout
 
 # The sources every run has: an LFO the loop reads for itself, a held level,
@@ -2572,8 +2588,7 @@ sexe = build("setup_cpp")
 def sboth(lines, name="setup_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w", encoding="utf-8") as f: f.write("\n".join(lines) + "\n")
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "setup_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout.split("\n")
+    js = golden.recorded("setup", path).stdout.split("\n")
     return js, subprocess.run([sexe, path], check=True, capture_output=True, text=True).stdout.split("\n")
 
 srng = random.Random(97)
@@ -2776,13 +2791,25 @@ check("version 11: a Picture amount saved before it reads as the push it meant, 
       and '"pictureAmount":100' in v11[2] and '"pictureAmount":47' in v11[4] and '"pictureAmount":"47"' in v11[6],
       " | ".join(x[:90] for x in v11[:7]))
 check("null: the same check on the codes as written fails", not ('"pictureAmount":75.2' in _json.dumps(V11[0])))
-check("the page's defaults, key for key and value for value", sjs[0] == scpp[0] and sjs[0].count(":") > 170)
+# The site's setup codes (5e), as the page makes them: its defaults and its
+# table of fields read off the page as it evaluates them, and the compiled
+# core's codec, from the module the page carries, through the page's own
+# wrapper (setup_page.mjs), on every command above. The face's own, so they
+# are run live, not recorded.
+def spage(path, page=None):
+    env = dict(os.environ, **({"SCOPE_PAGE": page} if page else {}))
+    return subprocess.run(["node", os.path.join(HERE, "tools", "setup_page.mjs"), path], env=env,
+                          check=True, capture_output=True, text=True).stdout.split("\n")
+swa = spage(os.path.join(BUILD, "setup.txt"))
+check("the page's defaults, key for key and value for value, as recorded and as the page has them now",
+      sjs[0] == scpp[0] and swa[0] == scpp[0] and sjs[0].count(":") > 170)
 # The table they come from (SETUP_FIELDS, schema.h since 7 Nov): every menu
 # and range restore reads a setup by, which the core held in restore.h by
 # hand until then. Written out by write_schema.py; this is what says it was.
 fjs, fcpp = sboth(["fields"], "setup_fields.txt")
-check("the table of fields and rules the core reads a setup by is the page's, character for character",
-      fjs[0] == fcpp[0] and '"planeSnap":[0,["menu",[0,5,6]]]' in fjs[0] and '"bSnap":[null,["twin","planeSnap"]]' in fjs[0],
+fpage = spage(os.path.join(BUILD, "setup_fields.txt"))
+check("the table of fields and rules the core reads a setup by is the page's, as recorded and as it is now, character for character",
+      fjs[0] == fcpp[0] and fpage[0] == fcpp[0] and '"planeSnap":[0,["menu",[0,5,6]]]' in fjs[0] and '"bSnap":[null,["twin","planeSnap"]]' in fjs[0],
       "%d against %d characters" % (len(fjs[0]), len(fcpp[0])))
 # Its null: the page with Snap's menu back to every bit, read beside the
 # same core, does not compare.
@@ -2790,9 +2817,7 @@ snapped_page = os.path.join(BUILD, "scope_snap_null.html")
 with open(os.path.join(HERE, "..", "..", "web", "scope.html"), encoding="utf-8") as f: snap_text = f.read()
 assert snap_text.count('planeSnap: [0, ["menu", [0, 5, 6]]]') == 1
 with open(snapped_page, "w", encoding="utf-8") as f: f.write(snap_text.replace('planeSnap: [0, ["menu", [0, 5, 6]]]', 'planeSnap: [0, ["menu", [0, 1, 2, 3, 4, 5, 6]]]'))
-with open(os.path.join(BUILD, "setup_fields.txt"), "w", encoding="utf-8") as f: f.write("fields\n")
-fnull = subprocess.run(["node", os.path.join(HERE, "tools", "setup_js.mjs"), os.path.join(BUILD, "setup_fields.txt")], check=True,
-                       capture_output=True, text=True, env=dict(os.environ, SCOPE_PAGE=snapped_page)).stdout.split("\n")[0]
+fnull = spage(os.path.join(BUILD, "setup_fields.txt"), snapped_page)[0]
 check("null: a page whose Snap offers every bit again is not the core's table", fnull != fcpp[0] and fnull.startswith("{"))
 enc = [i for i, c in enumerate(scmds) if c.startswith("encode")]
 dec = [i for i, c in enumerate(scmds) if c.startswith("decode")]
@@ -2895,19 +2920,15 @@ check("each layer's picture menus in the core's code: left out at A and B, writt
       and '"pictureMovesA":"B"' in pm_back and '"pictureMovesB":"both"' in pm_back, "%r %r %s" % (pm_keep, pm_set, pm_back[:120]))
 check("and the reading sees a code that kept the defaults", "pictureMovesA" in pm_set and not "pictureMovesA" in pm_keep)
 check("and the comparison fails against the page's lines one command out of step", sjs[1:] != scpp[:-1])
-# The site's codec (5e): the compiled core's, made from the module the page
-# carries and driven through the page's own wrapper, on every command above.
-# Its lines are the page's to the character, throws and unreadable included.
-def swasm(path):
-    return subprocess.run(["node", os.path.join(HERE, "tools", "setup_js.mjs"), path], env=dict(os.environ, CORE="wasm"),
-                          check=True, capture_output=True, text=True).stdout.split("\n")
-swa = swasm(os.path.join(BUILD, "setup.txt"))
+# The site's codec (spage, above) on every command: its lines are the page's
+# own JavaScript codec's as recorded, to the character, throws and
+# unreadable included.
 check("the site's codec, compiled, on all %d commands: the page's lines to the character" % len(scmds),
       swa == sjs, next(("line %d: %s | %s" % (i, a[:80], b[:80]) for i, (a, b) in enumerate(zip(swa, sjs)) if a != b), ""))
 swrong = os.path.join(BUILD, "setup_wrong.txt")
 with open(swrong, "w", encoding="utf-8") as f:
     f.write("\n".join(c.replace('"freq":330', '"freq":331') for c in scmds) + "\n")
-check("and against the commands with a frequency a hertz higher", swasm(swrong) != sjs)
+check("and against the commands with a frequency a hertz higher", spage(swrong) != sjs)
 
 golden.section("the clock", "clock")
 # The page's tempo, bar, tap, MIDI clock and locked oscillators, lifted by
@@ -2918,8 +2939,7 @@ cexe = build("clock_cpp")
 def cboth(text, name="clock_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "clock_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("clock", path).stdout
     return js, subprocess.run([cexe, path], check=True, capture_output=True, text=True).stdout
 def crun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
 def jittered_ticks(start, bpm, n, seed=7):
@@ -3102,8 +3122,7 @@ lvexe = build("signal_cpp")
 def lvboth(text, name="signal_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "signal_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("signal", path).stdout
     return js, subprocess.run([lvexe, path], check=True, capture_output=True, text=True).stdout
 def lvrun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
 lvruns = [
@@ -3178,8 +3197,7 @@ cpexe = build("capture_cpp")
 def cpboth(text, name="capture_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "capture_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("capture", path).stdout
     return js, subprocess.run([cpexe, path], check=True, capture_output=True, text=True).stdout
 def cprun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
 TONE = ["signal 40000", "add 0 sine 0.5 220 0", "add 1 sine 0.3 330 1"]
@@ -3350,8 +3368,7 @@ def bmboth(text, name="beam_one.txt"):
     with open(path, "w") as f: f.write(text)
     # With a time limit: the walk once took a hundred million steps over one
     # loud sample, and a hang should fail the check rather than the suite.
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "beam_js.mjs"), path], check=True,
-                        capture_output=True, text=True, timeout=300).stdout
+    js = golden.recorded("beam", path).stdout
     return js, subprocess.run([bmexe, path], check=True, capture_output=True, text=True, timeout=300).stdout
 bmruns = [
     # The figure: each level of the beam, one the page has no ramp for, the
@@ -3525,8 +3542,7 @@ pcexe = build("picture_cpp")
 def pcboth(text, name="picture_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("picture", path).stdout
     return js, subprocess.run([pcexe, path], check=True, capture_output=True, text=True).stdout
 def pcrun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
 def pcellipse(cx, cy, rx, ry, n=48, turn=0.0):
@@ -3701,25 +3717,18 @@ for i, (name, _) in enumerate(pcruns):
     check("%s: %d commands, the same grid, moments, meter and sources" % (name, pclines[i]), d is None, d or "")
 pcbad = [n for i, (n, _) in enumerate(pcruns) if n.startswith("random-") and kdiff(pcslice(pcjs, i), pcslice(pccpp, i))]
 check("30 random sequences of 200 commands, the same grid, moments, meter and sources", not pcbad, ", ".join(pcbad))
-# The compiled core's picture engine (5d), the one the site now runs, through
-# the same runs: made as the page makes it, from the module the page carries,
-# and driven through the page's own wrappers. Its output is the page's to the
-# character, which is stronger than the tolerance and is what it gave.
-def pcwasm(path):
-    return subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), path], env=dict(os.environ, CORE="wasm"),
-                          check=True, capture_output=True, text=True).stdout
-pcwa = pcwasm(os.path.join(BUILD, "picture.txt"))
-check("the site's picture engine, compiled, through every run: the page's output to the character, and the core's to %g" % TOL,
-      pcwa == pcjs and kdiff(pcwa, pccpp) is None,
-      "%d lines; first difference from the page %r" % (len(pcwa.split("\n")),
-       next((i for i, (x, y) in enumerate(zip(pcwa.split("\n"), pcjs.split("\n"))) if x != y), None)))
 # The null: the runs with every persistence a hundredth more, which the
-# comparison has to see.
+# comparison has to see. (Until stage 5's step 6 the site's picture engine,
+# compiled and driven through the page's own wrapper on the main thread, was
+# held to the page's here too; the main thread runs no picture since 5b, and
+# the wrapper went with the page's engine. The instrument's picture, compiled,
+# is "the instrument, compiled" below.)
 pcbent = os.path.join(BUILD, "picture_bent.txt")
 with open(pcbent, "w") as f:
     f.write(re.sub(r"^persist ([0-9.]+)$", lambda m: "persist %r" % (float(m.group(1)) + 0.01) if float(m.group(1)) > 0 else m.group(0),
                    pctext, flags=re.M))
-check("and the comparison fails against the runs with every persistence a hundredth more", kdiff(pcwasm(pcbent), pcjs) is not None)
+pcbentcpp = subprocess.run([pcexe, pcbent], check=True, capture_output=True, text=True).stdout
+check("and the comparison fails against the runs with every persistence a hundredth more", kdiff(pcbentcpp, pcjs) is not None)
 
 # Each layer's picture (P6): the page's layerPictures - each layer's grid,
 # meter, values, stage and hold, and layerPush, whose sound each picture
@@ -3788,24 +3797,17 @@ for i, (name, _) in enumerate(lpruns):
     check("%s: %d commands, each layer's grid, meter, values, stage, hold and push the page's" % (name, lplines[i]), d is None, d or "")
 lpbad = [n for i, (n, _) in enumerate(lpruns) if n.startswith("random-") and kdiff(lpslice(lpjs, i), lpslice(lpcpp, i))]
 check("20 random sequences of 150 commands, each layer's picture the page's", not lpbad, ", ".join(lpbad))
-lpwa = pcwasm(os.path.join(BUILD, "layer_pictures.txt"))
-# To the tolerance, not the character: one random run turns layer A's figure
-# by an angle whose cosine the compiled core's library and V8's differ on in
-# the last bit (as ILIBM below says of the instrument), and the signed area
-# carries it - 0.067803049880756541 against ...527, 1.4e-17 apart, one unit in
-# the last place, where TOL is 1e-12. The shared screen's runs
-# happen never to turn by such an angle.
-lpsame = sum(1 for x, y in zip(lpwa.split("\n"), lpjs.split("\n")) if x == y)
-check("and the site's compiled picture engines as the layers' screens: the page's output to %g, %d of %d lines to the character"
-      % (TOL, lpsame, len(lpjs.split("\n"))), kdiff(lpwa, lpjs) is None and lpsame > 0.9 * len(lpjs.split("\n")),
-      kdiff(lpwa, lpjs) or "")
-# The null at that tolerance: the page's runs with each figure laid into the
-# other layer's screen, A and B swapped, which the comparison has to see.
+# (The site's compiled picture engines as the layers' screens, through the
+# page's own wrapper on the main thread, were held to these here too until
+# stage 5's step 6: the main thread runs no picture since 5b, and the wrapper
+# went with the page's engine.)
+# The null: the page's runs with each figure laid into the other layer's
+# screen, A and B swapped, which the comparison has to see.
 lpswapped = os.path.join(BUILD, "layer_pictures_swapped.txt")
 with open(lpswapped, "w") as f:
     f.write(re.sub(r"^lpoly ([01]) ", lambda m: "lpoly %d " % (1 - int(m.group(1))), lptext, flags=re.M))
-lpsw = subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), lpswapped], check=True, capture_output=True, text=True).stdout
-check("and the comparison fails at that tolerance against the page with A's and B's figures swapped", kdiff(lpwa, lpsw) is not None)
+lpsw = golden.recorded("picture", lpswapped).stdout
+check("and the comparison fails against the page with A's and B's figures swapped", kdiff(lpcpp, lpsw) is not None)
 def lpnull(name, old, new, what):
     text = dict(lpruns)[name]
     assert old in text, old
@@ -3990,20 +3992,17 @@ check("a segment from a million pixels off one side to a million off the other l
 check("either side of where the cut begins, a segment from the graticule's left edge lights the same 64 cells",
       cugrid(cu[12]) - cugrid(cu[11]) == 64 and cugrid(cu[11]) == 64, "%s %s" % (cugrid(cu[11]), cugrid(cu[12])))
 # The cut is there for the time a long segment takes, and must not change what
-# it lights: every run above through a copy of the page with the cut taken
+# it lights: every run above through a copy of the core with the cut taken
 # out, line for line the same. A first cut walked the cut part afresh, at a
 # different phase, and the corner-to-corner stroke of the first run lit other
 # cells - which parity could not see, since both sides had changed together.
-with open(os.path.join(HERE, "..", "..", "web", "scope.html")) as f: whole = f.read()
-assert whole.count("  if (steps > 4 * N) {") == 1
-uncut = os.path.join(BUILD, "scope_uncut.html")
-with open(uncut, "w") as f: f.write(whole.replace("  if (steps > 4 * N) {", "  if (false) {"))
+uncut = mutant("picture_cpp", "picture.h", "    if (steps > 4 * N) {", "    if (false) {", "uncut")
 # Every run but the one too long to walk whole.
 near = [i for i, (n, _) in enumerate(pcruns) if n != "far"]
 with open(os.path.join(BUILD, "picture_near.txt"), "w") as f: f.write("".join(pcruns[i][1] for i in near))
-pcuncut = subprocess.run(["node", os.path.join(HERE, "tools", "picture_js.mjs"), os.path.join(BUILD, "picture_near.txt")], check=True,
-                         capture_output=True, text=True, timeout=600, env=dict(os.environ, SCOPE_PAGE=uncut)).stdout
-pcnear = "\n".join(pcslice(pcjs, i) for i in near)
+pcuncut = subprocess.run([uncut, os.path.join(BUILD, "picture_near.txt")], check=True,
+                         capture_output=True, text=True, timeout=600).stdout
+pcnear = "\n".join(pcslice(pccpp, i) for i in near)
 check("every picture run lays the same grid with the long segments cut as walked whole, to the last bit",
       pcuncut.strip() == pcnear.strip(), kdiff(pcnear, pcuncut) or "")
 pcnull("fade", "persist 0.3", "persist 0.31", "a persistence a hundredth longer")
@@ -4134,8 +4133,7 @@ def stext(runs):
 spath = os.path.join(BUILD, "scan.txt")
 with open(spath, "w") as f: f.write(stext(SRUNS))
 sexe = build("scan_cpp")
-def sjs(path): return [row(l) for l in subprocess.run(["node", os.path.join(HERE, "tools", "scan_js.mjs"), path],
-                                                       check=True, capture_output=True, text=True).stdout.splitlines()]
+def sjs(path): return [row(l) for l in golden.recorded("scan", path).stdout.splitlines()]
 scpp = [row(l) for l in subprocess.run([sexe, spath], check=True, capture_output=True, text=True).stdout.splitlines()]
 sjsr = sjs(spath)
 sw = max((worst(a, b) for a, b in zip(sjsr, scpp)), default=inf)
@@ -4343,8 +4341,7 @@ hexe = build("hearing_cpp")
 def hboth(text, name="hearing_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "hearing_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("hearing", path).stdout
     return js, subprocess.run([hexe, path], check=True, capture_output=True, text=True).stdout
 def hrun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
 def hframes(n, ms=16): return ["frame %r" % ms] * n
@@ -4542,8 +4539,7 @@ sexe = build("score_cpp")
 def sboth(text, name="score_one.txt"):
     path = os.path.join(BUILD, name)
     with open(path, "w") as f: f.write(text)
-    js = subprocess.run(["node", os.path.join(HERE, "tools", "score_js.mjs"), path], check=True,
-                        capture_output=True, text=True).stdout
+    js = golden.recorded("score", path).stdout
     return js, subprocess.run([sexe, path], check=True, capture_output=True, text=True).stdout
 def srun(*commands): return "run\n%s\nend\n" % "\n".join(commands)
 def frames_at(start, stop, every): return ["at %r" % t if i == 0 else "frame" for t in range(start, stop, every) for i in (0, 1)]
@@ -4683,16 +4679,19 @@ check("and the comparison fails against the page's lines one command out of step
       kdiff("\n".join(sjs.split("\n")[1:]), "\n".join(scpp.split("\n")[:-1])) is not None)
 
 golden.section("restore", "restore")
-# The page's own `restore`, in a browser (restore_page.py), against
-# scope::restoreSetup: every preset the page ships and random setups, each
-# loaded in turn as the page loads them, and what each leaves in the
-# instrument compared field by field - both layers' tones, the keyboard, the
-# LFOs, the routings, the key, the morph, the plane
+# The page's own `restore` against scope::restoreSetup: every preset the page
+# ships and random setups, each loaded in turn as the page loads them, and
+# what each leaves in the instrument compared field by field - both layers'
+# tones, the keyboard, the LFOs, the routings, the key, the morph, the plane
 # and the echo. A number to 1e-12: a cutoff is `Math.pow` against `std::pow`.
+# The page's side is what its restore left in its own brain, recorded by
+# restore_page.py in a browser the day before stage 5's step 6 deleted that
+# brain (golden/restore.json.gz); the face's own tables - its controls, its
+# bank, its base and its sources - are read off the page now (page_tables.py).
 rexe = build("restore_cpp")
-RTOOL = os.path.join(HERE, "tools", "restore_page.py")
-# This half needs a browser: the page's `restore` writes into its controls.
-# Without Playwright it says so and fails, rather than passing by not running.
+RTOOL = os.path.join(HERE, "tools", "page_tables.py")
+# The tables need a browser. Without Playwright it says so and fails, rather
+# than passing by not running.
 try:
     import playwright  # noqa: F401
 except ImportError:
@@ -4717,9 +4716,9 @@ def rdiff(a, b, path=""):
 def rboth(setups, name):
     path = os.path.join(BUILD, name)
     with open(path, "w", encoding="utf-8") as f: f.write("\n".join(setups) + "\n")
-    page = rpage(path).strip().split("\n")
-    port = subprocess.run([rexe, path, rsources], check=True, capture_output=True, text=True).stdout.strip().split("\n")
-    return page, port
+    out = subprocess.run([rexe, path, rsources], check=True, capture_output=True, text=True).stdout
+    page = golden.recorded("restore_page.py", path, core=[rexe, path, rsources], core_out=out).stdout.strip().split("\n")
+    return page, out.strip().split("\n")
 def rbad(page, port):
     if len(page) != len(port): return ["%d against %d" % (len(page), len(port))]
     out = []
@@ -6013,49 +6012,47 @@ vwport = subprocess.run([rexe, vpath, rsources], check=True, capture_output=True
 check("and the comparison fails against a zoom a step further", bool(rbad(vpg, vwport)))
 
 golden.section("the generator in WebAssembly")
-# Stage 5a: the core's generator compiled for the browser, the module the page
-# carries, driven through the page's own `makeWasmCore` - the bridge the
-# worklet uses - and held to the page's JavaScript generator driven the same
-# way, run for run, through what the worklet reads back of a core: the
-# samples, the envelope, the budget, the pitch, and the oscillators as each
-# left them (and the drawing's readings, until G2). The same runs as the whole generator's, the
-# effect's among them, which the effects worklet runs.
+# The core's generator compiled for the browser, the module the page carries,
+# driven through `makeWasmCore` - the bridge the page's worklets drove it by
+# until stage 5's step 6, which moved it to web/tests/compiled_core.js, where
+# the web suites that render the core in a page use it - and held to the
+# native core run for run: the samples, both pairs and B's, and what the
+# worklets read back of a core and generator_cpp prints too (the envelope,
+# the budget, the pitch, Scan's read-heads, the envelope's stage and
+# velocity). The same runs as the whole generator's, the effect's among them.
+# Until step 6 it was held to the page's JavaScript generator driven the same
+# way, and so were the picture-only and B-only calls the main thread and the
+# tone source made, which went with them.
 WBUILD = os.path.join(CORE, "wasm", "build.py")
 WSRC = os.path.join(CORE, "wasm", "scope_wasm.cpp")
-GEN_JS = os.path.join(HERE, "tools", "generator_js.mjs")
-def wrun(mode, path=listed, module=None, pairs=None):
-    env = dict(os.environ, CORE=mode)
-    if module: env["WASM_FILE"] = module
-    if pairs: env["PAIRS"] = pairs
-    return subprocess.run(["node", GEN_JS, path], env=env, check=True, capture_output=True, text=True).stdout.splitlines()
-def wworst(js, wa):
+GEN_WASM = os.path.join(HERE, "tools", "generator_wasm.mjs")
+def wrun(path=listed, module=None):
+    env = dict(os.environ, **({"WASM_FILE": module} if module else {}))
+    return subprocess.run(["node", GEN_WASM, path], env=env, check=True, capture_output=True, text=True).stdout.splitlines()
+def common(line, compiled):
+    """The samples and the readings both sides print, in one order: the
+    envelope, the pitch, the budget's eight, Scan's two heads, the stage and
+    the velocity."""
+    v = row(line)
+    tail = 21 if compiled else 17
+    samples, t = v[:-tail], v[-tail:]
+    if compiled: return samples + [t[0], t[9]] + t[1:9] + t[17:21]
+    return samples + t[0:10] + [t[12], t[13], t[15], t[16]]
+def wworst(wa):
     by = {}
-    for (name, _), a, b in zip(runs, js, wa):
+    for (name, _), a, b in zip(runs, gcpp, wa):
         family = name.split("-")[0]
-        by[family] = max(by.get(family, 0.0), worst(row(a), row(b)))
+        by[family] = max(by.get(family, 0.0), worst(common(a, False), common(b, True)))
     return by
 fresh = subprocess.run([sys.executable, WBUILD, "--check"], capture_output=True, text=True)
 check("the page carries this core, compiled", fresh.returncode == 0, (fresh.stdout + fresh.stderr).strip()[-300:])
-wjs, wwa = wrun("js"), wrun("wasm")
+wwa = wrun()
 fxed = [n for n, r in runs if "fx 1" in r]
 check("every run answered by both, the effect's included: %d runs, %d of the effect" % (len(runs), len(fxed)),
-      len(wjs) == len(wwa) == len(runs) and len(fxed) >= 4)
-wby = wworst(wjs, wwa)
+      len(gcpp) == len(wwa) == len(runs) and len(fxed) >= 4)
+wby = wworst(wwa)
 for family in sorted(wby):
-    check("compiled, %s, the same to %g" % (family, TOL), wby[family] <= TOL, "worst %.3g" % wby[family])
-# The main thread's call (5c): the picture pair only, the heard pair and B's
-# handed over as none, as the JavaScript core is handed null.
-pjs, pwa = wrun("js", pairs="picture"), wrun("wasm", pairs="picture")
-pby = wworst(pjs, pwa)
-check("compiled, asked for the picture alone as the main thread asks, every family the same to %g" % TOL,
-      len(pjs) == len(pwa) == len(runs) and max(pby.values()) <= TOL, "worst %.3g" % max(pby.values()))
-bjs, bwa = wrun("js", pairs="b"), wrun("wasm", pairs="b")
-bby = wworst(bjs, bwa)
-check("and asked for the picture and B's pair as the tone source asks, every family the same to %g" % TOL,
-      len(bjs) == len(bwa) == len(runs) and max(bby.values()) <= TOL, "worst %.3g" % max(bby.values()))
-heardless = [n for (n, r), a, b in zip(runs, wjs, pjs) if "fx 1" not in r and worst(row(a), row(b)) > 0]
-check("and asked for the picture alone, a run with a heard pair or a layer B reads as one without",
-      len(heardless) >= len(runs) // 2, "%d runs" % len(heardless))
+    check("compiled, through the bridge, %s, the native core's to %g" % (family, TOL), wby[family] <= TOL, "worst %.3g" % wby[family])
 # Nulls. The check of the page's copy, against a copy of the page with one
 # character of the module changed.
 wpage = os.path.join(BUILD, "scope_wasm_wrong.html")
@@ -6065,19 +6062,20 @@ with open(wpage, "w", encoding="utf-8") as f: f.write(page_text[:wat] + ("B" if 
 check("and the page's copy is told from a module one character different",
       subprocess.run([sys.executable, WBUILD, "--check", "--page", wpage], capture_output=True).returncode != 0)
 # And the comparison, against modules built from the bridge with one thing
-# wrong in each: a route a thousandth too strong, the oscillators' phases not
-# handed back, a setting given as text dropped.
+# wrong in each: a route a thousandth too strong, the heard pair withheld, a
+# setting given as text dropped. (The oscillators' phases not handed back was
+# a fourth, read against the JavaScript core's; the native core prints none
+# of the worklet's oscillators, and no caller is left that reads them back.)
 def wnull(what, old, new):
     src = open(WSRC).read()
     assert src.count(old) == 1, old
     bad_src, bad_mod = os.path.join(BUILD, "scope_wasm_null.cpp"), os.path.join(BUILD, "scope_wasm_null.wasm")
     with open(bad_src, "w") as f: f.write(src.replace(old, new))
     subprocess.run([sys.executable, WBUILD, "--source", bad_src, "--out", bad_mod], check=True)
-    by = wworst(wjs, wrun("wasm", module=bad_mod))
+    by = wworst(wrun(module=bad_mod))
     check("and the comparison fails against a module with %s" % what, max(by.values()) > TOL,
           ", ".join(f for f in sorted(by) if by[f] > TOL))
 wnull("a route a thousandth too strong", "route.amount = r[4];", "route.amount = r[4] * 1.001;")
-wnull("the oscillators' phases not handed back", "{ l.phase, l.held, l.value }", "{ 0.0, l.held, l.value }")
 wnull("the heard pair withheld from a caller who gave one", "const bool heard = given & 2, pairB = given & 4;",
       "const bool heard = false, pairB = given & 4;")
 wnull("a setting given as text dropped",
@@ -6093,8 +6091,8 @@ def wnull_effect():
     bad_src, bad_mod = os.path.join(BUILD, "scope_wasm_null.cpp"), os.path.join(BUILD, "scope_wasm_null.wasm")
     with open(bad_src, "w") as f: f.write(src.replace(old, new))
     subprocess.run([sys.executable, WBUILD, "--source", bad_src, "--out", bad_mod], check=True)
-    bad = wrun("wasm", module=bad_mod)
-    off = [n for (n, _), a, b in zip(runs, wjs, bad) if n.startswith("effect") and worst(row(a), row(b)) > TOL]
+    bad = wrun(module=bad_mod)
+    off = [n for (n, _), a, b in zip(runs, wwa, bad) if n.startswith("effect") and worst(row(a), row(b)) > TOL]
     check("and every effect run fails against a module that hands the input back", sorted(off) == sorted(fxed), ", ".join(off))
 wnull_effect()
 
@@ -6128,7 +6126,7 @@ def iscript(name, lines):
 def icpp(path): return subprocess.run([iexe, path], check=True, capture_output=True, text=True).stdout.split("\n")
 def ijs(path, module=None):
     env = dict(os.environ, **({"WASM_FILE": module} if module else {}))
-    return subprocess.run(["node", os.path.join(HERE, "tools", "instrument_js.mjs"), path], env=env,
+    return subprocess.run(["node", os.path.join(HERE, "tools", "instrument_wasm.mjs"), path], env=env,
                           check=True, capture_output=True, text=True).stdout.split("\n")
 # The worst sample apart, and the first line that is not a block and differs.
 # Each sample read back as the float it is: nine digits round-trip a float,
@@ -6964,14 +6962,15 @@ inull("the heard pair handed back as the picture pair",
 inull("a state never published", "  if (!instrument->changed()) return -1;", "  return -1;", ["hands", "presets"])
 inull("a switch read as off", "scope::Json::boolean(kind == 2)", "scope::Json::boolean(false)", ["hands"])
 
-golden.section("the limiter, the page's against the core's (5a)")
-# The page's limiter and clamp are the browser's own nodes (a
-# DynamicsCompressorNode and a WaveShaperNode, makeMonitorChain), and since
-# 5a the instrument has them ported (scope/limiter.h), last on its heard
-# pair. Held here as the plan has it: the instrument rendered on the loop's
+golden.section("the limiter, the browser's against the core's (5a)")
+# The page's limiter and clamp were the browser's own nodes (a
+# DynamicsCompressorNode and a WaveShaperNode), and since 5a the instrument
+# has them ported (scope/limiter.h), last on its heard pair; since the page's
+# own sources went in step 6 the nodes are made by limiter_page.py from the
+# numbers the page made them by. Held here as the plan has it: the instrument rendered on the loop's
 # worst - the reverb at full, a crossed split at Scan's top, the phaser at
 # its top - with the pair recorded before its limiter and after it; the
-# page's own chain, made on an OfflineAudioContext in Chromium, fed the pair
+# browser's nodes, made on an OfflineAudioContext in Chromium, fed the pair
 # from before; and the two outputs and the limiters' readings compared.
 # Then what the site does now: the instrument's chain, with no limiter of
 # its own and the backstop for the clamp, fed what the instrument hands out.
@@ -6996,7 +6995,7 @@ for lname, lmode in (("the reverb at full", "reverb"), ("a crossed split at Scan
 for lname, (pre, heard, reds, prepath, heardpath) in lruns.items():
     page, preds = lpage(prepath, "limited")
     apart = float(_np.max(_np.abs(page - heard))) if len(page) == len(heard) else inf
-    check("%s: the page's limiter and clamp on the core's pair make what the core's make, %d samples the same to %g"
+    check("%s: the browser's limiter and clamp on the core's pair make what the core's make, %d samples the same to %g"
           % (lname, len(heard), TOL), apart <= TOL and len(heard) > 500000 and float(_np.max(_np.abs(pre))) > 1.5,
           "worst %.3g, the pair before them peaking at %.3f" % (apart, float(_np.max(_np.abs(pre)))))
     rapart = max(abs(a - b) for a, b in zip(preds, reds)) if len(preds) == len(reds) - 1 or len(preds) == len(reds) else inf
@@ -7013,14 +7012,14 @@ for lname, (pre, heard, reds, prepath, heardpath) in lruns.items():
     late = 2 * 288
     a, b = twice[late:].astype(float), heard[:-late].astype(float)
     gain = 20 * math.log10(float(_np.sqrt(_np.mean(a ** 2) / _np.mean(b ** 2))))
-    check("%s: null: the page's limiter in series with the instrument's would change the sound" % lname,
+    check("%s: null: the browser's limiter in series with the instrument's would change the sound" % lname,
           float(_np.max(_np.abs(a - b))) > 0.01, "%+.2f dB, worst %.3f apart, %.1f dB under the signal"
           % (gain, float(_np.max(_np.abs(a - b))), 10 * math.log10(_np.mean((a - b) ** 2) / _np.mean(b ** 2))))
 # The comparison's own nulls: a page limiter with a release ten per cent long,
 # the core's pair a sample late, and the pair before the limiter.
 lname, (pre, heard, reds, prepath, heardpath) = next(iter(lruns.items()))
 slow, sreds = lpage(prepath, "limited", 0.11)
-check("null: the comparison fails against the page's limiter with a release of 0.11 s",
+check("null: the comparison fails against the browser's limiter with a release of 0.11 s",
       float(_np.max(_np.abs(slow - heard))) > 1e-4 and max(abs(a - b) for a, b in zip(sreds, reds)) > 1e-3)
 page, _ = lpage(prepath, "limited")
 check("null: and against the core's output a sample late", float(_np.max(_np.abs(page[2:] - heard[:-2]))) > 1e-3)
@@ -7041,4 +7040,4 @@ golden.finish()
 print()
 if fails:
     print("FAILED: " + ", ".join(fails)); sys.exit(1)
-print("the C++ core is the page's, sample for sample")
+print("the core holds: to the page's recorded answers, to the face, and to its own numbers")

@@ -1,9 +1,9 @@
 """Write core/include/scope/schema.h out from the page's SETUP_FIELDS.
 
-The table is read the way parity reads DEFAULTS - lifted out of
-web/scope.html by setup_js.mjs, and stringified as the page evaluates it -
+The table is read the way the core's tests read DEFAULTS - lifted out of
+web/scope.html by setup_page.mjs, and stringified as the page evaluates it -
 and written in pieces of 6000 characters, as presets.h is, since the whole
-may outgrow what MSVC takes in one string literal. parity.py holds the
+may outgrow what MSVC takes in one string literal. core_tests.py holds the
 compiled header to the page character for character, so a field, default or
 rule changed on the page and not written out here is a failure there rather
 than a drift.
@@ -23,7 +23,7 @@ TOP = """// The setup's fields: SETUP_FIELDS in web/scope.html as the page evalu
 // each rule means, beside the table; setup.h reads them the same way.
 //
 // Written out by core/tests/tools/write_schema.py, never by hand, and held
-// to the page character for character by core/tests/parity.py. That is what
+// to the page character for character by core/tests/core_tests.py. That is what
 // it is for: the menus and ranges were written into restore.h once each,
 // beside the page's, and after the kaleidoscope's removal layer B's snap
 // here still offered 1 to 4 bits that the page had dropped (7 Nov).
@@ -45,7 +45,7 @@ def page_fields():
         f.write("fields\n")
         path = f.name
     try:
-        out = subprocess.run(["node", os.path.join(HERE, "setup_js.mjs"), path], check=True,
+        out = subprocess.run(["node", os.path.join(HERE, "setup_page.mjs"), path], check=True,
                              capture_output=True, text=True).stdout.strip()
     finally:
         os.unlink(path)

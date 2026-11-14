@@ -1,42 +1,60 @@
-"""Golden files: what the page's JavaScript produced for each parity scenario,
-kept in core/tests/golden/ so the core can be held to it once the JavaScript
-is gone (stage 5, step 2 of plugin/STAGE5-PLAN.md; core/tests/golden/README.md).
+"""Golden files: what the page's JavaScript answered for each scenario of the
+port-is-the-original job, recorded while it still existed (stage 5, step 2),
+and what the page's own `restore` left behind for every setup parity loads
+(recorded in step 6, the day before the page's brain was deleted). They are
+in core/tests/golden/, and they are what the core is held to now that there
+is no JavaScript engine to compare it with. core/tests/golden/README.md is
+the short version of what follows.
 
-Parity runs the JavaScript the same way everywhere: `node tools/<x>_js.mjs
-<scenario file>`, and the core's tool `<x>_cpp` on the same file. So this sits
-at that one point rather than at parity's two hundred comparisons: it is put in
-place of `subprocess.run` for parity's run, sees every call, and acts only on
-the JavaScript tools inside a section that has a golden file. The decision
-could have gone the other way - a helper called by name at each of the 28
-sites - which reads more plainly but is 28 edits in a 6,900-line file, any of
-which could be missed silently; a missed site here shows as a run the file has
-never seen, which the three-way mode fails on.
+Each section of the core's tests that has a file names it (`section`), and
+asks for each scenario's recorded answer by the tool that recorded it
+(`recorded`): `recorded("envelope", path)` is what `envelope_js.mjs` printed
+for that scenario, read from envelope.json.gz, in the place where the core's
+tests used to run the JavaScript. The core's own tool is then run on the same
+scenario as before, and the section's own comparison holds the two to 1e-12;
+each such pair is also compared here, directly, so a difference is named by
+scenario, line and value (`_against_core`).
 
-Three modes, from parity's command line:
+Two modes, from the command line:
 
-  (none)           all three: the page's JavaScript runs as before and parity
-                   compares it with the core as before; every run is also
-                   compared with its golden file, and the core's answer on the
-                   same scenario is compared with the file directly.
-  --golden         the core against the files: the JavaScript tools are not
-                   run in a golden section; parity's comparisons are handed
-                   the file's text in their place, or, for a run kept as a
-                   sketch, the core's own answer, which the sketch then holds.
-  --write-golden   regenerate: as (none), then each section's file is written
-                   only if every check in that section passed - that is, only
-                   if the JavaScript and the core agree on it - so a
-                   regenerated file is never merely believed.
+  (none)           the core against the files. A scenario the file has no run
+                   for fails, naming it: either a check was changed, or the
+                   sound is meant to change and the files are to be written.
+  --write-golden --because "WHY"
+                   the files written from the core's own answers, for a change
+                   of sound that is meant. There is no page left to confirm
+                   the new answers, as there was until step 6, so the guard is
+                   this: the change must be named, and the name is kept - each
+                   rewrite appends a line to the README's log with the date,
+                   the reason and what moved - so a regenerated file is never
+                   anonymous, and its reason sits beside it in the diff. A
+                   section is refused if any of its own checks failed: with the
+                   files out of the way those are the checks of what the sound
+                   should be and their nulls, and a change that breaks one of
+                   them is not the change that was meant. A section whose runs
+                   did not move rewrites nothing.
+
+The decision could have gone the other way - refusing a rewrite unless every
+run in it moved by less than some bound, say - but a bound would stop the
+changes worth making and pass the small wrong ones; a reason that has to be
+written down puts the judgement where it belongs, with whoever meant the
+change, and leaves it on the record.
 
 A run is kept whole when its output is under SKETCH_OVER characters or
-compresses to under KEEP_WHOLE times its sketch, and as a sketch otherwise (`sketch`, below): the generator's 130 runs alone are 95 MB of
-digits, and whole the files came to 75 MB gzipped.
+compresses to under KEEP_WHOLE times its sketch, and as a sketch otherwise
+(`sketch`, below): the generator's 130 runs alone are 95 MB of digits. A run
+kept as a sketch cannot be handed to a section's comparison as text, so for
+those the core's own answer is compared with the sketch here and handed on,
+and the section's comparison sees the core against itself: the sketched
+sections rest wholly on the comparison here, which is why it is a check of
+its own and null-tested at the end of every run.
 
-A file is keyed by the tool and a hash of the scenario's text (with the
-checkout's paths taken out, so it is the same file in any checkout), not by
-the scenario's file name: parity reuses names like `one.txt` for many runs.
-Runs on a page parity broke on purpose (SCOPE_PAGE) or on the compiled module
-(CORE) pass through untouched: the first are nulls of the JavaScript
-comparison and go with it, the second are the face-and-core job.
+A file is keyed by the recording tool and a hash of the scenario's text (with
+the checkout's paths taken out, so it is the same file in any checkout), not
+by the scenario's file name: the tests reuse names like `one.txt` for many
+runs. The tools' names are those of the JavaScript runners that recorded them
+(`envelope_js.mjs`, deleted in step 6) and `restore_page.py`, kept as they
+were written so that no file had to be rewritten when the runners went.
 """
 import gzip, hashlib, json, math, os, re, subprocess
 
@@ -155,8 +173,19 @@ def sketch_diff(gold, text, tol, inp=None):
             return said + where
     return None
 
+def canonical(text):
+    """A run of JSON lines with each object's keys in order: the page wrote its
+    restore's lines in the order its objects held their keys, restore_cpp in
+    its own, and the restore sections read them field by field."""
+    out = []
+    for line in text.split("\n"):
+        try: out.append(json.dumps(json.loads(line), sort_keys=True, separators=(",", ":"), ensure_ascii=False) if line.strip() else line)
+        except ValueError: out.append(line)
+    return "\n".join(out)
+
 def against(entry, text, tol, inp=None):
     """A run's output against its golden entry, in whichever form it is kept."""
+    if "output" in entry and entry.get("tool") in WHOLE_TOOLS: return diff(canonical(entry["output"]), canonical(text), tol, inp)
     if "output" in entry: return diff(entry["output"], text, tol, inp)
     return sketch_diff(entry["sketch"], text, tol, inp)
 
@@ -176,33 +205,39 @@ class Golden:
         self.dir = os.path.join(here, "golden")
         self.build = os.path.join(os.path.dirname(here), "build", "parity")
         self.paths = [os.path.dirname(here), here]
-        self.off = os.environ.get("GOLDEN_OFF") == "1"   # time parity as it was: headers only, no file work
-        self.mode = "golden" if "--golden" in argv else "write" if "--write-golden" in argv else "three"
+        self.mode = "write" if "--write-golden" in argv else "check"
+        self.because = None
+        if "--because" in argv:
+            at = argv.index("--because")
+            self.because = argv[at + 1].strip() if at + 1 < len(argv) else ""
+        if self.mode == "write" and not self.because:
+            raise SystemExit('--write-golden needs --because "what changed in the sound, and why": with no page left to '
+                             "confirm the core's new answers, the reason is the guard, and it is kept in "
+                             "core/tests/golden/README.md's log")
         self.tol, self.check, self.fails = tol, check, fails
         self.slug = None          # the golden file of the section now running, or None
         self.started = {}         # slug -> how many checks had failed when it began
         self.dirty = set()        # slugs a check failed in, which --write-golden refuses
-        self.runs = {}            # slug -> {key: entry}, every JavaScript run this time, whole
+        self.runs = {}            # slug -> {key: entry}, every run asked for this time, with the core's answer when written
         self.files = {}           # slug -> {key: entry}, as loaded
-        self.wrong = {}           # slug -> [what differed], the file against the JavaScript
         self.cwrong = {}          # slug -> [what differed], the core against the file
         self.pairs = {}           # slug -> runs the core was compared with the file on directly
-        self.served = {}          # input path -> (key, entry or None, scenario lines), for the core's run after
-        self.core_seen = {}       # input path -> (key, tool, output), for a JavaScript run after the core's
+        self.served = {}          # input path -> (key, entry, scenario lines), for the core's run after
+        self.core_seen = {}       # input path -> (tool, output), the core's last run, for a recorded run asked for after it
         subprocess.run = self.run
 
     # --- sections -----------------------------------------------------------
     def section(self, name, slug=None):
-        if self.off: print("\n--- %s ---" % name); return
-        """Parity's section heading. `slug` names the golden file the section's
-        JavaScript runs belong to; a section of the face-and-core job has none."""
+        """A section's heading. `slug` names the golden file its recorded runs
+        are in; a section of the face-and-core job, or of the core's own
+        numbers, has none."""
         if slug != self.slug: self._close()
         print("\n--- %s ---" % name)
         if slug and slug != self.slug:
             self.slug = slug
-            self.started[slug] = len(self.fails)
-            for d, v in ((self.runs, {}), (self.wrong, []), (self.cwrong, []), (self.pairs, 0)): d.setdefault(slug, v)
-            self.files[slug] = self._load(slug)
+            self.started.setdefault(slug, len(self.fails))
+            for d, v in ((self.runs, {}), (self.cwrong, []), (self.pairs, 0)): d.setdefault(slug, v)
+            if slug not in self.files: self.files[slug] = self._load(slug)
 
     def _close(self):
         s = self.slug
@@ -211,30 +246,26 @@ class Golden:
         if len(self.fails) > self.started[s]: self.dirty.add(s)
         if self.mode == "write": return
         runs, held = self.runs[s], self.files[s]
-        missing = [k for k in runs if k not in held]
         unused = [k for k in held if k not in runs]
         named = lambda d, ks: ["%s on %s" % (d[k]["tool"], d[k]["input"]) for k in ks[:3]]
-        if self.mode == "three":
-            self.check("%s: the golden file agrees with the page's JavaScript on all %d runs" % (s, len(runs)),
-                       not self.wrong[s] and not missing,
-                       "; ".join(self.wrong[s][:3] + ["not in the file: " + n for n in named(runs, missing)]))
-        self.check("%s: and holds no run parity no longer makes (%d held)" % (s, len(held)), not unused,
+        self.check("%s: the golden file holds no run the tests no longer ask for (%d held)" % (s, len(held)), not unused,
                    "; ".join(named(held, unused)))
         self.check("%s: the core against the golden file, directly, on %d runs" % (s, self.pairs[s]),
                    self.pairs[s] > 0 and not self.cwrong[s], "; ".join(self.cwrong[s][:3]))
 
     def finish(self):
-        if self.off: return
-        """At the end of parity: close the last section, null-test the
-        comparison and, with --write-golden, write each clean section's file."""
+        """At the end of the core's tests: close the last section, and either
+        null-test the comparison or, with --write-golden, write each clean
+        section's file and log why."""
         self._close()
         if self.mode != "write":
             self._nulls(); return
         os.makedirs(self.dir, exist_ok=True)
+        wrote = []
         for s, runs in self.runs.items():
             if s in self.dirty:
-                print("  REFUSED  %s: a check failed in its section, so the JavaScript and the core do not agree "
-                      "on it; its file is left as it was" % s)
+                print("  REFUSED  %s: a check of its own failed, so this is not the change that was meant; "
+                      "its file is left as it was" % s)
                 continue
             old = self.files.get(s, {})
             changed = [k for k in runs if k not in old or against(old[k], runs[k]["output"], 0.0) is not None]
@@ -242,11 +273,27 @@ class Golden:
             if not changed and not gone and os.path.exists(self._file(s)):
                 print("  KEPT     %s: %d runs, unchanged" % (s, len(runs))); continue
             self._save(s, runs)
+            wrote.append("%s (%d of %d runs new or changed, %d dropped)" % (s, len(changed), len(runs), len(gone)))
             print("  WROTE    %s: %d runs, %d new or changed, %d dropped, %d bytes"
                   % (s, len(runs), len(changed), len(gone), os.path.getsize(self._file(s))))
             for k in changed[:5]:
                 said = against(old[k], runs[k]["output"], 0.0) if k in old else "new"
                 print("             %s on %s: %s" % (runs[k]["tool"], runs[k]["input"], said))
+        if wrote: self._log(wrote)
+
+    def _log(self, wrote):
+        """A line in the README's log for every rewrite: when, why, and what moved."""
+        import datetime
+        readme = os.path.join(self.dir, "README.md")
+        with open(readme, encoding="utf-8") as f: text = f.read()
+        mark = "## The log\n"
+        if mark not in text: text = text.rstrip("\n") + "\n\n" + mark + "\n"
+        line = "- %s: %s Rewrote %s.\n" % (datetime.date.today().isoformat(), self.because.rstrip(".") + ".", "; ".join(wrote))
+        body = text.rstrip("\n")
+        # A blank line after the log's heading paragraph, none between its entries.
+        sep = "\n" if body.splitlines()[-1].startswith("- ") else "\n\n"
+        with open(readme, "w", encoding="utf-8") as f: f.write(body + sep + line)
+        print("  LOGGED   in core/tests/golden/README.md: " + line.strip())
 
     def _nulls(self):
         """The comparison's own nulls, on real runs from the files: one value
@@ -261,8 +308,8 @@ class Golden:
             e = next((e for f in self.files.values() for e in f.values() if form in e and len(e.get("output", "x" * 300)) > 200), None)
             run = self.runs.get(next((s for s, f in self.files.items() if e and e in f.values()), None), {})
             key = e and e["tool"] + ":" + e["hash"]
-            if self.mode == "three": text = run.get(key, {}).get("output")
-            else: text = e and e.get("output") or run.get(key, {}).get("output")
+            # A sketch has no text of its own: the core's answer on that run, which the sketch held.
+            text = e and e.get("output") or run.get(key, {}).get("output")
             self.check("null: the files hold a run kept %s to null-test, and its text is at hand"
                        % ("whole" if form == "output" else "as a sketch"), text is not None)
             if text is None: continue
@@ -320,78 +367,82 @@ class Golden:
         h = hashlib.sha256(norm.encode("utf-8")).hexdigest()[:20]
         return tool + ":" + h, h, text
 
-    # --- the one point every run goes through --------------------------------
-    def run(self, cmd, *args, **kw):
-        if self.off: return _real_run(cmd, *args, **kw)
+    # --- a recorded run, and the core's after it ------------------------------
+    def recorded(self, tool, path, core=None, core_out=None):
+        """What `tool` recorded for the scenario in `path`, as a finished
+        process whose stdout is that text: in the place where the tests ran
+        the JavaScript. `tool` is the recording runner's stem ("envelope" for
+        envelope_js.mjs) or its whole name ("restore_page.py"); `core` is the
+        core's command on the same scenario, by default its _cpp tool on the
+        path, or `core_out` its output already made. A run kept as a sketch is answered with the core's own output,
+        held to the sketch here; a scenario the file has none of fails,
+        naming it, and is answered with the core's so the section goes on."""
         s = self.slug
-        env = kw.get("env")
-        is_js = (s and isinstance(cmd, (list, tuple)) and len(cmd) == 3 and cmd[0] == "node"
-                 and str(cmd[1]).endswith("_js.mjs")
-                 and not (env and (env.get("CORE") or env.get("SCOPE_PAGE"))))
-        # The page's own restore, in a browser (step 6 records it before the page's brain goes).
-        is_js = is_js or (s and isinstance(cmd, (list, tuple)) and len(cmd) == 3 and str(cmd[1]).endswith("restore_page.py")
-                          and not str(cmd[2]).startswith("--"))
-        if not is_js:
-            r = _real_run(cmd, *args, **kw)
-            self._against_core(s, cmd, r)
-            return r
-        before = self.core_seen.pop(cmd[2], None)
-        tool, path = os.path.basename(cmd[1]), cmd[2]
-        key, h, text = self._key(tool, path)
+        assert s, "a recorded run outside a section with a golden file"
+        name = tool if "." in tool else tool + "_js.mjs"
+        key, h, text = self._key(name, path)
         entry = self.files[s].get(key)
         inp = text.split("\n")
-        name = os.path.basename(path)
-        if self.mode == "golden":
-            core = os.path.join(self.build, tool[:-len("_js.mjs")] + "_cpp")
-            if entry is None:
-                self.check("%s: the golden file has a run of %s on %s" % (s, tool, name), False,
-                           "the scenario is new or has changed: regenerate with parity.py --write-golden")
-                r = _real_run(cmd, *args, **kw)
-            elif "output" in entry:
-                r = subprocess.CompletedProcess(cmd, 0, entry["output"], "")
-                self.served[path] = (key, entry, inp)
-                if before and before[0] == key: self._pair(s, entry, before[1], before[2], name, inp)
+        base = os.path.basename(path)
+        cmd = core or [os.path.join(self.build, tool + "_cpp"), path]
+        def own():
+            if core_out is not None: return core_out, None
+            c = _real_run(cmd, capture_output=True, text=True)
+            return c.stdout if c.returncode == 0 else None, c
+        if self.mode == "write":
+            out, c = own()
+            if out is None: raise SystemExit("the core's %s failed on %s: %s" % (cmd[0], base, c.stderr[-300:]))
+            self.runs[s][key] = dict(tool=name, input=base, hash=h, output=out)
+            return subprocess.CompletedProcess(cmd, 0, out, "")
+        if entry is None:
+            self.check("%s: the golden file has a run of %s on %s" % (s, name, base), False,
+                       'the scenario is new or has changed: if the sound is meant to change, '
+                       '--write-golden --because "why"')
+            out, _ = own()
+            self.runs[s][key] = dict(tool=name, input=base, hash=h, output=out or "")
+            return subprocess.CompletedProcess(cmd, 0, out or "", "")
+        if "output" in entry:
+            self.runs[s][key] = dict(tool=name, input=base, hash=h)
+            before = self.core_seen.pop(path, None)
+            # Scan runs the core first and asks for the recorded run after, on the same file.
+            if core is None and core_out is None and before and before[0] == tool and before[2] == key:
+                self._pair(s, entry, tool + "_cpp", before[1], base, inp)
+            elif core is None and core_out is None: self.served[path] = (key, entry, inp)
             else:
-                # A sketch cannot be handed to parity's comparison as text, so the
-                # core's own answer is, and the sketch holds that answer here: for
-                # this run parity's comparison is the core against itself, and
-                # what parity reads of the run's meaning it reads of the core's.
-                c = _real_run([core, path], capture_output=True, text=True)
-                said = against(entry, c.stdout, self.tol, inp) if c.returncode == 0 else "the core's tool failed: " + c.stderr[-200:]
-                self.pairs[s] += 1
-                if said: self.cwrong[s].append("%s on %s: %s" % (os.path.basename(core), name, said))
-                r = subprocess.CompletedProcess(cmd, 0, c.stdout, "")
-            self.runs[s][key] = dict(tool=tool, input=name, hash=h, output=r.stdout)
-            return r
+                # A core command of the caller's own (restore's, with the sources' file): run and paired here.
+                out, c = own()
+                self._pair(s, entry, os.path.basename(cmd[0]), out if out is not None else "the core failed: " + c.stderr[-200:], base, inp)
+            return subprocess.CompletedProcess(cmd, 0, entry["output"], "")
+        # A sketch cannot be handed to the section's comparison as text, so the
+        # core's own answer is, and the sketch holds that answer here.
+        out, c = own()
+        said = against(entry, out, self.tol, inp) if out is not None else "the core's tool failed: " + c.stderr[-200:]
+        self.pairs[s] += 1
+        if said: self.cwrong[s].append("%s on %s: %s" % (os.path.basename(cmd[0]), base, said))
+        self.runs[s][key] = dict(tool=name, input=base, hash=h, output=out or "")
+        return subprocess.CompletedProcess(cmd, 0, out or "", "")
+
+    def run(self, cmd, *args, **kw):
+        """Every process the tests start, so the core's run on a scenario whose
+        recorded run was just handed over is compared with the file directly."""
         r = _real_run(cmd, *args, **kw)
-        self.runs[s][key] = dict(tool=tool, input=name, hash=h, output=r.stdout)
-        if entry is not None:
-            said = against(entry, r.stdout, self.tol, inp)
-            if said: self.wrong[s].append("%s on %s: %s" % (tool, name, said))
-        self.served[path] = (key, entry, inp)
-        # Scan runs the core first and the JavaScript after, on the same file.
-        if before and before[0] == key: self._pair(s, entry, before[1], before[2], name, inp)
+        self._against_core(self.slug, cmd, r)
         return r
 
     def _against_core(self, s, cmd, r):
-        """The core's run on a scenario the JavaScript (or its file) just
-        answered: compared with the file directly, so a difference is named by
-        scenario, line and value, not only by the section's own check."""
-        if not s or not isinstance(cmd, (list, tuple)) or len(cmd) != 2 or not isinstance(getattr(r, "stdout", None), str): return
-        path = cmd[1]
-        if getattr(r, "returncode", 1) != 0: return
-        exe = os.path.basename(str(cmd[0]))
+        if not s or self.mode == "write" or not isinstance(cmd, (list, tuple)) or len(cmd) != 2: return
+        if not isinstance(getattr(r, "stdout", None), str) or getattr(r, "returncode", 1) != 0: return
+        path, exe = cmd[1], os.path.basename(str(cmd[0]))
         if not exe.endswith("_cpp"): return
-        tool = exe[:-len("_cpp")] + "_js.mjs"
         if path not in self.served:
-            if os.path.isfile(path): self.core_seen = {path: (self._key(tool, path)[0], exe, r.stdout)}
+            stem = exe[:-len("_cpp")]
+            if os.path.isfile(path): self.core_seen = {path: (stem, r.stdout, self._key(stem + "_js.mjs", path)[0])}
             return
         key, entry, inp = self.served.pop(path)
-        if key.split(":")[0] != tool or self._key(tool, path)[0] != key: return
+        if key.split(":")[0] != exe[:-len("_cpp")] + "_js.mjs" or self._key(key.split(":")[0], path)[0] != key: return
         self._pair(s, entry, exe, r.stdout, os.path.basename(path), inp)
 
     def _pair(self, s, entry, exe, out, name, inp):
-        if entry is None: return
         self.pairs[s] += 1
         said = against(entry, out, self.tol, inp)
         if said: self.cwrong[s].append("%s on %s: %s" % (exe, name, said))

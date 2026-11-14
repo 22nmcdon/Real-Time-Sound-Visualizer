@@ -1,8 +1,8 @@
 """Write core/include/scope/presets.h out from the page's preset library.
 
 The header holds the library as the page evaluates it - JSON.stringify of
-PRESETS, read off the page by restore_page.py - in pieces of 6000 characters,
-since the whole is past what MSVC takes in one string literal. parity.py holds
+PRESETS, read off the page by page_tables.py - in pieces of 6000 characters,
+since the whole is past what MSVC takes in one string literal. core_tests.py holds
 the two together character for character, so a preset changed on the page and
 not written out here is a failure there rather than a drift.
 
@@ -19,7 +19,7 @@ PIECE = 6000
 
 
 def main():
-    text = subprocess.run([sys.executable, os.path.join(HERE, "restore_page.py"), "--library"],
+    text = subprocess.run([sys.executable, os.path.join(HERE, "page_tables.py"), "--library"],
                           check=True, capture_output=True, text=True).stdout.strip()
     if not text.startswith("[[") or ")preset\"" in text:
         sys.exit("the page's library did not come back as JSON: %r" % text[:80])
@@ -30,7 +30,7 @@ def main():
     pieces = "".join('      R"preset(%s)preset",\n' % text[i:i + PIECE] for i in range(0, len(text), PIECE))
     header = header[:start] + pieces + header[end:]
     # The base (P8h), beside the bank: one short literal.
-    base = subprocess.run([sys.executable, os.path.join(HERE, "restore_page.py"), "--base"],
+    base = subprocess.run([sys.executable, os.path.join(HERE, "page_tables.py"), "--base"],
                           check=True, capture_output=True, text=True).stdout.strip()
     if not base.startswith("{") or ")base\"" in base:
         sys.exit("the page's base did not come back as JSON: %r" % base[:80])

@@ -1,18 +1,23 @@
-"""The page's own monitor chain, in a browser, on a sound handed to it
-(stage 5, step 5a): the chain `makeMonitorChain` builds - its limiter and
-clamp as the browser's own nodes - made on an OfflineAudioContext and fed a
-stereo file, so parity can hold the core's port of them (scope/limiter.h) to
-what the page's speakers get, sample for sample.
+"""The browser's limiter, and the page's own monitor chain, on a sound handed
+to them in an OfflineAudioContext (stage 5, step 5a), so the core's tests can
+hold the core's port of Chromium's nodes (scope/limiter.h) to the nodes
+themselves, sample for sample, and the site's chain to passing what the
+instrument limited.
 
     python3 limiter_page.py IN OUT RATE EVERY MODE [RELEASE]
 
 IN is float32 pairs interleaved, as render_cpp records them; OUT gets the
 chain's output the same way, and OUT.json the limiter's reduction read every EVERY frames (a multiple of 128, so each read falls between two
-of the context's quanta). MODE is `limited`, the chain every source had
-before 5a, or `instrument`, the instrument's own since (no limiter, the
-backstop for the clamp). RELEASE, for a null, sets the limiter's release.
-Scope & measure's "heard" is left where the page opens it, before the shaped
-side, so the chain between the input and the limiter is the identity.
+of the context's quanta). MODE is `limited`, the limiter and clamp every
+source of the page's had before 5a - a DynamicsCompressorNode at -3 dB, 20:1,
+no knee, 3 ms and 100 ms, and a WaveShaperNode on the page's clampCurve at
+0.85 and 0.99, no oversampling - made here from those numbers since the
+page's own sources, and their chains, went in stage 5's step 6; or
+`instrument`, the chain the page makes for the instrument now
+(`makeMonitorChain`: no limiter, the backstop for the clamp). RELEASE, for a
+null, sets the limiter's release. Scope & measure's "heard" is left where the
+page opens it, before the shaped side, so the chain before the clamp is the
+identity, and the limiter's chain was that identity and these two nodes.
 """
 import base64, json, os, sys
 from playwright.sync_api import sync_playwright
@@ -32,10 +37,22 @@ RUN = """async ([b64, rate, every, mode, release]) => {
   buf.copyToChannel(l, 0); buf.copyToChannel(r, 1);
   const src = ctx.createBufferSource();
   src.buffer = buf;
-  const chain = makeMonitorChain(ctx, { limited: mode === "limited" });
-  // Out of the page's set, so its frames do not glide this chain's gains while it renders.
-  monitorChains.delete(chain);
-  if (release !== null && chain.limiter) chain.limiter.release.value = release;
+  let chain;
+  if (mode === "limited") {
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
+    limiter.attack.value = 0.003; limiter.release.value = release !== null ? release : 0.1;
+    const clamp = ctx.createWaveShaper();
+    clamp.curve = clampCurve(2048, 0.85, 0.99);
+    clamp.oversample = "none";
+    limiter.connect(clamp); clamp.connect(ctx.destination);
+    chain = { input: limiter, limiter };
+  } else {
+    // (An option the page's own chain took until stage 5's step 6, when every chain became this one; ignored since.)
+    chain = makeMonitorChain(ctx, { limited: false });
+    // Out of the page's set, so its frames do not glide this chain's gains while it renders.
+    monitorChains.delete(chain);
+  }
   src.connect(chain.input);
   const reds = [];
   for (let f = every; f < n; f += every) {

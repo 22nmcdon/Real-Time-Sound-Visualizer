@@ -21,6 +21,8 @@ import numpy as np
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
@@ -56,7 +58,7 @@ CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
   const lfos = [still(), still()];
   if (setup.lfo) Object.assign(lfos[0], setup.lfo);
-  const core = makeGeneratorCore(44100, GEN_SLOTS, lfos);
+  const core = compiledGenerator(44100, GEN_SLOTS, lfos);
   core.set('shape', 'sine'); core.set('amp', 0.9);
   for (const k in setup.tone || {}) core.set(k, setup.tone[k]);
   for (const k in setup.toneB || {}) core.set(k, setup.toneB[k], 1);
@@ -83,6 +85,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -161,7 +164,7 @@ with sync_playwright() as pw:
     print("\n--- the glide is its own ---")
     glide = p.evaluate("""() => {
       const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-      const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+      const core = compiledGenerator(44100, GEN_SLOTS, [still(), still()]);
       core.set('shape', 'sine');
       core.set('qMask', 4095); core.set('qGlideMs', 100); core.set('freq', 220);
       const L = new Float32Array(1), R = new Float32Array(1);

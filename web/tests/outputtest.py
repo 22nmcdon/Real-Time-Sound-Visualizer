@@ -22,7 +22,9 @@ this holds, each against the way it would fail:
   compiled (makeWasmBrain), deterministically on this thread: two of it on
   one setup and one note, the Output at 50 in one - every picture lane the
   same, every heard sample a quarter once the glide has landed - and on the
-  page's own generator (makeGeneratorCore), the same. Each with its null;
+  compiled core's generator through the bridge the page's worklets drove it
+  by (tests/compiled_core.js; the page's own generator until stage 5's step 6),
+  the same. Each with its null;
 - on the site's instrument in its worklet, the Output this browser remembers
   is sent as it connects, and is what the instrument's state says;
 - the meter beside it falls with it.
@@ -31,6 +33,8 @@ import os, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 PAGE = f"file://{ART}/scope.html"
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
@@ -46,6 +50,7 @@ def opened(b, query="", settle=1500, init=None, context=None):
     errors = []
     p.on("pageerror", lambda e: errors.append(str(e)))
     if init: p.add_init_script(init)
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(PAGE + query); p.wait_for_timeout(settle)
     p.evaluate("() => { if (el.helpDialog.open) el.helpDialog.close(); }")
     return p, errors
@@ -88,11 +93,12 @@ INSTRUMENT = """async ([turned, blocks]) => {
   return out;
 }"""
 
-# The page's own generator, twice, the Output a quarter in one: its picture
+# The core's generator, compiled (compiled_core.js; the page's own until stage
+# 5's step 6), twice, the Output a quarter in one: its picture
 # pair and B's against the other's, and its heard pair a quarter once landed.
 GENERATOR = """([gain]) => {
   const lfosOf = () => [{ shape: 'sine', rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 }, { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 }];
-  const a = makeGeneratorCore(48000, GEN_SLOTS, lfosOf()), b = makeGeneratorCore(48000, GEN_SLOTS, lfosOf());
+  const a = compiledGenerator(48000, GEN_SLOTS, lfosOf()), b = compiledGenerator(48000, GEN_SLOTS, lfosOf());
   for (const x of [a, b]) { x.set('shape', 'ramp'); x.set('delayMix', 0.4); x.set('delayMs', 30); x.strike(440, 0.8); }
   b.set('output', gain);
   const out = { picture: true, quarter: true, peak: 0 };
@@ -234,7 +240,7 @@ with sync_playwright() as pw:
           null["picture"] and not null["quarter"] and null["heardApart"] == 0, str({k: v for k, v in null.items() if k != "state"}))
     gen = p.evaluate(GENERATOR, [0.25])
     gnull = p.evaluate(GENERATOR, [1])
-    check("the page's own generator: the picture pair and B's the same to the bit, the heard pair a quarter",
+    check("the compiled generator: the picture pair and B's the same to the bit, the heard pair a quarter",
           gen["picture"] and gen["quarter"] and gen["peak"] > 0.05, str(gen))
     check("null: at unity it is not a quarter", gnull["picture"] and not gnull["quarter"], str(gnull))
     # The meter: what is heard, as the screen's signal at the Output's gain.

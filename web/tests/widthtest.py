@@ -19,7 +19,8 @@ this holds, each against the way it would fail, after the Output's own test:
 - remembered by this browser, and the page still opening at a hundred when
   the browser refuses its storage;
 - what is heard and the picture, on the compiled instrument the page carries
-  and on the page's own generator, played deterministically on this thread:
+  and on the core's generator through the bridge (compiled_core.js; the
+  page's own until stage 5's step 6), played deterministically on this thread:
   at nought the heard pair is one channel twice, to the bit, once the glide
   has landed, and not in the block it was set in (no step); at fifty its side
   is half; at a hundred the heard pair IS the drawn pair, to the bit, which is
@@ -35,6 +36,8 @@ import os, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 PAGE = f"file://{ART}/scope.html"
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
@@ -49,6 +52,7 @@ def opened(b, query="", settle=1500, init=None, context=None):
     errors = []
     p.on("pageerror", lambda e: errors.append(str(e)))
     if init: p.add_init_script(init)
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(PAGE + query); p.wait_for_timeout(settle)
     p.evaluate("() => { if (el.helpDialog.open) el.helpDialog.close(); }")
     return p, errors
@@ -99,11 +103,12 @@ INSTRUMENT = """async ([width, blocks]) => {
   return out;
 }"""
 
-# The page's own generator, twice, the Width at `w` in one: a ramp through the
+# The core's generator, compiled (compiled_core.js; the page's own until stage
+# 5's step 6), twice, the Width at `w` in one: a ramp through the
 # delay, the dyad's pair (its right a quarter-cycle on), so the pair is stereo.
 GENERATOR = """([w]) => {
   const lfosOf = () => [{ shape: 'sine', rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 }, { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 }];
-  const a = makeGeneratorCore(48000, GEN_SLOTS, lfosOf()), b = makeGeneratorCore(48000, GEN_SLOTS, lfosOf());
+  const a = compiledGenerator(48000, GEN_SLOTS, lfosOf()), b = compiledGenerator(48000, GEN_SLOTS, lfosOf());
   for (const x of [a, b]) { x.set('shape', 'ramp'); x.set('phase', Math.PI / 2); x.set('delayMix', 0.4); x.set('delayMs', 30); }
   b.set('stereoWidth', w);
   const out = { picture: true, mono: true, asDrawn: true, side: 0, half: 0, firstMono: true };
@@ -287,7 +292,7 @@ with sync_playwright() as pw:
     gen = p.evaluate(GENERATOR, [0])
     ghalf = p.evaluate(GENERATOR, [0.5])
     gnull = p.evaluate(GENERATOR, [1])
-    check("the page's own generator: the picture pair and B's the same to the bit, the heard pair mono at nought",
+    check("the compiled generator: the picture pair and B's the same to the bit, the heard pair mono at nought",
           gen["picture"] and gen["mono"] and gen["side"] > 0.05, str(gen))
     check("glided there, not stepped: its first block is not mono", not gen["firstMono"], str(gen))
     check("and its side half at fifty", ghalf["picture"] and ghalf["half"] < 1e-5 and not ghalf["mono"], str(ghalf))

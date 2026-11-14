@@ -2,7 +2,7 @@
    lifted from web/scope.html by name), from the module the page carries,
    through the same script as instrument_cpp, which plays the native one. See
    that file for the language and what comes out.
-   Usage: node instrument_js.mjs <script>   (WASM_FILE names another module, SCOPE_PAGE another page) */
+   Usage: node instrument_wasm.mjs <script>   (WASM_FILE names another module, SCOPE_PAGE another page) */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

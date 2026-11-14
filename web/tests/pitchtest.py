@@ -20,6 +20,8 @@ import os, sys, re
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
@@ -35,7 +37,7 @@ def null(name, red, detail=""):
 
 READ = """([tone, n, rate]) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(rate, GEN_SLOTS, [still(), still()]);
+  const core = compiledGenerator(rate, GEN_SLOTS, [still(), still()]);
   core.set('amp', 0.8);
   for (const k in tone) core.set(k, tone[k]);
   const L = new Float32Array(n), R = new Float32Array(n);
@@ -54,6 +56,7 @@ with sync_playwright() as pw:
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)

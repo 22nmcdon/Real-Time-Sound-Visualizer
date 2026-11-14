@@ -47,6 +47,8 @@ import os, re, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 ROOT = os.path.dirname(ART)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
@@ -61,6 +63,7 @@ with sync_playwright() as pw:
     p = b.new_page(viewport={"width": 1400, "height": 900})
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.evaluate("() => { setView('bench'); setBenchTab('space'); }"); p.wait_for_timeout(300)
@@ -413,7 +416,7 @@ with sync_playwright() as pw:
         restore({ fxOrder: order, phaserMix: 80, phaserRate: 500, chorusMix: 60, chorusRate: 220, chorusFeedback: 40,
                   delayMix: 50, delayMs: 10, delayFeedback: 60 });
         const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-        const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+        const core = compiledGenerator(44100, GEN_SLOTS, [still(), still()]);
         core.set('shape', 'sine'); core.set('amp', 0.5);
         const t = genSettings(0);
         for (const k of ['delayMix', 'delayMs', 'delayFeedback', 'chorusMix', 'chorusRate', 'chorusDepthMs', 'chorusMs',

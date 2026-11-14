@@ -1,5 +1,5 @@
 // The instrument (scope/instrument.h) as the plugin plays it, natively,
-// through the same script as instrument_js.mjs, which plays the compiled one
+// through the same script as instrument_wasm.mjs, which plays the compiled one
 // through the page's wrapper. A line of the script is a JSON array:
 //
 //   ["make", rate, block, code]      made, and loaded with that setup code

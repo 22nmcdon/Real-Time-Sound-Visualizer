@@ -1,7 +1,8 @@
-/* The page's setup codes - `DEFAULTS`, `encodeSetup`, `decodeSetup` and
-   `migrateSetup` - lifted out of web/scope.html by name and run in strict
-   mode, as the page's script is, through the commands in a file, one result
-   line per command, as setup_cpp prints them.
+/* The site's setup codes - `DEFAULTS`, `SETUP_FIELDS`, and the compiled
+   core's codec through the page's `makeWasmSetupCodec` - lifted out of
+   web/scope.html by name and run in strict mode, as the page's script is,
+   through the commands in a file, one result line per command, as setup_cpp
+   prints them.
 
      defaults              the defaults, as JSON
      fields                the table they come from, SETUP_FIELDS, as JSON
@@ -12,7 +13,7 @@
    surrogate reads the same from both sides - and not as \uxxxx, which is how
    JSON.stringify writes one, and would make an escaped half of a pair look
    the same as one written out.
-   Usage: node setup_js.mjs <commands> */
+   Usage: node setup_page.mjs <commands>   (SCOPE_PAGE names another copy of the page, WASM_FILE another module) */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,26 +34,22 @@ function definition(name) {
   return page.slice(start + 1, page.indexOf(close, start) + close.length);
 }
 
-/* With CORE=wasm in the environment the codes are made and read by the
-   compiled core's codec (5e), from the module the page carries, as the site
-   now makes them; otherwise by the page's own JavaScript. */
-const MODE = process.env.CORE || "js";
-/* The migration's patterns by their family name, whatever each is called:
-   version 9's CUT_SOURCE, and version 10's beside it (G2), which the page
-   names for itself. A pass that reads one this did not lift would throw here
-   as a name not defined, which is the right failure. */
-const CUTS = [...page.matchAll(/\nconst (CUT_[A-Z_]+) = /g)].map((m) => m[1]);
+/* The codes are made and read by the compiled core's codec (5e), from the
+   module the page carries, through the page's own wrapper, as the site makes
+   them. Until stage 5's step 6 this runner could run the page's own
+   JavaScript codec instead (setup_js.mjs); that went with the page's engine,
+   and what it answered is in core/tests/golden/setup.json.gz. The defaults
+   and the table of fields are read off the page as the page evaluates them,
+   which is the face's own data, and what write_schema.py writes out. */
 const LIFTED = ["RISING", "LAG_MIX_DEFAULT", "TIMEBASE_DEFAULT", "DRAWBAR_DEFAULT", "FULL_SCALE_DB", "STAGE_DEFAULT", "SETUP_FIELDS", "DEFAULTS",
-                "SETUP_VERSION", "encodeSetupHere", "decodeSetupHere", ...CUTS, "PICTURE_AMOUNT_V11", "migrateSetup", "SETUP_AHEAD_OF_CORE", "makeWasmSetupCodec"];
-const WASM_BYTES = MODE === "wasm" && process.env.WASM_FILE ? new Uint8Array(fs.readFileSync(process.env.WASM_FILE))
-  : MODE === "wasm" ? (() => {
+                "SETUP_VERSION", "encodeSetupHere", "SETUP_AHEAD_OF_CORE", "makeWasmSetupCodec"];
+const WASM_BYTES = process.env.WASM_FILE ? new Uint8Array(fs.readFileSync(process.env.WASM_FILE)) : (() => {
   const at = page.indexOf("/* WASM_CORE_BEGIN */\"");
   return Uint8Array.from(Buffer.from(page.slice(at + 22, page.indexOf("\"/* WASM_CORE_END */", at)), "base64"));
-})() : null;
+})();
 const s = new Function("WASM_BYTES", '"use strict";\n' + LIFTED.map(definition).join("\n")
-                       + "\nif (WASM_BYTES) { const c = makeWasmSetupCodec(new WebAssembly.Module(WASM_BYTES));"
-                       + " return { SETUP_FIELDS, DEFAULTS, encodeSetup: c.encode, decodeSetup: c.decode }; }"
-                       + "\nreturn { SETUP_FIELDS, DEFAULTS, encodeSetup: encodeSetupHere, decodeSetup: decodeSetupHere };")(WASM_BYTES);
+                       + "\nconst c = makeWasmSetupCodec(new WebAssembly.Module(WASM_BYTES));"
+                       + " return { SETUP_FIELDS, DEFAULTS, encodeSetup: c.encode, decodeSetup: c.decode };")(WASM_BYTES);
 const ascii = (text) => text.replace(/[^\x00-\x7f]/g, (c) => "{u+" + c.charCodeAt(0).toString(16).padStart(4, "0") + "}");
 
 const out = [];

@@ -3,12 +3,11 @@ tracking and an envelope of its own.
 
 What would go wrong, and what is checked for it:
 
-- the wrong response: at a fixed cutoff the filter is held to Web Audio's
-  own BiquadFilterNode, four types, three cutoffs and three Qs, to 0.01 dB -
-  with the spec's one trap minded, that a low or high pass takes its Q in
-  decibels and the other two as a ratio;
-- a filter that blows up when its cutoff moves: swept at audio rate across
-  the whole range at a Q of 20, it stays finite and bounded;
+- the wrong response, and a filter that blows up when its cutoff moves:
+  core/tests/pieces/vcf.py's since stage 5's step 6 (the core's filter held
+  to Web Audio's biquad law, four types, three cutoffs and three Qs, to
+  0.01 dB, and swept at audio rate at a Q of 20); the renders below are the
+  compiled core's, through tests/compiled_core.js;
 - key tracking that tracks the wrong thing: a saw's harmonics, each divided
   by the same saw unfiltered, are the cookbook response at the cutoff the
   note should have moved it to;
@@ -23,6 +22,8 @@ import numpy as np
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The compiled core's generator, rendered in the page (stage 5, step 6): compiled_core.js.
+COMPILED_CORE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compiled_core.js")
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
@@ -57,7 +58,7 @@ def cookbook_lp(f, fc, q):
 
 CORE = """(setup) => {
   const still = () => ({ shape: 'sine', rate: 0.2, depth: 0, phase: 0, held: 0, value: 0 });
-  const core = makeGeneratorCore(44100, GEN_SLOTS, [still(), still()]);
+  const core = compiledGenerator(44100, GEN_SLOTS, [still(), still()]);
   core.set('amp', 0.5); core.set('interval', 0); core.set('phase', 0);
   core.set('shape', 'ramp');
   for (const k in setup.tone) core.set(k, setup.tone[k]);
@@ -84,6 +85,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
+    p.add_init_script(path=COMPILED_CORE)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -91,74 +93,10 @@ with sync_playwright() as pw:
         out = p.evaluate(CORE, dict({"tone": tone, "n": n, "skip": skip}, **kw))
         return {k: np.asarray(v) for k, v in out.items()}
 
-    print("\n--- against Web Audio's biquad ---")
-    cmp = p.evaluate("""() => {
-      const ctx = new OfflineAudioContext(1, 1, 44100);
-      const types = [[1, 'lowpass'], [2, 'bandpass'], [3, 'highpass'], [4, 'notch']];
-      const freqs = new Float32Array(40);
-      for (let i = 0; i < 40; i++) freqs[i] = 20 * Math.pow(1000, i / 39) * 0.999;
-      const rows = [];
-      for (const [type, name] of types) for (const fc of [200, 1000, 5000]) for (const q of [Math.SQRT1_2, 2, 10]) {
-        const bq = ctx.createBiquadFilter();
-        bq.type = name; bq.frequency.value = fc;
-        // The spec's trap: a low or high pass reads Q in decibels.
-        bq.Q.value = name === 'lowpass' || name === 'highpass' ? 20 * Math.log10(q) : q;
-        const mag = new Float32Array(40), ph = new Float32Array(40);
-        bq.getFrequencyResponse(freqs, mag, ph);
-        // The filter's own response: its impulse response, transformed at
-        // exactly those frequencies.
-        const s = { ic1: 0, ic2: 0 }, g = svfG(fc, 44100), k = 1 / q, n = 16384, h = new Float64Array(n);
-        for (let i = 0; i < n; i++) h[i] = svfStep(s, i === 0 ? 1 : 0, g, k, type);
-        let worst = 0, worstAt = 0;
-        for (let j = 0; j < 40; j++) {
-          let re = 0, im = 0;
-          const w = 2 * Math.PI * freqs[j] / 44100;
-          for (let i = 0; i < n; i++) { re += h[i] * Math.cos(w * i); im -= h[i] * Math.sin(w * i); }
-          const ours = Math.hypot(re, im);
-          const err = mag[j] > 1e-3 ? Math.abs(20 * Math.log10(ours / mag[j])) : Math.abs(ours - mag[j]) * 1000;
-          if (err > worst) { worst = err; worstAt = freqs[j]; }
-        }
-        rows.push([name, fc, Math.round(q * 100) / 100, worst, worstAt]);
-      }
-      return rows;
-    }""")
-    worst = max(cmp, key=lambda r: r[3])
-    print("    36 settings, 40 frequencies each; worst %.5f dB (%s, %d Hz, Q %.2f, at %.0f Hz)"
-          % (worst[3], worst[0], worst[1], worst[2], worst[4]))
-    check("at a fixed cutoff the voice filter is Web Audio's biquad to 0.01 dB, all four types, three cutoffs, three Qs",
-          worst[3] < 0.01, str(worst))
-    # The null: read with the Q the spec does NOT use for a low pass, the
-    # same comparison has to fail - or it was never looking at the Q.
-    trap = p.evaluate("""() => {
-      const ctx = new OfflineAudioContext(1, 1, 44100);
-      const bq = ctx.createBiquadFilter();
-      bq.type = 'lowpass'; bq.frequency.value = 1000; bq.Q.value = 10;
-      const f = new Float32Array([1000]), mag = new Float32Array(1), ph = new Float32Array(1);
-      bq.getFrequencyResponse(f, mag, ph);
-      const s = { ic1: 0, ic2: 0 }, g = svfG(1000, 44100), n = 16384;
-      let re = 0, im = 0;
-      for (let i = 0; i < n; i++) { const y = svfStep(s, i === 0 ? 1 : 0, g, 1 / 10, 1); re += y * Math.cos(2 * Math.PI * 1000 * i / 44100); im -= y * Math.sin(2 * Math.PI * 1000 * i / 44100); }
-      return 20 * Math.log10(Math.hypot(re, im) / mag[0]);
-    }""")
-    check("and a Q handed to a low pass as a ratio, not in decibels, misses by 10 dB at the cutoff: the comparison sees Q",
-          abs(trap) > 5, "%.2f dB" % trap)
-
-    print("\n--- a moving cutoff ---")
-    swept = p.evaluate("""() => {
-      const s = { ic1: 0, ic2: 0 };
-      let worst = 0, finite = true, seed = 7;
-      for (let i = 0; i < 44100; i++) {
-        seed = (seed * 16807) % 2147483647;
-        const x = seed / 2147483647 * 2 - 1;
-        const fc = 50 * Math.pow(360, 0.5 + 0.5 * Math.sin(2 * Math.PI * 3000 * i / 44100));
-        const y = svfStep(s, x, svfG(fc, 44100), 1 / 20, 1);
-        if (!Number.isFinite(y)) finite = false;
-        worst = Math.max(worst, Math.abs(y));
-      }
-      return { worst, finite };
-    }""")
-    check("swept from 50 Hz to 18 kHz three thousand times a second at a Q of 20, it stays finite and bounded",
-          swept["finite"] and swept["worst"] < 50, str(swept))
+    # Against Web Audio's biquad, the Q trap and a cutoff swept every sample
+    # were the page's own svfG and svfStep here, run in the page until stage
+    # 5's step 6 deleted them with its engine: core/tests/pieces/vcf.py holds
+    # the core's filter to the same three claims, each with its null.
 
     print("\n--- key tracking ---")
     rows = []
