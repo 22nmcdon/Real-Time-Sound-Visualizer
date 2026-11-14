@@ -99,14 +99,18 @@ def run(kit):
 
     # --- a routing, on a mono input ---
     # An oscillator on the twist at full, at half a cycle a second, the twist's
-    # slider at nought. Read two and a half seconds on, as the page did.
+    # slider at nought. Read two and a half seconds on, as the page did. The
+    # setup's rate is in hundredths of a hertz (l0r 50, the Rate slider's
+    # units); until batch 6 this said 0.5, which is 0.005 Hz, and the
+    # oscillator had barely moved from its start - the swirl passed on a
+    # twist all but held, not on one swept.
     apart = lambda x, y: float(np.max(np.abs(x - y)))
     xs, ys, _ = draw(kit, {}, mono, seconds=2.5)
-    xt, yt, _ = draw(kit, {"mod": "lfo1>gen.twist@1.000", "l0r": 0.5}, mono, seconds=2.5)
+    xt, yt, _ = draw(kit, {"mod": "lfo1>gen.twist@1.000", "l0r": 50}, mono, seconds=2.5)
     print("    a mono input's diagonal: level %.3f, apart %.4f still and %.3f with the twist swirled" % (np.max(np.abs(xs)), apart(xs, ys), apart(xt, yt)))
     check("an oscillator on the twist swirls a mono input's diagonal off itself, from a slider at nought",
           np.max(np.abs(xs)) > 0.5 and apart(xs, ys) < 1e-3 and apart(xt, yt) > 0.2, "%.3f" % apart(xt, yt))
-    xz, yz, _ = draw(kit, {"mod": "lfo1>gen.twist@0.000", "l0r": 0.5}, mono, seconds=2.5)
+    xz, yz, _ = draw(kit, {"mod": "lfo1>gen.twist@0.000", "l0r": 50}, mono, seconds=2.5)
     null("routed at nought it does not", apart(xz, yz) < 1e-3, "%.4f" % apart(xz, yz))
 
     # --- a burst, and its echoes ---

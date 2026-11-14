@@ -4,10 +4,15 @@ Every preset in the page still names its destination with the old enum's word,
 and every setup code anyone has saved does too. The matrix has to reproduce what
 those did exactly, so most of this is about equivalence rather than novelty.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - its oscillators'
-# shape and rate, set directly - which core/tests/parity.py holds the
-# instrument to, sample for sample. The instrument, the site's default since
-# 5m, is braintest.py's and hosttest.py's.
+# On the default page since stage 5, step 3, batch 6 (14 Nov), where the
+# instrument is the brain; until then on ?brain=js, reading the page's own
+# oscillators with their shape and rate set by hand, its route compiler, and
+# its own microphone. What the page set by hand the instrument never heard,
+# so each check here moves the controls a player moves (the Rate slider in
+# the card's editor, the Mic button) and reads what the instrument sends
+# back. The numbers - the octave sweep, the routing to nowhere, the rate on
+# each source - are core/tests/pieces/mod.py's, rendered offline; batch 3
+# took the matrix's sums and ranges there before them.
 import os, sys
 from playwright.sync_api import sync_playwright
 import corpus
@@ -33,7 +38,7 @@ with sync_playwright() as pw:
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(1500)
     corpus.install(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
@@ -91,16 +96,25 @@ with sync_playwright() as pw:
     # waits for a note since 10 Nov, and these read the tone it drew with none.
     swept = p.evaluate("""async () => {
       loadCorpus('Pure sine'); heldTone();
+      /* heldTone puts the Frequency slider back in the same tick as the
+         note-on, and on the site the slider reaches the instrument first:
+         the note then plays its own 220 Hz, not the slider's 440 (batch 6;
+         alias found the same race in batch 2). Moved again once the note
+         has landed. */
+      await new Promise((r) => setTimeout(r, 200));
+      el.freq.dispatchEvent(new Event('input'));
       state.timebase = 6;                        // 100 ms: enough cycles to measure
-      lfos[0].shape = 'sine'; lfos[0].rate = lfos[0].free = 0.5;
-      /* Written here, the rate is the page's alone: the site's instrument
-         hears a rate from a setup or from the Rate slider, and went on at the
-         setup's 0.2 Hz, a five-second cycle the reads below cover about half
-         of - so the trough was in them or not by where the LFO happened to
-         be, and the check failed one run in three (P8h). Sent, as a preset's
-         would be, so the two-second cycle the reads are timed for is the one
-         playing. */
-      hostSendSetup();
+      /* Half a cycle a second by LFO 1's Rate slider, in its card's editor,
+         which the instrument hears. Until batch 6 the rate was written into
+         the page's lfos by hand and a setup sent after it (P8h: the site's
+         instrument hears a rate from a setup or from the Rate slider, and a
+         rate written alone left it at the setup's 0.2 Hz, a five-second
+         cycle the reads below cover about half of). */
+      setView('bench'); openModCard('lfo1');
+      const shape = document.getElementById('lfoShape0');
+      shape.value = 'sine'; shape.dispatchEvent(new Event('change', { bubbles: true }));
+      const rate = document.getElementById('lfoRate0');
+      rate.value = '50'; rate.dispatchEvent(new Event('input', { bubbles: true }));
       // Patched as a player patches: the card dropped on the knob, and its
       // depth set to the whole of it (setLfoDest and setLfoDepth, which this
       // called until the second review, were the drawer's LFO rows'). One
@@ -136,17 +150,21 @@ with sync_playwright() as pw:
     # the core's matrix, and the pitch the generator plays from what it hands it.
 
     print("\n--- what a routing to nowhere does ---")
+    # "An unknown destination is skipped" counted the page's own `genRoutes`
+    # after its `compileRoutes`, a compiler that feeds nothing on the site;
+    # it is core/tests/pieces/mod.py's since batch 6, the core's matrix
+    # loading the same three routings. What stays is the face's half: the
+    # setup it sends keeps all three.
     stale = p.evaluate("""() => {
       state.modRoutings = [
         { sourceId: 'lfo1', destId: 'gen.phase', amount: 0.5 },
-        { sourceId: 'lfo1', destId: 'filter.cutoff', amount: 0.5 },   // not built yet
+        { sourceId: 'lfo1', destId: 'filter.nothing', amount: 0.5 },   // no such destination
         { sourceId: 'env.nothing', destId: 'gen.freq', amount: 0.5 },
       ];
-      touchRoutings(); compileRoutes();
-      return { compiled: genRoutes.length, kept: state.modRoutings.length };
+      touchRoutings();
+      return { kept: state.modRoutings.length, sent: (snapshot().mod || '').split(';').length };
     }""")
-    check("an unknown destination is skipped", stale["compiled"] == 1, str(stale["compiled"]))
-    check("but not deleted from the setup", stale["kept"] == 3, str(stale["kept"]))
+    check("an unknown destination is not deleted from the setup", stale["kept"] == 3 and stale["sent"] == 3, str(stale))
 
     print("\n--- the setup round trip ---")
     trip = p.evaluate("""() => {
@@ -223,8 +241,11 @@ with sync_playwright() as pw:
     # a source that only ends in "draw.swing", a destination that only begins
     # with "gen.depth". Read through both codecs, the page's own (the
     # reference) and the one the site decodes with, which is the compiled
-    # core's; the second is held to the first. The same code marked 10 is the
-    # null: nothing is taken, so the check can fail.
+    # core's; the second was held to the first. The same code marked 10 is the
+    # null: nothing is taken, so the check can fail. Since batch 6 the three
+    # read the site's codec: the page's own (decodeSetupHere) is a fallback
+    # step 6 deletes, and the row that held the one to the other compared two
+    # codecs, not anything the site does, and went with ?brain=js.
     print("\n--- a code written before the drawings went ---")
     g2 = p.evaluate("""() => {
       const DRAWN = ['figure', 'detail', 'figureRate', 'figText', 'figPath', 'figDrawn', 'swingRate', 'decay',
@@ -240,14 +261,14 @@ with sync_playwright() as pw:
       };
       const old = Object.assign({ v: 9, gen: 'figure', shape: 'square', mod }, fields);
       const out = {};
-      for (const [name, decode] of [['page', decodeSetupHere], ['site', decodeSetup]]) {
+      for (const [name, decode] of [['site', decodeSetup]]) {
         out[name] = { nine: read(decode, old), none: read(decode, { v: 9, shape: 'square' }),
                       ten: read(decode, Object.assign({}, old, { v: 10 })) };
       }
       return out;
     }""")
     G2_KEPT = "lfo1>gen.freq@0.200;xdraw.swing>gen.vcf@0.250;lfo2>gen.depthX@0.400"
-    pg = g2["page"]
+    pg = g2["site"]
     check("a version-9 code with a drawing loads as the waveform, its shape kept, the drawings' fields gone, "
           "and only the drawings' routings dropped, near-misses kept",
           pg["nine"] == {"v": 11, "gen": "wave", "mod": G2_KEPT, "shape": "square", "kept": []}, str(pg["nine"]))
@@ -255,9 +276,6 @@ with sync_playwright() as pw:
     check("and the same code marked version 10 keeps everything, so the pass is what took it",
           pg["ten"]["gen"] == "figure" and len(pg["ten"]["kept"]) == 22 and pg["ten"]["mod"].count(";") == 7,
           str(pg["ten"]))
-    # Red until the page carries a core built with version 10 (core/wasm/build.py).
-    check("and the site's codec, the compiled core's, reads all three as the page's does",
-          g2["site"] == g2["page"], "site %s" % g2["site"])
 
     # The card's editor is the view of the list now (the Sources tab until F4),
     # where the one-destination dropdown was: Add makes a routing, its row's
@@ -325,8 +343,13 @@ with sync_playwright() as pw:
     # counted six cycles of a 2 Hz oscillator that was running perfectly. What
     # this exists to catch is double rate, and twice the elapsed seconds is still
     # the measure of that.
-    def cycles(seconds=2.0):
-        p.evaluate("() => { lfos[0].shape = 'sine'; lfos[0].rate = 2; lfos[0].phase = 0; }")
+    # Since batch 6 the rate is LFO 1's Rate slider and the phase read is the
+    # instrument's, which the page's lfos take from every chunk it posts back
+    # (makeBrainSource's absorb): on ?brain=js both were the page's own, the
+    # rate written by hand. Written by hand here it moves nothing.
+    def cycles(seconds=2.0, slider="200"):
+        p.evaluate("""(v) => { setView('bench'); openModCard('lfo1'); const r = document.getElementById('lfoRate0');
+          r.value = v; r.dispatchEvent(new Event('input', { bubbles: true })); }""", slider)
         last, t0 = p.evaluate("() => [lfos[0].phase, performance.now()]")
         wraps = 0
         for _ in range(int(seconds / 0.04)):
@@ -339,12 +362,21 @@ with sync_playwright() as pw:
 
     p.evaluate("() => { el.srcTone.click(); }"); p.wait_for_timeout(500)
     onTone, tTone = cycles()
-    check("2 Hz is 2 Hz on the tone source", abs(onTone - 2 * tTone) <= 1.5, "%d cycles in %.2f s" % (onTone, tTone))
+    check("2 Hz is 2 Hz on the tone source", p.evaluate("() => playingKind()") == "tone"
+          and abs(onTone - 2 * tTone) <= 1.5, "%d cycles in %.2f s" % (onTone, tTone))
+    p.evaluate("() => { lfos[0].rate = 5; }")
+    byHand, tHand = cycles(1.0, "200")
+    check("and what is counted is the instrument's: the page's own rate written by hand to 5 Hz moves nothing",
+          abs(byHand - 2 * tHand) <= 1.5, "%d cycles in %.2f s" % (byHand, tHand))
+    fast, tFast = cycles(1.0, "400")
+    check("null: the slider at 4 Hz fails the 2 Hz rule", not abs(fast - 2 * tFast) <= 1.5, "%d cycles in %.2f s" % (fast, tFast))
 
     p.evaluate("() => { setView('bench'); setBenchTab('play'); }"); p.wait_for_timeout(150)
     # The microphone, faked, as the source that is not the tone: it was a file
-    # until P5 cut file playback.
-    p.evaluate("() => toMic()"); p.wait_for_timeout(1800)
+    # until P5 cut file playback. Pressed, so the instrument draws the input
+    # (on ?brain=js, toMic(), the page's own microphone, where the per-sample
+    # and per-frame steps had once both run).
+    p.evaluate("() => showControl('srcMic')"); p.locator("#srcMic").click(no_wait_after=True); p.wait_for_timeout(1800)
     onMic, tMic = cycles()
     check("and 2 Hz on the microphone, not 4", p.evaluate("() => playingKind()") == "mic"
           and abs(onMic - 2 * tMic) <= 1.5, "%d cycles in %.2f s" % (onMic, tMic))
@@ -385,7 +417,13 @@ with sync_playwright() as pw:
          where an inert control goes unnoticed. `#spinRate` - the one that was
          actually broken - was only on screen in wireframe. */
       const seen = new Set();
-      const dead = [];
+      const dead = [], unsent = [];
+      /* And each one tells the instrument (batch 6): on the site a control
+         that changed the face's state and nothing the instrument hears would
+         pass the state diff above and move nothing played. */
+      const sent = [];
+      const call = scopeHost.call;
+      scopeHost.call = function (name, ...a) { if (name === 'scopeSlider') sent.push(a[0]); return call.apply(this, [name, ...a]); };
       /* And every Bench tab: a control counts only if it can be seen, and
          since the Bench became tabs only one tab's controls can be at once. */
       setView('bench');
@@ -402,9 +440,11 @@ with sync_playwright() as pw:
         const other = String(Number(was) === hi ? lo : hi);
 
         const before = look();
+        sent.length = 0;
         input.value = other;
         input.dispatchEvent(new Event('input'));
         const after = look();
+        if (!sent.includes(input.id)) unsent.push(row.dataset.modDest + ' (#' + input.id + ')');
 
         input.value = was;
         input.dispatchEvent(new Event('input'));
@@ -413,10 +453,12 @@ with sync_playwright() as pw:
       }
       }
       setBenchTab('play');  // No setView('scope') back: the Scope view went in G4, and the face is the Bench.
-      return { dead, checked: seen.size };
+      scopeHost.call = call;
+      return { dead, unsent, checked: seen.size };
     }""")
     check("every destination's own control drives something",
           inert["dead"] == [], str(inert["dead"]))
+    check("and each one tells the instrument, by its own id", inert["unsent"] == [], str(inert["unsent"]))
     check("and enough of them were reachable to mean it",
           inert["checked"] >= 9, "%d controls" % inert["checked"])
 

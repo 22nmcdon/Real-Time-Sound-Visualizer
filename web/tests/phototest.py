@@ -17,10 +17,24 @@ What would go wrong, and what is checked for it:
 - the reticle's own controls leaking into the page's: its drag setting the
   trigger level, its arrow keys moving the timebase.
 """
-# On ?brain=js (5m): this suite reads the page's own brain - genSet called
-# directly - which core/tests/parity.py holds the instrument to, sample for
-# sample. The instrument, the site's default since 5m, is braintest.py's and
-# hosttest.py's.
+# On the default page since stage 5, step 3, batch 6 (14 Nov), where the
+# instrument is the brain; until then the first thirty checks were on
+# ?brain=js, the figure under each set with genSet and state.persistence by
+# hand, which the instrument never hears. They move the controls a player
+# moves now (the Level, the Interval and Shape menus, the Persistence menu,
+# the display's buttons), so the instrument plays what the face draws.
+#
+# What the face draws into here is the face's own grid (phosphor.grid, the
+# second grid STAGE5-INVENTORY.md section 1 found, the compiled Phosphor on
+# the main thread fed the instrument's lanes): the Persistence's reference,
+# what the photocell's card shows and what step 5 points at the instrument's.
+# So the rows that hold the face to its screen stay - the grid where the
+# beam drew, fading at the screen's rate, Clear, the spectrogram, the
+# reticle's controls, the routing rules and what a code brings back - and
+# the grid's and the photocell's own arithmetic (its fade and its two ends,
+# the compositing, the reading, its smoothness and slew, and the loop held
+# inside its ranges) is core/tests/pieces/photo.py's, on the core's Phosphor
+# and on the instrument rendered offline.
 import os, sys
 from playwright.sync_api import sync_playwright
 import corpus
@@ -87,34 +101,56 @@ with sync_playwright() as pw:
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(1500)
     corpus.old_opening(p)  # the opening it was written against (P8h)
     # Under a note held in Mono: the site waits for one since 10 Nov, and the
     # opening was the tone it drew with none.
     corpus.held_tone(p)
+    # The hands the instrument hears, in place of genSet and state.persistence
+    # written by hand (batch 6): each moves its control and fires its event.
+    p.evaluate("""() => {
+      const fire = (e, v, kind) => { e.value = String(v); e.dispatchEvent(new Event(kind, { bubbles: true })); };
+      window.__level = (v) => fire(el.amp, Math.round(v * 100), 'input');
+      window.__interval = (v) => fire(el.interval, v, 'change');
+      window.__shape = (v) => fire(el.shape, v, 'change');
+      window.__persist = (v) => fire(el.persistence, v, 'change');
+      window.__display = (m) => ({ yt: el.dispYT, xy: el.dispXY, spect: el.dispSpect })[m].click();
+    }""")
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 
     print("\n--- the grid is where the beam drew ---")
-    p.evaluate("""() => { state.beam = 'off'; state.persistence = 0; el.persistence.value = '0'; }""")
+    p.evaluate("""() => { state.beam = 'off'; __persist(0); }""")
     yt = p.evaluate(AGREE, [False])
     print("    Y-T waveform: %d grid cells, %d inked; precision %.3f, recall %.3f"
           % (yt["gridCells"], yt["inkCells"], yt["precision"], yt["recall"]))
     check("in Y-T every lit cell is on the trace and every inked cell is lit",
           yt["gridCells"] > 60 and yt["precision"] > 0.97 and yt["recall"] > 0.97, str(yt))
-    p.evaluate("""() => { setDisplay('xy'); state.persistence = 0; el.persistence.value = '0';
-                          genSet('interval', 7); genSet('shape', 'sine'); }""")
+    p.evaluate("""() => { __display('xy'); __persist(0); __interval(7); __shape('sine'); }""")
     xy = p.evaluate(AGREE, [True])
     print("    X-Y 2:3: %d grid cells, %d inked; precision %.3f, recall %.3f"
           % (xy["gridCells"], xy["inkCells"], xy["precision"], xy["recall"]))
     check("and in X-Y, on a figure that is not its own transpose",
           xy["gridCells"] > 60 and xy["precision"] > 0.97 and xy["recall"] > 0.97, str(xy))
+    # The fixture's own check (batch 6): the 2:3 is the instrument's, set by
+    # the Interval menu it hears - with genSet, as on ?brain=js, it would have
+    # gone on drawing the unison's diagonal, which is its own transpose and
+    # the wrong fixture. The null is that diagonal, the menu at nought.
+    TRANSPOSED = """() => { const N = PHOSPHOR_N, g = phosphor.grid; let lit = 0, both = 0;
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (g[y * N + x] > 0.05) { lit++; if (g[(N - 1 - x) * N + (N - 1 - y)] > 0.05 || g[x * N + y] > 0.05) both++; }
+      return both / Math.max(1, lit); }"""
+    own = p.evaluate(TRANSPOSED)
+    p.evaluate("() => __interval(0)"); p.wait_for_timeout(500)
+    diag = p.evaluate(TRANSPOSED)
+    p.evaluate("() => __interval(7)"); p.wait_for_timeout(500)
+    check("the X-Y figure is the instrument's 2:3, not its own transpose", own < 0.7, "%.3f of its cells have their mirror lit" % own)
+    check("null: the unison's diagonal is", diag > 0.95, "%.3f" % diag)
 
     print("\n--- it fades with the screen ---")
     fade = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      genSet('interval', 0);
-      state.persistence = 0.12; el.persistence.value = '0.12';
+      __interval(0);
+      __persist(0.12);
       await wait(600);
       // The brightest cell of the figure, and the pixel at its middle.
       const N = PHOSPHOR_N, g = phosphor.grid;
@@ -132,10 +168,10 @@ with sync_playwright() as pw:
          graticule line in two runs of four: the line is drawn over the
          trace and never fades, so the canvas read 0.934 a frame there, and
          the pixel was not measuring the trace at all. */
-      genSet('amp', 0);
+      __level(0);
       await wait(1500);
       const bare = ctx.getImageData(x0, y0, cw, cw).data;
-      genSet('amp', 0.55);
+      __level(0.55);
       await wait(800);
       const cell = ctx.getImageData(x0, y0, cw, cw).data;
       let px = -1;
@@ -147,7 +183,7 @@ with sync_playwright() as pw:
       const paperG = 252;
       const inkOf = () => paperG - ctx.getImageData(pxX, pxY, 1, 1).data[1];
 
-      genSet('amp', 0);                       // nothing new is drawn there
+      __level(0);                             // nothing new is drawn there
       /* Until the cell is fading: the lanes already on their way from the
          audio thread were drawn at the old amplitude and lay that cell again
          for 25 to 55 ms. This waited a fixed 60 ms, and with the page a
@@ -163,7 +199,7 @@ with sync_playwright() as pw:
       const f0 = phosphor.frames, g0 = g[at], c0 = inkOf();
       await wait(250);
       const f1 = phosphor.frames, g1 = g[at], c1 = inkOf();
-      genSet('amp', 0.55);
+      __level(0.55);
       return { frames: f1 - f0, grid: [g0, g1], canvas: [c0, c1] };
     }""")
     import math
@@ -174,116 +210,31 @@ with sync_playwright() as pw:
           % (frames, [round(v, 4) for v in fade["grid"]], fade["canvas"],
              None if grid_rate is None else round(grid_rate, 4),
              None if canvas_rate is None else round(canvas_rate, 4)))
-    check("the grid fades by one minus the persistence every frame",
-          grid_rate is not None and abs(grid_rate - 0.88) < 0.005, str(grid_rate))
-    check("which is the rate the screen itself fades at",
+    # "The grid fades by one minus the persistence every frame" is
+    # core/tests/pieces/photo.py's since batch 6, on the core's Phosphor; the
+    # rate is still measured here, the face's grid's, for the screen's.
+    check("the face's grid fades at the rate the screen itself fades at",
           grid_rate is not None and canvas_rate is not None and abs(grid_rate - canvas_rate) < 0.02,
           "grid %s, canvas %s" % (grid_rate, canvas_rate))
 
-    ends = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const sum = () => phosphor.grid.reduce((a, v) => a + v, 0);
-      state.persistence = -1; el.persistence.value = '-1';
-      await wait(300); genSet('amp', 0); await wait(60);
-      const a = sum(); await wait(300); const kept = sum() / a;
-      state.persistence = 0; el.persistence.value = '0';
-      await wait(150);
-      let outside = 0;
-      const N = PHOSPHOR_N;
-      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        if (Math.abs(x - N / 2) > 2 || Math.abs(y - N / 2) > 2) outside += phosphor.grid[y * N + x];
-      }
-      genSet('amp', 0.55);
-      return { kept, outside };
-    }""")
-    check("infinite persistence keeps everything, as the screen does",
-          ends["kept"] > 0.999, "%.4f of it left" % ends["kept"])
-    check("and with persistence off nothing is kept but what was just drawn",
-          ends["outside"] == 0, "%.4f away from the dot" % ends["outside"])
-
-    # The compositing rule, directly: the same dim stroke laid on one cell twice
-    # leaves it dim. With the beam off every stroke is full ink, so a sum and a
-    # maximum agree everywhere and nothing drawn could tell them apart.
-    rule = p.evaluate("""() => {
-      const was = phosphor.grid.slice();
-      phosphor.grid.fill(0);
-      const x = plot.x + plot.w * 0.5, y = plot.y + plot.h * 0.5;
-      phosphorSegment(x, y, x + 1, y, 0.375);
-      phosphorSegment(x, y, x + 1, y, 0.375);
-      phosphorSegment(x, y, x + 1, y, 0.25);
-      const N = PHOSPHOR_N, cell = phosphor.grid[Math.floor(N / 2) * N + Math.floor(N / 2)];
-      phosphor.grid.set(was);
-      return cell;
-    }""")
-    check("a cell keeps the brighter of two strokes, never their sum",
-          rule == 0.375, str(rule))
+    # Gone to core/tests/pieces/photo.py (batch 6): "infinite persistence
+    # keeps everything, as the screen does", "and with persistence off nothing
+    # is kept but what was just drawn" and "a cell keeps the brighter of two
+    # strokes, never their sum" - the page's grid, and its phosphorSegment
+    # called by hand; there on the core's Phosphor, a segment laid and faded.
 
     print("\n--- the photocell reads it ---")
-    p.evaluate("""() => { genSet('interval', 0); state.persistence = 0.12; el.persistence.value = '0.12';
-                          el.photoButton.click(); }""")
+    p.evaluate("""() => { __interval(0); __persist(0.12); el.photoButton.click(); }""")
     p.wait_for_timeout(700)
-    reading = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const N = PHOSPHOR_N, g = phosphor.grid;
-      let x = -1;
-      for (let i = 0; i < N; i++) if (g[32 * N + i] > 0.3) x = i;
-      movePhoto((x + 0.5) / N, 32.5 / N); await wait(900);
-      const ring = photo.value;
-      movePhoto(0.5, 0.5); await wait(900);
-      const centre = photo.value;
-      // Continuity: walked across the ring in tenth-of-a-cell steps.
-      let worst = 0, last = null;
-      for (let k = -30; k <= 30; k++) {
-        const r = phosphorRead((x + 0.5 + k / 10) / N, 32.5 / N);
-        if (last !== null) worst = Math.max(worst, Math.abs(r - last));
-        last = r;
-      }
-      return { ring, centre, worst, registered: MOD_SOURCES.has('photo.1') };
-    }""")
-    print("    on the ring %.3f, at the centre %.3f; the most a tenth-of-a-cell step moved it %.3f"
-          % (reading["ring"], reading["centre"], reading["worst"]))
-    check("on the figure it reads bright", reading["ring"] > 0.5, "%.3f" % reading["ring"])
-    check("and off it, dark", reading["centre"] < 0.02, "%.3f" % reading["centre"])
-    check("the reading moves smoothly as the reticle does - no jump at a cell edge",
-          reading["worst"] < 0.1, "%.3f" % reading["worst"])
-    check("and it is a source while it is on", reading["registered"], "")
-
-    slew = p.evaluate("""async () => {
-      const N = PHOSPHOR_N, g = phosphor.grid;
-      let x = -1;
-      for (let i = 0; i < N; i++) if (g[32 * N + i] > 0.3) x = i;
-      movePhoto(0.5, 0.5);
-      await new Promise((r) => setTimeout(r, 900));
-      const start = performance.now(), trace = [];
-      movePhoto((x + 0.5) / N, 32.5 / N);
-      // 800 ms, of which the last sixteen frames are the settled stretch: at
-      // 500 ms and eight frames the slewed value was sometimes caught still
-      // chasing the ring's flicker in its last frames, 0.054 short once in
-      // ten runs (8 Nov), against a bound of 0.05 meant to catch it stuck
-      // short of the light - halfway would be 0.35.
-      while (performance.now() - start < 800) {
-        await new Promise((r) => requestAnimationFrame(r));
-        trace.push([performance.now() - start, photo.value, photo.raw]);
-      }
-      // Held against the envelope rather than frame to frame: the page steps
-      // on the frame's own clock and this reads on another, and a rate taken
-      // between two nearby reads of two clocks is mostly jitter. By time t it
-      // cannot have risen more than twice t, plus one frame's worth.
-      let over = 0;
-      for (const [t, v] of trace) over = Math.max(over, v - (2 * t / 1000 + 2 * 0.034));
-      const half = trace.find(([, v]) => v >= 0.35);
-      // The ring's brightness flickers from frame to frame as the strokes land
-      // a little differently, so the settled comparison is between averages.
-      const last = trace.slice(-16);
-      const mean = (k) => last.reduce((a, row) => a + row[k], 0) / last.length;
-      return { over, half: half ? half[0] : null, end: mean(1), raw: mean(2) };
-    }""")
-    print("    stepped from dark to bright: halfway after %s ms, reached %.3f of %.3f"
-          % (slew["half"], slew["end"], slew["raw"]))
-    check("it never moves faster than two full swings a second",
-          slew["over"] <= 0 and slew["half"] is not None and slew["half"] >= 150,
-          "over the envelope by %.3f, halfway at %s ms" % (slew["over"], slew["half"]))
-    check("and still gets there", abs(slew["end"] - slew["raw"]) < 0.05, str(slew))
+    # Gone to core/tests/pieces/photo.py (batch 6): "on the figure it reads
+    # bright", "and off it, dark", "the reading moves smoothly as the reticle
+    # does", "it never moves faster than two full swings a second" and "and
+    # still gets there". They read the face's photocell (photo.value) on the
+    # face's grid, which on the site is what its card shows and not what
+    # the instrument's matrix reads (step 5's); there on the core's
+    # PictureSources, and on the instrument's own figure.
+    registered = p.evaluate("() => MOD_SOURCES.has('photo.1')")
+    check("and it is a source while it is on", registered, "")
 
     print("\n--- where it may go, and how hard ---")
     rules = p.evaluate("""() => {
@@ -344,34 +295,11 @@ with sync_playwright() as pw:
     check("and stored back within it, so the control says what applies",
           reach["stored"] == 0.5, str(reach["stored"]))
 
-    print("\n--- a loop that cannot run away ---")
-    loop = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      state.persistence = -1; el.persistence.value = '-1';
-      addRouting('photo.1', 'view.rotate');
-      addRouting('photo.1', 'view.zoom');
-      for (const r of state.modRoutings) if (r.sourceId === 'photo.1') r.amount = 0.5;
-      touchRoutings();
-      let worst = { rotate: 0, zoom: 0, value: 0, grid: 0, nan: false };
-      const until = performance.now() + 4000;
-      while (performance.now() < until) {
-        await wait(50);
-        worst.rotate = Math.max(worst.rotate, Math.abs(state.rotateMod));
-        worst.zoom = Math.max(worst.zoom, Math.abs(state.zoomMod));
-        worst.value = Math.max(worst.value, photo.value);
-        let g = 0;
-        for (const v of phosphor.grid) { if (!Number.isFinite(v)) worst.nan = true; g = Math.max(g, v); }
-        worst.grid = Math.max(worst.grid, g);
-        if (!Number.isFinite(state.rotateMod) || !Number.isFinite(photo.value)) worst.nan = true;
-      }
-      state.modRoutings = state.modRoutings.filter((x) => x.sourceId !== 'photo.1');
-      state.persistence = 0.12; el.persistence.value = '0.12';
-      return worst;
-    }""")
-    print("    four seconds at the ceiling on rotation and zoom, infinite persistence: %s" % loop)
-    check("everything stays inside its range and nothing goes NaN",
-          not loop["nan"] and loop["rotate"] <= 0.5 + 1e-9 and loop["zoom"] <= 0.5 * 8 + 1e-9
-          and loop["value"] <= 1 and loop["grid"] <= 1, str(loop))
+    # Gone to core/tests/pieces/photo.py (batch 6): "everything stays inside
+    # its range and nothing goes NaN" read the page's visual matrix
+    # (state.rotateMod, state.zoomMod) and its photocell for four seconds of
+    # real frames; there the instrument rendered four seconds with the
+    # photocell on its own figure, routed at the ceiling.
 
     print("\n--- its controls are its own ---")
     ctrl = p.evaluate("""async () => {
@@ -411,12 +339,12 @@ with sync_playwright() as pw:
       movePhoto((x + 0.5) / N, 32.5 / N);
       await new Promise((r) => setTimeout(r, 700));
       const before = photo.value;
-      setDisplay('spect'); await frame(); await frame();
+      __display('spect'); await frame(); await frame();
       // At once, not slewed down: the slew would take a third of a second.
       const out = { before, hidden: el.photoReticle.hidden, value: photo.value,
                     grid: phosphor.grid.reduce((a, v) => a + v, 0) };
       await new Promise((r) => setTimeout(r, 300));
-      setDisplay('xy'); await new Promise((r) => setTimeout(r, 100));
+      __display('xy'); await new Promise((r) => setTimeout(r, 100));
       out.back = !el.photoReticle.hidden;
       return out;
     }""")
@@ -429,8 +357,8 @@ with sync_playwright() as pw:
     cleared = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const frame = () => new Promise((r) => requestAnimationFrame(r));
-      setDisplay('xy'); genSet('interval', 0); genSet('amp', 0.55);
-      state.persistence = -1; el.persistence.value = '-1';
+      __display('xy'); __interval(0); __level(0.55);
+      __persist(-1);
       await wait(500);
       // Where the ring is, on the grid and on the canvas.
       const N = PHOSPHOR_N, g = phosphor.grid;
@@ -445,15 +373,15 @@ with sync_playwright() as pw:
         for (let k = 1; k < d.length; k += 4) least = Math.min(least, d[k]);
         return 252 - least;
       };
-      genSet('amp', 0);                         // from now on only a dot is drawn
+      __level(0);                               // from now on only a dot is drawn
       await wait(300);
       const kept = { grid: g[32 * N + x], ink: inkAt() };
       el.clearButton.click();
       await frame(); await frame();
       const after = { grid: g[32 * N + x], ink: inkAt(), setting: el.persistence.value,
                       persistence: state.persistence };
-      genSet('amp', 0.55);
-      state.persistence = 0.12; el.persistence.value = '0.12';
+      __level(0.55);
+      __persist(0.12);
       return { kept, after };
     }""")
     print("    ring under infinite persistence: grid %.2f, ink %d; after Clear: grid %.2f, ink %d, setting %s"
@@ -480,9 +408,11 @@ with sync_playwright() as pw:
       movePhoto(0.3, 0.7);
       const snap = snapshot();
       el.photoButton.click(); movePhoto(0.9, 0.1);
-      restore(snap);
+      /* Loaded as a pasted code is, which sends the instrument the setup
+         (batch 6): restore() called alone changes the face and nothing it plays. */
+      loadCode(encodeSetup(snap));
       const back = { on: photo.on, u: photo.u, v: photo.v, registered: MOD_SOURCES.has('photo.1') };
-      restore({});
+      loadCode(btoa(JSON.stringify({})).replace(/=+$/, ''));
       const old = { on: photo.on };
       return { off, back, old };
     }""")

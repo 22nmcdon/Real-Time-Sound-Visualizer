@@ -1,5 +1,6 @@
 """The matrix's sums, its ranges and the rotation, on the core: modtest.py's
-numbers rows from :157 to :378.
+numbers rows from :157 to :378, and since batch 6 its octave sweep (:130,
+:131), its routing to nowhere (:170) and its oscillator's rate (:429, :436).
 
 These were modtest.py's on `?brain=js` until stage 5, step 3, batch 3 (13
 Nov): the page's LFOs held still by hand (`lfos[0].value = 0.9`), its
@@ -10,10 +11,24 @@ destinations, its `screen` command), the routes the matrix hands the
 generator played by generator_cpp, and capture_cpp's capture turned and its
 lanes read whole (`dump`). The rest of modtest.py - the codec, the editor and
 the face - is the face's and stays in the suite. Each check has its null.
+
+Batch 6 (14 Nov): the octave sweep was the page's capture of its own
+generator, timed in real frames (the suite is serial for it, and it flaked
+under load); the routing to nowhere counted the page's `genRoutes` after its
+own `compileRoutes`; and the rate counted wraps of the page's `lfos[0].phase`,
+set to 2 Hz by hand, over real seconds, on its tone and then its own
+microphone (`toMic`), where a per-sample and a per-frame step had once both
+run. Here the instrument rendered offline (render_cpp): a note held in Mono
+with LFO 1 on the frequency, the pitch read off the heard pair, and the
+oscillator's value read as its routing carries it, every 10 ms of audio, on
+the generator and on an input drawn; and the core's matrix loading a code
+with routings to nothing.
 """
-import math
+import base64, json, math, os
 
 import numpy as np
+
+from pieces.kit import BUILD
 
 from pieces.lane import views
 from pieces.loop import bin_at, matrix, play, sources
@@ -29,6 +44,43 @@ def axis(kit, rotate):
     px, py = x - x.mean(), y - y.mean()
     deg = 0.5 * math.degrees(math.atan2(2 * (px * py).sum(), (px * px).sum() - (py * py).sum()))
     return deg, cap[cap.index("turned") + 1] == "1"
+
+
+def code(setup):
+    return base64.b64encode(json.dumps(dict({"v": 11, "pictureAmount": 0, "midiMode": "mono", "shape": "sine",
+                                              "interval": 0, "l0s": "sine"}, **setup)).encode()).decode().rstrip("=")
+
+
+def sweep(kit, depth, mode="mono"):
+    """A4 held in Mono with LFO 1 at half a cycle a second on the frequency at
+    `depth`: the heard pitch every 50 ms over four seconds, by zero crossings."""
+    os.makedirs(BUILD, exist_ok=True)
+    path = os.path.join(BUILD, "mod-sweep-%r-%s.f32" % (depth, mode))
+    kit.render([["make", 48000, code({"mod": "lfo1>gen.freq@%.3f" % depth, "l0r": 50, "midiMode": mode})], ["midi", 0x90, 69, 127],
+                ["to", 0.2], ["record", "heard", path], ["to", 4.2]])
+    x = np.fromfile(path, "<f4").reshape(-1, 2)[:, 0].astype(float)
+    n = 2400
+    out = []
+    for k in range(0, len(x) - n, n):
+        w = x[k:k + n]
+        ups = np.nonzero((w[:-1] <= 0) & (w[1:] > 0))[0]
+        if len(ups) >= 3:
+            # Interpolated crossings, first to last, over the cycles between.
+            at = [i + w[i] / (w[i] - w[i + 1]) for i in ups]
+            out.append((len(at) - 1) * 48000 / (at[-1] - at[0]))
+    return out
+
+
+def lfo_values(kit, rate, drawn_input=False):
+    """LFO 1's value as its routing carries it, every 10 ms for three seconds."""
+    lines = [["make", 48000, code({"mod": "lfo1>gen.freq@0.100", "l0r": round(rate * 100)})], ["midi", 0x90, 69, 127]]
+    if drawn_input: lines += [["click", "srcMic"], ["input", "sine", 330, 0.5, 330, 0.5]]
+    rows = kit.render(lines + [["every", 0.01, "routed"], ["to", 3.0]])
+    return [(r["t"], float(r["routed"][2])) for r in rows if "routed" in r]
+
+
+def wraps(values):
+    return sum(1 for (_, a), (_, b) in zip(values, values[1:]) if a < 0 <= b)
 
 
 def run(kit):
@@ -63,3 +115,41 @@ def run(kit):
     check("and a source cannot push past the range", v[0][6] == 2, "%.2f against a limit of 2 (screen.h's view.rotate)" % v[0][6])
     null("inside the range it is the depth", v[1][6] == 1, "%.2f" % v[1][6])
     null("and routed, an offset is not zero", v[1][6] != 0)
+
+    # --- one octave each way ---
+    hz = sweep(kit, 1.0)
+    print("    440 Hz swept by LFO 1 at full depth: %.1f to %.1f Hz over %d reads" % (min(hz), max(hz), len(hz)))
+    check("one octave down is reached", 214 < min(hz) < 226, "%.1f Hz" % min(hz))
+    check("one octave up is reached", 856 < max(hz) < 904, "%.1f Hz" % max(hz))
+    # And in Poly, where a held note is a voice and its pitch is the voices'
+    # own path (the mutation pass found Mono alone could not see it).
+    poly = sweep(kit, 1.0, "poly")
+    print("    the same in Poly: %.1f to %.1f Hz" % (min(poly), max(poly)))
+    check("and in Poly, one octave each way", 214 < min(poly) < 226 and 856 < max(poly) < 904,
+          "%.1f to %.1f Hz" % (min(poly), max(poly)))
+    half = sweep(kit, 0.5)
+    null("at half the depth neither is", not (214 < min(half) < 226) and not (856 < max(half) < 904),
+         "%.1f to %.1f Hz" % (min(half), max(half)))
+
+    # --- a routing to nowhere ---
+    # A code whose second routing goes to a destination that does not exist
+    # and whose third comes from a source that does not: only the first
+    # reaches the generator. The null, the same code with real ones.
+    load = lambda text: matrix(kit, sources(["lfo1"], 0.5, "1", "") + ["load " + text, "frame"])[0][1]
+    nowhere = load("lfo1>gen.phase@0.5;lfo1>filter.nothing@0.5;env.nothing>gen.freq@0.5")
+    check("an unknown destination, or source, is skipped", len(nowhere) == 1 and nowhere[0][3] == "2", str(nowhere))
+    real = load("lfo1>gen.phase@0.5;lfo1>gen.freq@0.5;lfo1>gen.ratio@0.5")
+    null("three routings that exist all reach it", len(real) == 3, str(real))
+
+    # --- every oscillator advances exactly once ---
+    for drawn, name in ((False, "on the generator"), (True, "with an input drawn")):
+        v = lfo_values(kit, 2, drawn)
+        worst = max(abs(x - math.sin(2 * math.pi * 2 * t)) for t, x in v)
+        print("    LFO 1 at 2 Hz %s: %d cycles in 3 s, %.1e from sin(2 pi 2 t)" % (name, wraps(v), worst))
+        check("2 Hz is 2 Hz %s: six cycles in three seconds, on the sine's own times" % name,
+              wraps(v) == 6 and worst < 1e-6, "%d, %.1e" % (wraps(v), worst))
+    # The null: the same rule on an oscillator going twice as fast, as one
+    # stepped twice would.
+    double = lfo_values(kit, 4)
+    worst = max(abs(x - math.sin(2 * math.pi * 2 * t)) for t, x in double)
+    null("an oscillator at 4 Hz fails the same rule", not (wraps(double) == 6 and worst < 1e-6), "%d cycles, %.2f off" % (wraps(double), worst))

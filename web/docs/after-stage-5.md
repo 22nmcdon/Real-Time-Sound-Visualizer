@@ -64,6 +64,36 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   rule that a strained limiter means running away never fires there.
   Found by step 3's batch 5 (13 Nov); step 5's list has the decision.
 
+- **A band split keeps the wish to monitor, and gives it back unasked.** On
+  the default page, a declared line input monitored, then split into bands,
+  is taken off the speakers (the level in front of the monitor chain shuts),
+  but the wish survives: the Monitor box stays ticked and enabled over a split
+  nobody can hear, and pressing Whole again monitors the input at once,
+  without being asked. The page's own brain dropped the wish with the split
+  and greyed the box, and its rule ("calling it a line input again starts
+  from off rather than resuming") is written against exactly this. Nothing
+  unsafe is heard - a microphone is still never monitored - but the face says
+  monitored over a split, and a player can be put on the speakers by a press
+  that was about the picture. Found by step 3's batch 6 (14 Nov);
+  livetest.py's split row holds the half that is right and says so.
+- **The site's credit line no longer says whether a live input is
+  monitored.** The page's own microphone source said "not monitored" over a
+  band split and ", monitored" on a monitored line input; the instrument's
+  credit (`makeBrainSource`'s `describe`) names the bands or "drawing your
+  input" and says nothing of the speakers. The effects' line still says it
+  ("On your input, drawn and heard."), and the Monitor box does, so this is a
+  wording to put back, low priority. Found by batch 6 (14 Nov).
+- **A reticle that is not a number makes the core's photocell climb past
+  one.** With the reticle's position not a number (the `photoReticle`
+  control without a comma, or a value that does not read), the core's
+  photocell reads NaN and its slewed value, `std::fmin` dropping the NaN,
+  climbs by the slew limit every frame - past one, to eight in four seconds.
+  The page's JavaScript goes to NaN there instead (`Math.min` keeps it), so
+  this is also a place the two disagree that no golden file holds. The page
+  only ever sends two numbers, so on the site it cannot happen; low priority.
+  Found by batch 6 (14 Nov), when a piece of mine sent numpy's repr of a
+  float and a check went red on it.
+
 ## Sounds and presets
 
 - **Bass under the tine piano and Bass under the pad sit on their headings'
@@ -87,6 +117,15 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   0.082 to 0.335 a tenth against the 0.02 bound, and the read count is always
   297 of 300. The exemption and the bounds are kept as they were, the owner's
   to change.
+- **`corpus.held_tone` leaves the site's instrument at the note's pitch.**
+  It presses A3 and puts the Frequency slider back in the same tick, and on
+  the default page the slider's message reaches the instrument before the
+  note-on, which then plays its own 220 Hz: the face says 440 and the
+  instrument plays 220. modtest's octave sweep went red on it once it moved
+  to the default (110 to 438 Hz); it moves the slider again once the note
+  has landed. Other suites that read the pitch after `held_tone` on the
+  default have not been looked at for it. Found by batch 6 (14 Nov); batch 2
+  found the same race in aliastest.
 - **The hand suite's split fit** does not go red for the lower hand with the
   bass a semitone off (the upper hand's does): at 131 Hz a semitone moves the
   fit too little in a 10 ms window. Noted at the site by batch 1.
