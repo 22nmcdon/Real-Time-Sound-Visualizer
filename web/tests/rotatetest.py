@@ -56,6 +56,11 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 
+def null(name, ok, detail=""):
+    """A known-wrong reading, which must be told from the right one."""
+    check("null: " + name, ok, detail)
+
+
 # The drawn cloud's shape, as two numbers that survive the canvas mapping: the
 # mapping is the same scale on both axes with y flipped, so the ratio of the
 # principal axes comes through untouched and the angle comes through negated.
@@ -867,20 +872,23 @@ with sync_playwright() as pw:
     print("    an impulse comes out %d samples (%.2f ms) later, at %.2f dB"
           % (chainFacts["delay"], ms,
              20 * math.log10(chainFacts["peak"] / chainFacts["sent"])))
-    check("the limiter's lookahead is a few milliseconds, and it is not free",
-          1 < ms < 15, "%.2f ms" % ms)
-
-    # And it is not unity either. Chrome's compressor applies a makeup gain of
-    # its own whatever the level, so monitoring is slightly louder than the
-    # signal being monitored - measured on a steady tone, where an impulse
-    # would only measure how much the compressor smears one.
+    # Until stage 5's step 6 this chain had a limiter, which the page's brain
+    # was heard through, and these two read its lookahead (a few
+    # milliseconds) and its make-up gain (a decibel or so). The limiter is the
+    # instrument's now (scope/limiter.h, core/tests/pieces/lookahead.py), so
+    # what the chain does after it is nothing: no delay, and unity.
+    check("the chain after the instrument delays nothing", chainFacts["delay"] == 0, "%.2f ms" % ms)
     steady = p.evaluate(RENDER, [0, "post", "destination", False])
     rms = lambda xs: math.sqrt(sum(v * v for v in xs) / len(xs))
     gain = rms(steady["outL"][5000:12000]) / rms(steady["inL"][5000:12000])
-    print("    and a steady tone comes out %.2f dB louder than it went in"
+    print("    and a steady tone comes out %.4f dB from where it went in"
           % (20 * math.log10(gain)))
-    check("its makeup gain is a decibel or so, applied whatever the level",
-          1.0 < gain < 1.4, "%.3f, or %.2f dB" % (gain, 20 * math.log10(gain)))
+    check("and a steady tone comes out at the level it went in, to a thousandth of a decibel",
+          abs(20 * math.log10(gain)) < 0.001, "%.5f dB" % (20 * math.log10(gain)))
+    # The null: the same reading of the tone a decibel down (the old
+    # compressor's make-up, the other way) is past it.
+    quiet = rms([v * 10 ** (-1 / 20) for v in steady["outL"][5000:12000]]) / rms(steady["inL"][5000:12000])
+    null("a tone a decibel down reads as moved", abs(20 * math.log10(quiet)) >= 0.001, "%.3f dB" % (20 * math.log10(quiet)))
 
     # The rule that must not bend, with a new node in the way: a turn can put
     # 41% more into one channel than either started with, on top of whatever a

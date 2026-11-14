@@ -24,10 +24,11 @@ reported, as a short trace with the shortfall underneath it; the point of the
 audit is that it is now said on the control before it is chosen.
 
 A TIME CONSTANT IN THE AUDIO GRAPH may be either, and the only way to know is
-to render it. The monitor chain quotes six milliseconds of limiter lookahead
-in the latency figure on the panel. At 44.1 kHz that is 264 samples, which is
-equally consistent with a fixed block of 256 and a rounding error. Rendering
-at four rates says which it is.
+to render it. The panel's latency figure quotes six milliseconds of limiter
+lookahead. At 44.1 kHz that is 264 samples, which is equally consistent with
+a fixed block of 256 and a rounding error, and rendering at four rates says
+which it is - the instrument's limiter since stage 5's step 6, rendered by
+core/tests/pieces/lookahead.py; here, that the page's chain adds nothing.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
@@ -46,6 +47,11 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+
+def null(name, ok, detail=""):
+    """A known-wrong reading, which must be told from the right one."""
+    check("null: " + name, ok, detail)
 
 
 # A source with no audio graph behind it, so the capture path can be run at a
@@ -339,9 +345,12 @@ with sync_playwright() as pw:
 
     print("\n--- the audio graph, rendered at four rates ---")
     # Six milliseconds of limiter lookahead is quoted in the latency figure on
-    # the panel. If it were a fixed block of frames the figure would be wrong
-    # everywhere but 44.1 kHz, and nothing on the page would have said so.
-    LOOK = """async (rate) => {
+    # the panel. Until stage 5's step 6 the limiter was this chain's own and
+    # was measured here; it is the instrument's now (scope/limiter.h), and its
+    # six milliseconds at every rate are core/tests/pieces/lookahead.py's.
+    # What is left to hold here is that the page's chain adds nothing to it:
+    # an impulse comes out on the sample it went in, at every rate.
+    LOOK = """async ([rate, pre]) => {
       const frames = Math.round(rate * 0.3);
       const ctx = new OfflineAudioContext(2, frames, rate);
       const buffer = ctx.createBuffer(2, frames, rate);
@@ -349,7 +358,9 @@ with sync_playwright() as pw:
       buffer.getChannelData(0)[at] = 1; buffer.getChannelData(1)[at] = 1;
       const src = ctx.createBufferSource(); src.buffer = buffer;
       const chain = makeMonitorChain(ctx);
-      src.connect(chain.input);
+      // The null's: a delay of `pre` seconds in front, which must be read.
+      if (pre) { const late = ctx.createDelay(1); late.delayTime.value = pre; src.connect(late); late.connect(chain.input); }
+      else src.connect(chain.input);
       monitorChains.delete(chain);
       src.start();
       const out = await ctx.startRendering();
@@ -362,16 +373,14 @@ with sync_playwright() as pw:
       return { rate, samples: best - at, ms: (best - at) / rate * 1000,
                quoted: MONITOR_LOOKAHEAD_MS };
     }"""
-    looks = [p.evaluate(LOOK, r) for r in RATES]
+    looks = [p.evaluate(LOOK, [r, 0]) for r in RATES]
     for l in looks:
         print("    %5d Hz: %4d samples, %.3f ms" % (l["rate"], l["samples"], l["ms"]))
-    check("the limiter's lookahead is a time, not a block of frames",
-          all(abs(l["ms"] - looks[0]["ms"]) < 0.05 for l in looks)
-          and len({l["samples"] for l in looks}) == len(RATES),
-          "%.3f ms across %s samples" % (looks[0]["ms"], [l["samples"] for l in looks]))
-    check("so the six milliseconds the panel quotes is right at every rate",
-          all(abs(l["ms"] - l["quoted"]) < 0.05 for l in looks),
-          "quoted %g ms, measured %.3f" % (looks[0]["quoted"], looks[0]["ms"]))
+    check("the page's chain adds no delay to the instrument's at any rate: the impulse is out on its own sample",
+          all(l["samples"] == 0 for l in looks), "%s samples" % [l["samples"] for l in looks])
+    late = [p.evaluate(LOOK, [r, 0.006]) for r in RATES]
+    null("six milliseconds put in front are read, at every rate", all(abs(l["ms"] - 6) < 0.05 for l in late),
+         "%s ms" % ["%.3f" % l["ms"] for l in late])
 
     # The AC corner is one number shared by the picture and the speakers, and
     # the coefficients are derived from it and the rate. A corner that drifted
