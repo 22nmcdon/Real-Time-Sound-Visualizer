@@ -6714,5 +6714,9 @@ go - a rate and nothing else - showed the locked rate until the next beat.
 And moving a face onto the instrument finds every control that only ever
 reached the page: the Bar row's Start and Stop and a tapped tempo had never
 reached the instrument, which nobody saw while the panel read the page's
-clock (`web/docs/after-stage-5.md`). `plugin/STAGE5-INVENTORY.md` section 14
-has the rest.
+clock (`web/docs/after-stage-5.md`). And the visual loop in `applyModMatrix`
+is still lifted alone by parity's matrix harness (`matrix_js.mjs`, from
+`routingsHeard()` to the morph's comment): a name declared above that span is
+a ReferenceError there, which the web suite, running the page whole, never
+sees - so the offsets are asked for inside it. `plugin/STAGE5-INVENTORY.md`
+section 14 has the rest.

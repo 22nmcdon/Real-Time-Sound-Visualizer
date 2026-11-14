@@ -8604,7 +8604,8 @@ function applyModMatrix(frame, elapsed) {
      lanes' full scale are drawn at the offsets it wrote (screen.h), so the
      face works none of them out a second time. What it does not post - the
      morph's fader, a lane past the second - the page still sums here. */
-  const offsets = face ? face.offsets : null;
+  // Asked again here rather than taken from above: parity lifts this loop alone, where there is no instrument.
+  const shown = typeof instrumentFace === "function" ? instrumentFace() : null, offsets = shown ? shown.offsets : null;
   for (const dest of MOD_DESTS.values()) {
     if (dest.kind !== "visual") continue;
     if (offsets && typeof offsets[dest.id] === "number") { dest.set(offsets[dest.id]); continue; }
