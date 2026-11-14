@@ -43,8 +43,8 @@ build`; Linux needs WebKitGTK 4.1 and GTK 3). There are no signed builds yet.
 | | |
 |---|---|
 | [`plugin/`](plugin/) | The instrument as a JUCE plugin, with the page as its interface. Its staged history and what is left is [`plugin/PLAN.md`](plugin/PLAN.md). |
-| [`core/`](core/) | The instrument in C++, shared by the plugin and (as WebAssembly) the site, held to the page sample for sample by `core/tests/parity.py`. |
-| [`web/`](web/) | `scope.html`: the face, one file, which still carries an engine of its own in JavaScript that the core is checked against - retiring it so the core is the only engine is the next simplification. |
+| [`core/`](core/) | The instrument in C++, the only engine, shared by the plugin and (as WebAssembly) the site, and held by `core/tests/core_tests.py`: to what the page's own JavaScript engine answered while it existed, to the face, and to its own numbers. |
+| [`web/`](web/) | `scope.html`: the face, one file, which carries the core compiled and plays it. Its own JavaScript engine was retired in stage 5 ([`plugin/STAGE5-PLAN.md`](plugin/STAGE5-PLAN.md)). |
 | [`DESIGN.md`](DESIGN.md) | How it looks: which parts are the house it shares with the jazz and guitar learning apps, and which are the instrument's own. |
 | [`CLAUDE.md`](CLAUDE.md) | How work is done here: the tests, the house style, and the layout decisions already made. |
 | [`web/docs/`](web/docs/) | The plans and studies, each dated, including the [handoff](web/docs/handoff-p8.md) written at P8, kept as history. |
@@ -54,7 +54,7 @@ build`; Linux needs WebKitGTK 4.1 and GTK 3). There are no signed builds yet.
 ```
 python3 web/extract.py && node --check web/tests/check.js   # the page's syntax, seconds
 python3 web/tests/run.py                                    # every check on the page
-python3 core/tests/parity.py                                # the C++ core against the page
+python3 core/tests/core_tests.py                            # the C++ core: its recordings, the face, its own numbers
 python3 core/wasm/build.py                                  # after any change to core/
 ```
 

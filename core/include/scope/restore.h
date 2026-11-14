@@ -4,7 +4,7 @@
 // the plane, the echo, the arpeggiator, the score and the morph's
 // ends - and for the settings it keeps for pieces still to
 // come (the photocell). It is held to the page's own `restore`, run in a
-// browser, by core/tests/parity.py.
+// browser, by core/tests/core_tests.py.
 //
 // The page's `restore` writes each value into a control and fires the
 // control's handler, so what a setup means is two things at once: what the

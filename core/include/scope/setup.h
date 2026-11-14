@@ -3,7 +3,7 @@
 // what differs from them - `encodeSetup`, `decodeSetup` and the migrations
 // that bring an old code up to date (`migrateSetup`). Ported from
 // web/scope.html and held to the page's own functions, code for code, by
-// core/tests/parity.py.
+// core/tests/core_tests.py.
 //
 // The setup is a `Json` object rather than a struct, because that is what the
 // page's is, and what a code holds: a code can carry a field from a later
@@ -243,7 +243,13 @@ inline std::optional<std::string> encodeSetup(const Json& snap) {
 }
 
 // migrateSetup, in the page's order - each pass reads the field as the
-// version before it wrote it. False where the page would throw.
+// version before it wrote it. False where the page would throw. The page's
+// own copy, which this was ported from and held to, went with its codec in
+// stage 5's step 6, and its reasons for each pass are written out here now.
+// The ORDER is the part to be careful with: the first pass reads the stored
+// full scale as a position in the table, because that is what it was in a
+// version 1 setup, and the second turns that position into decibels - run the
+// other way round, the first would read a decibel value as an index.
 inline bool migrateSetup(Json& setup) {
   const bool falsy = setup.type == Json::Type::Null || (setup.type == Json::Type::Bool && !setup.b)
                   || (setup.type == Json::Type::Number && (setup.n == 0 || std::isnan(setup.n)))
@@ -256,7 +262,11 @@ inline bool migrateSetup(Json& setup) {
   if (v >= kSetupVersion) return true;
   if (!object) return false;  // the stamp below, on a primitive, in strict mode
 
-  // 1 -> 2: the trigger level, an amplitude then, a fraction of full scale now.
+  // 1 -> 2: the trigger level, an amplitude then, a fraction of full scale now:
+  // that amplitude times the lane's gain, which is where the line sat on the
+  // graticule. Only lanes one and two have a stored full scale, since only
+  // they had a row in the format; a trigger that watched a rack lane kept its
+  // number, right for the common case of a rack at nought dBFS.
   if (!(v >= 2)) {
     const Json* given = field("trig");
     const Json lane = given ? *given : *setupDefaults().get("trig");
@@ -271,7 +281,8 @@ inline bool migrateSetup(Json& setup) {
       setup.set("level", Json::number(jsMax(-1000, jsMin(1000, jsMathRound(jsToNumber(level) * gain)))));
     }
   }
-  // 2 -> 3: full scale, a position in the table then, decibels now.
+  // 2 -> 3: full scale, a position in the table of nine then, decibels now. The
+  // nine map to the nine numbers the table held, so a setup on a detent stays on it.
   if (!(v >= 3)) {
     for (const char* key : { "c0s", "c1s" }) {
       const Json* stored = field(key);
@@ -286,8 +297,10 @@ inline bool migrateSetup(Json& setup) {
     if (clip && clip->type == Json::Type::Bool && clip->b) setup.set("planeLimit", Json::number(1));
     if (setup.type == Json::Type::Object) setup.erase("planeClip");
   }
-  // 4 -> 5: crossings, the threshold and the pluck cut (P5) - their fields, and
-  // any routing from the threshold or to the pluck, each other one as written.
+  // 4 -> 5: crossings, the threshold and the pluck cut (P5), which made notes
+  // from the beam's geometry rather than from the phosphor - their fields, and
+  // any routing from the threshold or to the pluck, which would otherwise be
+  // kept by name and hang there naming nothing; each other one as written.
   if (!(v >= 5) && setup.type == Json::Type::Object) {
     for (const char* key : { "crossOn", "crossX", "crossY", "crossNoteX", "crossNoteY", "crossDecay", "crossLevel",
                              "threshWatch", "threshLevel", "pluckNote" }) setup.erase(key);
@@ -332,11 +345,15 @@ inline bool migrateSetup(Json& setup) {
       setup.set("mod", Json::string(kept));
     }
   }
-  // 6 -> 7: the latch cut (P8h), a day after it was built - the sustain
-  // pedal is told what an automatic latch had to guess. Its field goes.
+  // 6 -> 7: the latch cut (P8h), a day after it was built: any rule for when a
+  // latched chord gives way to the next has to guess from timing which notes
+  // belong together, and an arpeggiated chord defeats every guess, where the
+  // sustain pedal is told. Its field goes rather than staying, read by nothing.
   if (!(v >= 7) && setup.type == Json::Type::Object) setup.erase("midiLatch");
-  // 7 -> 8: the kaleidoscope cut, and Snap below five bits (7 Nov): its
-  // fields go, and a snap of one to four bits is five, the coarsest kept.
+  // 7 -> 8: the kaleidoscope cut, and Snap below five bits (7 Nov) - the owner
+  // found the one harsh whatever it drew, and the coarser grids silent (under
+  // half a step rounds to nought) or harsh. Its fields go, and a snap of one
+  // to four bits is five, the coarsest kept, so a sound saved crushed stays crushed.
   if (!(v >= 8) && setup.type == Json::Type::Object) {
     setup.erase("planeKaleido");
     setup.erase("bKaleido");
@@ -348,7 +365,9 @@ inline bool migrateSetup(Json& setup) {
   // 8 -> 9: the matrix's sources cut to the modulation cards' and the parked
   // ones (F4b, 7 Nov): learned controllers, with the names a code kept for
   // them, and the keyboard's pedal, pressure and four readings of the notes,
-  // and the level. Their routings go (the page's CUT_SOURCE); Key stays.
+  // and the level, each a second way to something the face does once. Their
+  // routings go (the page's pattern was CUT_SOURCE), so a code says what it
+  // plays; Key stays, as velocity, Expression's FM.
   if (!(v >= 9) && setup.type == Json::Type::Object) {
     setup.erase("cc");
     const Json* mod = field("mod");
@@ -424,8 +443,16 @@ inline bool migrateSetup(Json& setup) {
       setup.set("mod", Json::string(kept));
     }
   }
-  /* 10 -> 11: a stored Picture amount scaled to the push it meant, since each
-     stage route's weight became its reach; the page's migrateSetup says why. */
+  /* 10 -> 11 (12 Nov): a stored Picture amount scaled to the push it meant.
+     Since 11 Nov the amount's routes reach their top at 100, each weight its
+     reach, where the fold's and the echo's were 0.8 and clamped from 62.5: the
+     same number pushed five eighths as hard, so every code that named an
+     amount played more weakly than it was saved (the owner's 47 as a 29). So
+     it is scaled by 0.8 / 0.5, and anything already clamped is the top. Exact
+     for the fold and the echo, which carry the swell; Memory's three routes
+     had weights of their own and come out a little stronger or weaker below
+     their old clamps, not worth a second field. A host's automation of the
+     knob is not a code, and is not moved. */
   if (!(v >= 11)) {
     for (const char* key : { "pictureAmount", "bPictureAmount" }) {
       const Json* amount = field(key);

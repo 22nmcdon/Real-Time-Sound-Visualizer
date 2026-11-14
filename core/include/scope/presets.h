@@ -1,7 +1,7 @@
 // The preset library as the page ships it: each section's name and what it
 // plays on, and each preset's name, setup and the line that says what to
 // listen for. Written out from the page's PRESETS (the JSON below, as the page
-// evaluates it) and held to it by core/tests/parity.py, preset for preset and
+// evaluates it) and held to it by core/tests/core_tests.py, preset for preset and
 // field for field, so a preset changed on the page and not here is a failure,
 // not a drift.
 //

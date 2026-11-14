@@ -2,7 +2,7 @@
 // web/scope.html: `cycleOf`, `polyBlep`, `polyBlamp`, `drawbarGain`,
 // `drawbarWeights`, `intervalRatio`, `svfG`, `svfStep`, `cycleRead` and
 // `waveAt`. The page explains each; this is the same arithmetic in the same
-// order, held to it by core/tests/parity.py.
+// order, held to it by core/tests/core_tests.py.
 //
 // Two things the JavaScript leaves to its types and C++ has to say:
 //

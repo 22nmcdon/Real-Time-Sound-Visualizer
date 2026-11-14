@@ -6,7 +6,7 @@
 // rule, the gate, and how the figures are laid out. And the keyboard's own
 // sources: the key, the pedal, and what the hands are doing.
 //
-// It is held to the page's own functions by core/tests/parity.py, which drives
+// It is held to what the page's own functions answered by core/tests/core_tests.py, which drives
 // both through the same notes and compares every call each makes of the
 // generator, and the sources and the stack after each.
 //

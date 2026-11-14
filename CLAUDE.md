@@ -8,13 +8,15 @@ product and the site its interface and demo. Where it is going is
 `web/docs/making-it-one-instrument.md`: read that before adding anything,
 because its first rule is that a feature has to act on the loop it describes.
 (A native Python/PyQt6 build, `oscilloscope-poc/`, was retired in that plan's
-P0; it is in the history.) The core is a port held to the page sample for sample by
-`core/tests/parity.py`; a ported piece is not done until it passes that, with
-its nulls. Parity also records what the page's JavaScript answered into
-`core/tests/golden/` (stage 5, step 2), so the core can be held to it once the
-page's engine is retired; a change that means the sound to change regenerates
-those with `--write-golden`, which refuses a file unless the page and the core
-still agree (`core/tests/golden/README.md`). How it looks is `DESIGN.md`: which parts are the brand it shares with the
+P0; it is in the history.) The core is the only engine: it began as a port of
+the page's own JavaScript, which stage 5 retired (`plugin/STAGE5-PLAN.md`), and
+it is held by `core/tests/core_tests.py` three ways - to what that JavaScript
+answered for every scenario, recorded while it ran (`core/tests/golden/`); the
+face to the core, control for control and run for run through the module the
+page carries; and each piece of the engine by its own numbers
+(`core/tests/pieces/`), each check with its null. A change that means the sound
+to change rewrites the recordings with `--write-golden --because "why"`, which
+refuses without a reason and logs it (`core/tests/golden/README.md`). How it looks is `DESIGN.md`: which parts are the brand it shares with the
 jazz and guitar learning apps (not this repository's to change alone) and which
 are the oscilloscope's own. A new colour token goes into one of its tables, or
 `designtest.py` fails. Read `web/README.md` before changing the web build — most of it is a list
@@ -25,15 +27,15 @@ will save you rediscovering them.
 
 **Run the tests.** While building, run the suites near the change, as often as
 you like. Before anything reaches `testing` - a push there publishes the testing site
-(see Git, below) - run the whole web suite **and** parity, once per batch of stages rather
+(see Git, below) - run the whole web suite **and** the core's tests, once per batch of stages rather
 than once per stage (the owner's call, 10 Nov: a batch costs one wait, and the
 cost is that a failure has more candidates). Changes that cannot alter behaviour
 - docs, design notes, the info line's words, whose own suite checks them - merge
 after the suites that read them. Any change to `core/`, or to anything the core
 shares with the page (a setup field, a slot, a slider's place in the markup),
-runs parity before it merges, however small: twice in one day the web suite was
-green while parity was not, because the web suite runs the page whole and the
-page agrees with itself. And do not narrow the full run to the suites you think
+runs the core's tests before it merges, however small: twice in one day the web
+suite was green while parity (as `core_tests.py` was called then) was not,
+because the web suite runs the page whole and the page agrees with itself. And do not narrow the full run to the suites you think
 are affected: on this one-file page that guess was wrong about half the time on
 9 Nov (a layout change broke the plugin's checks; a glide change exposed a
 harness the wash fix had broken a day earlier).
@@ -43,16 +45,16 @@ python3 web/extract.py && node --check web/tests/check.js   # syntax, seconds
 python3 web/tests/run.py                                    # everything, ~37 min
 python3 web/tests/run.py lane patch                         # just those
 python3 web/tests/run.py -j1                                # one at a time, ~43 min
-python3 core/tests/parity.py                                # the C++ core against the page
-python3 core/tests/pieces/run.py [name]                     # the engine's pieces by their own numbers, a minute (parity runs them too)
-python3 core/tests/parity.py --write-golden                 # after a change that means the sound to change: regenerate the golden files (refuses a section unless the page and the core agree on it); core/tests/golden/README.md
+python3 core/tests/core_tests.py                            # the core: against its recordings, the face, and its own numbers, ~25 min
+python3 core/tests/pieces/run.py [name]                     # the engine's pieces by their own numbers, a minute (core_tests.py runs them too)
+python3 core/tests/core_tests.py --write-golden --because "why"   # after a change that means the sound to change: rewrite the recordings from the core, the reason logged; core/tests/golden/README.md
 python3 core/wasm/build.py                                  # after any change to core/: the page carries it compiled
 python3 core/tests/tools/write_schema.py                    # after any change to SETUP_FIELDS: the core reads setups by it
 python3 web/tools/write_words.py                            # after any change to web/docs/what-each-control-says.md: the info line's words
 ```
 
 In a cloud session, set `CHROME=/opt/pw-browsers/chromium` for every browser
-suite and parity: the path the suites default to does not exist there, and a
+suite and the core's tests: the path the suites default to does not exist there, and a
 run without it fails in a minute and a half. The cloud environment's setup
 script installs the plugin's WebKit and GTK headers and the compiled core's
 wasm32 toolchain, and clones JUCE at the plugin's tag into `/opt/juce-<tag>`,
@@ -161,7 +163,8 @@ that had grown a second answer, and each time the fix was the same shape:
 - `state.source.kind === "tone"` asked **which one of four** the source is,
   which stops being answerable once the generator can be one lane of a rack. It
   became `genSettings` / `genSet` / `genReswing` — where does the generator
-  live, rather than what is the source.
+  live, rather than what is the source. (`genReswing` went with the page's
+  own tone source in stage 5; the instrument restarts its own phases.)
 
 So: **when a field can no longer answer its own question with one value, widen
 the representation and write the migration, rather than widening the `if`.** The
@@ -172,8 +175,9 @@ structure without anyone saying so.
 Two parts to doing it properly. The *representation* changes — a new field, an
 id, a helper that answers the real question — and anything already stored in
 the old shape gets a **version-tagged decode pass**, not a value that is
-interpreted two ways depending on its magnitude. `migrateSetup` runs them in
-order and `SETUP_VERSION` names where you are; a purely additive field needs no
+interpreted two ways depending on its magnitude. `migrateSetup` (the core's,
+`scope/setup.h`, since stage 5 retired the page's codec) runs them in order and
+`kSetupVersion` beside the page's `SETUP_VERSION` names where you are; a purely additive field needs no
 bump, because `Object.assign` over the defaults already gives an old code the
 new default.
 
@@ -290,8 +294,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   silence survives a preset, a code and a plugin project; and it holds the
   modulation fade (`data-home="routings"`). The control's own editor and the
   search offer the four cards' sources and no others. The rest of the twenty-eight are
-  cut or parked. Cut in F4b, with a version-9 decode pass on both sides
-  that drops their routings (`CUT_SOURCE`) and the `cc` field: the learned
+  cut or parked. Cut in F4b, with a version-9 decode pass (the core's
+  `migrateSetup`; the page's own went with its codec in stage 5) that drops
+  their routings (the page called its pattern `CUT_SOURCE`) and the `cc` field: the learned
   controllers (the wheel, the swell, the pedal and the panics still act),
   the keyboard's pedal, pressure and four readings of the notes, and the
   level, which is the output meter now. Parked: the hearing family is
@@ -299,9 +304,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   on the knob it is on, so the owner can find out whether it is missed. The
   drawings (the harmonograph, the figures, the solids and the second
   generator) and their readings were parked here too, and went in G2 (10
-  Nov, the owner did not miss them), with a version-10 decode pass on both
-  sides that loads a drawing's code as the waveform and drops its fields and
-  routings (`CUT_DRAWING`); the generator's slots they used stay unnumbered
+  Nov, the owner did not miss them), with a version-10 decode pass that
+  loads a drawing's code as the waveform and drops its fields and
+  routings (`CUT_DRAWING`, as the page called it); the generator's slots they used stay unnumbered
   rather than renumbered (`GEN_SLOTS`).
   Velocity's FM is Expression's menu on Play, reading and writing the one
   routing it stands for rather than a field. The Envelope follows Play's amp
@@ -369,7 +374,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   plugin's core hears it as any menu; the modules themselves move, which the
   morph survives only because `MORPH_IDS` is read once from the markup, so
   the markup stays in the default order. `racktest.py` and `fittest.py`
-  hold it, and parity the six orders.
+  hold it, and the core's tests the six orders.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, the inputs, the modulation fade, This window; two columns by
   `data-place` since F7b, notes behind each section's dots, the panel under
@@ -444,7 +449,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   you hear and nothing else - the picture is the same to the bit at any
   setting - and no setup's: the browser keeps it (`scope.output`), the
   plugin's state beside the setup (`pluginOutput`), and no preset, code,
-  undo step or morph moves it (`outputtest.py`, parity). `headertest.py` holds it, with real mouse and keys, since a
+  undo step or morph moves it (`outputtest.py`, the core's tests). `headertest.py` holds it, with real mouse and keys, since a
   dispatched event is rightly no step.
 - **The minimum window** (F8, 8 Nov). The plugin opens at 1200x680, will not
   go under 960x600, and remembers its size (`pluginWindow`, which the
@@ -491,7 +496,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   rows and B's Turn row went, each module's own state is a bit in `timeOwn`,
   and a module the hands share beside one that is B's own plays A's state, as
   Together did. Frequency, Phase, Glide, Interval and Tuning stay shared.
-  Additive throughout, no version bump. `handstest.py` holds it, parity the
+  Additive throughout, no version bump. `handstest.py` holds it, the core's tests the
   core.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back, and the screen, its toolbar and

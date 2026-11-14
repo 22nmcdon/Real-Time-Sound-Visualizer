@@ -201,7 +201,7 @@ int main() {
   std::printf("\n--- sound ---\n");
   /* The generator by itself, told what the host told the plugin, at the same
      samples: what the plugin plays has to be this, exactly. The engine is
-     held to the page by core/tests/parity.py; this holds the plugin's own
+     held to the page by core/tests/core_tests.py; this holds the plugin's own
      part - events at their own sample, the heard pair to the speakers and
      the picture pair to the page. `reference(101)` is the null: the note a
      sample late, which a plugin that moved events to the block's top, or

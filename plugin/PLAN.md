@@ -20,7 +20,10 @@ changes nothing about the sound.
 That is most of the logic in `web/scope.html`, which is why the shared core
 matters: two brains, one in JavaScript for the site and one in C++ for the
 plugin, would drift apart in the way the README records again and again. One
-brain, compiled twice, cannot.
+brain, compiled twice, cannot. Since stage 5 (`STAGE5-PLAN.md`) that is how it
+stands: the page carries the core compiled and is its face, and the page's own
+JavaScript engine and brain, which the core was ported from and held to while
+both existed, are deleted.
 
 ## The boundary
 
@@ -47,8 +50,9 @@ core, and serves the samples it played; the page finds JUCE's bridge, asks the
 plugin what it is (`scopeHost`), and draws the plugin's output instead of its
 own generator - one fetch of `/picture.bin` a frame, never two at once - and
 reports back how the picture is getting through (`scopeReport`). And the method
-the port lives by: `core/tests/parity.py` holds each ported piece to the page's
-own JavaScript, sample for sample; `web/tests/hosttest.py` holds the page's
+the port lives by: `core/tests/parity.py` held each ported piece to the page's
+own JavaScript, sample for sample, until stage 5 retired the JavaScript and
+renamed it `core_tests.py`, which holds the core to what the JavaScript answered; `web/tests/hosttest.py` holds the page's
 side to a fake bridge serving a known stereo signal.
 
 Measured in the standalone on a virtual display here, with software rendering
@@ -1168,7 +1172,10 @@ decibels, which the core's panel had left where the setup put it.
 
 **5. The site on WebAssembly.** The worklet runs the compiled core, and the
 JavaScript engine and brain are retired once parity says there is nothing left
-they do that the core does not.
+they do that the core does not. (Done: the retirement was a stage of its own,
+`STAGE5-PLAN.md`, finished on 14 Nov - the page's engine and brain deleted,
+parity renamed `core/tests/core_tests.py` and holding the core to what the
+JavaScript answered, recorded. Below, the stage's history as it was written.)
 
 5a puts the generator in the worklet as WebAssembly, behind a switch:
 `?core=wasm` in the address, and the worklet runs the C++ core's
@@ -1878,7 +1885,7 @@ the instrument's to fix:
   generator's worklet driver, `state.source.reswing`, the envelope's gate
   flag), which a source that is the instrument has no reason to have.
 
-The JavaScript brain does not go away. `parity.py` holds the core to the
+The JavaScript brain does not go away (until stage 5's step 6, 14 Nov). `parity.py` holds the core to the
 page's own functions, lifted out of `scope.html` by name, so the
 JavaScript is the reference the core is a port of, as well as the way
 back. The suites that test that reference will run on `?brain=js`. What
@@ -3067,7 +3074,7 @@ redone natively or left out.
 ## Building and testing
 
 ```
-python3 core/tests/parity.py                 # the core against the page
+python3 core/tests/core_tests.py             # the core: its recordings, the face, its own numbers
 python3 core/wasm/build.py                   # the core compiled into the page, after any change to it
 cmake -S plugin -B plugin/build -G Ninja [-DSCOPE_JUCE_DIR=/path/to/JUCE]
 cmake --build plugin/build
@@ -3088,8 +3095,8 @@ to run on.
 
 The WebAssembly build needs clang with the wasm32 target, the WASI libc and
 the wasm32 libc++ (Ubuntu: `wasi-libc libc++-18-dev-wasm32
-libc++abi-18-dev-wasm32 libclang-rt-18-dev-wasm32`); parity needs it too, to
-check the page's copy and run it.
+libc++abi-18-dev-wasm32 libclang-rt-18-dev-wasm32`); the core's tests need it
+too, to check the page's copy and run it.
 
 On Linux the web view needs WebKitGTK 4.1 and GTK 3, and the standalone ALSA:
 `libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev`, with the X11 and

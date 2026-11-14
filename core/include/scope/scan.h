@@ -1,7 +1,7 @@
 // Scan (P7a), ported from web/scope.html: the phosphor read back as the
 // voice's wave. `scanGeometry`, `scanFollow`, `scanBlur`, `scanBilinear`,
 // `scanRead`, `scanCosine`, `scanTables` and `scanMix` are the page's, held
-// to it by core/tests/parity.py; `ScanReader` is the page's `scanStep` and its
+// to it by core/tests/core_tests.py; `ScanReader` is the page's `scanStep` and its
 // `scan` object, which the instrument runs at its picture frame.
 //
 // Where the core is exact and the page is not. The page reads its phosphor

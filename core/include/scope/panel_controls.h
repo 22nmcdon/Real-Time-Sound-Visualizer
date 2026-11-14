@@ -2,7 +2,7 @@
 // each slider's range, step and starting value, in the order the page lays
 // them out, and each menu's options and the one it starts on. Written out from the page by
 // core/tests/tools/restore_page.py --controls, and held to it control for
-// control by core/tests/parity.py, so a slider whose range changes on the page
+// control by core/tests/core_tests.py, so a slider whose range changes on the page
 // and not here is a failure, not a drift.
 
 #pragma once

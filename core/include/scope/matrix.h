@@ -6,7 +6,7 @@
 // fired once a frame, the picture's destinations summed once a frame, and the
 // routes compiled for the generator, read and faded once a block.
 //
-// It is held to the page's own functions by core/tests/parity.py, which drives
+// It is held to what the page's own functions answered by core/tests/core_tests.py, which drives
 // both through the same routings, values and times and compares the routes,
 // the events and the picture's offsets each frame.
 //

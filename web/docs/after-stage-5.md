@@ -152,6 +152,16 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   must serve `Instrument::clockServed` and the meter's verdict there too before its panels
   read them. Found by step 5a (14 Nov).
 
+- **A browser that will not make the module on the main thread now waits.**
+  The worklet makes the instrument from the module, and the main thread makes
+  its own copy for the setup codec the face reads the instrument's state by.
+  Until stage 5's step 6 a main thread that refused (`new WebAssembly.Module`
+  throwing) fell back to the page's JavaScript codec and the site played on;
+  that codec went with the page's engine, so such a page now waits and says
+  why (wasmtest.py). Every current Chromium, Firefox and Safari makes it, so
+  nobody is known to hit this; a codec that took the module from the worklet,
+  or decoded there, would remove the case. Found by step 6 (14 Nov).
+
 ## Sounds and presets
 
 - **The plugin is 1.7 dB louder since 5a, and limited.** The page's limiter has a make-up
@@ -218,7 +228,9 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   sounds at the plain one's level* (0.4172 against 0.3850). Neither suite
   touches anything step 4 changed. Worth watching for a second time before
   either is added to the list, or made to tolerate a loaded machine.
-- **Hearing's *all of it costs under two milliseconds a frame on average***
+- ~~**Hearing's *all of it costs under two milliseconds a frame on average***~~
+  Gone with the page's hearing in step 6 (14 Nov): the hearing is the
+  instrument's, whose cost is the core's budget's. What was found:
   has no headroom on the cloud machine: alone, the commit before stage 5,
   step 5b measured 1.59, 2.00 and 2.04 ms, and 5b's first half 1.74 to 2.16
   (14 Nov). `hearingStep` is unchanged by 5b, so it is the machine's main
@@ -238,6 +250,31 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   routings move the figure. phototest's eight photocell routings were found
   this way (14 Nov, fixed with `hostSendSetup()`); other suites that filter
   the list by hand have not been looked at for it.
+
+- **Three meaning checks rest on the recordings alone since step 6.** A note
+  added to a chord does not restart the others' envelopes (polytest read the
+  page's generator's voices stage by stage), a routing arriving after a rest
+  hears the sound as it is (hearingtest read the page's hearing; the core's
+  "hear-rest" run holds it too), and the page's fade landing a sound by every
+  way it can be loaded (fadetest, on the page's own fade). Each is held by
+  core_tests.py's recordings of what the page answered, which say "the same
+  as it was", not "right"; each would be worth a piece of its own in
+  `core/tests/pieces/`. Found by step 6 (14 Nov).
+- **The compiled module carries the generator's bridge for the tests alone.**
+  `gen_*` in `core/wasm/scope_wasm.cpp` was the page's worklets' way to the
+  core's generator; since step 6 only `web/tests/compiled_core.js` (eighteen
+  suites that render the generator in a page) and core_tests.py's "generator
+  in WebAssembly" use it. Trimming it would shrink the page and change the
+  module's bytes; left for a decision. Found by step 6 (14 Nov).
+- **The page still keeps a clock of its own for the tempo slider, a tap and a
+  MIDI clock's ticks** (`transport`, `clockTap`, `clockTick`). The face shows
+  the instrument's clock since 5b; what is left on the page is the slider's
+  value a setup stores, the tap's arithmetic before it is sent, and the
+  bookkeeping of a MIDI clock the instrument also hears. Not stepped, and not
+  shown; a candidate for the instrument to serve its tap and to drop the rest.
+  Also the fade's drawing of a stepped source under the fade (`sourceNow`,
+  `stepFade`): a knob's ring for a Key routing is the page's reckoning of the
+  fade, where its gain is the instrument's. Found by step 6 (14 Nov).
 
 ## Owner's list
 

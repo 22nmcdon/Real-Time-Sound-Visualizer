@@ -2,12 +2,11 @@
 
 `scope.html` is the whole application: one file, no dependencies. Open it in a
 browser and it runs. One part of it is generated rather than written: the C++
-core's generator, compiled to WebAssembly by `../core/wasm/build.py` and
-carried as base64 between two marker comments, which the page runs - in the
-generator's worklet, in the effects worklet on a live input, on the main
-thread, where the generator draws while the sound is off, for the
-picture's own sources, the phosphor grid, the photocell and the meter, and
-for setup codes - unless the address says `?core=js`. Nothing else is built. It is also published as an artifact, but
+core, compiled to WebAssembly by `../core/wasm/build.py` and carried as base64
+between two marker comments, which the page plays - the instrument whole in an
+audio worklet, the page its face, and on the main thread the setup codec the
+face reads the instrument's state by. It is the only engine: the page's own,
+in JavaScript, went in stage 5 (`../plugin/STAGE5-PLAN.md`). Nothing else is built. It is also published as an artifact, but
 this copy is the source of truth — the published page is a deployment of it.
 
 The plugin in `../plugin/` is the same instrument with this page as its face,
@@ -62,10 +61,9 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `scaletest.py` | full scale as a continuous gain, its nine detents, and both setup migrations |
 | `patchtest.py` | patching by pointer, by keyboard and by touch — three separate code paths; since G5b through the right-click menu and a long press, with the ring and its ticks counting the sources |
 | `lanetest.py` | the modulation lane: that it draws the destination's own law, and only ever one source |
-| `filtertest.py` | the picture-path biquad against the browser's own, to a tenth of a decibel |
+| `filtertest.py` | the picture-path filter as the face draws it, and what reaches the speakers: one chain, the instrument's, with no limiter of its own and a backstop for the clamp (the biquad's law is `core/tests/pieces/filter.py`'s) |
 | `ratetest.py` | the sample-rate audit: everything that was secretly a count of samples, from 22 kHz to 96 kHz |
-| `worklettest.py` | the generator in the audio thread, and that it is the same code as the picture's |
-| `wasmtest.py` | the compiled core in both worklets: the page's copy built from the core as it stands, each worklet saying it runs it and `js` with `?core=js`, a module the browser refuses falling back to JavaScript, every preset's sound and effects the same through it as through the JavaScript core |
+| `wasmtest.py` | the compiled core as the site carries it: the page's copy built from the core as it stands; a browser without WebAssembly told so and drawing nothing, and one that will not make the module on the main thread told why and waiting, each against the page that can |
 | `envtest.py` | the gate, the envelope and the legato rule |
 | `taptest.py` | the two taps, all four combinations, and the block they straddle |
 | `combtest.py` | the lag heard as a `DelayNode`, its agreement with the picture, and where its comb is deepest |
@@ -80,13 +78,13 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
 | `clocktest.py` | the clock as the face shows it, the instrument's since 5b: the LFO card's locked rate, a tap's tempo and the one, a MIDI clock's tempo and its handing back, the Bar row's Stop and Start and a code leaving it stopped, the score's playhead at the instrument's column, each against the page's own clock told something alone; and setup codes carrying the tempo and the locks |
-| `facetest.py` | the face reads the instrument (5b): the Picture section's bars and held loop, the photocell's card and reticle, the readout's verdict and the screen's turn are what the instrument posts, against values the page's own picture was left holding, its unfed meter and a routing told to the page alone; since 5b's second half the grid, the harmony line's outline, the arpeggio's notes, the figures laid out and lane three's full scale too, each against the page's own; the page's picture, photocell and screen matrix counted at nought, and the boot waiting for the instrument with nothing of the page's own stepped, against the page's own brain's boot |
+| `facetest.py` | the face reads the instrument (5b): the Picture section's bars and held loop, the photocell's card and reticle, the readout's verdict and the screen's turn are what the instrument posts, against values the page's own stage was left holding and a routing told to the page alone; since 5b's second half the grid, the harmony line's outline, the arpeggio's notes, the figures laid out and lane three's full scale too, each against the page's own |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a tone at two hertz, the readout, Autoset and the lag |
 | `onsettest.py` | Onset and the events it fires, against stand-in destinations the suite registers since G2 took Swing again and Kick: events only to what is struck, one attack one onset, the gap, a strike once a count |
 | `schematest.py` | the setup's table of fields (`SETUP_FIELDS`): snapshot and the table key for key, every menu and range its control's, every default its own rule's, the readers and restore through them, each with its null |
 | `planetest.py` | the plane as an effect: the matrix, mirror, twist, clip, fold and snap to the last bit at 1x, a mirrored sine's octave, aliasing at 1x, 2x and 4x, every pair once, the delay, the cost, a controller on the twist, setup codes and the version-4 migration |
 | `drivetest.py` | shaping inside the voice: the drive's harmonics against its curve's, the fold's against Bessel's, no difference tones between two driven notes, the colour kept as a note dies, aliasing at 1x, 2x and 4x, the crusher's grid and hold, the cost |
-| `vcftest.py` | the voice filter: Web Audio's biquad to 0.01 dB over four types, three cutoffs and three Qs, a sweep at audio rate, key tracking against the cookbook, its envelope per note and per layer, its release, a cutoff moved mid-note |
+| `vcftest.py` | the voice filter, rendered by the compiled core in the page: key tracking against the cookbook, its envelope per note and per layer, its release, a cutoff moved mid-note (its response against Web Audio's biquad and a sweep at audio rate are `core/tests/pieces/vcf.py`'s) |
 | `scantest.py` | Scan (P7a): a reading's tables, their band-limit and their level, darkness held, the off-centre path against P2's centred one on a rose, softness, the path following; the tick to the sample at 44.1, 48 and 22.05 kHz and the crossfade across it; nought to the bit, the note's pitch, the fifth of the shape kept, the hold, the bend reaching what is read, layer B; the controls, setup codes and Persistence in seconds, the freeze, the running-away hold, each layer's own picture; and the first minute, a turning fifth moving and the same held still |
 | `bendtest.py` | the Bend: off at nought to the bit, FM at one to one at a centre of nought, the pinch where Bend at puts it and its DC, the centroid rising, aliasing on every sharp shape against the note-rate and uncorrected warps, chords, the dyad, layer B, sources and the wrap, the panel and setup codes |
 | `voicefxtest.py` | inside the voice: nothing changes with nothing on, FM against Bessel, ring without its carrier, sync corrected once and band-limited, the sub and unison at their mix, layer B's own voice, the panel on the layer being edited, setup codes |
@@ -104,28 +102,26 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height; and no word the page can show - its text, hidden panels and the cheat sheet included, tooltips, the info line, the sources' descriptions - names a tab, view or drawer that has gone (G8), with nulls planted in each |
 | `outputtest.py` | Level in the Generator and the master Output (G7): where each is and Level on the Generator's link; the Output's law (the knob's fraction squared) and its reading in decibels; no setup's - a preset, a code, undo under real keys and the morph leave it, each against Level, which they move; this browser's storage, and the page opening at unity with storage refused; the picture the same to the bit and the heard pair a quarter on the compiled instrument the page carries and on the page's own generator, played deterministically on the main thread; the meter at the Output's gain; the site's instrument told the remembered Output as it connects, each with its null |
 | `widthtest.py` | The master Width (12 Nov), the Output's twin: where it is (after the Output, before the meter); its law (the knob's fraction) and reading; no setup's - a preset, a code, New, undo under real keys and the morph leave it, against Level; this browser's storage, and a hundred with storage refused; on the compiled instrument and the page's generator, mono to the bit at nought once landed and glided there, half the side at fifty, the heard pair the drawn pair to the bit at a hundred, the picture the same to the bit; the instrument's state; the site's instrument told the remembered Width; and the Key held through a note's release on the page and at the speakers (serial, real time), each with its null |
-| `enlargetest.py` | Enlarge (G4): the button and Esc, Esc closing a panel first; Picture only hiding the reticle, the loop, the hand's mark, the verdict, the panes, and every ink off the trace in X-Y and Y-T; the phosphor grid and Scan's table the same with it on and off and with Which hands on one hand, on `?brain=js`; the Trail fading the canvas at the square of the Persistence (Half) or Short's and the grid at the Persistence, and doing nothing on the face; the light kept as it opens and closes; Which hands by ink; the panes beside it at 1400x900 and 960x600; no undo step and nothing stored; and the header one row before any sound at three windows, each with its null |
+| `enlargetest.py` | Enlarge (G4): the button and Esc, Esc closing a panel first; Picture only hiding the reticle, the loop, the hand's mark, the verdict, the panes, and every ink off the trace in X-Y and Y-T; the instrument's phosphor grid and Scan's table the same with it on and off and with Which hands on one hand; the Trail fading the canvas at the square of the Persistence (Half) or Short's and the grid at the Persistence, and doing nothing on the face; the light kept as it opens and closes; Which hands by ink; the panes beside it at 1400x900 and 960x600; no undo step and nothing stored; and the header one row before any sound at three windows, each with its null |
 | `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | Tone over a tone, and a microphone that is denied |
 
-**One brain, and the page's own kept for parity until step 6.** Since stage
-5m the site plays through the instrument (`plugin/PLAN.md`): the plugin's
-brain and sound, compiled, in a worklet, with the page as its face; since
-stage 5, step 5b the face reads everything it shows from it, and since 5b's
-second half the page steps nothing of its own and waits for it to answer.
-`?brain=js` and `?core=js`, the ways back until then, are words on the
-address. The page's own brain, written in JavaScript, is still in the file,
-unreached, because `core/tests/parity.py` lifts its functions out of
-`scope.html` by name and holds the instrument to them, and its golden files
-record what they answered. A suite that holds that brain itself - its fade,
-its hearing, its worklets and cores - opens the page with parity's harness's
-flag, an init script setting `window.__scopePageBrain` (`PAGE_BRAIN`), and
-says so at its top; step 6 deletes the brain and those halves with it.
-Everything else runs on the default, and a suite that reaches into the page
-by hand (`state.something =`, `genSet`, a routing list assigned) reads an
-instrument that never heard it: use the controls, or `hostRoutings()` and
-`hostSendSetup()`.
+**One brain, the instrument's.** The site plays through the instrument
+(`plugin/PLAN.md`, stage 5m): the plugin's brain and sound, compiled, in a
+worklet, with the page as its face, which reads everything it shows from what
+the instrument serves and steps nothing of its own. Until stage 5's step 6
+the page carried a brain and engine of its own in JavaScript, which the core
+was held to sample for sample; step 6 deleted them, and the core is held to
+what they answered, recorded (`core/tests/golden/`), by
+`core/tests/core_tests.py`. A suite that reaches into the page by hand
+(`state.something =`, `genSet`, a routing list assigned) reads an instrument
+that never heard it: use the controls, or `hostRoutings()` and
+`hostSendSetup()`. A suite that renders the generator in the page to measure
+it renders the compiled core, through `tests/compiled_core.js` (an init
+script: `page.add_init_script(path=COMPILED_CORE)`, then
+`compiledGenerator(rate, GEN_SLOTS, lfos)`, with the interface the page's own
+generator had).
 
 ## Two things worth knowing before changing it
 
@@ -6499,7 +6495,8 @@ has to be callable from text evaluated with none of the page around it: the
 counters are `globalThis.__brainCount?.(...)` for that reason, and run
 `core/tests/tools/matrix_js.mjs` (seconds) before the whole of parity. The
 counters themselves, per suite: `python3 tests/run.py --brain-counts DIR`,
-then `python3 tests/braincounts.py --sum DIR`.
+then `python3 tests/braincounts.py --sum DIR` - until stage 5's step 6, which
+deleted the steps they counted and the counters with them.
 
 **A check that fails only in full runs is usually reading the machine (13
 Nov).** Four checks did, and each was found by asking what besides the code
@@ -6741,3 +6738,25 @@ forever. And look before taking a step away: the morph's walk looked like a
 second brain beside the core's own, and was the only morph there is, since
 its ends are stored only in the face. `plugin/STAGE5-INVENTORY.md` section 15
 has the rest.
+
+**Deleting dead code is found by reading what is still alive (14 Nov).**
+Stage 5's step 6 deleted the page's brain and engine, about 6,000 lines, by
+cutting at the gates - the page-brain flag, the per-frame steps that did
+nothing once the instrument had served a face, the tone source at boot -
+and then deleting whatever a call graph of the script said nothing live
+reached any more, a pass at a time. Three things that cost time. A function
+deleted by name, because it was the engine's, was still called from code
+that stayed: `phosphorSegment` was a no-op on the default page and still
+called from the Y-T trace, and only a page error in the next suite said so
+- so after every pass, list the free names the script uses (anything
+referenced and declared nowhere) as well as the dead ones. A graph that
+treats every `const` as alive keeps alive everything a dead table points to,
+so the constants nothing reads are a pass of their own. And the inventory
+of what leaned on the engine had looked only at the suites that opened
+`?brain=js`: eighteen more built the page's own generator inside a default
+page and read its numbers, which no counter saw because the generator was
+built by the test, not stepped by the page. They render the compiled core
+now, through `tests/compiled_core.js` - the bridge the page's worklets drove
+it by, moved there whole - and `core_tests.py` holds that bridge to the
+native core run for run, so a check that passed on the page's engine passes
+on the core for the same reason.

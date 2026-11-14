@@ -7,7 +7,7 @@
 //
 // It is a port, not a redesign: the same stages, the same pole aimed a fifth
 // past the end of each stage, the same legato rule, in the same order of
-// operations, so that `core/tests/parity.py` can hold it to the JavaScript
+// operations, so that `core/tests/core_tests.py` can hold it to the JavaScript
 // sample for sample. Where the JavaScript explains why, the explanation is
 // there and is not repeated here; where a C++ decision differs, it is said.
 

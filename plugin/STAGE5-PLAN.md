@@ -1,7 +1,8 @@
 # Finishing stage 5: one engine
 
-A plan, for the owner to read before anything is built. Nothing here has been
-changed yet. The question it answers: what does it take to retire the page's
+A plan, written for the owner before anything was built, and now a record:
+all six steps are done (14 Nov), and the closing section at the end says what
+went, what holds the core now and what it cost. The question it answered: what does it take to retire the page's
 own JavaScript engine and brain, so that the C++ core is the only thing that
 makes the sound and the picture, on the site and in the plugin?
 
@@ -437,6 +438,13 @@ the full suite and parity pass.
    and 2,500 of harness. *Checked by:* the full suite, the core's tests, and
    `extract.py` plus `node --check`.
 
+   **6, done (14 Nov): deleted.** The page's brain and engine, its worklets,
+   picture engine, matrix and fade arithmetic, hearing, arpeggiator walk, Scan,
+   clock steps, codec and migration, and the tone it made at boot to be
+   awaited; parity's JavaScript harness; and the counters, whose steps are
+   gone. Parity is `core/tests/core_tests.py`. The closing section, below,
+   has the account.
+
 **The riskiest is step 5.** Not because the sound changes - it does not; the
 site already plays the core - but because the face quietly leans on the
 page's brain for things it shows. That is how 5m went: flipping the default
@@ -634,3 +642,66 @@ What was decided, and the cost:
   see the core against itself - so when the JavaScript harness is deleted, the
   sketched sections rest entirely on the core-against-file check, which is why
   that check is a section of its own and null-tested.
+
+## Stage 5 closed (14 Nov)
+
+One engine. The C++ core makes the sound and the picture on the site and in
+the plugin. The page is the face, and the face reads what the instrument
+serves.
+
+**What went in step 6.**
+- The page's own brain and everything behind it:
+  - `PAGE_BRAIN`.
+  - The generator and effects worklets, and `makeGeneratorCore`.
+  - The picture engine: `phosphor`, the meter and the moments, and the layers' screens.
+  - The matrix's per-frame arithmetic, and the fade's steps and gains.
+  - The hearing's listening, the arpeggiator's walk, Scan and Strike.
+  - The clock's steps, the score's own reading, and the MIDI-out notes.
+  - The codec, with its version-tagged migration (the core's `migrateSetup` has the reasons now).
+  - The limited monitor chain.
+  - The tone source the page made at boot only to wait on (`makeAwaitedSource`, a mirror that plays nothing, stands in its place).
+  - The microphone and band sources that only the page's brain played.
+- Parity's JavaScript harness: the fourteen `*_js.mjs` runners, `js_core.mjs` and `restore_page.py`.
+- The halves of fadetest, hearingtest and wasmtest that were kept for this step. worklettest has nothing left to hold, and went too.
+- The counters (`__brainCount`, `braincounts.py`, `run.py --brain-counts`). Every step they counted is gone, so a count of nought guards nothing. A face that reaches for a deleted function now fails on a name, not on a count.
+
+**What was kept, and why.**
+- The monitor chain and `syncMonitor`: the backstop, the Output and the Width are what is heard.
+- `morphStep.apply`: it is the only morph. Its two ends are stored nowhere else (`after-stage-5.md`).
+- The face's drawing of what the instrument serves: the cards, the fade's envelope and its dot, the score and the rings, all read from `instrumentFace` and `instrumentClock`.
+- The generator's settings mirror, which the panel shows and its handlers write.
+- The page's encoder, for a setup that is not an object and for a browser without WebAssembly. That browser now waits and says why; it plays nothing.
+- The slot constants, which name the destinations.
+- A small transport for the tempo slider and a tap.
+
+**What holds the core now.** `CHROME=/opt/pw-browsers/chromium python3 core/tests/core_tests.py`:
+- @@CHECKS@@ checks, @@MINUTES@@ minutes.
+- It did three jobs:
+  - It held the core to what the page's JavaScript answered, now recorded in `core/tests/golden/`. `restore.json.gz` was recorded the day before the brain went, so all fifteen files are the page's own answers.
+  - It held the face to the core (controls, bank, sources and codec, read off the page as it is).
+  - It held each piece of the engine to its own numbers, with its nulls.
+- The guard on rewriting a recording is a reason: `--write-golden` refuses to run without `--because "why"`, and logs the reason, the date and what moved in `core/tests/golden/README.md`.
+  - A bound on the size of a change was rejected. It would stop the changes worth making and pass the small wrong ones.
+  - A section whose own checks failed is still refused.
+  - A section whose runs did not move is kept to the byte.
+- The nulls that used to break a copy of the page now break one line of a copy of the core (`mutant`):
+  - the plane that kept a delay through a switch;
+  - the Key read as a gate;
+  - the arpeggiator's lost strike;
+  - Scan's uncut segment.
+- Each null must be told apart from the recording. The comparison itself is null-tested at the end of every run.
+
+**What it cost.**
+- Kind-2 bugs are no longer caught structurally. Two engines disagreeing used to find a fault neither had alone; now nulls and mutants have to find it.
+- Three checks of what a sound means rest on the recordings alone now: the arpeggio's strike, the key's gate and the hearing's arrival (`after-stage-5.md`).
+- A sound bug that shows only live is debugged natively through the offline render, not in a browser's devtools.
+
+**The lines.**
+
+| | Before step 6 | After | Removed |
+|---|---|---|---|
+| `web/scope.html` | 31,361 | @@PAGE@@ | @@PAGEDEL@@ |
+| Harness (`core/tests`) | | | @@HARNESS@@ net |
+| Web suites (`web/tests`) | | | @@WEB@@ net |
+
+Against the plan's estimates (about 4,400 lines of the page and 2,500 of harness), the page lost more. The step deleted engines the face had stopped reading during 5b, not only the brain.

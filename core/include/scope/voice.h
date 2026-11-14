@@ -3,7 +3,7 @@
 // (`vcfHz`, `vcfCoef`, `makeVcf`), the shaping and its oversampler
 // (`shapeSample`, `setShaping`, `lowpassTaps`, `makeShaper`), and the crush
 // (`makeCrush`, `crushStep`). The same arithmetic in the same order, held to
-// the page by core/tests/parity.py.
+// the page by core/tests/core_tests.py.
 //
 // One difference of shape, not of sum. In the page the shaping's four
 // numbers are the core's own variables, written by `setShaping` for one

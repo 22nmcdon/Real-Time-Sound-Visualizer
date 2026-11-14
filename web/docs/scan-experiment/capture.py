@@ -1,5 +1,5 @@
 """Lay the phosphor from presets in the page and record it frame by frame.
-The page's grid is what the C++ core's is (parity.py holds them equal), so this
+The page's grid is what the C++ core's is (core_tests.py holds the core to what the page answered), so this
 is the grid Scan would read, without building anything."""
 import json, os, sys
 import numpy as np

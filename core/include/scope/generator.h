@@ -4,7 +4,7 @@
 // score's voices, and the calls the worklet makes of it. (The drawings - the
 // pendulums, the figures, the solids and the second generator - went in G2,
 // 9 Nov: the owner did not miss them.) It is held to the page's own `makeGeneratorCore` whole,
-// driven through the same calls, by core/tests/parity.py.
+// driven through the same calls, by core/tests/core_tests.py.
 //
 // The pieces it is made of are ported and held to the page one at a time in
 // the headers it includes; this file is the order they are called in, which
