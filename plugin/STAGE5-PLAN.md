@@ -429,6 +429,45 @@ own. If step 1 finds the face leaning on the page's brain in many places, step
 - Step 1 starts once the note-click fix and the picture's swell have landed, so this
   stage does not collide with them.
 
+## Step 5 decided (the owner, 14 Nov)
+
+The questions step 3's batches left for step 5 (its list, above), answered
+before it starts:
+
+- **The limiter goes into the core.** The page's limiter is ported to the
+  instrument, so the plugin and the site share one: the site sounds as it does
+  now, the plugin stops handing its host up to ten decibels over full scale,
+  and the picture meter's rule that a strained limiter means running away works
+  on the instrument's own meter. Held by parity against the page's limiter
+  while both exist, and by a check that the plugin's output never passes full
+  scale on the loop's worst renders.
+- **Stop freezes the picture the instrument reads.** Scan then plays a held
+  picture, so what is seen is what is heard; notes still sound, and only the
+  timbre stops moving until Run. The plugin, which has no Stop, is unchanged.
+  scantest's held run moves to the default on it.
+- **The core's picture meter is fixed, not worked round.** Find why the core's
+  grid changes frame to frame on a still figure with detail, measure change as
+  the eye sees it, and hold the instrument's verdicts to the page's on the test
+  sounds, so a still figure reads settled. harmonytest's two meter rows follow.
+- **The instrument reports its clock.** The core posts its LFO rates, the
+  tempo and the score's playhead, and the clock's and the score's panels read
+  them, so there is one clock and the plugin's panels follow the host's tempo.
+  clocktest's seven rows and scoretest's three follow.
+
+Settled without asking, since each has one sensible answer; the owner can
+overrule any of them:
+
+- **The visual matrix is the instrument's.** The face follows the destinations
+  the core's own matrix moves on the screen (`screen.h`, which batch 3 found
+  enough), and the page's second matrix goes with its brain. scale's three,
+  lane's eight and filtertest's cutoff sweep follow together.
+- **The interval readout reads the instrument** (`harmonySaid` from the
+  instrument's tone, not the face's mirror).
+- **The voices' budget is not refitted in step 5.** Its governor is the page's
+  to the bit; refitting its costs to the core changes what thins under load,
+  which the owner hears first, after this stage
+  (`web/docs/budget-on-the-core.md`, `web/docs/after-stage-5.md`).
+
 ## Step 2 settled (13 Nov)
 
 The golden layer is `core/tests/golden_runs.py`; the files are
