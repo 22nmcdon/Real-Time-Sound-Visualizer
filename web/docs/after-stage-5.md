@@ -104,6 +104,15 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   owner's decision on the Tine piano (12 Nov). `core/tests/tools/honesty_cpp.cpp`
   measures it.
 
+- **The old library's Glass pad gives up a copy a hand under a full chord.**
+  budgettest's "no preset gives anything up" copied each setup's generator
+  fields and left its routings out; with them counted, Glass pad's
+  `env.note>gen.fm` costs FM and under eight notes a hand its unison goes
+  from five copies to four, on the page's governor as on the core's. The
+  bank gives nothing up either way, and the old library is a test corpus,
+  not something offered, so this matters only if Glass pad comes back. Found
+  by batch 6 (14 Nov); `core/tests/pieces/budget.py` counts the routings now.
+
 ## Tests
 
 - **The loop suite's fold check** passed only through its "saturated"
