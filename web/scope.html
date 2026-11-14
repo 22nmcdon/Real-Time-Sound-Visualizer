@@ -6294,7 +6294,7 @@ function cycleTables(points) {
    across. Read from its centre a symmetric figure repeats k times a lap and
    plays k times too high; off-centre, five of the experiment's six pictures
    read their fundamental strongest. The centre and the size follow the
-   figure over about a second (`SCAN_FOLLOW`), so a figure that moves does not
+   figure over about a second (`kScanFollow`, scope/scan.h), so a figure that moves does not
    drag the path about every tick and smear the table. The grid is blurred
    first by the softness, in cells, because a path across thin lit lines
    reads spikes: 1 to 5 dB an octave raw, 10 to 17 softened by three.
@@ -6305,7 +6305,9 @@ function cycleTables(points) {
    held rather than divided by nothing; and the depth never takes the whole
    voice (`SCAN_MOST`), so a fifth of the shape is always there and the note
    keeps its pitch on a picture whose lowest harmonic is not the first. The
-   fourth, the running-away hold, is the picture stage's (`scanStep`).
+   fourth, the running-away hold, is the picture stage's. Since stage 5's
+   step 6 all of this is the core's alone (scope/scan.h); the page keeps the
+   constants its face and its controls' ranges read.
 
    Each table carries 64 harmonics at most and is built at 512 points, half
    the harmonics a level down to the fundamental alone, and read by
@@ -6418,7 +6420,7 @@ const DRAWBAR_DEFAULT = [0, 0, 8, 7, 4, 0, 0, 0, 0];
    does not pass it at all, and at nought every line below is what it was
    before the band-limiting arrived.
 
-   `bars` is the drawbars' registration as weights (`drawbarWeights`), and
+   `bars` is the drawbars' registration as weights, and
    only the drawbars read it - or, for a drawn cycle, its tables
    (`cycleTables`); `amount` is the shape's own number, which only two shapes
    have: the morph's position, nought to three, and the pulse's width, a
@@ -6776,7 +6778,7 @@ function clockStep() {
   /* The delay's time in note values, as the face's mirror and its reading
      show it, at the instrument's tempo: the instrument follows its own
      (and is sent nothing from here); this is only what the face says. A
-     MIDI clock's slack (delayFollows) is the instrument's, and not
+     MIDI clock's slack is the instrument's, and not
      repeated: the reading moves with every change of its tempo. */
   for (const [e, layer] of [[echo, 0], [echoB, 1]]) {
     if (typeof e === "undefined" || !e.sync || (layer === 1 && linked("delay"))) continue;
@@ -7201,7 +7203,7 @@ registerSource({
 /* The event destinations (S3) are struck, not set: each carries `fire`, and
    the routing's depth is how hard. The two there were - the harmonograph's
    Swing again and a solid's Kick - went with the drawings in G2, and the
-   machinery (`fireEvents`, the rule that an event reaches only an event) is
+   machinery (the rule that an event reaches only an event) is the core's,
    kept for the next one rather than taken out with them; Onset, the one
    event source, is parked with the hearing and has nowhere to go meanwhile. */
 /* Pluck - a note struck by an event - and the threshold that turned any
@@ -7225,8 +7227,7 @@ registerSource({
    shape, and it would be the one the picture answered to. */
 // Sage, as the second pass drew it: on slate it was LFO 2's ink, and with a
 // ring for one source and a tick for each other on a knob (G5b) the two could
-// not be told apart. (Above the call, not inside it: parity's generator
-// harness finds this source by the text that opens it.)
+// not be told apart.
 registerSource({
   id: "env.note", label: "Envelope", ink: "ch4", bipolar: false, order: 11,
   family: "signal",
@@ -7299,7 +7300,7 @@ for (const dest of VISUAL_DESTS) registerDest(Object.assign({ kind: "visual" }, 
    Four macro knobs lived here too, sources with nothing behind them but a
    hand, until P8d took them out: the plugin's host knobs (P8a) are the loop's
    own controls, which is what the macros had been standing in for. A setup
-   code that named them loses them in migrateSetup's version-6 pass. */
+   code that named them loses them in the core's migrateSetup, version 6. */
 
 /* The morph: two sets of sliders and a fader between them. The plan asked for
    "two setup codes and a crossfader over every continuous field", and what was
@@ -7519,9 +7520,8 @@ const hostSync = { on: false, site: false, seen: 0, loads: null, applying: false
    out of `state.modRoutings`, so the matrix, the fade, the events and the
    instrument behind the page hear nothing of them, and kept here with where
    each stood in the list, so switching the source back on puts them back as
-   they were. The matrix's own functions are not taught a silence: parity
-   lifts them into its harness by name (core/tests/tools/matrix_js.mjs), and
-   what they read is already "the routings heard".
+   they were. The matrix's own functions are not taught a silence: what
+   they read is already "the routings heard".
 
    Stored since G5b, the owner's call: the setup has every routing - snapshot
    writes routingsKept() - and which sources are silenced (`modSilent`), and
@@ -7672,15 +7672,15 @@ function gateSet(gate, on, now) {
 }
 
 /* How much of a routing is on, for one layer: nought to one. A pair not yet
-   seen by `fadeStep` arrived since the last frame, and is nought if routings
-   fade in - otherwise a routing made between two frames would be heard at
-   full depth for one block before its fade began, which is the click this
-   is here to stop. */
+   served by the instrument arrived since its last reading, and is nought if
+   routings fade in - otherwise a routing made between two readings would be
+   drawn at full depth for a frame before its fade began. Before anything is
+   served the landing gains (`fadeLand`) answer. */
 function fadeGain(key, layer = 0) {
   // The picture stage's routings are not the setup's and do not fade: the
   // amount is their gain, and a fade-in that had never seen them held them at nought.
   if (fade.mode === "off" || isStageKey(key)) return 1;
-  // The instrument's, while it plays (5b's second half: Instrument::fadeServed), in place of the page's fadeStep.
+  // The instrument's, while it plays (5b's second half: Instrument::fadeServed).
   const served = (typeof instrumentFadeGains === "function" ? instrumentFadeGains() : null);
   if (served) {
     const found = served.find((g) => g.key === key);
@@ -7692,7 +7692,7 @@ function fadeGain(key, layer = 0) {
 }
 
 // Whether any routing heard comes from a source whose id starts so: what the
-// hearing asks before it listens (`hearingStep`). The core's Matrix::routedFrom.
+// hearing asks before it opens its input (`hearingStep`). The core's Matrix::routedFrom.
 function routedFrom(prefix) {
   return routingsHeard().some((routing) => routing.sourceId.startsWith(prefix));
 }
@@ -7700,7 +7700,7 @@ function routedFrom(prefix) {
 // Every routing that is heard: the ones in the setup, those fading out, and
 // the picture stage's.
 /* The fade's gains as the instrument last served them, or null while the
-   page's own fadeStep is the one (no instrument, or none served yet). */
+   landing gains are the page's (no instrument, or none served yet). */
 function instrumentFadeGains() {
   const source = state.source;
   return source && source.kind === "host" && source.face && source.fadeGains ? source.fadeGains : null;
@@ -7834,7 +7834,7 @@ function setFade(mode, seconds) {
    restore, so every way a sound is loaded - a preset, New, a code, a saved
    sound, undo and redo, the header's arrows, the plugin's state and its
    program change - lands the same way; the core's Matrix::load does the
-   same for the instrument, and parity holds the two together. */
+   same for the instrument, which is what is heard. */
 function fadeLand() {
   if (fade.mode === "off") return;
   fade.gains.clear();
@@ -9223,30 +9223,15 @@ function noteDeviceRate(rate) {
 }
 
 
-/* --- the generator's per-sample loop ----------------------------------------
-   Everything below runs once per SAMPLE, and none of it may touch the page.
-
-   That is not a style rule. This same source text is stringified into an
-   `AudioWorkletNode`, where `document`, `state`, `el` and every other
-   main-thread name simply does not exist - so a reference that resolves here
-   and nowhere else is silence in a browser rather than an error anybody sees.
-   `worklettest.py` evaluates the module against stub globals and runs a
-   block, which turns that into a named `ReferenceError` on the first sample.
-
-   One body of code, two places it runs: on this thread while the generator is
-   silent, and in the worklet once it is not. Not two implementations kept in
-   agreement by a test, the way the biquad and the rotation are - the same
-   text, so there is nothing to keep in agreement.
-
-   It owns its phases, and it is HANDED its oscillators
-   rather than reaching for them. On the main thread those are the same two
-   objects the per-frame destinations read, so a patch to the rotation and a
-   patch to the frequency are the same LFO. In the worklet they are the
-   worklet's own, and their values are posted back for the picture to use. */
-/* The generator's settings, both layers, as the cores keep them: the
-   JavaScript core's own, and the mirror the compiled core's wrapper keeps
-   so the page can read them back as it always has. One literal, so the two
-   cannot start from different defaults. */
+/* --- the generator's settings ----------------------------------------------
+   The page's generator ran here, once a sample, until stage 5's step 6: the
+   instrument's (scope::Generator, core/include/scope/generator.h) is the
+   only one now. What is left is what the face keeps of it - its settings,
+   which the panel shows and its handlers write, and which a setup is read
+   back into. */
+/* The generator's settings, both layers, as the face keeps them: the mirror
+   (makeGeneratorMirror) the page reads back as it always has. The fields
+   and what each means are the core's; this says why each is there. */
 function generatorSettings() {
   /* No `mode` since G2: the generator is a waveform, the one kind left when
      the harmonograph, the figures and the solids went. */
@@ -9412,7 +9397,7 @@ function generatorSettings() {
        knob leaving nought. Ten milliseconds, a linear crossfade during
        which both run, after 64 samples in which the stage runs unheard to
        fill its emptied history (SWITCH_PRIME). Ten is a choice rather than
-       a measurement: long enough that parity's switches step the sound no
+       a measurement: long enough that the core tests' switches step the sound no
        further than the note does, short enough to be a switch and not a
        sweep, and the comb of a wave against itself 31 samples late is
        heard only for that long. A stage at rest, in or out, is what it
@@ -9506,10 +9491,9 @@ function generatorSettings() {
      shape, level and envelope.
 
      It is rendered in the SAME per-sample loop as layer A, after the one step
-     of the oscillators, and that is why it lives here rather than in a
-     second core. Two cores would each step the shared LFOs once a sample and
-     every modulation rate would run at double - the fault `assertLfoDriver`
-     throws on. Modulation reaches both layers alike, for the same reason: one
+     of the oscillators (scope::Generator), and that is why it lives here
+     rather than in a second generator. Two would each step the shared LFOs
+     once a sample and every modulation rate would run at double. Modulation reaches both layers alike, for the same reason: one
      accumulator, one law. `voices` null is "no layer B", exactly as it is
      "no chord" on layer A.
 
@@ -9622,8 +9606,7 @@ function generatorSettings() {
    registration copied and clamped and ignored unless it is nine numbers,
    and layer B keeping only the fields it has - a whole panel written into
    it (`generatorFromPanel` does exactly that) lands the ones that mean
-   something and drops the rest. Shared, so the compiled core's mirror and
-   the JavaScript core agree on what a setting leaves behind. */
+   something and drops the rest, as the core's Generator::set does. */
 function storeGeneratorSetting(tone, toneB, field, value, layer) {
   const into = layer === 1 ? toneB : tone;
   if (field === "voices") {
@@ -9645,8 +9628,8 @@ function storeGeneratorSetting(tone, toneB, field, value, layer) {
 
 /* The generator as the page sees it when the sound is made somewhere else -
    inside the plugin, or by the instrument in a worklet (?brain=core): the
-   settings alone, kept by the page's own handlers by the rules the cores
-   store by, so the panel shows the generator and its controls move it. What
+   settings alone, kept by the page's own handlers by the rules the core
+   stores by, so the panel shows the generator and its controls move it. What
    the instrument does with them is its own business; the page's hands reach
    it as hands (hostSync), and its state comes back as a setup the page
    restores, which writes these again. Without it the page had no generator
@@ -9770,7 +9753,7 @@ const CORE_IN_WASM = typeof WebAssembly === "object";
    not start, waits and says why (instrumentWait). Stage 5's step 6
    deleted the page's brain and its engine. */
 
-/* --- the generator, in the audio thread -------------------------------------
+/* --- the instrument, in the audio thread ------------------------------------
    The processor, written as a real function in this file rather than as a
    string, so `node --check` parses it and an editor can see it. The module
    text is this function stringified and immediately called, with everything
@@ -9778,17 +9761,9 @@ const CORE_IN_WASM = typeof WebAssembly === "object";
 
    What a worklet may not do is reach for anything on this side. There is no
    `state`, no `el`, no `document`; `sampleRate` and `currentFrame` exist and
-   almost nothing else. That is why `makeGeneratorCore` is written the way it
-   is, and why `worklettest.py` runs the module against stub globals in Node -
-   a name that only resolves on the main thread has to fail as a
-   `ReferenceError` naming it, rather than as a generator that stays silent. */
-/* S1: the effects worklet. A live input's pair in, the same pair through the
-   generator's plane out - `makeGeneratorCore`'s `effect`, so the twist
-   a microphone goes through is the generator's twist, not a second one
-   written to agree with it. In the same module as the generator, because it
-   is the same code; its own processor, because it has an input and makes
-   nothing of its own. Its oscillators are copies, stepped here for a routing
-   on the twist or the radius, and restarted when the page's are. */
+   almost nothing else, so a name that only resolves on the main thread is a
+   processor that fails on its first block. `wasmtest.py` loads the module
+   and plays it. */
 /* 5f: the instrument, whole, in the audio thread - the compiled core's brain
    and engine as the plugin plays them (scope::Instrument), for the site's
    ?brain=core. Everything the page does to it arrives as a message and is
@@ -10074,8 +10049,8 @@ function clampCurve(points, knee, ceiling) {
    everything, and a clamp twice bends every peak over 0.85 twice. So this
    chain has no limiter, and in place of the clamp a backstop:
    the identity, point for point, up to 0.995 - above the clamp's 0.99
-   ceiling, so on anything the instrument sends it changes nothing (parity
-   renders the two through an OfflineAudioContext, to the bit) - and
+   ceiling, so on anything the instrument sends it changes nothing (the core
+   tests render the two through an OfflineAudioContext, to the bit) - and
    asymptotic to one above it. It is there for what this chain still does
    after the instrument when Scope & measure's "heard" is on the shaped side
    (the filter, the coupling, the lag, the rotation): a resonant filter after
@@ -10547,7 +10522,7 @@ function makeBrainHost() {
      generator with no note while there was none. The site is silent until a
      note now, as the plugin is, so the page sends nothing and the instrument,
      told nothing, is the plugin's: a keyboard. The core keeps the control;
-     only parity's fixtures for a generator with no note send it now. */
+     only the core tests' fixtures for a generator with no note send it now. */
   /* The input stream, connected to the worklet's input: the page opens it
      (syncGenInput) when the instrument draws it, or when the generator takes
      it for its live-input modes, which in the instrument hear it whether or
@@ -10625,7 +10600,7 @@ function makeBrainSource() {
     kind: "host",
     // Drawing its input rather than its generator: the instrument's, mirrored (hostDraw).
     drawsInput: false,
-    // Its oscillators come back with its picture, for the page's to be them (lfoDriver).
+    // Its oscillators come back with its picture, for the page's to be them.
     postsLfos: true,
     // The instrument plays whether heard or not, so its generator always takes an input it is given.
     takesInput: true,
@@ -10657,8 +10632,7 @@ function makeBrainSource() {
         readings.scan.tables.forEach((t, l) => { if (t !== undefined) scanThumbs[l] = t; });
       }
       /* The oscillators, the instrument's, into the page's: the picture's
-         destinations are moved by the ones that move the sound
-         (lfoDriver), as the page's worklet hands its own back. */
+         destinations are moved by the ones that move the sound. */
       if (readings && readings.lfos && state.source === this) {
         readings.lfos.forEach(([phase, held, value], i) => {
           if (lfos[i]) { lfos[i].phase = phase; lfos[i].held = held; lfos[i].value = value; }
@@ -10779,7 +10753,7 @@ const SERVED_LENGTH = 12 + 54;
    second half): a line a routing, ghosts fading out among them - its key,
    each layer's gain, its depth, the upper hand's or nothing, and 1 if it is
    in the setup. What the face's fadeGain and routingsHeard read in place of
-   the page's own fadeStep. Stringified into the worklet with makeWasmBrain. */
+   anything the page keeps. Stringified into the worklet with makeWasmBrain. */
 function fadeGainsRead(text) {
   const out = [];
   for (const line of String(text || "").split("\n")) {
@@ -10977,8 +10951,8 @@ function makeHostSource(info) {
   const timing = { fetches: 0, totalMs: 0, worstMs: 0, failed: 0 };
   /* The plugin's oscillators, which it names where it has them: fetched after
      each picture and made the page's, so the picture's destinations move with
-     the oscillators that move the sound (lfoDriver), as the site's page takes
-     the ones its worklet posts. A host that names none leaves the page
+     the oscillators that move the sound, as the site's page takes the
+     ones its worklet posts. A host that names none leaves the page
      stepping its own, a rate the same and the phase its own. */
   const postsLfos = typeof info.lfosUrl === "string";
   let inFlight = false, stopped = false;
@@ -11049,7 +11023,7 @@ function makeHostSource(info) {
 
   const source = {
     kind: "host",
-    // Its oscillators come back after its picture, for the page's to be them (lfoDriver).
+    // Its oscillators come back after its picture, for the page's to be them.
     postsLfos,
     // Drawing the host's input bus rather than the generator: the plugin's, mirrored (hostDraw).
     drawsInput: false,
@@ -12704,17 +12678,12 @@ function phosphorReadGrid(g, u, v) {
   return (at(u, v) + at(u - d, v) + at(u + d, v) + at(u, v - d) + at(u, v + d)) / 5;
 }
 
-/* --- Scan's reading, on the page -------------------------------------------
-   The page's brain reads the phosphor here, once a screen frame, and hands
-   each layer playing Scan its latest table; the generator takes whichever is
-   latest at its own tick, sixty a second of audio time (`scanAdvance`). So
-   the tick is exact on the page too - the tables change at the same samples
-   whatever the screen does - but which picture a tick plays is whichever
-   frame last arrived: at sixty frames a second the one before or the one
-   before that, at 120 every other frame read and never played, at thirty one
-   table for two ticks. The instrument - the site's default and the plugin -
-   reads its own grid at its own picture frame, a sixtieth of a second of
-   audio, and is the same on every machine (core/include/scope/scan.h). For
+/* --- Scan's reading, as the face keeps it ----------------------------------
+   The instrument reads its own grid at its own picture frame, a sixtieth of a
+   second of audio, and is the same on every machine (core/include/scope/
+   scan.h). Until stage 5's step 6 the page's brain read the phosphor here
+   once a screen frame, so which picture a tick played hung on the screen's
+   rate; what is left is what the face draws and the menus name. For
    the same reason Memory is in seconds of a screen at sixty:
    the page's phosphor fades once a frame, so on a faster screen it is
    shorter than it says.
@@ -12831,10 +12800,11 @@ const PHOTO_SOURCE = {
    is a distance and not a yes-or-no, and roundness has a floor under it so
    that fading to silence is a slope and not a cliff.
 
-   `makePictureMeter` is one object for a reason: the verdict it gives - is the
-   loop settled, cycling or wandering - is read by the readout AND by the
-   tests, and "this setup wanders" has to mean the same thing in both. The page
-   feeds it the phosphor grid; a test feeds it grids it made up. */
+   The meter is one object for a reason: the verdict it gives - is the loop
+   settled, cycling or wandering - is read by the readout AND by the tests,
+   and "this setup wanders" has to mean the same thing in both. Since stage
+   5's step 6 it is the core's alone (picture.h), on the instrument's own
+   grid; the face reads what it serves (`instrumentFace`). */
 
 
 /* The sixth source, chosen by measurement rather than by argument, as the plan
@@ -12951,8 +12921,8 @@ function loopVerdict() {
    still or cycling picture, and the phaser, swept in quadrature, opens a
    still line into a loop that keeps changing shape, so a picture that has
    stopped moving is given somewhere new to go; at nought by default, like
-   the rest. The core runs the same arithmetic (`PictureStage`, picture.h), and
-   parity holds the two together. */
+   the rest. The arithmetic is the core's (`PictureStage`, picture.h); the
+   page keeps the sources and the bundles its face and its menus name. */
 const STAGE_SOURCES = [
   { id: "stage.glow", key: "glow", label: "Glow", reach: PHOTO_REACH },
   { id: "stage.motion", key: "motion", label: "Motion", reach: PHOTO_REACH },
@@ -12994,10 +12964,9 @@ const pictureStage = makeStageState();
    Only while the layers draw a figure each, in X-Y: A against B is one figure
    with one picture, and Y-T draws lanes, not figures. Anywhere else both
    sounds hear the one shared picture, exactly as before, and the layer
-   screens are neither drawn nor measured. Not here for the site's
-   instrument or the plugin's (a host source): they compute their routes in
-   the core, which draws its own grids and has all of this (LayerPictures,
-   core/include/scope/picture.h), held to this page by parity. */
+   screens are neither drawn nor measured. All of it is the core's
+   (LayerPictures, core/include/scope/picture.h), which draws its own grids;
+   the page keeps the menus' words and the values the face reads. */
 const LAYER_MOVES = [["A", "B", "both"], ["B", "A", "both"]];
 const makeLayerValues = () => ({ round: 0, cover: 0, change: 0, novelty: 0, signed: 0, bored: 0,
                                  raw: { round: 0, cover: 0, change: 0, novelty: 0, signed: 0, bored: 0 } });
@@ -15505,12 +15474,10 @@ function genSettings(layer) {
 }
 
 /* Whether the generator's section has a generator to steer: one that is
-   heard or drawn. genSettings answers where the generator lives, which for
-   the page's own brain is the same question - a microphone has no generator
-   at all. The instrument always has one, and keeps running it for the
-   oscillators every modulation reads, so its settings always answer; but
-   drawing its input it hears the input. So it is asked what it is playing,
-   as the page's brain is asked what it holds. */
+   heard or drawn. genSettings answers where the generator lives, and the
+   instrument always has one, which it keeps running for the oscillators
+   every modulation reads, so its settings always answer; but drawing its
+   input it hears the input. So it is asked what it is playing. */
 function generatorSteered() {
   const source = state.source;
   if (source && source.kind === "host" && playingKind(source) !== "tone") return false;
@@ -17488,7 +17455,7 @@ window.addEventListener("keyup", (event) => {
    by: one table, so that a menu or a range is written once, and the core
    (core/include/scope/schema.h, written out by
    core/tests/tools/write_schema.py and held to this character for character
-   by parity) reads a setup by the same rules. The rules:
+   by core_tests.py) reads a setup by the same rules. The rules:
 
    - ["menu", [...]]: one of these, exactly (Array.includes), else the default;
    - ["within", lo, hi]: any finite number, held to [lo, hi], else the default;
@@ -17588,8 +17555,8 @@ const SETUP_FIELDS = {
   reverbMix: [0, ["within", 0, 100]], reverbSize: [40, ["within", 0, 100]], reverbTone: [60, ["within", 0, 100]],
   reverbPre: [10, ["within", 0, 100]], reverbSpread: [0, ["within", 0, 100]],
   // Additive: a code from before Scan plays no Scan, at the softness P2 chose.
-  // scanSoft is SCAN_SOFT_DEFAULT in tenths of a cell, written out: the
-  // parity harness lifts DEFAULTS without Scan's constants.
+  // scanSoft is SCAN_SOFT_DEFAULT in tenths of a cell, written out, so the
+  // table reads alone (setup_page.mjs lifts it without Scan's constants).
   oscScan: [0, ["within", 0, 100]], scanSoft: [30, ["within", 0, 60]],
   // P7b's, additive: a note's strike (in percent, STRIKE_DEFAULT written out
   // for the same reason) and what each layer's Scan reads, its own picture.
@@ -18440,8 +18407,8 @@ function restoreInto(partial) {
    set the generator ("generator"); "display", a preset that names nothing of
    the generator and lands on whatever is playing, is kept for the effect's
    bank (P9). The bank before this one - 268 presets in 30 sections - is in
-   the history, and kept whole as a corpus of real setups for the tests and
-   parity: core/tests/scenarios/library-p8f.json. */
+   the history, and kept whole as a corpus of real setups for the tests:
+   core/tests/scenarios/library-p8f.json. */
 /* The base (P8h): what the instrument opens on, in the page and the plugin
    alike, and what New starts a setup of your own from. A plain sine, still -
    the Picture amount at nought and nothing read back - in poly, with the
@@ -18451,7 +18418,7 @@ function restoreInto(partial) {
    the plan's first-minute test its first reading: the instrument no longer
    moves the moment it opens, only once a preset or the Picture amount asks
    it to (stagetest.py holds both). Written into presets.h beside the bank by
-   write_presets.py, and held to it by parity. */
+   write_presets.py, and held to it by core_tests.py. */
 const BASE_SETUP = { shape: "sine", midiMode: "poly", polyRound: true, pictureAmount: 0, display: "xy",
                      persistence: "0.3", timebase: 3 };
 const BASE_NAME = "Plain sine";
@@ -18579,7 +18546,7 @@ function writeSaved(all) {
    rather than guess from which keys happen to be present. */
 /* 2: the trigger level became a fraction of full scale rather than an
    amplitude. 3: full scale became decibels rather than a position in a table
-   of nine. Both are migrated on the way in - see `migrateSetup` - which is the
+   of nine. Both are migrated on the way in - the core's `migrateSetup` - the
    same treatment the modulation enum got, and for the same reason: a stored
    number whose meaning changed is not something to fix up quietly at the point
    of use. */
@@ -19462,8 +19429,8 @@ function hostDraw(input, fromState) {
 }
 
 /* Mic on the site's instrument: the stream is opened first and the
-   instrument told to draw it only once it is open, as toMic opens a new
-   source before stopping the old one. It used to switch first and open after
+   instrument told to draw it only once it is open, a new source opened
+   before the old one is stopped. It used to switch first and open after
    (syncGenInput), and a refused microphone then drew nothing: the rack or the
    tone it replaced had been let go, the panel sat on Mic, and the credit said
    only that the input could not be opened, every press after that included.
@@ -20050,7 +20017,7 @@ async function hostConnect(site) {
   setInterval(hostPull, 250);
 }
 
-// Why a press of Mic did not take, and what to do about it: the page's brain and the instrument's say it alike.
+// Why a press of Mic did not take, and what to do about it, in the credit line's words.
 function micRefusal(error) {
   return error && error.name === "NotAllowedError"
     ? "microphone blocked — allow it in the address bar, then press Mic again"
@@ -20242,9 +20209,8 @@ el.amp.addEventListener("input", () => {
 
 /* --- the master Output (G7) ---------------------------------------------------
    One gain after everything, both hands', on what is heard and nothing else:
-   the generator's block puts it on the heard pair after the lanes are summed
-   (makeGeneratorCore), and the instrument on whatever it hears, the input
-   included (scope::Generator::hear). Level is the generator's, in the
+   the instrument puts it on whatever it hears, the generator's summed lanes
+   and the input alike (scope::Generator::hear). Level is the generator's, in the
    Generator; this is the monitor's.
 
    Not part of a setup, decided over making it one: a preset or a code loaded
@@ -20300,7 +20266,7 @@ outputApply();
 /* --- the master Width (12 Nov) ------------------------------------------------
    How wide you hear it, nought to a hundred: the heard pair's side scaled by
    the knob's fraction, so nought is both ears the middle and a hundred the
-   pair as it is (makeGeneratorCore, scope::Generator, which say why it is on
+   pair as it is (scope::Generator, which says why it is on
    the sum before the Output and why nothing goes above a hundred). Asked for
    by the owner after the tine piano went to one ear as a note was let go (the
    Key, keyHeard, was the bug there): the instrument's stereo is its figure's,
