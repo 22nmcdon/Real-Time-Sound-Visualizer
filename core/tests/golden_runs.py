@@ -44,6 +44,7 @@ _real_run = subprocess.run
 SKETCH_OVER = 100_000     # characters: a run under this is kept whole
 KEEP_WHOLE = 2            # and so is one that, gzipped, is under twice its sketch
 BLOCK = 64
+WHOLE_TOOLS = {"restore_page.py"}   # read field by field as JSON, so never a sketch
 
 def _tokens_differ(p, q, tol):
     """None if two numbers are the same to parity's rule, else the gap. The
@@ -163,7 +164,7 @@ def stored(entry):
     """A run as it goes into a file: whole if short, else as its sketch."""
     out = entry["output"]
     keep = {k: v for k, v in entry.items() if k != "output"}
-    if len(out) <= SKETCH_OVER: keep["output"] = out; return keep
+    if len(out) <= SKETCH_OVER or entry.get("tool") in WHOLE_TOOLS: keep["output"] = out; return keep
     sk = sketch(out)
     whole = len(gzip.compress(out.encode("utf-8")))
     if whole <= KEEP_WHOLE * len(gzip.compress(json.dumps(sk).encode("utf-8"))): keep["output"] = out
@@ -327,6 +328,9 @@ class Golden:
         is_js = (s and isinstance(cmd, (list, tuple)) and len(cmd) == 3 and cmd[0] == "node"
                  and str(cmd[1]).endswith("_js.mjs")
                  and not (env and (env.get("CORE") or env.get("SCOPE_PAGE"))))
+        # The page's own restore, in a browser (step 6 records it before the page's brain goes).
+        is_js = is_js or (s and isinstance(cmd, (list, tuple)) and len(cmd) == 3 and str(cmd[1]).endswith("restore_page.py")
+                          and not str(cmd[2]).startswith("--"))
         if not is_js:
             r = _real_run(cmd, *args, **kw)
             self._against_core(s, cmd, r)

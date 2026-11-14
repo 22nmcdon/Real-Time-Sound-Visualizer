@@ -4682,7 +4682,7 @@ snull("another channel", "out-notes", "port 1 6", "port 1 7")
 check("and the comparison fails against the page's lines one command out of step",
       kdiff("\n".join(sjs.split("\n")[1:]), "\n".join(scpp.split("\n")[:-1])) is not None)
 
-golden.section("restore")
+golden.section("restore", "restore")
 # The page's own `restore`, in a browser (restore_page.py), against
 # scope::restoreSetup: every preset the page ships and random setups, each
 # loaded in turn as the page loads them, and what each leaves in the
@@ -5244,7 +5244,7 @@ snull_page, _ = rboth([_json.dumps(dict(SILENT_MADE[0], modSilent="lfo2"))], "re
 check("null: the page told LFO 2 silenced where the port was told LFO 1 disagrees with it",
       rdiff(_json.loads(snull_page[0]), _json.loads(silent_port[0])) != [])
 
-golden.section("the morph")
+golden.section("the morph", "restore")
 # A hand on the sliders, the morph's ends stored and the fader moved - by hand
 # and by the matrix - through the page's own handlers against
 # scope::moveSlider, morphStore and morphStep (the macros' knobs were here
@@ -5456,7 +5456,7 @@ mnull("a push a point stronger", 10, lambda o: o | {"value": 0.26})
 mnull("the end stored without the cutoff", 16, lambda o: o | {"value": 667})
 check("and the comparison fails against the page's operations one out of step", rbad(mpg[1:], mpt[:-1]) != [])
 
-golden.section("menus, switches and buttons")
+golden.section("menus, switches and buttons", "restore")
 # A hand on a menu, a switch, a text box or a button that reaches the sound,
 # through the page's own "change" and "click" handlers against
 # scope::controlChange and controlClick - what the page in the plugin sends
@@ -5600,7 +5600,7 @@ cnull("the just button where equal was pressed again", 30, lambda o: o | {"id": 
 cnull("the switch the other way", 13, lambda o: o | {"value": False})
 check("and the comparison fails against the page's operations one out of step", rbad(cpg[1:], cpt[:-1]) != [])
 
-golden.section("the hands on the panel (G6)")
+golden.section("the hands on the panel (G6)", "restore")
 # With the layers on, the header's Editing chooses which hand the panel's
 # voice controls show (scope::showLayerOnPanel and the keyboard's editLayer),
 # and each section's link whether they write both hands or that one: linked,
@@ -5703,7 +5703,7 @@ lnull("the Generator left linked, the Amp envelope unlinked in its place", 7, la
 lnull("the layers split where they were layered", 15, lambda o: o | {"value": "split"})
 check("and the comparison fails against the page's operations one out of step", rbad(lpg[1:], lpt[:-1]) != [])
 
-golden.section("the rack's links on the panel (G6)")
+golden.section("the rack's links on the panel (G6)", "restore")
 # Each module's link (G6), in place of Together, A and B, which gave B its
 # plane and every effect at once: the Plane's, B given a plane of its own, a
 # copy of the hand on the face, and its controls writing whichever hand's it
@@ -5864,7 +5864,7 @@ tnull("the Chorus unlinked where the Delay was", 6, lambda o: o | {"id": "linkCh
 tnull("the Reverb linked again where the Delay was", 12, lambda o: o | {"id": "linkReverb"})
 check("and the comparison fails against the page's operations one out of step", rbad(tpg[1:], tpt[:-1]) != [])
 
-golden.section("the fade from the plugin")
+golden.section("the fade from the plugin", "restore")
 # The fade the page keeps in its own storage, sent whole to the plugin when
 # it is saved and handed back by the plugin's state: the page's own
 # fadeFromHost against scope::fadeFromPage, with what the page sends and
@@ -5923,7 +5923,7 @@ def fnull(what, index, change):
 fnull("an attack a tenth longer", 1, lambda o: {"op": "fade", "value": {"mode": "both", "envs": [dict(FULL, attack=1.6), o["value"]["envs"][1]]}})
 fnull("fading in only", 1, lambda o: {"op": "fade", "value": dict(o["value"], mode="in")})
 
-golden.section("the view")
+golden.section("the view", "restore")
 # What the screen is set to draw - the capture's settings and the walk's - as
 # the page's restore, its sliders and its menus, switches and buttons leave
 # them, against the core's: what the plugin draws its own grid by, for the
