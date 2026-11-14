@@ -197,6 +197,19 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   sounds at the plain one's level* (0.4172 against 0.3850). Neither suite
   touches anything step 4 changed. Worth watching for a second time before
   either is added to the list, or made to tolerate a loaded machine.
+- **Hearing's *all of it costs under two milliseconds a frame on average***
+  has no headroom on the cloud machine: alone, the commit before stage 5,
+  step 5b measured 1.59, 2.00 and 2.04 ms, and 5b's first half 1.74 to 2.16
+  (14 Nov). `hearingStep` is unchanged by 5b, so it is the machine's main
+  thread, not the hearing, that moves it. It goes with the page's hearing in
+  5b's second half or step 6; until then it is a timing check that fails
+  about half the time alone, and is not loosened here.
+- **A suite that drops a routing by filtering `state.modRoutings`** tells
+  only the page, while `addRouting` told the instrument too. Before 5b the
+  face drew the page's matrix and nothing showed; since, the instrument's
+  routings move the figure. phototest's eight photocell routings were found
+  this way (14 Nov, fixed with `hostSendSetup()`); other suites that filter
+  the list by hand have not been looked at for it.
 
 ## Owner's list
 

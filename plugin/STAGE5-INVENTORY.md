@@ -1495,7 +1495,27 @@ Not repointed yet, for the second half: the boot frames, the page's grid
 the morph's fader, the fade and its dot, `harmonySaid`, `sourceFigures`, and
 lanes past the second.
 
-**The runs (14 Nov).** RUNS-HERE
+**The runs (14 Nov).** Parity 1,919 checks, none failed. The web suite, 98
+suites in 42.9 minutes with `--brain-counts`: 2,478 checks passed, three
+suites with a failure. phototest's two (the spectrogram's photocell reading
+0.096 where 0.3 was wanted, and the ring under infinite persistence not
+inked) failed alone too and were the suite's own: it dropped the photocell's
+eight routings from `state.modRoutings` by hand, which the instrument never
+heard, and they moved the figure once the face drew the instrument's offsets
+- fixed by telling it (`hostSendSetup()`), passed alone twice after, and seen
+to fail without it. hearingtest's cost a frame (2.16 ms against under two)
+is a threshold with no headroom: the commit before 5b measures 1.59 to 2.04
+alone, `hearingStep` is unchanged, and it is in `after-stage-5.md` rather than
+loosened. honestytest's reverb-on pass (Bass under the pad) is the parked
+flake and passed alone. The plugin's shell test under `xvfb-run -a`: 281
+checks, none failed. The counters on the default page, over the whole run:
+the visual matrix at nought but the morph's fader (54, setupmorphtest);
+`photoStep` 5 and `pictureStep` 4,199, of which 2,331 are hosttest's mock
+host, which posts no face, and the rest boot frames; still running, for the
+second half, `phosphorFade` and `phosphorDeposit` on every frame, `fadeStep`
+and `stepRoutes.host` (4,457, fadetest), `fadeDotStep.shown`, `hearingStep`
+(1,645, hearingtest), `lfoStep.main` (hosttest), `morphStep.apply` and
+`arpTick.step`.
 
 ## Appendix: the counters, summed
 

@@ -281,6 +281,11 @@ with sync_playwright() as pw:
       state.resMod = 0; applyModMatrix(capture(), 16);
       const res = state.resMod;
       state.modRoutings = state.modRoutings.filter((x) => x.sourceId !== 'photo.1');
+      /* And the instrument told (5b): addRouting reached it, the filter above
+         reached only the page, and the photocell's eight routings left there -
+         on the pitch, the level, the zoom - moved the figure the rows below
+         read, once the face drew the instrument's offsets. */
+      hostSendSetup();
       applyModMatrix(capture(), 16);
       return { most, ratio, stored, res };
     }""")
