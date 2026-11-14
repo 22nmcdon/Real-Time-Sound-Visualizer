@@ -1517,6 +1517,69 @@ and `stepRoutes.host` (4,457, fadetest), `fadeDotStep.shown`, `hearingStep`
 (1,645, hearingtest), `lfoStep.main` (hosttest), `morphStep.apply` and
 `arpTick.step`.
 
+## 15. Step 5b, second half (14 Nov)
+
+The page's brain switched off. `?brain=js` and `?core=js` are words on the
+address; the page's own brain is parity's harness's alone, by an init script
+(`window.__scopePageBrain`, read as `PAGE_BRAIN`), and step 6 deletes it.
+
+**The boot.** The page waits for the instrument's first face and steps and
+draws nothing of its own (`instrumentAwaited`, counted as
+`frames.awaited`); it used to play its own tone source for about twenty
+frames. A browser without WebAssembly, or an instrument that will not start,
+waits and says so on the screen and under the title (`instrumentWait`). The
+plugin's source is ticked while it waits, since it fetches its face as it is
+ticked; without that hosttest's fake plugin was waited for forever.
+
+| Lean | Now reads | Held by | Its null |
+|---|---|---|---|
+| the page's grid (`phosphorFade`, `phosphorDeposit`), and every reader of `phosphor.grid` and `phosphorRead` (the photocell's landing, the score, the overlay, the suites) | `Instrument::gridServed` - the site's `brain_grid` in each reading, the plugin's `grid.bin` - copied into one array the source keeps, so a reference held to it stays live | facetest (the face's grid is the instrument's); phototest (the grid and the drawn ink agree, the spectrogram blanks it, Clear wipes it); enlargetest (Enlarge keeps it); drawgone; hosttest (the photocell lands on the plugin's grid) | a value written into the page's own cells is read nowhere; Clear; a dark grid before the first block (shell test) |
+| the fade (`fadeStep`, `stepRoutes.host`), each routing's gain on the knobs (`fadeGain`, `sweepOf`) and the ghosts (`routingsHeard`) | `Instrument::fadeServed`, a line a routing with the ghosts, from `Matrix::eachGain` - the site's `brain_fade_gains`, the plugin's `fade.txt` while the fade is on | fadetest's new section on the default: a knob's ring part of the way into a fade is the instrument's gain; the shell test serves it | the page's own fade left at 0.123 still; the fade off serves nothing |
+| the fade drawing's dot (`fadeDotStep`) | `Matrix::dot`, the stage, share and level of whatever started last on each layer, as the page's `fade.last` | fadetest: the dot rides the instrument's attack | the page's own `fade.last` left in a release |
+| the hearing (`hearingStep`) | the hearing's values in the face (pitch, brightness, width, flux, four bands, onsets, rest, windows), copied into the page's `hearing` | hearingtest on the default: the turn routed from the brightness is the instrument's offset; the page's hearing step at nought over a second routed | the same second on the page's own brain steps it every frame |
+| the arpeggiator's walk (`arpTick`) | the instrument's arpeggio notes (`Keyboard::arp().current`), shown by `arpFollow` through the page's own `arpApply` | facetest: the face shows more than one note in turn, as they change | the page's own walk never steps, its index at -1 |
+| `harmonySaid` | the outline of each layer's voices and of both (`Keyboard::chord()`, `outlineOf`'s rule) | facetest: the line names the instrument's outline | the page's `polyVoices` made to say a twelfth is not read |
+| `sourceFigures` | the figures the instrument lays out (`face.figures`); the X-Y menus made again when they disagree with it (`buildTrigSources`) | facetest; layertest's X-Y menus | the page's own layout told one figure is not read |
+| lanes past the second | `view.scale3` to `view.scale6` posted (the instrument has no such destinations: nought) | facetest: lane three is the instrument's nought | the page's own sum would have moved it; a routing on lane four told the page alone moves nothing |
+| the morph's fader (`visualMatrix.morph.pos`) | its offset, posted with the screen's | setupmorphtest: LFO 1 on the fader walks the morph, heard | the same routing told the page alone moves nothing |
+| `morphStep.apply` | kept, the face's hand: the morph's ends are stored nowhere else (`after-stage-5.md`) | setupmorphtest | - |
+| the boot frames (`frames.tone`, `sourceTick.tone`, `scanStep`, `midiApplyGate`, `pictureStep` once) | nothing: the page waits | facetest's boot check; wasmtest's page without WebAssembly | the page's own brain's boot steps all of them |
+| `lfoStep.main` (hosttest's fake plugin, which named no oscillators) | the fake names `lfos.bin` and `grid.bin` and serves a face, as the plugin's editor does | hosttest | a fake naming nothing is waited for and steps nothing |
+
+**The legs.**
+
+- *Moved to the default:* braintest's switch legs (the page is the
+  instrument with either word on the address; the null is the harness's
+  flag) and :175/:178 (the skew held to the setup's phase, 1 - phase / 2pi,
+  where it was held to the skew `?brain=js` drew), its counters (the null
+  on the harness's flag); drawgonetest's prototype address (the grid is the
+  instrument's; the null is the chord let go and Clear); layertest's split
+  point learned (the face learns it; layer B's voices went, since Learn does
+  not reach the instrument); scoretest (the instrument's score out of the
+  page's port on the chosen channel, a hidden page's all-notes-off, and the
+  served playhead, nulled unticked; Stop's all-notes-off went, the
+  instrument sending none); clocktest (first half).
+- *Kept for step 6, on the harness's flag:* fadetest's page fade
+  arithmetic (with a default section beside it), hearingtest's hearing
+  arithmetic (likewise), worklettest (the page's generator worklet),
+  wasmtest (its `?core=js` legs as a page without WebAssembly), and parity's
+  `restore_page.py`. Each is the page's own brain's, which step 6 deletes;
+  the core is held to it meanwhile by parity and the golden files.
+- *Gone:* hearingtest's two-millisecond cost of the page's hearing (it no
+  longer runs: held at nought instead), enlargetest's page grid's fade
+  frame by frame (the canvas is held to the Persistence, and the
+  instrument's grid to not being wiped).
+
+**The standing check.** `braincounts.py --check DIR`, which `run.py` makes
+after a `--brain-counts` run of the whole suite: nothing counted on a
+default page but its frames, the instrument's ticks and stand-in, the
+monitor, the level meter (`updateEnvelope`), the face following the
+instrument (`arpFollow`, `fadeDot.served`) and the morph's walk. Its nulls:
+the same check asked of the harness's page-brain pages fails, and a made-up
+default record with one picture step is caught.
+
+**The runs (14 Nov).** RUNS-HERE
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the

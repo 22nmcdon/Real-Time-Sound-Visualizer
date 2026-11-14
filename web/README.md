@@ -80,7 +80,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `morphtest.py` | the morph: its stations exact, its crossfade continuous, the fundamental kept all the way, band-limited under modulation, layers, setup codes |
 | `keytest.py` | the page's key and the quantiser: only the key's notes over a two-octave sweep, the sound itself, no chatter, the rate limit, the glide, chords and layer B |
 | `clocktest.py` | the clock as the face shows it, the instrument's since 5b: the LFO card's locked rate, a tap's tempo and the one, a MIDI clock's tempo and its handing back, the Bar row's Stop and Start and a code leaving it stopped, the score's playhead at the instrument's column, each against the page's own clock told something alone; and setup codes carrying the tempo and the locks |
-| `facetest.py` | the face reads the instrument (5b): the Picture section's bars and held loop, the photocell's card and reticle, the readout's verdict and the screen's turn are what the instrument posts, against values the page's own picture was left holding, its unfed meter and a routing told to the page alone; and the page's picture, photocell and screen matrix counted at nought |
+| `facetest.py` | the face reads the instrument (5b): the Picture section's bars and held loop, the photocell's card and reticle, the readout's verdict and the screen's turn are what the instrument posts, against values the page's own picture was left holding, its unfed meter and a routing told to the page alone; since 5b's second half the grid, the harmony line's outline, the arpeggio's notes, the figures laid out and lane three's full scale too, each against the page's own; the page's picture, photocell and screen matrix counted at nought, and the boot waiting for the instrument with nothing of the page's own stepped, against the page's own brain's boot |
 | `pitchtest.py` | the pitch estimator: the registrations the crossing count misread, 30 Hz to 4 kHz at two rates, two periods or nothing, a tone under noise, a tone at two hertz, the readout, Autoset and the lag |
 | `onsettest.py` | Onset and the events it fires, against stand-in destinations the suite registers since G2 took Swing again and Kick: events only to what is struck, one attack one onset, the gap, a strike once a count |
 | `schematest.py` | the setup's table of fields (`SETUP_FIELDS`): snapshot and the table key for key, every menu and range its control's, every default its own rule's, the readers and restore through them, each with its null |
@@ -109,22 +109,23 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
 | `sources.py` | Tone over a tone, and a microphone that is denied |
 
-**Two brains, and which suite runs on which.** (Since stage 5, step 5b the
-face reads what it shows from the instrument even where the page's brain is
-still there to read, `facetest.py`; the switch goes in 5b's second half.) Since stage 5m the site plays
-through the instrument (`plugin/PLAN.md`): the plugin's brain and sound,
-compiled, in a worklet, with the page as its face. `?brain=js` is the page's
-own brain, written in JavaScript, and it is not a leftover:
-`core/tests/parity.py` lifts its functions out of `scope.html` by name and
-holds the compiled instrument to them sample for sample, so it is the
-reference the instrument is checked against. A suite that reaches into that
-brain runs on `?brain=js` and says so at its top: its worklets, its gate flags,
-`genSet`, `midiControl` and `restore()` called directly. None of those calls
-reaches the instrument, which takes a slider moved, a menu changed, a preset or
-a code loaded, a note, and nothing else. Everything else runs on the
-default. That includes `braintest.py`, which holds what you see of the
-instrument, and the suites that check the page's own work: layout, presets,
-the rack, the fade, cycles drawn.
+**One brain, and the page's own kept for parity until step 6.** Since stage
+5m the site plays through the instrument (`plugin/PLAN.md`): the plugin's
+brain and sound, compiled, in a worklet, with the page as its face; since
+stage 5, step 5b the face reads everything it shows from it, and since 5b's
+second half the page steps nothing of its own and waits for it to answer.
+`?brain=js` and `?core=js`, the ways back until then, are words on the
+address. The page's own brain, written in JavaScript, is still in the file,
+unreached, because `core/tests/parity.py` lifts its functions out of
+`scope.html` by name and holds the instrument to them, and its golden files
+record what they answered. A suite that holds that brain itself - its fade,
+its hearing, its worklets and cores - opens the page with parity's harness's
+flag, an init script setting `window.__scopePageBrain` (`PAGE_BRAIN`), and
+says so at its top; step 6 deletes the brain and those halves with it.
+Everything else runs on the default, and a suite that reaches into the page
+by hand (`state.something =`, `genSet`, a routing list assigned) reads an
+instrument that never heard it: use the controls, or `hostRoutings()` and
+`hostSendSetup()`.
 
 ## Two things worth knowing before changing it
 
@@ -6720,3 +6721,23 @@ is still lifted alone by parity's matrix harness (`matrix_js.mjs`, from
 a ReferenceError there, which the web suite, running the page whole, never
 sees - so the offsets are asked for inside it. `plugin/STAGE5-INVENTORY.md`
 section 14 has the rest.
+
+**A face that reads the instrument holds a reference the instrument replaces
+(14 Nov).** Stage 5's step 5b, second half, took the page's brain away: the
+grid, the fade, the hearing, the arpeggio, the voices and the figures are the
+instrument's, posted with its readings, and the page waits for it rather than
+playing a tone of its own at boot. Four things that cost time. A reading
+that arrives as a new array each time breaks every reader that held the old
+one - `const g = phosphor.grid` at the top of a test read a grid frozen at
+that moment, so a fade measured nothing and Clear wiped nothing - so the
+source copies each into one array it keeps. A suite that sets state on the
+page alone (`state.persistence`, `state.beamXY`, `setMidiMode` without its
+button, a routing list assigned) now reads an instrument that never heard
+it; the controls themselves, or `hostRoutings()` and `hostSendSetup()`, are
+what reach it. A page waiting for something that only arrives when it is
+asked must go on asking: the plugin's source fetches its face as it is
+ticked, and a frame loop that skipped the tick while it waited waited
+forever. And look before taking a step away: the morph's walk looked like a
+second brain beside the core's own, and was the only morph there is, since
+its ends are stored only in the face. `plugin/STAGE5-INVENTORY.md` section 15
+has the rest.

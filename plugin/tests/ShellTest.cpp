@@ -151,6 +151,11 @@ struct Heard final : juce::AudioProcessorListener {
 }  // namespace
 
 int main() {
+  /* A line at a time: under xvfb-run stdout is a pipe, fully buffered, and the
+     web view's child processes inherited what was still in the buffer and
+     printed it again when they went - each face section's lines two or three
+     times over, which made a count of the checks a count of the repeats. */
+  std::setvbuf(stdout, nullptr, _IOLBF, 0);
   juce::ScopedJuceInitialiser_GUI juce;
   oldBoot();
   constexpr double rate = 48000;
@@ -2514,11 +2519,14 @@ int main() {
     g.pageRoutings("lfo1>gen.drive@0.350");
     for (int k = 0; k < 40; ++k) { buf.clear(); juce::MidiBuffer m; g.processBlock(buf, m); }
     const std::string on = text();
-    double gain = -1;
-    const auto tab = on.find('\t');
-    if (on.rfind("lfo1>gen.drive\t", 0) == 0 && tab != std::string::npos) gain = std::atof(on.c_str() + tab + 1);
+    // Its fields: the key, each layer's gain, the depth, the upper hand's (none here), in the setup.
+    std::vector<std::string> fields;
+    { std::string f; for (const char c : on.substr(0, on.find('\n'))) { if (c == '\t') { fields.push_back(f); f.clear(); } else f += c; } fields.push_back(f); }
+    const double gain = fields.size() == 6 ? std::atof(fields[1].c_str()) : -1;
+    const double depth = fields.size() == 6 ? std::atof(fields[3].c_str()) : -1;
     check("fade.txt serves each routing's gain as the instrument fades it in",
-          gain > 0 && gain < 1 && on.find("\t0.35\t") != std::string::npos && on.back() == '\n', "\"" + on.substr(0, 60) + "\"");
+          fields.size() == 6 && fields[0] == "lfo1>gen.drive" && gain > 0 && gain < 1 && std::fabs(depth - 0.35) < 0.002
+          && fields[4].empty() && fields[5] == "1" && on.back() == '\n', "\"" + on.substr(0, 80) + "\"");
     check("null: with the fade off it serves nothing", off.empty(), "\"" + off.substr(0, 40) + "\"");
   }
 

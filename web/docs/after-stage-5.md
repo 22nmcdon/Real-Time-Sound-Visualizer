@@ -12,6 +12,27 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   learning a split point moves the face's point only; the core keeps splitting at
   C4. Found by step 3's batch 2 (13 Nov), recorded in `STAGE5-INVENTORY.md`. A
   player would hit this.
+- **The morph's two ends live only in the face.** The page stores A and B from
+  its own sliders and walks them itself, sending each slider as a hand's; the
+  instrument has a morph of its own (`morphStore`, `Instrument::storeMorph`)
+  that neither the site nor the plugin's editor ever stores into. So in the
+  plugin a host automating the morph fader with the editor shut moves nothing,
+  and a project reopened has no ends. Found by step 5b's second half (14 Nov),
+  which kept the page's walk for that reason (`morphStep`). The fix is to send
+  the stores and let the instrument walk, which the core can already do.
+- **Lanes three to six have no full scale in the instrument.** The core
+  registers `view.scale1` and `view.scale2` as destinations and no others
+  (`screen.h`), so a routing onto lane three or four's full scale, which a
+  split drawing a figure a hand offers, is heard by nothing. Until 5b's second
+  half the page scaled the face's lanes alone; since then the face shows what
+  the instrument does, which is nothing. Registering them in the core would
+  change what Scan reads for a setup that routes them, so it was left for a
+  decision. Found 14 Nov.
+- **Stop does not end the instrument's MIDI-out notes.** Stopping the scope
+  ended the sounding note and sent all-notes-off on the page's own score (the
+  check scoretest held on `?brain=js`); the instrument's score sends neither
+  on Stop. Hiding the page still sends all-notes-off. Found when scoretest was
+  moved to the default, 14 Nov.
 - **A MIDI clock byte inside a note-on loses the note.** The page's `midiBytes`
   cuts at every status byte and the core's keyboard drops the half message.
   Web MIDI and the plugin's host hand over whole messages, so in practice this
@@ -204,6 +225,13 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   thread, not the hearing, that moves it. It goes with the page's hearing in
   5b's second half or step 6; until then it is a timing check that fails
   about half the time alone, and is not loosened here.
+- **A suite that sets the page's state by hand** - a routing list filtered or
+  assigned, `state.persistence`, `state.beamXY`, `setMidiMode` without its
+  button - tells only the page. Since 5b's second half the face draws and
+  reads the instrument's grid, gains and voices, so such a suite reads an
+  instrument that never heard it: phototest, hearingtest, layertest and
+  facetest's first drafts were caught this way and fixed with the controls or
+  `hostRoutings()`/`hostSendSetup()`. The others have not all been looked at.
 - **A suite that drops a routing by filtering `state.modRoutings`** tells
   only the page, while `addRouting` told the instrument too. Before 5b the
   face drew the page's matrix and nothing showed; since, the instrument's

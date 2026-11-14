@@ -396,14 +396,39 @@ the full suite and parity pass.
      twelve and the face's twenty-four after the envelope, read by the same
      `servedReadings` as the site's `brain_readings`.
 
-   **Left for 5b's second half:** the boot (the page's ~20 frames on its tone
-   source), the page's grid and its remaining per-frame steps (`hearingStep`,
-   `arpTick` with the face reading the instrument's notes, `morphStep`, the
-   fade and its dot, which need the instrument's fade state posted),
-   `harmonySaid` from the instrument's tone and `sourceFigures` from its
-   figures; then the switches themselves, the suites' last `?brain=js` legs,
-   braintest :175/:178, the counters at nought with a standing check, and the
-   line for a browser without WebAssembly.
+   **5b, second half, done (14 Nov): the page's brain switched off.**
+   `STAGE5-INVENTORY.md` section 15.
+   - *The switches are gone.* `?brain=js` and `?core=js` are words on the
+     address: the page is the instrument whatever it says. The page's brain is
+     reached only by parity's harness, by an init script that sets
+     `window.__scopePageBrain` (`PAGE_BRAIN`), which no address can; step 6
+     deletes it. A browser without WebAssembly waits and says so on the
+     screen, and so does an instrument that will not start; neither falls
+     back to a brain of the page's own.
+   - *The boot.* The page waits for the instrument's first face and steps and
+     draws nothing of its own meanwhile (`instrumentAwaited`), where it used
+     to play its own tone for about twenty frames; the plugin's source is
+     ticked while it waits, since it fetches what it serves as it is ticked.
+   - *The rest of the face.* The instrument serves the face 54 values now
+     (`Instrument::faceServed`: lanes three to six's full scale, the morph's
+     offset, the arpeggio's notes, the hearing, the fade drawing's dot on
+     each layer, the outline of each layer's voices and of both, and the
+     hearing's windows), and beside them the picture's grid
+     (`Instrument::gridServed`, the site's `brain_grid`, the plugin's
+     `grid.bin`) and the fade's gains, a line a routing with the ghosts
+     (`Instrument::fadeServed`, `brain_fade_gains`, `fade.txt`). The page
+     reads all of it, and steps no grid, fade, hearing, arpeggio, layout or
+     voice-laying of its own. The morph's walk stays the face's: its two ends
+     are stored nowhere else, so the walk is the morph that is heard
+     (`after-stage-5.md`).
+   - *The suites.* Every leg that opened `?brain=js` or `?core=js` is moved
+     to the default, kept for step 6 on the harness's flag (the page's own
+     fade, hearing, worklets and cores: fadetest, hearingtest, worklettest,
+     wasmtest), or gone; braintest's skew is held to the setup's phase. The
+     counters reach nought on every default page over the whole suite, and
+     `braincounts.py --check`, which `run.py` makes after a `--brain-counts`
+     run, holds them there, with its nulls.
+
 6. **Delete.** The engine, the wrappers, the page's worklets, the fallback
    codec and picture engine, parity's JavaScript harness (`*_js.mjs`,
    `js_core.mjs`), and the README's and PLAN's paragraphs about two brains.

@@ -4846,8 +4846,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         both. A sound that hears two pictures takes their average, so it is never pushed
         harder than by one. When the two pictures move each other's sounds, either one
         running away reins in the crossing as well as itself, so the pair cannot chase
-        itself up. The site's compiled instrument and the plugin do all of this, as
-        <i>?brain=js</i> does.</span></li>
+        itself up. The site's compiled instrument and the plugin do all of this.</span></li>
 
       <li><b>Scan: the screen read back as the wave</b>
         <span><i>Scan</i> is a knob in the Picture section along the bottom, with <i>Strike</i>,
@@ -4866,9 +4865,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         than reading nothing; and while the loop is running away its depth is reined in to a
         quarter, as the picture's own reads are. With a split, Scan is both hands' or each
         hand's own by the Picture section's link, and each layer reads its own figure. The site's instrument and the plugin read their
-        own screen sixty times a second of the sound, so there it is the same on any display;
-        the page's own brain (<i>?brain=js</i>) reads the screen as it is drawn, and plays the
-        latest reading at the same ticks.</span></li>
+        own screen sixty times a second of the sound, so it is the same on any display.</span></li>
 
       <li><b>Notes strike the screen; each hand reads the other's picture</b>
         <span><i>Strike</i>, beside Scan in the Picture section: every note you play lays a short arc of light on the
@@ -5414,11 +5411,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         waveform that went to the speakers, sample for sample, rather than a second run of
         the same arithmetic. It runs compiled, as WebAssembly
         &mdash; the same code the plugin plays &mdash; and so do the effects on a live input
-        and the photocell and what the picture says;
-        a browser that will not load it gets the page's own JavaScript, which sounds and
-        draws the same, and <i>?core=js</i> on the address asks for that one.</span></li>
+        and the photocell and what the picture says. A browser without WebAssembly cannot
+        play it, and the screen says so.</span></li>
 
-      <li><b>The whole instrument, compiled &mdash; and <i>?brain=js</i></b>
+      <li><b>The whole instrument, compiled</b>
         <span>What you are playing is the instrument the plugin is: its brain and its sound,
         compiled, playing in the audio thread, with this page as its face. Your notes,
         controls, presets and drawn cycles reach it, its notes go out of your MIDI port, and the
@@ -5430,14 +5426,17 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         play it. Every source
         is its: <i>Mic</i> is drawn through its plane effects and heard only if it is a line
         input you have asked to hear; <i>Into bands</i> is its own.
-        What the face shows of it is what it reports: the Picture section's three reads and
-        its held loop, the photocell's reading, the loop's verdict in the readout, the
-        screen's turn, zoom and trigger point as its routings move them, the tempo, the bar
-        and the score's playhead. So <i>Start</i> and <i>Stop</i> on the Bar row and a tapped
-        tempo reach it, and inside the plugin the panels follow the host's tempo.
-        <i>?brain=js</i> on the address is the way back: the page's own brain, written in
-        JavaScript, driving the compiled sound, as the site played before. It stays until the
-        compiled instrument no longer needs checking against it. The oscillators
+        What the face shows of it is what it reports, and the page works none of it out a
+        second time: the Picture section's three reads and its held loop, the light on the
+        screen the photocell lands on, the photocell's reading, the loop's verdict in the
+        readout, the screen's turn, zoom and trigger point as its routings move them, a
+        modulation fading in and out on the knobs and the fade's drawing, the hearing, the
+        arpeggio's notes, the outline the readout names, the figures it lays out, the tempo,
+        the bar and the score's playhead. So <i>Start</i> and <i>Stop</i> on the Bar row and a
+        tapped tempo reach it, and inside the plugin the panels follow the host's tempo. Until
+        it answers, a moment after the page opens, the screen stays empty. The morph is the
+        one thing the face does by hand: its two ends are stored from the face's sliders, and
+        sliding between them moves those sliders as your hand would. The oscillators
         that move the picture - the trigger, the filter, the zoom - are the instrument's own,
         so one routed to the picture and the sound moves them together, on the site and
         inside the plugin alike.</span></li>
@@ -13279,16 +13278,14 @@ const CORE_IN_WASM = typeof WebAssembly === "object";
    instrument had live inputs, files, the rack, the band split, the alignment
    and recording (cut in P5), and drew before the first press (makeBrainHost's stand-in).
 
-   ?brain=js is the way back: the page's own brain driving the compiled
-   engine, as the site played before. It is not kept only as a fallback. The
-   C++ core is a port of that JavaScript, held to it sample for sample by
-   core/tests/parity.py, which lifts the functions out of this file by name,
-   so the JavaScript brain is the reference the instrument is checked
-   against, and the suites that test the reference run on ?brain=js. Needs
-   the compiled core, so ?core=js, or a browser without WebAssembly, is the
-   JavaScript brain too; and an instrument that will not start leaves the
-   page on it (toHost). ?brain=core, the old switch, still asks for the
-   default. */
+   Until stage 5, step 5b's second half ?brain=js was the way back: the
+   page's own brain driving the compiled engine, as the site played before,
+   and ?core=js, a browser without WebAssembly or an instrument that would
+   not start left the page on it. Since then the site is the instrument and
+   nothing else: a browser without WebAssembly, or an instrument that will
+   not start, waits and says why (instrumentWait). The page's brain stays,
+   unreached but by parity's harness (PAGE_BRAIN), as the reference the core
+   is held to, until step 6 deletes it. */
 const BRAIN_IN_CORE = CORE_IN_WASM && !PAGE_BRAIN;
 
 /* --- the generator, in the audio thread -------------------------------------
@@ -18566,7 +18563,7 @@ function makeWasmPictureEngine(module) {
 }
 
 /* The page's engine: the compiled core's under the same switch as the
-   generator's, the JavaScript one with ?core=js or when the module will not
+   generator's, the JavaScript one without WebAssembly or when the module will not
    compile or instantiate here, and which it is, and why, said. */
 let pictureCoreKind = "js", pictureCoreWhy = null;
 const pictureEngine = (() => {
@@ -24425,7 +24422,7 @@ function makeWasmSetupCodec(module) {
 }
 
 /* The page's codec: the compiled core's under the same switch as the rest,
-   the JavaScript with ?core=js or when the module will not make here. */
+   the JavaScript without WebAssembly or when the module will not make here. */
 let setupCoreKind = "js", setupCoreWhy = null;
 const setupCodec = (() => {
   const here = { kind: "js", encode: encodeSetupHere, decode: decodeSetupHere };
