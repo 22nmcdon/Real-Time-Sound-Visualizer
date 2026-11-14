@@ -35,6 +35,9 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
+def null(name, ok, detail=""):
+    check("null: " + name, ok, detail)
+
 # Each pixel the figure darkened, sorted to the nearest ink, counted. Paper
 # and the ruling are left out by distance: they are lighter than every ink.
 # A pixel nearer some other ink's half-tone over paper than the ink it is
@@ -136,40 +139,29 @@ with sync_playwright() as pw:
           wrapped == ["accent", "accent"] and back == ["ch4", "ch4"], "%s %s" % (wrapped, back))
 
     print("\n--- the light is not the colour ---")
-    grids = p.evaluate("""() => {
-      // One frame, drawn synchronously, so the page's own loop cannot draw between.
-      const n = 2048, l = new Float32Array(n), r = new Float32Array(n), small = new Float32Array(n);
-      for (let i = 0; i < n; i++) { l[i] = 0.6 * Math.sin(i * 0.031); r[i] = 0.5 * Math.sin(i * 0.047 + 1); small[i] = 0.9 * r[i]; }
-      const draw = (inkName, right) => {
-        state.beamInk = inkName;
-        pictureEngine.fade(0, true);
-        drawXY({ channels: [l, right], turned: false }, fitCanvas(el.trace), 0);
-        const c = el.trace;
-        return { grid: Array.from(phosphor.grid), pixels: Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data.filter((_, i) => i % 97 === 0)) };
-      };
-      /* Through both of drawXY's branches: the beam shading, where the deposit
-         follows strokeBeam, and the beam off, a plain stroke. The pixel counts
-         above turned the beam off, and the first version of this drew only
-         that branch, so an ink kept out of the shaded branch's deposit passed. */
-      const same = (x, y) => x.length === y.length && x.every((v, i) => v === y[i]);
-      const out = {};
-      for (const level of ['moderate', 'off']) {
-        state.beam = level; beamRefs.clear();
-        const a = draw('accent', r); beamRefs.clear();
-        const b = draw('ch2', r); beamRefs.clear();
-        const c = draw('accent', small);
-        out[level] = { lit: a.grid.filter((v) => v > 0).length, gridSame: same(a.grid, b.grid),
-                       pixelsSame: same(a.pixels, b.pixels), nullSame: same(a.grid, c.grid) };
-      }
-      state.beamInk = 'ch4';
-      const all = (k) => out.moderate[k] && out.off[k], none = (k) => !out.moderate[k] && !out.off[k];
-      return { lit: Math.min(out.moderate.lit, out.off.lit), gridSame: all('gridSame'), pixelsSame: !none('pixelsSame'),
-               nullSame: !none('nullSame'), out };
+    # Until stage 5, step 5b's second half this drew one frame through the
+    # page's own drawXY in two inks and compared the grid the page laid,
+    # cell by cell, against a frame a tenth smaller as the null. The grid the
+    # face reads is the instrument's since, laid in the core, and the page
+    # lays none: the comparison passed on a grid nothing had drawn into, which
+    # its null caught. What keeps the ink out of what Scan and the photocell
+    # read now is that it never reaches the instrument: every swatch pressed
+    # with each message to it counted, against a knob turned, which sends one.
+    sent = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const log = [], real = scopeHost.call.bind(scopeHost);
+      scopeHost.call = (name, ...args) => { if (name !== 'scopeState' && name !== 'scopeReport') log.push(name + ' ' + args[0]); return real(name, ...args); };
+      for (const ink of ['ch2', 'ch3', 'accent', 'ch4']) { document.querySelector('.ink-swatch[data-ink="' + ink + '"]').click(); await wait(80); }
+      const inks = log.splice(0);
+      showControl('freq'); el.freq.focus(); el.freq.value = String(Number(el.freq.value) + 5); el.freq.dispatchEvent(new Event('input', { bubbles: true }));
+      await wait(80);
+      const knob = log.splice(0);
+      scopeHost.call = real;
+      return { inks, knob, grid: phosphor.grid === state.source.grid };
     }""")
-    check("one frame in two inks lays the same light in every cell of the grid Scan and the photocell read",
-          grids["gridSame"] and grids["lit"] > 50, str(grids))
-    check("while the screen's pixels differ, shaded and plain, so the ink did change what is drawn", not grids["pixelsSame"], str(grids["out"]))
-    check("null: the same frame a tenth smaller lays a different grid, so the comparison can see one", not grids["nullSame"])
+    check("the ink never reaches the instrument, whose grid is the one Scan and the photocell read: four swatches pressed, nothing sent",
+          sent["inks"] == [] and sent["grid"], str(sent))
+    null("a knob turned the same way sends something, so the count is being kept", len(sent["knob"]) > 0, str(sent["knob"]))
 
     p.evaluate("() => midiNoteOff(57)")
     print("\n--- B's ink, with two layers ---")

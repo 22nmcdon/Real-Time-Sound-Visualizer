@@ -427,12 +427,20 @@ with sync_playwright() as pw:
     # draws frames, given the time; a stopped one draws none however long it
     # is given. Null-tested by counting with no wait between the reads (none
     # drawn, red).
+    # The frames drawn, counted where the screen is drawn: until stage 5, step
+    # 5b's second half this counted the page's grid's fades, which a frame of
+    # the page's own made beside its drawing and which no frame makes now that
+    # the grid is the instrument's.
     drawing = p.evaluate("""async () => {
-      const f0 = pictureEngine.frames, t0 = performance.now();
-      while (pictureEngine.frames - f0 < 30 && performance.now() - t0 < 10000) {
+      let drawn = 0;
+      const real = drawMain;
+      window.drawMain = (...args) => { drawn++; return real(...args); };
+      const t0 = performance.now();
+      while (drawn < 30 && performance.now() - t0 < 10000) {
         await new Promise((r) => setTimeout(r, 20));
       }
-      return { frames: pictureEngine.frames - f0, ms: performance.now() - t0 };
+      window.drawMain = real;
+      return { frames: drawn, ms: performance.now() - t0 };
     }""")
     # Enlarge took the Scope view's frame and its panes (G4): there the sheet is in the panes.
     p.evaluate("() => setEnlarged(true)"); p.wait_for_timeout(400)

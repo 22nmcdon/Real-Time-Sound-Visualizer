@@ -17293,13 +17293,16 @@ const phosphor = {
    readings, the plugin's grid.bin), or null while the page's own is the one:
    with it the page fades and lays no grid of its own, and every reader of
    `phosphor.grid` and `phosphorRead` reads the instrument's. */
+/* The page lays none of its own once the instrument has posted a face,
+   whether or not its grid has come with it yet: taptest found two frames
+   between the two on the default site, which laid the page's own. */
 function instrumentGrid() {
   const source = state.source;
   return source && source.kind === "host" && source.grid ? source.grid : null;
 }
 
 function phosphorFade(resized) {
-  if ((typeof instrumentGrid === "function" ? instrumentGrid() : null)) return;
+  if ((typeof instrumentFace === "function" ? instrumentFace() : null)) return;
   globalThis.__brainCount?.("phosphorFade");
   phosphor.cost = 0;
   pictureEngine.fade(state.persistence, resized);
@@ -17327,7 +17330,7 @@ function phosphorFadeInto(grid, moments, persistence, resized) {
 /* A segment in canvas pixels, laid into the cells it crosses. Sampled at half a
    cell, which cannot skip a cell a segment passes through. */
 function phosphorSegment(x0, y0, x1, y1, level) {
-  if ((typeof instrumentGrid === "function" ? instrumentGrid() : null)) return;
+  if ((typeof instrumentFace === "function" ? instrumentFace() : null)) return;
   const started = performance.now();
   pictureEngine.segment(plot, x0, y0, x1, y1, level);
   phosphor.cost += performance.now() - started;
@@ -17401,7 +17404,7 @@ function phosphorSegmentInto(g, moments, plot, x0, y0, x1, y1, level) {
 /* A polyline in the renderer's scratch arrays. `steps`, when given, is the
    beam's per-segment step, and a segment deposits what it was drawn at. */
 function phosphorDeposit(xs, ys, count, steps) {
-  if ((typeof instrumentGrid === "function" ? instrumentGrid() : null)) return;
+  if ((typeof instrumentFace === "function" ? instrumentFace() : null)) return;
   globalThis.__brainCount?.("phosphorDeposit");
   const started = performance.now();
   pictureEngine.deposit(plot, xs, ys, count, steps);

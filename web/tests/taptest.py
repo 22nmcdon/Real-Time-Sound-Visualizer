@@ -59,8 +59,14 @@ STANDIN = """(rate, capacity, offset) => {
                        + 0.12 * Math.sin(2 * Math.PI * 3300 * t);
     buf[1][i] = offset + 0.30 * Math.cos(2 * Math.PI * 220 * t);
   }
+  /* Standing in for what plays, which since stage 5, step 5b's second half is
+     the instrument: its face and grid carried over from it, so a frame drawn
+     over the fixture is drawn as the instrument's face draws, laying no grid
+     of the page's own. As 'tone' it was the page's own tone source, and the
+     standing check (braincounts.py --check) caught the page's grid laid. */
+  const real = state.source;
   return {
-    kind: 'tone', settings: null,
+    kind: 'host', settings: null, face: real ? real.face : null, grid: real ? real.grid : null,
     get sampleRate() { return rate; },
     get capacity() { return capacity; },
     get channels() { return 2; },
@@ -79,6 +85,8 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
+    # The instrument answered, whose face the stand-in carries (STANDIN).
+    p.wait_for_function("() => state.source && state.source.kind === 'host' && !!state.source.face", timeout=10000)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
     p.evaluate("(src) => { window.__standin = eval(src); }", STANDIN)
@@ -424,8 +432,10 @@ with sync_playwright() as pw:
         const v = 0.4 * Math.sin(2 * Math.PI * 220 * i / rate);
         buf[0][i] = v; buf[1][i] = v;             // a diagonal at 45 degrees
       }
+      // Standing in for the instrument, as STANDIN does: its face and grid carried over.
+      const real = state.source;
       state.source = {
-        kind: 'tone', settings: null,
+        kind: 'host', settings: null, face: real ? real.face : null, grid: real ? real.grid : null,
         get sampleRate() { return rate; },
         get capacity() { return capacity; },
         get channels() { return 2; },

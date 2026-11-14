@@ -145,7 +145,8 @@ with sync_playwright() as pw:
         # The reader's path against the figure the page itself sees: the page's
         # phosphor is drawn from the same lanes, so its centre of light is where
         # the reader has followed to after four seconds held still.
-        geo = p.evaluate("() => scanGeometry(pictureEngine.cells)")
+        # The instrument's grid since 5b's second half, the one its reader follows (phosphor.grid).
+        geo = p.evaluate("() => scanGeometry(phosphor.grid)")
         path = ring["path"]
         off = math.hypot(path["cx"] - geo["cx"], path["cy"] - geo["cy"]) * d["plot"]["w"]
         # Within a fifth of the ring's radius: the reader follows over a
@@ -228,17 +229,21 @@ with sync_playwright() as pw:
 
         print("\n--- over the trace, not into it ---")
         iso = p.evaluate("""() => {
+          /* The grid the face reads, the instrument's since 5b's second half,
+             which Stop holds (5a); read straight after the hundred draws, in
+             the same turn, so no reading arrives between. Until then the
+             page's own cells, which nothing lays into any more. */
           setRunning(false);
-          const cells = Float32Array.from(pictureEngine.cells);
+          const grid = phosphor.grid, cells = Float32Array.from(grid);
           for (let i = 0; i < 100; i++) drawLoopOverlay();
           let changed = 0;
-          for (let i = 0; i < cells.length; i++) if (cells[i] !== pictureEngine.cells[i]) changed++;
-          // The null: what a strike does - light laid into the cells Scan reads.
-          const before = Float32Array.from(pictureEngine.cells);
-          pictureEngine.segment(plot, plot.x + plot.w * 0.3, plot.y + plot.h * 0.3, plot.x + plot.w * 0.7, plot.y + plot.h * 0.6, 1);
+          for (let i = 0; i < cells.length; i++) if (cells[i] !== grid[i]) changed++;
+          // The null: light laid into those cells, as a strike lays it.
+          const before = Float32Array.from(grid);
+          for (let c = 20; c < 44; c++) grid[30 * PHOSPHOR_N + c] = Math.min(1, grid[30 * PHOSPHOR_N + c] + 0.5);
           let struck = 0;
-          for (let i = 0; i < before.length; i++) if (before[i] !== pictureEngine.cells[i]) struck++;
-          pictureEngine.cells.set(before);
+          for (let i = 0; i < before.length; i++) if (before[i] !== grid[i]) struck++;
+          grid.set(before);
           setRunning(true);
           return { changed, struck, n: cells.length };
         }""")

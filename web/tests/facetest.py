@@ -130,7 +130,9 @@ with sync_playwright() as pw:
     print("    %s" % photo)
     check("the photocell, aimed at the figure, reads light on the instrument", photo["best"] is not None and photo["inst"] > 0.05, str(photo))
     check("and the face's photocell is the instrument's, its card and reticle saying so",
-          photo["page"] == photo["inst"] and photo["card"] == "%.2f" % photo["inst"] and photo["lit"] == "%.3f" % photo["inst"], str(photo))
+          # As numbers: JavaScript's toFixed and Python's % round a half differently (0.0625 is "0.063" and "0.062").
+          photo["page"] == photo["inst"] and abs(float(photo["card"]) - photo["inst"]) <= 0.0051
+          and abs(float(photo["lit"]) - photo["inst"]) <= 0.00051, str(photo))
     null("a value the page's photocell was left holding is gone at the next reading",
          photo["left"] == photo["instAfter"] and photo["left"] != 0.987, str(photo))
 
