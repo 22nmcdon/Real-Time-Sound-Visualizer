@@ -243,6 +243,26 @@ the full suite and parity pass.
    leaned on, is not needed. The instrument puts an input through its
    effects; it has no limiter, so the plugin hands a host up to 3.2 times
    full scale. `STAGE5-INVENTORY.md` section 10.
+   **Batch 6 done (14 Nov), and with it step 3: `live` whole, the rest of
+   `mod` and `photo`, and `budget`** - their numbers in `core/tests/pieces/`
+   (live, mod, photo, budget, on a new `budget_cpp`), 80 piece checks with
+   their nulls, web checks 168 to 147 over the seven suites looked at,
+   `?brain=js` opens 7 to 3. 41 core mutations, 40 red. The core's governor
+   gives up exactly what the page's did on every case and every setup, so
+   budget moved and nothing heard changes; its cost fit does not carry over
+   (WebAssembly's drawbars with seven copies cost 1.7 times the model,
+   `web/docs/budget-on-the-core.md`), and nothing was refitted. Two site
+   defects found, not fixed: a band split keeps the wish to monitor, and the
+   credit no longer says whether an input is monitored. `STAGE5-INVENTORY.md`
+   section 11.
+   **What is left on `?brain=js` after step 3**, each waiting on a later
+   step: the constellation (step 4); scan's held run (Stop), harmony's two
+   meter rows (the meter's verdict), layer's learned split point (a site
+   defect), clock's LFO card, tempo row and Bar row and score's Stop, hidden
+   page and playhead (the page's own lfos, transport and score, which the
+   instrument has no reading of), and braintest's own legs with the
+   counters' null (step 5); and wasm and worklet, which hold the two engines
+   together and go with them (step 5, or 6).
 4. **The constellation, and anything else only the page's brain does.** Port
    it to the core (ways-to-draw's own step 3), or keep it as a look-only
    drawing on the page, seen and not heard, until it is ported. The owner's
@@ -281,6 +301,20 @@ the full suite and parity pass.
      either the site's limiter reading is handed to the instrument's meter,
      or the instrument gets a limiter of its own (which the plugin wants
      anyway), or the rule is let go. `web/docs/after-stage-5.md`.
+   - *The clock's and the score's panels* (batch 2, confirmed by batch 6):
+     the LFO card's rate reading, the tempo row and the Bar row draw the
+     page's own `lfos` and `transport`, and the score's playhead, Stop and
+     hidden page its own `score` and MIDI out, beside the instrument's. The
+     instrument posts its oscillators' phase and value but no rate, no tempo
+     and no playhead, so either it posts them and the panels read them, or
+     the page keeps a clock of its own for the face only. clocktest's seven
+     rows and scoretest's three wait on it.
+   - *The voices' budget's fit* (batch 6): the governor is the page's to the
+     bit, but its costs were fitted to JavaScript; in WebAssembly the
+     drawbars with seven copies cost 1.7 to 1.8 times the model (the side
+     that glitches) and noise and the filter under half. Whether to refit
+     it to the core is the owner's, by ear (`web/docs/budget-on-the-core.md`);
+     it does not block step 5.
    - *`syncMonitor` stays* (answered by batch 4): the instrument's sound
      reaches the speakers through the page's own monitor chain, so it is the
      face's audio and not a second brain.

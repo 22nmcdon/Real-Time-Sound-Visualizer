@@ -1192,6 +1192,178 @@ meter rows): clock's and score's panels, which draw the page's own brain
 photo's pages for their page rows outside batch 3; and the whole of
 `livetest.py`, which no batch has taken (5 numbers, 35 page).
 
+## 11. Step 3, batch 6 (14 Nov)
+
+The last batch of step 3: livetest whole, the rest of modtest and phototest's
+`?brain=js` leg, the voices' budget, and a look at what was still left
+(layer's learned split point, clock's and score's panels). Every row in those
+seven appendix tables has a "Batch 6" column. Nothing in `scope.html` or
+`core/include` changed; `git diff core/include` is empty. New: the pieces
+`live`, `budget` and the batch's rows in `mod` and `photo`; one tool,
+`core/tests/tools/budget_cpp.cpp` (voices laid on the core's generator, each
+read back, a second timed natively, a setup restored by the core's own
+`restoreSetup`); no existing command changed.
+
+| Suite | Web checks before | after | pieces checks (nulls) | `?brain=js` opens | Rows: to pieces / moved / rewritten / gone / left |
+|---|---|---|---|---|---|
+| live | 40 | 45 | 11 (5) new | 1 to 0 | 3 / 19 / 17 / 1 / 0 (and four of the rewritten also to pieces) |
+| mod | 27 | 28 | 9 (3) new, 17 (7) in all | 1 to 0 | 1 / 17 / 8 / 1 / 0 (three of the rewritten also to pieces) |
+| photo | 35 | 27 | 20 (8) new, 24 (10) in all | 1 to 0 | 10 / 16 / 2 / 0 / 0 |
+| budget | 26 | 7 | 40 (16) | 1 to 0 | 21 / 2 / 2 / 0 / 0, one kept |
+| layer | 22 | 22 | - | 1 to 1 | 0 / 0 / 0 / 0 / 1 |
+| clock | 14 | 14 | - | 1 to 1 | 0 / 0 / 0 / 0 / 7 |
+| score | 4 | 4 | - | 1 to 1 | 0 / 0 / 0 / 0 / 3 |
+| **seven suites** | **168** | **147** | **80 (32) new** | **7 to 3** | **35 / 54 / 29 / 2 / 11** |
+
+(Web counts are checks run, from a run of the six suites on 4a48f14 and
+budget's own count. Its "before" ran on `?brain=js` and so on the page's
+own brain, as the column says.)
+
+### What moved, and what it reads on the site
+
+- **live.** The Mic and Bands buttons keep the instrument (batch 1): it draws
+  the input, splits it into the four bands itself and is told by `srcMic`,
+  `srcBands` and `laneMix`, which the suite reads off the worklet's port. On
+  the site the speakers are one monitor chain, built at boot and always
+  connected, behind a level the page opens or shuts (`state.source.gain`);
+  the page's own microphone built a chain only when one was wanted. So "no
+  node connected to the destination" became "the level in front of the chain
+  shut", with a monitored line input as its null, and the clamp's hook went in
+  before the page. The browser's fake microphone clicks about twice a
+  second and is silent between; the bands' signal is read on a click, and its
+  null is the track disabled (the page hands a stream taken from the source
+  straight back). The band split's arithmetic - which band owns each probe,
+  20 dB two bands away, each crossover at -3.01 dB through both its band's
+  stages, a broadband input in every band, and the heard pair the bands summed
+  at the mixer's gains sample for sample - is pieces/live.py, through the
+  instrument.
+- **mod.** LFO 1's shape and Rate are set in its card's editor, which the
+  instrument hears; the phase counted is the instrument's, which the page's
+  lfos take from every chunk (written by hand, the page's rate moves nothing,
+  now checked). Mic is pressed rather than `toMic()`. The G2 decode rows read
+  the site's codec; the row comparing it with the page's fallback went. And a
+  new check: every destination's control tells the instrument, by its own id.
+  The octave sweep, the routing to nowhere and the rate on each source are
+  pieces/mod.py, rendered (Mono and Poly; the mutation pass found Mono alone
+  could not see the voices' pitch path).
+- **photo.** The figure under each check is set by the Level, Interval, Shape
+  and Persistence controls and the display's buttons. What the face draws into
+  is its own grid (section 1's second grid), so the rows holding the face to
+  its screen stay, and a fixture check now says the X-Y figure is the
+  instrument's 2:3 and not its own transpose: with `genSet` put back the
+  grid-against-canvas rows stay green on the instrument's diagonal and only
+  this goes red. The grid's fade and ends, the compositing, the photocell's
+  reading, smoothness and slew are pieces/photo.py on the core's Phosphor and
+  PictureSources; the loop is the instrument rendered four seconds with the
+  photocell on its own figure, routed past the ceiling.
+- **budget.** Section below.
+
+### The budget on the core
+
+Its costs were fitted to the page's JavaScript milliseconds, so before moving
+anything the page's governor (`makeGeneratorCore` on a `?brain=js` page) and
+the core's were run side by side on every case the suite measures - the
+sweep of one to eight notes a layer with everything on, chords over
+five-second releases on one layer and on two, the worst case, the caps, the
+4 kHz drive, the fade - and on all 277 setups of the old library and the bank,
+under a chord of eight a layer and under a chord over releases. **They agree
+exactly**: the same units to the last bit, the same copies, factor and held
+notes let go, and the same voices cut, voice for voice (the sweep: 209.8
+units at one note a layer, 4x and seven copies; two a layer 6 of 7 copies at
+2x; three 3 of 3; four 1 of 2; five to eight one copy and 2, 4, 6 and 8 held
+notes let go). So the core does not sound different, there was nothing to
+record for the owner, and the checks moved to pieces/budget.py.
+
+What does not carry over is the fit. Each feature's cost over its model cost,
+as a share of the median (the suite's rule):
+
+| | the page's JavaScript | the core as WebAssembly | the core, native |
+|---|---|---|---|
+| a model unit, ms of work a second | 0.89 | 0.46 to 0.50 | 0.40 to 0.55 |
+| pink noise | 0.71 to 0.73 | 0.58 to 0.69 | 0.35 to 0.47 |
+| the filter | 0.66 to 0.67 | 0.57 to 0.58 | 0.40 to 0.50 |
+| drawbars, seven copies | 1.00 to 1.13 | **1.68 to 1.78** | 1.03 to 1.27 |
+
+Noise and the filter are costed dearer than the core spends (the safe side:
+a copy goes early); the drawbars with seven copies in WebAssembly, which the
+site runs, cheaper (the side that glitches), harmless today only because 350
+units is now about half the work it was in JavaScript. The governed worst case
+runs natively in 150 to 170 ms a second, against the 500 ms bound. Nothing was
+refitted: the relative-cost check holds the 1.6 side, natively, and names what
+falls under 0.5 rather than failing; it cannot see WebAssembly's drawbars,
+which `web/docs/budget-on-the-core.md` sets out for the owner. `budget_cpp`
+is the only piece that reads a clock, so its relative cost is the suite's
+known flake carried into the pieces.
+
+### Checks that passed for the wrong reason, or could not fail
+
+1. **budget's "and a drawn note only once every undrawn one has gone"** held
+   of nothing since P4 drew the inner voices: no voice ever had both gains
+   nought, and `all()` over the empty list is true. It is "an outline note only
+   once every inner one has gone" now, on a chord where four outline notes go.
+2. **budget's preset scan left every routing out.** Counted, the old library's
+   Glass pad gives up a copy a hand under eight notes a hand, through its
+   `env.note>gen.fm` (after-stage-5.md); the bank gives up nothing either way.
+3. **livefx's twist oscillator (batch 5) ran at 0.005 Hz**, its setup's rate
+   given as 0.5 where the field is in hundredths of a hertz; the swirl passed
+   on a twist all but held. 50 now, and it passes swept (1.600 apart).
+4. **heldTone's slider races its note-on on the site**: the instrument plays
+   the note's 220 Hz under a face that says 440. modtest's sweep read 110 to
+   438 Hz once on the default; the slider is moved again once the note lands.
+   Other suites that read a pitch after heldTone have not been looked at.
+5. **Checks the mutation pass found could not see a fault**: the octave sweep
+   in Mono alone (the voices' pitch path in Poly, now also swept); the loop's
+   range bound, with the reading at a half, could not see a reach of 0.9 (a
+   per-frame check against half the photocell's value, routed past the
+   ceiling); budget's oldest-of-a-rank and what counts as a held note let go
+   (a check each).
+6. **One of mine**: a piece formatted a numpy float into the reticle's control
+   (`np.float64(...)`), which the core reads as no number - and that found a
+   core corner: a reticle that is not a number makes the core's photocell
+   climb past one at its slew rate, where the page's goes to NaN
+   (after-stage-5.md).
+7. **On the site, two of livetest's claims are half false.** A band split
+   keeps the wish to monitor (the box ticked over a split, and Whole monitors
+   again unasked), and the credit no longer says whether the input is
+   monitored. Both in after-stage-5.md; the checks hold the half that is right
+   and say so at the site.
+
+### Nulls and mutations seen red
+
+Every piece check has its null beside it, seen red. Every moved or rewritten
+web check has one too: `toMic()` for the Mic press, the Bands press left out,
+the Monitor box ticked without its event, a GainNode to the speakers, the
+track silenced (live); half the depth, a slider message withheld, Mic left
+unpressed, the slider at 4 Hz (mod); `genSet` put back (photo); `genSet` on
+the default, the instrument's budget reading forged (budget). The core was
+mutated in scratch copies (`PIECES_INCLUDE`), 41 ways, 40 red: `capture.h`'s
+Q in decibels as 0.707 and `instrument.h` five ways for the split (an edge,
+a stage skipped, the mixer ignored, a lane doubled, the heard sum ungained);
+`lfo.h` stepped twice, `generator.h`'s pitch law in Mono and in Poly,
+`matrix.h` taking an unknown source; `picture.h` seven ways (the fade, the
+infinite and the off ends, the sum for the maximum, the read's cross, the
+slew, u and v swapped) and `loop.h`'s reach; `generator.h` 23 ways for the
+governor. Green: noise costed at nothing, which natively is nearer what the
+core spends, so a check against the machine cannot call it wrong; parity's
+governed runs hold the model's terms.
+
+### What is left on `?brain=js`, and why
+
+Step 3 is done. Left, each for a reason step 3 could not answer:
+
+- **step 4**: the constellation (removed by the owner's decision).
+- **step 5**: scan's held run (Stop), harmony's two meter rows (the meter's
+  verdict), layer's learned split point (a site defect: only the face learns
+  it), clock's LFO card, tempo row and Bar row and score's Stop, hidden page
+  and playhead (they draw the page's own lfos, transport and score; the
+  instrument posts its oscillators' phase and value but no rate, tempo or
+  playhead, so the face has nothing of the instrument's to read until step 5
+  gives it one); and brain's own legs and the counters' null.
+- **step 5 or 6, the engines compared**: wasm and worklet whole, which hold
+  the two engines together and go with the switch.
+
+RUNS_PLACEHOLDER
+
 ## Appendix: the counters, summed
 
 Over the full run (13 Nov), by the page's address. `frames` is frames the
@@ -1313,34 +1485,34 @@ Docstring: "?core=js turns the switch off - each read from the source the page i
 ### budgettest.py - wholly on ?brain=js - 26/26
 Comment: "On ?brain=js (5m): this suite reads the page's own brain - genSet called directly." Most of it builds its own `makeGeneratorCore` (the JavaScript engine) in the page and reads `core.budget`, `core.voices[].cut` and `performance.now()` (page :100).
 
-| Check | Kind | Why |
-|---|---|---|
-| `sixteen held notes and sixteen releasing, everything on, run in under half of real time` (:119) | numbers | Milliseconds of the JavaScript engine; to keep it, a C++ benchmark of `generator.h` (serial), not a render. |
-| `and the model says the budget holds` (:121) | numbers | `budget.units <= most`; the core's `budget()` (`generator.h:365`). |
-| `every case was measured as asked, the governor leaving it whole` (:163) | numbers | Budget state per case; core `Budget`. |
-| `the model has each feature's cost right relative to the others, from half to 1.6 times the median` (:171) | numbers | Measured JS cost over modelled cost; moved, it has to be re-measured on the C++ (whose relative costs differ) - see Surprises. |
-| `one note a layer, everything on, gives up nothing` (:191) | numbers | Budget state. |
-| `unison is only thinned once the four times has gone` (:193) | numbers | Budget state over a sweep. |
-| `a held note is only let go once unison is down to one on both layers` (:195) | numbers | Budget state. |
-| `and a drawn note only once every undrawn one has gone` (:197) | numbers | Per-voice `cut` and `gains`; needs the core's voice list, not audio. |
-| `each stage is reached somewhere between one note a layer and eight` (:199) | numbers | The sweep's own non-vacuity. |
-| `releases in flight go first: with some let go, no held note is` (:221) | numbers | Per-voice `held`/`cut`. |
-| `and a held note goes only once every release has` (:223) | numbers | Same. |
-| `two voices keep the four times and alias as it does, under -44 dB` (:248) | numbers | Rendered driven voices, numpy off-grid; a render plus the budget's factor. |
-| `twelve are held to twice, and alias as twice does - the governor's choice is the one that runs` (:250) | numbers | Same, twelve voices. |
-| `with releases in flight, the chord has fewer copies than it asked for` (:279) | numbers | `budget.unison`. |
-| `and keeps them as the releases die away under the same chord` (:281) | numbers | Same. |
-| `striking the chord again gives them back` (:283) | numbers | Same. |
-| `and so does moving the unison asked for` (:284) | numbers | Same. |
-| `a chord over releases has some let go` (:310) | numbers | Voice `cut` count. |
-| `and the sum never steps as they go: its largest move a sample stays under 0.01` (:313) | numbers | Largest sample step of the rendered sum; a render. |
-| `it names each thing given up, per layer when there are two` (:323) | page | `budgetSaid`, the readout's words from a budget object; a face function, can be called on the default as is. |
-| `and says nothing when nothing is` (:326) | page | Same. |
-| `playing a dear chord on the page, the readout says what the budget took` (:343) | page | `genSet` + notes, `el.readoutDetail`; becomes knobs and keys on the default, the readout reading the instrument's budget. |
-| `and a cheap one says nothing about it` (:345) | page | Same. |
-| `the scan read the presets it names: more than a hundred, in more than six shapes` (:377) | numbers | Walks the corpus and bank through `genSettings()` into a JS core; offline, each preset's setup into the C++ core. |
-| `no preset gives anything up under a chord of eight on each layer it plays` (:379) | numbers | Same scan, budget state. |
-| `no page errors` (:382) | page | Page errors. |
+| Check | Kind | Why | Batch 6 (14 Nov) |
+|---|---|---|---|
+| `sixteen held notes and sixteen releasing, everything on, run in under half of real time` (:119) | numbers | Milliseconds of the JavaScript engine; to keep it, a C++ benchmark of `generator.h` (serial), not a render. | to pieces: pieces/budget.py (budget_cpp), timed natively, best of three; null, the clock reads the work |
+| `and the model says the budget holds` (:121) | numbers | `budget.units <= most`; the core's `budget()` (`generator.h:365`). | to pieces: pieces/budget.py (budget_cpp); null, the same bound at half the budget |
+| `every case was measured as asked, the governor leaving it whole` (:163) | numbers | Budget state per case; core `Budget`. | to pieces: pieces/budget.py (budget_cpp); null, a voice past where the probe stopped is thinned |
+| `the model has each feature's cost right relative to the others, from half to 1.6 times the median` (:171) | numbers | Measured JS cost over modelled cost; moved, it has to be re-measured on the C++ (whose relative costs differ) - see Surprises. | to pieces: pieces/budget.py (budget_cpp), rewritten: the core's native costs, not the page's milliseconds, are not the fit (pink and the filter under 0.5, wasm's drawbars x7 past 1.6: web/docs/budget-on-the-core.md); the 1.6 side held, under 0.5 named, nothing refitted; the morph-as-saw null kept |
+| `one note a layer, everything on, gives up nothing` (:191) | numbers | Budget state. | to pieces: pieces/budget.py (budget_cpp); null, two a layer |
+| `unison is only thinned once the four times has gone` (:193) | numbers | Budget state over a sweep. | to pieces: pieces/budget.py (budget_cpp); null |
+| `a held note is only let go once unison is down to one on both layers` (:195) | numbers | Budget state. | to pieces: pieces/budget.py (budget_cpp); null |
+| `and a drawn note only once every undrawn one has gone` (:197) | numbers | Per-voice `cut` and `gains`; needs the core's voice list, not audio. | to pieces: pieces/budget.py (budget_cpp), rewritten: passed on nothing since P4 (no voice undrawn, all() of an empty list); now an outline note only once every inner one has gone, on a chord where four go; null, swapped |
+| `each stage is reached somewhere between one note a layer and eight` (:199) | numbers | The sweep's own non-vacuity. | to pieces: pieces/budget.py (budget_cpp) |
+| `releases in flight go first: with some let go, no held note is` (:221) | numbers | Per-voice `held`/`cut`. | to pieces: pieces/budget.py (budget_cpp); null |
+| `and a held note goes only once every release has` (:223) | numbers | Same. | to pieces: pieces/budget.py (budget_cpp) |
+| `two voices keep the four times and alias as it does, under -44 dB` (:248) | numbers | Rendered driven voices, numpy off-grid; a render plus the budget's factor. | to pieces: pieces/budget.py (budget_cpp), the heard lane off-grid -46.3 dB |
+| `twelve are held to twice, and alias as twice does - the governor's choice is the one that runs` (:250) | numbers | Same, twelve voices. | to pieces: pieces/budget.py (budget_cpp), -30.4 dB; null, twelve not under -44 |
+| `with releases in flight, the chord has fewer copies than it asked for` (:279) | numbers | `budget.unison`. | to pieces: pieces/budget.py (budget_cpp); null, the releases had gone |
+| `and keeps them as the releases die away under the same chord` (:281) | numbers | Same. | to pieces: pieces/budget.py (budget_cpp) |
+| `striking the chord again gives them back` (:283) | numbers | Same. | to pieces: pieces/budget.py (budget_cpp) |
+| `and so does moving the unison asked for` (:284) | numbers | Same. | to pieces: pieces/budget.py (budget_cpp) |
+| `a chord over releases has some let go` (:310) | numbers | Voice `cut` count. | to pieces: pieces/budget.py (budget_cpp) |
+| `and the sum never steps as they go: its largest move a sample stays under 0.01` (:313) | numbers | Largest sample step of the rendered sum; a render. | to pieces: pieces/budget.py (budget_cpp), 0.0032; null, a one-sample cut steps 0.835 |
+| `it names each thing given up, per layer when there are two` (:323) | page | `budgetSaid`, the readout's words from a budget object; a face function, can be called on the default as is. | moved to the default page; +1 null |
+| `and says nothing when nothing is` (:326) | page | Same. | moved |
+| `playing a dear chord on the page, the readout says what the budget took` (:343) | page | `genSet` + notes, `el.readoutDetail`; becomes knobs and keys on the default, the readout reading the instrument's budget. | rewritten: a dear chord through the controls and keys the instrument hears (Poly clicked, the menus by their events), the readout read with the instrument's budget (state.source.budget); null, that reading forged to nothing given up. With genSet, on the default, red: the instrument played the base |
+| `and a cheap one says nothing about it` (:345) | page | Same. | rewritten, as (343) |
+| `the scan read the presets it names: more than a hundred, in more than six shapes` (:377) | numbers | Walks the corpus and bank through `genSettings()` into a JS core; offline, each preset's setup into the C++ core. | to pieces: pieces/budget.py (budget_cpp), 277 setups in 13 shapes through the core's restoreSetup |
+| `no preset gives anything up under a chord of eight on each layer it plays` (:379) | numbers | Same scan, budget state. | to pieces: pieces/budget.py (budget_cpp); null, the dearest with seven copies and drive is thinned. +1: with routings counted, the old library's Glass pad gives up a copy a hand (after-stage-5.md) |
+| `no page errors` (:382) | page | Page errors. | stays, on the default page |
 
 ### captest.py - wholly on ?brain=js - 11/11
 Comment: "On ?brain=js (5m): this suite reads the page's own brain - what capture() asks the page's own sources for." The source is the page's own Mic (`kind === "mic"`), and the checks wrap `getLatestWindow` and call the face's `capture()` with `state.timebase`, `state.lagOn` set by hand (page :35).
@@ -1364,44 +1536,44 @@ Comment: "On ?brain=js (5m): this suite reads the page's own brain - its sources
 
 Batch 2 (13 Nov): 36 checks to 14 here (a `?brain=js` page for the face's tempo readings, which are the page's own transport and lfos, and a default page for setup codes), and 54 in `core/tests/pieces/clock.py` (29 checks, 25 nulls) on clock_cpp, score_cpp and keyboard_cpp. 25 rows gone to parity, 2 split (numbers to parity, the face left), 4 moved to the default (one rewritten), 5 left on `?brain=js` (one rewritten).
 
-| Check | Kind | Why | Batch 2 (13 Nov) |
-|---|---|---|---|
-| `at 120, 1/4 is 2 Hz, a bar 0.5, a quaver triplet 6 and four bars 0.125` (:73) | numbers | `lfos[0].rate` under each lock; a `clock.h`/`lfo.h` unit check or a render with the LFO on the level. | gone to parity: pieces/clock.py, the lock's rate written by the core's clock frame, with a plain quaver as null |
-| `the reading says so, and the Rate slider stands aside while it is locked` (:75) | page | The LFO card's reading and a disabled slider; moves to the default as is. | left on ?brain=js: the reading and the slider are drawn from the page's own `lfos` (lfoRateReading); on the default that is the page's brain, a step-5 lean |
-| `it follows the tempo: 1/4 at 90 is 1.5 Hz` (:77) | numbers | Rate after `setTempo(90)`. | gone to parity: pieces/clock.py, 1/4 at 90, with 1/4 at 120 as null |
-| `and let go, it is back at the slider's 0.37 Hz` (:78) | numbers | Rate after unlocking (plus the slider enabled). | rewritten, left on ?brain=js: the slider given back and reading 0.37 Hz (face, the page's `lfos`); the rate's half is the core's menu path (restore.h lfoSync), which parity's menus section holds |
-| `and the running oscillator goes round at it: 1/8 at 120, four times a second` (:100) | numbers | Crossings of `lfos[0].value` over two real seconds; offline, an LFO on the level rendered two seconds - and no longer timing-sensitive. | gone to parity: pieces/clock.py, crossings over two seconds of the core's generator stepping the locked oscillator (a new clock_cpp `play`), with the lock at 60 as null; no timers |
-| `taps half a second apart are 120, and restart the locked oscillator on each` (:119) | numbers | `clockTap` at synthetic times; a tap is not MIDI, so a `clock.h` unit call rather than a setup+MIDI render. | gone to parity: pieces/clock.py, the core's tapTempo at made-up times, with the unrestarted phase before as null |
-| `and one tap on its own is no tempo: it leaves the tempo where it was` (:121) | numbers | Same harness. | gone to parity: pieces/clock.py, the tempo started at 100, not 120, so one tap cannot pass by the tempo already being the next taps' 120 |
-| `the tempo is the mean of the last four taps' gaps: 500, 500 and 400 is 129` (:123) | numbers | Same. | gone to parity: pieces/clock.py, with the last gap alone (150) as null |
-| `after a pause of two seconds it starts again: 400 apart is 150, not a blend with before` (:125) | numbers | Same (plus `el.tempo.value`, the face). | gone to parity: pieces/clock.py, with a pause under two seconds (blended) as null; the slider's `150` gone - syncClockPanel reading the page's own transport, which a direct clockTap set |
-| `25 ticks at 120, jittered, read as 120 - the mean of the gaps, not the last one` (:168) | numbers | MIDI clock bytes at given times; a render with timed `0xF8`. | gone to parity: pieces/clock.py, ticks at the same jittered times, with the last gap's tempo as null |
-| `while it runs the locked oscillator follows it and the slider stands aside` (:170) | page | Borderline: rate is numbers, but what this adds over :168 is the tempo slider disabled and two readings' text. | split: the rate to parity (pieces/clock.py); the slider standing aside and the row's readings left on ?brain=js - the page's own `transport` (syncClockPanel), a step-5 lean |
-| `half a second after the last tick the tempo is the slider's again` (:174) | numbers | Borderline: tempo handed back (brain), with the panel's text alongside. | split: the tempo handed back to parity (pieces/clock.py); the row's readings left on ?brain=js, as (170) |
-| `Start restarts the locked oscillators, and Continue does not` (:176) | numbers | LFO phase/epoch on `0xFA`/`0xFB`; offline, the LFO's phase in the level. | gone to parity: pieces/clock.py, with a free oscillator left where it was by Start as null |
-| `a clock byte in the middle of a note-on is a tick, and the note lands with its own velocity` (:180) | numbers | The MIDI parser; a render fed those bytes. | gone to parity: pieces/clock.py, the core's Keyboard::bytes through keyboard_cpp; nulls: velocity 50, and no tick without the byte. Found: on the site a port's bytes reach the instrument cut at every status byte (scope.html's midiBytes `piece`), and the keyboard drops half a message between calls, so these bytes from a real port lose the note there (instrument_cpp: 0.34 whole, 0 in pieces). Not fixed: the page's or the core's to change |
-| `started, the bar moves at the tempo from nought: a second at 120 is two beats, and 1.5 s is bar 1, beat 4` (:267) | numbers | `transportBeat`/`transportSaid` at synthetic times; `clock.h` unit (`said` is there "because a test reads it"). | gone to parity: pieces/clock.py, beat and said at the run's times, 1.5 s read as two beats as null |
-| `a tempo change goes on from where the bar is: two beats at the change, three a second later at 60` (:269) | numbers | Same. | gone to parity: pieces/clock.py, with no tempo change (four) as null |
-| `stopped, it stands where it stopped, and says so` (:271) | numbers | Same. | gone to parity: pieces/clock.py, with no Stop (ten) as null |
-| `Start is the one again, and the locked oscillators start with it` (:273) | numbers | Same, with LFO restart. | gone to parity: pieces/clock.py, with the bar at 3.5 and phase three before as null |
-| `the score switched on mid-bar joins the bar where it is, not at its own column nought` (:275) | numbers | `score.col`; lights `phosphor.grid` by hand - in the core the score reads the core's grid, so the moved check needs a figure that lights a row, or a score unit fed a grid. | gone to parity: pieces/clock.py, score_cpp, the core's score on the Brain's clock; column nought as null |
-| `and Start brings it back to column nought on the downbeat` (:277) | numbers | Same. | gone to parity: pieces/clock.py, score_cpp |
-| `stopped, the score strikes nothing and lets go of its notes` (:278) | numbers | Wraps `src.strike`; in the core, strikes counted from the voices. | gone to parity: pieces/clock.py, score_cpp, strikes logged; the running frames striking as null |
-| `a MIDI Start waits for the device's first tick: nothing before it, column nought on it` (:280) | numbers | `midiRealtime` at times; render with timed bytes. | gone to parity: pieces/clock.py, clock_cpp for the bar and score_cpp for the strikes; a Start that did not wait as null |
-| `under a clock the bar is counted in ticks: 48 jittered ticks on, exactly two beats` (:286) | numbers | Same. | gone to parity: pieces/clock.py, with the bar counted in time from the first tick (2.008) as null |
-| `and between ticks it never guesses past the next one` (:288) | numbers | Same. | gone to parity: pieces/clock.py, with the bar let go by the frame past the tick as null |
-| `MIDI Stop stands and Continue goes on from there at the next tick, restarting nothing` (:291) | numbers | Same. | gone to parity: pieces/clock.py, with a Start in Continue's place (nought) as null |
-| `a clock that stops lets the bar go on to where it would have been, not half a second behind` (:294) | numbers | Same. | gone to parity: pieces/clock.py, with the bar before the frame lets go as null |
-| `and a Start that no clock follows starts anyway, rather than waiting for ever` (:296) | numbers | Same. | gone to parity: pieces/clock.py, with the bar held at nought until the frame as null |
-| `a tap is the one while the bar runs` (:298) | numbers | Tap at times; `clock.h` unit. | gone to parity: pieces/clock.py, with no taps (1.2) as null |
-| `stopped, taps set the tempo and start nothing` (:299) | numbers | Same. | gone to parity: pieces/clock.py, with the tempo before the taps as null |
-| `the Bar row's button stops the bar, and the reading says where it stood` (:320) | page | `#transportPlay` click and `#transportAt` text; a click on the default. | left on ?brain=js: `#transportPlay` and `#transportAt` are syncClockPanel's view of the page's own transport; a step-5 lean. The panel's evaluate now sets 120 itself, which the removed bar section had left |
-| `loading a setup code leaves the bar stopped: the transport is playing, not the patch` (:324) | page | `restore(snapshot())` called directly; becomes a code pasted on the default. | left on ?brain=js: reads the page's `transport.running` after restore(), as (320) |
-| `and started again, it runs from the one: a little over a second at 120 is bar 1, beat 3` (:326) | page | Button and reading. | left on ?brain=js, as (320) |
-| `a code carries the tempo, each lock, and the slider's rate rather than the locked one` (:344) | page | `snapshot()` fields; face. | moved: the tempo slider, LFO 2's Rate and Sync moved by real input events on the default, snapshot() read |
-| `a code from before the clock is 120 and free` (:346) | page | `restore({})` then page `lfos`/`transport`. | moved: restore({}) then snapshot() on the default (the face's setup); bpm 120 and l1y empty |
-| `and restored, the lock runs at the code's tempo: 1/2 at 96 is 0.8 Hz, with 0.9 kept for later` (:348) | page | Borderline: `restore()` direct then rate read; the core's restore is parity's, so the page half goes to the default. | rewritten, moved: the code comes back whole through snapshot() on the default, with the old code as a null; the lock's 0.8 Hz to parity (pieces/clock.py, with 1 Hz at 120 as null) |
-| `no page errors` (:351) | page | Page errors. | moved: no page errors on each page, the ?brain=js one and the default one |
+| Check | Kind | Why | Batch 2 (13 Nov) | Batch 6 (14 Nov) |
+|---|---|---|---|---|
+| `at 120, 1/4 is 2 Hz, a bar 0.5, a quaver triplet 6 and four bars 0.125` (:73) | numbers | `lfos[0].rate` under each lock; a `clock.h`/`lfo.h` unit check or a render with the LFO on the level. | gone to parity: pieces/clock.py, the lock's rate written by the core's clock frame, with a plain quaver as null |  |
+| `the reading says so, and the Rate slider stands aside while it is locked` (:75) | page | The LFO card's reading and a disabled slider; moves to the default as is. | left on ?brain=js: the reading and the slider are drawn from the page's own `lfos` (lfoRateReading); on the default that is the page's brain, a step-5 lean | left on ?brain=js, for step 5: the reading is lfoRateReading of the page's own lfos, whose rate the page's clock works out; the instrument posts its oscillators' phase and value, never their rate, so the face has nothing of the instrument's to read until it does |
+| `it follows the tempo: 1/4 at 90 is 1.5 Hz` (:77) | numbers | Rate after `setTempo(90)`. | gone to parity: pieces/clock.py, 1/4 at 90, with 1/4 at 120 as null |  |
+| `and let go, it is back at the slider's 0.37 Hz` (:78) | numbers | Rate after unlocking (plus the slider enabled). | rewritten, left on ?brain=js: the slider given back and reading 0.37 Hz (face, the page's `lfos`); the rate's half is the core's menu path (restore.h lfoSync), which parity's menus section holds | left on ?brain=js, for step 5: as (75) |
+| `and the running oscillator goes round at it: 1/8 at 120, four times a second` (:100) | numbers | Crossings of `lfos[0].value` over two real seconds; offline, an LFO on the level rendered two seconds - and no longer timing-sensitive. | gone to parity: pieces/clock.py, crossings over two seconds of the core's generator stepping the locked oscillator (a new clock_cpp `play`), with the lock at 60 as null; no timers |  |
+| `taps half a second apart are 120, and restart the locked oscillator on each` (:119) | numbers | `clockTap` at synthetic times; a tap is not MIDI, so a `clock.h` unit call rather than a setup+MIDI render. | gone to parity: pieces/clock.py, the core's tapTempo at made-up times, with the unrestarted phase before as null |  |
+| `and one tap on its own is no tempo: it leaves the tempo where it was` (:121) | numbers | Same harness. | gone to parity: pieces/clock.py, the tempo started at 100, not 120, so one tap cannot pass by the tempo already being the next taps' 120 |  |
+| `the tempo is the mean of the last four taps' gaps: 500, 500 and 400 is 129` (:123) | numbers | Same. | gone to parity: pieces/clock.py, with the last gap alone (150) as null |  |
+| `after a pause of two seconds it starts again: 400 apart is 150, not a blend with before` (:125) | numbers | Same (plus `el.tempo.value`, the face). | gone to parity: pieces/clock.py, with a pause under two seconds (blended) as null; the slider's `150` gone - syncClockPanel reading the page's own transport, which a direct clockTap set |  |
+| `25 ticks at 120, jittered, read as 120 - the mean of the gaps, not the last one` (:168) | numbers | MIDI clock bytes at given times; a render with timed `0xF8`. | gone to parity: pieces/clock.py, ticks at the same jittered times, with the last gap's tempo as null |  |
+| `while it runs the locked oscillator follows it and the slider stands aside` (:170) | page | Borderline: rate is numbers, but what this adds over :168 is the tempo slider disabled and two readings' text. | split: the rate to parity (pieces/clock.py); the slider standing aside and the row's readings left on ?brain=js - the page's own `transport` (syncClockPanel), a step-5 lean | left on ?brain=js, for step 5: the tempo row is syncClockPanel's view of the page's own transport; the instrument posts no tempo |
+| `half a second after the last tick the tempo is the slider's again` (:174) | numbers | Borderline: tempo handed back (brain), with the panel's text alongside. | split: the tempo handed back to parity (pieces/clock.py); the row's readings left on ?brain=js, as (170) | left on ?brain=js, for step 5: as (170) |
+| `Start restarts the locked oscillators, and Continue does not` (:176) | numbers | LFO phase/epoch on `0xFA`/`0xFB`; offline, the LFO's phase in the level. | gone to parity: pieces/clock.py, with a free oscillator left where it was by Start as null |  |
+| `a clock byte in the middle of a note-on is a tick, and the note lands with its own velocity` (:180) | numbers | The MIDI parser; a render fed those bytes. | gone to parity: pieces/clock.py, the core's Keyboard::bytes through keyboard_cpp; nulls: velocity 50, and no tick without the byte. Found: on the site a port's bytes reach the instrument cut at every status byte (scope.html's midiBytes `piece`), and the keyboard drops half a message between calls, so these bytes from a real port lose the note there (instrument_cpp: 0.34 whole, 0 in pieces). Not fixed: the page's or the core's to change |  |
+| `started, the bar moves at the tempo from nought: a second at 120 is two beats, and 1.5 s is bar 1, beat 4` (:267) | numbers | `transportBeat`/`transportSaid` at synthetic times; `clock.h` unit (`said` is there "because a test reads it"). | gone to parity: pieces/clock.py, beat and said at the run's times, 1.5 s read as two beats as null |  |
+| `a tempo change goes on from where the bar is: two beats at the change, three a second later at 60` (:269) | numbers | Same. | gone to parity: pieces/clock.py, with no tempo change (four) as null |  |
+| `stopped, it stands where it stopped, and says so` (:271) | numbers | Same. | gone to parity: pieces/clock.py, with no Stop (ten) as null |  |
+| `Start is the one again, and the locked oscillators start with it` (:273) | numbers | Same, with LFO restart. | gone to parity: pieces/clock.py, with the bar at 3.5 and phase three before as null |  |
+| `the score switched on mid-bar joins the bar where it is, not at its own column nought` (:275) | numbers | `score.col`; lights `phosphor.grid` by hand - in the core the score reads the core's grid, so the moved check needs a figure that lights a row, or a score unit fed a grid. | gone to parity: pieces/clock.py, score_cpp, the core's score on the Brain's clock; column nought as null |  |
+| `and Start brings it back to column nought on the downbeat` (:277) | numbers | Same. | gone to parity: pieces/clock.py, score_cpp |  |
+| `stopped, the score strikes nothing and lets go of its notes` (:278) | numbers | Wraps `src.strike`; in the core, strikes counted from the voices. | gone to parity: pieces/clock.py, score_cpp, strikes logged; the running frames striking as null |  |
+| `a MIDI Start waits for the device's first tick: nothing before it, column nought on it` (:280) | numbers | `midiRealtime` at times; render with timed bytes. | gone to parity: pieces/clock.py, clock_cpp for the bar and score_cpp for the strikes; a Start that did not wait as null |  |
+| `under a clock the bar is counted in ticks: 48 jittered ticks on, exactly two beats` (:286) | numbers | Same. | gone to parity: pieces/clock.py, with the bar counted in time from the first tick (2.008) as null |  |
+| `and between ticks it never guesses past the next one` (:288) | numbers | Same. | gone to parity: pieces/clock.py, with the bar let go by the frame past the tick as null |  |
+| `MIDI Stop stands and Continue goes on from there at the next tick, restarting nothing` (:291) | numbers | Same. | gone to parity: pieces/clock.py, with a Start in Continue's place (nought) as null |  |
+| `a clock that stops lets the bar go on to where it would have been, not half a second behind` (:294) | numbers | Same. | gone to parity: pieces/clock.py, with the bar before the frame lets go as null |  |
+| `and a Start that no clock follows starts anyway, rather than waiting for ever` (:296) | numbers | Same. | gone to parity: pieces/clock.py, with the bar held at nought until the frame as null |  |
+| `a tap is the one while the bar runs` (:298) | numbers | Tap at times; `clock.h` unit. | gone to parity: pieces/clock.py, with no taps (1.2) as null |  |
+| `stopped, taps set the tempo and start nothing` (:299) | numbers | Same. | gone to parity: pieces/clock.py, with the tempo before the taps as null |  |
+| `the Bar row's button stops the bar, and the reading says where it stood` (:320) | page | `#transportPlay` click and `#transportAt` text; a click on the default. | left on ?brain=js: `#transportPlay` and `#transportAt` are syncClockPanel's view of the page's own transport; a step-5 lean. The panel's evaluate now sets 120 itself, which the removed bar section had left | left on ?brain=js, for step 5: the Bar row is the page's own transport |
+| `loading a setup code leaves the bar stopped: the transport is playing, not the patch` (:324) | page | `restore(snapshot())` called directly; becomes a code pasted on the default. | left on ?brain=js: reads the page's `transport.running` after restore(), as (320) | left on ?brain=js, for step 5: as (320) |
+| `and started again, it runs from the one: a little over a second at 120 is bar 1, beat 3` (:326) | page | Button and reading. | left on ?brain=js, as (320) | left on ?brain=js, for step 5: as (320) |
+| `a code carries the tempo, each lock, and the slider's rate rather than the locked one` (:344) | page | `snapshot()` fields; face. | moved: the tempo slider, LFO 2's Rate and Sync moved by real input events on the default, snapshot() read |  |
+| `a code from before the clock is 120 and free` (:346) | page | `restore({})` then page `lfos`/`transport`. | moved: restore({}) then snapshot() on the default (the face's setup); bpm 120 and l1y empty |  |
+| `and restored, the lock runs at the code's tempo: 1/2 at 96 is 0.8 Hz, with 0.9 kept for later` (:348) | page | Borderline: `restore()` direct then rate read; the core's restore is parity's, so the page half goes to the default. | rewritten, moved: the code comes back whole through snapshot() on the default, with the old code as a null; the lock's 0.8 Hz to parity (pieces/clock.py, with 1 Hz at 120 as null) |  |
+| `no page errors` (:351) | page | Page errors. | moved: no page errors on each page, the ?brain=js one and the default one | the ?brain=js page's no page errors stays with it |
 
 ### constellationtest.py - wholly on ?brain=js but for one default leg - 39/42 (27 `check` + 12 `null` of 30 + 12)
 Docstring: "Page-only: drawn on the main thread from the voice lists, on the page's own brain, whose Scan reads the screen the page draws." Its `opened()` defaults to `?brain=js` (:61); only :189 opens `""`.
@@ -1918,44 +2090,44 @@ The docstring (lines 34-35) puts the default leg as "the site's default, the ins
 ### layertest.py - wholly on ?brain=js - 36/36
 Lines 29-32: "this suite reads the page's own brain - its voices and worklet, and setMidiMode called directly". It opens at `?picture=0&brain=js` (line 71). The first ten are offline `makeGeneratorCore` renders. The rest is keyboard routing, the face and the page's worklet.
 
-| Check | Kind | Why | Batch 2 (13 Nov) |
-|---|---|---|---|
-| two layers step the oscillators once a sample, not twice (94) | numbers | Offline core. It reads `lfos[0].phase` after the block, an internal value, so `render_cpp` must report LFO phase (or show it through a routed sound). | gone to parity: pieces/layer.py, the oscillator heard, not its phase read: a 4 Hz square on A's level toggles it as often with two layers as with one |
-| layer A's picture has A's notes and not B's (155) | numbers | Offline core, bin energies. | gone to parity: pieces/layer.py, bins on generator_cpp's A lanes |
-| layer B's picture has B's note and not A's (158) | numbers | The same. | gone to parity: pieces/layer.py, bins on B's lanes |
-| and the heard pair has all three (162) | numbers | The same. | gone to parity: pieces/layer.py, bins on the heard pair |
-| because it is A's lanes and B's summed, sample for sample (164) | numbers | The same. | gone to parity: pieces/layer.py, heard = A + B, sample for sample |
-| and the comparison fails with B left out (166) | numbers | Null. | gone to parity: pieces/layer.py, its null, B left out |
-| and a caller that asks for no lanes of B's hears exactly the same (167) | numbers | A second core with only the heard pair asked for. | gone: the page's core took B's lanes as optional arguments; the core computes B whether or not they are asked for (generator.h) and the instrument asks for them with the heard pair |
-| layer B plays its own shape - a square under A's sine (170) | numbers | Third harmonic ratio. | gone to parity: pieces/layer.py, third harmonic of B's square |
-| and speaks with its own envelope - slow where A's is quick (173) | numbers | Envelope peaks. | gone to parity: pieces/layer.py, B's slow attack against A's quick |
-| the envelope a source reads includes layer B's notes (193) | numbers | `core.envelope` and `core.voicesB.length`: internals, which `render_cpp` would have to report. | gone to parity: pieces/layer.py, generator_cpp's trailer (envelope, voicesB) |
-| and layer B's voices are let go once their release is over (195) | numbers | The same. | gone to parity: pieces/layer.py, the trailer after the release, with a null a few ms into it |
-| a split sends notes below the point to A and the point upwards to B (221) | numbers | Borderline. Reads `genSettings(layer).voices`, put there by the page's `polyVoices`. The rule is in core keyboard.h, so it becomes a timed-MIDI render with energy per layer. | gone to parity: pieces/layer.py, keyboard_cpp's chords per layer, 60 among the notes |
-| and offers four lanes, named for their layers, as two figures (224) | page | `laneCount`, `laneName`, `state.source.figures()`: face and source layout. | moved: Poly pressed and the split chosen (setMidiMode was not heard); lanes, names and figures read off the instrument's source |
-| layered sends every note to both (228) | numbers | As 221. | gone to parity: pieces/layer.py, keyboard_cpp, layered |
-| the split point is learned from the next key, which still plays (243) | page | The Learn button, `midi.layers.point`, `midi.notes`. | left on ?brain=js, its own page: on the default the Learn button moves the face's point ('at G3') and not the instrument's (A3 still in A's lanes after learning G3) - passed on the default for the page's reason; needs a page change |
-| layer A draws by its rule and layer B by its own (264) | numbers | Borderline. `midi.draws` set by hand, then voice roles; the drawn-note rule. Offline: a timed-MIDI render with each layer's draw rule in the setup, energies per layer's picture. | gone to parity: pieces/layer.py, keyboard_cpp with each layer's draw rule |
-| and the readout says each layer's outline (266) | page | `el.readoutDetail`. | moved: each hand's Draw menus changed with that hand on the face (midi.draws was written by hand); the readout is the face's own reckoning |
-| A against B is one pair: both of A's drawn notes on X, B's on Y (289) | numbers | Bin energies of `getLatestWindow`; an offline render with `layerPair: against`. | gone to parity: pieces/layer.py, the instrument natively, A against B, bins on X and Y, with a null drawn a figure each |
-| named for the layers, with the X-Y menus back (294) | page | `laneName`, DOM. | moved: the face's names after the pairing menu (genSet dropped); +1 null, a figure each |
-| layer B's figure is drawn beside A's, not just A's (325) | page | `phosphor.grid` lit fraction: the page's drawing of the lanes. Face; the default draws too. | moved: the face's grid drawing the instrument's lanes; X-Y pressed (setDisplay was not heard), the phase left at the slider's 90 (genSet dropped); +1 null, every note let go |
-| and the X-Y menus step aside while the layers choose the figures (327) | page | DOM. | moved |
-| with the lag on the figure is the lag's, not the layers' (354) | page | `lagActive`, `sourceFigures`, `laneCount`: the page's lane layout. | moved: the face's lane layout |
-| even when a modulation turns the lag on and nothing rebuilds the lanes (358) | page | `state.lagMod` set by hand. | moved: state.lagMod is the page's visual matrix, which moves the screen's own destinations on the default as well |
-| the worklet sounds both layers (388) | page | Analyser on the page's JS worklet through its monitor chain. It tests the page's own worklet plumbing; goes. The instrument's worklet is braintest's. | gone: the page brain's own worklet and monitor chain; the instrument's worklet is braintest's |
-| and posts layer B's picture back apart from A's (389) | page | The page worklet's B lanes crossing the thread. Goes. | gone, as (388) |
-| with B shown and the Generator its own, its link says so and the panel shows only what B has (422) | page | DOM. | moved |
-| and its controls write layer B, leaving A alone (425) | page | `genSettings(0/1)`. | rewritten: reads the setup the face sends (snapshot) for each hand, not genSettings, the page's mirror on the default |
-| the lower hand chosen puts A's values back on the controls, and the link names it (429) | page | DOM. | moved |
-| a code taken with B on screen keeps A's controls as A's (434) | page | `snapshot()`. | moved |
-| split, point, pairing, B's rule and B's sound survive a setup code (459) | page | `restore()`, `genSettings`, `midi.layers`. | moved: loaded with loadCode (restore() direct changes the face alone on the default); reads the face's copy of the setup; the core's decode is parity's restore |
-| a code's envelope reaches the generator, not only its sliders (464) | page | `genSettings().releaseMs` after `restore`. | moved, as (459): 'the generator' is the face's copy here |
-| and a code from before layers has none, with B sounding like A (466) | page | The same. | moved, as (459) |
-| leaving poly ends layer B and gives the page two lanes and layer A's panel (490) | page | `layersOn`, `state.source.channels/layout`, DOM. | rewritten: Dyad and Poly pressed (setMidiMode was not heard); two lanes read off what the instrument sends |
-| and coming back to poly splits the held notes again (495) | page | `genSettings().voices`. | rewritten: the held notes found split again in the instrument's A and B lanes, not the page's genSettings voices; +1 null, the lanes swapped |
-| with the input drawn a split is kept, not applied, and the panel says why (516) | page | A stand-in `state.source` (`Object.create(saved, ...)`), page-only. | gone: a stand-in state.source on the page and the page's own syncMidi, a path only the page's brain has; the instrument's input drawn with layers is parity's 'layered input' |
-| no page errors (521) | page | Housekeeping. | moved (and a second on the ?brain=js page) |
+| Check | Kind | Why | Batch 2 (13 Nov) | Batch 6 (14 Nov) |
+|---|---|---|---|---|
+| two layers step the oscillators once a sample, not twice (94) | numbers | Offline core. It reads `lfos[0].phase` after the block, an internal value, so `render_cpp` must report LFO phase (or show it through a routed sound). | gone to parity: pieces/layer.py, the oscillator heard, not its phase read: a 4 Hz square on A's level toggles it as often with two layers as with one |  |
+| layer A's picture has A's notes and not B's (155) | numbers | Offline core, bin energies. | gone to parity: pieces/layer.py, bins on generator_cpp's A lanes |  |
+| layer B's picture has B's note and not A's (158) | numbers | The same. | gone to parity: pieces/layer.py, bins on B's lanes |  |
+| and the heard pair has all three (162) | numbers | The same. | gone to parity: pieces/layer.py, bins on the heard pair |  |
+| because it is A's lanes and B's summed, sample for sample (164) | numbers | The same. | gone to parity: pieces/layer.py, heard = A + B, sample for sample |  |
+| and the comparison fails with B left out (166) | numbers | Null. | gone to parity: pieces/layer.py, its null, B left out |  |
+| and a caller that asks for no lanes of B's hears exactly the same (167) | numbers | A second core with only the heard pair asked for. | gone: the page's core took B's lanes as optional arguments; the core computes B whether or not they are asked for (generator.h) and the instrument asks for them with the heard pair |  |
+| layer B plays its own shape - a square under A's sine (170) | numbers | Third harmonic ratio. | gone to parity: pieces/layer.py, third harmonic of B's square |  |
+| and speaks with its own envelope - slow where A's is quick (173) | numbers | Envelope peaks. | gone to parity: pieces/layer.py, B's slow attack against A's quick |  |
+| the envelope a source reads includes layer B's notes (193) | numbers | `core.envelope` and `core.voicesB.length`: internals, which `render_cpp` would have to report. | gone to parity: pieces/layer.py, generator_cpp's trailer (envelope, voicesB) |  |
+| and layer B's voices are let go once their release is over (195) | numbers | The same. | gone to parity: pieces/layer.py, the trailer after the release, with a null a few ms into it |  |
+| a split sends notes below the point to A and the point upwards to B (221) | numbers | Borderline. Reads `genSettings(layer).voices`, put there by the page's `polyVoices`. The rule is in core keyboard.h, so it becomes a timed-MIDI render with energy per layer. | gone to parity: pieces/layer.py, keyboard_cpp's chords per layer, 60 among the notes |  |
+| and offers four lanes, named for their layers, as two figures (224) | page | `laneCount`, `laneName`, `state.source.figures()`: face and source layout. | moved: Poly pressed and the split chosen (setMidiMode was not heard); lanes, names and figures read off the instrument's source |  |
+| layered sends every note to both (228) | numbers | As 221. | gone to parity: pieces/layer.py, keyboard_cpp, layered |  |
+| the split point is learned from the next key, which still plays (243) | page | The Learn button, `midi.layers.point`, `midi.notes`. | left on ?brain=js, its own page: on the default the Learn button moves the face's point ('at G3') and not the instrument's (A3 still in A's lanes after learning G3) - passed on the default for the page's reason; needs a page change | left on ?brain=js: re-measured on the default, learned at F4 the face says "at F4" and D4 still lands in B's lanes (the instrument splits at C4); passes only once the defect is fixed (after-stage-5.md) |
+| layer A draws by its rule and layer B by its own (264) | numbers | Borderline. `midi.draws` set by hand, then voice roles; the drawn-note rule. Offline: a timed-MIDI render with each layer's draw rule in the setup, energies per layer's picture. | gone to parity: pieces/layer.py, keyboard_cpp with each layer's draw rule |  |
+| and the readout says each layer's outline (266) | page | `el.readoutDetail`. | moved: each hand's Draw menus changed with that hand on the face (midi.draws was written by hand); the readout is the face's own reckoning |  |
+| A against B is one pair: both of A's drawn notes on X, B's on Y (289) | numbers | Bin energies of `getLatestWindow`; an offline render with `layerPair: against`. | gone to parity: pieces/layer.py, the instrument natively, A against B, bins on X and Y, with a null drawn a figure each |  |
+| named for the layers, with the X-Y menus back (294) | page | `laneName`, DOM. | moved: the face's names after the pairing menu (genSet dropped); +1 null, a figure each |  |
+| layer B's figure is drawn beside A's, not just A's (325) | page | `phosphor.grid` lit fraction: the page's drawing of the lanes. Face; the default draws too. | moved: the face's grid drawing the instrument's lanes; X-Y pressed (setDisplay was not heard), the phase left at the slider's 90 (genSet dropped); +1 null, every note let go |  |
+| and the X-Y menus step aside while the layers choose the figures (327) | page | DOM. | moved |  |
+| with the lag on the figure is the lag's, not the layers' (354) | page | `lagActive`, `sourceFigures`, `laneCount`: the page's lane layout. | moved: the face's lane layout |  |
+| even when a modulation turns the lag on and nothing rebuilds the lanes (358) | page | `state.lagMod` set by hand. | moved: state.lagMod is the page's visual matrix, which moves the screen's own destinations on the default as well |  |
+| the worklet sounds both layers (388) | page | Analyser on the page's JS worklet through its monitor chain. It tests the page's own worklet plumbing; goes. The instrument's worklet is braintest's. | gone: the page brain's own worklet and monitor chain; the instrument's worklet is braintest's |  |
+| and posts layer B's picture back apart from A's (389) | page | The page worklet's B lanes crossing the thread. Goes. | gone, as (388) |  |
+| with B shown and the Generator its own, its link says so and the panel shows only what B has (422) | page | DOM. | moved |  |
+| and its controls write layer B, leaving A alone (425) | page | `genSettings(0/1)`. | rewritten: reads the setup the face sends (snapshot) for each hand, not genSettings, the page's mirror on the default |  |
+| the lower hand chosen puts A's values back on the controls, and the link names it (429) | page | DOM. | moved |  |
+| a code taken with B on screen keeps A's controls as A's (434) | page | `snapshot()`. | moved |  |
+| split, point, pairing, B's rule and B's sound survive a setup code (459) | page | `restore()`, `genSettings`, `midi.layers`. | moved: loaded with loadCode (restore() direct changes the face alone on the default); reads the face's copy of the setup; the core's decode is parity's restore |  |
+| a code's envelope reaches the generator, not only its sliders (464) | page | `genSettings().releaseMs` after `restore`. | moved, as (459): 'the generator' is the face's copy here |  |
+| and a code from before layers has none, with B sounding like A (466) | page | The same. | moved, as (459) |  |
+| leaving poly ends layer B and gives the page two lanes and layer A's panel (490) | page | `layersOn`, `state.source.channels/layout`, DOM. | rewritten: Dyad and Poly pressed (setMidiMode was not heard); two lanes read off what the instrument sends |  |
+| and coming back to poly splits the held notes again (495) | page | `genSettings().voices`. | rewritten: the held notes found split again in the instrument's A and B lanes, not the page's genSettings voices; +1 null, the lanes swapped |  |
+| with the input drawn a split is kept, not applied, and the panel says why (516) | page | A stand-in `state.source` (`Object.create(saved, ...)`), page-only. | gone: a stand-in state.source on the page and the page's own syncMidi, a path only the page's brain has; the instrument's input drawn with layers is parity's 'layered input' |  |
+| no page errors (521) | page | Housekeeping. | moved (and a second on the ?brain=js page) |  |
 
 ### livefxtest.py - wholly on ?brain=js - 17/17
 Lines 29-32: "this suite reads the page's own brain - its live input's insert". It opens at `?picture=0&brain=js` (line 89). The insert (`state.source.fx`, its worklet, `setMonitor`) is the page's. The arithmetic is the generator's, so it moves to a core render only if `render_cpp` takes input samples.
@@ -1985,48 +2157,48 @@ Lines 29-32: "this suite reads the page's own brain - its live input's insert". 
 ### livetest.py - wholly on ?brain=js - 40/40
 Docstring note (:8): it "reads the page's own brain - its microphone and band-split sources, and their graphs". Everything is on the page brain's `mic` source and its Web Audio graph (`monitorChains`, `buildBands`). The default has a counterpart for each feature (`openLiveStream` shared by `hostToMic`, scope.html:25165; the host's `setMonitor`, :15022; `makeHostBandLanes`, :15346), but different evidence.
 
-| Check | Kind | Why |
-|---|---|---|
-| two simultaneous opens make one call (:65) | page | `openLiveStream` called directly; the default uses the same function, so this moves to default trivially |
-| and both get the same stream (:67) | page | as above |
-| voice-call processing is refused (:69) | page | getUserMedia constraints; same function on default |
-| the failure is not kept (:95) | page | `liveStreams` cache; trivially to default |
-| and the retry really asks again (:96) | page | as above |
-| still live while one holder remains (:112) | page | hold count on `liveStreams`; trivially to default |
-| stopped once the last lets go (:113) | page | as above |
-| and the cache is empty again (:114) | page | as above |
-| the shape switch is reachable once Mic is chosen (:133) | page | face: `#micBands` visible after a click; trivially to default |
-| a live input opened (:150) | page | `state.source.kind === "mic"`; on default it is `host` with `drawsInput`, so it becomes a click plus that read |
-| four band lanes (:151) | page | page source's lanes; default has `makeHostBandLanes` |
-| named as bands (:153) | page | lane names; same on default from BANDS |
-| NOTHING reaches the speakers (:155) | page | patches `AudioNode.prototype.connect` on the page's graph; on default the worklet is the speakers' path, so it needs rewriting, not porting |
-| the head says so (:158) | page | `el.credit` text |
-| and says it is not monitored (:159) | page | `source.describe()` |
-| the panel shows the live rows (:164) | page | face rows hidden flags; trivially to default |
-| mute still moves the lane gains (:171) | page | page lane `gain.gain.value`; default sends `laneMix` to the instrument instead |
-| audio arrives at every band (:196) | numbers | band RMS of the split signal; becomes an offline render of the core's split (needs an input signal in the render) |
-| and the bands are not all the same signal (:197) | numbers | as above |
-| switching to whole gives an ordinary mic (:216) | page | `setMicShape` on the page source |
-| and back to four bands (:219) | page | as above |
-| without asking for the microphone again (:220) | page | getUserMedia count; holds on default too |
-| a live input opens as a microphone and is not monitored (:246) | page | `state.liveKind`, `monitorChains.size` |
-| and the toggle is unavailable rather than inert (:249) | page | `el.monitorLive.disabled`; face |
-| asking for it anyway does nothing at all (:259) | page | `setMonitor` forced past the UI; default has the host's `setMonitor` |
-| a line input can be heard when its toggle is on (:283) | page | `monitorChains` size |
-| and the last thing before the speakers is the clamp (:286) | page | page graph's last node is a WaveShaperNode; page-only evidence, needs a new form on default |
-| the credit line says it is monitored (:288) | page | `describe()` text |
-| and the latency is stated rather than left to be discovered (:291) | page | `el.monitorLatency` text |
-| calling it a microphone again takes it off the speakers at once (:305) | page | `setLiveKind` and the source's flags |
-| and the clamp is unhooked rather than left dangling (:308) | page | disconnect count on the page graph; goes |
-| and calling it a line input again does not resume it (:320) | page | `state.monitorLive`; face rule |
-| splitting into bands takes the monitoring with it (:336) | page | page source plus `monitorChains` |
-| every Live preset keeps the live input (:364) | page | `loadCorpus` then `state.source.kind` and lanes; on default it reads `drawsInput` and bands |
-| and each one actually loads (:366) | page | `state.display`; trivially to default |
-| a preset can choose which bands are the two axes (:375) | page | `state.xyPair`, the menus; trivially to default |
-| each probe is loudest in the band that owns it (:408) | numbers | filter response, but built afresh from the `BANDS` constants in an OfflineAudioContext and never read from the running app; becomes the core's crossovers' response offline |
-| and at least 20 dB down two bands away (:409) | numbers | as above |
-| every crossover is -3.01 dB at its corner (:433) | numbers | as above (core `kButterworthQDb`, capture.h:45) |
-| no page errors (:437) | page | page health |
+| Check | Kind | Why | Batch 6 (14 Nov) |
+|---|---|---|---|
+| two simultaneous opens make one call (:65) | page | `openLiveStream` called directly; the default uses the same function, so this moves to default trivially | moved: openLiveStream is hostToMic's on the site; +1 null (two opens apart counted as two) |
+| and both get the same stream (:67) | page | as above | moved |
+| voice-call processing is refused (:69) | page | getUserMedia constraints; same function on default | moved |
+| the failure is not kept (:95) | page | `liveStreams` cache; trivially to default | moved |
+| and the retry really asks again (:96) | page | as above | moved |
+| still live while one holder remains (:112) | page | hold count on `liveStreams`; trivially to default | moved |
+| stopped once the last lets go (:113) | page | as above | moved |
+| and the cache is empty again (:114) | page | as above | moved |
+| the shape switch is reachable once Mic is chosen (:133) | page | face: `#micBands` visible after a click; trivially to default | moved |
+| a live input opened (:150) | page | `state.source.kind === "mic"`; on default it is `host` with `drawsInput`, so it becomes a click plus that read | rewritten: the source stays the instrument's, told `srcMic` and handed the stream (toMic, batch 1); +1 null, before the press |
+| four band lanes (:151) | page | page source's lanes; default has `makeHostBandLanes` | rewritten: the face's four lanes, and the instrument told `srcBands` |
+| named as bands (:153) | page | lane names; same on default from BANDS | moved |
+| NOTHING reaches the speakers (:155) | page | patches `AudioNode.prototype.connect` on the page's graph; on default the worklet is the speakers' path, so it needs rewriting, not porting | rewritten: the level in front of the one monitor chain, read shut for a second; on the site the chain is always connected, so "no connection to the destination" could not fail or pass for the right reason. Its null is the line input's level opening (:283) |
+| the head says so (:158) | page | `el.credit` text | moved |
+| and says it is not monitored (:159) | page | `source.describe()` | rewritten: the monitor box unavailable over the split; the instrument's credit does not say "not monitored" (after-stage-5.md) |
+| the panel shows the live rows (:164) | page | face rows hidden flags; trivially to default | moved |
+| mute still moves the lane gains (:171) | page | page lane `gain.gain.value`; default sends `laneMix` to the instrument instead | rewritten: the mixer's gains reach the instrument as one `laneMix` message, the muted band at nought; +1 null (unmuted, all ones). What the instrument does with them is pieces/live.py's (the heard pair the bands summed at the gains, with its null) |
+| audio arrives at every band (:196) | numbers | band RMS of the split signal; becomes an offline render of the core's split (needs an input signal in the render) | rewritten: the instrument's own four lanes of the fake microphone, read on a click of it (every 100 ms for up to 20 s); +1 null, the track silenced. The split's arithmetic to pieces/live.py (a saw through the instrument, with no input as its null) |
+| and the bands are not all the same signal (:197) | numbers | as above | rewritten, as (196); and to pieces/live.py |
+| switching to whole gives an ordinary mic (:216) | page | `setMicShape` on the page source | rewritten: Whole pressed (setMicShape rebuilt the page's own source); the instrument drawing the input whole, told `srcBands` 0 |
+| and back to four bands (:219) | page | as above | rewritten: Bands pressed, the instrument told `srcBands` 1 |
+| without asking for the microphone again (:220) | page | getUserMedia count; holds on default too | moved |
+| a live input opens as a microphone and is not monitored (:246) | page | `state.liveKind`, `monitorChains.size` | rewritten: the level read shut, not the page's monitorChains |
+| and the toggle is unavailable rather than inert (:249) | page | `el.monitorLive.disabled`; face | moved |
+| asking for it anyway does nothing at all (:259) | page | `setMonitor` forced past the UI; default has the host's `setMonitor` | rewritten: the level read shut after the forcing |
+| a line input can be heard when its toggle is on (:283) | page | `monitorChains` size | rewritten: Line pressed and the box ticked; the level opens to one. Seen red with the box ticked without its event |
+| and the last thing before the speakers is the clamp (:286) | page | page graph's last node is a WaveShaperNode; page-only evidence, needs a new form on default | rewritten: the hook installed before the page (INIT), since the instrument's chain is built at boot; every node handed to the speakers the clamp; +1 null, a GainNode connected to the speakers |
+| the credit line says it is monitored (:288) | page | `describe()` text | rewritten: the face's own words for what the effects act on (`fxWhereText`), the credit no longer saying it; +1 null, the words before the toggle |
+| and the latency is stated rather than left to be discovered (:291) | page | `el.monitorLatency` text | moved |
+| calling it a microphone again takes it off the speakers at once (:305) | page | `setLiveKind` and the source's flags | rewritten: Mic pressed; the level read shut |
+| and the clamp is unhooked rather than left dangling (:308) | page | disconnect count on the page graph; goes | gone: counted the page's chain disconnected; the site's chain is never unhooked, and the shut level (305) is what takes the input off |
+| and calling it a line input again does not resume it (:320) | page | `state.monitorLive`; face rule | moved: Line pressed again; the level read too |
+| splitting into bands takes the monitoring with it (:336) | page | page source plus `monitorChains` | rewritten, half: the split shuts the level (+1 null, open before it). The other half - the wish dropped and the box unavailable - fails on the site: the wish survives the split and the input made whole is monitored again unasked. A site defect (after-stage-5.md) |
+| every Live preset keeps the live input (:364) | page | `loadCorpus` then `state.source.kind` and lanes; on default it reads `drawsInput` and bands | rewritten: the face's source still the instrument drawing the input in four lanes, and the instrument's own four lanes still carrying a click after the loads; +1 null, the same rule over the tone |
+| and each one actually loads (:366) | page | `state.display`; trivially to default | moved |
+| a preset can choose which bands are the two axes (:375) | page | `state.xyPair`, the menus; trivially to default | moved |
+| each probe is loudest in the band that owns it (:408) | numbers | filter response, but built afresh from the `BANDS` constants in an OfflineAudioContext and never read from the running app; becomes the core's crossovers' response offline | to pieces: pieces/live.py, a probe sine through the instrument's split, each band's lane; null, the lanes read in reverse |
+| and at least 20 dB down two bands away (:409) | numbers | as above | to pieces: pieces/live.py; null, each owner within a decibel |
+| every crossover is -3.01 dB at its corner (:433) | numbers | as above (core `kButterworthQDb`, capture.h:45) | to pieces: pieces/live.py, each corner through both of its band's stages; null, a tenth past the corner |
+| no page errors (:437) | page | page health | moved |
 
 ### looptest.py - wholly on ?brain=js (two pages: `?brain=js` :58, and `?brain=js&core=js` :502 for the Scan runs) - 30/30
 Docstring note (:31): it "reads the page's own brain - its generator's routes and worklet". The comment at :496 says the Scan runs need `core=js` because "the run reads the tables that brain sends, which the site's instrument reads inside its worklet and never hands out". So the `core=js` page is there to reach page data, not to compare engines. Several checks force a source by hand (`MOD_SOURCES.get(id).value = () => 1`), which an offline render can only do if the core gets a hook for it.
@@ -2139,39 +2311,39 @@ Docstring note: the Envelope's dot is to hold "over a note held and let go, on b
 ### modtest.py - wholly on ?brain=js - 31/31
 Docstring note (:7): it "reads the page's own brain - its oscillators' shape and rate, set directly". Most of the suite is the setup codec and restore on the face. On default those already run through the core's codec, since `decodeSetup` is the compiled one there.
 
-| Check | Kind | Why | Batch 3 (13 Nov) |
-|---|---|---|---|
-| every preset migrates to the same destination (:75) | page | `loadCorpus`/`applyPreset` then `state.modRoutings`; trivially to default |  |
-| and the depth comes across with it (:86) | page | as above |  |
-| one octave down is reached (:130) | numbers | `estimateFrequency` over an LFO sweep on gen.freq (already sends `hostSendSetup`); offline render |  |
-| one octave up is reached (:131) | numbers | as above |  |
-| contributions add (:157) | numbers | the claim is the matrix sum, but the evidence is the test summing `genRoutes` itself with `lfos[].value` set by hand; has to be rewritten as a render of two still LFOs, not ported | to pieces (mod.py: two held sources, the generator's pitch) |
-| an unknown destination is skipped (:170) | page | `genRoutes.length` after `compileRoutes()`, page brain; goes, or becomes a core matrix check |  |
-| but not deleted from the setup (:171) | page | `state.modRoutings.length`; face, trivially to default |  |
-| nothing changes through encode and decode (:190) | page | snapshot, encode, decode, restore; trivially to default |  |
-| the routings survive as text (:191) | page | as above |  |
-| and the code carries the current version (:196) | page | as above |  |
-| still loads, and points where it said (:210) | page | legacy decode plus restore; trivially to default |  |
-| a version-4 code loads without the routes from the threshold or to the pluck, and saves without them (:233) | page | decode passes; trivially to default |  |
-| and the same code marked version 5 keeps them, so the pass is what took them out (:236) | page | as above |  |
-| a version-9 code with a drawing loads as the waveform, its shape kept, the drawings' fields gone, and ... (:273) | page | `decodeSetupHere`, the page's own fallback codec, deleted in step 6; the same claim on `decodeSetup` is what stays |  |
-| and one that names no kind at all is given the waveform (:276) | page | as above |  |
-| and the same code marked version 10 keeps everything, so the pass is what took it (:277) | page | as above |  |
-| and the site's codec, the compiled core's, reads all three as the page's does (:281) | engines compared | `decodeSetup` (compiled) against `decodeSetupHere` (JS); goes |  |
-| adding a destination makes the routing (:304) | page | the card editor's DOM; trivially to default |  |
-| its depth slider sets its amount (:305) | page | as above |  |
-| and its cross removes it (:306) | page | as above |  |
-| a rotation really turns the figure (:356) | numbers | principal axis of `capture()` lanes at rotate 0 vs 0.125; core capture/plane offline | to pieces (capture_cpp `dump`, a diagonal line) |
-| with nothing routed every offset is zero (:376) | numbers | `applyModMatrix` offsets; core matrix | to pieces (matrix_cpp `screen`) |
-| and a source cannot push past the range (:378) | numbers | as above, with `lfos[0].value = 1` set by hand | to pieces |
-| it rises with the signal (:401) | page | `envLive / ENV_FULL`, the output meter's follower as `paintStage` takes it; a face reading, which on default should read the instrument's level |  |
-| and falls when it stops (:402) | page | as above |  |
-| but releases slower than it attacks (:403) | page | as above |  |
-| 2 Hz is 2 Hz on the tone source (:429) | numbers | `lfos[0].phase` wraps against elapsed time; the core LFO's rate in a render |  |
-| and 2 Hz on the microphone, not 4 (:436) | page | the per-sample and per-frame double-stepping trap exists only on the page brain (`toMic`); goes |  |
-| every destination's own control drives something (:505) | page | slider moves change `state`/`state.source.settings`; face, becomes a snapshot diff on default |  |
-| and enough of them were reachable to mean it (:507) | page | as above |  |
-| no page errors (:510) | page | page health |  |
+| Check | Kind | Why | Batch 3 (13 Nov) | Batch 6 (14 Nov) |
+|---|---|---|---|---|
+| every preset migrates to the same destination (:75) | page | `loadCorpus`/`applyPreset` then `state.modRoutings`; trivially to default |  | moved |
+| and the depth comes across with it (:86) | page | as above |  | moved |
+| one octave down is reached (:130) | numbers | `estimateFrequency` over an LFO sweep on gen.freq (already sends `hostSendSetup`); offline render |  | rewritten: LFO 1's shape and Rate set in its card's editor, which the instrument hears (the rate was written into the page's lfos and a setup sent); the slider moved again once heldTone's note has landed (heldTone's slider races the note-on on the site, README). And to pieces/mod.py: the instrument rendered, A4 in Mono swept 220.5 to 877.5 Hz, and in Poly; null, half the depth |
+| one octave up is reached (:131) | numbers | as above |  | as (130) |
+| contributions add (:157) | numbers | the claim is the matrix sum, but the evidence is the test summing `genRoutes` itself with `lfos[].value` set by hand; has to be rewritten as a render of two still LFOs, not ported | to pieces (mod.py: two held sources, the generator's pitch) |  |
+| an unknown destination is skipped (:170) | page | `genRoutes.length` after `compileRoutes()`, page brain; goes, or becomes a core matrix check |  | to pieces: pieces/mod.py, the core's matrix loading routings to nothing; null, three that exist |
+| but not deleted from the setup (:171) | page | `state.modRoutings.length`; face, trivially to default |  | rewritten: the face keeps all three, and the setup it sends carries them |
+| nothing changes through encode and decode (:190) | page | snapshot, encode, decode, restore; trivially to default |  | moved |
+| the routings survive as text (:191) | page | as above |  | moved |
+| and the code carries the current version (:196) | page | as above |  | moved |
+| still loads, and points where it said (:210) | page | legacy decode plus restore; trivially to default |  | moved |
+| a version-4 code loads without the routes from the threshold or to the pluck, and saves without them (:233) | page | decode passes; trivially to default |  | moved |
+| and the same code marked version 5 keeps them, so the pass is what took them out (:236) | page | as above |  | moved |
+| a version-9 code with a drawing loads as the waveform, its shape kept, the drawings' fields gone, and ... (:273) | page | `decodeSetupHere`, the page's own fallback codec, deleted in step 6; the same claim on `decodeSetup` is what stays |  | rewritten: the site's codec (decodeSetup, the compiled core's), not the page's fallback step 6 deletes |
+| and one that names no kind at all is given the waveform (:276) | page | as above |  | rewritten, as (273) |
+| and the same code marked version 10 keeps everything, so the pass is what took it (:277) | page | as above |  | rewritten, as (273) |
+| and the site's codec, the compiled core's, reads all three as the page's does (:281) | engines compared | `decodeSetup` (compiled) against `decodeSetupHere` (JS); goes |  | gone: it compared the two codecs |
+| adding a destination makes the routing (:304) | page | the card editor's DOM; trivially to default |  | moved |
+| its depth slider sets its amount (:305) | page | as above |  | moved |
+| and its cross removes it (:306) | page | as above |  | moved |
+| a rotation really turns the figure (:356) | numbers | principal axis of `capture()` lanes at rotate 0 vs 0.125; core capture/plane offline | to pieces (capture_cpp `dump`, a diagonal line) |  |
+| with nothing routed every offset is zero (:376) | numbers | `applyModMatrix` offsets; core matrix | to pieces (matrix_cpp `screen`) |  |
+| and a source cannot push past the range (:378) | numbers | as above, with `lfos[0].value = 1` set by hand | to pieces |  |
+| it rises with the signal (:401) | page | `envLive / ENV_FULL`, the output meter's follower as `paintStage` takes it; a face reading, which on default should read the instrument's level |  | moved |
+| and falls when it stops (:402) | page | as above |  | moved |
+| but releases slower than it attacks (:403) | page | as above |  | moved |
+| 2 Hz is 2 Hz on the tone source (:429) | numbers | `lfos[0].phase` wraps against elapsed time; the core LFO's rate in a render |  | rewritten: LFO 1's Rate slider at 2 Hz, the phase read the instrument's (absorb writes it); +1 check that the page's rate written by hand moves nothing, +1 null, the slider at 4 Hz. And to pieces/mod.py: the oscillator's value every 10 ms, six cycles in three seconds on sin(2 pi 2 t) to 2e-11; null, 4 Hz |
+| and 2 Hz on the microphone, not 4 (:436) | page | the per-sample and per-frame double-stepping trap exists only on the page brain (`toMic`); goes |  | rewritten: Mic pressed, the instrument drawing the input (toMic was the page's own microphone); and to pieces/mod.py, with an input drawn |
+| every destination's own control drives something (:505) | page | slider moves change `state`/`state.source.settings`; face, becomes a snapshot diff on default |  | moved; +1 check: each control tells the instrument, by its own id |
+| and enough of them were reachable to mean it (:507) | page | as above |  | moved |
+| no page errors (:510) | page | page health |  | moved |
 
 ### morphtest.py - wholly on ?brain=js - 22/22
 Docstring note (:23): it "reads the page's own brain - genSet called directly, and its generator's samples". This is the waveform morph, not the setup morph. Its numbers come from `waveAt` and `makeGeneratorCore`, the JavaScript engine called directly.
@@ -2267,38 +2439,38 @@ Docstring note (:27): it "reads the page's own brain - its voices and routes, re
 ### phototest.py - 1 leg on ?brain=js beside the default (the first 30 checks; the same page is re-opened on the default at :501 for the last 7) - 30/37
 Docstring note (:20): it "reads the page's own brain - genSet called directly". The `genSet` calls drive the figure under each check.
 
-| Check | Kind | Why | Batch 3 (13 Nov) |
-|---|---|---|---|
-| in Y-T every lit cell is on the trace and every inked cell is lit (:103) | page | `phosphor.grid` against canvas pixels: the face's agreement; to default |  |
-| and in X-Y, on a figure that is not its own transpose (:110) | page | as above |  |
-| the grid fades by one minus the persistence every frame (:177) | numbers | grid decay per frame; the picture engine's (the core's, as wasm) |  |
-| which is the rate the screen itself fades at (:179) | page | grid rate against canvas ink rate; face agreement |  |
-| infinite persistence keeps everything, as the screen does (:199) | numbers | grid sum kept |  |
-| and with persistence off nothing is kept but what was just drawn (:201) | numbers | grid outside the dot |  |
-| a cell keeps the brighter of two strokes, never their sum (:218) | numbers | `phosphorSegment` compositing; the core engine's segment offline |  |
-| on the figure it reads bright (:245) | numbers | `photo.value` |  |
-| and off it, dark (:246) | numbers | as above |  |
-| the reading moves smoothly as the reticle does - no jump at a cell edge (:247) | numbers | `phosphorRead` continuity |  |
-| and it is a source while it is on (:249) | page | `MOD_SOURCES.has('photo.1')` |  |
-| it never moves faster than two full swings a second (:283) | numbers | `photo.value` slew over time |  |
-| and still gets there (:286) | numbers | as above |  |
-| since E3, a source reading the picture may reach any destination (:302) | page | `addRouting` acceptance on the face |  |
-| and starts low (:306) | page | the face's starting amount |  |
-| an amount past the ceiling is held to it where it is used (:338) | numbers | `applyModMatrix` with `photo.value` forced; core matrix ceiling | to pieces (photo.py; held at a half, since at one the loop's total masks the reach) |
-| and stored back within it, so the control says what applies (:341) | page | `r.amount` after `touchRoutings`; face |  |
-| a routing that arrives in a code past the ceiling moves its destination no further than the ceiling (:343) | numbers | `state.resMod` | to pieces |
-| everything stays inside its range and nothing goes NaN (:371) | numbers | 4 s loop on rotate/zoom: mods, `photo.value`, grid |  |
-| dragging the reticle puts it where it is dropped (:395) | page | real mouse on the reticle; trivially to default |  |
-| and does not also drag the trigger level under it (:397) | page | as above |  |
-| its arrow keys move it a cell and leave the timebase alone (:399) | page | as above |  |
-| over a spectrogram, which no beam draws, it is put away and reads nothing at once (:422) | page | reticle hidden plus `photo.value` zeroed on a display change; face |  |
-| and the phosphor holds nothing there (:425) | numbers | grid sum on spect (borderline: the engine's spect rule) |  |
-| with infinite persistence the old figure stays, on the screen and the grid (:461) | page | Clear's fixture, grid and canvas |  |
-| Clear wipes both at once (:465) | page | the Clear button; to default |  |
-| and leaves persistence as it was set (:467) | page | as above |  |
-| off, it is not a source and reads nothing, and its routings wait for it (:489) | page | photo button and registry |  |
-| a setup code brings it back where it was (:492) | page | snapshot/restore; trivially to default |  |
-| and a code from before it existed has it off (:494) | page | `restore({})` |  |
+| Check | Kind | Why | Batch 3 (13 Nov) | Batch 6 (14 Nov) |
+|---|---|---|---|---|
+| in Y-T every lit cell is on the trace and every inked cell is lit (:103) | page | `phosphor.grid` against canvas pixels: the face's agreement; to default |  | moved: the figure by the Level, Interval, Shape and Persistence controls and the display's buttons (genSet and state.persistence by hand); the face's grid against its screen |
+| and in X-Y, on a figure that is not its own transpose (:110) | page | as above |  | moved, as (103); +1 fixture check, the X-Y figure the instrument's 2:3 and not its own transpose, with the unison's diagonal as its null (red with genSet put back, while (103) and (110) stay green) |
+| the grid fades by one minus the persistence every frame (:177) | numbers | grid decay per frame; the picture engine's (the core's, as wasm) |  | to pieces: pieces/photo.py, the core's Phosphor faded ten frames, 0.88 to 1e-6; null, 0.2 |
+| which is the rate the screen itself fades at (:179) | page | grid rate against canvas ink rate; face agreement |  | moved: the face's grid's rate against the screen's |
+| infinite persistence keeps everything, as the screen does (:199) | numbers | grid sum kept |  | to pieces: pieces/photo.py; null, a hundredth |
+| and with persistence off nothing is kept but what was just drawn (:201) | numbers | grid outside the dot |  | to pieces: pieces/photo.py; null, 0.12 |
+| a cell keeps the brighter of two strokes, never their sum (:218) | numbers | `phosphorSegment` compositing; the core engine's segment offline |  | to pieces: pieces/photo.py (phosphorSegment by hand there, the core's segment here); null, one stroke at the sum |
+| on the figure it reads bright (:245) | numbers | `photo.value` |  | to pieces: pieces/photo.py, the core's read on a stroke (on the site photo.value is the face's photocell, what its card shows, not the instrument's) |
+| and off it, dark (:246) | numbers | as above |  | to pieces: pieces/photo.py |
+| the reading moves smoothly as the reticle does - no jump at a cell edge (:247) | numbers | `phosphorRead` continuity |  | to pieces: pieces/photo.py; null, half-cell steps |
+| and it is a source while it is on (:249) | page | `MOD_SOURCES.has('photo.1')` |  | moved |
+| it never moves faster than two full swings a second (:283) | numbers | `photo.value` slew over time |  | to pieces: pieces/photo.py, the core's PictureSources stepped at 60 a second; null, the raw reading |
+| and still gets there (:286) | numbers | as above |  | to pieces: pieces/photo.py |
+| since E3, a source reading the picture may reach any destination (:302) | page | `addRouting` acceptance on the face |  | moved |
+| and starts low (:306) | page | the face's starting amount |  | moved |
+| an amount past the ceiling is held to it where it is used (:338) | numbers | `applyModMatrix` with `photo.value` forced; core matrix ceiling | to pieces (photo.py; held at a half, since at one the loop's total masks the reach) |  |
+| and stored back within it, so the control says what applies (:341) | page | `r.amount` after `touchRoutings`; face |  | moved |
+| a routing that arrives in a code past the ceiling moves its destination no further than the ceiling (:343) | numbers | `state.resMod` | to pieces |  |
+| everything stays inside its range and nothing goes NaN (:371) | numbers | 4 s loop on rotate/zoom: mods, `photo.value`, grid |  | to pieces: pieces/photo.py, the instrument rendered four seconds with the photocell on its own figure, routed past the ceiling; +1 check, each frame's rotation within half the photocell's value (the mutation pass: a reach of 0.9 passed the range bound); nulls, an oscillator at full depth on the rotation |
+| dragging the reticle puts it where it is dropped (:395) | page | real mouse on the reticle; trivially to default |  | moved |
+| and does not also drag the trigger level under it (:397) | page | as above |  | moved |
+| its arrow keys move it a cell and leave the timebase alone (:399) | page | as above |  | moved |
+| over a spectrogram, which no beam draws, it is put away and reads nothing at once (:422) | page | reticle hidden plus `photo.value` zeroed on a display change; face |  | moved: the display's buttons |
+| and the phosphor holds nothing there (:425) | numbers | grid sum on spect (borderline: the engine's spect rule) |  | moved: the face's grid |
+| with infinite persistence the old figure stays, on the screen and the grid (:461) | page | Clear's fixture, grid and canvas |  | moved: the Level slider |
+| Clear wipes both at once (:465) | page | the Clear button; to default |  | moved |
+| and leaves persistence as it was set (:467) | page | as above |  | moved |
+| off, it is not a source and reads nothing, and its routings wait for it (:489) | page | photo button and registry |  | moved |
+| a setup code brings it back where it was (:492) | page | snapshot/restore; trivially to default |  | rewritten: the code loaded with loadCode, which sends it to the instrument (restore() alone changes the face) |
+| and a code from before it existed has it off (:494) | page | `restore({})` |  | rewritten, as (492) |
 
 ### picturepresettest.py - wholly on ?brain=js - 10/10
 Its comment (`:45`): on ?brain=js because it "reads the page's own brain - restore() called directly, which the page sends the instrument nothing of". In fact it also calls `loadCorpus`, `heldTone`, `landPhoto`, `movePhoto` and reads `photo.*`, `MOD_SOURCES.get(id).value()` and `pictureMeter.verdict()` - all page-brain state - over 10 s a preset, twice for each loop.
@@ -2485,28 +2657,28 @@ Its comment (`:21`): "reads the page's own brain - its sources' functions, bound
 
 Batch 2 (13 Nov): 20 checks to 4 here, all left on `?brain=js` (the page's own score and MIDI out, which on the default run beside the instrument's), and 28 in `core/tests/pieces/score.py` (15 checks, 13 nulls) on score_cpp and generator_cpp. 16 rows gone to parity.
 
-| Check | Kind | Why | Batch 2 (13 Nov) |
-|---|---|---|---|
-| a single lit row is one note in every column, the one its height names, at its brightness (`:87`) | numbers | `scoreColumn` on a hand-made grid; grid-in through score_cpp. | gone to parity: pieces/score.py, score_cpp's new `column` (scoreColumn over scorePitches); the note the row names upside down (75) as null |
-| a diagonal is a rising scale, every note from C3 to B5 and none twice out of order (`:92`) | numbers | As above. | gone to parity: pieces/score.py, the diagonal read falling as null |
-| and in D dorian every note of it is in D dorian, the whole scale climbed (`:98`) | numbers | `scorePitches`/`keyMask`; as above. | gone to parity: pieces/score.py, D dorian written out, as it was; two chromatic octaves as null |
-| with two voices the chord is the two brightest, loudest first (`:101`) | numbers | As above. | gone to parity: pieces/score.py, three voices taking the third as null |
-| and a smudge under the floor plays nothing, as an empty column plays nothing (`:103`) | numbers | As above (`kScoreFloor`). | gone to parity: pieces/score.py, a cell a little over the floor playing as null |
-| at 120 BPM in semiquavers a second from nought is nine steps, each striking the lit row's note (`:131`) | numbers | `scoreTick` at fake times with the grid written by hand, strikes counted; an offline run needs a written grid, so score_cpp rather than a setup render. | gone to parity: pieces/score.py, the core's scoreTick at made-up times, strikes logged; 90 BPM's seven as null |
-| and at 60 BPM it is five: the playhead keeps the tempo (`:133`) | numbers | As above. | gone to parity: pieces/score.py, as (131) |
-| and an empty grid strikes nothing (`:134`) | numbers | As above. | gone to parity: pieces/score.py, as (131) |
-| a struck note is heard at its level, 0.4 times its velocity over two (`:168`) | numbers | JS engine `core.strike` then `block`; the core's generator offline. | gone to parity: pieces/score.py, generator_cpp's `strike`, the same two renders at 44.1 kHz; half the velocity as null |
-| and it is not drawn: the picture is untouched, and what is heard beyond it is the note, in both ears alike (`:170`) | numbers | Same render, picture pair against heard pair. | gone to parity: pieces/score.py, as (168) |
-| and the picture check fails with the heard pair read as the picture (`:172`) | numbers | Same render, its null. | gone to parity: pieces/score.py, the null, as it was |
-| and it dies away to 1/e over its 400 ms (`:173`) | numbers | Same render. | gone to parity: pieces/score.py, with 200 ms not yet 1/e as null |
-| the score's notes go out on the chosen channel, the last one ended before the next begins (`:228`) | numbers | MIDI bytes from the stubbed port; the core's `MidiOut` emits the same bytes through `Instrument::midiOut`, so an offline run with a written grid can collect them. | gone to parity: pieces/score.py, the core's MidiOut's bytes, logged by score_cpp; the first channel as null |
-| and when the next step's note is another, the last is ended before it begins (`:233`) | numbers | As above. | gone to parity: pieces/score.py, the note-off after the next note-on as null |
-| stopping the scope ends the sounding note and sends all-notes-off on that channel (`:236`) | page | `setRunning(false)` - a page event; on the default it becomes a click on Stop with the bytes read from the stub. | left on ?brain=js: setRunning and the page's own score and MIDI out; on the default the instrument's score and the page's both run, and which one sends is step 5's (section 4). Its sounding note is read off the stub now, since the run that named it went |
-| hiding the page does the same (`:238`) | page | `visibilitychange`; page only, default-ready with the stub. | left on ?brain=js: the page's visibilitychange and midiOutPanic, as (236) |
-| a hundred note-ons at once are forty sent and sixty dropped, and none of the note-offs (`:240`) | numbers | `midiOutNote` x100; the core's `MidiOut` (`kMidiOutRate = 40`). | gone to parity: pieces/score.py, the same hundred thirty ms apart all sent (the limit is a rate) as null |
-| and an empty grid sends nothing at all (`:242`) | numbers | As above. | gone to parity: pieces/score.py, the same playing with a row lit sending as null |
-| ticked on the page, the playhead moves with the frames and the drawn waveform plays (`:256`) | page | The score box ticked, real frames for 1.2 s, `score.steps` and the intercepted `strike`; becomes a click on the default reading the instrument's strikes. | left on ?brain=js: the page's score.steps and its source's strike wrapped, over real frames; on the default the instrument's score plays, a step-5 lean |
-| no page errors (`:259`) | page | Page health. | left on ?brain=js: page errors |
+| Check | Kind | Why | Batch 2 (13 Nov) | Batch 6 (14 Nov) |
+|---|---|---|---|---|
+| a single lit row is one note in every column, the one its height names, at its brightness (`:87`) | numbers | `scoreColumn` on a hand-made grid; grid-in through score_cpp. | gone to parity: pieces/score.py, score_cpp's new `column` (scoreColumn over scorePitches); the note the row names upside down (75) as null |  |
+| a diagonal is a rising scale, every note from C3 to B5 and none twice out of order (`:92`) | numbers | As above. | gone to parity: pieces/score.py, the diagonal read falling as null |  |
+| and in D dorian every note of it is in D dorian, the whole scale climbed (`:98`) | numbers | `scorePitches`/`keyMask`; as above. | gone to parity: pieces/score.py, D dorian written out, as it was; two chromatic octaves as null |  |
+| with two voices the chord is the two brightest, loudest first (`:101`) | numbers | As above. | gone to parity: pieces/score.py, three voices taking the third as null |  |
+| and a smudge under the floor plays nothing, as an empty column plays nothing (`:103`) | numbers | As above (`kScoreFloor`). | gone to parity: pieces/score.py, a cell a little over the floor playing as null |  |
+| at 120 BPM in semiquavers a second from nought is nine steps, each striking the lit row's note (`:131`) | numbers | `scoreTick` at fake times with the grid written by hand, strikes counted; an offline run needs a written grid, so score_cpp rather than a setup render. | gone to parity: pieces/score.py, the core's scoreTick at made-up times, strikes logged; 90 BPM's seven as null |  |
+| and at 60 BPM it is five: the playhead keeps the tempo (`:133`) | numbers | As above. | gone to parity: pieces/score.py, as (131) |  |
+| and an empty grid strikes nothing (`:134`) | numbers | As above. | gone to parity: pieces/score.py, as (131) |  |
+| a struck note is heard at its level, 0.4 times its velocity over two (`:168`) | numbers | JS engine `core.strike` then `block`; the core's generator offline. | gone to parity: pieces/score.py, generator_cpp's `strike`, the same two renders at 44.1 kHz; half the velocity as null |  |
+| and it is not drawn: the picture is untouched, and what is heard beyond it is the note, in both ears alike (`:170`) | numbers | Same render, picture pair against heard pair. | gone to parity: pieces/score.py, as (168) |  |
+| and the picture check fails with the heard pair read as the picture (`:172`) | numbers | Same render, its null. | gone to parity: pieces/score.py, the null, as it was |  |
+| and it dies away to 1/e over its 400 ms (`:173`) | numbers | Same render. | gone to parity: pieces/score.py, with 200 ms not yet 1/e as null |  |
+| the score's notes go out on the chosen channel, the last one ended before the next begins (`:228`) | numbers | MIDI bytes from the stubbed port; the core's `MidiOut` emits the same bytes through `Instrument::midiOut`, so an offline run with a written grid can collect them. | gone to parity: pieces/score.py, the core's MidiOut's bytes, logged by score_cpp; the first channel as null |  |
+| and when the next step's note is another, the last is ended before it begins (`:233`) | numbers | As above. | gone to parity: pieces/score.py, the note-off after the next note-on as null |  |
+| stopping the scope ends the sounding note and sends all-notes-off on that channel (`:236`) | page | `setRunning(false)` - a page event; on the default it becomes a click on Stop with the bytes read from the stub. | left on ?brain=js: setRunning and the page's own score and MIDI out; on the default the instrument's score and the page's both run, and which one sends is step 5's (section 4). Its sounding note is read off the stub now, since the run that named it went | left on ?brain=js, for step 5: the page's own score and MIDI out, beside the instrument's; which one sends is step 5's |
+| hiding the page does the same (`:238`) | page | `visibilitychange`; page only, default-ready with the stub. | left on ?brain=js: the page's visibilitychange and midiOutPanic, as (236) | left on ?brain=js, for step 5: as (236) |
+| a hundred note-ons at once are forty sent and sixty dropped, and none of the note-offs (`:240`) | numbers | `midiOutNote` x100; the core's `MidiOut` (`kMidiOutRate = 40`). | gone to parity: pieces/score.py, the same hundred thirty ms apart all sent (the limit is a rate) as null |  |
+| and an empty grid sends nothing at all (`:242`) | numbers | As above. | gone to parity: pieces/score.py, the same playing with a row lit sending as null |  |
+| ticked on the page, the playhead moves with the frames and the drawn waveform plays (`:256`) | page | The score box ticked, real frames for 1.2 s, `score.steps` and the intercepted `strike`; becomes a click on the default reading the instrument's strikes. | left on ?brain=js: the page's score.steps and its source's strike wrapped, over real frames; on the default the instrument's score plays, a step-5 lean | left on ?brain=js, for step 5: score.steps and the page's own strike, over real frames |
+| no page errors (`:259`) | page | Page health. | left on ?brain=js: page errors | stays with the ?brain=js page |
 
 ### shapetest.py - wholly on ?brain=js - 29/29 (batch 2: a default page, and the survey's ?brain=js page)
 Its comment (`:23`): "reads the page's own brain - genSet called directly". That applies to the live section; the first twenty checks call `makeMoments`, `makePictureMeter`, `shapeOfPair` on grids built in JS (`HELPERS`), which is what `core/tests/tools/picture_cpp.cpp` already runs against `picture.h` for parity.

@@ -6609,3 +6609,32 @@ Scan null is Stop's (step 5), or a depth of one. The instrument has no
 limiter (the face's chain limits on the site); the plugin hands a host up to
 3.2 times full scale (`web/docs/after-stage-5.md`). `plugin/STAGE5-INVENTORY.md`
 section 10 has the rest.
+
+**On the site the speakers are one chain behind a level, and a click is
+not a stream (14 Nov).** Stage 5's sixth batch, the last of step 3, moved
+livetest whole, the rest of modtest and phototest's `?brain=js` leg to the
+default page, and their numbers to `core/tests/pieces/` (live, mod, photo).
+Four things worth knowing before writing a live-input or photocell check on
+the site. The page's own microphone built a monitor chain only when one was
+wanted, so "nothing reaches the speakers" was "no node connected to the
+destination"; the instrument's chain is built at boot and always connected,
+and what keeps a microphone or a band split off the speakers is the level in
+front of it (`state.source.gain`), which is what to read - with a line input
+monitored as the null, where the same reading opens. The browser's fake
+microphone is not a steady signal but a click about twice a second, so one
+read of the lanes proves nothing either way; read until a click arrives, and
+make the null a disabled track (`track.enabled = false`) rather than
+`setInput(null)`, which the page hands straight back. `corpus.held_tone`
+puts the Frequency slider back in the same tick as its note-on, and on the
+site the slider lands first, so the instrument plays the note's 220 Hz under
+a face that says 440: move the slider again once the note has landed. And in
+a piece, never format a numpy float with `%r` into a hand: numpy 2 writes
+`np.float64(0.5)`, which the core reads as no number - a photocell placed so
+read NaN, and its slewed value climbed past one, which is itself a core
+corner the page does not share (`web/docs/after-stage-5.md`, with the band
+split that keeps its wish to monitor). The voices' budget moved too, once
+the page's governor and the core's were seen to give up the same voices to
+the bit on every setup there is; what did not carry over is the cost fit,
+made in JavaScript milliseconds (`web/docs/budget-on-the-core.md`) - so a
+port held to the bit can still rest on numbers measured on the other side.
+`plugin/STAGE5-INVENTORY.md` section 11 has the rest.
