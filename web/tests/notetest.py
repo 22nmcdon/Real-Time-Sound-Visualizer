@@ -150,7 +150,7 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: errors.append(str(e)))
     p.goto(f"file://{ART}/scope.html")
     p.wait_for_timeout(1500)
-    check("the site's brain is the compiled instrument", p.evaluate("BRAIN_IN_CORE") is True)
+    check("the site's brain is the compiled instrument", p.evaluate("state.source.kind === 'host' && !!instrumentFace()") is True)
 
     bass = p.evaluate(LOAD, BASS_UNDER_TINE)
     lay = p.evaluate("() => JSON.parse(atob(encodeSetup(snapshot()))).layers")

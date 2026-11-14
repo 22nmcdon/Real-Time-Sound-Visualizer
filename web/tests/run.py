@@ -42,8 +42,7 @@ SUITES = [
     ("trig", [sys.executable, "trigtest.py"], "parallel", "the trigger level as a fraction of full scale"),
     ("scale", [sys.executable, "scaletest.py"], "parallel", "full scale as decibels, and the nine detents"),
     ("rate", [sys.executable, "ratetest.py"], "parallel", "the sample-rate audit: 22k to 96k"),
-    ("worklet", [sys.executable, "worklettest.py"], "serial - the audio thread's own budget report", "the generator in the audio thread"),
-    ("wasm", [sys.executable, "wasmtest.py"], "parallel", "the compiled core in both worklets: the page's copy current, each worklet running it and the JavaScript core with ?core=js, a refused module falling back, every preset's sound and effects the same through both"),
+    ("wasm", [sys.executable, "wasmtest.py"], "parallel", "the compiled core as the site carries it: the page's copy current, and a browser that cannot run it told so"),
     ("env", [sys.executable, "envtest.py"], "serial - the gate held for measured milliseconds", "the gate and the envelope on the site: a key on a keyboard reaching the instrument, the Envelope it reads back, the empty screen saying why (the renders are core/tests/pieces/env.py)"),
     ("patch", [sys.executable, "patchtest.py"], "parallel", "patching by pointer, keyboard and touch"),
     ("header", [sys.executable, "headertest.py"], "serial - undo records a change once it has held still for 400 ms, which load can stretch", "the header: the arrows in the browser's order and wrapping, the heading, Browse and Save, undo as one step a gesture and only after a hand, redo dropped by a new change, A and B and the views gone and one history, Ctrl+Z in a text field left to it"),
@@ -141,18 +140,6 @@ for _name, _cmd, _kind, _blurb in SUITES:
 DEFAULT_JOBS = max(1, min(3, (os.cpu_count() or 2) - 1))
 
 
-BRAIN_COUNTS = None
-
-
-def counted(name, cmd):
-    """The command and environment a suite runs with: unchanged, or with
-    --brain-counts through braincounts.py, its counts in a file of its own."""
-    if not BRAIN_COUNTS or cmd[0] != sys.executable:
-        return cmd, None
-    env = dict(os.environ, BRAIN_COUNTS=os.path.join(BRAIN_COUNTS, name + ".jsonl"))
-    return [sys.executable, "braincounts.py"] + cmd[1:], env
-
-
 def failed_in(text):
     # A printed FAIL is a failure whatever the exit code. Two suites printed
     # theirs and exited 0, and this said "everything passes" over them for the
@@ -168,9 +155,8 @@ def run_streamed(name, cmd, blurb):
     print(header(name, blurb), flush=True)
     start = time.monotonic()
     # Read as it streams, so a long suite still shows its progress.
-    cmd, env = counted(name, cmd)
     proc = subprocess.Popen(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, bufsize=1, env=env)
+                            text=True, bufsize=1)
     printed_fail = False
     for line in proc.stdout:
         sys.stdout.write(line)
@@ -190,12 +176,6 @@ def parse(argv):
             jobs = max(1, int(v))
         elif a == "--jobs":
             jobs = max(1, int(args.pop(0)))
-        elif a == "--brain-counts":
-            # The stage-5 inventory: each Python suite run through braincounts.py,
-            # its page brain's counts dumped to a file of its own in this directory.
-            global BRAIN_COUNTS
-            BRAIN_COUNTS = os.path.abspath(args.pop(0))
-            os.makedirs(BRAIN_COUNTS, exist_ok=True)
         else:
             want.append(a)
     unknown = set(want) - {name for name, *_ in SUITES}
@@ -225,8 +205,7 @@ def main(argv):
         def run_held(suite):
             name, cmd, kind, blurb = suite
             start = time.monotonic()
-            cmd, env = counted(name, cmd)
-            proc = subprocess.run(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
+            proc = subprocess.run(cmd, cwd=HERE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             bad = proc.returncode != 0 or failed_in(proc.stdout)
             # Whole, under a lock, so a suite's lines are never split by another's.
             with lock:
@@ -245,12 +224,6 @@ def main(argv):
                 list(pool.map(run_held, pool_suites))
 
     failed.sort(key=lambda n: order[n])
-    # After a --brain-counts run of the whole suite, the standing check on its counts (stage 5, step 5b).
-    if BRAIN_COUNTS and not want:
-        proc = subprocess.run([sys.executable, "braincounts.py", "--check", BRAIN_COUNTS], cwd=HERE,
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        sys.stdout.write(header("counters", "nothing of the page's own brain counted on a default page, over the whole run") + "\n" + proc.stdout)
-        if proc.returncode != 0 or failed_in(proc.stdout): failed.append("counters")
     print("\n%d suites in %.1f min" % (len(chosen), (time.monotonic() - began) / 60))
     if failed:
         print("FAILED: " + ", ".join(failed))

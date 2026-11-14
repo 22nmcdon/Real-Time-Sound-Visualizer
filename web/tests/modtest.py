@@ -61,6 +61,10 @@ with sync_playwright() as pw:
             // Less the sources version 9 cut (F4b), and the drawings' sources
             // and destinations version 10 cut (G2), whose routings their
             // decode passes drop: the corpus is the old library, from before.
+            // The patterns are the passes' own (scope/setup.h), written out
+            // here since the page's copies went with its codec in stage 5's step 6.
+            const CUT_SOURCE = /^(cc\\.\\d+|midi\\.pedal|midi\\.pressure|notes\\.(count|spread|top|inner)|env\\.live)>/;
+            const CUT_DRAWING = /^draw\\.(swing|pendulum|turn[XYZ]|facing)>|>gen\\.(detail|tumble|depth|swing|spin[XYZ]|reswing|kick)@/;
             for (const r of decodeRoutings(setup.mod)) {
               const text = r.sourceId + '>' + r.destId + '@' + r.amount;
               if (!CUT_SOURCE.test(text) && !CUT_DRAWING.test(text)) want.push(r.sourceId + '>' + r.destId);

@@ -136,9 +136,10 @@ with sync_playwright() as pw:
       restore({}); await wait(30);
       const old = read();
       // A code from before version 4 said the clip was on with a box.
-      restore(migrateSetup({ v: 3, planeClip: true, planeRadius: 30 })); await wait(30);
+      // Read as a code of that version is, by the core's decode passes.
+      restore(decodeSetup(encodeSetupHere({ v: 3, planeClip: true, planeRadius: 30 }))); await wait(30);
       const boxed = read();
-      const unboxed = migrateSetup({ v: 3, planeClip: false });
+      const unboxed = decodeSetup(encodeSetupHere({ v: 3, planeClip: false }));
       restore({ planeTwist: -30, planeSnap: 5, planeScaleX: 150, planeScaleY: 60, planeShear: 25 });
       await wait(30);
       const c2 = snapshot();

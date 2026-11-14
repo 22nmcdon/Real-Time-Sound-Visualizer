@@ -26,7 +26,7 @@ with the picture on it, the timbre moves as the picture does. So:
 - and the three reads on screen move, and the bars beside the slider show
   them, so what is heard is also shown.
 
-The stage's own arithmetic is held to the core by core/tests/parity.py; this
+The stage's own arithmetic is held to the core by core/tests/core_tests.py; this
 is what a visitor gets out of it.
 """
 import os, sys
@@ -79,7 +79,7 @@ RUN = """async ([amount, seconds]) => {
                freqInk: getComputedStyle(document.querySelector('[data-mod-dest="gen.freq"] > .menu-label')).color });
   }
   for (const n of [60, 64, 67]) midiBytes(new Uint8Array([0x80, n, 0]));
-  return { out, brain: BRAIN_IN_CORE && state.source.kind === 'host', photo: photo.on, routings: state.modRoutings.length };
+  return { out, brain: state.source.kind === 'host', photo: photo.on, routings: state.modRoutings.length };
 }"""
 
 def open_page(pw):

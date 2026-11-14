@@ -212,7 +212,7 @@ with sync_playwright() as pw:
       const n = 2048, l = new Float32Array(n), r = new Float32Array(n);
       for (let i = 0; i < n; i++) { l[i] = 0.6 * Math.sin(i * 0.031); r[i] = 0.5 * Math.sin(i * 0.047 + 1); }
       const draw = () => {
-        pictureEngine.fade(0, true); clearPaper();
+        clearPaper();
         drawXY({ channels: [l, r], turned: false }, fitCanvas(el.trace), 0);
         const c = el.trace, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
         let ruled = 0, inked = 0;

@@ -108,29 +108,15 @@ with sync_playwright() as pw:
       const was = deviceRate();
       noteDeviceRate(96000);
       const after = deviceRate();
-      const built = makeToneSource(96000).sampleRate;
       noteDeviceRate(was);
-      return { was, after, back: deviceRate(), built };
+      return { was, after, back: deviceRate() };
     }""")
     check("a source that opens a real context corrects the answer",
           moved["after"] == 96000 and moved["back"] == moved["was"], str(moved))
-    check("and a generator can be built at a stated rate",
-          moved["built"] == 96000, str(moved["built"]))
-    # And a generator built with no rate given takes the corrected one. This
-    # container happens to run at 44.1 kHz, so every check above is also
-    # satisfied by a generator still hard-wired to the old constant - a
-    # mutation putting 44100 back survived all of them. Moving the memo first
-    # is what tells the two apart without a converter that does.
-    follows = p.evaluate("""() => {
-      const was = deviceRate();
-      noteDeviceRate(48000);
-      const built = makeToneSource().sampleRate;
-      noteDeviceRate(was);
-      return { built, restored: makeToneSource().sampleRate, was };
-    }""")
-    check("and one built with no rate given follows the machine, not a constant",
-          follows["built"] == 48000 and follows["restored"] == follows["was"],
-          str(follows))
+    # "And a generator can be built at a stated rate", and "one built with no
+    # rate given follows the machine, not a constant", were the page's own
+    # tone source's, which stage 5's step 6 deleted: the instrument is made
+    # at its context's rate (makeBrainHost), which the check above reads.
 
     print("\n--- what the buffer can serve, at four rates ---")
     # The invariant the give-way order in `capture` exists to keep, held to at

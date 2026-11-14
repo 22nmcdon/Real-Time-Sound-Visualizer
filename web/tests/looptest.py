@@ -91,23 +91,25 @@ with sync_playwright() as pw:
     # driven hot - a chord of six at full Level in Poly, which strains it past
     # six decibels - and the face must see that; a held sine is the null.
     # The reading itself matters: asserting only that it was nought or below
-    # passed for a monitorLimiting that always answered nought.
+    # passed for a monitorLimiting that always answered nought. The face read
+    # it through its chain (monitorLimiting) until stage 5's step 6; it reads
+    # what the instrument posts, which its meter has.
     hot = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       await wait(600);
-      const quiet = monitorLimiting();
+      const quiet = state.source.limiting;
       el.midiPoly.click();
       el.amp.value = '100'; el.amp.dispatchEvent(new Event('input', { bubbles: true }));
       for (const n of [45, 52, 57, 61, 64, 69]) midiNoteOn(n, 127);
       await wait(1500);
-      const limiting = monitorLimiting(), posted = state.source.limiting;
+      const limiting = state.source.limiting;
       for (const n of [45, 52, 57, 61, 64, 69]) midiNoteOff(n);
       await wait(300);
-      return { quiet, hot: limiting, posted, chains: monitorChains.size, own: [...monitorChains].map((c) => !!c.limiter) };
+      return { quiet, hot: limiting, chains: monitorChains.size, own: [...monitorChains].map((c) => !!c.limiter) };
     }""")
     print("    %s" % hot)
     check("the face reads the instrument's limiter pulling a hot chord down",
-          hot["hot"] < -6 and hot["hot"] == hot["posted"] and hot["own"] == [False], str(hot))
+          hot["hot"] < -6 and hot["own"] == [False], str(hot))
     check("null: and a held sine's not", hot["quiet"] > -1, str(hot["quiet"]))
     # And the chain's backstop: fed twelve times full scale after the
     # instrument (as "Speakers get: Shaped" can lift a peak), what leaves for

@@ -201,7 +201,7 @@ with sync_playwright() as pw:
         for (let k = 1; k < l.length; k++) { e += l[k] * l[k]; d += (l[k] - l[k - 1]) ** 2; }
         out.push([(performance.now() - t0) / 1000, e > 1e-9 ? Math.sqrt(d / e) : 0, Math.sqrt(e / l.length)]);
       }
-      return { out, host: BRAIN_IN_CORE && state.source.kind === 'host' };
+      return { out, host: state.source.kind === 'host' };
     }"""
     def site(query, scan_on, script=None, args=None):
         bb = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])

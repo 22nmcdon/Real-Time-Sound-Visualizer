@@ -24,7 +24,7 @@ What would go wrong, and what is checked for it:
 - each of those checks fed a wrong table on purpose (the null at each), so
   that none of them is known only to pass.
 
-That the core reads by the same table is parity's: core/tests/parity.py
+That the core reads by the same table is parity's: core/tests/core_tests.py
 holds core/include/scope/schema.h to this table character for character,
 and its random setups load to the same instrument on both sides.
 """

@@ -73,21 +73,18 @@ with sync_playwright() as pw:
       // a pasted code is read, and loaded.
       const old = { v: 5, mac1: 40, mac3: 100, macroNames: 'Brighten|Grit|Space|Swirl', freq: 330,
                     mod: 'macro.1>gen.vcf@0.700;lfo1>gen.amp@0.400;macro.2>gen.drive@0.800' };
-      /* Through both codecs: the site's reads codes with the compiled core
-         (setupCodec.kind "wasm"), so a check on decodeSetup alone never ran
-         the page's own pass - the first null below went green with that pass
-         taken out. The page's own is decodeSetupHere. */
+      /* The site's codec, the compiled core's (setupCodec.kind "wasm"). The
+         page's own was read beside it until stage 5's step 6 (decodeSetupHere),
+         since a check on decodeSetup alone never ran the page's own pass. */
       const read = decodeSetup(btoa(JSON.stringify(old)));
-      const readHere = decodeSetupHere(btoa(JSON.stringify(old)));
       const codec = setupCodec.kind;
       restore(read);
       const kept = state.modRoutings.map((r) => r.sourceId + '>' + r.destId);
       // The null: the same code stamped version 6 keeps what it says, so a
       // pass that did nothing would read the same as this.
       const stamped = decodeSetup(btoa(JSON.stringify(Object.assign({}, old, { v: 6 }))));
-      const stampedHere = decodeSetupHere(btoa(JSON.stringify(Object.assign({}, old, { v: 6 }))));
       restore({});
-      return { ids, sources, families, sections, morphHome, title, read, readHere, codec, kept, stamped, stampedHere,
+      return { ids, sources, families, sections, morphHome, title, read, codec, kept, stamped,
                version: SETUP_VERSION };
     }""")
     print("    %s" % {k: gone[k] for k in ("ids", "sources", "morphHome", "title", "kept", "version")})
@@ -102,12 +99,12 @@ with sync_playwright() as pw:
     migrated = lambda r: (r["v"] == gone["version"] and r["freq"] == 330 and r["mod"] == "lfo1>gen.amp@0.400"
                           and not any(k in r for k in ("mac1", "mac3", "macroNames")))
     check("a version-5 code loses the macros' values, names and routes, and keeps the rest as written - "
-          "read by the site's compiled codec and by the page's own",
-          gone["version"] >= 7 and gone["codec"] == "wasm" and migrated(gone["read"]) and migrated(gone["readHere"])
-          and gone["kept"] == ["lfo1>gen.amp"], "%s / %s / %s" % (gone["read"], gone["readHere"], gone["kept"]))
-    check("null: the same code marked version 6 keeps its macro routes in both, so the pass is what took them",
-          all("macro.1>gen.vcf@0.700" in r["mod"] and r.get("mac1") == 40 for r in (gone["stamped"], gone["stampedHere"])),
-          "%s / %s" % (gone["stamped"], gone["stampedHere"]))
+          "read by the site's compiled codec",
+          gone["version"] >= 7 and gone["codec"] == "wasm" and migrated(gone["read"])
+          and gone["kept"] == ["lfo1>gen.amp"], "%s / %s" % (gone["read"], gone["kept"]))
+    check("null: the same code marked version 6 keeps its macro routes, so the pass is what took them",
+          all("macro.1>gen.vcf@0.700" in r["mod"] and r.get("mac1") == 40 for r in (gone["stamped"],)),
+          "%s" % gone["stamped"])
 
     print("\n--- the morph ---")
     blend = p.evaluate("""async () => {
@@ -297,7 +294,7 @@ with sync_playwright() as pw:
                       morphA: '=timebase:2,zoom:10,level:-500,freq:220', morphB: '=timebase:5,zoom:20,level:600,freq:880' };
       const text = btoa(JSON.stringify(setup));
       const out = {};
-      for (const [name, decode] of [['site', decodeSetup], ['page', decodeSetupHere]]) {
+      for (const [name, decode] of [['site', decodeSetup]]) {
         restore(decode(text)); await __wait(150);
         __set('morphPos', 100); await __wait(150);
         out[name] = { timebase: Number(el.timebase.value), zoom: Number(el.zoom.value), level: Number(el.level.value),
@@ -305,7 +302,7 @@ with sync_playwright() as pw:
       }
       MORPH_IDS.push(...view);
       try {
-        restore(decodeSetupHere(text)); await __wait(150);
+        restore(decodeSetup(text)); await __wait(150);
         __set('morphPos', 100); await __wait(150);
         out.null = { timebase: Number(el.timebase.value), zoom: Number(el.zoom.value), level: Number(el.level.value) };
       } finally { for (const id of view) MORPH_IDS.splice(MORPH_IDS.indexOf(id), 1); }
@@ -314,8 +311,8 @@ with sync_playwright() as pw:
     }""", VIEW)
     print("    %s" % old_code)
     check("a code from before G8 with the view in its morph's ends slides the frequency and leaves its own "
-          "timebase, zoom and trigger level, read by the site's codec and the page's own",
-          all(old_code[k] == {"timebase": 7, "zoom": 2, "level": 0, "freq": 880, "ends": [False, False]} for k in ("site", "page")),
+          "timebase, zoom and trigger level, read by the site's codec",
+          all(old_code[k] == {"timebase": 7, "zoom": 2, "level": 0, "freq": 880, "ends": [False, False]} for k in ("site",)),
           str(old_code))
     check("null: with the view back in the walk, those ends take the timebase, the zoom and the level to B's",
           old_code["null"] == {"timebase": 5, "zoom": 20, "level": 600}, str(old_code["null"]))

@@ -1,45 +1,37 @@
-"""The core in WebAssembly (stage 5): the compiled core in both worklets.
+"""The core in WebAssembly, as the site carries it (stage 5).
 
-The page carries the C++ core's generator, compiled, as base64 between two
-marker comments, and its worklets - the generator's and the effects' on a live
-input - run it in place of `makeGeneratorCore` unless the address says
-`?core=js`. `core/tests/parity.py` holds the module to the JavaScript core
-through the parity harness's own runs. This holds it in the browser, through
-what the page itself sends:
+The page carries the C++ core compiled, as base64 between two marker
+comments, and the site is that core: the instrument whole in an audio
+worklet (makeBrainHost), and on the main thread the setup codec the face
+reads the instrument's state by. What can go wrong with that, and is checked:
 
-THE PAGE'S COPY IS THIS CORE. The module is generated, not written, and has to
-be built again whenever the core changes; `core/wasm/build.py --check` builds
-it and compares. That needs clang's wasm32 target and the WASI libc, which not
-everyone running the web suite has, so without them the check says SKIP, by
-name, rather than passing.
+THE PAGE'S COPY IS NOT THIS CORE. The module is generated, not written, and
+has to be built again whenever the core changes; `core/wasm/build.py --check`
+builds it and compares. That needs clang's wasm32 target and the WASI libc,
+which not everyone running the web suite has, so without them the check says
+SKIP, by name, rather than passing.
 
-THE WORKLETS RUN IT. Each worklet says which core it made, and the page
-records what it said: `wasm` by default and `js` with `?core=js`, which is the
-null - the reading comes from the audio thread, not from the address. And a
-module the browser will not make falls back: the worklet makes the
-JavaScript core, says so and why, and the sound goes on.
+A BROWSER THAT CANNOT RUN IT. Without WebAssembly the site has nothing to
+play - the page's own JavaScript engine went in stage 5's step 6 - so it says
+so on the screen and under the title, and draws and steps nothing; and a
+browser that will not make the module on the main thread cannot read the
+instrument's state, which comes as a setup code, so it waits and says why.
+Each has its null: the same page with WebAssembly plays the instrument and
+says nothing of it.
 
-EVERY PRESET IS THE SAME SOUND. Each generator preset applied as a player
-would, and its settings, routes and oscillators given to both cores the way
-the worklet gives them - through JSON at construction, as processorOptions
-are, and then again as live objects, as a message brings them - and run for
-a quarter of a second each: the samples and everything the worklet reads
-back, compared value for value. And every preset's effects, as the effects
-worklet would be given them, on a stereo input through both cores.
-
-Every preset is the old library's, from before P8g, and then the bank's: the
-old one is 268 real setups, kept in corpus.py for exactly this, where the bank
-alone is eleven, and the counts below are judged on both.
+Until step 6 this suite held the page's two cores to each other in both
+worklets - every preset, every preset's effects, the picture's sources, the
+setup codecs and the main thread's settings - and the fallbacks to the
+JavaScript ones; the JavaScript went, and the compiled core is held to what
+it answered by core/tests/core_tests.py and its golden files.
 """
 import os, shutil, subprocess, sys, tempfile
 from playwright.sync_api import sync_playwright
-import corpus
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 ROOT = os.path.dirname(ART)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
-TOL = 1e-12
 
 fails = []
 def check(name, ok, detail=""):
@@ -66,660 +58,48 @@ else:
     print("  SKIP  the module in the page is the core as it stands: no clang++ with the wasm32-wasi target here")
 
 
-# Every setup walked: the old library first, from before P8g (loaded as a
-# preset was, by corpus.py's loadCorpus), then the bank through applyPreset.
-# The old first, since none of it names the Picture amount and the bank's
-# would otherwise carry into it.
-WALK = """const WALK = [
-    ...CORPUS.flatMap(([, e, kind]) => e.map(([name, setup]) => [name, setup, kind, () => loadCorpus(name)])),
-    ...PRESETS.flatMap(([, e, kind]) => e.map(([name, setup]) => [name, setup, kind, () => applyPreset("b:" + name)]))];
-"""
-
-PRESET_RUN = """async () => {
-  const mul = (seed) => {
-    let a = seed;
-    return () => {
-      a |= 0; a = a + 0x6D2B79F5 | 0;
-      let t = Math.imul(a ^ a >>> 15, 1 | a);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  };
-  const bytes = wasmCore(), N = 128, BLOCKS = 96, AGAIN = 32;
-  const far = (a, b) => {
-    let most = 0;
-    for (let i = 0; i < a.length; i++) {
-      const x = a[i], y = b[i];
-      if (x === y || (Number.isNaN(x) && Number.isNaN(y))) continue;
-      if (Number.isNaN(x) || Number.isNaN(y)) return Infinity;
-      most = Math.max(most, Math.abs(x - y) / Math.max(1, Math.abs(x)));
-    }
-    return a.length === b.length ? most : Infinity;
-  };
-  // One core of either kind through the worklet's whole life: made, given
-  // its settings as processorOptions are (JSON), run, given them again as a
-  // message gives them (the objects), run on.
-  const play = (wasm, tone, toneB, routes, seed, pictureOnly) => {
-    const ls = lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, phase: 0, held: 0, value: 0, epoch: 0 }));
-    const real = Math.random;
-    Math.random = mul(seed);
-    try {
-      const c = wasm ? makeWasmCore(bytes, 48000, GEN_SLOTS, ls, seed) : makeGeneratorCore(48000, GEN_SLOTS, ls);
-      const asSent = JSON.parse(JSON.stringify({ tone, toneB }));
-      for (const f in asSent.tone) c.set(f, asSent.tone[f]);
-      for (const f in asSent.toneB) c.set(f, asSent.toneB[f], 1);
-      c.setRoutes(JSON.parse(JSON.stringify(routes)));
-      const bufs = Array.from({ length: 6 }, () => new Float32Array(N));
-      const out = [];
-      out.peak = 0;
-      for (let b = 0; b < BLOCKS; b++) {
-        if (b === AGAIN) {
-          for (const f in tone) c.set(f, tone[f]);
-          for (const f in toneB) c.set(f, toneB[f], 1);
-          c.setRoutes(routes);
-        }
-        if (pictureOnly) c.block(bufs[0], bufs[1], N);
-        else c.block(bufs[0], bufs[1], N, bufs[2], bufs[3], bufs[4], bufs[5]);
-        for (const buf of bufs) for (let i = 0; i < N; i++) out.push(buf[i]);
-        for (let i = 0; i < N; i++) out.peak = Math.max(out.peak, Math.abs(bufs[0][i]), Math.abs(bufs[1][i]));
-        // The drawings' readings were pushed here too, until G2 took them.
-        const g = c.budget;
-        out.push(c.envelope, g.units, g.asked[0], g.asked[1], g.unison[0], g.unison[1],
-                 g.askedFactor, g.factor, g.silenced);
-        for (const l of ls) out.push(l.phase, l.held, l.value);
-      }
-      return out;
-    } finally {
-      Math.random = real;
-    }
-  };
-  // The effects worklet's life: made with a live input's fields, given them
-  // again as a message would, and handed a stereo input of its own - 220 Hz
-  // and 330 Hz, never a circle - block by block.
-  const wet = (wasm, tone, routes, seed) => {
-    const ls = lfos.map((l) => ({ shape: l.shape, rate: l.rate, depth: l.depth, phase: 0, held: 0, value: 0, epoch: 0 }));
-    const real = Math.random;
-    Math.random = mul(seed);
-    try {
-      const c = wasm ? makeWasmCore(bytes, 48000, GEN_SLOTS, ls, seed) : makeGeneratorCore(48000, GEN_SLOTS, ls);
-      const asSent = JSON.parse(JSON.stringify(tone));
-      for (const f in asSent) c.set(f, asSent[f]);
-      c.setRoutes(JSON.parse(JSON.stringify(routes)));
-      const inL = new Float32Array(N), inR = new Float32Array(N), oL = new Float32Array(N), oR = new Float32Array(N);
-      const out = [];
-      out.changed = 0;
-      for (let b = 0; b < 64; b++) {
-        if (b === 16) { for (const f in tone) c.set(f, tone[f]); c.setRoutes(routes); }
-        for (let i = 0; i < N; i++) {
-          inL[i] = 0.6 * Math.sin(2 * Math.PI * 220 * (b * N + i) / 48000);
-          inR[i] = 0.5 * Math.sin(2 * Math.PI * 330 * (b * N + i) / 48000);
-        }
-        c.effect(inL, inR, oL, oR, N);
-        for (let i = 0; i < N; i++) {
-          out.push(oL[i], oR[i]);
-          out.changed = Math.max(out.changed, Math.abs(oL[i] - inL[i]), Math.abs(oR[i] - inR[i]));
-        }
-        for (const l of ls) out.push(l.phase, l.held, l.value);
-      }
-      return out;
-    } finally {
-      Math.random = real;
-    }
-  };
-  const rows = [], effects = [];
-  """ + WALK + """
-  for (const [name, , kind, load] of WALK) {
-    load();
-    {
-      const tone = liveFxFields(), routes = workletRoutes();
-      const js = wet(false, tone, routes, 5);
-      effects.push({ name, worst: far(js, wet(true, tone, routes, 5)), changed: js.changed,
-                     wrong: effects.length < 4 ? far(js, wet(true, { ...tone, planeTwist: (tone.planeTwist || 0) + 0.01 }, routes, 5)) : null });
-    }
-    if (kind !== "generator") continue;
-    /* One voice, as the cores made here are ungated and play their tone:
-       since 10 Nov the page plays a chord in Poly with no keyboard too, and
-       a preset in Poly with nothing held hands over an empty one (voices: []),
-       which both cores agree is silence. Until then it handed over none. */
-    const tone = genSettings() && { ...genSettings(), voices: null };
-    const toneB = genSettings(1) ? { ...genSettings(1), voices: null } : {};
-    if (!tone) { rows.push({ name, missing: true }); continue; }
-    const routes = workletRoutes();
-    const js = play(false, tone, toneB, routes, 11), wa = play(true, tone, toneB, routes, 11);
-    const peak = js.peak;
-    // The null: the same preset with its first route a hundredth stronger,
-    // or with its tone a cent sharp where it has no route.
-    let wrong = null;
-    if (rows.length < 6) {
-      const bent = routes.length ? routes.map((r, i) => i ? r : { ...r, amount: r.amount * 1.01, amountB: r.amountB * 1.01 }) : routes;
-      const sharp = routes.length ? tone : { ...tone, freq: tone.freq * Math.pow(2, 1 / 1200) };
-      wrong = far(js, play(true, sharp, toneB, bent, 11));
-    }
-    // And as the main thread asks: the picture alone.
-    const alone = far(play(false, tone, toneB, routes, 11, true), play(true, tone, toneB, routes, 11, true));
-    rows.push({ name, worst: Math.max(far(js, wa), alone), peak, routes: routes.length, length: js.length, wrong });
-  }
-  return { rows, effects };
-}"""
-
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
 
-    def open_page(query, init=None):
-        p = b.new_page(viewport={"width": 1400, "height": 900})
-        # The page's own brain, whose worklets and cores this suite holds: on
-        # ?brain=js until stage 5, step 5b's second half took that address
-        # away, since then by parity's harness's flag (PAGE_BRAIN), kept for
-        # step 6, which deletes them. ?core=js went with it, and is a browser
-        # without WebAssembly here, which is what it asked the page to be.
-        p.add_init_script("window.__scopePageBrain = true;")
-        if "core=js" in query:
-            p.add_init_script("delete window.WebAssembly;")
-            query = query.replace("?core=js", "").replace("&core=js", "")
-        if init: p.add_init_script(init)
-        bad = []
-        p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
-        p.on("console", lambda m: bad.append("console: " + m.text)
-             if m.type == "error" and "ERR_CERT" not in m.text else None)
-        # The picture stage out, as in every suite that measures something else.
-        query = (query + "&picture=0" if query else "?picture=0")
-        p.goto(f"file://{ART}/scope.html{query}"); p.wait_for_timeout(700)
-        corpus.install(p)
-        if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-        p.wait_for_timeout(200)
-        return p, bad
-
-    # Under a note: the site waits for one since 10 Nov, and this read the
-    # tone it drew with none. Struck once a page; restruck, it is the same note.
-    def sound(p):
-        p.evaluate("async () => { midiNoteOn(57, 127); await applyGeneratorSound(); }")
-        p.wait_for_timeout(700)
-        return p.evaluate("""() => {
-          const f = capture();
-          let peak = 0;
-          for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
-          return { kind: state.source.coreKind, why: state.source.coreWhy, switch: CORE_IN_WASM, blocks: state.source.blocks,
-                   main: state.source.mainCoreKind, mainWhy: state.source.mainCoreWhy,
-                   picture: pictureCoreKind, pictureWhy: pictureCoreWhy, setup: setupCoreKind, setupWhy: setupCoreWhy,
-                   fault: state.source.fault, peak, driver: lfoDriver(), phase: lfos[0].phase };
-        }""")
-
-    # The effects worklet, on a stub microphone - two oscillators, 3:2 - with
-    # the mirror on, so the insert makes its node.
-    def effects(p):
-        return p.evaluate("""async () => {
-          const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-          const ctx = new AudioContext();
-          const merge = ctx.createChannelMerger(2), dest = ctx.createMediaStreamDestination();
-          const a = ctx.createOscillator(), c = ctx.createOscillator();
-          a.frequency.value = 220; c.frequency.value = 330;
-          a.connect(merge, 0, 0); c.connect(merge, 0, 1); merge.connect(dest); a.start(); c.start();
-          navigator.mediaDevices.getUserMedia = () => Promise.resolve(dest.stream);
-          el.srcMic.click(); await wait(1200);
-          /* The picture at nought, so nothing but the mirror is folding the
-             input: above it the picture's reads push the twist and the phaser
-             on the same path, which turn the folded figure back below nought.
-             It held by luck until G2, when the scenario before this one loaded
-             a drawn word whose preset had the picture at nought; the waveform
-             that replaced it loads the defaults, where it is 60. */
-          el.pictureAmount.value = "0"; el.pictureAmount.dispatchEvent(new Event("input", { bubbles: true }));
-          el.planeMirror.value = "3"; el.planeMirror.dispatchEvent(new Event("change")); await wait(1200);
-          const w = state.source.getLatestWindow(4410);
-          const fx = state.source.fx || {};
-          return { source: state.source.kind, active: fx.active, kind: fx.coreKind,
-                   why: fx.coreWhy, fault: fx.fault || state.sourceError || null,
-                   lowX: Math.min(...w[0]), lowY: Math.min(...w[1]) };
-        }""")
-
-    print("\n--- the worklets run it, by default ---")
-    p, bad = open_page("")
-    on = sound(p)
-    check("the generator's worklet says it is running the compiled core", on["switch"] and on["kind"] == "wasm" and on["why"] is None, str(on))
-    check("and so does the main thread's generator, which draws while the sound is off", on["main"] == "wasm" and on["mainWhy"] is None,
-          "%r %r" % (on["main"], on["mainWhy"]))
-    check("and so do the picture's own sources - the grid, the photocell, the meter", on["picture"] == "wasm" and on["pictureWhy"] is None,
-          "%r %r" % (on["picture"], on["pictureWhy"]))
-    check("and so do the setup codes", on["setup"] == "wasm" and on["setupWhy"] is None, "%r %r" % (on["setup"], on["setupWhy"]))
-    check("and it plays, and the picture is drawn from what it sends",
-          on["fault"] is None and on["blocks"] > 3 and on["peak"] > 0.05 and on["driver"] == "worklet",
-          "%d blocks, peak %.3f, fault %r" % (on["blocks"], on["peak"], on["fault"]))
-    p.wait_for_timeout(300)
-    later = p.evaluate("() => ({ phase: lfos[0].phase, blocks: state.source.blocks })")
-    check("and the oscillators' phases come back from it", later["phase"] != on["phase"] and later["blocks"] > on["blocks"],
-          "%r then %r" % (on["phase"], later["phase"]))
-
-    print("\n--- every preset, both cores ---")
-    ran = p.evaluate(PRESET_RUN)
-    rows, wets = ran["rows"], ran["effects"]
-    missing = [r["name"] for r in rows if r.get("missing")]
-    worst = max((r["worst"] for r in rows if not r.get("missing")), default=float("inf"))
-    off = [(r["name"], r["worst"]) for r in rows if not r.get("missing") and not r["worst"] <= TOL]
-    check("%d generator presets, every one the same to %g in samples and in what comes back" % (len(rows), TOL),
-          rows and not missing and not off, "worst %.3g; %s" % (worst, off[:4] or missing[:4]))
-    quiet = [r["name"] for r in rows if not r.get("missing") and r["peak"] < 0.05]
-    routed = sum(1 for r in rows if not r.get("missing") and r["routes"] > 0)
-    check("and they can show it: every one makes a picture, and %d have routes for the oscillators to carry" % routed,
-          not quiet and routed >= 10, ", ".join(quiet[:4]))
-    nulls = [r for r in rows if r.get("wrong") is not None]
-    check("and the comparison fails against a route a hundredth stronger, or a tone a cent sharp",
-          len(nulls) == 6 and all(r["wrong"] > TOL for r in nulls), ", ".join("%s %.3g" % (r["name"], r["wrong"]) for r in nulls))
-    woff = [(r["name"], r["worst"]) for r in wets if not r["worst"] <= TOL]
-    acting = sum(1 for r in wets if r["changed"] > 0.01)
-    check("%d presets' effects on a live input, every one the same to %g, %d of them changing it" % (len(wets), TOL, acting),
-          wets and not woff and acting >= 20, "worst %.3g; %s" % (max((r["worst"] for r in wets), default=0), woff[:4]))
-    wnulls = [r for r in wets if r.get("wrong") is not None]
-    check("and the comparison fails against the twist a hundredth of a radian further",
-          len(wnulls) == 4 and all(r["wrong"] > TOL for r in wnulls), ", ".join("%s %.3g" % (r["name"], r["wrong"]) for r in wnulls))
-
-    print("\n--- the picture's own sources, recorded and played into both ---")
-    # Every call the page makes to its picture engine over a second and a
-    # half of real frames, with copies of what it was handed - the walks'
-    # polylines, the drawn pair's lanes, the photocell and the picture's
-    # values as they stood - played in order into a fresh JavaScript engine and
-    # a fresh compiled one, and the cells and every reading compared after
-    # each call. The scenarios are every preset that turns the photocell on,
-    # then Y-T, the spectrogram, persistence off and infinite, and a Clear.
-    PICTURE = """async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const E = pictureEngine;
-      const slice = (v, n) => Array.prototype.slice.call(v, 0, n);
-      const copies = {
-        fade: (p, w) => [p, !!w],
-        segment: (plot, x0, y0, x1, y1, level) => [{ ...plot }, x0, y0, x1, y1, level],
-        deposit: (plot, xs, ys, count, steps) => [{ ...plot }, slice(xs, count), slice(ys, count), count, steps ? slice(steps, count) : null],
-        blank: () => [],
-        photoStep: (ph, elapsed, spect) => [{ on: ph.on, u: ph.u, v: ph.v, value: ph.value, raw: ph.raw }, elapsed, spect],
-        pictureStep: (ph, pic, pair, elapsed, spect, limiting) => [
-          { on: ph.on }, JSON.parse(JSON.stringify(pic)),
-          pair ? { ...pair, left: Float32Array.from(pair.left.subarray(0, pair.n)), right: Float32Array.from(pair.right.subarray(0, pair.n)) } : null,
-          elapsed, spect, limiting],
-      };
-      const record = async (setUp, ms) => {
-        const log = [], kept = {};
-        for (const name in copies) {
-          kept[name] = E[name];
-          E[name] = function (...args) { log.push([name, copies[name](...args)]); return kept[name].apply(E, args); };
-        }
-        const keptReset = E.meter.reset;
-        E.meter.reset = function () { log.push(["reset", []]); return keptReset.call(E.meter); };
-        try { await setUp(); await wait(ms); }
-        finally { for (const name in copies) E[name] = kept[name]; E.meter.reset = keptReset; }
-        return log;
-      };
-      const readings = (e) => [e.roundness, e.bored, e.frames, e.meter.coverage, e.meter.lit, e.meter.change, e.meter.novelty,
-                               e.meter.depth, e.shape.signed];
-      // Both engines through one log in step; `bend` changes what one of
-      // them is given, for the nulls.
-      const replay = (log, bend) => {
-        const js = makePictureEngine(), wa = makeWasmPictureEngine(wasmModule());
-        let worst = 0, lit = 0, photoMost = 0, worstAt = "";
-        const verdicts = new Set(), counts = {};
-        const far = (a, b) => (a === b || (Number.isNaN(a) && Number.isNaN(b)) ? 0 : Math.abs(a - b) || Infinity);
-        for (let k = 0; k < log.length; k++) {
-          const [op, a] = log[k];
-          counts[op] = (counts[op] || 0) + 1;
-          const forWa = bend ? bend(op, a) : a;
-          if (op === "fade") { js.fade(a[0], a[1]); wa.fade(forWa[0], forWa[1]); }
-          else if (op === "segment") { js.segment(...a); wa.segment(...forWa); }
-          else if (op === "deposit") { js.deposit(...a); wa.deposit(...forWa); }
-          else if (op === "blank") { js.blank(); wa.blank(); }
-          else if (op === "reset") { js.meter.reset(); wa.meter.reset(); }
-          else if (op === "photoStep") {
-            const pj = { ...a[0] }, pw = { ...a[0] };
-            js.photoStep(pj, a[1], a[2]); wa.photoStep(pw, a[1], a[2]);
-            const d = Math.max(far(pj.value, pw.value), far(pj.raw, pw.raw));
-            if (d > worst) { worst = d; worstAt = op + " " + k; }
-            photoMost = Math.max(photoMost, pj.value);
-          } else if (op === "pictureStep") {
-            const cj = JSON.parse(JSON.stringify(a[1])), cw = JSON.parse(JSON.stringify(a[1]));
-            js.pictureStep(a[0], cj, a[2], a[3], a[4], a[5]); wa.pictureStep(a[0], cw, a[2], a[3], a[4], a[5]);
-            for (const key of PICTURE_KEYS) {
-              const d = Math.max(far(cj[key], cw[key]), far(cj.raw[key], cw.raw[key]));
-              if (d > worst) { worst = d; worstAt = op + " " + key + " " + k; }
-            }
-            const rj = readings(js), rw = readings(wa);
-            for (let i = 0; i < rj.length; i++) { const d = far(rj[i], rw[i]); if (d > worst) { worst = d; worstAt = "reading " + i + " at " + k; } }
-            const vj = js.meter.verdict();
-            if (vj !== wa.meter.verdict()) { worst = Infinity; worstAt = "verdict at " + k; }
-            verdicts.add(vj);
-          }
-          const gj = js.cells, gw = wa.cells;
-          for (let i = 0; i < gj.length; i++) {
-            const d = far(gj[i], gw[i]);
-            if (d > worst) { worst = d; worstAt = op + " cell " + i + " at " + k; }
-            lit = Math.max(lit, gj[i]);
-          }
-        }
-        return { worst, worstAt, lit, photoMost, verdicts: [...verdicts], counts, last: js.meter.verdict() };
-      };
-      const uses = (setup) => setup.photoOn === true;
-      const scenarios = [];
-      """ + WALK + """
-      for (const [name, setup, , load] of WALK) if (uses(setup)) scenarios.push([name, load]);
-      let turnedOnScreen = 0;
-      // And one long enough for the meter to give a verdict - it says nothing
-      // until four seconds of history - on a preset that keeps finding new shapes.
-      // Five seconds of it, then the photocell off and on - which used to
-      // start the meter's history again, and since the picture stage (P3)
-      // leaves it alone, the readings being the stage's and never stopping.
-      scenarios.push(["Something new each time, then the photocell off and on", async () => {
-        // The old library's, as are the word and the plain tone below, from
-        // before P8g: the bank has no photocell, figure or plain tone of these.
-        loadCorpus("Something new each time"); await wait(5500); setPhoto(false); setPhoto(true);
-      }, 800]);
-      // A word turned and zoomed until the screen's edge clips it, which the
-      // two engines have to draw alike. It was also the one place the turn
-      // showed in what the picture says, through edge contact, which P5 cut;
-      // direction does not change with a turn. A word, because a figure with
-      // a mirror in it (a 3:2 Lissajous, a heart) clips the same turned either
-      // way, which hid a turn applied backwards. The word was a figure, which
-      // went in G2; a pulse a quarter wide, its right channel a fifth above
-      // and at a phase of no symmetry, is lopsided the same way.
-      scenarios.push(["a lopsided figure turned and clipped", () => {
-        hostQuietly(() => restore(Object.assign({}, DEFAULTS, { shape: "pulse", width: 25, interval: 7, phase: 37,
-                                                               midiMode: "dyad", timebase: 3 })));
-        hostSendSetup(); el.dispXY.click(); setPhoto(true); state.rotate = 0.1; setZoom(6);
-      }]);
-      // And the turn the picture applies itself, rather than the signal: with
-      // the lag on, the pair is a signal against its own past, which no turn
-      // of the signal could mean, so the drawn pair is turned on the screen
-      // and the shape is taken from it turned - the only case in which the
-      // pair's own turn is not nought.
-      scenarios.push(["the lag's figure turned on the screen and clipped", () => {
-        loadCorpus("Harmonic tone"); el.dispXY.click(); setPhoto(true);
-        el.lagOn.checked = true; el.lagOn.dispatchEvent(new Event("change")); state.rotate = 0.1; setZoom(6);
-      }]);
-      scenarios.push(["Y-T with the photocell", () => { loadCorpus("Harmonic tone"); setPhoto(true); el.dispYT.click(); }]);
-      // Ink on the grid first, so the spectrogram's blank has something to clear.
-      scenarios.push(["the spectrogram with the photocell", async () => { el.dispXY.click(); setPhoto(true); await wait(600); el.dispSpect.click(); }]);
-      scenarios.push(["X-Y, persistence off", () => { el.dispXY.click(); setPhoto(true); state.persistence = 0; }]);
-      scenarios.push(["X-Y, persistence infinite", () => { state.persistence = -1; }]);
-      scenarios.push(["a Clear", async () => { state.persistence = 0.12; await wait(300); el.clearButton.click(); }]);
-      const rows = [];
-      let first = null, longest = null;
-      for (const [name, setUp, ms] of scenarios) {
-        const log = await record(setUp, ms || 1500);
-        if (name.startsWith("the lag's")) turnedOnScreen = Math.max(0, ...log.filter(([op, a]) => op === "pictureStep" && a[2]).map(([, a]) => Math.abs(a[2].spin)));
-        /* The nulls bend this log, so it must hold something each bend can
-           change: a fade, and a deposit with a beam value under the top, which
-           "a step brighter" moves. A log whose deposits were all at the top,
-           or carried none, made that null read nought under load in a full
-           run - whatever the engines did. */
-        if (!first && log.some(([op, a]) => op === "deposit" && a[4] && a[4].some((v) => v < BEAM_K - 1))
-            && log.some(([op, a]) => op === "fade" && a[0] > 0)) first = log;
-        if (name.includes("off and on")) longest = log;
-        rows.push(Object.assign({ name }, replay(log)));
-      }
-      setZoom(0); state.rotate = 0; el.lagOn.checked = false; el.lagOn.dispatchEvent(new Event("change"));
-      // The long one again with the monitor's limiters held hard down, which
-      // the sound being off never does: the verdict has to run away, in both.
-      const strained = longest.map(([op, a]) => [op, op === "pictureStep" ? [a[0], a[1], a[2], a[3], a[4], -8] : a]);
-      rows.push(Object.assign({ name: "the long one with the limiters at -8 dB" }, replay(strained)));
-      // A still picture, which the meter has to call settled: the long one's
-      // frames up to its fortieth step, then that step again and again, a
-      // quarter of a second apart and nothing new laid, for eight seconds.
-      const steps = longest.filter(([op]) => op === "pictureStep");
-      const at = longest.indexOf(steps[Math.min(39, steps.length - 1)]);
-      const [, held] = longest[at];
-      const still = longest.slice(0, at + 1);
-      for (let k = 0; k < 32; k++) still.push(["pictureStep", [{ on: true }, held[1], held[2], 250, false, 0]]);
-      rows.push(Object.assign({ name: "a still picture, eight seconds" }, replay(still)));
-      // The nulls: the compiled engine given persistence a thousandth more,
-      // and given every deposit a step brighter.
-      const nulls = first ? [
-        replay(first, (op, a) => (op === "fade" && a[0] > 0 ? [a[0] + 0.001, a[1]] : a)).worst,
-        replay(first, (op, a) => (op === "deposit" ? [a[0], a[1], a[2], a[3], a[4] ? a[4].map((v) => Math.min(v + 1, BEAM_K - 1)) : a[4]] : a)).worst,
-      ] : [];
-      return { rows, nulls, turnedOnScreen };
-    }"""
-    # A note held through every scenario, as the page's picture had its
-    # generator's tone with none until 10 Nov; a setup loaded over it keeps it.
-    corpus.held_tone(p)
-    ran = p.evaluate(PICTURE)
-    prow = ran["rows"]
-    off = [(r["name"], r["worst"], r["worstAt"]) for r in prow if not r["worst"] <= TOL]
-    check("%d scenarios of the picture's sources, the compiled engine the same as the JavaScript to %g after every call"
-          % (len(prow), TOL), prow and not off, "; ".join("%s %.3g at %s" % o for o in off[:3]))
-    deposits = sum(r["counts"].get("deposit", 0) + r["counts"].get("segment", 0) for r in prow)
-    steps = sum(r["counts"].get("pictureStep", 0) for r in prow)
-    verdicts = set(v for r in prow for v in r["verdicts"])
-    check("and the lag's figure is turned by the screen, not the signal, a tenth of a turn", abs(ran["turnedOnScreen"] - 0.1) < 1e-9,
-          str(ran["turnedOnScreen"]))
-    strained = prow[-2]
-    still = prow[-1]
-    lit = [r["name"] for r in prow if r["lit"] > 0.5]
-    lightly = [r["name"] for r in prow if r["photoMost"] > 0.01]
-    check("and they can show it: %d walks laid, %d steps, %d scenarios lighting the grid, %d moving the photocell, verdicts %s"
-          % (deposits, steps, len(lit), len(lightly), sorted(verdicts)),
-          deposits > 1000 and steps > 500 and len(lit) >= len(prow) - 3 and len(lightly) >= 5 and len(verdicts) >= 2)
-    reset = next((r for r in prow if "off and on" in r["name"]), {"verdicts": [], "last": None})
-    check("and the photocell switched mid-run, the limiters and a still picture: %s then %s across the switch, %s with the limiters down, %s when still"
-          % (sorted(reset["verdicts"]), reset["last"], sorted(strained["verdicts"]), still["last"]),
-          set(reset["verdicts"]) - {"listening"} and reset["last"] not in (None, "listening")
-          and "running away" in strained["verdicts"] and still["last"] == "settled")
-    check("and the comparison fails against persistence a thousandth more, or every walk a step brighter",
-          len(ran["nulls"]) == 2 and all(n > TOL for n in ran["nulls"]), str(ran["nulls"]))
-
-    print("\n--- the effects worklet, by default ---")
-    fx = effects(p)
-    # The mirror on both axes folds each channel to its positive half, so
-    # neither lane goes below nought if the effect is in the path.
-    check("the effects worklet on a microphone says it is running the compiled core, and mirrors the input",
-          fx["source"] == "mic" and fx["active"] and fx["kind"] == "wasm" and fx["why"] is None and fx["fault"] is None
-          and fx["lowX"] > -0.01 and fx["lowY"] > -0.01, str(fx))
-    check("with no errors on the page", not bad, "; ".join(bad[:3]))
-
-    print("\n--- the setup codes, both codecs ---")
-    # Every preset's snapshot made into a code by each codec, and each code
-    # read back by each - the page's copy and load - and then codes nobody
-    # made with a snapshot: empty, not base64, base64 of things that are not
-    # setups, an old version's level and clip, and names past Latin-1, which
-    # cannot be made into a code at all. Each outcome compared, a throw as a
-    # throw.
-    SETUPS = """() => {
-      const wasm = setupCodec, js = { encode: encodeSetupHere, decode: decodeSetupHere };
-      const tried = (f) => { try { const v = f(); return v === null ? "null" : JSON.stringify(v); } catch (error) { return "throws"; } };
-      const rows = [];
-      """ + WALK + """
-      for (const [name, , , load] of WALK) {
-        load();
-        const snap = snapshot();
-        const cw = tried(() => wasm.encode(snap)), cj = tried(() => js.encode(snap));
-        const code = cj === "throws" ? "" : JSON.parse(cj);
-        rows.push([name, cw === cj && tried(() => wasm.decode(code)) === tried(() => js.decode(code)), cj.length,
-                   tried(() => wasm.encode({ ...snap, freq: snap.freq + 1 })) !== cj]);
-      }
-      const b = (text) => btoa(text).replace(/=+$/, "");
-      const odd = ["", "   ", "!!!", "not base64 at all", b("null"), b("5"), b('"x"'), b("[1,2]"), b("{}"), b("true"),
-                   b('{"v":1,"trig":1,"c1s":3,"level":100}'), b('{"v":2,"c0s":4}'), b('{"v":3,"planeClip":true}'),
-                   b('{"v":9,"freq":1}'), b('{"v":5,"mac1":40,"macroNames":"A|B","mod":"macro.1>gen.vcf@0.7;lfo1>gen.amp@0.4"}'), b('{"1":5,"9":1,"b":3,"a":4}'), "  " + b('{"v":4,"freq":330}') + "\\n"];
-      const oddRows = odd.map((code) => [code, tried(() => wasm.decode(code)), tried(() => js.decode(code))]);
-      // Text in a field of free text: a figure's words until G2, the morph's first end now.
-      const names = [{ morphA: "caf\\u00e9" }, { morphA: "\\u4e2d\\u6587" }, { morphA: "lone \\ud800" }, { freq: NaN }, { freq: -0 },
-                     null, [1, 2], 5, "a string"];
-      const nameRows = names.map((snap) => [JSON.stringify(snap), tried(() => wasm.encode(snap)), tried(() => js.encode(snap))]);
-      // A setup longer than one of the reader's chunks - twenty thousand
-      // characters of text - made and read back by each.
-      const long = { morphA: "x".repeat(20000) + "y" };
-      const longCode = js.encode(long);
-      nameRows.push(["a long setup", tried(() => wasm.decode(longCode)), tried(() => js.decode(longCode))]);
-      // And a code that is not a string, which the page's own throws on.
-      nameRows.push(["a code that is a number", tried(() => wasm.decode(5)), tried(() => js.decode(5))]);
-      return { rows, oddRows, nameRows };
-    }"""
-    st = p.evaluate(SETUPS)
-    srows = st["rows"]
-    sbad = [r[0] for r in srows if not r[1]]
-    check("%d presets: each codec makes the same code from the snapshot, and reads each code back the same" % len(srows),
-          srows and not sbad and all(r[2] > 10 for r in srows), ", ".join(sbad[:4]))
-    check("and the comparison sees a frequency a hertz higher", all(r[3] for r in srows))
-    # The page's fields the core has no default for yet (SETUP_AHEAD_OF_CORE)
-    # are taken out at their defaults before the core encodes, which is what
-    # makes the codes above agree. That list is meant to empty at the core
-    # stage, so each name on it has to be one the core still writes at the
-    # page's default when it is not taken out - a name the core has learnt
-    # goes red here. The null: a field the core does know, 'freq' at its
-    # default, which the core leaves out, so the same test of it reads false.
-    ahead = p.evaluate("""() => {
-      const saved = SETUP_AHEAD_OF_CORE.splice(0);
-      const writes = (key) => JSON.parse(atob(setupCodec.encode({ [key]: DEFAULTS[key] }))).hasOwnProperty(key);
-      try { return { names: saved.slice(), unknown: saved.map(writes), known: writes("freq"),
-                     stripped: saved.map((key) => { SETUP_AHEAD_OF_CORE.push(key);
-                       const kept = JSON.parse(atob(setupCodec.encode({ [key]: DEFAULTS[key] }))).hasOwnProperty(key);
-                       SETUP_AHEAD_OF_CORE.pop(); return kept; }) }; }
-      finally { SETUP_AHEAD_OF_CORE.splice(0, 0, ...saved); }
-    }""")
-    check("every setup field the page is ahead of the core on (%s) is still one the core cannot leave out, and is left out for it"
-          % ", ".join(ahead["names"]) if ahead["names"] else "the page is ahead of the core on no setup field",
-          all(ahead["unknown"]) and not any(ahead["stripped"]) and not ahead["known"], str(ahead))
-    # P6's core stage emptied that list: each layer's picture menus have core
-    # defaults now, so the core leaves them out at the page's defaults by
-    # itself. The null: either set to something else, which it writes.
-    moves = p.evaluate("""() => {
-      const writes = (snap) => Object.keys(JSON.parse(atob(setupCodec.encode(snap))));
-      return { kind: setupCodec.kind, left: writes({ pictureMovesA: 'A', pictureMovesB: 'B', freq: 330 }),
-               set: writes({ pictureMovesA: 'both', pictureMovesB: 'A', freq: 330 }) };
-    }""")
-    check("the compiled codec leaves each layer's picture menus out at their defaults, unhelped, and writes them set",
-          moves["kind"] == "wasm" and "pictureMovesA" not in moves["left"] and "pictureMovesB" not in moves["left"]
-          and "freq" in moves["left"] and {"pictureMovesA", "pictureMovesB"} <= set(moves["set"]), str(moves))
-    # And Scan's core stage (P7a) emptied it again: the depth and the softness
-    # have core defaults, so they are left out at the page's, and written set.
-    scanned = p.evaluate("""() => {
-      const writes = (snap) => Object.keys(JSON.parse(atob(setupCodec.encode(snap))));
-      return { left: writes({ oscScan: 0, scanSoft: 30, freq: 330 }), set: writes({ oscScan: 40, scanSoft: 12, freq: 330 }) };
-    }""")
-    check("the compiled codec leaves Scan's depth and softness out at their defaults, unhelped, and writes them set",
-          "oscScan" not in scanned["left"] and "scanSoft" not in scanned["left"] and "freq" in scanned["left"]
-          and {"oscScan", "scanSoft"} <= set(scanned["set"]), str(scanned))
-    oddbad = [r for r in st["oddRows"] + st["nameRows"] if r[1] != r[2]]
-    outcomes = set(r[2] if r[2] in ("throws", "null") else "read" for r in st["oddRows"] + st["nameRows"])
-    check("%d awkward codes and snapshots, the same outcome from each, a throw as a throw: %s"
-          % (len(st["oddRows"]) + len(st["nameRows"]), sorted(outcomes)), not oddbad and outcomes == {"throws", "null", "read"},
-          "; ".join("%r: %s | %s" % (r[0][:30], r[1][:60], r[2][:60]) for r in oddbad[:3]))
-
-    p.close()
-
-    print("\n--- without WebAssembly, the JavaScript core (?core=js until 5b's second half) ---")
-    p, bad = open_page("?core=js")
-    js = sound(p)
-    check("without WebAssembly the generator's worklet says it is the JavaScript one", not js["switch"] and js["kind"] == "js"
-          and js["why"] is None and js["blocks"] > 3, str(js))
-    check("and so does the main thread's", js["main"] == "js" and js["mainWhy"] is None, "%r %r" % (js["main"], js["mainWhy"]))
-    check("and the picture's sources", js["picture"] == "js" and js["pictureWhy"] is None, "%r %r" % (js["picture"], js["pictureWhy"]))
-    check("and the setup codes", js["setup"] == "js" and js["setupWhy"] is None, "%r %r" % (js["setup"], js["setupWhy"]))
-    fx = effects(p)
-    check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and fx["why"] is None, str(fx))
-    check("with no errors on the page", not bad, "; ".join(bad[:3]))
-    p.close()
-
-    print("\n--- a module the browser will not make ---")
-    p, bad = open_page("")
-    # Eight bytes with the module's magic and a version nobody has written.
-    # Hushed first: since P4 the generator's worklet starts as the page opens,
-    # on the good module, and only a worklet made afresh reads the bad one.
-    p.evaluate("""async () => { const v = genVoice(); await v.setSound(false); syncGeneratorSound();
-                                wasmCore = () => new Uint8Array([0, 97, 115, 109, 9, 0, 0, 0]); }""")
-    fell = sound(p)
-    check("the generator's worklet makes the JavaScript core instead, says why, and plays",
-          fell["switch"] and fell["kind"] == "js" and bool(fell["why"]) and fell["fault"] is None and fell["blocks"] > 3
-          and fell["peak"] > 0.05, str(fell))
-    fx = effects(p)
-    check("and so does the effects worklet", fx["active"] and fx["kind"] == "js" and bool(fx["why"]) and fx["fault"] is None
-          and fx["lowX"] > -0.01, str(fx))
-    check("with no errors on the page", not bad, "; ".join(bad[:3]))
-    p.close()
-
-    print("\n--- the main thread's settings, read back ---")
-    # Every preset applied on a page whose main thread runs the compiled core
-    # and on one whose main thread runs the JavaScript core, and the settings
-    # each reads back - the mirror on one, the core's own objects on the
-    # other - compared as written.
-    # Hashed in the page, with the length beside: written out, a preset's
-    # settings carry its wavetable bank, a megabyte and more, and the first
-    # version of this sent all 281 back - a third of a gigabyte - and stalled.
-    SETTINGS = """() => {
-      const hash = (text) => {
-        let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-        for (let i = 0; i < text.length; i++) {
-          const c = text.charCodeAt(i);
-          h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677);
-        }
-        h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-        h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-        return (h2 >>> 0).toString(16) + (h1 >>> 0).toString(16);
-      };
-      const out = [];
-      """ + WALK + """
-      for (const [name, , , load] of WALK) {
-        load();
-        const text = JSON.stringify([genSettings(), genSettings(1)]);
-        out.push([name, hash(text) + ":" + text.length]);
-      }
-      return { kind: state.source.mainCoreKind, out };
-    }"""
-    pa, bad_a = open_page("")
-    pb, bad_b = open_page("?core=js")
-    wa_set, js_set = pa.evaluate(SETTINGS), pb.evaluate(SETTINGS)
-    differ = [n for (n, x), (_, y) in zip(wa_set["out"], js_set["out"]) if x != y]
-    moved = sum(1 for (_, x), (_, y) in zip(js_set["out"], js_set["out"][1:]) if x != y)
-    check("%d presets, the settings the page reads back the same from the compiled core's mirror as from the JavaScript core"
-          % len(js_set["out"]), wa_set["kind"] == "wasm" and js_set["kind"] == "js" and len(wa_set["out"]) == len(js_set["out"])
-          and not differ, ", ".join(differ[:4]))
-    check("and they can show it: %d presets leave the settings other than the one before" % moved, moved >= 200)
-    # The rack's generator lane, which made its core the same way, was
-    # checked here until P5 cut the rack.
-    check("with no errors on either page", not bad_a and not bad_b, "; ".join((bad_a + bad_b)[:3]))
-    pa.close(); pb.close()
-
-    print("\n--- a main thread that will not compile the module ---")
-    # The page's own WebAssembly refused before it loads; the worklets have a
-    # global scope of their own, and theirs is untouched.
-    p, bad = open_page("", "WebAssembly.Module = function () { throw new Error('refused for the test'); };")
-    # Under a note, which it draws: the site waits for one since 10 Nov.
-    p.evaluate("() => midiNoteOn(57, 127)"); p.wait_for_timeout(400)
-    early = p.evaluate("""() => { const f = capture(); let peak = 0; for (const v of f.channels[0]) peak = Math.max(peak, Math.abs(v));
-                                  return { main: state.source.mainCoreKind, why: state.source.mainCoreWhy, peak,
-                                           picture: pictureCoreKind, pictureWhy: pictureCoreWhy,
-                                           setup: setupCoreKind, setupWhy: setupCoreWhy }; }""")
-    check("the main thread makes the JavaScript core instead, says why, and draws", early["main"] == "js"
-          and "refused for the test" in (early["why"] or "") and early["peak"] > 0.05, str(early))
-    check("and the picture's sources are the JavaScript ones, saying why", early["picture"] == "js"
-          and "refused for the test" in (early["pictureWhy"] or ""), "%r %r" % (early["picture"], early["pictureWhy"]))
-    check("and so are the setup codes", early["setup"] == "js" and "refused for the test" in (early["setupWhy"] or ""),
-          "%r %r" % (early["setup"], early["setupWhy"]))
-    later = sound(p)
-    check("and the worklet, which can, still runs the compiled core", later["kind"] == "wasm" and later["blocks"] > 3, str(later))
-    check("with no errors on the page", not bad, "; ".join(bad[:3]))
-    p.close()
-
-    print("\n--- the site in a browser without WebAssembly ---")
-    # Since stage 5, step 5b's second half the site is the instrument, which
-    # is WebAssembly, and nothing else: a browser without it is told so on
-    # the screen, and nothing of the page's own brain plays in its place.
-    # The null is the same page with WebAssembly, which does not say it.
-    def site(no_wasm):
+    def site(init=None):
         q = b.new_page(viewport={"width": 1400, "height": 900})
-        if no_wasm: q.add_init_script("delete window.WebAssembly;")
+        if init: q.add_init_script(init)
         errors = []
         q.on("pageerror", lambda e: errors.append(str(e)))
         q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(1500)
+        first = q.evaluate("() => state.frames + (state.fps > 0 ? 1 : 0)")
+        q.wait_for_timeout(600)
         got = q.evaluate("""() => ({ hint: el.playHint.hidden ? '' : el.playHint.textContent, credit: el.credit.textContent,
-          kind: state.source ? state.source.kind : null, counts: Object.assign({}, globalThis.__brainCounts) })""")
+          kind: state.source ? state.source.kind : null, face: !!instrumentFace(), frames: state.frames, fps: state.fps })""")
+        got["first"] = first
         q.close()
         got["errors"] = errors
         return got
-    bare, wasm = site(True), site(False)
-    print("    without: %s\n    with: %s" % ({k: bare[k] for k in ("hint", "kind")}, {k: wasm[k] for k in ("hint", "kind")}))
-    steps = ["frames", "pictureStep", "phosphorDeposit", "sourceTick.tone", "midiApplyGate", "scanStep"]
+
+    print("\n--- the site in a browser without WebAssembly ---")
+    # The null is the same page with WebAssembly, which does not say it.
+    bare, wasm = site("delete window.WebAssembly;"), site()
+    print("    without: %s\n    with: %s" % ({k: bare[k] for k in ("hint", "kind", "frames")}, {k: wasm[k] for k in ("hint", "kind", "frames")}))
     check("without WebAssembly the screen says the instrument needs it, and so does the line under the title",
           "WebAssembly" in bare["hint"] and "WebAssembly" in bare["credit"], "%r / %r" % (bare["hint"][:80], bare["credit"][:80]))
-    check("and nothing of the page's own plays in its place: it waits, and steps nothing",
-          bare["counts"].get("frames.awaited", 0) > 30 and all(bare["counts"].get(k, 0) == 0 for k in steps) and not bare["errors"],
-          str({k: bare["counts"].get(k, 0) for k in steps + ["frames.awaited"]}) + " " + "; ".join(bare["errors"][:2]))
-    check("null: with WebAssembly the page plays the instrument and says nothing of it",
-          "WebAssembly" not in wasm["hint"] and "WebAssembly" not in wasm["credit"] and wasm["kind"] == "host", str({k: wasm[k] for k in ("hint", "kind")}))
+    check("and nothing plays in its place: it waits, draws no frame and steps nothing, with no errors",
+          bare["kind"] == "awaited" and not bare["face"] and bare["frames"] == 0 and bare["fps"] == 0 and not bare["errors"],
+          str({k: bare[k] for k in ("kind", "face", "frames", "fps")}) + " " + "; ".join(bare["errors"][:2]))
+    check("null: with WebAssembly the page plays the instrument, draws, and says nothing of it",
+          "WebAssembly" not in wasm["hint"] and "WebAssembly" not in wasm["credit"] and wasm["kind"] == "host" and wasm["face"]
+          and wasm["fps"] > 0, str({k: wasm[k] for k in ("hint", "kind", "face", "fps")}))
+
+    print("\n--- a main thread that will not make the module ---")
+    # The page's own WebAssembly.Module refused before it loads; the worklet
+    # has a global scope of its own, and its is untouched, so the instrument
+    # starts - and the face, which reads its state as a code, waits.
+    refused = site("WebAssembly.Module = function () { throw new Error('refused for the test'); };")
+    print("    %s" % {k: refused[k] for k in ("hint", "kind", "frames")})
+    check("the page says the module will not make here, and why, and waits",
+          "refused for the test" in refused["hint"] and "refused for the test" in refused["credit"]
+          and refused["frames"] == 0 and refused["fps"] == 0, "%r / %r" % (refused["hint"][:100], refused["frames"]))
+    check("with no errors on the page", not refused["errors"], "; ".join(refused["errors"][:3]))
     b.close()
 
 print()

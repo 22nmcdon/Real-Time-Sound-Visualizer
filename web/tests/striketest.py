@@ -168,7 +168,7 @@ with sync_playwright() as pw:
       const live = !!(state.source.layerPictures && state.source.layerPictures.live);
       for (const n of [43, 50, 72, 79, ...burst]) midiNoteOff(n);
       setScreenKeys(false);
-      return { before, after, live, host: BRAIN_IN_CORE && state.source.kind === 'host' };
+      return { before, after, live, host: state.source.kind === 'host' };
     }"""
     def site(strike, reads_b):
         bb = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])

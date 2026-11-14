@@ -129,9 +129,7 @@ FRAMES = """async (n) => {
 OLD_FADE = """() => {
   window.clearOrFade = function (ctx, w, h, resized) {
     const wipe = resized || wipeScreen;
-    const wipeGrid = wipeScreen || (resized && performance.now() >= keepGridUntil);
     wipeScreen = false;
-    phosphorFade(wipeGrid);
     const fade = displayFade(state.persistence);
     if (fade === 0 || wipe) { ctx.fillStyle = ink.paper; ctx.fillRect(0, 0, w, h); return; }
     if (fade < 0) return;

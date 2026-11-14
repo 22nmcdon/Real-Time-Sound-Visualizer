@@ -62,7 +62,8 @@ INSTALL = """(library) => {
   // held_tone's, below, for a probe that loads a setup and wants it sounding.
   window.heldTone = HELD_TONE_FN;
   window.loadCorpus = (name) => {
-    const s = migrateSetup(Object.assign({}, corpusSetup(name), { v: 7 }));
+    // Brought up to date by the core's own decode passes, as a code of version 7 is (the page's migrateSetup until stage 5's step 6).
+    const s = decodeSetup(encodeSetupHere(Object.assign({}, corpusSetup(name), { v: 7 })));
     hostQuietly(() => restore(s));
     hostSendSetup();
     return s;

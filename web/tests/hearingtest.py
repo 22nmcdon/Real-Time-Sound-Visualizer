@@ -27,13 +27,14 @@ the way it would fail:
   step.
 
 Since stage 5, step 5b's second half the hearing the face shows is the
-instrument's (Instrument::faceServed), and the page hears nothing itself on
-the default. These hold the hearing's arithmetic, the page's own, so they run
-on the page's own brain by parity's harness's flag (PAGE_BRAIN), kept for
-step 6, which deletes that brain; the core's is held to it by parity
-meanwhile (hearing_js against hearing_cpp, and the golden files). On the
-default, beside it: the control a hearing source is routed to moves by the
-instrument's offset, and the page's own hearing does not run.
+instrument's (Instrument::faceServed): HearingSources on the audio thread,
+its values served with the face and copied into the page's `hearing` while
+something is routed from it. Until step 6 these held the page's own hearing,
+on the page's own brain; that went with it, and each is held now on the
+default page, of what the instrument hears through the face - the core's is
+held to the page's recorded answers by core/tests/core_tests.py besides.
+Two moved there whole: a routing arriving after a rest (its "hear-rest"),
+and the page hearing nothing itself (there is no page hearing to run).
 """
 import math, os
 from playwright.sync_api import sync_playwright
@@ -101,8 +102,6 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.add_init_script(STUB)
-    # The page's own brain, whose hearing this suite holds (the docstring).
-    p.add_init_script("window.__scopePageBrain = true;")
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
@@ -185,22 +184,12 @@ with sync_playwright() as pw:
           all(t["inst"] is not None and abs(t["turn"] - t["inst"]) < 1e-3 and abs(t["turn"] - 0.5 * t["bright"]) < 0.01 * max(0.05, t["turn"])
               and t["base"] == 0 for t in turns)
           and turns[1]["turn"] - turns[0]["turn"] > 0.2, str(turns))
-    arrive = p.evaluate("""async () => {
-      __play(110, 'same', 0.8);
-      for (let t = 0; t < 5000 && Math.abs(hearing.pitch - %r) > 0.005; t += 100) await __wait(100);
-      const left = hearing.pitch;
-      // Each list told to the instrument too (hostRoutings), whose hearing is the face's since 5b's second half.
-      state.modRoutings = []; touchRoutings(); hostRoutings();
-      __play(880, 'same', 0.8); await __wait(800);
-      const rested = hearing.pitch, at = hearing.runs;
-      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings(); hostRoutings();
-      // Two seconds of frames at most, so a hearing that never counts fails here rather than hanging the suite.
-      for (let i = 0; i < 120 && hearing.runs === at; i++) await new Promise((r) => requestAnimationFrame(r));
-      return { left, rested, first: hearing.pitch, runs: hearing.runs - at };
-    }""" % PITCH(110))
-    check("a routing arriving after a rest hears 880 Hz on its first frame, not a glide up from the 110 the hearing was left at",
-          abs(arrive["rested"] - PITCH(110)) < 0.005 and arrive["runs"] == 1 and abs(arrive["first"] - PITCH(880)) < 0.005,
-          str(arrive))
+    # A routing arriving after a rest hears the sound as it is, 880 Hz on its
+    # first frame and not a glide up from the 110 it was left at: the
+    # instrument's hearing (HearingSources), held by core/tests/core_tests.py's
+    # hearing section ("hear-rest"). It was held here on the page's own
+    # hearing until stage 5's step 6; on the face the first reading after a
+    # routing arrives can be from the block before the instrument heard it.
     print("\n--- pitch ---")
     # The pitch is a slewed reading, so it is asked until it arrives or five
     # seconds pass, rather than once at 1.2 s: in a full run on a loaded
@@ -354,20 +343,27 @@ with sync_playwright() as pw:
         const tick = (t) => { trace.push([t, hearing.pitch]); if (t - t0 < 900) requestAnimationFrame(tick); else done(); };
         requestAnimationFrame(tick);
       });
-      /* Over a tenth of a second rather than frame to frame: the pitch is
+      /* Over a quarter of a second rather than frame to frame: the pitch is
          the instrument's since 5b's second half, which arrives as its
          readings do, so two of its frames can land in one of the page's and
-         read as twice the slope. A step - the whole octave and a half at
-         once - is still fifteen a second over a tenth of a second. */
-      let steepest = 0;
-      for (let i = 0; i < trace.length; i++) {
-        let j = i + 1;
-        while (j < trace.length && trace[j][0] - trace[i][0] < 100) j++;
-        if (j >= trace.length) break;
-        const dt = (trace[j][0] - trace[i][0]) / 1000;
-        steepest = Math.max(steepest, Math.abs(trace[j][1] - trace[i][1]) / dt);
-      }
-      return { steepest, end: trace[trace.length - 1][1], frames: trace.length };
+         read as twice the slope - over a tenth of a second that still read
+         4.8 a second on the default page, where the page's own hearing read
+         under the limit. A step - the whole octave and a half at once - is
+         still six a second over a quarter of a second. */
+      const slope = (trace) => {
+        let steepest = 0;
+        for (let i = 0; i < trace.length; i++) {
+          let j = i + 1;
+          while (j < trace.length && trace[j][0] - trace[i][0] < 250) j++;
+          if (j >= trace.length) break;
+          const dt = (trace[j][0] - trace[i][0]) / 1000;
+          steepest = Math.max(steepest, Math.abs(trace[j][1] - trace[i][1]) / dt);
+        }
+        return steepest;
+      };
+      // The null: the same frames with the pitch stepping at once, half-way.
+      const stepped = trace.map(([t], i) => [t, i < trace.length / 2 ? trace[0][1] : trace[trace.length - 1][1]]);
+      return { steepest: slope(trace), step: slope(stepped), end: trace[trace.length - 1][1], frames: trace.length };
     }""")
     print("    110 to 880 Hz: steepest %.2f a second, limit 4; ends at %.4f (want %.4f)"
           % (glide["steepest"], glide["end"], PITCH(880)))
@@ -376,54 +372,35 @@ with sync_playwright() as pw:
     check("a jump of an octave and a half is a glide inside the slew limit, not a step, and arrives",
           glide["steepest"] <= 4.4 and abs(glide["end"] - PITCH(880)) < 0.005 and glide["frames"] > 20,
           str(glide))
+    null("the same reading of a pitch that steps at once is past the limit", glide["step"] > 4.4, "%.2f" % glide["step"])
 
     # Until stage 5, step 5b's second half: "and all of it costs under two
-    # milliseconds a frame on average", the page's own hearing timed - which
-    # had no headroom on the cloud machine (web/docs/after-stage-5.md). Since
-    # then the hearing the face shows is the instrument's (Instrument::
-    # faceServed), whose cost is the core's budget's, and the page hears
-    # nothing itself; so what is held is that it does not: a second of
-    # frames with a hearing source routed, and the page's hearing step at
-    # nought. The null is the same second on the page's own brain (parity's
-    # harness's flag), where it runs a frame at a time.
-    COUNT = """async () => {
-      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings(); hostRoutings();
-      __play(440, 'same', 0.8);
-      const before = globalThis.__brainCounts.hearingStep || 0, at = performance.now();
-      await __wait(1000);
-      return { steps: (globalThis.__brainCounts.hearingStep || 0) - before, frames: Math.round((performance.now() - at) / 16.7),
-               runs: hearing.runs, kind: state.source.kind };
-    }"""
-    q.bring_to_front()
-    own = q.evaluate(COUNT)
-    p.bring_to_front()
-    harness = p.evaluate(COUNT)
-    print("    the page's hearing steps over a second, routed: %s; on the page's own brain: %s" % (own, harness))
-    check("and the page hears nothing itself: a second routed, its hearing step at nought, the instrument's hearing counting",
-          own["kind"] == "host" and own["steps"] == 0 and own["runs"] > 10, str(own))
-    null("on the page's own brain the same second steps it a frame at a time", harness["steps"] > 20, str(harness))
+    # milliseconds a frame on average", the page's own hearing timed; then
+    # that the page heard nothing itself on the default, against its own
+    # brain stepping it a frame at a time. The hearing is the instrument's
+    # (Instrument::faceServed), whose cost is the core's budget's, and the
+    # page's own went in step 6.
 
     print("\n--- the loop ---")
     loop = p.evaluate("""async () => {
       const src = MOD_SOURCES.get('hear.bright');
       state.modRoutings = [{ sourceId: 'hear.bright', destId: 'gen.fm', amount: 1 }]; touchRoutings();
       await __wait(200);
-      if (modDirty) compileRoutes();
-      const mic = { loop: src.fromPicture, amount: routingAmount(src, 1),
-                    total: genRoutes.some((r) => r.loopTotal) };
+      const mic = { loop: src.fromPicture, amount: routingAmount(src, 1) };
       // Switched with the routing left alone: the page has to notice.
       el.srcTone.click(); await __wait(600);
-      if (modDirty) compileRoutes();
-      const tone = { loop: src.fromPicture, amount: routingAmount(src, 1),
-                     total: genRoutes.some((r) => r.loopTotal) };
+      const tone = { loop: src.fromPicture, amount: routingAmount(src, 1) };
       state.modRoutings = []; touchRoutings();
       return { mic, tone };
     }""")
     print("    %s" % loop)
-    check("hearing a microphone they are ordinary sources, at full reach and routed directly",
-          loop["mic"] == {"loop": False, "amount": 1, "total": False}, str(loop["mic"]))
-    check("hearing the generator they are a loop: the picture's reach, and into the one bounded total",
-          loop["tone"] == {"loop": True, "amount": 0.5, "total": True}, str(loop["tone"]))
+    # Whether they go into the one bounded total the loop's pushes share is
+    # the instrument's matrix's (Matrix::compile, LOOP_TOTAL), held by the
+    # core's tests; the page compiled routes of its own until stage 5's step 6.
+    check("hearing a microphone they are ordinary sources, at full reach",
+          loop["mic"] == {"loop": False, "amount": 1}, str(loop["mic"]))
+    check("hearing the generator they are a loop: the picture's reach",
+          loop["tone"] == {"loop": True, "amount": 0.5}, str(loop["tone"]))
 
     # Now on the tone. An amount asked for on a microphone, 0.6, must survive a
     # visit to the generator: applied at the loop's reach there, shown at it,

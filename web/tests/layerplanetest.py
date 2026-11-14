@@ -313,7 +313,7 @@ with sync_playwright() as pw:
       hand(0); press('linkDelay');
       const eBack = await big();
       midiPanic();
-      return { own, together, eDry, eOwn, eBack, kind: state.source.kind, driver: lfoDriver() };
+      return { own, together, eDry, eOwn, eBack, kind: state.source.kind, driver: (state.source && state.source.postsLfos ? 'instrument' : 'none') };
     }""")
     print("    %s: lowest X, A's and B's: B's own mirror %.3f %.3f; linked %.3f %.3f"
           % (inst["kind"], inst["own"]["aX"], inst["own"]["bX"], inst["together"]["aX"], inst["together"]["bX"]))

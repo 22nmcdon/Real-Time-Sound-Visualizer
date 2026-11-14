@@ -34,9 +34,9 @@ toggle, ring, head, badge and storage, and the table read off the page's own
 Scan (`scan.tables`), which only the page's brain has. The pass went: every
 claim it made about the overlay is made here against the site's instrument,
 and what it held about the page's own Scan is a brain that is being retired.
-(One check here still measures the figure's centre off the page's own grid,
-`scanGeometry(pictureEngine.cells)`, which the default site feeds from the
-instrument's lanes; it is the face's grid the inventory names for step 5.)
+(One check here measures the figure's centre of light off the instrument's
+grid as the face reads it, worked out in the check since the page's own
+`scanGeometry` went with its Scan in stage 5's step 6.)
 Serial: the frame cost is a cost in milliseconds.
 """
 import math, os, sys
@@ -146,7 +146,13 @@ with sync_playwright() as pw:
         # phosphor is drawn from the same lanes, so its centre of light is where
         # the reader has followed to after four seconds held still.
         # The instrument's grid since 5b's second half, the one its reader follows (phosphor.grid).
-        geo = p.evaluate("() => scanGeometry(phosphor.grid)")
+        # The centre of light worked out here, as the page's own scanGeometry
+        # did until stage 5's step 6 took it with the page's Scan: the
+        # brightness-weighted mean of the cells, in fractions of the grid.
+        geo = p.evaluate("""() => { const g = phosphor.grid, n = Math.round(Math.sqrt(g.length));
+          let s = 0, sx = 0, sy = 0;
+          for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const w = g[y * n + x]; if (w > 0) { s += w; sx += w * (x + 0.5); sy += w * (y + 0.5); } }
+          return s > 1e-9 ? { cx: sx / s / n, cy: sy / s / n } : null; }""")
         path = ring["path"]
         off = math.hypot(path["cx"] - geo["cx"], path["cy"] - geo["cy"]) * d["plot"]["w"]
         # Within a fifth of the ring's radius: the reader follows over a
@@ -207,12 +213,10 @@ with sync_playwright() as pw:
         # readout says it too and they must agree.
         # Since stage 5, step 5b the meter is the instrument's (state.source.meter,
         # loopVerdict in scope.html): the page's own is no longer fed on the site.
-        v = p.evaluate("""() => { drawLoopOverlay(); return { badge: loopOverlay.drawn.badge, verdict: state.source.meter.verdict,
-                                                           page: pictureMeter.verdict() }; }""")
+        v = p.evaluate("""() => { drawLoopOverlay(); return { badge: loopOverlay.drawn.badge, verdict: state.source.meter.verdict }; }""")
         check("with Scan alone closing the loop, the badge is the instrument's meter's verdict", v["badge"] is not None and v["badge"] == v["verdict"], str(v))
         other = [x for x in ["listening", "running away", "settled", "cycling", "wandering"] if x != v["badge"]][0]
         null("another verdict is not the meter's", other != v["verdict"], other)
-        null("and the page's own meter, unfed, is not what the badge says", v["page"] != v["badge"], v["page"])
         # Read from the one frame: the badge is drawn every frame and the
         # readout written every READOUT_MS, so a badge drawn now against the
         # readout as last written disagreed once while the verdict moved,

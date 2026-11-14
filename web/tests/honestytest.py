@@ -178,7 +178,8 @@ CHORD = r"""async ([value, notes]) => {
   await wait(900);
   for (const n of notes) midiBytes(new Uint8Array([0x90, n, 110]));
   let most = 0;
-  for (let k = 0; k < 16; k++) { await wait(125); most = Math.min(most, monitorLimiting()); }
+  // The instrument's limiter, as it posts it (5a): the page's own went in stage 5's step 6.
+  for (let k = 0; k < 16; k++) { await wait(125); most = Math.min(most, state.source.limiting); }
   for (const n of notes) midiBytes(new Uint8Array([0x80, n, 0]));
   midiPanic();
   return most;

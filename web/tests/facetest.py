@@ -18,20 +18,16 @@ What would go wrong, and what is checked for it:
 - the photocell's card, its reticle and its value reading the page's
   photocell: the same, with the reticle on the lit figure;
 - the readout's "loop ..." and the overlay's badge reading the page's meter:
-  the readout says the instrument's verdict; the null is the page's own
-  meter, never fed, which still says "listening" under it;
+  the readout says the instrument's verdict (until stage 5's step 6 the null
+  was the page's own meter, never fed, which still said "listening");
 - the screen's own destinations (the turn) worked out by the page's matrix:
   the face's offset is the instrument's; the null is a routing told to the
-  page alone, which a page summing its own would turn the screen by;
-- any of it passing because the page's brain is still stepping: over the
-  same stretch the page's picture, photocell and visual matrix are counted
-  at nought (brainCount);
-- the boot: since 5b's second half the page waits for the instrument's first
-  face and steps nothing of its own meanwhile, where it used to play its own
-  tone for those frames. Its waiting frames are counted, so the check has
-  frames to judge, and none of the page's brain's steps ran in them; the
-  null is parity's harness's page brain (PAGE_BRAIN), which steps them from
-  its first frame.
+  page alone, which a page summing its own would turn the screen by.
+
+Until step 6 the page's own picture, photocell, visual matrix and arpeggio
+walk were counted here at nought (brainCount), and the boot was held to
+waiting for the instrument against parity's harness's page brain; step 6
+deleted those steps, the counters and the harness's flag together.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -57,7 +53,6 @@ with sync_playwright() as pw:
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
     p.wait_for_timeout(600)
-    boot = p.evaluate("() => Object.assign({}, globalThis.__brainCounts)")
 
     print("\n--- a held note, with the picture heard ---")
     # X-Y, a held fifth in the dyad, and the Picture amount up, by the face's own controls.
@@ -69,7 +64,6 @@ with sync_playwright() as pw:
       midiNoteOn(57, 100); midiNoteOn(64, 100);
       await wait(2500);
     }""")
-    before = p.evaluate("() => Object.assign({}, globalThis.__brainCounts)")
     read = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const face = () => state.source.face;
@@ -90,7 +84,6 @@ with sync_playwright() as pw:
       await wait(300);
       out.readout = el.readoutDetail.textContent;
       out.verdict = state.source.meter.verdict;
-      out.pageVerdict = pictureMeter.verdict();
       return out;
     }""")
     print("    instrument %s\n    page       %s\n    bars       %s" % (read["inst"], read["page"], read["bars"]))
@@ -104,8 +97,11 @@ with sync_playwright() as pw:
          "%s against %s" % (read["left"], read["instAfter"]))
     check("the readout says the loop's verdict, and it is the instrument's meter's",
           ("loop " + read["verdict"]) in read["readout"] and read["verdict"] != "listening", "%r, %s" % (read["readout"], read["verdict"]))
-    null("the page's own meter, which the face no longer feeds, says something else", read["pageVerdict"] != read["verdict"],
-         "the page's %s" % read["pageVerdict"])
+    # Until stage 5's step 6 the null was the page's own meter, never fed, which
+    # said something else; that meter went with the page's picture engine.
+    other = "running away" if read["verdict"] != "running away" else "settled"
+    null("the same reading of a verdict the instrument did not give fails", ("loop " + other) not in read["readout"],
+         "%r against %s" % (read["readout"], other))
 
     print("\n--- the photocell ---")
     photo = p.evaluate("""async () => {
@@ -176,10 +172,10 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const frames = (n) => new Promise((done) => { let k = 0; const f = () => (++k >= n ? done() : requestAnimationFrame(f)); requestAnimationFrame(f); });
       const out = {};
-      // The grid: the instrument's, and a value written into the page's own cells shows nowhere.
-      pictureEngine.cells[0] = 0.777;
+      // The grid: the instrument's, and not the dark stand-in the page reads before it has one (the page has no grid of its own).
       await frames(3);
-      out.grid = { same: phosphor.grid === state.source.grid, shown: phosphor.grid[0], page: pictureEngine.cells[0] };
+      let most = 0; for (const v of phosphor.grid) most = Math.max(most, v);
+      out.grid = { same: phosphor.grid === state.source.grid, dark: phosphor.grid === PHOSPHOR_DARK, most };
       // The harmony line in poly: the instrument's outline, not the page's own laying out of the notes.
       // By the button, which the instrument hears (setMidiMode alone is the page's).
       midiPanic(); el.midiPoly.click(); midiNoteOn(57, 100); midiNoteOn(64, 100); await wait(600);
@@ -189,18 +185,16 @@ with sync_playwright() as pw:
                       page: [harmonyText(100, 300)] };
       window.polyVoices = keep;
       // The arpeggio: the instrument walks it, and the face shows its notes; the page's own walk does not move.
-      const steps0 = globalThis.__brainCounts['arpTick.step'] || 0;
       el.arpRate.value = '1/16'; el.arpRate.dispatchEvent(new Event('change'));
       el.arpMode.value = 'up'; el.arpMode.dispatchEvent(new Event('change'));
       midiPanic(); midiNoteOn(57, 100); midiNoteOn(64, 100); midiNoteOn(69, 100);
-      const seen = new Set(), pairs = [];
+      const seen = new Set(), shown = new Set(), pairs = [];
       for (let i = 0; i < 60; i++) {
         await new Promise((r) => requestAnimationFrame(r));
         const f = state.source.face.arp.join(','), c = arp.current.map((n) => n.note).join(',');
-        seen.add(f); if (i % 6 === 0) pairs.push([f, c]);
+        seen.add(f); shown.add(c); if (i % 6 === 0) pairs.push([f, c]);
       }
-      out.arp = { seen: [...seen], pairs, index: arp.index, steps: (globalThis.__brainCounts['arpTick.step'] || 0) - steps0,
-                  follows: globalThis.__brainCounts.arpFollow || 0 };
+      out.arp = { seen: [...seen], shown: [...shown], pairs };
       el.arpMode.value = 'off'; el.arpMode.dispatchEvent(new Event('change')); midiPanic();
       // The figures: two hands split, the instrument lays out two, and the page's own layout answer is not asked.
       midiNoteOn(48, 100); midiNoteOn(55, 100);
@@ -232,14 +226,15 @@ with sync_playwright() as pw:
     print("    %s" % rest)
     g = rest["grid"]
     check("the grid the face reads is the instrument's", g["same"], str(g))
-    null("a value written into the page's own cells is not what the face reads", abs(g["shown"] - 0.777) > 1e-3 and abs(g["page"] - 0.777) < 1e-6, str(g))
+    null("it is not the dark stand-in: a held fifth is lit on it", not g["dark"] and g["most"] > 0.1, str(g))
     h = rest["harmony"]
     check("the harmony line names the instrument's outline of the voices", h["want"] is not None and h["said"] == h["want"], str(h))
     null("the page's own laying out of the notes, made to say a twelfth, is not read", h["patched"] == h["said"] and h["patched"] != h["page"], str(h))
     a = rest["arp"]
     check("the arpeggio is the instrument's: the face shows its notes, more than one in turn, as they change",
-          len(a["seen"]) >= 3 and all(f == c for f, c in a["pairs"] if f) and a["follows"] > 2, str(a))
-    null("and the page's own walk never steps", a["steps"] == 0 and a["index"] == -1, str(a))
+          len(a["seen"]) >= 3 and all(f == c for f, c in a["pairs"] if f) and len(a["shown"]) >= 3, str(a))
+    null("the face's notes held against the instrument's a reading late do not all agree",
+         not all(f == c for (f, _), (_, c) in zip(a["pairs"][1:], a["pairs"][:-1]) if f), str(a["pairs"]))
     fg = rest["figures"]
     check("split, the face draws the two figures the instrument lays out", fg["served"] == 2 and fg["shown"] == [[0, 1], [2, 3]], str(fg))
     null("the page's own layout told one figure is not what is drawn", fg["pageOne"] == [[0, 1], [2, 3]], str(fg))
@@ -254,24 +249,11 @@ with sync_playwright() as pw:
     null("where the page's own matrix would have moved it", max(abs(x[3] or 0) for x in ln) > 0.05, str(ln))
     null("and a routing on lane four told the page alone moves nothing", all(x[2] == 0 for x in ln), str(ln))
 
-    after = p.evaluate("() => Object.assign({}, globalThis.__brainCounts)")
-    delta = lambda k: after.get(k, 0) - before.get(k, 0)
-    steps = ["pictureStep", "photoStep", "visualMatrix.view.rotate"]
-    print("    over the run: %s" % {k: delta(k) for k in steps + ["frames.host"]})
-    check("over all of it the page stepped no picture, photocell or screen matrix of its own",
-          delta("frames.host") > 100 and all(delta(k) == 0 for k in steps), str({k: delta(k) for k in steps}))
-    BOOT = ["pictureStep", "phosphorFade", "phosphorDeposit", "scanStep", "midiApplyGate", "frames.tone", "sourceTick.tone"]
-    check("the boot waits for the instrument and steps nothing of the page's own meanwhile",
-          boot.get("frames.awaited", 0) > 0 and all(boot.get(k, 0) == 0 for k in BOOT),
-          str({k: boot.get(k, 0) for k in BOOT + ["frames.awaited"]}))
-    q = b.new_page(viewport={"width": 1400, "height": 900})
-    q.add_init_script("window.__scopePageBrain = true;")
-    q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(700)
-    harness = q.evaluate("() => Object.assign({}, globalThis.__brainCounts)")
-    q.close()
-    null("the same test asked of the page's own brain fails: its boot steps its picture and its tone",
-         not (all(harness.get(k, 0) == 0 for k in BOOT)) and harness.get("pictureStep", 0) > 0,
-         str({k: harness.get(k, 0) for k in BOOT}))
+    # Over all of it the page stepped no picture, photocell or screen matrix
+    # of its own, and the boot waited for the instrument, stepping nothing of
+    # the page's own meanwhile: counted here (brainCount) until stage 5's step
+    # 6 deleted those steps, and with them the counters. A browser that cannot
+    # start the instrument draws no frame at all (wasmtest.py).
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

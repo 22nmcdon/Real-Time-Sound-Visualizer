@@ -733,7 +733,7 @@ with sync_playwright() as pw:
     # jumping back - so a page still stepping its own reads as not taking them.
     OSC = """async (values) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const t = window.__hostTest, read = () => ({ driver: lfoDriver(), phases: lfos.map((l) => l.phase),
+      const t = window.__hostTest, read = () => ({ driver: (state.source && state.source.postsLfos ? 'instrument' : 'none'), phases: lfos.map((l) => l.phase),
         helds: lfos.map((l) => l.held), values: lfos.map((l) => l.value), source: MOD_SOURCES.get('lfo1').value() });
       const out = {};
       t.lfos = new Float64Array(values[0]); await wait(400); out.first = read();

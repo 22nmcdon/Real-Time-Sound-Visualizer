@@ -56,18 +56,19 @@ with sync_playwright() as pw:
       box: !!document.getElementById('midiLatch'),
       tap: !!el.keysLatch && el.keysLatch.closest('label').textContent.trim(),
       inSnap: 'midiLatch' in snapshot(), inDefaults: 'midiLatch' in DEFAULTS,
-      here: decodeSetupHere(v6), site: decodeSetup(v6), kind: setupCoreKind,
-      hereNull: decodeSetupHere(v6as7), siteNull: decodeSetup(v6as7),
+      site: decodeSetup(v6), kind: setupCodec.kind,
+      siteNull: decodeSetup(v6as7),
     })""", [V6, V6_AS_7])
     print("    %s" % gone)
     check("the latch's switch is gone and is in neither a snapshot nor the defaults; Tap to hold is still on the screen keys",
           not gone["box"] and gone["tap"] == "Tap to hold" and not gone["inSnap"] and not gone["inDefaults"], str(gone))
     # Comes up to 7 at least: the version-8 pass (the kaleidoscope, 7 Nov)
-    # runs after it and leaves a code with neither field as it was.
-    for who in ("here", "site"):
+    # runs after it and leaves a code with neither field as it was. The site's
+    # codec, the compiled core's; the page's own was read here beside it until
+    # stage 5's step 6.
+    for who in ("site",):
         got = gone[who]
-        check("a version-6 code with the latch on comes up to 7 without it, the rest as written (%s)"
-              % ("the page's own codec" if who == "here" else "the site's, " + gone["kind"]),
+        check("a version-6 code with the latch on comes up to 7 without it, the rest as written (the site's, %s)" % gone["kind"],
               got is not None and got.get("v", 0) >= 7 and "midiLatch" not in got and got.get("freq") == 330
               and got.get("midiMode") == "poly", str(got))
         null = gone[who + "Null"]

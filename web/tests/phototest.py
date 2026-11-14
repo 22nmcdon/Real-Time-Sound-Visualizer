@@ -265,48 +265,35 @@ with sync_playwright() as pw:
     check("and starts low", rules["starts"] == [0.2], str(rules["starts"]))
 
     reach = p.evaluate("""async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       state.modRoutings = state.modRoutings.filter((r) => r.sourceId !== 'photo.1');
       addRouting('photo.1', 'view.rotate');
       const r = state.modRoutings.find((x) => x.sourceId === 'photo.1');
-      // Written straight in, round every setter, so only the point of use
-      // stands between it and the destination.
-      r.amount = 1;
-      photo.value = 1; const was = PHOTO_SLEW;
-      // The value the matrix used is whatever photoStep left it at, so the
-      // offset is compared with half of that, not with a half of one.
-      let most = 0, ratio = 0;
-      for (let i = 0; i < 20; i++) {
-        photo.value = 1;
-        applyModMatrix(capture(), 16);
-        most = Math.max(most, Math.abs(state.rotateMod));
-        ratio = Math.max(ratio, Math.abs(state.rotateMod) / photo.value);
-      }
-      touchRoutings();
+      // Written straight in, round every setter, and stored back by touchRoutings.
+      r.amount = 1; touchRoutings();
       const stored = r.amount;
-      // A setup code carrying a routing past the ceiling, to the resonance.
-      state.modRoutings.push({ sourceId: 'photo.1', destId: 'filter.res', amount: 0.9 });
-      state.resMod = 0; applyModMatrix(capture(), 16);
-      const res = state.resMod;
-      state.modRoutings = state.modRoutings.filter((x) => x.sourceId !== 'photo.1');
+      // The null: an oscillator's routing, whose reach is whole, written at one stays one.
+      addRouting('lfo1', 'view.zoom');
+      const l = state.modRoutings.find((x) => x.sourceId === 'lfo1' && x.destId === 'view.zoom');
+      l.amount = 1; touchRoutings();
+      const whole = l.amount;
+      state.modRoutings = state.modRoutings.filter((x) => x.sourceId !== 'photo.1' && !(x.sourceId === 'lfo1' && x.destId === 'view.zoom'));
       /* And the instrument told (5b): addRouting reached it, the filter above
          reached only the page, and the photocell's eight routings left there -
          on the pitch, the level, the zoom - moved the figure the rows below
          read, once the face drew the instrument's offsets. */
       hostSendSetup();
-      applyModMatrix(capture(), 16);
-      return { most, ratio, stored, res };
+      return { stored, whole };
     }""")
-    print("    amount written as 1: applied %.3f of rotation's span, stored back as %.2f; "
-          "a resonance routing written at 0.9 moved it by %s" % (reach["most"], reach["stored"], reach["res"]))
+    print("    amount written as 1: stored back as %.2f; an LFO's as %.2f" % (reach["stored"], reach["whole"]))
     # "An amount past the ceiling is held to it where it is used" and "a
     # routing that arrives in a code past the ceiling moves its destination
     # no further than the ceiling" read the page's `applyModMatrix` with
     # `photo.value` forced; they are core/tests/pieces/photo.py's since stage
-    # 5, step 3, batch 3 (13 Nov), on the core's matrix. The face's half
-    # stays: what the control stores back.
+    # 5, step 3, batch 3 (13 Nov), on the core's matrix, and the page's own
+    # matrix went in step 6. The face's half stays: what the control stores back.
     check("and stored back within it, so the control says what applies",
           reach["stored"] == 0.5, str(reach["stored"]))
+    check("null: an oscillator's routing, whose reach is whole, is stored as written", reach["whole"] == 1, str(reach["whole"]))
 
     # Gone to core/tests/pieces/photo.py (batch 6): "everything stays inside
     # its range and nothing goes NaN" read the page's visual matrix
@@ -507,22 +494,10 @@ with sync_playwright() as pw:
     check("a preset that turns it on keeps its own placement, not a landing",
           land["preset"] == {"u": 0.625, "v": 0.275, "on": True}, str(land["preset"]))
 
-    print("\n--- what it costs ---")
-    cost = p.evaluate("""async () => {
-      el.photoButton.click();
-      setDisplay('xy'); el.timebase.value = String(TIMEBASE.length - 1);
-      el.timebase.dispatchEvent(new Event('input'));
-      const costs = [];
-      for (let i = 0; i < 40; i++) {
-        await new Promise((r) => requestAnimationFrame(r));
-        costs.push(phosphor.cost);
-      }
-      costs.sort((a, b) => a - b);
-      return { median: costs[20], worst: costs[39] };
-    }""")
-    print("    depositing a long-timebase X-Y figure: median %.3f ms, worst %.3f ms a frame"
-          % (cost["median"], cost["worst"]))
-    check("the grid costs well under a millisecond a frame", cost["median"] < 1.0, str(cost))
+    # What it costs: until stage 5's step 6, the page's own grid's deposits
+    # timed here (phosphor.cost), which since 5b's second half laid nothing
+    # and so read nought whatever the grid cost - a check that could not
+    # fail. The grid is the instrument's, and its cost the core's budget's.
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

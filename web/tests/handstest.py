@@ -28,7 +28,7 @@ then, where `genSettings(0/1)` were the page generator's two layers. Here they
 are the page's mirror of the setup (makeGeneratorMirror), which the face
 writes through the links and sends to the instrument: so these checks hold
 the face's linked editing, and that the instrument links the same moves the
-same way is core/tests/parity.py's "the hands on the panel (G6)", which plays
+same way is core/tests/core_tests.py's "the hands on the panel (G6)", which plays
 random hands through the page's handlers and the core's and compares them.
 That is a narrower claim than "read off the generator", said so here rather
 than left to look the same. Four checks of numbers went to parity's native
