@@ -104,6 +104,14 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   owner's decision on the Tine piano (12 Nov). `core/tests/tools/honesty_cpp.cpp`
   measures it.
 
+- **The voices' budget's costs were fitted to JavaScript.** The governor is
+  the page's to the bit, but on the core natively pink noise costs 0.35 to 0.47
+  of what the model says and the filter about half (the safe side), and in
+  WebAssembly the drawbars with seven copies cost 1.7 to 1.8 times (the side
+  that glitches, harmless today only because the core does the same work in
+  about half the time). Refitting changes which voices thin under load, so the
+  owner hears it first (14 Nov). `web/docs/budget-on-the-core.md`.
+
 - **The old library's Glass pad gives up a copy a hand under a full chord.**
   budgettest's "no preset gives anything up" copied each setup's generator
   fields and left its routings out; with them counted, Glass pad's
