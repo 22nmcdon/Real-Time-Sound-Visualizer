@@ -38,6 +38,9 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         // a different scheme on each platform.
         info->setProperty("pictureUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "picture.bin");
         info->setProperty("lfosUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "lfos.bin");
+        // The picture's grid and the fade's gains (5b's second half), what the face reads in place of its own.
+        info->setProperty("gridUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "grid.bin");
+        info->setProperty("fadeUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "fade.txt");
         complete(juce::var(info));
       })
       /* The page as the plugin's face: a slider moved, a setup loaded, a
@@ -201,6 +204,24 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     std::copy(clock.begin(), clock.end(), out.begin() + 10);
     std::copy(face.begin(), face.end(), out.begin() + 10 + static_cast<std::ptrdiff_t>(clock.size()));
     return bytes(out.data(), out.size() * sizeof(double), "application/octet-stream");
+  }
+  /* The picture's grid, 64 by 64 little-endian float32s row by row, as it
+     stood at its newest frame (5b's second half): what the face's photocell
+     lands on and the score and the loop overlay draw over, in place of a grid
+     the page faded and deposited for itself. A frame being laid throughout
+     the read is served as the last whole one. */
+  if (path == "/grid.bin") {
+    static thread_local std::array<float, scope::Instrument::kGridServed> grid {};
+    processor.gridServed(grid.data());
+    return bytes(grid.data(), grid.size() * sizeof(float), "application/octet-stream");
+  }
+  /* The fade's gains, a line a routing (Instrument::fadeServed), which the
+     face's knobs and dot read in place of the page's own fadeStep; empty
+     while the fade is off. Fetched only while the page's fade is on. */
+  if (path == "/fade.txt") {
+    static thread_local std::array<char, scope::Instrument::kFadeText> text {};
+    const auto n = processor.fadeServed(text.data(), text.size());
+    return bytes(text.data(), n, "text/plain; charset=us-ascii");
   }
   return std::nullopt;
 }

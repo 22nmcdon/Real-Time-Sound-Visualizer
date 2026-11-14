@@ -13,12 +13,15 @@ against the way it would fail and each with its null:
   was removed), loads through the code field's own path with no page error
   and comes back out of the setup it makes unchanged; the null, a code with
   one field moved, does not;
-- on the address the prototype handed out, on both brains, the page opens
-  with no error and, a chord held, draws the one figure: the tone source asks
-  for its figures as it always did (never the empty list the constellation
-  answered to hide them), and on the page's own brain the page's grid holds
-  light. The null: the source made to answer the empty list again, the grid
-  wiped, and the light it reads goes;
+- on the address the prototype handed out, and on the one without its
+  ?brain=js, the page opens with no error and, a chord held, draws the one
+  figure: the source asks for its figures as it always did (never the empty
+  list the constellation answered to hide them), and the grid the face reads
+  holds light. Until stage 5, step 5b's second half ?brain=js was the page's
+  own brain, read with its own grid and nulled by making its tone source
+  answer the empty list again; since then it is a word on the address and the
+  page is the instrument, so the grid is the instrument's and the null is the
+  chord let go and Clear pressed, where the light it reads goes;
 - no Draw way remains: no `data-draw` menu, no option offering a
   constellation, no Reseed, and nothing of the prototype's in the page's
   script. The null: one such menu put into the page by hand is found.
@@ -82,7 +85,7 @@ LOAD = """async (code) => {
   await wait(700);
   return { back: encodeSetup(snapshot()), kind: state.source.kind, mode: midi.mode,
            figures: state.source.figures ? state.source.figures() : 'none',
-           light: Array.from(pictureEngine.cells).reduce((a, v) => a + v, 0) };
+           light: Array.from(phosphor.grid).reduce((a, v) => a + v, 0) };
 }"""
 
 FIND = """() => ({
@@ -96,8 +99,8 @@ FIND = """() => ({
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
 
-    for query, brain in (("?brain=js&draw=constellation", "the page's own brain"),
-                         ("?draw=constellation", "the instrument's brain")):
+    for query, brain in (("?brain=js&draw=constellation", "the address it handed out"),
+                         ("?draw=constellation", "the address without its ?brain=js")):
         print("\n--- %s, %s ---" % (query, brain))
         p, errors = opened(b, query)
         r = p.evaluate(LOAD, PROTOTYPE_CODE)
@@ -111,18 +114,16 @@ with sync_playwright() as pw:
         check("on the address it handed out, a held chord draws the one figure: the source asks for its figures, on " + brain,
               plain_figures(r["figures"]) and r["kind"] in ("tone", "host"), "%s, figures %s" % (r["kind"], r["figures"]))
         null("the empty list the constellation answered is not the one figure", not plain_figures([]))
+        check("and it is the instrument, whose grid holds its light", r["kind"] == "host" and r["light"] > 1,
+              "%s, %.1f of light" % (r["kind"], r["light"]))
         if query.startswith("?brain=js"):
-            check("and the page's grid holds its light", r["light"] > 1, "%.1f of light" % r["light"])
             hidden = p.evaluate("""async () => {
               const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-              const kept = state.source.figures;
-              state.source.figures = () => [];
-              pictureEngine.fade(1, true); await wait(600);
-              const light = Array.from(pictureEngine.cells).reduce((a, v) => a + v, 0);
-              state.source.figures = kept;
-              return light;
+              midiPanic(); await wait(300);
+              el.clearButton.click(); await wait(400);
+              return Array.from(phosphor.grid).reduce((a, v) => a + v, 0);
             }""")
-            null("the source answering no figures again, the grid wiped, its light goes", hidden < 0.1 * r["light"],
+            null("the chord let go and Clear pressed, the light it reads goes", hidden < 0.1 * r["light"],
                  "%.2f of light against %.1f" % (hidden, r["light"]))
         found = p.evaluate(FIND)
         check("no Draw way remains: no data-draw menu, no constellation option, no Reseed, none of its names",
@@ -131,7 +132,7 @@ with sync_playwright() as pw:
         p.close()
 
     print("\n--- the menu check can see a menu ---")
-    p, _ = opened(b, "?brain=js")
+    p, _ = opened(b, "")
     p.evaluate("""() => { const s = document.createElement('select'); s.dataset.draw = 'way';
       s.innerHTML = '<option value="constellation">constellation</option>'; el.midiDrawRow.appendChild(s); }""")
     found = p.evaluate(FIND)

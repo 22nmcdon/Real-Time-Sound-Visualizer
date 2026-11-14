@@ -398,6 +398,8 @@ class Keyboard {
     std::vector<int> sent;
   };
   const ArpState& arp() const { return arp_; }
+  // The voices the generator was last given, each layer's, with their roles (what the face's harmony line reads, 5b).
+  const std::array<std::vector<NoteWant>, 2>& chord() const { return chord_; }
 
   // --- what a setup carries -------------------------------------------------
 

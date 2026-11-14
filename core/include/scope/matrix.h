@@ -393,6 +393,7 @@ class Matrix {
     if (mode != mode_) {
       mode_ = mode;
       stepFade_.clear();
+      last_ = {};
       settle();
     }
   }
@@ -452,6 +453,35 @@ class Matrix {
     const Gain* entry = gain(key);
     if (!entry) return fadesIn() ? 0 : 1;
     return rampAt(entry->ramps[static_cast<std::size_t>(layer)], now_);
+  }
+
+  /* Where the fade drawing's dot is on a layer (5b), as the page's
+     fadeDotStep reads fade.last: the stage (-1 none, 0 delay, 1 attack,
+     2 peak, 3 decay, 4 sustain, 5 release, 6 rest), how far along it, and
+     the level. The ramp or gate is looked up again by its key, since the
+     page's fade.last is the object itself and sees it change; one gone
+     (a ghost arrived, a source forgotten) is read as it last stood. */
+  struct Dot { int stage = -1; double t = 0, level = 0; };
+  Dot dot(int layer) const {
+    const Last& last = last_[layer == 1 ? 1 : 0];
+    if (mode_ == FadeMode::Off || last.kind == Last::Kind::None) return {};
+    const std::size_t k = layer == 1 ? 1 : 0;
+    if (last.kind == Last::Kind::Gate) {
+      const auto found = stepFade_.find(last.key);
+      return gateDot(found != stepFade_.end() ? found->second.gates[k] : last.gate);
+    }
+    const Gain* entry = gain(last.key);
+    const Ramp& ramp = entry ? entry->ramps[k] : last.ramp;
+    const double t = (now_ - ramp.at) / rampMs(ramp), level = rampAt(ramp, now_);
+    if (ramp.arriving) return t < 1 ? Dot { 1, t, level } : Dot { 2, 1, level };
+    return t < 1 ? Dot { 5, t, level } : Dot { 6, 1, 0 };
+  }
+  /* Each routing's gain as it stands, in the order the page's Map has them,
+     ghosts fading out among them: the key, each layer's gain, the routing,
+     and whether it is in the setup (5b, what the face's fadeGain and
+     routingsHeard read). */
+  template <class F> void eachGain(F f) const {
+    for (const auto& g : gains_) f(g.key, rampAt(g.ramps[0], now_), rampAt(g.ramps[1], now_), g.routing, inSetup(g.key));
   }
 
   // routingsHeard: the routings in the setup, the stage's, and those fading out.
@@ -612,8 +642,8 @@ class Matrix {
       const bool opens = st.last == 0, closes = target == 0;
       for (int l = 0; l < 2; l++) {
         Ramp& value = st.values[static_cast<std::size_t>(l)];
-        if (opens) { value = still(target, l); gateSet(st.gates[static_cast<std::size_t>(l)], true); }
-        else if (closes) { value = still(rampAt(value, now_), l); gateSet(st.gates[static_cast<std::size_t>(l)], false); }
+        if (opens) { value = still(target, l); gateSet(st.gates[static_cast<std::size_t>(l)], true, source.id); }
+        else if (closes) { value = still(rampAt(value, now_), l); gateSet(st.gates[static_cast<std::size_t>(l)], false, source.id); }
         else {
           const bool arriving = std::fabs(target) > std::fabs(rampAt(value, now_));
           if (arriving ? fadesIn() : fadesOut()) rampTo(value, target, arriving);
@@ -626,7 +656,7 @@ class Matrix {
       const auto k = static_cast<std::size_t>(l);
       if (strikes_[k] == st.strikes[k]) continue;
       st.strikes[k] = strikes_[k];
-      if (envs_[k].restart && target != 0) gateSet(st.gates[k], true);
+      if (envs_[k].restart && target != 0) gateSet(st.gates[k], true, source.id);
     }
     const auto k = static_cast<std::size_t>(layer);
     return rampAt(st.values[k], now_) * gatePhase(st.gates[k]).level;
@@ -746,9 +776,38 @@ class Matrix {
     if (ms < fall) return { 1 + (env.sustain - 1) * fadeTravel(ms / fall, env.decayMid) };
     return { env.sustain };
   }
-  void gateSet(Gate& gate, bool on) {
+  // gatePhase with the stage and the share the page's returns, for the dot.
+  Dot gateDot(const Gate& gate) const {
+    const FadeEnvelope& env = envs_[static_cast<std::size_t>(gate.layer)];
+    if (!std::isfinite(now_ - gate.at)) return gate.on ? Dot { 4, 0, env.sustain } : Dot { 6, 1, 0 };
+    if (!gate.on) {
+      const double t = (now_ - gate.at) / (env.release * 1000);
+      if (!fadesOut() || t >= 1) return { 6, 1, 0 };
+      return { 5, t, gate.from * (1 - fadeTravel(t, env.releaseMid)) };
+    }
+    if (!fadesIn()) return { 4, 0, env.sustain };
+    double ms = now_ - gate.at;
+    const double wait = env.delay * 1000, rise = env.attack * 1000, fall = env.decay * 1000;
+    if (ms < wait) return { 0, ms / wait, gate.from };
+    ms -= wait;
+    double start = gate.from;
+    if (env.loop && ms >= rise + fall) { ms = std::fmod(ms, rise + fall); start = env.sustain; }
+    if (ms < rise) return { 1, ms / rise, start + (1 - start) * fadeTravel(ms / rise, env.attackMid) };
+    ms -= rise;
+    if (ms < fall) return { 3, ms / fall, 1 + (env.sustain - 1) * fadeTravel(ms / fall, env.decayMid) };
+    return { 4, 0, env.sustain };
+  }
+  void gateSet(Gate& gate, bool on, const std::string& id) {
     gate.from = gatePhase(gate).level;
     gate.on = on; gate.at = now_;
+    // The one the drawing's dot follows: whatever started last on its layer (the page's fade.last).
+    Last& last = last_[gate.layer == 1 ? 1 : 0];
+    last.kind = Last::Kind::Gate; last.key = id; last.gate = gate;
+  }
+  // The same for a routing's gain, which the page's rampTo notes as it starts.
+  void noteRamp(const std::string& key, const Ramp& ramp) {
+    Last& last = last_[ramp.layer == 1 ? 1 : 0];
+    last.kind = Last::Kind::Ramp; last.key = key; last.ramp = ramp;
   }
 
   // fadeStep: each pair in the setup towards one, each ghost towards nought;
@@ -763,7 +822,7 @@ class Matrix {
       entry->routing = r;
       for (auto& ramp : entry->ramps) {
         if (ramp.to == 1) continue;
-        if (fadesIn()) rampTo(ramp, 1, true);
+        if (fadesIn()) { rampTo(ramp, 1, true); noteRamp(key, ramp); }
         else ramp = still(1, ramp.layer);
       }
     }
@@ -771,7 +830,7 @@ class Matrix {
       Gain& g = gains_[i];
       if (inSetup(g.key)) { i++; continue; }
       if (!fadesOut()) { gains_.erase(gains_.begin() + static_cast<std::ptrdiff_t>(i)); dirty_ = true; continue; }
-      for (auto& ramp : g.ramps) if (ramp.to != 0) rampTo(ramp, 0, false);
+      for (auto& ramp : g.ramps) if (ramp.to != 0) { rampTo(ramp, 0, false); noteRamp(g.key, ramp); }
       if (rampDone(g.ramps[0], now_) && rampDone(g.ramps[1], now_)) {
         gains_.erase(gains_.begin() + static_cast<std::ptrdiff_t>(i));
         dirty_ = true;
@@ -886,6 +945,9 @@ class Matrix {
   std::array<FadeEnvelope, 2> envs_ {};
   std::vector<Gain> gains_;  // in the order the page's Map has them
   std::map<std::string, Stepped> stepFade_;
+  // What the fade drawing's dot follows on each layer (the page's fade.last): a gain's ramp or a stepped source's gate, by its key.
+  struct Last { enum class Kind { None, Ramp, Gate } kind = Kind::None; std::string key; Ramp ramp; Gate gate; };
+  std::array<Last, 2> last_ {};
   std::map<long, int> eventSeen_;
   std::vector<Compiled> compiled_;
   std::vector<Route> routes_;

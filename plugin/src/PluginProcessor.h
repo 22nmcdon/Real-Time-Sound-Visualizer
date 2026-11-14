@@ -127,6 +127,9 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   // And (5b) the clock, the limiter and what the face shows of the picture, as the site's page reads them.
   std::array<double, scope::Instrument::kClockServed> clockServed() const { return instrument_.clockServed(); }
   std::array<double, scope::Instrument::kFaceServed> faceServed() const { return instrument_.faceServed(); }
+  // The picture's grid and the fade's gains (5b's second half), as the instrument keeps them for the editor's thread.
+  bool gridServed(float* out) const { return instrument_.gridServed(out); }
+  std::size_t fadeServed(char* out, std::size_t room) const { return instrument_.fadeServed(out, room); }
   bool bands() const { return instrument_.bands(); }
   int lanes() const { return instrument_.lanes(); }
   double bandGain(int lane) const { return instrument_.bandGain(lane); }

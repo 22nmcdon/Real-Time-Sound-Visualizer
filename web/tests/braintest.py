@@ -6,8 +6,10 @@ makes it the plugin's face, rather than the page's own brain driving the
 compiled engine. core/tests/parity.py holds the compiled instrument to the
 native one sample for sample; this holds what the page does with it:
 
-- without the switch the page is the website, and ?core=js turns the switch
-  off - each read from the source the page is drawing, not from the address;
+- the page is the instrument whatever the address says: ?brain=js and
+  ?core=js, the ways back to the page's own brain until stage 5, step 5b,
+  are words on the address now, and only parity's harness reaches that brain,
+  by an init script - each read from the source the page is drawing;
 - with it the page draws the instrument's own picture, shows its state, and
   keeps the generator's panel (which hosted pages had lost altogether);
 - a note played on the page is heard in the instrument at its pitch - against
@@ -21,14 +23,15 @@ native one sample for sample; this holds what the page does with it:
 - what the instrument sends to a MIDI port goes out of the page's port on the
   page's channel, and the page's own brain sends nothing beside it;
 - the sound switch opens and closes the instrument's way out;
-- a module that will not make leaves the page as the website;
+- a page waits for the instrument, stepping nothing of its own, and one that
+  will not start says so on the screen rather than playing a brain of its own;
 - and in a browser that has not been pressed yet, the worklet runs no
   blocks and says so, the same instrument plays on the page's thread
   meanwhile - silent until a note, as the site has been since 10 Nov - and
   takes the page's hands, and the first press starts the worklet, which has
   had those hands too.
 """
-import os, sys
+import math, os, sys
 from playwright.sync_api import sync_playwright
 import corpus
 
@@ -83,24 +86,26 @@ def opened(b, query, settle=2500, close=True):
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
 
-    # The way back (5m made the instrument the default): ?brain=js, or the
-    # compiled core turned off, is the page's own brain on its own generator.
-    for query, want in (("?brain=js", "tone"), ("?brain=core&core=js", "tone")):
-        p, _ = opened(b, query, 1200)
-        got = p.evaluate("() => ({ kind: state.source.kind, host: !!scopeHost, brain: BRAIN_IN_CORE, mic: el.srcMic.disabled })")
-        if query == "?brain=js":
-            # The website's own picture of a note, for the instrument's to be held to below.
-            # The old library's Harmonic tone, from before P8g: the sound this
-            # suite was written against, whatever the bank's boot preset becomes.
-            p.evaluate("() => { loadCorpus('Harmonic tone'); midiNoteOn(57, 100); }")
-            p.wait_for_timeout(600)
-            site_skew = p.evaluate(SKEW, 4096)
-        check("with %s the page is on its own brain and its own generator, its other sources offered" % query,
-              got["kind"] == want and not got["host"] and not got["brain"] and got["mic"] is False, str(got))
+    # The way back went in stage 5, step 5b: ?brain=js was the page's own
+    # brain on its own generator, and ?core=js the JavaScript core under it,
+    # and both were checked here to be that. Since then the page is the
+    # instrument whatever the address says, ?brain=core included (the switch
+    # before the instrument was the default). The null is the one way left to
+    # the page's brain, parity's harness's flag set by an init script before
+    # the page loads (PAGE_BRAIN), which step 6 deletes with that brain.
+    SAYS = "() => ({ kind: state.source.kind, host: !!scopeHost, brain: BRAIN_IN_CORE, page: PAGE_BRAIN })"
+    for query in ("?brain=js", "?core=js", "?brain=js&core=js", "?brain=core"):
+        p, _ = opened(b, query, 1500)
+        got = p.evaluate(SAYS)
+        check("with %s on the address the page is the instrument all the same" % query,
+              got["kind"] == "host" and got["host"] and got["brain"] and not got["page"], str(got))
         p.close()
-    # ?brain=core, the switch before the instrument was the default, still asks for it.
-    p, _ = opened(b, "?brain=core", 1200)
-    check("and ?brain=core, the old switch, is the instrument", p.evaluate("() => BRAIN_IN_CORE && state.source.kind === 'host'"))
+    p = b.new_page(viewport={"width": 1400, "height": 900})
+    p.add_init_script("window.__scopePageBrain = true;")
+    p.goto(PAGE + "?picture=0"); p.wait_for_timeout(1500)
+    harness = p.evaluate(SAYS)
+    check("null: parity's harness flag, set before the page loads, is the page's own brain, and the check tells it apart",
+          harness["kind"] == "tone" and not harness["host"] and not harness["brain"] and harness["page"], str(harness))
     p.close()
 
     # Heard on a page nobody has pressed (P4): the instrument is asked for its
@@ -172,10 +177,19 @@ with sync_playwright() as pw:
     check("and the pitch check fails against the semitone above", not abs(pitch - 233.08) < 0.5)
     check("and the silence reading fails on the note's", not peak == 0, "%.3f" % peak)
     skew = p.evaluate(SKEW, 4096)
-    check("and the picture's left is left and right is right: the right a quarter-cycle on, as the website draws it",
-          abs(skew - site_skew) < 0.03 and min(abs(skew - 0.25), abs(skew - 0.75)) < 0.03,
-          "%.3f against the website's %.3f" % (skew, site_skew))
-    check("and the comparison fails against the lanes the wrong way round", not abs((1 - skew) % 1 - site_skew) < 0.03)
+    # Until 5b's second half held to the skew the page's own brain drew on
+    # ?brain=js, read at the top of this suite; that brain is not the site's
+    # any more, so the skew is held to what the setup says. The generator's
+    # right is its left at the tone's phase (pi/2 by default), so the right
+    # leads by a quarter of a cycle and the lag that lines the right up with
+    # the left is three quarters of one: 1 - phase / 2pi.
+    phase = p.evaluate("() => genSettings().phase")
+    want_skew = (1 - phase / (2 * math.pi)) % 1
+    check("and the picture's left is left and right is right: the right a quarter-cycle on, as the setup's phase puts it",
+          abs(skew - want_skew) < 0.03 and min(abs(skew - 0.25), abs(skew - 0.75)) < 0.03,
+          "%.3f against the phase's %.3f" % (skew, want_skew))
+    check("and the comparison fails against the lanes the wrong way round", not abs((1 - skew) % 1 - want_skew) < 0.03,
+          "%.3f" % ((1 - skew) % 1))
     # A slider: the level halved on the page, the instrument's picture follows.
     p.evaluate("() => { el.amp.value = String(Number(el.amp.value) / 2); el.amp.dispatchEvent(new Event('input')); }")
     p.wait_for_timeout(600)
@@ -867,15 +881,18 @@ with sync_playwright() as pw:
     # the page brain's per-frame steps still do something on the default site.
     # Read as the difference of two snapshots, never cleared, so the
     # inventory's harness (braincounts.py) still sees every count. A note held
-    # under Scan, on the default and on ?brain=js: the page's own grid is fed
-    # on both (pictureStep, the face's Picture reads come from it), and Scan's
-    # page step reads only on the page's own generator, the instrument reading
-    # its own grid. The counts' nulls: the "runs" test asked of Scan on the
-    # default, which must fail, and the "never runs" test asked of ?brain=js,
-    # where the same step must be seen working.
+    # under Scan, with the fade on and LFO 1 on the drive, on the default and
+    # on the page's own brain (parity's harness's flag, since ?brain=js went
+    # in 5b's second half). Since then nothing of the page's brain steps on the
+    # default - its picture, its grid, Scan, the fade - and the standing check
+    # over the whole suite is braincounts.py --check, which run.py makes after
+    # a --brain-counts run. The counts' nulls: the "never runs" test asked of
+    # the page's own brain, where the same steps must be seen working.
     COUNTED = """async () => {
       const before = Object.assign({}, globalThis.__brainCounts);
       el.oscScan.value = "60"; el.oscScan.dispatchEvent(new Event("input"));
+      setFade('both', 1);
+      addRouting('lfo1', 'gen.drive');
       midiNoteOn(57, 100);
       await new Promise((r) => setTimeout(r, 1500));
       midiNoteOff(57);
@@ -887,24 +904,24 @@ with sync_playwright() as pw:
     p, errors = opened(b, "", 2500)
     default = p.evaluate(COUNTED)
     p.close()
-    p, _ = opened(b, "?brain=js", 1500)
+    p = b.new_page(viewport={"width": 1400, "height": 900})
+    p.add_init_script("window.__scopePageBrain = true;")
+    p.goto(PAGE + "?picture=0"); p.wait_for_timeout(1500)
     page_brain = p.evaluate(COUNTED)
     p.close()
     check("the counters count: a held note's frames on the default, the instrument its brain",
           default["kind"] == "host" and default["counts"].get("frames", 0) > 30
           and default["counts"].get("frames.host", 0) == default["counts"].get("frames", 0), str(default))
     # Since stage 5, step 5b the face reads the instrument's picture (takeFace),
-    # so the page's own is not stepped on the default; its grid is still fed
-    # (phosphorDeposit) until 5b's second half takes it away.
-    check("the page's own picture is not stepped on the default, its grid still fed (pictureStep at nought)",
-          not ran(default, "pictureStep") and not ran(default, "photoStep") and ran(default, "phosphorDeposit"), str(default["counts"]))
-    check("null: on ?brain=js it is", ran(page_brain, "pictureStep"), str(page_brain["counts"].get("pictureStep")))
-    check("null: the same test asked of Scan's page step on the default fails", not ran(default, "scanStep"))
-    check("Scan's page step does nothing on the default, with Scan on and a note held",
-          not ran(default, "scanStep") and not ran(default, "scanStep.table"), str(default["counts"]))
-    check("null: the same test asked of ?brain=js fails - the step is seen working there",
-          page_brain["kind"] == "tone" and ran(page_brain, "scanStep") and ran(page_brain, "scanStep.table"),
-          str(page_brain["counts"]))
+    # and since its second half its grid and its fade too: none of the page's
+    # own is stepped on the default.
+    STEPS = ["pictureStep", "photoStep", "phosphorFade", "phosphorDeposit", "scanStep", "scanStep.table", "fadeStep"]
+    check("nothing of the page's own brain steps on the default: its picture, its grid, Scan and the fade, with a note held",
+          all(not ran(default, k) for k in STEPS), str({k: default["counts"].get(k, 0) for k in STEPS}))
+    # The photocell is off here, so its step is not asked of the page's brain; facetest.py holds it.
+    check("null: the same test asked of the page's own brain fails - each step is seen working there",
+          page_brain["kind"] == "tone" and all(ran(page_brain, k) for k in STEPS if k != "photoStep"),
+          str({k: page_brain["counts"].get(k, 0) for k in STEPS}))
     check("no page errors with the counters", not errors, "; ".join(errors[:3]))
     b.close()
 

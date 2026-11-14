@@ -163,28 +163,42 @@ with sync_playwright() as pw:
     # note since 10 Nov, and this heard the tone it drew with none.
     corpus.held_tone(p)
     driven = p.evaluate("""async () => {
-      /* A source with nothing behind it but a value this suite sets - what a
-         macro was to the matrix, until P8d. */
-      window.__hand = 0;
-      if (!MOD_SOURCES.has('hand.1')) registerSource({ id: 'hand.1', label: 'Hand', ink: 'ch2', bipolar: false,
-        family: 'controllers', description: "This suite's own source.", order: 90, value: () => window.__hand });
+      /* A source the instrument has, held still: since stage 5, step 5b's
+         second half where the fader stands is the instrument's offset (its
+         matrix's, posted with the screen's), and the face's walk follows it.
+         Until then a source of this suite's own, registered on the page
+         alone, moved the page's own sum, which the instrument never heard.
+         LFO 1 as a square at its slowest, a hundredth of a hertz, restarted
+         by a lock let go: a constant at its depth for fifty seconds. */
+      const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
+      openModCard('lfo1'); fire('lfoShape0', 'square', 'change'); fire('lfoRate0', '1', 'input');
+      fire('lfoSync0', '4', 'change'); fire('lfoSync0', '', 'change'); await __wait(300);
+      const square = lfos[0].value;
       __set('morphPos', 0); await __wait(120);
-      state.modRoutings = [{ sourceId: 'hand.1', destId: 'morph.pos', amount: 1 }]; touchRoutings();
-      window.__hand = 0.5; await __wait(150);
+      addRouting('lfo1', 'morph.pos');
+      const r = state.modRoutings.find((x) => x.sourceId === 'lfo1' && x.destId === 'morph.pos');
+      setDepth(r, 50, true); await __wait(400);
       const half = { freq: Number(el.freq.value), pitch: await __pitch() };
-      window.__hand = 1; await __wait(150);
+      setDepth(r, 100, true); await __wait(400);
       const full = { freq: Number(el.freq.value), pitch: await __pitch() };
-      window.__hand = 0; await __wait(150);
+      dropRoutingOn('lfo1', 'morph.pos'); await __wait(400);
       const back = Number(el.freq.value);
-      state.modRoutings = []; touchRoutings();
-      return { half, full, back };
+      // The null: the same routing told the page alone, which the instrument never hears.
+      state.modRoutings.push({ sourceId: 'lfo1', destId: 'morph.pos', amount: 1 }); await __wait(400);
+      const alone = Number(el.freq.value);
+      state.modRoutings.pop(); touchRoutings();
+      return { square, half, full, back, alone };
     }""")
     print("    %s" % driven)
     # And let go, since a held note sets the pitch a setup loaded after it names.
     p.evaluate("() => midiPanic()")
-    check("a source on the fader drives the morph: half is 440, full is B's 880, and the generator plays it",
-          driven["half"]["freq"] == 440 and driven["full"]["freq"] == 880 and driven["back"] == 220
-          and abs(driven["full"]["pitch"] - 880) < 15, str(driven))
+    # Geometric in the frequency (MORPH_GEOMETRIC): A's 220 to B's 880 is two octaves, so t is 2^(2t) of 220.
+    sq = driven["square"]
+    want = lambda t: round(220 * 4 ** max(0, min(1, t)))
+    check("a source on the fader drives the morph: half way and all the way at its depth, and the generator plays it",
+          sq > 0.5 and driven["half"]["freq"] == want(0.5 * sq) and driven["full"]["freq"] == want(sq) and driven["back"] == 220
+          and abs(driven["full"]["pitch"] - want(sq)) < 15, "square %.3f, wanted %d and %d: %s" % (sq, want(0.5 * sq), want(sq), driven))
+    check("null: the same routing told the page alone moves nothing", driven["alone"] == 220, str(driven["alone"]))
 
     print("\n--- in a setup code ---")
     code = p.evaluate("""async () => {

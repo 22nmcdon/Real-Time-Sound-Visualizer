@@ -307,14 +307,22 @@ with sync_playwright() as pw:
       const light = () => { let sum = 0; for (const v of phosphor.grid) sum += v; return sum; };
       // Read before the next frame, which is the first drawn with the figure off the screen.
       for (const ch of state.channels) ch.offset = 50;
-      const d0 = ctx.getImageData(x0, y0, w, h).data, c0 = phosphor.frames, g0 = light();
+      /* The page's frames counted as they come, each one a fade of the
+         canvas (clearOrFade): until 5b's second half the page's grid's fades,
+         which the page made beside the canvas's; the grid the face reads is
+         the instrument's since, which no frame of the page's fades. */
+      let frames = 0, counting = true;
+      const count = () => { if (!counting) return; frames++; requestAnimationFrame(count); };
+      requestAnimationFrame(count);
+      const d0 = ctx.getImageData(x0, y0, w, h).data, c0 = frames, g0 = light();
       const deep = [], edge = Math.round(5 * k);
       for (let y = edge; y < h - edge; y++) for (let x = edge; x < w - edge; x++) {
         const i = (y * w + x) * 4;
         if (off(d0, i) > 150) deep.push(i);
       }
       await wait(160);
-      const d1 = ctx.getImageData(x0, y0, w, h).data, c1 = phosphor.frames, g1 = light();
+      const d1 = ctx.getImageData(x0, y0, w, h).data, c1 = frames, g1 = light();
+      counting = false;
       let s0 = 0, s1 = 0;
       for (const i of deep) { s0 += off(d0, i); s1 += off(d1, i); }
       for (const ch of state.channels) ch.offset = 0;
@@ -327,51 +335,67 @@ with sync_playwright() as pw:
     for t, r in got.items():
         print("    %-6s %d fades over %d deep pixels: the grid keeps %.4f a frame, the canvas %.4f"
               % (t, r["fades"], r["deep"], r["grid"], r["canvas"]))
-    for t in ("heard", "half", "short"):
-        check("at %s the grid fades by the Persistence, 0.96 a frame" % t, abs(got[t]["grid"] - 0.96) < 0.001, "%.4f" % got[t]["grid"])
-    null("the grid's fade is not what Half does to the canvas, 0.9216", abs(got["half"]["grid"] - 0.9216) > 0.01, "%.4f" % got["half"]["grid"])
-    check("As heard, the canvas fades as the grid does", abs(got["heard"]["canvas"] - got["heard"]["grid"]) < 0.008
-          and got["heard"]["deep"] > 300, "%.4f against %.4f" % (got["heard"]["canvas"], got["heard"]["grid"]))
+    # Until 5b's second half each of these was also held to the page's grid,
+    # measured beside the canvas: "the grid fades by the Persistence" at each
+    # Trail, and the canvas "as the grid does". That grid went with the
+    # page's brain; the grid the face reads is the instrument's, which the
+    # Trail cannot reach (nothing it does is sent, above). So the canvas is
+    # held to the Persistence itself, 0.96 a page frame, counted as they come.
+    PERSIST = 0.96
+    check("As heard, the canvas fades at the Persistence, 0.96 a frame", abs(got["heard"]["canvas"] - PERSIST) < 0.008
+          and got["heard"]["deep"] > 300, "%.4f over %d frames" % (got["heard"]["canvas"], got["heard"]["fades"]))
     check("Half fades it by the square, 0.9216 a frame: half the half-life", abs(got["half"]["canvas"] - 0.9216) < 0.012,
           "%.4f" % got["half"]["canvas"])
-    null("Half's canvas does not fade as the grid does", abs(got["half"]["canvas"] - got["half"]["grid"]) > 0.02,
-         "%.4f against %.4f" % (got["half"]["canvas"], got["half"]["grid"]))
+    null("Half's canvas does not fade at the Persistence", abs(got["half"]["canvas"] - PERSIST) > 0.02,
+         "%.4f against %.4f" % (got["half"]["canvas"], PERSIST))
     check("Short fades it at the Persistence menu's Short or faster: 0.7 a frame at most", got["short"]["canvas"] < 0.75,
           "%.4f" % got["short"]["canvas"])
     # And the Trail is Enlarge's alone: Half chosen, read on the face, which fades as heard.
-    check("on the face a Trail chosen does nothing: the canvas fades as the grid does",
-          abs(got["face"]["canvas"] - got["face"]["grid"]) < 0.008 and abs(got["face"]["grid"] - 0.96) < 0.003,
-          "%.4f against %.4f" % (got["face"]["canvas"], got["face"]["grid"]))
+    check("on the face a Trail chosen does nothing: the canvas fades at the Persistence",
+          abs(got["face"]["canvas"] - PERSIST) < 0.008, "%.4f" % got["face"]["canvas"])
 
     print("\n--- opening and closing keep the grid's light ---")
     # Opening resizes the canvas, and a resized canvas is wiped. The grid is
-    # not: a figure taken off the screen leaves light that only fades, and
-    # across Enlarge opening and then closing it goes on fading at the
-    # Persistence. The null is Clear, which does wipe it.
+    # not: a figure let go leaves light that only fades, and across Enlarge
+    # opening and then closing it fades as it does with nothing pressed. Until
+    # 5b's second half the grid was the page's, kept across the resize by the
+    # page and held to the Persistence frame by frame; since then it is the
+    # instrument's, which Enlarge does not reach, so it is held to the same
+    # stretch with nothing pressed. The null is Clear, which does wipe it.
     KEEP = """async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setEnlarged(false);
       hostQuietly(() => restore({ shape: 'sine', freq: 220, interval: 7, just: false, display: 'xy',
                                    persistence: 0.04, pictureAmount: 0, oscScan: 0 })); hostSendSetup();
-      await wait(1500);
+      midiNoteOn(57, 127); await wait(1500);
       const light = () => { let sum = 0; for (const v of phosphor.grid) sum += v; return sum; };
-      for (const ch of state.channels) ch.offset = 50;
-      await wait(100);
       const out = [];
-      for (const step of [() => setEnlarged(true), () => setEnlarged(false), () => { wipeScreen = true; }]) {
-        const s0 = light(), f0 = phosphor.frames;
+      for (const step of [() => {}, () => setEnlarged(true), () => setEnlarged(false), () => { el.clearButton.click(); }]) {
+        /* The figure taken away each time by the level, which the instrument
+           hears at once - a note let go goes on drawing its release, and the
+           light grew - so only a dot at the middle is laid while the rest
+           fades from where it stood. */
+        const amp = document.getElementById('amp'), level = (v) => { amp.value = String(v); amp.dispatchEvent(new Event('input', { bubbles: true })); };
+        level(55); await wait(500); level(0); await wait(60);
+        const s0 = light(), t0 = performance.now();
         step(); await wait(300);
-        out.push({ kept: light() / s0, fades: phosphor.frames - f0, sheet: el.traceSheet.parentElement.id });
+        // Per second, from the time it really took: a wait of 300 ms is a frame more or less.
+        const kept = light() / s0, ms = performance.now() - t0;
+        out.push({ kept, perSecond: Math.pow(kept, 1000 / ms), sheet: el.traceSheet.parentElement.id, grid: phosphor.grid === state.source.grid });
+        level(55);
       }
-      for (const ch of state.channels) ch.offset = 0;
       return out;
     }"""
     kept = p.evaluate(KEEP)
-    for (name, r) in zip(("opening", "closing"), kept[:2]):
-        want = 0.96 ** r["fades"]
-        check("%s Enlarge, the light goes on fading at the Persistence: %.3f kept over %d frames, where %.3f is" % (name, r["kept"], r["fades"], want),
-              abs(r["kept"] - want) < 0.02 and r["kept"] > 0.05, str(r))
-    null("Clear wipes it", kept[2]["kept"] < 1e-6, str(kept[2]))
+    print("    %s" % kept)
+    for (name, r) in zip(("opening", "closing"), kept[1:3]):
+        # Not to the frame: the instrument fades on its own frames, read here
+        # as its readings arrive, so a third of a second is a few frames more
+        # or less of its fading; what matters is that the light is not wiped.
+        check("%s Enlarge keeps the instrument's grid: %.3f of its light kept, where %.3f is with nothing pressed"
+              % (name, r["kept"], kept[0]["kept"]),
+              r["kept"] > 0.6 * kept[0]["kept"] and r["grid"], str(r))
+    null("Clear wipes it", kept[3]["kept"] < 0.35 * kept[0]["kept"], str(kept[3]))
 
     print("\n--- Which hands ---")
     SPLIT = """async () => {

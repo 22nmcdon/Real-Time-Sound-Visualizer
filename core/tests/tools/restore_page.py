@@ -208,8 +208,11 @@ def main():
         # to. On the default the instrument's stand-in comes up whenever the
         # compiled module has loaded - sometimes after the oscillators below
         # are set - and since its oscillators are the page's (5n) it wrote
-        # its own phases over them: one run in two, by a fixed step.
-        page.goto("file://" + os.path.abspath(PAGE) + "?brain=js")
+        # its own phases over them: one run in two, by a fixed step. Asked for
+        # by an init script since 5b (PAGE_BRAIN), which took ?brain=js off
+        # the address; this harness and its flag go in step 6.
+        page.add_init_script("window.__scopePageBrain = true;")
+        page.goto("file://" + os.path.abspath(PAGE))
         # And it must stay unstarted. Since the page asks for its sound again
         # on a click as well as a pointerdown (SOUND_PRESSES, so that a phone
         # is heard), a button this harness clicks from code is a press to that

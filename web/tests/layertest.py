@@ -192,12 +192,16 @@ with sync_playwright() as pw:
     # and the phase left at the slider's 90, where genSet put it by hand.
     figs = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      el.dispXY.click(); state.persistence = 0; el.persistence.value = '0';
+      /* By the controls, which the instrument hears: since stage 5, step 5b's
+         second half the grid read here is the instrument's, which a
+         persistence and a beam set on the page alone never reached. */
+      const set = (e, v, kind) => { if (e.type === 'checkbox') e.checked = v; else e.value = String(v); e.dispatchEvent(new Event(kind, { bubbles: true })); };
+      el.dispXY.click(); set(el.persistence, 0, 'change');
       // Full ink for every stroke. The beam's shading keeps a slowly adapting
       // reference per figure, and after a switch it is still tuned to whatever
       // that figure drew before - a dot, here - so a shaded comparison between
       // the two layouts measures the adaptation rather than the drawing.
-      const shaded = state.beamXY; state.beamXY = false;
+      const shaded = el.beamXY.checked; set(el.beamXY, false, 'change');
       for (const n of [72, 79]) midiNoteOn(n, 100);
       await wait(800);
       const lit = (g) => g.reduce((a, v) => a + (v > 0.2 ? 1 : 0), 0) / g.length;
@@ -209,7 +213,7 @@ with sync_playwright() as pw:
       out.alone = lit(phosphor.grid);
       midiPanic(); await wait(300);
       out.dark = lit(phosphor.grid);
-      state.beamXY = shaded;
+      set(el.beamXY, shaded, 'change');
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(200);
       return out;
@@ -390,13 +394,17 @@ with sync_playwright() as pw:
     check("no page errors", not bad, "; ".join(bad[:3]))
     p.close()
 
-    print("\n--- the split point learned (the page's own brain, ?brain=js) ---")
-    # Left on ?brain=js in batch 2: the Learn button does not reach the
-    # instrument on the default page (above), so this holds the page's own
-    # keyboard until the page sends the learned point.
+    print("\n--- the split point learned, on the face ---")
+    # On ?brain=js from batch 2 until stage 5, step 5b's second half, which
+    # took that brain off the site: the Learn button does not reach the
+    # instrument (web/docs/after-stage-5.md), so this held the page's own
+    # keyboard, layer B's voices included. Moved to the default, it holds
+    # what the face does - asks for a key, learns it, says where, and the key
+    # still plays - and no longer layer B's voices, which were the page's
+    # brain's and are the instrument's to take once the point reaches it.
     p = b.new_page(viewport={"width": 1400, "height": 900})
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
-    p.goto(f"file://{ART}/scope.html?picture=0&brain=js"); p.wait_for_timeout(700)
+    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(1500)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     learn = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -409,13 +417,13 @@ with sync_playwright() as pw:
       midiNoteOn(65, 100);
       return { asking, point: midi.layers.point, learning: midi.layers.learning,
                said: el.midiSplitLearn.textContent,
-               played: midi.notes.map((n) => n.note), b: genSettings(1).voices.map((v) => v.note) };
+               played: midi.notes.map((n) => n.note), kind: state.source.kind };
     }""")
     print("    %s" % learn)
     check("the split point is learned from the next key, which still plays",
           learn["asking"] == "play a key" and learn["point"] == 65 and not learn["learning"]
-          and learn["said"] == "at F4" and learn["played"] == [65] and learn["b"] == [65], str(learn))
-    check("no page errors on the page's own brain", not bad, "; ".join(bad[:3]))
+          and learn["said"] == "at F4" and learn["played"] == [65] and learn["kind"] == "host", str(learn))
+    check("no page errors on the instrument's face", not bad, "; ".join(bad[:3]))
     b.close()
 
 print()

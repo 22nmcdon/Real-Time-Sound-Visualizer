@@ -622,6 +622,15 @@ EXPORT(brain_scan_table) double* brainScanTable(int layer) {
     scanThumb[i] = t && !t->levels.empty() && t->levels[0].size() >= 4 * scanThumb.size() ? t->levels[0][4 * i] : 0;
   return scanThumb.data();
 }
+/* The picture's grid and the fade's gains, as the plugin serves them to its
+   page (Instrument::gridServed, fadeServed; 5b's second half): the grid's
+   cells into a copy the page views, the fade's lines into a text of their
+   own, apart from the state's, and their length. */
+std::array<float, scope::Instrument::kGridServed> gridCopy {};
+std::array<char, scope::Instrument::kFadeText> fadeCopy {};
+EXPORT(brain_grid) float* brainGrid() { instrument->gridServed(gridCopy.data()); return gridCopy.data(); }
+EXPORT(brain_fade_gains) int brainFadeGains() { return static_cast<int>(instrument->fadeServed(fadeCopy.data(), fadeCopy.size())); }
+EXPORT(brain_fade_gains_out) const char* brainFadeGainsOut() { return fadeCopy.data(); }
 // How many lanes the picture has now: two, or four.
 EXPORT(brain_picture_lanes) int brainPictureLanes() { return instrument->pictureLanes(); }
 

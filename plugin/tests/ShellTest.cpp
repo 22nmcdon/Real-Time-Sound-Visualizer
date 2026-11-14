@@ -2470,6 +2470,58 @@ int main() {
           !(tail[c + 1] == osc.lfoRate(0) && tail[c + 2] == osc.lfoRate(1)), num(tail[c + 1]) + " " + num(tail[c + 2]));
   }
 
+  std::printf("\n--- the picture's grid and the fade's gains (5b's second half) ---\n");
+  {
+    /* grid.bin: the instrument's grid, 64 by 64 float32s, which the face reads
+       in place of a grid of its own. A held fifth in X-Y lights a figure of
+       cells; the null is the same plugin before its first block, whose grid
+       is dark, so a resource served empty, or the wrong size, cannot pass. */
+    ScopeProcessor g;
+    g.prepareToPlay(rate, block);
+    const auto lit = [&] {
+      const auto r = scopeResource("/grid.bin", g);
+      int n = -1;
+      if (r && r->data.size() == scope::Instrument::kGridServed * sizeof(float)) {
+        std::vector<float> cells(scope::Instrument::kGridServed);
+        std::memcpy(cells.data(), r->data.data(), r->data.size());
+        n = 0;
+        for (const float v : cells) if (v > 0.3f) n++;
+      }
+      return n;
+    };
+    const int before = lit();
+    g.pageClick("dispXY");
+    g.pageClick("midiDyad");
+    juce::AudioBuffer<float> buf(2, block);
+    for (int k = 0; k < 120; ++k) {
+      buf.clear();
+      juce::MidiBuffer m;
+      if (k == 0) { m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0); m.addEvent(juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)), 0); }
+      g.processBlock(buf, m);
+    }
+    const int after = lit();
+    check("grid.bin serves the instrument's grid whole: a held fifth in X-Y lights its figure",
+          after > 20, std::to_string(after) + " cells lit");
+    check("null: the same plugin before its first block serves a dark grid", before == 0, std::to_string(before) + " cells lit");
+
+    /* fade.txt: a line a routing, each layer's gain, which the face's knobs
+       and dot read. Empty with the fade off; with it on and a routing made
+       after, the routing's line, fading in, its gain between nought and
+       one. The null is the fade off, where nothing is served. */
+    const auto text = [&] { const auto r = scopeResource("/fade.txt", g); return r ? std::string(reinterpret_cast<const char*>(r->data.data()), r->data.size()) : std::string("?"); };
+    const std::string off = text();
+    g.pageFade(R"({"mode":"both","envs":[{"attack":2,"release":2},{"attack":2,"release":2}]})");
+    g.pageRoutings("lfo1>gen.drive@0.350");
+    for (int k = 0; k < 40; ++k) { buf.clear(); juce::MidiBuffer m; g.processBlock(buf, m); }
+    const std::string on = text();
+    double gain = -1;
+    const auto tab = on.find('\t');
+    if (on.rfind("lfo1>gen.drive\t", 0) == 0 && tab != std::string::npos) gain = std::atof(on.c_str() + tab + 1);
+    check("fade.txt serves each routing's gain as the instrument fades it in",
+          gain > 0 && gain < 1 && on.find("\t0.35\t") != std::string::npos && on.back() == '\n', "\"" + on.substr(0, 60) + "\"");
+    check("null: with the fade off it serves nothing", off.empty(), "\"" + off.substr(0, 40) + "\"");
+  }
+
   std::printf("\n--- the automatic lag ---\n");
   {
     /* The lag lane's lock in the instrument's own picture (5u), with "Playing,

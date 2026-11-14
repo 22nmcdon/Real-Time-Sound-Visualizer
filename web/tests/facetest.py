@@ -25,8 +25,13 @@ What would go wrong, and what is checked for it:
   page alone, which a page summing its own would turn the screen by;
 - any of it passing because the page's brain is still stepping: over the
   same stretch the page's picture, photocell and visual matrix are counted
-  at nought (brainCount), and the null is the boot frames before the
-  instrument answered, where they are not.
+  at nought (brainCount);
+- the boot: since 5b's second half the page waits for the instrument's first
+  face and steps nothing of its own meanwhile, where it used to play its own
+  tone for those frames. Its waiting frames are counted, so the check has
+  frames to judge, and none of the page's brain's steps ran in them; the
+  null is parity's harness's page brain (PAGE_BRAIN), which steps them from
+  its first frame.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -164,14 +169,107 @@ with sync_playwright() as pw:
          all(a == 0 and b_ == 0 for a, b_, _ in turn["alone"]) and any(abs(v) > 0.05 for _, _, v in turn["alone"]),
          str(turn["alone"]))
 
+    print("\n--- the rest of the face (5b's second half) ---")
+    rest = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const frames = (n) => new Promise((done) => { let k = 0; const f = () => (++k >= n ? done() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      const out = {};
+      // The grid: the instrument's, and a value written into the page's own cells shows nowhere.
+      pictureEngine.cells[0] = 0.777;
+      await frames(3);
+      out.grid = { same: phosphor.grid === state.source.grid, shown: phosphor.grid[0], page: pictureEngine.cells[0] };
+      // The harmony line in poly: the instrument's outline, not the page's own laying out of the notes.
+      // By the button, which the instrument hears (setMidiMode alone is the page's).
+      midiPanic(); el.midiPoly.click(); midiNoteOn(57, 100); midiNoteOn(64, 100); await wait(600);
+      const said = harmonySaid(genSettings()), outline = state.source.face.outlines[0];
+      const keep = polyVoices; window.polyVoices = () => [{ role: 'x', freq: 100 }, { role: 'y', freq: 300 }];
+      out.harmony = { said, want: outline ? [harmonyText(outline[0], outline[1])] : null, patched: harmonySaid(genSettings()),
+                      page: [harmonyText(100, 300)] };
+      window.polyVoices = keep;
+      // The arpeggio: the instrument walks it, and the face shows its notes; the page's own walk does not move.
+      const steps0 = globalThis.__brainCounts['arpTick.step'] || 0;
+      el.arpRate.value = '1/16'; el.arpRate.dispatchEvent(new Event('change'));
+      el.arpMode.value = 'up'; el.arpMode.dispatchEvent(new Event('change'));
+      midiPanic(); midiNoteOn(57, 100); midiNoteOn(64, 100); midiNoteOn(69, 100);
+      const seen = new Set(), pairs = [];
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+        const f = state.source.face.arp.join(','), c = arp.current.map((n) => n.note).join(',');
+        seen.add(f); if (i % 6 === 0) pairs.push([f, c]);
+      }
+      out.arp = { seen: [...seen], pairs, index: arp.index, steps: (globalThis.__brainCounts['arpTick.step'] || 0) - steps0,
+                  follows: globalThis.__brainCounts.arpFollow || 0 };
+      el.arpMode.value = 'off'; el.arpMode.dispatchEvent(new Event('change')); midiPanic();
+      // The figures: two hands split, the instrument lays out two, and the page's own layout answer is not asked.
+      midiNoteOn(48, 100); midiNoteOn(55, 100);
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      midiNoteOn(72, 100); midiNoteOn(79, 100); await wait(800);
+      out.figures = { served: state.source.face.figures, shown: sourceFigures() };
+      const kept = state.source.layout; state.source.setLayout('one');
+      out.figures.pageOne = sourceFigures();
+      state.source.setLayout(kept);
+      // Lane three's full scale: the instrument's offset, a routing on it heard there; one told the page alone moves nothing.
+      addRouting('lfo1', 'view.scale3');
+      const r3 = state.modRoutings.find((x) => x.destId === 'view.scale3'); if (r3) setDepth(r3, 100, true);
+      state.modRoutings.push({ sourceId: 'lfo1', destId: 'view.scale4', amount: 1 });
+      await wait(700);
+      const lanes = [];
+      for (let i = 0; i < 4; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+        const r = state.modRoutings.find((x) => x.destId === 'view.scale3'), dest = MOD_DESTS.get('view.scale3');
+        lanes.push([state.channels[2] ? state.channels[2].fsMod : null, state.source.face.offsets['view.scale3'],
+                    state.channels[3] ? state.channels[3].fsMod : null,
+                    // What the page's own matrix would have summed there.
+                    r ? sourceNow(MOD_SOURCES.get('lfo1')) * routingAmount(MOD_SOURCES.get('lfo1'), r.amount) * dest.span : null]);
+      }
+      state.modRoutings.pop(); dropRoutingOn('lfo1', 'view.scale3');
+      out.lanes = lanes;
+      el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); midiPanic(); el.midiDyad.click();
+      return out;
+    }""")
+    print("    %s" % rest)
+    g = rest["grid"]
+    check("the grid the face reads is the instrument's", g["same"], str(g))
+    null("a value written into the page's own cells is not what the face reads", abs(g["shown"] - 0.777) > 1e-3 and abs(g["page"] - 0.777) < 1e-6, str(g))
+    h = rest["harmony"]
+    check("the harmony line names the instrument's outline of the voices", h["want"] is not None and h["said"] == h["want"], str(h))
+    null("the page's own laying out of the notes, made to say a twelfth, is not read", h["patched"] == h["said"] and h["patched"] != h["page"], str(h))
+    a = rest["arp"]
+    check("the arpeggio is the instrument's: the face shows its notes, more than one in turn, as they change",
+          len(a["seen"]) >= 3 and all(f == c for f, c in a["pairs"] if f) and a["follows"] > 2, str(a))
+    null("and the page's own walk never steps", a["steps"] == 0 and a["index"] == -1, str(a))
+    fg = rest["figures"]
+    check("split, the face draws the two figures the instrument lays out", fg["served"] == 2 and fg["shown"] == [[0, 1], [2, 3]], str(fg))
+    null("the page's own layout told one figure is not what is drawn", fg["pageOne"] == [[0, 1], [2, 3]], str(fg))
+    # The instrument has the first two lanes' full scale as destinations and
+    # no others (screen.h), so a routing onto lane three is heard by nothing
+    # and, since 5b's second half, moves nothing on the face either, where the
+    # page's own matrix used to scale the face's lane three alone
+    # (web/docs/after-stage-5.md).
+    ln = rest["lanes"]
+    check("lane three's full scale is the instrument's offset, frame by frame: nought, as the instrument has no such destination",
+          all(x[0] == x[1] == 0 for x in ln), str(ln))
+    null("where the page's own matrix would have moved it", max(abs(x[3] or 0) for x in ln) > 0.05, str(ln))
+    null("and a routing on lane four told the page alone moves nothing", all(x[2] == 0 for x in ln), str(ln))
+
     after = p.evaluate("() => Object.assign({}, globalThis.__brainCounts)")
     delta = lambda k: after.get(k, 0) - before.get(k, 0)
     steps = ["pictureStep", "photoStep", "visualMatrix.view.rotate"]
     print("    over the run: %s" % {k: delta(k) for k in steps + ["frames.host"]})
     check("over all of it the page stepped no picture, photocell or screen matrix of its own",
           delta("frames.host") > 100 and all(delta(k) == 0 for k in steps), str({k: delta(k) for k in steps}))
-    null("the boot frames before the instrument answered did step the page's picture", boot.get("pictureStep", 0) > 0,
-         str({k: boot.get(k, 0) for k in ("pictureStep", "frames.tone")}))
+    BOOT = ["pictureStep", "phosphorFade", "phosphorDeposit", "scanStep", "midiApplyGate", "frames.tone", "sourceTick.tone"]
+    check("the boot waits for the instrument and steps nothing of the page's own meanwhile",
+          boot.get("frames.awaited", 0) > 0 and all(boot.get(k, 0) == 0 for k in BOOT),
+          str({k: boot.get(k, 0) for k in BOOT + ["frames.awaited"]}))
+    q = b.new_page(viewport={"width": 1400, "height": 900})
+    q.add_init_script("window.__scopePageBrain = true;")
+    q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(700)
+    harness = q.evaluate("() => Object.assign({}, globalThis.__brainCounts)")
+    q.close()
+    null("the same test asked of the page's own brain fails: its boot steps its picture and its tone",
+         not (all(harness.get(k, 0) == 0 for k in BOOT)) and harness.get("pictureStep", 0) > 0,
+         str({k: harness.get(k, 0) for k in BOOT}))
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

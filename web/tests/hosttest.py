@@ -87,12 +87,35 @@ FAKE = """
     // The plugin's two oscillators, each a phase, a held value and a value, for a host that names them.
     window.__hostTest.lfos = new Float64Array([0, 0, 0, 0, 0, 0]);
     window.__hostTest.lfoFetches = 0;
+    /* And after them, as the plugin's lfos.bin carries them, the envelope,
+       the clock and the face (5b): a face at rest - listening, nothing held,
+       no offsets, the tempo at 120 - so the page plays this plugin as it
+       plays the real one, reading its face and stepping nothing of its own.
+       Since 5b's second half a page waits for a face before it draws. */
+    window.__hostTest.servedLfos = () => {
+      const out = new Float64Array(10 + SERVED_LENGTH);
+      out.set(window.__hostTest.lfos.subarray(0, 6));
+      out[10 + 2] = 120; out[10 + 3] = 120;              // the clock's tempo and the slider's
+      const f = 10 + 12;
+      out[f + 8] = 1;                                    // the stage's hold: nothing held
+      out[f + 33] = 1;                                   // the hearing's width at rest
+      out[f + 40] = 1;                                   // and the hearing resting
+      for (const at of [41, 44]) out[f + at] = -1;       // no fade dot on either layer
+      out[f + 29] = out[f + 30] = -1;                    // no arpeggio sounding
+      return out;
+    };
+    /* The picture's grid (grid.bin), which the page reads in place of its
+       own: a lit row across the middle, so a photocell switched on has a
+       figure to land on, as the plugin's has. */
+    window.__hostTest.grid = new Float32Array(64 * 64);
+    for (let c = 16; c < 48; c++) window.__hostTest.grid[32 * 64 + c] = 1;
     const realFetch = window.fetch.bind(window);
     window.fetch = (url, options) => {
       if (url === 'scope-test://lfos.bin') {
         window.__hostTest.lfoFetches++;
-        return Promise.resolve(new Response(window.__hostTest.lfos.buffer.slice(0)));
+        return Promise.resolve(new Response(window.__hostTest.servedLfos().buffer.slice(0)));
       }
+      if (url === 'scope-test://grid.bin') return Promise.resolve(new Response(window.__hostTest.grid.buffer.slice(0)));
       if (url !== 'scope-test://picture.bin') return realFetch(url, options);
       const t = window.__hostTest;
       t.fetches++; t.inFlight++; t.mostInFlight = Math.max(t.mostInFlight, t.inFlight);
@@ -116,10 +139,17 @@ def code(setup):
 
 # The plugin's state on load: a cutoff in its setup, and the level moved since.
 FAKE = FAKE.replace("STATE_CODE", json.dumps(code({"vcfCut": 333, "pluginSliders": "amp=99"})))
-# And a plugin that names its oscillators, as the plugin's editor does since 5s.
-FAKE_LFOS = FAKE.replace("pictureUrl: 'scope-test://picture.bin' }",
-                         "pictureUrl: 'scope-test://picture.bin', lfosUrl: 'scope-test://lfos.bin' }")
-assert FAKE_LFOS != FAKE
+# The plugin as its editor names its resources: the picture, the oscillators
+# with what follows them (5s, 5b), and the grid (5b's second half). Until 5b's
+# second half the fake named the picture alone and the page stepped its own
+# oscillators, picture and grid against it; since then a page waits for the
+# instrument's face before it draws, so the fake every leg opens is the
+# plugin as it is, and the bare one is the null below.
+FAKE_BARE = FAKE
+FAKE = FAKE.replace("pictureUrl: 'scope-test://picture.bin' }",
+                    "pictureUrl: 'scope-test://picture.bin', lfosUrl: 'scope-test://lfos.bin', gridUrl: 'scope-test://grid.bin' }")
+assert FAKE != FAKE_BARE
+FAKE_LFOS = FAKE
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
@@ -723,7 +753,7 @@ with sync_playwright() as pw:
         got = q.evaluate(OSC, SERVED)
         q.close()
         return got
-    named, unnamed = osc(FAKE_LFOS), osc(FAKE)
+    named, unnamed = osc(FAKE_LFOS), osc(FAKE_BARE)
     taken = lambda r, s: r["phases"] == [s[0], s[3]] and r["helds"] == [s[1], s[4]] and r["values"] == [s[2], s[5]]
     check("a plugin that names its oscillators drives the page's: the instrument steps them, and the page takes them whole",
           named["first"]["driver"] == "instrument" and taken(named["first"], SERVED[0]) and taken(named["still"], SERVED[0])
@@ -731,9 +761,11 @@ with sync_playwright() as pw:
     check("and follows them when they move, even backwards, fetched as often as the picture",
           taken(named["second"], SERVED[1]) and named["fetched"][0] > 10 and abs(named["fetched"][0] - named["fetched"][1]) <= 2,
           "%s, fetched %s" % (named["second"]["phases"], named["fetched"]))
-    check("and against a plugin that names none: the page steps its own and takes nothing",
-          unnamed["first"]["driver"] == "main" and not taken(unnamed["first"], SERVED[0])
-          and unnamed["first"]["phases"] != unnamed["still"]["phases"] and unnamed["fetched"][0] == 0, str(unnamed["first"]))
+    # Until 5b's second half a plugin naming none had the page step its own;
+    # since then the page waits for the instrument's face, and steps nothing.
+    check("and against a plugin that names none: the page waits for it, taking nothing and stepping nothing of its own",
+          not taken(unnamed["first"], SERVED[0]) and unnamed["first"]["phases"] == unnamed["still"]["phases"]
+          and unnamed["fetched"][0] == 0, str(unnamed["first"]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

@@ -27,6 +27,19 @@ the fade. The failures to guard against:
 - the setting stored in the setup code, where every preset load would put it
   back to off before its routings could fade.
 
+Since stage 5, step 5b's second half the instrument fades its own routings
+and serves the face each one's gain and where the drawing's dot is
+(Instrument::fadeServed, Matrix::dot), and the page steps no fade of its own
+on the default. Every section here but the last two held the page's own
+fade - its gains, its routes (`workletRoutes`), two sources of this file's
+registered on the page alone - so they run on the page's own brain, by
+parity's harness's flag (PAGE_BRAIN), kept there for step 6, which deletes
+that brain and with it this half of the suite; the core's fade is held to
+it by parity's golden files meanwhile. On the default: the tremolo heard on
+the instrument, and the face reading the instrument's fade - a knob's ring
+moving with its gain, and the dot with its dot - each against a value the
+page's own fade was left holding.
+
 A constant source throughout - a hand at full - so the depth that reaches
 each destination IS the routing's amount times its fade, and nothing else
 moves it. It was a macro until P8d cut them; now this file registers two
@@ -77,6 +90,8 @@ with sync_playwright() as pw:
     ctx = b.new_context(viewport={"width": 1400, "height": 900})
     p = ctx.new_page()
     p.add_init_script(STUB)
+    # The page's own brain, which this half of the suite holds (the docstring).
+    p.add_init_script("window.__scopePageBrain = true;")
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     # The picture stage out (?picture=0): this suite measures something else,
@@ -501,7 +516,12 @@ with sync_playwright() as pw:
     # is left of the pair is that the leg is the instrument's - read off the
     # source the run itself reports, since a page still on its boot tone
     # would hear the page's generator and pass.
-    for label, page in (("the instrument", p),):
+    q = ctx.new_page()
+    q.add_init_script(STUB)
+    q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+    q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1500)
+    if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+    for label, page in (("the instrument", q),):
         got = page.evaluate(HEARD)
         print("    %s: %s" % (label, got))
         check("on %s a held note is steady before, and the tremolo is whole within two seconds of the load, as deep as it settles" % label,
@@ -510,6 +530,50 @@ with sync_playwright() as pw:
         check("null: on %s the same routing patched by hand is not whole within two seconds" % label,
               got["patched"]["ms"] is None and got["patched"]["d"] is not None and got["patched"]["d"] > 0.5, str(got))
     check("and what was heard is the instrument's", got["kind"] == "host", got["kind"])
+
+    print("\n--- the face reads the instrument's fade ---")
+    # LFO 1 onto the drive, a source the instrument has, faded in over a
+    # second and a half. A knob's ring is its routings' live push as the
+    # destination hears it (sweepOf), which since 5b's second half takes each
+    # routing's gain from the instrument; and the dot is the instrument's.
+    # The nulls: the page's own fade left holding a gain of its own (0.123,
+    # still) and a dot of its own (a gate in its release), which a face still
+    # reading the page's would show.
+    FACE = """async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      setFade('off'); applyPreset('n:' + BASE_NAME); await wait(300);
+      setFade('both'); setFadeEnvelope({ delay: 0, attack: 1.5, release: 1, sustain: 1, attackMid: 0.5, releaseMid: 0.5 }, 0); saveFade();
+      await wait(200);
+      addRouting('lfo1', 'gen.drive');
+      await wait(500);
+      const key = 'lfo1>gen.drive', dest = MOD_DESTS.get('gen.drive');
+      const served = () => (state.source.fadeGains || []).find((g) => g.key === key);
+      // The page's own fade left holding something else entirely.
+      fade.gains.set(key, { ramps: [rampStill(0.123, 0), rampStill(0.123, 1)], routing: state.modRoutings[0] });
+      fade.last[0] = { gate: { on: false, at: performance.now(), from: 1, layer: 0 } };
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const s = served(), r = state.modRoutings.find((x) => x.sourceId === 'lfo1');
+      const live = sweepOf(dest, routingsFor('gen.drive')).live, now = sourceNow(MOD_SOURCES.get('lfo1'));
+      const g = envGeometry(fade.envs[0]);
+      const out = { gain: s ? s.gains[0] : null, faceGain: fadeGain(key, 0), live, want: now * routingDepth(r, 0) * fadeGain(key, 0),
+                    page: now * routingDepth(r, 0) * 0.123, dot: { x: +envParts.dot.getAttribute('cx'), shown: envParts.dot.getAttribute('visibility') },
+                    served: state.source.face.dots[0], attack: [g.waitEnd, g.peak] };
+      dropRoutingOn('lfo1', 'gen.drive'); setFade('off');
+      return out;
+    }"""
+    face = q.evaluate(FACE)
+    print("    %s" % face)
+    check("a knob's ring moves with the instrument's gain on its routing, part of the way into its fade",
+          face["gain"] is not None and 0.05 < face["gain"] < 0.95 and face["faceGain"] == face["gain"]
+          and abs(face["live"] - face["want"]) < 1e-9, str(face))
+    check("null: not with the gain the page's own fade was left holding",
+          abs(face["live"] - face["page"]) > 1e-3 and face["faceGain"] != 0.123, str(face))
+    check("and the dot rides the instrument's attack, not the release the page's own was left in",
+          face["served"] is not None and face["served"]["stage"] == "attack" and face["dot"]["shown"] == "visible"
+          and face["attack"][0] < face["dot"]["x"] < face["attack"][1], str(face))
+    # Back to the page's own brain for the rest, in front: a page behind another is given no frames.
+    q.close()
+    p.bring_to_front()
 
     print("\n--- the envelope: two times and two shapes ---")
     env = run(p, """

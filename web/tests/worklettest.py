@@ -52,7 +52,12 @@ with sync_playwright() as pw:
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
-    p.goto(f"file://{ART}/scope.html?brain=js"); p.wait_for_timeout(700)
+    # The page's own brain, whose generator worklet this suite holds: on
+    # ?brain=js until stage 5, step 5b's second half took that address away,
+    # since then by parity's harness's flag (PAGE_BRAIN), kept for step 6,
+    # which deletes the page's worklets and this suite's subject with them.
+    p.add_init_script("window.__scopePageBrain = true;")
+    p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.wait_for_timeout(200)
 

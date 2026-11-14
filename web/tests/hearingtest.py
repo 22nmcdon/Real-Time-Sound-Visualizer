@@ -25,6 +25,15 @@ the way it would fail:
   is, not a glide from where the hearing was left - 880 Hz after a rest at
   110 reads 880 on its first frame, where a glide would read 110's and a
   step.
+
+Since stage 5, step 5b's second half the hearing the face shows is the
+instrument's (Instrument::faceServed), and the page hears nothing itself on
+the default. These hold the hearing's arithmetic, the page's own, so they run
+on the page's own brain by parity's harness's flag (PAGE_BRAIN), kept for
+step 6, which deletes that brain; the core's is held to it by parity
+meanwhile (hearing_js against hearing_cpp, and the golden files). On the
+default, beside it: the control a hearing source is routed to moves by the
+instrument's offset, and the page's own hearing does not run.
 """
 import math, os
 from playwright.sync_api import sync_playwright
@@ -37,6 +46,9 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def null(name, ok, detail=""):
+    check("null: " + name, ok, detail)
 
 C4 = 261.6256
 PITCH = lambda hz: max(-1, min(1, math.log2(hz / C4) / 2))
@@ -89,10 +101,20 @@ with sync_playwright() as pw:
     p.on("console", lambda m: bad.append("console: " + m.text)
          if m.type == "error" and "ERR_CERT" not in m.text else None)
     p.add_init_script(STUB)
+    # The page's own brain, whose hearing this suite holds (the docstring).
+    p.add_init_script("window.__scopePageBrain = true;")
     # The picture stage out (?picture=0): this suite measures something else,
     # and the stage, on in everything played, is stagetest.py's and looptest.py's.
     p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(700)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    # And the default page, the instrument's face, with the same microphone.
+    q = b.new_page(viewport={"width": 1400, "height": 900})
+    q.on("pageerror", lambda e: bad.append("pageerror (default): " + str(e)))
+    q.add_init_script(STUB)
+    q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1500)
+    if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+    q.evaluate("() => __mic()")
+    p.bring_to_front()
 
     def at(hz, right="same", level=0.8, settle=900):
         return p.evaluate("async ([hz, right, level, settle]) => { __play(hz, right, level); "
@@ -120,13 +142,13 @@ with sync_playwright() as pw:
       const real = hearingStep;
       let asked = 0;
       hearingStep = (elapsed) => { asked++; real(elapsed); };
-      state.modRoutings = []; touchRoutings(); await __wait(100);
+      state.modRoutings = []; touchRoutings(); hostRoutings(); await __wait(100);
       const before = hearing.runs;
       asked = 0;
       await frames();
       const idle = { runs: hearing.runs - before, frames: asked, turn: state.rotateMod };
       hearingStep = real;
-      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings();
+      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings(); hostRoutings();
       const at = hearing.runs;
       await frames();
       const routed = { runs: hearing.runs - at };
@@ -144,19 +166,22 @@ with sync_playwright() as pw:
           "%s, %s" % (rest["routed"], rest["silent"]))
     # The routed control, the X-Y rotation, at half of the brightness, frame
     # for frame, at two brightnesses far apart: it moves as it always did.
-    turns = p.evaluate("""async () => {
+    q.bring_to_front()
+    turns = q.evaluate("""async () => {
+      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings(); hostRoutings();
       const read = async (hz) => { __play(hz, 'same', 0.8); await __wait(1500);
         return { bright: hearing.bright, turn: state.rotateMod, base: state.rotate,
                  inst: state.source.face ? state.source.face.offsets['view.rotate'] : null }; };
       return [await read(200), await read(4000)];
     }""")
+    p.bring_to_front()
     check("and the control it is routed to moves with it: the X-Y rotation at half the brightness, low on 200 Hz and high on 4 kHz",
-          # Since stage 5, step 5b the turn is the instrument's offset, from its own
-          # hearing on the audio thread (5t); hearing.bright is the page's copy,
-          # which hears the same input a frame apart (and the turn is drawn at the
-          # offset one reading before the one read here), so the two agree to a
-          # hundredth of the turn rather than to the bit (0.07923 against 0.07924
-          # on 14 Nov). The page's copy goes with its brain.
+          # On the default page: the turn is the instrument's offset, from its
+          # own hearing on the audio thread (5t), and hearing.bright the
+          # instrument's too since 5b's second half, as its readings carry it;
+          # the turn is drawn at the offset one reading before the one read
+          # here, so the two agree to a hundredth of the turn rather than to
+          # the bit.
           all(t["inst"] is not None and abs(t["turn"] - t["inst"]) < 1e-3 and abs(t["turn"] - 0.5 * t["bright"]) < 0.01 * max(0.05, t["turn"])
               and t["base"] == 0 for t in turns)
           and turns[1]["turn"] - turns[0]["turn"] > 0.2, str(turns))
@@ -164,10 +189,11 @@ with sync_playwright() as pw:
       __play(110, 'same', 0.8);
       for (let t = 0; t < 5000 && Math.abs(hearing.pitch - %r) > 0.005; t += 100) await __wait(100);
       const left = hearing.pitch;
-      state.modRoutings = []; touchRoutings();
+      // Each list told to the instrument too (hostRoutings), whose hearing is the face's since 5b's second half.
+      state.modRoutings = []; touchRoutings(); hostRoutings();
       __play(880, 'same', 0.8); await __wait(800);
       const rested = hearing.pitch, at = hearing.runs;
-      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings();
+      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings(); hostRoutings();
       // Two seconds of frames at most, so a hearing that never counts fails here rather than hanging the suite.
       for (let i = 0; i < 120 && hearing.runs === at; i++) await new Promise((r) => requestAnimationFrame(r));
       return { left, rested, first: hearing.pitch, runs: hearing.runs - at };
@@ -328,10 +354,18 @@ with sync_playwright() as pw:
         const tick = (t) => { trace.push([t, hearing.pitch]); if (t - t0 < 900) requestAnimationFrame(tick); else done(); };
         requestAnimationFrame(tick);
       });
+      /* Over a tenth of a second rather than frame to frame: the pitch is
+         the instrument's since 5b's second half, which arrives as its
+         readings do, so two of its frames can land in one of the page's and
+         read as twice the slope. A step - the whole octave and a half at
+         once - is still fifteen a second over a tenth of a second. */
       let steepest = 0;
-      for (let i = 1; i < trace.length; i++) {
-        const dt = (trace[i][0] - trace[i - 1][0]) / 1000;
-        if (dt > 0) steepest = Math.max(steepest, Math.abs(trace[i][1] - trace[i - 1][1]) / dt);
+      for (let i = 0; i < trace.length; i++) {
+        let j = i + 1;
+        while (j < trace.length && trace[j][0] - trace[i][0] < 100) j++;
+        if (j >= trace.length) break;
+        const dt = (trace[j][0] - trace[i][0]) / 1000;
+        steepest = Math.max(steepest, Math.abs(trace[j][1] - trace[i][1]) / dt);
       }
       return { steepest, end: trace[trace.length - 1][1], frames: trace.length };
     }""")
@@ -343,11 +377,31 @@ with sync_playwright() as pw:
           glide["steepest"] <= 4.4 and abs(glide["end"] - PITCH(880)) < 0.005 and glide["frames"] > 20,
           str(glide))
 
-    cost = p.evaluate("""async () => { let worst = 0, sum = 0, n = 0;
-      for (let i = 0; i < 60; i++) { await __wait(16); worst = Math.max(worst, hearing.cost); sum += hearing.cost; n++; }
-      return { mean: sum / n, worst }; }""")
-    print("    cost a frame: mean %.2f ms, worst %.2f ms" % (cost["mean"], cost["worst"]))
-    check("and all of it costs under two milliseconds a frame on average", cost["mean"] < 2, str(cost))
+    # Until stage 5, step 5b's second half: "and all of it costs under two
+    # milliseconds a frame on average", the page's own hearing timed - which
+    # had no headroom on the cloud machine (web/docs/after-stage-5.md). Since
+    # then the hearing the face shows is the instrument's (Instrument::
+    # faceServed), whose cost is the core's budget's, and the page hears
+    # nothing itself; so what is held is that it does not: a second of
+    # frames with a hearing source routed, and the page's hearing step at
+    # nought. The null is the same second on the page's own brain (parity's
+    # harness's flag), where it runs a frame at a time.
+    COUNT = """async () => {
+      state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings(); hostRoutings();
+      __play(440, 'same', 0.8);
+      const before = globalThis.__brainCounts.hearingStep || 0, at = performance.now();
+      await __wait(1000);
+      return { steps: (globalThis.__brainCounts.hearingStep || 0) - before, frames: Math.round((performance.now() - at) / 16.7),
+               runs: hearing.runs, kind: state.source.kind };
+    }"""
+    q.bring_to_front()
+    own = q.evaluate(COUNT)
+    p.bring_to_front()
+    harness = p.evaluate(COUNT)
+    print("    the page's hearing steps over a second, routed: %s; on the page's own brain: %s" % (own, harness))
+    check("and the page hears nothing itself: a second routed, its hearing step at nought, the instrument's hearing counting",
+          own["kind"] == "host" and own["steps"] == 0 and own["runs"] > 10, str(own))
+    null("on the page's own brain the same second steps it a frame at a time", harness["steps"] > 20, str(harness))
 
     print("\n--- the loop ---")
     loop = p.evaluate("""async () => {

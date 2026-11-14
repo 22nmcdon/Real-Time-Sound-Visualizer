@@ -245,6 +245,12 @@ def main(argv):
                 list(pool.map(run_held, pool_suites))
 
     failed.sort(key=lambda n: order[n])
+    # After a --brain-counts run of the whole suite, the standing check on its counts (stage 5, step 5b).
+    if BRAIN_COUNTS and not want:
+        proc = subprocess.run([sys.executable, "braincounts.py", "--check", BRAIN_COUNTS], cwd=HERE,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        sys.stdout.write(header("counters", "nothing of the page's own brain counted on a default page, over the whole run") + "\n" + proc.stdout)
+        if proc.returncode != 0 or failed_in(proc.stdout): failed.append("counters")
     print("\n%d suites in %.1f min" % (len(chosen), (time.monotonic() - began) / 60))
     if failed:
         print("FAILED: " + ", ".join(failed))

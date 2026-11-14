@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <cstring>
 #include <atomic>
 #include <cmath>
@@ -719,13 +720,53 @@ class Instrument {
      the face draws with in place of a matrix of its own; and how many
      figures the screen lays out. Published with the oscillators, as
      cheaply. The site's page has the same from brain_readings, the plugin's
-     after the clock in lfos.bin. */
-  static constexpr std::size_t kFaceServed = 24;
+     after the clock in lfos.bin.
+
+     Then (5b's second half) the rest the face used to work out for itself:
+     the full scale of lanes three to six; the morph fader's offset; the
+     arpeggio's notes sounding (or -1); the hearing's pitch, brightness,
+     width, flux, four bands, onset count and whether it rests; where the
+     fade drawing's dot is on each layer (Matrix::dot: stage, share, level);
+     and the outline of each layer's voices and of both, low and high, which
+     the harmony line names; and how many windows the hearing has heard. */
+  static constexpr std::size_t kFaceServed = 54;
   std::array<double, kFaceServed> faceServed() const {
     pictureAt_.load(std::memory_order_acquire);
     std::array<double, kFaceServed> out {};
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = faceServed_[i].load(std::memory_order_relaxed);
     return out;
+  }
+  /* The picture's grid as it stood at its newest frame (5b's second half):
+     what the face's photocell lands on, the score and the loop overlay draw
+     over and every test of the grid reads, in place of a grid the page
+     faded and deposited for itself. The site's page reads the phosphor's
+     own cells (brain_grid), the plugin's this copy (grid.bin), kept so the
+     editor's thread reads a whole frame, never one half laid. */
+  static constexpr std::size_t kGridServed = static_cast<std::size_t>(kPhosphorN) * kPhosphorN;
+  // Into out, kGridServed floats; false if a frame was being written throughout.
+  bool gridServed(float* out) const {
+    for (int tries = 0; tries < 4; ++tries) {
+      const unsigned before = gridSeq_.load(std::memory_order_acquire);
+      if (before & 1u) continue;
+      for (std::size_t i = 0; i < kGridServed; ++i) out[i] = gridServed_[i].load(std::memory_order_relaxed);
+      if (gridSeq_.load(std::memory_order_acquire) == before) return true;
+    }
+    return false;
+  }
+  /* The fade's gains as the face reads them (5b): one line a routing,
+     ghosts among them, in the matrix's order - its key, each layer's gain,
+     its depth and the upper hand's (or nothing), and 1 if it is in the setup
+     - tab-separated, empty while the fade is off. Kept the same way. */
+  static constexpr std::size_t kFadeText = 4096;
+  std::size_t fadeServed(char* out, std::size_t room) const {
+    for (int tries = 0; tries < 4; ++tries) {
+      const unsigned before = fadeSeq_.load(std::memory_order_acquire);
+      if (before & 1u) continue;
+      const std::size_t n = std::min(room, fadeLength_.load(std::memory_order_relaxed));
+      for (std::size_t i = 0; i < n; ++i) out[i] = fadeServed_[i].load(std::memory_order_relaxed);
+      if (fadeSeq_.load(std::memory_order_acquire) == before) return n;
+    }
+    return 0;
   }
   // How many lanes the picture has: two, or four for a figure a layer or the band split.
   int pictureLanes() const { return pictureSource_.channels; }
@@ -1205,6 +1246,22 @@ class Instrument {
       const PictureValues& pv = pics.values();
       const View& v = brain_->view.capture;
       const auto fs = [&v](std::size_t i) { return v.channels.size() > i ? v.channels[i].fsMod : 0.0; };
+      const Hearing& h = hearing_->hearing();
+      const Keyboard::ArpState& arp = keyboard_->arp();
+      const Matrix::Dot dotA = matrix_->dot(0), dotB = matrix_->dot(1);
+      // outlineOf: the lowest of the voices drawn across, the highest drawn up.
+      const auto outline = [this](int which, double& low, double& high) {
+        low = 0; high = 0;
+        for (int l = 0; l < 2; l++) {
+          if (which != 2 && which != l) continue;
+          for (const auto& v : keyboard_->chord()[static_cast<std::size_t>(l)]) {
+            if ((v.role == "x" || v.role == "xonly") && (low == 0 || v.freq < low)) low = v.freq;
+            if ((v.role == "y" || v.role == "yonly") && v.freq > high) high = v.freq;
+          }
+        }
+      };
+      double lines[6];
+      outline(0, lines[0], lines[1]); outline(1, lines[2], lines[3]); outline(2, lines[4], lines[5]);
       const double face[kFaceServed] = {
         verdict == "settled" ? 1.0 : verdict == "cycling" ? 2.0 : verdict == "wandering" ? 3.0 : verdict == "running away" ? 4.0 : 0.0,
         meter.change(), meter.seenRate(),
@@ -1213,8 +1270,43 @@ class Instrument {
         pv.round, pv.cover, pv.change, pv.novelty, pv.signed_, pv.bored,
         v.rotateMod, v.lagMod, v.cutoffMod, v.resMod, brain_->view.zoomMod, v.positionMod, fs(0), fs(1),
         static_cast<double>(brain_->view.screen.figures.size()),
+        fs(2), fs(3), fs(4), fs(5),
+        brain_->morphMod,
+        arp.current.size() > 0 ? static_cast<double>(arp.current[0].note) : -1.0,
+        arp.current.size() > 1 ? static_cast<double>(arp.current[1].note) : -1.0,
+        h.pitch, h.bright, h.width, h.flux, h.bands[0], h.bands[1], h.bands[2], h.bands[3],
+        static_cast<double>(h.onset.count), h.idle ? 1.0 : 0.0,
+        static_cast<double>(dotA.stage), dotA.t, dotA.level, static_cast<double>(dotB.stage), dotB.t, dotB.level,
+        lines[0], lines[1], lines[2], lines[3], lines[4], lines[5],
+        static_cast<double>(h.runs),
       };
       for (std::size_t i = 0; i < kFaceServed; ++i) faceServed_[i].store(face[i], std::memory_order_relaxed);
+      const auto& cells = run.phosphor().grid();
+      gridSeq_.fetch_add(1, std::memory_order_acq_rel);
+      for (std::size_t i = 0; i < kGridServed; ++i) gridServed_[i].store(cells[i], std::memory_order_relaxed);
+      gridSeq_.fetch_add(1, std::memory_order_acq_rel);
+    }
+    {
+      // snprintf into a buffer of the block's own: no allocation on the audio thread.
+      char text[kFadeText];
+      std::size_t n = 0;
+      bool full = false;
+      if (matrix_->fadeMode() != FadeMode::Off) {
+        matrix_->eachGain([&](const std::string& key, double g0, double g1, const Routing& r, bool inSetup) {
+          if (full) return;
+          char b[64];
+          if (r.amountB) std::snprintf(b, sizeof b, "%.17g", *r.amountB); else b[0] = '\0';
+          const int wrote = std::snprintf(text + n, kFadeText - n, "%s\t%.17g\t%.17g\t%.17g\t%s\t%d\n",
+                                          key.c_str(), g0, g1, r.amount, b, inSetup ? 1 : 0);
+          // A line that would not fit is left off whole, and so is every one after it.
+          if (wrote < 0 || static_cast<std::size_t>(wrote) >= kFadeText - n) { full = true; return; }
+          n += static_cast<std::size_t>(wrote);
+        });
+      }
+      fadeSeq_.fetch_add(1, std::memory_order_acq_rel);
+      for (std::size_t i = 0; i < n; ++i) fadeServed_[i].store(text[i], std::memory_order_relaxed);
+      fadeLength_.store(n, std::memory_order_relaxed);
+      fadeSeq_.fetch_add(1, std::memory_order_acq_rel);
     }
     pictureAt_.store(ring, std::memory_order_release);
   }
@@ -1386,6 +1478,11 @@ class Instrument {
   std::array<std::atomic<double>, 4> envServed_ {};
   std::array<std::atomic<double>, kClockServed> clockServed_ {};
   std::array<std::atomic<double>, kFaceServed> faceServed_ {};
+  std::array<std::atomic<float>, kGridServed> gridServed_ {};
+  std::atomic<unsigned> gridSeq_ { 0 };
+  std::array<std::atomic<char>, kFadeText> fadeServed_ {};
+  std::atomic<std::size_t> fadeLength_ { 0 };
+  std::atomic<unsigned> fadeSeq_ { 0 };
   Limiter limiter_;          // the page's limiter and clamp, on the heard pair (5a)
   bool limiterOn_ = true;    // off only for a harness's null
   bool running_ = true;      // the site's Stop and Run (5a)

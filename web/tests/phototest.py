@@ -357,7 +357,11 @@ with sync_playwright() as pw:
          100 ms, where a slewed value would still be over a quarter. */
       const t0 = performance.now();
       while (photo.value !== 0 && performance.now() - t0 < 100) await frame();
-      const out = { before, hidden, value: photo.value, grid, ms: Math.round(performance.now() - t0) };
+      /* And the grid read with it: the instrument's since 5b's second half,
+         which blanks on its next picture frame after it hears the display,
+         where the page's own was blanked on the page's. */
+      const out = { before, hidden, value: photo.value, grid: phosphor.grid.reduce((a, v) => a + v, 0), gridAtClick: grid,
+                    ms: Math.round(performance.now() - t0) };
       await new Promise((r) => setTimeout(r, 300));
       __display('xy'); await new Promise((r) => setTimeout(r, 100));
       out.back = !el.photoReticle.hidden;
@@ -454,7 +458,7 @@ with sync_playwright() as pw:
         const f = () => (++k >= n ? done() : requestAnimationFrame(f)); requestAnimationFrame(f); });
       await frames(30);
       const before = { u: photo.u, v: photo.v, read: phosphorRead(photo.u, photo.v),
-                       most: Math.max(...pictureEngine.cells) };
+                       most: Math.max(...phosphor.grid) };
       el.photoButton.click();
       await frames(45);
       const after = { u: photo.u, v: photo.v, raw: photo.raw, value: photo.value, on: photo.on };

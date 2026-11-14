@@ -208,17 +208,22 @@ with sync_playwright() as pw:
 
     def open_page(query, init=None):
         p = b.new_page(viewport={"width": 1400, "height": 900})
+        # The page's own brain, whose worklets and cores this suite holds: on
+        # ?brain=js until stage 5, step 5b's second half took that address
+        # away, since then by parity's harness's flag (PAGE_BRAIN), kept for
+        # step 6, which deletes them. ?core=js went with it, and is a browser
+        # without WebAssembly here, which is what it asked the page to be.
+        p.add_init_script("window.__scopePageBrain = true;")
+        if "core=js" in query:
+            p.add_init_script("delete window.WebAssembly;")
+            query = query.replace("?core=js", "").replace("&core=js", "")
         if init: p.add_init_script(init)
         bad = []
         p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
         p.on("console", lambda m: bad.append("console: " + m.text)
              if m.type == "error" and "ERR_CERT" not in m.text else None)
-        # On ?brain=js (5m): this suite reads which core the page's own two
-        # worklets and its main thread run - the page's own brain, which
-        # core/tests/parity.py holds the instrument to. The instrument, the
-        # site's default since 5m, is braintest.py's and hosttest.py's.
         # The picture stage out, as in every suite that measures something else.
-        query = (query + "&brain=js" if query else "?brain=js") + "&picture=0"
+        query = (query + "&picture=0" if query else "?picture=0")
         p.goto(f"file://{ART}/scope.html{query}"); p.wait_for_timeout(700)
         corpus.install(p)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
@@ -596,10 +601,10 @@ with sync_playwright() as pw:
 
     p.close()
 
-    print("\n--- ?core=js, the JavaScript core ---")
+    print("\n--- without WebAssembly, the JavaScript core (?core=js until 5b's second half) ---")
     p, bad = open_page("?core=js")
     js = sound(p)
-    check("with ?core=js the generator's worklet says it is the JavaScript one", not js["switch"] and js["kind"] == "js"
+    check("without WebAssembly the generator's worklet says it is the JavaScript one", not js["switch"] and js["kind"] == "js"
           and js["why"] is None and js["blocks"] > 3, str(js))
     check("and so does the main thread's", js["main"] == "js" and js["mainWhy"] is None, "%r %r" % (js["main"], js["mainWhy"]))
     check("and the picture's sources", js["picture"] == "js" and js["pictureWhy"] is None, "%r %r" % (js["picture"], js["pictureWhy"]))
@@ -688,6 +693,33 @@ with sync_playwright() as pw:
     check("and the worklet, which can, still runs the compiled core", later["kind"] == "wasm" and later["blocks"] > 3, str(later))
     check("with no errors on the page", not bad, "; ".join(bad[:3]))
     p.close()
+
+    print("\n--- the site in a browser without WebAssembly ---")
+    # Since stage 5, step 5b's second half the site is the instrument, which
+    # is WebAssembly, and nothing else: a browser without it is told so on
+    # the screen, and nothing of the page's own brain plays in its place.
+    # The null is the same page with WebAssembly, which does not say it.
+    def site(no_wasm):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        if no_wasm: q.add_init_script("delete window.WebAssembly;")
+        errors = []
+        q.on("pageerror", lambda e: errors.append(str(e)))
+        q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(1500)
+        got = q.evaluate("""() => ({ hint: el.playHint.hidden ? '' : el.playHint.textContent, credit: el.credit.textContent,
+          kind: state.source ? state.source.kind : null, counts: Object.assign({}, globalThis.__brainCounts) })""")
+        q.close()
+        got["errors"] = errors
+        return got
+    bare, wasm = site(True), site(False)
+    print("    without: %s\n    with: %s" % ({k: bare[k] for k in ("hint", "kind")}, {k: wasm[k] for k in ("hint", "kind")}))
+    steps = ["frames", "pictureStep", "phosphorDeposit", "sourceTick.tone", "midiApplyGate", "scanStep"]
+    check("without WebAssembly the screen says the instrument needs it, and so does the line under the title",
+          "WebAssembly" in bare["hint"] and "WebAssembly" in bare["credit"], "%r / %r" % (bare["hint"][:80], bare["credit"][:80]))
+    check("and nothing of the page's own plays in its place: it waits, and steps nothing",
+          bare["counts"].get("frames.awaited", 0) > 30 and all(bare["counts"].get(k, 0) == 0 for k in steps) and not bare["errors"],
+          str({k: bare["counts"].get(k, 0) for k in steps + ["frames.awaited"]}) + " " + "; ".join(bare["errors"][:2]))
+    check("null: with WebAssembly the page plays the instrument and says nothing of it",
+          "WebAssembly" not in wasm["hint"] and "WebAssembly" not in wasm["credit"] and wasm["kind"] == "host", str({k: wasm[k] for k in ("hint", "kind")}))
     b.close()
 
 print()
