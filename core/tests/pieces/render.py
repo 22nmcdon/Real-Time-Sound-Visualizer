@@ -129,7 +129,7 @@ def run(kit):
         x.tofile(path)
         rec = os.path.join(BUILD, "render-mic.f32")
         kit.render([["make", 48000, code(dict({"v": 11}, **setup))], ["click", "srcMic"], ["input", "file", path, 1],
-                    ["record", "heard", rec], ["to", 2.0]], raw=True)
+                    ["record", "prelimit", rec], ["to", 2.0]], raw=True)  # before the limiter (5a), 6 ms late after it
         return np.fromfile(rec, "<f4").reshape(-1, 2)
     dry = mic({})
     wet = mic({"delayMix": 100, "delayMs": 150, "delayFeedback": 0})

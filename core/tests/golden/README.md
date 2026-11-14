@@ -129,3 +129,14 @@ what is rendered; `core/tests/pieces/render.py` proves both, with their
 nulls, before anything else stands on it. It is native only, like
 instrument_cpp's own readings, so nothing it prints is compared with the
 page.
+
+Since stage 5's step 5a the heard pair `record` writes is the limited one,
+6 ms late (the limiter's lookahead) and bent at the top, as a host and the
+speakers get it. A piece that holds the heard pair to the sample against
+something the instrument made - an input passed through, the band split's
+sum, the Output's quarter - records `prelimit` instead, the pair as it stood
+before the limiter, or switches the limiter off with the harness's
+`["control", "limiter", "0"]`. The first golden file regenerated for a
+reason of its own was 5a's `picture.json.gz`: one run of eleven, thirty of
+the meter's verdicts "wandering" become "settled" (the meter's verdict reads
+change over the eye's time since 5a), every number in it unmoved.

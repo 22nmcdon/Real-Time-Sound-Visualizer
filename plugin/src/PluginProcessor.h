@@ -72,6 +72,8 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   int latencyMeasured() const { return latencyWanted_.load(); }
   // How late the stages put the sound this block, whatever the host was told: the shell test's way in.
   int stageDelayNow() const { return instrument_.stageDelay(); }
+  // The limiter's lookahead (5a), which the host is told on top of the stages'.
+  int limiterLatency() const { return instrument_.latency(); }
   static double tailFor(const scope::Tone& a, const scope::LayerSettings& b);
 
   /* The bank as the host's programs (6 Nov): the plain sine the plugin opens

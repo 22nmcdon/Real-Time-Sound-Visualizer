@@ -6197,19 +6197,26 @@ iruns["realtime"] = [["make", 48000, 128, icode["Harmonic tone"]], NOTE_ON(0), N
 # and then none at all.
 def icode_of(setup):
     return base64.b64encode(_json.dumps(dict(setup, v=4)).encode()).decode().rstrip("=")
-iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(6) \
+# The runs whose heard pair is held to the sample - the input fed through, the
+# band split's sums, the Output's quarter - are played with the instrument's
+# limiter off (5a): it is last on the heard pair, 6 ms late and not linear,
+# and these hold what the instrument makes before it. The limiter is parity's
+# section "the limiter, the page's against the core's", and the 5f runs above
+# play it.
+BARE = ["control", "limiter", "0"]
+iruns["input"] = [["make", 48000, 128, icode["Harmonic tone"]], BARE, ["feed", 100, 73], NOTE_ON(57)] + blocks(6) \
     + [["click", "srcMic"]] + blocks(10) + [["control", "planeMirror", "3"]] + blocks(10) \
     + [["routings", "lfo1>gen.twist@0.5"]] + blocks(20) + [["setup", ocode["Pluck"]]] + blocks(10) \
     + [["click", "srcTone"], ["control", "inputMode", "1"]] + blocks(20) \
     + [["control", "inputMode", "2"]] + blocks(20) + [["control", "inputMode", "3"]] + blocks(30) \
     + [["feed", 64], ["click", "srcMic"]] + blocks(10) + [["feed"]] + blocks(10)
 # A state that opens with the input drawn, as a project reopened does.
-iruns["opened"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginInput": True})], ["feed", 90, 61]] + blocks(10) \
+iruns["opened"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginInput": True})], BARE, ["feed", 90, 61]] + blocks(10) \
     + [["click", "srcTone"], NOTE_ON(60)] + blocks(10)
 # The band split (5j): the input split into four bands, a mix on the bands
 # heard, a preset loaded over them, the input whole again, the split again
 # from fresh memory, and the generator. And a state that opens split.
-iruns["bands"] = [["make", 48000, 128, icode["Harmonic tone"]], ["feed", 100, 73], NOTE_ON(57)] + blocks(2) \
+iruns["bands"] = [["make", 48000, 128, icode["Harmonic tone"]], BARE, ["feed", 100, 73], NOTE_ON(57)] + blocks(2) \
     + [["control", "srcBands", "1"]] + blocks(16) + [["control", "laneMix", "0,1,0.5,0"]] + blocks(6) \
     + [["setup", ocode["Pluck"]]] + blocks(4) + [["control", "srcBands", "0"]] + blocks(4) \
     + [["control", "srcBands", "1"]] + blocks(4) + [["click", "srcTone"]] + blocks(4)
@@ -6243,7 +6250,7 @@ DRAWN = [["make", 48000, 128, icode["Harmonic tone"]], ["control", "keyboardPres
 iruns["drawn"] = DRAWN + [["control", "drawn", _json.dumps({"cycle": SQUARE, "cycles": "", "figDrawn": SKETCH})]] + blocks(30)
 iruns["drawn none"] = DRAWN + blocks(30)
 # (A figure drawn on the screen, a horizontal stroke sent to the Drawn figure, and its null, until G2.)
-iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], ["feed", 90, 61]] + blocks(8)
+iruns["opened bands"] = [["make", 44100, 128, icode_of({"timebase": 3, "pluginBands": True})], BARE, ["feed", 90, 61]] + blocks(8)
 iruns["sizes"] = [["make", 96000, 128, ocode["Pluck"]], NOTE_ON(50)] + [["block", n] for n in (1, 64, 300, 127, 129, 2048, 5)] * 4
 # Scan (P7a): the instrument reading its own grid at its own picture frame,
 # the fifth that wanders because what it reads is what it draws - and the
@@ -6290,7 +6297,7 @@ iruns["silenced heard"] = SILENCE_MAKE + [["routings", SILENCE_ROUTES]] + blocks
 OUTPUT_HANDS = [["feed", 100, 73], NOTE_ON(57)] + blocks(4) + ["OUT"] + blocks(120) + [["click", "srcMic"]] + blocks(40) \
     + [["control", "srcBands", "1"]] + blocks(40) + [["control", "srcBands", "0"], ["click", "srcTone"]] + blocks(10) \
     + [["setup", ocode["Pluck"]], NOTE_ON(60)] + blocks(60)
-OUTPUT_MAKE = [["make", 48000, 128, icode["Harmonic tone"]]]
+OUTPUT_MAKE = [["make", 48000, 128, icode["Harmonic tone"]], BARE]
 iruns["output"] = OUTPUT_MAKE + [["slider", "output", "50"] if h == "OUT" else h for h in OUTPUT_HANDS]
 iruns["output unity"] = OUTPUT_MAKE + [h for h in OUTPUT_HANDS if h != "OUT"]
 # The master Width (12 Nov) on the same hands, at nought: the generator, the
@@ -6396,8 +6403,9 @@ sstate = istate("silenced")
 shands = [h for h in sstate.get("pluginHands", []) if h[0] == "r"]
 check("and kept: the state the plugin saves has LFO 1's routing and the silence beside the heard one",
       shands and shands[-1][2] == SILENCE_ROUTES + "|lfo1", repr(shands))
-def ireopen(state, name):
-    lines = [["make", 48000, 128, base64.b64encode(_json.dumps(state).encode()).decode().rstrip("=")], NOTE_ON(57)] + blocks(16)
+def ireopen(state, name, bare=False):
+    lines = [["make", 48000, 128, base64.b64encode(_json.dumps(state).encode()).decode().rstrip("=")]] + ([BARE] if bare else []) \
+        + [NOTE_ON(57)] + blocks(16)
     path = iscript(name, lines)
     a, b = icpp(path), ijs(path)
     most, other = icompare(a, b)
@@ -6481,8 +6489,8 @@ check("null: a glide stepped twice a sample is not it", band_glide(2) > 1e-3, "%
 # A project reopened at 50 opens at a quarter, from its first sample: against
 # the same project at unity, every heard sample a quarter, every picture the
 # same. Null: the project with its Output taken out is not.
-ore, ore_most, ore_other = ireopen(ostate, "output reopened")
-oun, _, _ = ireopen(dict(ostate, pluginOutput=100), "output reopened unity")
+ore, ore_most, ore_other = ireopen(ostate, "output reopened", bare=True)
+oun, _, _ = ireopen(dict(ostate, pluginOutput=100), "output reopened unity", bare=True)
 def ihalves(out):
     rows = []
     for line in [l for l in out if l.startswith("block ")]:
@@ -6955,6 +6963,68 @@ inull("the heard pair handed back as the picture pair",
       " else std::copy(lanes + c * frames, lanes + (c + 1) * frames, lanes + (2 + c) * frames);", ["presets"])
 inull("a state never published", "  if (!instrument->changed()) return -1;", "  return -1;", ["hands", "presets"])
 inull("a switch read as off", "scope::Json::boolean(kind == 2)", "scope::Json::boolean(false)", ["hands"])
+
+golden.section("the limiter, the page's against the core's (5a)")
+# The page's limiter and clamp are the browser's own nodes (a
+# DynamicsCompressorNode and a WaveShaperNode, makeMonitorChain), and since
+# 5a the instrument has them ported (scope/limiter.h), last on its heard
+# pair. Held here as the plan has it: the instrument rendered on the loop's
+# worst - the reverb at full, a crossed split at Scan's top, the phaser at
+# its top - with the pair recorded before its limiter and after it; the
+# page's own chain, made on an OfflineAudioContext in Chromium, fed the pair
+# from before; and the two outputs and the limiters' readings compared.
+# Then what the site does now: the instrument's chain, with no limiter of
+# its own and the backstop for the clamp, fed what the instrument hands out.
+import numpy as _np
+from pieces import loop as _loop
+from pieces.kit import Kit as _Kit
+LTOOL = os.path.join(HERE, "tools", "limiter_page.py")
+LEVERY = 7680   # frames between the limiters' readings: 0.16 s, sixty of the context's quanta
+_lkit = _Kit(check)
+def lpage(src, mode, release=None):
+    out = src + "." + mode + ("-%g" % release if release else "")
+    subprocess.run([sys.executable, LTOOL, src, out, "48000", str(LEVERY), mode] + ([str(release)] if release else []), check=True)
+    return _np.fromfile(out, dtype=_np.float32), _json.load(open(out + ".json"))
+lruns = {}
+for lname, lmode in (("the reverb at full", "reverb"), ("a crossed split at Scan's top", "cross"), ("the phaser at its top", "phaser")):
+    lines = _loop.script("full", lmode, 100 if lmode == "cross" else 0, seconds=6)
+    pre, heard = os.path.join(BUILD, "limiter-%s-pre.f32" % lmode), os.path.join(BUILD, "limiter-%s-heard.f32" % lmode)
+    lines = [l for l in lines if l[0] != "every"]
+    lines[1:1] = [["record", "prelimit", pre], ["record", "heard", heard], ["every", LEVERY / 48000, "limiter"]]
+    reds = [float(r["limiter"][0]) for r in _lkit.render(lines)]
+    lruns[lname] = (_np.fromfile(pre, dtype=_np.float32), _np.fromfile(heard, dtype=_np.float32), reds, pre, heard)
+for lname, (pre, heard, reds, prepath, heardpath) in lruns.items():
+    page, preds = lpage(prepath, "limited")
+    apart = float(_np.max(_np.abs(page - heard))) if len(page) == len(heard) else inf
+    check("%s: the page's limiter and clamp on the core's pair make what the core's make, %d samples the same to %g"
+          % (lname, len(heard), TOL), apart <= TOL and len(heard) > 500000 and float(_np.max(_np.abs(pre))) > 1.5,
+          "worst %.3g, the pair before them peaking at %.3f" % (apart, float(_np.max(_np.abs(pre)))))
+    rapart = max(abs(a - b) for a, b in zip(preds, reds)) if len(preds) == len(reds) - 1 or len(preds) == len(reds) else inf
+    check("%s: and the limiters say the same, each tenth and a half, to the nine figures read (%d reads, down to %.2f dB)"
+          % (lname, len(preds), min(reds)), rapart <= 1e-6 and min(reds) < -6 and len(preds) >= 30, "worst %.3g" % rapart)
+    site, _ = lpage(heardpath, "instrument")
+    sapart = float(_np.max(_np.abs(site - heard)))
+    check("%s: and on the site, the instrument's chain hands the speakers what the instrument limited, to a float's last step at full scale"
+          % lname, sapart <= 2 ** -23, "worst %.3g (%.0f dB), %d of %d samples moved" % (
+              sapart, 20 * math.log10(max(sapart, 1e-30)), int(_np.sum(site != heard)), len(heard)))
+    # The other way the plan allowed: the page's limiter left in series. Its
+    # lookahead is 288 frames more, taken out before comparing.
+    twice, _ = lpage(heardpath, "limited")
+    late = 2 * 288
+    a, b = twice[late:].astype(float), heard[:-late].astype(float)
+    gain = 20 * math.log10(float(_np.sqrt(_np.mean(a ** 2) / _np.mean(b ** 2))))
+    check("%s: null: the page's limiter in series with the instrument's would change the sound" % lname,
+          float(_np.max(_np.abs(a - b))) > 0.01, "%+.2f dB, worst %.3f apart, %.1f dB under the signal"
+          % (gain, float(_np.max(_np.abs(a - b))), 10 * math.log10(_np.mean((a - b) ** 2) / _np.mean(b ** 2))))
+# The comparison's own nulls: a page limiter with a release ten per cent long,
+# the core's pair a sample late, and the pair before the limiter.
+lname, (pre, heard, reds, prepath, heardpath) = next(iter(lruns.items()))
+slow, sreds = lpage(prepath, "limited", 0.11)
+check("null: the comparison fails against the page's limiter with a release of 0.11 s",
+      float(_np.max(_np.abs(slow - heard))) > 1e-4 and max(abs(a - b) for a, b in zip(sreds, reds)) > 1e-3)
+page, _ = lpage(prepath, "limited")
+check("null: and against the core's output a sample late", float(_np.max(_np.abs(page[2:] - heard[:-2]))) > 1e-3)
+check("null: and against the pair before the limiter", float(_np.max(_np.abs(page - pre))) > 0.5)
 
 # The engine's pieces, held by their own numbers (stage 5, step 3, batch 2):
 # the web suites' "numbers" rows that drove a piece of the engine from the

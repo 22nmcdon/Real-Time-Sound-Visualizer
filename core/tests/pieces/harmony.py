@@ -91,15 +91,8 @@ def run(kit):
     # meter is the instrument's own, read every 150 ms over six seconds after
     # 800 ms to settle, as the page read its own.
     #
-    # harmonytest's other row here, "a held just fifth reads still to the
-    # picture: settled", does not hold on this meter and stays on the page's
-    # brain (batch 4): the instrument's grid changes 0.02 to 0.05 a frame
-    # under the still fifth (the page's, 0.004 to 0.014), so its verdict is
-    # "cycling", and so does a unison of the same tone (0.058 a frame); a
-    # plain sine's unison reads nought, so the meter can read stillness, and
-    # what differs is how a figure with any detail lands on its grid frame by
-    # frame.
-    # The face's verdict moving to the instrument's is step 5's.
+    # (harmonytest's other row here, "a held just fifth reads settled", is
+    # held below since 5a, with the reason it could not be before.)
     def meter(interval, just):
         code = kit_code({"v": 7, "timebase": 3, "display": "xy", "midiMode": "mono", "interval": interval, "just": just,
                           "pictureAmount": 0})
@@ -111,10 +104,35 @@ def run(kit):
     moves = lambda t, f: t[1] != "settled" and t[0] > 1.5 * f[0]
     check("an equal third, turning, reads moving on the instrument's meter, changing more a frame than a just fifth",
           moves(third, fifth), "%s against %s" % (third, fifth))
-    # The null is the fifth in the third's place. (A unison of this tone is
-    # no null: it changes 0.058 a frame on this grid and reads "cycling" too,
-    # which is why the "settled" row could not move.)
+    # The null is the fifth in the third's place.
     null("the fifth against itself does not", not moves(fifth, fifth), str(fifth))
+
+    # The verdict, as the eye sees it (5a). Until 5a this meter called the
+    # still fifth "cycling", and harmonytest's "settled" row stayed on the
+    # page's brain: each frame is one trigger-placed window, and a figure
+    # with detail lands a little differently in each, 0.027 a frame with no
+    # persistence (in a pattern six frames long). The verdict now reads
+    # change against the grid of the eye's time ago (kMeterEye). Held at no
+    # persistence, where the jitter is bare, and at the old library's 0.12,
+    # each way: the still figures settled, the turning ones not.
+    def verdict(fields, seconds=8.0):
+        s = {"v": 7, "timebase": 3, "display": "xy", "midiMode": "mono", "pictureAmount": 0}
+        s.update(fields)
+        rows = kit.render([["make", 48000, kit_code(s)], ["midi", 0x90, 57, 127], ["every", 0.15, "meter", "eye"], ["to", seconds]])
+        return rows[-1]["eye"][2] if rows[-1]["eye"][2] != "running" else "running away", float(rows[-1]["eye"][1]), \
+            statistics.median(float(r["meter"][0]) for r in rows[10:])
+    for pers in ("0", "0.12"):
+        still = {"just fifth of the Harmonic tone": verdict({"interval": 7, "just": True, "persistence": pers}),
+                 "unison of the Harmonic tone": verdict({"interval": 0, "persistence": pers}),
+                 "plain sine's unison": verdict({"interval": 0, "shape": "sine", "persistence": pers})}
+        turning = {"equal third": verdict({"interval": 4, "just": False, "persistence": pers}),
+                   "equal fifth": verdict({"interval": 7, "just": False, "persistence": pers})}
+        for name, (v, eye, frame) in still.items():
+            check("at persistence %s, a held %s reads settled on the instrument's meter" % (pers, name),
+                  v == "settled", "%s, %.4f as the eye sees it (%.4f frame to frame)" % (v, eye, frame))
+        for name, (v, eye, frame) in turning.items():
+            null("at persistence %s, an %s, turning, does not" % (pers, name), v not in ("settled", "listening"),
+                 "%s, %.4f (%.4f frame to frame)" % (v, eye, frame))
 
 
 def kit_code(fields):

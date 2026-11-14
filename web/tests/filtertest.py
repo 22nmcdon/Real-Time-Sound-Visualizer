@@ -153,11 +153,26 @@ with sync_playwright() as pw:
       toDestination: window.__toDest.slice(),
       chains: monitorChains.size,
       kind: state.source.kind,
-      limiter: Array.from(monitorChains).map((c) => ({
-        threshold: c.limiter.threshold.value, ratio: c.limiter.ratio.value,
-        knee: c.limiter.knee.value, attack: +c.limiter.attack.value.toFixed(4),
-        clamped: !!c.clamp && !!c.clamp.curve,
-      })),
+      // The instrument's chain since 5a: no limiter (the instrument has its own), and the backstop for the clamp.
+      own: Array.from(monitorChains).map((c) => {
+        const curve = c.clamp && c.clamp.curve;
+        let most = 0, apart = 0;
+        if (curve) for (let i = 0; i < curve.length; i++) {
+          const x = (i / (curve.length - 1)) * 2 - 1;
+          most = Math.max(most, Math.abs(curve[i]));
+          if (Math.abs(x) <= 0.99) apart = Math.max(apart, Math.abs(curve[i] - Math.fround(x)));
+        }
+        return { limiter: !!c.limiter, curve: !!curve, most, apart, reads: typeof c.limiting === "function" };
+      }),
+      // A chain made as every other source's is (the page's own brain's, a monitored input's): the page's limiter.
+      limiter: (() => {
+        const ctx = new OfflineAudioContext(2, 128, 44100);
+        const c = makeMonitorChain(ctx);
+        const out = { threshold: c.limiter.threshold.value, ratio: c.limiter.ratio.value, knee: c.limiter.knee.value,
+                      attack: +c.limiter.attack.value.toFixed(4), clamped: !!c.clamp && !!c.clamp.curve && c.clamp.curve[2047] === CLAMP_CURVE[2047] && CLAMP_CURVE[2047] < 0.99 };
+        dropMonitorChain(c);
+        return [out];
+      })(),
       wet: Array.from(monitorChains).map((c) => c.wet.gain.value),
     })""")
     print("    %s" % wiring)
@@ -175,6 +190,17 @@ with sync_playwright() as pw:
     check("and a clamp behind it, because a compressor has no lookahead",
           wiring["limiter"][0]["clamped"] is True)
     check("and the filter starts out of the monitor path", wiring["wet"] == [0], str(wiring["wet"]))
+    # Since stage 5, step 5a the instrument limits and clamps its own output
+    # (core/include/scope/limiter.h, held to these nodes to the bit by
+    # parity's limiter section), so its chain has no limiter, and in place of
+    # the clamp a backstop that is the identity to 0.995 and under one above.
+    own = wiring["own"][0] if wiring["own"] else {}
+    check("the instrument's chain has no limiter of its own, and reads the instrument's for the face's meter",
+          own.get("limiter") is False and own.get("reads") is True, str(own))
+    check("and its backstop is the identity on all the instrument can send, and never reaches one",
+          own.get("curve") and own.get("apart", 1) == 0 and own.get("most", 2) < 1, str(own))
+    check("null: the page's clamp is not the identity there", True if not own else
+          p.evaluate("() => { let a = 0; for (let i = 0; i < 2048; i++) { const x = (i / 2047) * 2 - 1; if (Math.abs(x) <= 0.99) a = Math.max(a, Math.abs(CLAMP_CURVE[i] - Math.fround(x))); } return a; }") > 0.01)
 
     print("\n--- the two taps are independent ---")
     taps = p.evaluate("""async () => {

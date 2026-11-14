@@ -41,8 +41,9 @@
 //   ["record", what, path]           from now on, into a file, float32: "heard" the heard
 //                                    pair interleaved, "lanes" the picture's six ring lanes a
 //                                    sample (kRingLanes), "grid" the shown grid at each reading that names
-//                                    `griddump` (kPhosphorN squared values each); ["record",
-//                                    what] stops it
+//                                    `griddump` (kPhosphorN squared values each), "prelimit"
+//                                    the heard pair interleaved as it stood before the
+//                                    limiter (5a); ["record", what] stops it
 //
 // Readings, a line each after `at T` (T in seconds, to the sample):
 //
@@ -64,6 +65,10 @@
 //             the picture's now (a hearing source is while it hears the generator), and
 //             its destination's kind, a v e or - for none
 //   griddump  the shown grid, into the `grid` file
+//   eye       the shared meter's change as the eye sees it (5a, kMeterEye): this frame's, and
+//             the verdict's rate over its window; then the verdict
+//   limiter   the limiter's reduction in dB as the node reports it, then what the meter is
+//             handed (nought or below), then the instrument's latency in frames
 //   grid lgrid hearing scan reads tone routed meter layers    instrument_reads.h's
 #include <cmath>
 #include <complex>
@@ -129,6 +134,11 @@ int response(char** argv) {
   const long total = static_cast<long>(std::atof(argv[5]) * kRate);
   scope::Instrument instrument;
   instrument.prepare(kRate, kStep, setup);
+  /* With the instrument's limiter off (5a), as response_cpp played it: the
+     judgements are of how the picture moves the sound, in decibels, and were
+     measured before the limiter, which would hold the loudest swells down at
+     its threshold and make the byte-for-byte run another. */
+  instrument.apply(scope::Instrument::control("limiter", scope::Json::string(std::string_view("0"))));
   std::vector<float> left(kStep), right(kStep);
   std::vector<double> heardL;
   heardL.reserve(static_cast<std::size_t>(total) + kStep);
@@ -225,7 +235,7 @@ class Render {
   // The heard pair since the last `heard`.
   double peakL_ = 0, peakR_ = 0, sumSq_ = 0;
   long heardN_ = 0, nonFinite_ = 0;
-  File heardFile_, lanesFile_, gridFile_;
+  File heardFile_, lanesFile_, gridFile_, preFile_;
 
   const scope::Json& at(const std::vector<scope::Json>& a, std::size_t i) {
     static const scope::Json none;
@@ -246,6 +256,10 @@ class Render {
       if (at(a, 3).type == scope::Json::Type::Object) for (const auto& kv : at(a, 3).o) s.set(kv.first, kv.second);
       inst_.prepare(rate_, kStep, s);
       now_ = 0;
+      inst_.hooks.beforeLimit = [this](const float* l, const float* r, int n) {
+        if (!preFile_.f) return;
+        for (int k = 0; k < n; ++k) { const float p[2] = { l[k], r[k] }; preFile_.put(p, 2); }
+      };
     } else if (cmd == "slider") {
       const auto c = scope::Instrument::slider(text(at(a, 1)), at(a, 2).type == scope::Json::Type::String ? at(a, 2).s : u"");
       if (c) inst_.apply(*c); else std::printf("no slider %s\n", text(at(a, 1)).c_str());
@@ -295,7 +309,7 @@ class Render {
       reads::hold(inst_, static_cast<int>(at(a, 1).n), at(a, 2).n);
     } else if (cmd == "record") {
       const std::string what = text(at(a, 1));
-      File& f = what == "heard" ? heardFile_ : what == "lanes" ? lanesFile_ : gridFile_;
+      File& f = what == "heard" ? heardFile_ : what == "lanes" ? lanesFile_ : what == "prelimit" ? preFile_ : gridFile_;
       if (at(a, 2).type == scope::Json::Type::String) f.open(text(at(a, 2))); else f.close();
     } else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); return false; }
     return true;
@@ -445,6 +459,11 @@ class Render {
     } else if (name == "griddump") {
       const auto& g = pic.phosphor().grid();
       gridFile_.put(g.data(), g.size());
+    } else if (name == "eye") {
+      const auto& m = pic.pictures().meter();
+      std::printf("eye %.9g %.9g %s\n", m.seen(), m.seenRate(), m.verdict().c_str());
+    } else if (name == "limiter") {
+      std::printf("limiter %.9g %.9g %d\n", static_cast<double>(inst_.limiterReduction()), inst_.limiting(), inst_.latency());
     } else if (name == "grid") reads::grid(inst_);
     else if (name == "lgrid") reads::lgrid(inst_);
     else if (name == "hearing") reads::hearing(inst_);

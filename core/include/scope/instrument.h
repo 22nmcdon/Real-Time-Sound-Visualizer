@@ -35,6 +35,7 @@
 #include "scope/hearing.h"
 #include "scope/keyboard.h"
 #include "scope/lfo.h"
+#include "scope/limiter.h"
 #include "scope/matrix.h"
 #include "scope/restore.h"
 #include "scope/scan.h"
@@ -66,6 +67,10 @@ class Instrument {
     std::function<void(const std::uint8_t* bytes, int length, int sample)> midiOut;
     std::function<void(const std::string& id, double value)> sliderMoved;
     std::function<void()> loaded;
+    /* The heard pair as it stands before the limiter (5a), for a harness
+       that holds the limiter to the page's: a block's piece at a time, both
+       channels. Nothing that plays sets it. */
+    std::function<void(const float* left, const float* right, int frames)> beforeLimit;
   };
   // The host's transport for a block, where it gives one.
   struct Transport { double bpm = 120; std::optional<double> ppq; bool playing = false; };
@@ -253,7 +258,18 @@ class Instrument {
     const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
     pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f); mono_.assign(size, 0.0f);
     pictureBL_.assign(size, 0.0f); pictureBR_.assign(size, 0.0f);
+    // The limiter starts as the page's node does when its chain is made: open, and its lookahead empty.
+    limiter_.prepare(sampleRate);
   }
+
+  /* How late the instrument puts its sound, in frames: the limiter's
+     lookahead (5a), which a host is told so it can line the track up. */
+  int latency() const { return limiter_.latency(); }
+  /* How hard the limiter works, in dB, as the page's `monitorLimiting` reads
+     its chains: nought or below, the node's reduction, which opens above
+     nought and is read as nought until it has come down. */
+  float limiterReduction() const { return limiter_.reduction(); }
+  double limiting() const { return limiterOn_ ? std::fmin(0.0, static_cast<double>(limiter_.reduction())) : 0.0; }
 
   // A setup loaded as a preset is: the core restored, the hands on it since put back.
   void load(const Json& setup, bool fromHost) {
@@ -419,7 +435,7 @@ class Instrument {
     }
     hearing_->hears(hearsItself());
     hearing_->setNow(nowMs_);
-    hearing_->step(*matrix_, true, heard, hearL_.data(), hearL_.data(), hearR_.data(), hearL_.size(), rate_, lastBlockMs_, heldHz, nowMs_);
+    hearing_->step(*matrix_, running_, heard, hearL_.data(), hearL_.data(), hearR_.data(), hearL_.size(), rate_, lastBlockMs_, heldHz, nowMs_);
     keyboard_->setNow(nowMs_);
     keyboard_->setTempo(brain_->clock.bpm);
     keyboard_->frame();
@@ -429,20 +445,21 @@ class Instrument {
        due inside a step goes at the next step's top - 2.7 ms late at most,
        where the page's frames are 17 ms apart. The score
        reads the grid drawn here, as the last picture frame left it. */
-    scoreTick(brain_->score, nowMs_, true, brain_->clock, pictureRun_->phosphor().grid().data(),
+    scoreTick(brain_->score, nowMs_, running_, brain_->clock, pictureRun_->phosphor().grid().data(),
               keyMask(brain_->keyRoot, brain_->keyScale), strike_, midiOut_.get());
     keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
     /* The picture's frame, when a sixtieth of a second of audio has gone: the
        capture, and the photocell and the picture's sources stepped from the
-       grid the last frame left, before the matrix reads them - with no
-       limiter to read, the output being the owner's. Its capture and its
+       grid the last frame left, before the matrix reads them - with the
+       limiter's reduction as the last step left it, as the page's meter
+       reads its chain's node (5a; nought until then). Its capture and its
        walk allocated as they went, a known cost on this thread from 5v
        until G8: the capture now writes into frames kept from frame to frame
        and the walk points at its figures rather than copying them, so a
        steady frame allocates nothing (parity's block_alloc_cpp). */
     const bool pictureFrame = pictureRun_->due(nowMs_);
     if (pictureFrame) {
-      pictureRun_->before(*matrix_, pictureSource_, 0);
+      pictureRun_->before(*matrix_, pictureSource_, limiting());
       scanFrame();
     }
     matrix_->setLayered(keyboard_->layersOn());
@@ -460,7 +477,7 @@ class Instrument {
     pictureRun_->afterMatrix();
     if (pictureFrame) {
       pictureRun_->setLayered(keyboard_->layersOn());
-      pictureRun_->draw(pictureSource_, kCanvas);
+      pictureRun_->draw(pictureSource_, kCanvas);  // held under Stop (5a): nothing faded or laid
       // And the readout's: the automatic lag locked to the held note while the note is the truth, else to what is heard.
       std::optional<double> played;
       if (keyboard_->settings().truth && !keyboard_->notes().empty()) {
@@ -672,6 +689,23 @@ class Instrument {
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[i].load(std::memory_order_relaxed);
     return out;
   }
+  /* The instrument's clock as it stood at the picture's newest frame (5a),
+     for the face's clock and score panels, which read the page's own until
+     5b: each oscillator's rate in hertz (locked or free, as the clock left
+     it), the tempo in force (the host's in the plugin, a MIDI clock's, or
+     the slider's), the slider's tempo kept beneath it, where it comes from
+     (nought the slider, one a MIDI clock, two the host), whether the bar is
+     running, where the bar is in beats, and the score: on, its column (the
+     playhead, -1 before its first step) and its steps. Then the limiter's
+     reduction as the node reports it and what the meter is handed. Published
+     with the oscillators, as cheaply. */
+  static constexpr std::size_t kClockServed = 12;
+  std::array<double, kClockServed> clockServed() const {
+    pictureAt_.load(std::memory_order_acquire);
+    std::array<double, kClockServed> out {};
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = clockServed_[i].load(std::memory_order_relaxed);
+    return out;
+  }
   // How many lanes the picture has: two, or four for a figure a layer or the band split.
   int pictureLanes() const { return pictureSource_.channels; }
   // How late the oversampled stages put the sound, as the setup stands (Generator::stageDelay).
@@ -776,6 +810,18 @@ class Instrument {
        where a route on its FM depth catches up with it. */
     if (id == "heldRamp") { core_->set("heldRamp", jsNumber(utf16To8(text))); return; }
     if (id == "drawn") { drawnFrom(text); return; }
+    /* The limiter switched off, "0", or on again: a harness's handle (5a),
+       the null for the check that the plugin's output never passes full
+       scale. Nothing on the page sends it. */
+    if (id == "limiter") { limiterOn_ = text != u"0"; return; }
+    /* The site's Stop and Run (5a, the page's setRunning): stopped, the
+       picture the instrument reads is held - nothing captured, faded or
+       struck into it - while the notes go on sounding, so Scan plays a held
+       picture and the timbre stands until Run. The score lets go of its
+       notes, and the hearing holds its readings, as the page's do. Not a
+       hand on the setup: where the scope is, not what it plays. The plugin
+       has no Stop and never sends it. */
+    if (id == "scopeRunning") { running_ = text != u"0"; pictureRun_->hold(!running_); return; }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));
@@ -1065,7 +1111,7 @@ class Instrument {
      through `plot`. Notes the arpeggiator and the score play do not strike,
      as on the page: they reach the generator without passing noteOn. */
   void scanStrike(int note, double velocity, int layers) {
-    if (!pictureRun_ || !scan_) return;
+    if (!pictureRun_ || !scan_ || !running_) return;  // stopped, the picture is held (5a)
     PictureRun& run = *pictureRun_;
     const Plot plot = run.plot();
     // Each hand at its own Strike (G6).
@@ -1099,6 +1145,14 @@ class Instrument {
     envServed_[1].store(core_->gated() ? 1.0 : 0.0, std::memory_order_relaxed);
     envServed_[2].store(static_cast<double>(core_->envelopeStage()), std::memory_order_relaxed);
     envServed_[3].store(core_->envelopeVelocity(), std::memory_order_relaxed);
+    const Clock& c = brain_->clock;
+    const double clock[kClockServed] = {
+      lfos_.size() > 0 ? lfos_[0].rate : 0, lfos_.size() > 1 ? lfos_[1].rate : 0, c.bpm, c.set,
+      c.from == Clock::From::Midi ? 1.0 : c.from == Clock::From::Host ? 2.0 : 0.0, c.running ? 1.0 : 0.0, c.beat(nowMs_),
+      brain_->score.on ? 1.0 : 0.0, static_cast<double>(brain_->score.col), brain_->score.steps,
+      static_cast<double>(limiter_.reduction()), limiting(),
+    };
+    for (std::size_t i = 0; i < kClockServed; ++i) clockServed_[i].store(clock[i], std::memory_order_relaxed);
     pictureAt_.store(ring, std::memory_order_release);
   }
   void render(float* left, float* right, int from, int to) {
@@ -1135,6 +1189,7 @@ class Instrument {
         }
         publish(ring);
         core_->hear(left + at, heardR, n);  // the Output, on what is heard and never on the bands drawn
+        limit(left + at, heardR, n);
         continue;
       }
       if (drawsInput_) {
@@ -1182,7 +1237,17 @@ class Instrument {
         ring = (ring + 1) % kPictureFrames;
       }
       publish(ring);
+      limit(left + at, heardR, n);
     }
+  }
+
+  /* The heard pair through the page's limiter and clamp (5a), last of all:
+     after the Output and the Width, which the generator's `hear` and its
+     heard pair have already put on, and never on the picture, which is what
+     came out before them. */
+  void limit(float* left, float* right, int n) {
+    if (hooks.beforeLimit) hooks.beforeLimit(left, right, n);
+    if (limiterOn_) limiter_.process(left, right, n);
   }
 
   /* The last of the picture, the page's screen, for the hearing to read: its
@@ -1256,6 +1321,10 @@ class Instrument {
   std::atomic<std::size_t> pictureAt_ { 0 };
   std::array<std::atomic<double>, 6> lfosServed_ {};
   std::array<std::atomic<double>, 4> envServed_ {};
+  std::array<std::atomic<double>, kClockServed> clockServed_ {};
+  Limiter limiter_;          // the page's limiter and clamp, on the heard pair (5a)
+  bool limiterOn_ = true;    // off only for a harness's null
+  bool running_ = true;      // the site's Stop and Run (5a)
 };
 
 }  // namespace scope

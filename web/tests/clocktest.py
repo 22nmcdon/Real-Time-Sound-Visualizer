@@ -245,6 +245,72 @@ with sync_playwright() as pw:
     check("and restored, the code's tempo, lock and slider's rate come back as they went",
           codes["back"] == codes["code"], str(codes["back"]))
     check("null: the code from before the clock is not the code restored", codes["old"] != {"bpm": 96, "l1y": "1/2"})
+
+    print("\n--- the instrument reports its clock (5a), beside the page's own ---")
+    # Since stage 5, step 5a the instrument posts its clock with its
+    # readings (Instrument::clockServed): each oscillator's rate, the tempo
+    # in force and the slider's, where the tempo comes from, whether the bar
+    # runs and where it is, and the score's playhead. The face's panels still
+    # draw the page's own lfos, transport and score until 5b points them at
+    # these; this holds the two together as they stand. Set by real input
+    # events, which reach both: the tempo, LFO 1 locked, LFO 2 free at its
+    # slider, the score on.
+    p.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
+    p.wait_for_timeout(900)
+    clk = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
+      const read = () => {
+        const c = state.source.clock, now = performance.now();
+        return { inst: c && { rates: c.rates, bpm: c.bpm, set: c.set, from: c.from, running: c.running, beat: c.beat,
+                              score: c.score },
+                 page: { rates: [lfos[0].rate, lfos[1].rate], bpm: transport.bpm, set: transport.set, from: transport.from,
+                         running: transport.running, beat: transportBeat(now), score: { on: score.on, col: score.col } },
+                 t: now };
+      };
+      showControl('tempo'); fire('tempo', '84', 'input');
+      openModCard('lfo1'); fire('lfoSync0', '1/8', 'change');
+      openModCard('lfo2'); fire('lfoSync1', '', 'change'); fire('lfoRate1', '37', 'input');
+      showControl('scoreOn'); const box = document.getElementById('scoreOn'); box.checked = true; box.dispatchEvent(new Event('change'));
+      await wait(700);
+      const a = read(); await wait(1000); const b = read();
+      // The null: a tempo the page alone is told (setTempo, no input event, so no message).
+      setTempo(100); await wait(400);
+      const c = read();
+      return { a, b, c, host: state.source.kind };
+    }""")
+    a, bb, c = clk["a"], clk["b"], clk["c"]
+    print("    instrument %s\n    page       %s" % (a["inst"], a["page"]))
+    ok = a["inst"] is not None
+    same = lambda r: (r["inst"]["rates"] == r["page"]["rates"] and r["inst"]["bpm"] == r["page"]["bpm"]
+                      and r["inst"]["set"] == r["page"]["set"] and r["inst"]["from"] == r["page"]["from"]
+                      and r["inst"]["running"] == r["page"]["running"])
+    check("the instrument posts its clock, and it is the page's: both rates, the tempo in force and the slider's, where it comes from, running",
+          clk["host"] == "host" and ok and same(a) and a["inst"]["rates"] == [84 / 60 * 2, 0.37] and a["inst"]["bpm"] == 84,
+          "%s against %s" % (a["inst"], a["page"]))
+    check("null: a tempo told to the page alone is told apart", ok and not same(c) and c["inst"]["bpm"] == 84 and c["page"]["bpm"] == 100,
+          "%s against %s" % (c["inst"] and c["inst"]["bpm"], c["page"]["bpm"]))
+    swapped = dict(a, inst=dict(a["inst"], rates=a["inst"]["rates"][::-1])) if ok else a
+    check("null: and the comparison fails with the two oscillators' rates the wrong way round", not same(swapped))
+    # The bar: the instrument's goes round at the tempo, a beat every 60/84
+    # of a second, and so does the page's. Where each is differs - the
+    # page's from its own Start, the instrument's from when it was made, the
+    # transport's Start and Stop being the page's alone (not a hand the
+    # instrument is sent; 5b's) - so the two are held to the same speed, and
+    # the gap is printed for 5b.
+    secs = (bb["t"] - a["t"]) / 1000
+    inst_bpm = (bb["inst"]["beat"] - a["inst"]["beat"]) / secs * 60 if ok else 0
+    page_bpm = (bb["page"]["beat"] - a["page"]["beat"]) / secs * 60
+    print("    the bar: the instrument's at beat %.2f, the page's at %.2f; over %.2f s each went at %.1f and %.1f BPM"
+          % (a["inst"]["beat"], a["page"]["beat"], secs, inst_bpm, page_bpm))
+    check("the instrument's bar goes round at the tempo it posts, as the page's does, to a twentieth",
+          abs(inst_bpm - 84) < 84 / 20 and abs(page_bpm - 84) < 84 / 20, "%.1f and %.1f" % (inst_bpm, page_bpm))
+    check("null: and not at the slider's old 96", abs(inst_bpm - 96) > 84 / 20, "%.1f" % inst_bpm)
+    # The score's playhead: on in both, and moving in both.
+    si, sp = (bb["inst"]["score"], bb["page"]["score"]) if ok else ({}, {})
+    check("the score is on in both, and the instrument's playhead posted and moving",
+          ok and si["on"] and sp["on"] and si["col"] >= 0 and (si["col"] != a["inst"]["score"]["col"] or si["steps"] != a["inst"]["score"]["steps"]),
+          "instrument %s, page %s" % (si, sp))
     check("no page errors on the default", not bad, "; ".join(bad[:3]))
     b.close()
 

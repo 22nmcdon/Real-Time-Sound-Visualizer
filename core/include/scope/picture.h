@@ -205,6 +205,9 @@ constexpr std::size_t kMeterDepth = 60, kMeterRecent = 8;  // METER_DEPTH, METER
 constexpr double kMeterWindow = 4;                       // METER_WINDOW, seconds
 constexpr double kMeterDrift = 0.25;                     // METER_DRIFT, seconds; the page says why
 constexpr double kChangeFloor = 0.02, kNoveltyFloor = 0.2, kSaturated = 0.35, kStrained = -6;
+// METER_EYE and METER_EYE_KEEP (5a): the verdict reads change over the eye's time; the page says why.
+constexpr double kMeterEye = 0.045;
+constexpr std::size_t kMeterEyeKeep = 8;
 
 // makePictureMeter: what the picture says - how much is lit, how much it
 // moved, how new it is - and the verdict on the loop.
@@ -227,6 +230,9 @@ class PictureMeter {
   double lit() const { return lit_; }
   double change() const { return change_; }
   double drift() const { return rate(kMeterDrift); }
+  // The change as the eye sees it (kMeterEye), this frame and as the verdict's rate.
+  double seen() const { return seen_; }
+  double seenRate() const { return rate(kMeterWindow, &Row::seen); }
   double novelty() const { return novelty_; }
   std::size_t depth() const { return history_.size(); }
 
@@ -242,6 +248,20 @@ class PictureMeter {
     change_ = hasLast_ ? distance(grid.data(), last_.data(), grid.size()) : 0;
     last_ = grid;
     hasLast_ = true;
+    /* How far it moved since the newest grid at least the eye's time ago,
+       shared out over this frame's part of that time; the oldest kept while
+       none is that old, nought before any. The grids are a ring kept from
+       frame to frame, so a steady frame allocates nothing (G8). */
+    const Kept* ref = keptCount_ ? &kept_[keptFirst_] : nullptr;
+    for (std::size_t k = keptCount_; k-- > 0;) {
+      const Kept& e = kept_[(keptFirst_ + k) % kMeterEyeKeep];
+      if (clock_ - e.t >= kMeterEye) { ref = &e; break; }
+    }
+    seen_ = ref && clock_ > ref->t ? distance(grid.data(), ref->grid.data(), grid.size()) * dt / (clock_ - ref->t) : 0;
+    Kept& slot = kept_[(keptFirst_ + keptCount_) % kMeterEyeKeep];
+    if (keptCount_ == kMeterEyeKeep) keptFirst_ = (keptFirst_ + 1) % kMeterEyeKeep; else keptCount_++;
+    slot.t = clock_;
+    slot.grid = grid;
     // Novelty: how far from the nearest picture of the last fifteen seconds,
     // leaving out the last two.
     since_ += dt;
@@ -256,7 +276,7 @@ class PictureMeter {
       history_.push_back(c);
       if (history_.size() > kMeterDepth) history_.erase(history_.begin());
     }
-    recent_.push_back({ clock_, dt, change_, novelty_, lit_, limiting_ });
+    recent_.push_back({ clock_, dt, change_, novelty_, lit_, limiting_, seen_ });
     while (!recent_.empty() && clock_ - recent_.front().t > kMeterWindow) recent_.erase(recent_.begin());
   }
 
@@ -264,18 +284,18 @@ class PictureMeter {
   std::string verdict() const {
     if (clock_ < kMeterWindow || history_.size() <= kMeterRecent + 4) return "listening";
     if (median(&Row::lit) > kSaturated || median(&Row::limiting) < kStrained) return "running away";
-    if (rate(kMeterWindow) < kChangeFloor) return "settled";
+    if (rate(kMeterWindow, &Row::seen) < kChangeFloor) return "settled";
     return median(&Row::novelty) < kNoveltyFloor ? "cycling" : "wandering";
   }
 
   void reset() {
-    hasLast_ = false; history_.clear(); recent_.clear();
+    hasLast_ = false; keptCount_ = 0; keptFirst_ = 0; history_.clear(); recent_.clear();
     clock_ = 0; since_ = kMeterEvery;
-    coverage_ = 0; lit_ = 0; change_ = 0; novelty_ = 1;
+    coverage_ = 0; lit_ = 0; change_ = 0; novelty_ = 1; seen_ = 0;
   }
 
  private:
-  struct Row { double t, dt, change, novelty, lit, limiting; };
+  struct Row { double t, dt, change, novelty, lit, limiting, seen; };
   static Coarse coarse(const Phosphor::Grid& grid) {
     constexpr int N = kPhosphorN, C = kMeterCoarse, B = N / C;
     Coarse c;
@@ -302,14 +322,19 @@ class PictureMeter {
     return sorted_[sorted_.size() >> 1];
   }
   // The change over the last `seconds`, per sixtieth of a second (METER_DRIFT).
-  double rate(double seconds) const {
+  double rate(double seconds, double Row::*key = &Row::change) const {
     double sum = 0, span = 0;
-    for (std::size_t k = recent_.size(); k-- > 0 && span < seconds;) { sum += recent_[k].change; span += recent_[k].dt; }
+    for (std::size_t k = recent_.size(); k-- > 0 && span < seconds;) { sum += recent_[k].*key; span += recent_[k].dt; }
     return span > 0 ? sum / span / 60 : 0;
   }
 
   Phosphor::Grid last_ {};
   bool hasLast_ = false;
+  // The last few grids and when each was, for the eye's baseline (kMeterEye): a ring, oldest at keptFirst_.
+  struct Kept { double t = 0; Phosphor::Grid grid {}; };
+  std::array<Kept, kMeterEyeKeep> kept_ {};
+  std::size_t keptFirst_ = 0, keptCount_ = 0;
+  double seen_ = 0;
   std::vector<Coarse> history_;
   std::vector<Row> recent_;
   static constexpr std::size_t kMeterRows = static_cast<std::size_t>(kMeterWindow * 60 * 2);

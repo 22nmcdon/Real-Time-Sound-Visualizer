@@ -25,12 +25,12 @@ Since stage 5, step 3, batch 4 (13 Nov) the figures - the chord built a note
 at a time, struck twice, and the third turning on the picture's meter - are
 core/tests/pieces/harmony.py's, on the core's own generator and meter; here
 they were a makeGeneratorCore built in the page. The readout's words and the
-notes it reads are the face's, on the default page. One row stays on the
-page's own brain, with its twin: "a held just fifth reads settled". On the
-instrument's own meter it does not - the core's grid changes 0.02 to 0.05 a
-frame under a still fifth, and under a still unison of the same tone, and
-reads "cycling" (pieces/harmony.py says more) - so moved, it would fail,
-and which meter the face's verdict reads is step 5's to decide.
+notes it reads are the face's, on the default page. The last two rows, "a
+held just fifth reads settled" and its twin, stayed on the page's own brain
+until stage 5, step 5a: on the instrument's own meter the still fifth read
+"cycling". Since 5a the meter's verdict reads change over the eye's time
+(METER_EYE in scope.html says why), and the two rows read the instrument's
+meter on the default page.
 """
 import math, os, sys
 from playwright.sync_api import sync_playwright
@@ -44,6 +44,9 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def null(name, ok, detail=""):
+    check("null: " + name, ok, detail)
 
 HZ = lambda note: 440 * 2 ** ((note - 69) / 12)
 
@@ -126,40 +129,50 @@ with sync_playwright() as pw:
           and "A: fifth" not in said["against"], said["against"])
 
     print("\n--- the geometry reaches the loop ---")
-    # Left on the page's own brain (batch 4), on a page of its own: the
-    # instrument's meter reads the still fifth "cycling" (the docstring).
-    js = b.new_page(viewport={"width": 1400, "height": 900})
-    js.on("pageerror", lambda e: bad.append("pageerror (?brain=js): " + str(e)))
-    js.goto(f"file://{ART}/scope.html?brain=js&picture=0"); js.wait_for_timeout(700)
-    corpus.install(js)
-    loop = js.evaluate("""async () => {
+    # On the default page since stage 5, step 5a, read off the instrument's
+    # own picture meter (its readings' `meter`, which the face's verdict
+    # reads in 5b). Until 5a this stayed on the page's own brain: the
+    # instrument's meter called the still fifth "cycling". The cause was not
+    # its grid - at the same persistence the two grids change alike, 0.0064
+    # and 0.0054 a frame - but the verdict reading change frame against
+    # frame, where each frame is one trigger-placed window and a still
+    # figure with detail lands a little differently in each (0.027 a frame
+    # at no persistence); the verdict reads it over the eye's time now
+    # (METER_EYE). Driven as a player drives it: Mono, the note, X-Y, the
+    # interval menu and the tuning buttons, which the instrument hears.
+    loop = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const menu = (e, v) => { e.value = v; e.dispatchEvent(new Event('change')); };
       const out = {};
       // The old library's Harmonic tone, from before P8g: the plain tone this
       // was measured on, whatever the bank's boot preset comes to set.
-      // Held in Mono, as above.
-      loadCorpus('Harmonic tone'); setMidiMode('mono'); midiNoteOn(57, 127); setDisplay('xy'); genSet('freq', 220);
-      for (const [name, interval, just] of [['just fifth', 7, true], ['equal third', 4, false]]) {
-        genSet('interval', interval); genSet('just', just);
-        await wait(800); pictureMeter.reset();
-        const change = [];
-        for (let k = 0; k < 40; k++) { await wait(150); change.push(pictureMeter.change); }
-        change.sort((a, b) => a - b);
-        out[name] = { change: change[20], verdict: pictureMeter.verdict(), memory: pictureStage.memory };
+      loadCorpus('Harmonic tone'); await wait(300);
+      el.midiMono.click(); midiNoteOn(57, 127); el.dispXY.click();
+      for (const [name, interval, just] of [['just fifth', '7', true], ['equal third', '4', false]]) {
+        menu(el.interval, interval); (just ? el.tuneJust : el.tuneEqual).click();
+        // The verdict's window is four seconds: wait it out, then read for six.
+        await wait(4800);
+        const change = [], seen = [];
+        for (let k = 0; k < 40; k++) {
+          await wait(150);
+          const m = state.source.meter;
+          if (m) { change.push(m.change); seen.push(m.seen); }
+        }
+        change.sort((a, b) => a - b); seen.sort((a, b) => a - b);
+        const m = state.source.meter;
+        out[name] = { change: change[change.length >> 1], seen: seen[seen.length >> 1], verdict: m && m.verdict,
+                      host: state.source.kind === 'host', n: change.length };
       }
       midiNoteOff(57);
       return out;
     }""")
     print("    %s" % loop)
     fifth, third = loop["just fifth"], loop["equal third"]
-    # The still fifth still changes a little a frame, the beam's own flicker
-    # (0.004 to 0.014 measured); the turning third half as much again at
-    # least (0.032 against 0.014 at the closest). The verdict is the check that
-    # matters; the margin only keeps it from passing on two settled readings.
-    check("a held just fifth reads still to the picture: settled", fifth["verdict"] == "settled", str(fifth))
-    check("and an equal third, turning, reads moving, changing more a frame",
-          third["verdict"] != "settled" and third["change"] > 1.5 * fifth["change"], "%s against %s" % (third, fifth))
-
+    check("a held just fifth reads still to the instrument's picture: settled", fifth["host"] and fifth["n"] == 40
+          and fifth["verdict"] == "settled", str(fifth))
+    check("and an equal third, turning, reads moving, changing more as the eye sees it",
+          third["verdict"] not in ("settled", "listening") and third["seen"] > 1.5 * fifth["seen"], "%s against %s" % (third, fifth))
+    null("the still fifth's verdict is not the turning third's", fifth["verdict"] != third["verdict"], "%s, %s" % (fifth["verdict"], third["verdict"]))
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

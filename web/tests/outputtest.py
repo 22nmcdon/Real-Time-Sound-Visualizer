@@ -57,6 +57,9 @@ INSTRUMENT = """async ([turned, blocks]) => {
   const code = encodeSetup(snapshot());
   const make = () => makeWasmBrain(wasmModule(), 48000, 128, code);
   const a = make(), b = make();
+  // The limiter off (5a): it is last on the heard pair, 6 ms late and not
+  // linear, and this holds what the instrument makes before it, to the sample.
+  for (const x of [a, b]) x.control('limiter', '0');
   if (turned) b.slider('output', '50');
   const out = { picture: true, quarter: true, peakHeard: 0, peakPicture: 0, firstApart: -1, heardApart: 0 };
   for (const x of [a, b]) x.midi([0x90, 57, 100]);

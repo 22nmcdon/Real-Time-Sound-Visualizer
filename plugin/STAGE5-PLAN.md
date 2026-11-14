@@ -318,6 +318,44 @@ the full suite and parity pass.
    - *`syncMonitor` stays* (answered by batch 4): the instrument's sound
      reaches the speakers through the page's own monitor chain, so it is the
      face's audio and not a second brain.
+   **5a done (14 Nov): the instrument given what the owner decided it must do
+   before the brain goes**, the brain itself untouched (`?brain=js` stays, the
+   face still reads the page's own). `STAGE5-INVENTORY.md` section 12.
+   - *The limiter* is in the core (`scope/limiter.h`): Chromium's
+     DynamicsCompressor and WaveShaper ported in floats, with glibc's `log10f`
+     and `powf` carried along so the compiled and native instruments agree;
+     last on the heard pair, after the Output and the Width. Parity renders
+     the page's own chain in an OfflineAudioContext on the loop's worst
+     (reverb full, crossed split at Scan's top, phaser at its top): the same
+     to the bit, 576,000 samples each, the reductions to the nine figures
+     read. The plugin's output peaks at 0.961 on all seven loop seeds (2.02
+     to 3.24 with it off, the nulls), and the host is told its 6 ms. The
+     site sounds the same: the instrument's chain has no limiter and a
+     backstop for its clamp, which moves a tenth of the samples by one float
+     step (1.2e-7, -138 dB); the page's limiter in series was measured and
+     refused (its make-up gain, an error 24 to 28 dB under the signal). The
+     meter is handed the reduction: a chord of six at -10.1 dB runs away, the
+     same with the limiter off wanders, a sine does not.
+   - *Stop* holds the picture the instrument reads (`scopeRunning`, sent by
+     setRunning on the site only): no capture, fade or strike, the frame
+     held. A scanned fifth's table moves 0.00003 a quarter-second stopped,
+     0.109 running; on the site scantest's held run reads 0.0001 against
+     0.0066 never stopped (the page's own brain: 0.0001 to 0.0002).
+   - *The meter* was not flickering more than the page's: at the same
+     persistence the grids change alike (0.0064 and 0.0054 a frame); the
+     piece had loaded none. The cause is the verdict reading frame against
+     frame, each frame one trigger-placed window; it reads change against
+     the grid of 45 ms ago now (`METER_EYE`, page and core), which leaves
+     what is heard alone. Still figures settle at both persistences, turning
+     ones cycle; harmonytest's two rows read the instrument's meter on the
+     default.
+   - *The clock* is posted (`Instrument::clockServed`, after the readings):
+     both rates, the tempo and the slider's, its source, running, the beat,
+     the score's on, column and steps, and the limiter's reduction; and the
+     meter's verdict. clocktest holds them to the page's own. The bars are
+     1.9 beats apart, since the transport's Start is the face's alone - for
+     5b, with the plugin's page, which is served none of this yet
+     (`web/docs/after-stage-5.md`).
 6. **Delete.** The engine, the wrappers, the page's worklets, the fallback
    codec and picture engine, parity's JavaScript harness (`*_js.mjs`,
    `js_core.mjs`), and the README's and PLAN's paragraphs about two brains.

@@ -6638,3 +6638,35 @@ the bit on every setup there is; what did not carry over is the cost fit,
 made in JavaScript milliseconds (`web/docs/budget-on-the-core.md`) - so a
 port held to the bit can still rest on numbers measured on the other side.
 `plugin/STAGE5-INVENTORY.md` section 11 has the rest.
+
+**A browser node can be ported to the bit, and a verdict should not read the
+frame (14 Nov).** Stage 5's step 5a put the page's limiter and clamp into the
+instrument (`core/include/scope/limiter.h`). They are the browser's own
+`DynamicsCompressorNode` and `WaveShaperNode`, not JavaScript, so the port is
+of Chromium's source at the release Playwright runs, in floats operation for
+operation, and parity renders the page's own `makeMonitorChain` in an
+`OfflineAudioContext` and holds the two to the bit - which they are, every
+sample of the loop's worst renders. Three things nobody should rediscover.
+The C library is part of the node: Chromium takes `log10f` and `powf` from
+the system's, and WebAssembly's (wasi-libc) gives another `log10f` for 3 per
+cent of floats, so the core carries glibc's two, ported, and the compiled and
+native instruments stay equal; a double function rounded to a float at once
+(`sin`, `exp`) agreed in both on every float tried. The node is not neutral
+in series: it has a make-up gain of 1.7 dB at the page's settings, so a
+second limiter after the instrument's makes everything louder and was not
+an option - the instrument's chain on the site has none, and a backstop where
+its clamp was, the identity up to 0.995, which moves a tenth of the samples
+by one float step at full scale (the README's older paragraph says the node
+has no lookahead; it has 6 ms, it is its 3 ms attack updated every 32 frames
+that lets a transient through). And the picture meter's "cycling" for a
+still figure was not the grid: each frame is one trigger-placed window, so a
+figure with detail lands in it a little differently every frame (0.027 a
+frame on a held fifth with no persistence, on the page's grid as on the
+core's), and a verdict that reads frame against frame reads that as motion.
+It reads change against the grid of 45 ms ago now (`METER_EYE`), where the
+jitter does not add up and motion does; a tenth of a second aliased a third
+turning at 8.7 Hz, and averaging the grid over the eye's time blurred real
+motion with the jitter. When two tests disagree about a meter, compare their
+setups before their code: the piece had loaded no persistence where the page
+had the old library's 0.12, and that alone was most of the difference.
+`plugin/STAGE5-INVENTORY.md` section 12 has the rest.

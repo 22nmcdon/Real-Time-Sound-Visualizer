@@ -497,6 +497,8 @@ with sync_playwright() as pw:
       for (let k = 0; k < frames; k++) { L[k] = 0.4 * rnd(); R[k] = 0.3 * Math.sin(2 * Math.PI * 300 * k / rate) + 0.2 * rnd(); }
       const gains = [0.5, 1, 0.25, 2];
       const brain = makeWasmBrain(new WebAssembly.Module(wasmCore()), rate, n, encodeSetup(snapshot()));
+      // The limiter off (5a): 6 ms late and not linear on the heard pair, which is held here to the browser's crossovers.
+      brain.control('limiter', '0');
       brain.control('srcBands', '1');
       brain.control('laneMix', gains.join(','));
       const heardL = new Float32Array(n), heardR = new Float32Array(n), pictures = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(n));

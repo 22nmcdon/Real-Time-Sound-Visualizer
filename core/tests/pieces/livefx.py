@@ -55,7 +55,10 @@ def draw(kit, setup, path, seconds=1.5, more=None, mono=False):
     drawn pair (the picture's first two lanes) and heard pair."""
     lanes, heard = os.path.join(BUILD, "livefx-lanes.f32"), os.path.join(BUILD, "livefx-heard.f32")
     lines = [["make", RATE, code(setup)], ["click", "srcMic"], ["input", "file", path, 2]] + (more or [])
-    lines += [["record", "lanes", lanes], ["record", "heard", heard], ["to", seconds]]
+    # The heard pair as it stands before the limiter (5a), which puts it 6 ms
+    # late and bends its peaks: what is held here is what the instrument makes
+    # of its input, sample for sample, which the limiter after it does not change.
+    lines += [["record", "lanes", lanes], ["record", "prelimit", heard], ["to", seconds]]
     kit.render(lines)
     d = np.fromfile(lanes, "<f4").reshape(-1, 6)[-RATE:]  # the ring's six lanes a sample
     h = np.fromfile(heard, "<f4").reshape(-1, 2)[-RATE:]

@@ -62,6 +62,9 @@ INSTRUMENT = """async ([width, blocks]) => {
   const code = encodeSetup(Object.assign({}, snapshot(), BASE_SETUP));
   const make = () => makeWasmBrain(wasmModule(), 48000, 128, code);
   const a = make(), b = make();
+  // The limiter off (5a): it is last on the heard pair, 6 ms late and not
+  // linear, and this holds what the instrument makes before it, to the sample.
+  for (const x of [a, b]) x.control('limiter', '0');
   if (width !== null) b.slider('stereoWidth', String(width));
   const out = { picture: true, landedMono: true, firstBlockMono: true, half: 0, ratioMax: 0, asDrawn: true, bAsDrawn: true,
                 firstRatio: null, peak: 0, sideA: 0 };

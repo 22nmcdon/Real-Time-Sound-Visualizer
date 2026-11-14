@@ -408,7 +408,8 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   // Once the matrix has made the stages' routes after a load: how late they put the sound.
   if (latencyIn_ >= 0) {
     latencyIn_ -= frames;
-    if (latencyIn_ < 0) latencyWanted_.store(instrument_.stageDelay());
+    // And the limiter's lookahead (5a), which is always there: 288 frames at 48 kHz.
+    if (latencyIn_ < 0) latencyWanted_.store(instrument_.stageDelay() + instrument_.latency());
   }
   publish(false);
 }

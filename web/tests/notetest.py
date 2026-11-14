@@ -82,6 +82,7 @@ VELOCITY_FM = """() => {
 # second half second, on either channel.
 PLAY = """({ code, note, ramp }) => {
   const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
+  brain.control("limiter", "0");  // 5a: the limiter is 6 ms late on the heard pair, and these read its blocks to the sample
   if (ramp !== null) brain.control("heldRamp", String(ramp));
   const L = new Float32Array(128), R = new Float32Array(128), pics = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128));
   for (let k = 0; k < 40; k++) brain.block(128, L, R, pics, null);
@@ -113,6 +114,7 @@ PLAY = """({ code, note, ramp }) => {
 ENDS = """({ code, note, other }) => {
   const go = (ramp) => {
     const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
+    brain.control("limiter", "0");  // as PLAY's
     if (ramp !== null) brain.control("heldRamp", String(ramp));
     const L = new Float32Array(128), R = new Float32Array(128), pics = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128));
     for (let k = 0; k < 40; k++) brain.block(128, L, R, pics, null);

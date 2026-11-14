@@ -161,31 +161,6 @@ with sync_playwright() as pw:
     null("the lower hand's depth is not the upper's", lyr["a"] != lyr["b"], str(lyr))
 
     print("\n--- the first minute: a moving picture, read back ---")
-    FIRST = """async ([preset, scanOn, stopAt, seconds]) => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setRunning(true);
-      /* The old library's, as above, under a note held in Mono (corpus.held_tone):
-         the site waits for a note since 10 Nov, and this read the tone it drew
-         with none. Let go first, as a note held in Dyad over a setup makes its
-         fifth a unison. */
-      midiPanic(); loadCorpus(preset); heldTone();
-      // The picture stage at nought, so what moves the sound here is Scan.
-      el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
-      if (!scanOn) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input')); }
-      if (stopAt !== null) setTimeout(() => setRunning(false), stopAt * 1000);
-      const out = [], t0 = performance.now();
-      while (performance.now() - t0 < seconds * 1000) {
-        await wait(250);
-        if (!state.running) state.source.tick(performance.now() / 1000);
-        const [l] = state.source.getLatestWindow(4096);
-        let e = 0, d = 0;
-        for (let k = 1; k < l.length; k++) { e += l[k] * l[k]; d += (l[k] - l[k - 1]) ** 2; }
-        out.push([(performance.now() - t0) / 1000, Math.sqrt(d / Math.max(e, 1e-12))]);
-      }
-      setRunning(true);
-      el.pictureAmount.value = String(STAGE_DEFAULT); el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
-      return out;
-    }"""
     # Stopped at 2 s and judged from 6 s: Scan's path follows the figure over
     # a second (SCAN_FOLLOW), so once the screen stops it goes on closing on
     # the still figure, smoothly and one way, for a few seconds. Judged from
@@ -193,33 +168,13 @@ with sync_playwright() as pw:
     # by where the glide stood at the stop, and failed against a fifth of the
     # moving run's one time in three (6 Nov, and before). Four seconds on, it
     # is under 2 per cent of where it started.
-    # The held run stays on the page's own brain (?brain=js&core=js), a page
-    # of its own: on the site, Stop holds the face's screen and not the
-    # instrument's, which goes on drawing and reading its own grid, so Scan
-    # keeps moving with the screen stopped (13 Nov, stage 5, step 3, batch 3:
-    # 0.0084 held against 0.0079 running). That is a site defect, recorded in
-    # web/docs/after-stage-5.md and not fixed here; moved to the default as
-    # it was, this check fails there. Offline, it wants render_cpp with a
-    # "screen stopped" event in its timeline.
-    bj = b.new_page(viewport={"width": 1400, "height": 900})
-    bj.on("pageerror", lambda e: bad.append("pageerror (brain=js): " + str(e)))
-    bj.goto(f"file://{ART}/scope.html?brain=js&core=js"); bj.wait_for_timeout(900)
-    corpus.install(bj)
-    if bj.locator("#helpClose").is_visible(): bj.locator("#helpClose").click()
-    bj.wait_for_timeout(200)
-    held = bj.evaluate(FIRST, ["Scanned fifth", True, 2, 8])
-    sd = lambda series, frm=0: statistics.pstdev([v for t_, v in series if t_ >= frm])
-    mean = lambda series, upto: statistics.mean([v for t_, v in series if t_ <= upto])
-    before = [x for x in held if x[0] < 2]
-    print("    brightness, on the page's brain: before the stop +- %.4f; held still from 2 s, after 6 s +- %.4f"
-          % (sd(before), sd(held, 6)))
-    # Against the same run before the stop, on the same brain: it was against
-    # a moving run of its own page, which went to the site legs below (the
-    # turning fifth that moves its timbre, and the same without Scan that
-    # stands still, the site's twins of it already).
-    check("held still - the screen stopped - Scan is an ordinary tone: the brightness stands", sd(held, 6) < sd(before) / 5,
-          "%.4f against %.4f before the stop" % (sd(held, 6), sd(before)))
-    null("the held run, before it stopped, was moving", sd(before) > 0.001, "%.4f" % sd(before))
+    # The held run, on the site's instrument since stage 5, step 5a: Stop
+    # tells the instrument (setRunning's scopeRunning), which holds the
+    # picture it reads - nothing faded, captured or struck into it - so Scan
+    # plays a held picture. Until 5a it ran on the page's own brain
+    # (?brain=js&core=js), because on the site Stop held the face's screen
+    # and not the instrument's: 0.0084 held against 0.0079 running (step 3,
+    # batch 3). The run is below, with the site's other legs.
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 
@@ -230,6 +185,7 @@ with sync_playwright() as pw:
     # lanes, which are what is heard, as stagetest.py reads it; the picture
     # stage at nought by the slider, so what moves the sound is Scan; and the
     # depth at nought by the slider as the null, sent the way a hand's is.
+    sd = lambda series, frm=0: statistics.pstdev([v for t_, v in series if t_ >= frm])
     SITE = """async ([scanOn, seconds]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       // The old library's Scanned fifth, from before P8g, as on the page above, held.
@@ -247,7 +203,7 @@ with sync_playwright() as pw:
       }
       return { out, host: BRAIN_IN_CORE && state.source.kind === 'host' };
     }"""
-    def site(query, scan_on):
+    def site(query, scan_on, script=None, args=None):
         bb = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
         pp = bb.new_page(viewport={"width": 1400, "height": 900})
         errs = []
@@ -257,7 +213,7 @@ with sync_playwright() as pw:
         if pp.locator("#helpClose").is_visible(): pp.locator("#helpClose").click()
         pp.locator("#trace").click(position={"x": 5, "y": 5})   # the press a browser waits for
         pp.wait_for_timeout(800)
-        got = pp.evaluate(SITE, [scan_on, 5])
+        got = pp.evaluate(script or SITE, args or [scan_on, 5])
         got["errors"] = errs
         bb.close()
         return got
@@ -280,6 +236,25 @@ with sync_playwright() as pw:
     # tables: a check that existed to hold the two engines together, which
     # goes with the page's brain (step 5); the two legs above hold Scan on
     # the instrument the site plays.
+    # The held run (5a): the Scanned fifth with Scan, stopped at 2 s, judged
+    # from 6 s against itself before the stop, as it was on the page's brain;
+    # and Run as its null - the same fifth on the same page, never stopped,
+    # moving from 6 s as before it.
+    HELD = SITE.replace("await wait(600);", "await wait(600); if (stopAt !== null) setTimeout(() => setRunning(false), stopAt * 1000);") \
+        .replace("async ([scanOn, seconds]) => {", "async ([scanOn, seconds, stopAt]) => {") \
+        .replace("return { out, host:", "setRunning(true);\n      return { out, host:")
+    assert HELD.count("setRunning(false)") == 1 and "stopAt" in HELD
+    held, free = site("", True, HELD, [True, 8, 2]), site("", True, HELD, [True, 8, None])
+    hv, fv = [(t_, v) for t_, v, _ in held["out"]], [(t_, v) for t_, v, _ in free["out"]]
+    before = [x for x in hv if x[0] < 2]
+    print("    site, held: brightness before the stop +- %.4f; stopped, from 6 s +- %.4f; never stopped, from 6 s +- %.4f"
+          % (sd(before), sd(hv, 6), sd(fv, 6)))
+    check("held still - the screen stopped, and the instrument told - Scan is an ordinary tone: the brightness stands",
+          held["host"] and sd(hv, 6) < sd(before) / 5 and sd(hv, 6) < 0.001, "%.4f against %.4f before the stop" % (sd(hv, 6), sd(before)))
+    null("the held run, before it stopped, was moving", sd(before) > 0.001, "%.4f" % sd(before))
+    null("and Run, never stopped, goes on moving from 6 s", free["host"] and sd(fv, 6) > 5 * sd(hv, 6) and sd(fv, 6) > 0.001,
+         "%.4f against %.4f held" % (sd(fv, 6), sd(hv, 6)))
+    on["errors"] += held["errors"] + free["errors"]
     check("no page errors on the site", not (on["errors"] + off["errors"]), "; ".join((on["errors"] + off["errors"])[:3]))
 
 print()
