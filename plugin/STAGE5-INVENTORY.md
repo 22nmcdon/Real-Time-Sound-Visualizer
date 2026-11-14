@@ -1073,7 +1073,8 @@ The full run after (97 suites, 38.9 minutes, 2,511 checks): everything
 passes, honesty's reverb pass included, which failed alone on testing before
 this batch (it reads nothing this batch changed). Batch 4's full run was
 50.6 minutes; loop and picturepresets alone were about eight of the
-difference. Parity: below.
+difference. Parity passed, 1,791 checks (1,664 after batch 4; the 127 more are this
+batch's piece checks), three-way, its pieces section running every module.
 
 ### Offline against the page's bounds
 
