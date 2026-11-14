@@ -315,7 +315,10 @@ with sync_playwright() as pw:
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
       setView('bench'); setBenchTab('space');
       const shown = el.timeGroup.offsetHeight > 0;
-      setTempo(120); await wait(30);
+      /* The tempo by its slider, which the instrument hears (since 5b the face's
+         delay follows the instrument's tempo; setTempo told the page alone). */
+      const tempo = async (bpm) => { set('tempo', bpm, 'input'); await wait(300); };
+      await tempo(120);
       set('delaySync', '1/4', 'change');
       const quarter = [genSettings().delayMs, el.delayMs.disabled, el.delayMsValue.textContent];
       // The slider shows the time in use, which is where a routing's lane
@@ -323,8 +326,12 @@ with sync_playwright() as pw:
       const slid = el.delayMs.value;
       set('delaySync', '1/8d', 'change');
       const dotted = genSettings().delayMs;
-      setTempo(100); await wait(300);
+      await tempo(100);
       const followed = [genSettings().delayMs, el.delayMsValue.textContent];
+      // The null: a tempo told to the page's clock alone (setTempo, no message); the instrument's stays 100.
+      setTempo(60); await wait(300);
+      const pageAlone = genSettings().delayMs;
+      await tempo(100);
       set('delaySync', '', 'change');
       set('delayMs', 250, 'input');
       const free = [genSettings().delayMs, el.delayMs.disabled];
@@ -346,10 +353,11 @@ with sync_playwright() as pw:
       // A code carries its tempo, 120 unless it says: a quarter triplet at
       // that is 333 ms. (An eighth was tried first and read 250, the free
       // time left by the code before - right, and unable to tell.)
-      restore({ delaySync: '1/4t', delayMix: 20 }); await wait(30);
+      // Sent whole to the instrument, as a pasted code is, since the face's delay follows the instrument's tempo.
+      restore({ delaySync: '1/4t', delayMix: 20 }); hostSendSetup(); await wait(300);
       const synced = genSettings().delayMs;
-      restore({}); setTempo(120); await wait(30);
-      return { shown, quarter, slid, dotted, followed, free, panel, old, back, synced };
+      restore({}); await tempo(120);
+      return { shown, quarter, slid, dotted, followed, pageAlone, free, panel, old, back, synced };
     }""")
     print("    %s" % page)
     check("a quarter at 120 BPM is 500 ms, the slider standing aside for it",
@@ -359,6 +367,8 @@ with sync_playwright() as pw:
     check("a dotted eighth is 375, and at 100 BPM the delay follows the tempo to 450",
           abs(page["dotted"] - 375) < 1e-9 and abs(page["followed"][0] - 450) < 1e-9 and page["followed"][1] == "450 ms",
           "%s, %s" % (page["dotted"], page["followed"]))
+    check("null: a tempo told to the page's clock alone leaves it at the instrument's 450, not the page's 750",
+          page["pageAlone"] == 450, str(page["pageAlone"]))
     check("free, the slider's time", page["free"] == [250, False], str(page["free"]))
     check("the section is on the Effects tab and every control reaches the generator in its own units",
           page["shown"] and page["panel"] == [0.4, 0.6, True, 0.3, 1.5, 2.5, 8, 0.45], str(page["panel"]))

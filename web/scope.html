@@ -6954,8 +6954,10 @@ function transportContinue(now) {
 }
 // "3.2": the bar and the beat, in fours, from one.
 function transportSaid(now) {
-  return beatSaid(transportBeat(now));
+  const beat = Math.max(0, transportBeat(now));
+  return (Math.floor(beat / 4) + 1) + "." + (Math.floor(beat % 4) + 1);
 }
+// The same of a beat as the instrument posts it (instrumentClock).
 function beatSaid(at) {
   const beat = Math.max(0, at);
   return (Math.floor(beat / 4) + 1) + "." + (Math.floor(beat % 4) + 1);
@@ -7021,9 +7023,22 @@ function clockStep(now) {
      the face's, as their phases are (absorb), and the panel follows it; the
      page's transport, its locks and the delay's note values are the
      instrument's to keep, and are not kept here a second time. */
-  const served = instrumentClock();
+  // Asked for by name: parity lifts clockStep alone, where there is no instrument.
+  const served = typeof instrumentClock === "function" ? instrumentClock() : null;
   if (served) {
-    served.rates.forEach((rate, i) => { if (lfos[i]) lfos[i].rate = rate; });
+    /* The delay's time in note values, as the face's mirror and its reading
+       show it, at the instrument's tempo: the instrument follows its own
+       (and is sent nothing from here); this is only what the face says. A
+       MIDI clock's slack (delayFollows) is the instrument's, and not
+       repeated: the reading moves with every change of its tempo. */
+    for (const [e, layer] of [[echo, 0], [echoB, 1]]) {
+      if (typeof e === "undefined" || !e.sync || (layer === 1 && linked("delay"))) continue;
+      const ms = delayTimeMs(e, served.bpm);
+      if (ms === e.sent) continue;
+      e.sent = ms;
+      genSet("delayMs", ms, layer || undefined);
+      if (el.delayMsValue) syncEchoPanel();
+    }
     // The rates too: a lock let go moves a rate and nothing else the row says.
     const said = served.from + Math.round(served.bpm) + Math.round(served.set) + served.running + beatSaid(served.beat)
       + served.rates.map((rate) => rate.toFixed(2)).join();
@@ -22065,7 +22080,12 @@ function paintCards() {
    is locked to when it is. */
 function lfoRateReading(lfo) {
   const sync = LFO_SYNC.find(([id]) => id === lfo.sync);
-  return lfo.rate.toFixed(2) + " Hz" + (sync && sync[0] ? " \u00b7 " + sync[1] : "");
+  /* The rate the instrument's oscillator runs at, while it plays (5b): its
+     clock's, as the phases are. Not written into the page's lfos, whose rate
+     is what a setup code keeps of an unlocked oscillator (snapshot). */
+  const served = instrumentClock(), i = lfos.indexOf(lfo);
+  const rate = served && i >= 0 && i < served.rates.length ? served.rates[i] : lfo.rate;
+  return rate.toFixed(2) + " Hz" + (sync && sync[0] ? " \u00b7 " + sync[1] : "");
 }
 
 /* The editor: the source's own column, drawn (G5a), and Where it goes. A
@@ -26039,8 +26059,9 @@ function scoreColumn(grid, n, col, pitches, voices) {
 function scoreTick(now) {
   /* The instrument's score, while it plays (5b): it reads its own picture and
      plays on its own clock, and the face draws its playhead from what it
-     posts (drawScorePlayhead); the page reads no column of its own. */
-  if (instrumentClock()) {
+     posts (drawScorePlayhead); the page reads no column of its own. Asked
+     for by name: parity lifts scoreTick alone, where there is no instrument. */
+  if (typeof instrumentClock === "function" && instrumentClock()) {
     if (score.last !== -1 || score.notes.length) scoreStop();
     return;
   }
@@ -26301,9 +26322,9 @@ function delayFollows(ms, sent) {
 
 // The delay's time in force: the slider's, or the tempo's note value. A's,
 // or B's own.
-function delayTimeMs(e = echo) {
+function delayTimeMs(e = echo, bpm = transport.bpm) {
   const s = DELAY_SYNC.find(([id]) => id === e.sync);
-  return s && s[2] > 0 ? Math.min(2000, s[2] * 60000 / transport.bpm) : e.ms;
+  return s && s[2] > 0 ? Math.min(2000, s[2] * 60000 / bpm) : e.ms;
 }
 
 function syncPlane() {

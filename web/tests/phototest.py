@@ -337,7 +337,11 @@ with sync_playwright() as pw:
       let x = -1;
       for (let i = 0; i < N; i++) if (g[32 * N + i] > 0.3) x = i;
       movePhoto((x + 0.5) / N, 32.5 / N);
-      await new Promise((r) => setTimeout(r, 700));
+      /* Until it reads the figure, to two seconds: the value is the
+         instrument's (5b), which on a loaded machine had reached only 0.09
+         at 700 ms, and a value that low would be slewed to nought within the
+         wait below anyway. */
+      for (let t = 0; t < 2000 && photo.value <= 0.3; t += 100) await new Promise((r) => setTimeout(r, 100));
       const before = photo.value;
       __display('spect'); await frame(); await frame();
       const hidden = el.photoReticle.hidden, grid = phosphor.grid.reduce((a, v) => a + v, 0);

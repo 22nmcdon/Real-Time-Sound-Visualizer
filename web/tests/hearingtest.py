@@ -146,11 +146,19 @@ with sync_playwright() as pw:
     # for frame, at two brightnesses far apart: it moves as it always did.
     turns = p.evaluate("""async () => {
       const read = async (hz) => { __play(hz, 'same', 0.8); await __wait(1500);
-        return { bright: hearing.bright, turn: state.rotateMod, base: state.rotate }; };
+        return { bright: hearing.bright, turn: state.rotateMod, base: state.rotate,
+                 inst: state.source.face ? state.source.face.offsets['view.rotate'] : null }; };
       return [await read(200), await read(4000)];
     }""")
     check("and the control it is routed to moves with it: the X-Y rotation at half the brightness, low on 200 Hz and high on 4 kHz",
-          all(abs(t["turn"] - 0.5 * t["bright"]) < 1e-9 and t["base"] == 0 for t in turns)
+          # Since stage 5, step 5b the turn is the instrument's offset, from its own
+          # hearing on the audio thread (5t); hearing.bright is the page's copy,
+          # which hears the same input a frame apart (and the turn is drawn at the
+          # offset one reading before the one read here), so the two agree to a
+          # hundredth of the turn rather than to the bit (0.07923 against 0.07924
+          # on 14 Nov). The page's copy goes with its brain.
+          all(t["inst"] is not None and abs(t["turn"] - t["inst"]) < 1e-3 and abs(t["turn"] - 0.5 * t["bright"]) < 0.01 * max(0.05, t["turn"])
+              and t["base"] == 0 for t in turns)
           and turns[1]["turn"] - turns[0]["turn"] > 0.2, str(turns))
     arrive = p.evaluate("""async () => {
       __play(110, 'same', 0.8);

@@ -144,12 +144,24 @@ with sync_playwright() as pw:
 
     print("\n--- the picture's path, and the picture's own sources ---")
     pic = run(p, """
+      /* Since stage 5, step 5b the screen's destinations are the instrument's
+         matrix's and the face draws at its offsets, so the source has to be
+         one the instrument has: the page's stand-in hand.1 turns nothing
+         there. LFO 1 as a square at its slowest, a hundredth of a hertz,
+         restarted by a lock let go: +1 at its amount for fifty seconds, as
+         constant as the hand. Its fade on a screen destination against the
+         page's arithmetic is parity's (the matrix's random sequences). */
+      const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
+      openModCard('lfo1'); fire('lfoShape0', 'square', 'change'); fire('lfoRate0', '1', 'input');
+      fire('lfoSync0', '4', 'change'); fire('lfoSync0', '', 'change'); await wait(300);
+      const square = +lfos[0].value.toFixed(4);
       setFade('both', 1); await wait(50);
-      addRouting('hand.1', 'view.rotate');
+      addRouting('lfo1', 'view.rotate');
       await wait(40); const early = rotation();
       await wait(1300); const full = rotation();
-      dropRouting('hand.1', 'view.rotate'); await wait(400); const leaving = rotation();
+      dropRouting('lfo1', 'view.rotate'); await wait(400); const leaving = rotation();
       await wait(1000); const after = rotation();
+      const squareAfter = +lfos[0].value.toFixed(4);
       /* A source of the picture's own, held at one, onto the sound: its route
          is folded into the bounded loop total, whose parts are faded inside
          a closure rather than as a route of their own. */
@@ -170,11 +182,13 @@ with sync_playwright() as pw:
       dropRouting('hand.1', 'gen.twist');
       const fxLeaving = liveFxWanted();
       await wait(1300); const fxAfter = liveFxWanted();
-      return { early, full, leaving, after, loop, fxLeaving, fxAfter };
+      return { early, full, leaving, after, loop, fxLeaving, fxAfter, square, squareAfter };
     """)
     print("    %s" % pic)
     check("a picture destination fades too: barely turned at first, whole after the fade, part-way as it leaves, then nothing",
-          abs(pic["early"]) < 0.05 and pic["full"] == 0.35 and 0.05 < pic["leaving"] < 0.34 and pic["after"] == 0,
+          pic["square"] == pic["squareAfter"] and pic["square"] > 0.5
+          and abs(pic["early"]) < 0.05 * pic["square"] and abs(pic["full"] - 0.35 * pic["square"]) < 1e-4
+          and 0.05 * pic["square"] < pic["leaving"] < 0.34 * pic["square"] and pic["after"] == 0,
           str(pic))
     check("and a picture source into the sound, folded into the loop's one route, fades in with it",
           pic["loop"][0] == 0 and 0.05 < pic["loop"][1] < 0.45 and pic["loop"][2] == 0.5, str(pic["loop"]))

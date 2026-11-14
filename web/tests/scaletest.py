@@ -158,18 +158,26 @@ with sync_playwright() as pw:
       state.modRoutings = [{ sourceId: 'lfo1', destId: 'view.scale1', amount: 1 }];
       touchRoutings();
 
-      // Drive the matrix by hand at two points in the oscillator's cycle,
-      // rather than waiting for frames to happen to land where we want them.
+      /* Drive it by hand at two points in the oscillator's cycle, rather than
+         waiting for frames to happen to land where we want them. Since stage 5,
+         step 5b the screen's destinations are the instrument's matrix's, and
+         the face draws at the offsets it posts (state.source.face): so the
+         two points are the offsets the instrument posts with LFO 1 at its
+         ends, +12 and -12 dB at a depth of one, as a reading brings them. The
+         matrix's own arithmetic on them is core/tests/pieces/'s (lane, mod). */
+      const face = state.source.face;
+      const at = (v) => { if (face) face.offsets['view.scale1'] = 12 * v; else lfos[0].value = v; };
       const frame = capture();
-      lfos[0].value = 1;
+      at(1);
       applyModMatrix(frame, 16);
       const high = { db: fullScaleDb(0), levelAt: capture().levelAt };
-      lfos[0].value = -1;
+      at(-1);
       applyModMatrix(frame, 16);
       const low = { db: fullScaleDb(0), levelAt: capture().levelAt };
 
       state.modRoutings = [];
       touchRoutings();
+      at(0);
       applyModMatrix(frame, 16);
       const rest = { db: fullScaleDb(0), mod: state.channels[0].fsMod };
       state.channels[0].fsDb = 0;

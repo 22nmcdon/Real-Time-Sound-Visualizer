@@ -257,7 +257,16 @@ with sync_playwright() as pw:
       const frame = capture();
       assigned = 0; glided = 0;
       const mods = [];
-      for (let i = 0; i < 10; i++) { lfos[0].value = i / 10; applyModMatrix(frame, 16); mods.push(state.cutoffMod); }
+      /* Since stage 5, step 5b the screen's destinations are moved by the
+         instrument's matrix, and the face draws at the offset it posts: the
+         sweep is that offset, as a reading would bring it, rather than the
+         page's LFO through the page's matrix. What this row holds is the
+         speakers' chain gliding (syncMonitor), whichever moved the cutoff. */
+      const face = state.source.face;
+      for (let i = 0; i < 10; i++) {
+        if (face) face.offsets['filter.cutoff'] = i * 40; else lfos[0].value = i / 10;
+        applyModMatrix(frame, 16); mods.push(state.cutoffMod);
+      }
 
       Object.defineProperty(AudioParam.prototype, 'value', descriptor);
       AudioParam.prototype.setTargetAtTime = realTarget;

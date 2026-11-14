@@ -694,12 +694,14 @@ with sync_playwright() as pw:
         for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
         return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : 0; };
       const watch = async () => {
-        const peaks = [], pos = [];
+        const peaks = [], pos = [], t0 = performance.now();
         for (let i = 0; i < 50; i++) {
           await wait(60);
           peaks.push(Math.max(...state.source.getLatestWindow(1024)[0].map(Math.abs))); pos.push(state.positionMod);
         }
-        return { peaks, pos };
+        // How many samples a quarter of LFO 1's second is, as they came: four at 60 ms, fewer on a loaded machine.
+        const quarter = Math.max(1, Math.round(250 / ((performance.now() - t0) / 50)));
+        return { peaks, pos, quarter };
       };
       // The old library's Pure sine, from before P8g: a sine whose level the
       // oscillator can be read off, where the new one is poly. Held, since
@@ -713,13 +715,18 @@ with sync_playwright() as pw:
       hostQuietly(() => restore(setup2)); hostSendSetup(); await wait(800);
       const second = await watch();
       midiNoteOff(57);
-      // The null: the position read a quarter of a cycle - four samples of 60 ms - after the peak.
-      return { alone: r(alone.peaks, alone.pos), late: r(alone.peaks.slice(0, -4), alone.pos.slice(4)),
+      /* The null: the position read a quarter of a cycle after the peak - four
+         samples of 60 ms, or as many as a quarter second took: under load a
+         sample took nearer 250 ms, four of them a whole cycle, and the null
+         read r 0.97 (14 Nov). */
+      const q = alone.quarter;
+      return { alone: r(alone.peaks, alone.pos), late: r(alone.peaks.slice(0, -q), alone.pos.slice(q)), quarter: q,
                second: r(second.peaks, second.pos), driver: lfoDriver() };
     }""")
     check("one oscillator on the sound and on the picture moves them in step: the instrument's level and the page's trigger position",
           lfo["alone"] > 0.85 and lfo["driver"] == "instrument", "r %.3f, the oscillators %s's" % (lfo["alone"], lfo["driver"]))
-    check("and the reading fails against the position a quarter of a cycle late", not abs(lfo["late"]) > 0.85, "r %.3f" % lfo["late"])
+    check("and the reading fails against the position a quarter of a cycle late", not abs(lfo["late"]) > 0.85,
+          "r %.3f, %d samples late" % (lfo["late"], lfo["quarter"]))
     check("and LFO 2, at its own rate, the same", lfo["second"] > 0.85, "r %.3f" % lfo["second"])
     # The fade is kept in the page's storage, not in a setup: the instrument's
     # first state, taken back at connect as the plugin's is, reset it to off.
@@ -886,8 +893,12 @@ with sync_playwright() as pw:
     check("the counters count: a held note's frames on the default, the instrument its brain",
           default["kind"] == "host" and default["counts"].get("frames", 0) > 30
           and default["counts"].get("frames.host", 0) == default["counts"].get("frames", 0), str(default))
-    check("the page's own grid is still fed and read on the default (pictureStep)",
-          ran(default, "pictureStep") and ran(default, "phosphorDeposit"), str(default["counts"]))
+    # Since stage 5, step 5b the face reads the instrument's picture (takeFace),
+    # so the page's own is not stepped on the default; its grid is still fed
+    # (phosphorDeposit) until 5b's second half takes it away.
+    check("the page's own picture is not stepped on the default, its grid still fed (pictureStep at nought)",
+          not ran(default, "pictureStep") and not ran(default, "photoStep") and ran(default, "phosphorDeposit"), str(default["counts"]))
+    check("null: on ?brain=js it is", ran(page_brain, "pictureStep"), str(page_brain["counts"].get("pictureStep")))
     check("null: the same test asked of Scan's page step on the default fails", not ran(default, "scanStep"))
     check("Scan's page step does nothing on the default, with Scan on and a note held",
           not ran(default, "scanStep") and not ran(default, "scanStep.table"), str(default["counts"]))

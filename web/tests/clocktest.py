@@ -81,10 +81,12 @@ with sync_playwright() as pw:
       const out = { host: state.source.kind, served: !!instrumentClock(), reading: reading(),
                     disabled: document.getElementById('lfoRate0').disabled };
       /* The null: the page's own clock told a tempo the instrument is not
-         (setTempo, no input event, so no message). The page's lock would be
-         1.00 Hz at 60; the face says what the instrument plays. */
-      setTempo(60); await wait(400);
-      out.pageAlone = { reading: reading(), pageBpm: transport.bpm };
+         (setTempo, no input event, so no message), and the page's oscillator
+         the rate its lock would have there, 1.00 Hz at 60. The face says what
+         the instrument plays. */
+      setTempo(60); const kept = lfos[0].rate; lfos[0].rate = 1; await wait(400);
+      out.pageAlone = { reading: reading(), pageBpm: transport.bpm, pageRate: lfos[0].rate };
+      lfos[0].rate = kept;
       showControl('tempo'); fire('tempo', '90', 'input'); await wait(400);
       out.at90 = reading();
       openModCard('lfo1'); fire('lfoSync0', '', 'change'); await wait(400);
@@ -100,7 +102,8 @@ with sync_playwright() as pw:
     check("the reading says so, and the Rate slider stands aside while it is locked",
           lock["reading"] == "2.00 Hz · 1/4" and lock["disabled"], str(lock))
     check("null: a tempo told to the page's clock alone moves the page's and not the reading",
-          lock["pageAlone"]["pageBpm"] == 60 and lock["pageAlone"]["reading"] == "2.00 Hz · 1/4", str(lock["pageAlone"]))
+          lock["pageAlone"]["pageBpm"] == 60 and lock["pageAlone"]["pageRate"] == 1
+          and lock["pageAlone"]["reading"] == "2.00 Hz · 1/4", str(lock["pageAlone"]))
     check("and the tempo slider, which the instrument hears, does: 1/4 at 90 is 1.50 Hz",
           lock["at90"] == "1.50 Hz · 1/4", lock["at90"])
     check("and let go, the Rate slider is back and reads the slider's 0.37 Hz",
