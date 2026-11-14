@@ -675,7 +675,7 @@ serves.
 - A small transport for the tempo slider and a tap.
 
 **What holds the core now.** `CHROME=/opt/pw-browsers/chromium python3 core/tests/core_tests.py`:
-- @@CHECKS@@ checks, @@MINUTES@@ minutes.
+- 1,913 checks in 16.3 minutes, against parity's 25.9 for its three-way run at step 2.
 - It did three jobs:
   - It held the core to what the page's JavaScript answered, now recorded in `core/tests/golden/`. `restore.json.gz` was recorded the day before the brain went, so all fifteen files are the page's own answers.
   - It held the face to the core (controls, bank, sources and codec, read off the page as it is).
