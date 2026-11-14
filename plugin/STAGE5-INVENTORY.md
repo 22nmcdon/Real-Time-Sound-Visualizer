@@ -1058,6 +1058,23 @@ default page's own "no page errors". inputtest's six numbers rows needed no
 render: generator_cpp already hands the core's Generator an input, and they
 are pieces/input.py.)
 
+The counters (`run.py --brain-counts`, the full run below): the six suites
+step the page's brain on `?brain=js` for no frames now, where before they
+were the largest share of it - loop's stability runs 22,584 frames
+(section 8), picturepresets' runs 14,034 and perform's microphone 846
+(section 9) and shape's survey 1,490 (section 7); input's and livefx's were
+not counted apart. On the default the six step 1,476 frames, the face's own.
+Over the whole run `?brain=js` pages stepped 21,468 frames and
+`?brain=js&core=js` 570, from thirteen suites: wasm 9,307, budget 4,603,
+constellation 3,058, photo 1,046, mod 819, harmony 769, live 736, scan 570,
+brain 339, clock 303, worklet 273, score 155 and layer 60.
+
+The full run after (97 suites, 38.9 minutes, 2,511 checks): everything
+passes, honesty's reverb pass included, which failed alone on testing before
+this batch (it reads nothing this batch changed). Batch 4's full run was
+50.6 minutes; loop and picturepresets alone were about eight of the
+difference. Parity: below.
+
 ### Offline against the page's bounds
 
 Every bound is the page's, unmoved. Offline, each seed is the same every run,
