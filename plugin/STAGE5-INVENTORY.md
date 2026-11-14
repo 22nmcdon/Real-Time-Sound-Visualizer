@@ -1578,7 +1578,28 @@ instrument (`arpFollow`, `fadeDot.served`) and the morph's walk. Its nulls:
 the same check asked of the harness's page-brain pages fails, and a made-up
 default record with one picture step is caught.
 
-**The runs (14 Nov).** RUNS-HERE
+**The runs (14 Nov).** Parity 1,919 checks, none failed (a first run threw:
+its keyboard harness lifts `arpHeld` alone, where `instrumentFace` is no
+name, so every call to the instrument is asked whether it is there). The web
+suite, 98 suites in 44.2 minutes with `--brain-counts`: 2,500 checks passed
+and the standing check with them - 120,325 default frames and nothing of the
+page's own brain counted on them, its two nulls red. Two failures, both
+photo-and-face timing between the instrument's frames and the page's: face's
+photocell aim passed alone twice; phototest's grid fade and Clear were
+measured against the page's own grid's fade count and two frames after the
+press, and now count the page's frames and wait for the instrument's wipe,
+passing three times alone. The run before found seven suites still reading
+the page's own grid or engine - bench, ink, overlay, tap, face, photo,
+worklet - each fixed above or a timing flake that passed alone. The
+plugin's shell test under `xvfb-run -a`: 189 checks, none failed - printed a
+line at a time now; the 281 of the first half counted the face sections'
+lines two and three times over, as the web view's child processes flushed
+the buffer they inherited. Mutations, each seen red at its own check and put
+back: the grid read from the page's cells, the arpeggio walked by the page
+(both its gates), the harmony from the page's voices, the figures from the
+page's layout, lane three not posted, no waiting at boot, the fade's gains
+and its dot from the page, the hearing heard by the page, the fader's offset
+not posted.
 
 ## Appendix: the counters, summed
 

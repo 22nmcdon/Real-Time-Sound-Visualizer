@@ -196,9 +196,17 @@ with sync_playwright() as pw:
         last = g[at];
       }
       await new Promise((r) => requestAnimationFrame(r));
-      const f0 = phosphor.frames, g0 = g[at], c0 = inkOf();
+      /* The page's frames counted as they come, each a fade of the canvas:
+         until 5b's second half the page's grid's fades (phosphor.frames),
+         which no frame makes now that the grid is the instrument's - whose
+         fades, on its own frames, are read over the same stretch. */
+      let frames = 0, counting = true;
+      const count = () => { if (!counting) return; frames++; requestAnimationFrame(count); };
+      const f0 = 0, g0 = g[at], c0 = inkOf();
+      requestAnimationFrame(count);
       await wait(250);
-      const f1 = phosphor.frames, g1 = g[at], c1 = inkOf();
+      counting = false;
+      const f1 = frames, g1 = g[at], c1 = inkOf();
       __level(0.55);
       return { frames: f1 - f0, grid: [g0, g1], canvas: [c0, c1] };
     }""")
@@ -397,6 +405,10 @@ with sync_playwright() as pw:
       const kept = { grid: g[32 * N + x], ink: inkAt() };
       el.clearButton.click();
       await frame(); await frame();
+      /* The grid the instrument's since 5b's second half, which wipes on its
+         next picture frame after it hears Clear and is read as its readings
+         arrive: waited for, to 200 ms, where a grid Clear missed stays lit. */
+      for (const t0 = performance.now(); g[32 * N + x] !== 0 && performance.now() - t0 < 200;) await frame();
       const after = { grid: g[32 * N + x], ink: inkAt(), setting: el.persistence.value,
                       persistence: state.persistence };
       __level(0.55);
