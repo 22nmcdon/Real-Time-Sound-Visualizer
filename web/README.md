@@ -6794,3 +6794,23 @@ and the third note of a running status, while the face, parsing the bytes whole,
 them all. The face's morph walk survives as a view, run inside `hostSync.applying` so
 that nothing it moves is sent: a walk that sent its sliders as well would be a second
 morph, heard on top of the instrument's.
+
+**What a hand sends happens between blocks, and so does what the face cannot hear (15 Nov,
+the second batch after stage 5).** Three things a later reader would otherwise find again.
+A list the module fills during a block and the worklet reads after it must be emptied for
+what the worklet *read*, not at the next block's top: anything a control's handler sends
+lands between the two, and emptying at the top lost it - a Stop's panic, and, found only
+once that was fixed, the arpeggiator's last note ended when its menu goes off or a setup
+loads over it, which hung on an external synth. The native tool the comparison runs had
+emptied its list before each block too, so it agreed with the module about losing them:
+when two sides are compared, check that both can see the thing at all. In the plugin the
+same sends had a different fault, a sample position left over from the last block's last
+step; a hand now sends at the next block's first sample (`Instrument::apply`). Second, a
+face that learns from what it hears cannot learn in the plugin, where a host's notes go
+to the instrument and never past the face: Learn is told to the instrument as a state
+(`splitLearn`), the instrument learns, and the point comes back as the face's own hand,
+counted as the host's move so the face's poll applies it. Third, a null that looks
+obvious can be wrong: lane one's full scale was to be the null for lane three's, and it
+moves the upper hand's figure too, because lane one is the trigger's lane and its scale
+moves where every lane's window is cut - the null became the core as it was, built inside
+the piece (`core/tests/pieces/lanescale.py`).

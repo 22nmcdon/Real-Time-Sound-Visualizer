@@ -6334,6 +6334,18 @@ iruns["wheel picture"] = WHEEL_MAKE + WHEEL_SWEEP
 iruns["wheel picture straight"] = WHEEL_MAKE[:2] + [["control", "switchMs", "0"]] + WHEEL_MAKE[2:] + WHEEL_SWEEP
 iruns["wheel picture still"] = WHEEL_MAKE + [l for l in WHEEL_SWEEP if l[0] == "block"]
 
+# What a hand sends between blocks (15 Nov): a Stop's panic, and the
+# arpeggiator's sounding note ended as its menu goes to off. Both are sent from
+# the hand, between blocks, and until 15 Nov the site's module emptied its list
+# of what was sent at each block's top, so neither reached the port (the Stop
+# waited for the next step for that reason). The native tool keeps them for
+# the next block, as the plugin's outgoing buffer always did. The picture
+# stage out, so the run is exact rather than libm's last place apart (ILIBM):
+# what it is about is the messages, not the stage.
+iruns["sent between blocks"] = [["make", 48000, 128, icode["Harmonic tone"]], ["slider", "pictureAmount", "0"], NOTE_ON(57)] + blocks(10) \
+    + [["control", "scopeRunning", "0"]] + blocks(3) + [["control", "scopeRunning", "1"]] + blocks(3) \
+    + [["control", "arpMode", "up"], NOTE_ON(60), NOTE_ON(64)] + blocks(200) + [["control", "arpMode", "off"]] + blocks(3)
+
 iout = {}
 # Every sample alike, except where a drawn cycle is played: its tables are
 # built with sin and cos, which the C library and the WebAssembly one are
@@ -6961,6 +6973,27 @@ inull("the heard pair handed back as the picture pair",
       " else std::copy(lanes + c * frames, lanes + (c + 1) * frames, lanes + (2 + c) * frames);", ["presets"])
 inull("a state never published", "  if (!instrument->changed()) return -1;", "  return -1;", ["hands", "presets"])
 inull("a switch read as off", "scope::Json::boolean(kind == 2)", "scope::Json::boolean(false)", ["hands"])
+# The two sends above, read off the compiled instrument's run: the block after
+# each hand, and what it carried out. The nulls: the block before each, which
+# carried nothing of the kind, so the reading can fail; and the module that
+# empties its list at the block's top, which loses both, so the comparison
+# with the native run fails.
+def sent_after(lines):
+    outs, k = [], -1
+    for l in lines:
+        if l.startswith("block "): k += 1; outs.append([])
+        elif l.startswith("out "): outs[k] = [[int(v) for v in m.split()] for m in l[4:].split(";") if m.strip()]
+    return outs
+bouts = sent_after(iout["sent between blocks"][2])
+arp_on = [m[1] for k in range(16, 216) for m in bouts[k] if m[0] == 0x90 and m[2] > 0]
+def panicked(k): return [176, 123, 0] in bouts[k]
+def arp_ended(k): return bool(arp_on) and [128, arp_on[-1], 0] in bouts[k]
+check("a Stop between blocks goes out with the next block, and the arpeggiator's last note ends with the next block once its menu is off",
+      panicked(10) and arp_ended(216), "after the Stop %s; after the menu %s; the arpeggio sent %s" % (bouts[10], bouts[216], arp_on[-4:]))
+check("and the reading fails on the blocks before them", not panicked(9) and not arp_ended(215), "%s; %s" % (bouts[9], bouts[215]))
+inull("what was sent between blocks let go at the next block's top",
+      "  midiOut.erase(midiOut.begin(), midiOut.begin() + static_cast<std::ptrdiff_t>(std::min(midiOutTaken, midiOut.size())));\n",
+      "  midiOut.clear();\n", ["sent between blocks"])
 
 golden.section("the limiter, the browser's against the core's (5a)")
 # The page's limiter and clamp were the browser's own nodes (a

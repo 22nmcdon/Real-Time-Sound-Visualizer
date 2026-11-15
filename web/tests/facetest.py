@@ -204,9 +204,12 @@ with sync_playwright() as pw:
       const kept = state.source.layout; state.source.setLayout('one');
       out.figures.pageOne = sourceFigures();
       state.source.setLayout(kept);
-      // Lane three's full scale: the instrument's offset, a routing on it heard there; one told the page alone moves nothing.
+      /* Lane three's full scale: the instrument's offset, a routing on it heard there; one told the page alone moves nothing.
+         At a depth of minus a hundred: a lane's full scale starts at its top (0 dB), so an offset upwards is
+         held at nought by the instrument, and LFO 1, slow, can sit in its upper half for every frame read -
+         the first run of this row read nought four times for that reason, a fixture that could not show it. */
       addRouting('lfo1', 'view.scale3');
-      const r3 = state.modRoutings.find((x) => x.destId === 'view.scale3'); if (r3) setDepth(r3, 100, true);
+      const r3 = state.modRoutings.find((x) => x.destId === 'view.scale3'); if (r3) setDepth(r3, -100, true);
       state.modRoutings.push({ sourceId: 'lfo1', destId: 'view.scale4', amount: 1 });
       await wait(700);
       const lanes = [];
@@ -238,15 +241,19 @@ with sync_playwright() as pw:
     fg = rest["figures"]
     check("split, the face draws the two figures the instrument lays out", fg["served"] == 2 and fg["shown"] == [[0, 1], [2, 3]], str(fg))
     null("the page's own layout told one figure is not what is drawn", fg["pageOne"] == [[0, 1], [2, 3]], str(fg))
-    # The instrument has the first two lanes' full scale as destinations and
-    # no others (screen.h), so a routing onto lane three is heard by nothing
-    # and, since 5b's second half, moves nothing on the face either, where the
-    # page's own matrix used to scale the face's lane three alone
-    # (web/docs/after-stage-5.md).
+    # Every lane's full scale is a destination of the instrument's since 15
+    # Nov (screen.h); until then only the first two were, so a routing onto
+    # lane three was heard by nothing and, since 5b's second half, moved
+    # nothing on the face either - which this row required, nought every
+    # frame. Now the face's lane three is scaled by the instrument's offset
+    # and by nothing of its own: the two the same every frame, and moving.
+    # core/tests/pieces/lanescale.py holds what it does to the picture and
+    # to Scan.
     ln = rest["lanes"]
-    check("lane three's full scale is the instrument's offset, frame by frame: nought, as the instrument has no such destination",
-          all(x[0] == x[1] == 0 for x in ln), str(ln))
-    null("where the page's own matrix would have moved it", max(abs(x[3] or 0) for x in ln) > 0.05, str(ln))
+    lane_moves = lambda rows: all(x[0] == x[1] for x in rows) and max(abs(x[1] or 0) for x in rows) > 0.05
+    check("lane three's full scale is the instrument's offset, frame by frame, and a routing on it moves it",
+          lane_moves(ln), str(ln))
+    null("the reading until 15 Nov, nought every frame, is not that", not lane_moves([[0, 0, 0, x[3]] for x in ln]))
     null("and a routing on lane four told the page alone moves nothing", all(x[2] == 0 for x in ln), str(ln))
 
     # Over all of it the page stepped no picture, photocell or screen matrix

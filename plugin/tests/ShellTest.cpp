@@ -3785,6 +3785,87 @@ int main() {
     }
   }
 
+  std::printf("\n--- Split point learned from a host's note (15 Nov) ---\n");
+  {
+    /* Learn armed on the face, and the next note a host's, with no key on
+       the screen: in the plugin a host's notes reach the instrument and never
+       the face, so until 15 Nov nothing learned it. The instrument's keyboard
+       learns it now (Keyboard::learnSplit), keeps the point as the face's own
+       splitAt hand and tells the face, which shows it and lets Learn go. Run
+       in the plugin's own web view, under xvfb-run -a. The null is the old
+       path, live: the same face with the instrument never told Learn is
+       armed (hostSendLearn taken out), which learns nothing anywhere. */
+    struct Learnt { bool face = false; std::string shown; bool kept = false; };
+    const auto learnRun = [&](bool told) {
+      Learnt out;
+      ScopeProcessor learner;
+      learner.prepareToPlay(rate, block);
+      std::unique_ptr<juce::AudioProcessorEditor> owned(learner.createEditor());
+      auto* face = dynamic_cast<ScopeEditor*>(owned.get());
+      if (face == nullptr || !face->hasFace()) return out;
+      out.face = true;
+      owned->addToDesktop(juce::ComponentPeer::windowHasTitleBar);
+      owned->setVisible(true);
+      const auto ask = [&](const juce::String& script, int waitMs) {
+        auto answer = std::make_shared<std::optional<juce::String>>();
+        face->evaluate(script, [answer](juce::WebBrowserComponent::EvaluationResult r) {
+          if (const juce::var* v = r.getResult()) *answer = v->toString();
+          else *answer = "error: " + (r.getError() ? r.getError()->message : juce::String("?"));
+        });
+        for (int waited = 0; !*answer && waited < waitMs; waited += 20)
+          juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+        return answer->value_or("no answer");
+      };
+      // Blocks played as a host plays them, the message loop let run between, so the face's hands and polls get through.
+      const auto play = [&](int blocks, int note) {
+        for (int k = 0; k < blocks; ++k) {
+          juce::AudioBuffer<float> buf(2, block);
+          juce::MidiBuffer m;
+          if (k == 0 && note >= 0) m.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 0);
+          learner.processBlock(buf, m);
+          juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
+      };
+      juce::String ready;
+      for (int k = 0; k < 300 && ready != "true"; ++k)
+        ready = ask("String(typeof midiNoteOn === 'function' && typeof hostSync !== 'undefined' && hostSync.on"
+                    " && !!document.getElementById('midiSplitLearn'))", 200);
+      if (ready != "true") { out.shown = "face not ready: " + ready.toStdString(); return out; }
+      ask(juce::String("(() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();")
+          + (told ? "" : " window.hostSendLearn = () => {};")
+          + " el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));"
+            " el.midiSplitLearn.click(); return el.midiSplitLearn.textContent; })()", 2000);
+      play(20, -1);
+      play(80, 55);  // G3, from the host
+      const juce::String shown = ask("JSON.stringify({ point: midi.layers.point, learning: midi.layers.learning,"
+                                     " text: el.midiSplitLearn.textContent })", 2000);
+      out.shown = shown.toStdString();
+      juce::MemoryBlock saved;
+      learner.getStateInformation(saved);
+      const auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(saved.getData()), saved.getSize()));
+      if (const auto* hands = decoded.setup.get(u"pluginHands"); hands && hands->type == scope::Json::Type::Array)
+        for (const auto& h : hands->a)
+          if (h.type == scope::Json::Type::Array && h.a.size() == 3 && h.a[1].s == u"splitAt" && h.a[2].s == u"55") out.kept = true;
+      owned->setVisible(false);
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+      owned.reset();
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+      return out;
+    };
+    const Learnt told = learnRun(true), untold = learnRun(false);
+    if (!told.face) {
+      check("a web view to open the face in (run under xvfb-run -a, with WebKitGTK)", false, "no web view");
+    } else {
+      check("Split point armed on the face and a host's G3 with no key on the screen: the split is G3, shown on the face and kept in the project",
+            told.kept && told.shown.find("\"point\":55") != std::string::npos && told.shown.find("\"learning\":false") != std::string::npos
+              && told.shown.find("at G3") != std::string::npos,
+            told.shown + (told.kept ? "; kept" : "; not kept"));
+      check("null: the instrument never told Learn is armed learns nothing from the host's note, and the face still waits for a key",
+            !untold.kept && untold.shown.find("\"point\":60") != std::string::npos && untold.shown.find("\"learning\":true") != std::string::npos,
+            untold.shown + (untold.kept ? "; kept" : "; not kept"));
+    }
+  }
+
   std::printf("\n--- the latency told to the host ---\n");
   {
     /* The oversampled stages put the sound 31 samples late each - the

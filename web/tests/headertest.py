@@ -286,6 +286,51 @@ with sync_playwright() as pw:
     check("with a gold dot, and a control that is not one has none",
           marks["dot"] == "rgb(176, 141, 87)" and marks["none"] in ("none", "normal"), str((marks["dot"], marks["none"])))
 
+    print("\n--- the testing site's mark ---")
+    # Shown only under /testing/ (15 Nov), by the test the storage shim at
+    # the top of the script uses; and it must move nothing in the header. So
+    # the page is opened twice at each window fittest and windowtest measure,
+    # from the root and from a directory named testing, and every box in the
+    # header is required to be where it was to the hundredth of a pixel, the
+    # mark inside the spacer it is drawn in. The nulls: the root, which shows
+    # nothing, and the mark put into the flow, which moves the header.
+    import shutil, tempfile
+    site = tempfile.mkdtemp(prefix="headertest-")
+    os.makedirs(os.path.join(site, "testing"))
+    shutil.copy(os.path.join(ART, "scope.html"), os.path.join(site, "scope.html"))
+    shutil.copy(os.path.join(ART, "scope.html"), os.path.join(site, "testing", "scope.html"))
+    BOXES = """(inflow) => {
+      const m = document.getElementById('testingMark');
+      if (inflow) { m.style.position = 'static'; m.style.transform = 'none'; m.parentElement.style.flex = '0 0 auto'; }
+      const box = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v * 100) / 100); };
+      const boxes = {};
+      document.querySelectorAll('.top-bar, .top-bar .head > *, .top-bar .preset-bar > *').forEach((e, i) => { boxes[i + ':' + (e.id || e.className)] = box(e); });
+      const r = m.getBoundingClientRect(), g = m.parentElement.getBoundingClientRect();
+      return { boxes, shown: !m.hidden && r.width > 0, text: m.textContent,
+               inside: r.left >= g.left - 0.01 && r.right <= g.right + 0.01, ink: getComputedStyle(m).color };
+    }"""
+    def opened(where, w, h, inflow=False):
+        q = b.new_page(viewport={"width": w, "height": h})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.goto("file://%s/%s" % (site, where)); q.wait_for_timeout(1200)
+        got = q.evaluate(BOXES, inflow)
+        q.close()
+        return got
+    marked = []
+    for w, h in ((1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600)):
+        root, testing = opened("scope.html", w, h), opened("testing/scope.html", w, h)
+        marked.append((w, h, root, testing))
+        print("    %dx%d: root shows %s; testing shows %s, inside the spacer %s, header %s"
+              % (w, h, root["shown"], testing["shown"], testing["inside"], "the same" if root["boxes"] == testing["boxes"] else "MOVED"))
+    check("under /testing/ the header says Testing, in the brand's secondary ink, at every window",
+          all(t["shown"] and t["text"] == "Testing" and t["ink"] == "rgb(107, 97, 90)" for *_, t in marked), str([t["ink"] for *_, t in marked]))
+    check("null: at the root it says nothing", not any(r["shown"] for _, _, r, _ in marked))
+    check("and the header is laid out the same to the hundredth of a pixel with it or without it, the mark inside its spacer",
+          all(r["boxes"] == t["boxes"] and t["inside"] for _, _, r, t in marked))
+    flowed = opened("testing/scope.html", 1400, 900, inflow=True)
+    check("null: the mark put into the flow moves the header", flowed["boxes"] != marked[0][2]["boxes"])
+    shutil.rmtree(site, ignore_errors=True)
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

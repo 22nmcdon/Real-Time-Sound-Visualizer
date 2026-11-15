@@ -427,6 +427,13 @@ std::vector<double> midiTimes;
 double blockAt = -1, earliest = -1, earliestAt = -1;
 constexpr double kMostEarlyMs = 250;  // past this the time is taken as wrong, not early
 std::vector<std::uint8_t> midiOut;           // each message sent, its length first
+/* How much of midiOut the last block handed the worklet, which it read as the
+   call returned: only that much is let go at the next block's top. Until 15
+   Nov the whole list was emptied there, so a message sent from a control's
+   handler - applied between blocks, after the worklet had read the list -
+   was lost before any block could carry it (a Stop's panic waited for the
+   next step for that reason). */
+std::size_t midiOutTaken = 0;
 // Eight lanes of a block: the heard pair, then the picture's six (a pair, two, or the band split's four).
 constexpr std::size_t kBrainLanes = 2 + scope::Instrument::kRingLanes;
 std::vector<float> brainLanes;
@@ -454,6 +461,10 @@ EXPORT(brain_make) int brainMake(double rate, int block) {
   midiIn.clear(); midiLengths.clear(); midiTimes.clear(); midiOut.clear();
   auto setup = scope::Instrument::setup(brainAscii(0));
   instrument->prepare(rate, block, setup ? *setup->setup : scope::Json::object());
+  /* What making it sent (the MIDI out's All Notes Off as its port is chosen)
+     is let go, as it always was: the page's own port menu sends its own panic
+     when a port is chosen, and a page that opens should not send one unasked. */
+  midiOut.clear(); midiOutTaken = 0;
   return setup ? 1 : 0;
 }
 
@@ -532,7 +543,7 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
     midiEvents.push_back({ 0, midiIn.data() + at, midiLengths[i], early });
     at += midiLengths[i];
   }
-  midiOut.clear();
+  midiOut.erase(midiOut.begin(), midiOut.begin() + static_cast<std::ptrdiff_t>(std::min(midiOutTaken, midiOut.size())));
   float* lanes = brainLanes.data();
   const int count = std::clamp(given, 0, scope::Instrument::kRingLanes);
   if (brainInput.size() < scope::Instrument::kRingLanes * frames) brainInput.resize(scope::Instrument::kRingLanes * frames);
@@ -542,6 +553,7 @@ EXPORT(brain_block) int brainBlock(int n, int given) {
     instrument->latestLane(c, lanes + (2 + static_cast<std::size_t>(c)) * frames, frames);
   midiIn.clear(); midiLengths.clear(); midiTimes.clear();
   blockAt = -1;
+  midiOutTaken = midiOut.size();
   return static_cast<int>(midiOut.size());
 }
 EXPORT(brain_midi_out) const std::uint8_t* brainMidiOut() { return midiOut.data(); }

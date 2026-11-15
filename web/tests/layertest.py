@@ -397,11 +397,16 @@ with sync_playwright() as pw:
     # the instrument. Since 14 Nov the face sends the learned note before the
     # note itself (hostSendSplit, Keyboard::setSplitPoint), so this reads the
     # instrument's lanes: G3 learned, A3 must land in B's lanes, where at the
-    # old C4 it lands in A's. The null is the same run with the face's send
-    # taken out, which is the bug as it was: A3 in A's lanes.
+    # old C4 it lands in A's. Since 15 Nov Learn itself is told to the
+    # instrument too (hostSendLearn, Keyboard::learnSplit), so that in the
+    # plugin a host's note can set it: with the face's send of the point cut,
+    # the instrument learns G3 from the note on its own - the plugin's path,
+    # run on the site. The null cuts both, which is the bug as it was: A3 in
+    # A's lanes. (Until 15 Nov the null cut the point's send alone.)
     LEARN = """async (cut) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       if (cut) hostSendSplit = () => {};
+      if (cut === 'both') hostSendLearn = () => {};
       setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(200);
@@ -429,9 +434,9 @@ with sync_playwright() as pw:
         out["kept"] = q.evaluate("(code) => JSON.stringify((decodeSetup(code) || {}).pluginHands || [])", state)
         q.close()
         return out
-    learn, null = learned(False), learned(True)
+    learn, alone, null = learned(False), learned('split'), learned('both')
     print("    learned %s" % {k: learn[k] for k in ("asking", "point", "said", "played", "a", "b")})
-    print("    send cut %s" % {k: null[k] for k in ("point", "a", "b")})
+    print("    the point's send cut %s; both cut %s" % ({k: alone[k] for k in ("point", "a", "b")}, {k: null[k] for k in ("point", "a", "b")}))
     check("the split point is learned from the next key, which still plays",
           learn["asking"] == "play a key" and learn["point"] == 55 and not learn["learning"]
           and learn["said"] == "at G3" and learn["played"] == [55] and learn["kind"] == "host", str(learn))
@@ -439,7 +444,10 @@ with sync_playwright() as pw:
           learn["b"] > 10 * learn["a"] and learn["b"] > 1e-3, "A %.5f B %.5f" % (learn["a"], learn["b"]))
     check("... and the instrument keeps it, a hand its state carries for a project reopened",
           '["c","splitAt","55"]' in learn["kept"], learn["kept"][:300])
-    check("null: with the face's send cut, A3 is in A's lanes, the bug as it was",
+    check("with the face's send of the point cut, the instrument learns G3 from the note itself and keeps it: A3 in B's lanes",
+          alone["b"] > 10 * alone["a"] and alone["b"] > 1e-3 and '["c","splitAt","55"]' in alone["kept"],
+          "A %.5f B %.5f; %s" % (alone["a"], alone["b"], alone["kept"][:200]))
+    check("null: with both the point's send and Learn's cut, A3 is in A's lanes, the bug as it was",
           null["point"] == 55 and null["a"] > 10 * null["b"] and '"splitAt"' not in null["kept"], "A %.5f B %.5f" % (null["a"], null["b"]))
     check("no page errors on the instrument's face", not bad, "; ".join(bad[:3]))
     b.close()

@@ -178,7 +178,12 @@ class PictureRun {
     Brain::ViewState& w = brain_.view;
     add("view.zoom", 8, 0, 24, [&w] { return w.zoomStep; }, [&w](double o) { w.zoomMod = o; });
     add("trig.position", 0.5, 0, 1, [&v] { return v.position; }, [&v](double o) { v.positionMod = o; });
-    for (std::size_t i = 0; i < 2; i++) {
+    /* Every lane's, six (kMaxLanes), since 15 Nov: until then the first two
+       only, so a routing onto lane three or four's full scale - B's figure,
+       in a split where each hand draws its own - was heard by nothing. The
+       owner's decision (after-stage-5.md). Registered whether or not the
+       lane is there, as the rest are; the set is a lane's only while it is. */
+    for (std::size_t i = 0; i < static_cast<std::size_t>(kMaxLanes); i++) {
       add("view.scale" + std::to_string(i + 1), kFsSpanDb, kFullScaleBottom, 0,
           [&v, i] { return v.channels.size() > i ? v.channels[i].fsDb : 0; },
           [&v, i](double o) { if (v.channels.size() > i) v.channels[i].fsMod = o; });

@@ -167,7 +167,7 @@ class Keyboard {
     // Struck again under the pedal: held by a finger now.
     forget(sustained_, note);
     // The split point is learned from a key, and the key still plays.
-    if (layers_.learning) { layers_.point = note; layers_.learning = false; }
+    if (layers_.learning) { layers_.point = note; layers_.learning = false; learned_++; }
     const auto at = find(note);
     if (at != notes_.end()) notes_.erase(at);
     notes_.push_back({ note, velocity / 127 });
@@ -318,6 +318,13 @@ class Keyboard {
     applyNotes();
   }
   void learnSplit() { layers_.learning = !layers_.learning; }
+  /* Learn armed or let go by the face (15 Nov), as a state rather than a
+     toggle, so a face and an instrument cannot disagree about which way it is
+     after a message lost or sent twice. The plugin's host notes reach the
+     keyboard and never the face, so the keyboard learns from them itself. */
+  void learnSplit(bool on) { layers_.learning = on; }
+  // How many points have been learned from a key here: the instrument keeps each as the face's splitAt hand.
+  int learned() const { return learned_; }
   /* The split point the face learned (after stage 5): the face hears the next
      key and sends the note, before the note itself, so the key that set the
      split is in the upper hand, as the page's own keyboard put it. A point
@@ -484,6 +491,7 @@ class Keyboard {
  private:
   struct Interval { int index = 0, octaves = 0; };
   struct Layers { LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; int edit = 0; };
+  int learned_ = 0;
 
   std::vector<Held>::iterator find(int note) {
     return std::find_if(notes_.begin(), notes_.end(), [note](const Held& h) { return h.note == note; });

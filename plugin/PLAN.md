@@ -2261,6 +2261,16 @@ The limiter stays as it was, a decision rather than a gap: the page's
 verdict reads its monitor chain's limiters, which the plugin has not got,
 and adding one to read would change what the host is given.
 
+That was undone in stage 5's step 5a (14 Nov): the page's limiter and clamp
+are the instrument's now (`core/include/scope/limiter.h`, Chromium's
+compressor and wave shaper ported to the bit), last on the heard pair in the
+plugin and on the site alike, and their reduction is what the meter reads. It
+keeps the browser node's make-up gain - 1.7 dB at the page's -3 dB and 20:1,
+1.218 on everything - so the plugin is that much louder than before 5a and its
+loudest sounds are held under 0.99 where they reached 3.2. The owner kept the
+make-up on 15 Nov (`web/docs/after-stage-5.md`): the site has always had it,
+the site and the plugin should match, and the Output turns it down.
+
 Mutation: 11, all caught, one only after a run was added for it - the
 aperiodicity gate taken away lived while the only aperiodic fixture was
 noise, which the estimator does not answer for at all; the tone in noise is

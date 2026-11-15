@@ -39,7 +39,21 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   and a project reopened has no ends. Found by step 5b's second half (14 Nov),
   which kept the page's walk for that reason (`morphStep`). The fix is to send
   the stores and let the instrument walk, which the core can already do.
-- **Lanes three to six have no full scale in the instrument.** The core
+- ~~**Lanes three to six have no full scale in the instrument.**~~ Fixed after stage 5
+  (15 Nov), as the owner decided: the core registers every lane's full scale,
+  `view.scale1` to `view.scale6` (`screen.h`), so a routing onto lane three or four's -
+  the upper hand's figure in a split where each hand draws its own - is drawn and heard,
+  and the face shows the instrument's offset there. No bank preset and no setup in the old
+  library routes lanes three to six (searched: `presets.h`, `library-p8f.json`, the
+  scenarios and the golden files), so no sound or picture already saved moves and no
+  golden file was written again. `core/tests/pieces/lanescale.py` renders a split with LFO
+  1 on lane three: the upper hand's grid and Scan table move (47,000 and 0.38 against the
+  plain run) and the lower hand's grid not at all; its null is the core as it was, built
+  in the piece with lanes one and two alone, where the same routing moves nothing.
+  facetest's lane-three row, which required nought every frame, now requires the face's
+  offset to be the instrument's and to move. (Lane one is no null for this: it is the
+  trigger's lane, so its scale moves where every lane's window is cut, the upper hand's
+  included.) What was found: The core
   registers `view.scale1` and `view.scale2` as destinations and no others
   (`screen.h`), so a routing onto lane three or four's full scale, which a
   split drawing a figure a hand offers, is heard by nothing. Until 5b's second
@@ -195,8 +209,12 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   5b nothing heard reads the face's bar (the instrument's score and arpeggiator play on
   its own), but once 5b points the Bar row at the instrument's posted beat, the face's
   Start must reach it or the button will appear to do nothing. Found by step 5a (14 Nov).
-- **What Scope & measure's "Speakers get: Shaped" adds after the instrument is not
-  limited.** Since 5a the instrument limits its own output and the page's chain for it has
+- ~~**What Scope & measure's "Speakers get: Shaped" adds after the instrument is not
+  limited.**~~ Answered 15 Nov: it stays as it is (the owner's decision). The help's filter
+  entry and *Speakers get*'s info line (`what-each-control-says.md`, written into the page)
+  say so plainly: on *Shaped*, the filter, the AC coupling and the turn are heard after
+  the instrument's limiter, so a resonant trace can be loud, held under full scale and not
+  evened out. What was found: Since 5a the instrument limits its own output and the page's chain for it has
   no limiter, only a backstop that is the identity up to 0.995 and holds anything above
   under one. With the speakers on the shaped side, the trace filter (up to 18 dB of
   resonance), the coupling, the lag and the rotation still act after the instrument, and a
@@ -220,7 +238,24 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   nobody is known to hit this; a codec that took the module from the worklet,
   or decoded there, would remove the case. Found by step 6 (14 Nov).
 
-- **What the instrument sends to a MIDI port between blocks is lost on the site.** The
+- ~~**What the instrument sends to a MIDI port between blocks is lost on the site.**~~
+  Fixed after stage 5 (15 Nov): the module lets go at a block's top only the bytes the
+  last block handed the worklet (`midiOutTaken`), which it read as the call returned, so
+  what a hand sends between blocks goes out with the next block - at its first sample in
+  the plugin too, where it had been sent at wherever the last block's last step left the
+  out (`Instrument::apply`). The Stop's panic is sent at once now rather than at the next
+  step: the panic ends every note the MIDI out has sounding, the score's among them,
+  before All Notes Off, so the order is the one scoretest requires either way and the
+  score's own note-offs at the step find nothing left to end; waiting was harmless, but
+  it was a workaround for this. It found a second loss: the arpeggiator's last note,
+  ended from a hand when its menu goes to off or a setup loads over it, never reached the
+  port on the site, so an external synth held it. The making of the instrument still lets
+  go of what making it sent (its port's All Notes Off), as it always did. core_tests.py's
+  "sent between blocks" run holds both, compiled against native, with the Stop's panic in
+  the next block and the arpeggio's last note ended in the block after its menu; its
+  nulls are the blocks before each, and a module that empties its list at the block's top,
+  which loses both. The native tool kept nothing between blocks either until now, so the
+  comparison could not see it. What was found: The
   site's module (`core/wasm/scope_wasm.cpp`, `brain_block`) empties its list of what was
   sent at the top of every block, so a MIDI-out message sent from a control's handler,
   which the worklet applies between blocks, never reaches the port: a Stop's panic did
@@ -236,7 +271,21 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   and automating the Morph back to 100 after A was heard as the page's - and the shell
   test's row went red on it before the note was spent once seen. Any of the fifteen
   parameters a player had dragged on the page had it too. Found by the morph fix.
-- **Learn in the plugin hears the screen's keys only.** The split point is learned by
+- ~~**Learn in the plugin hears the screen's keys only.**~~ Fixed after stage 5 (15 Nov):
+  pressing *Split point* tells the instrument (`splitLearn`, a state rather than a toggle,
+  `Keyboard::learnSplit`), whose keyboard learns from whatever note reaches it next, a
+  host's included; the point is kept as the face's own `splitAt` hand, so a project
+  reopened splits there, and counted as the host's move (`Instrument::keepLearned`), so
+  the face, which applies only what the host moved, shows it and lets Learn go
+  (`hostMoveKnobs`). On the site nothing changes: every note comes through the face, which
+  sends the point before the note and so lets the instrument's Learn go first. The
+  plugin's shell test, in the real face under `xvfb-run -a`: Learn pressed, the split on,
+  a host's G3 and no key on the screen - the face says "at G3", no longer waiting, and the
+  project keeps `splitAt` 55; its null, the same face with the instrument never told Learn
+  is armed, keeps C4 and still says "play a key". On the site, layertest runs the
+  plugin's path: with the face's send of the point cut, the instrument learns G3 from the
+  note itself and keeps it; its null now cuts both sends, the bug as it was. What was
+  found: The split point is learned by
   the face from the next key it hears (`midiNoteOn`) and sent to the instrument; in the
   plugin a host's notes go to the instrument and not through the face, so pressing
   *Split point* and playing a key on the controller learns nothing until a key on the
@@ -246,7 +295,9 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
 
 ## Sounds and presets
 
-- **The plugin is 1.7 dB louder since 5a, and limited.** The page's limiter has a make-up
+- ~~**The plugin is 1.7 dB louder since 5a, and limited.**~~ Answered 15 Nov: the make-up
+  gain stays (the owner's decision: the site and the plugin match, and the Output turns it
+  down); `plugin/PLAN.md` says so where the limiter is described. What was found: The page's limiter has a make-up
   gain (Chromium's, at -3 dB and 20:1: 1.218 on everything), and the site has always had
   it; the plugin now does too, so a quiet sound in a DAW is 1.7 dB louder than before
   5a, and the loudest are held under 0.99 where they reached 3.2. The owner may want to
@@ -362,9 +413,16 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
 
 - A few minor things from trying the click, swell and Width fixes on the testing
   site (13 Nov), to be written here.
-- Offered and not yet answered: a small "Testing" label in the header shown only
+- ~~Offered and not yet answered: a small "Testing" label in the header shown only
   on the testing site, so the two pages can be told apart without reading the
-  address.
+  address.~~ Done 15 Nov: *Testing*, in small capitals in the brand's secondary ink inside a
+  hairline, beside the run status, shown under `/testing/` by the test the storage shim
+  uses and nowhere else. It is drawn inside the header's spacer and out of the flow, so the
+  header is laid out the same to the hundredth of a pixel with it or without it.
+  headertest opens the page from the root and from a directory named `testing` at the five
+  windows fittest and windowtest measure and requires every header box the same, the mark
+  shown only under `testing`; the nulls are the root, which shows none, and the mark put
+  into the flow, which moves the header.
 
 ## Already planned for after stage 5
 

@@ -95,6 +95,7 @@ int main(int argc, char** argv) {
       const auto setup = scope::Instrument::setup(text(arg(3)));
       instrument.prepare(arg(1).n, static_cast<int>(arg(2).n), setup ? *setup->setup : scope::Json::object());
       if (!setup) std::printf("no\n");
+      sent.clear();  // making it sends its port's All Notes Off, which the site's module lets go
     } else if (cmd == "slider") {
       const auto c = scope::Instrument::slider(text(arg(1)), arg(2).type == scope::Json::Type::String ? arg(2).s : u"");
       if (c) instrument.apply(*c); else std::printf("no\n");
@@ -150,7 +151,6 @@ int main(int argc, char** argv) {
       std::vector<scope::Instrument::Event> events;
       std::size_t at = 0;
       for (const std::size_t length : lengths) { events.push_back({ 0, midi.data() + at, length }); at += length; }
-      sent.clear();
       instrument.block(lanes.data(), lanes.data() + n, static_cast<int>(n), events.data(), events.size(), nullptr, nullptr, 0,
                        feedL > 0 ? &input : nullptr);
       for (int c = 0; c < scope::Instrument::kRingLanes; ++c)
@@ -165,6 +165,10 @@ int main(int argc, char** argv) {
         for (const auto& m : sent) { for (const int b : m) std::printf(" %d", b); std::printf(" ;"); }
         std::printf("\n");
       }
+      /* Emptied after it is printed, not before the block, so what a hand
+         sent between blocks goes out with the next, as the plugin's
+         outgoing buffer and (since 15 Nov) the site's module have it. */
+      sent.clear();
       if (instrument.changed()) {
         std::printf("state %d %s\n", instrument.hostVersion(), instrument.stateCode().c_str());
         instrument.published();

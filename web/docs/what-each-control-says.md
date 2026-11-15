@@ -604,8 +604,8 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | filterRes | Resonance | A peak at the cutoff: nought is gentle, a hundred rings. High, it can push the trace past full scale and the readout says Clipping. | 131 | yes — nothing turns it down, since a compressor on the screen would lie about the level; lower Full scale or the amplitude |
 | seeDry | Screen reads | The screen draws the signal as it came in, before the filter, the AC coupling and the turn. The readout says so. | 112 | - |
 | seeWet | Screen reads | The screen draws the signal after the filter, the AC coupling and the turn. | 75 | - |
-| hearDry | Speakers get | The speakers get the signal as it came in: the filter, the AC coupling and the turn change only the picture. | 108 | yes — the four combinations of the two switches and what each is for; anything reaching the speakers passes a limiter first |
-| hearWet | Speakers get | The speakers get the signal after the filter, the AC coupling and the turn, so you hear what the screen shows shaped. | 117 | - |
+| hearDry | Speakers get | The speakers get the signal as it came in: the filter, the AC coupling and the turn change only the picture. | 108 | yes — the four combinations of the two switches and what each is for; the instrument's limiter comes before the shaping, so on Shaped a resonant trace is held under full scale by a backstop, not compressed |
+| hearWet | Speakers get | The speakers get the trace after the filter, the AC coupling and the turn, all after the instrument's limiter, so a resonant trace can be loud. | 143 | - |
 
 ### Scope & measure › Vertical
 

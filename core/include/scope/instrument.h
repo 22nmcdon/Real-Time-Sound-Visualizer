@@ -156,6 +156,7 @@ class Instrument {
     brain_ = std::make_unique<Brain>();
     clockIn_ = std::make_unique<ClockIn>(brain_->clock);
     keyboard_ = std::make_unique<Keyboard>(*notes_, clockIn_.get());
+    learnedSeen_ = 0;
     // The layer the panel shows follows the keyboard, as the page's syncLayers has it.
     keyboard_->setLayerPanel([this] { syncLayerPanel(*brain_, *core_, *keyboard_); });
     // A note strikes the screen where Scan reads (P7b).
@@ -338,6 +339,11 @@ class Instrument {
 
   // One of the page's hands, done now: the owner calls it at the top of a block.
   void apply(const Command& command) {
+    /* A hand is applied between blocks, so whatever it sends to the MIDI out
+       - a Stop's panic, the arpeggiator's last note ended by its menu or a
+       setup - goes at the next block's first sample, not where the last
+       block's last step left the out, which can be past a shorter block's end. */
+    outAt_ = 0;
     switch (command.kind) {
       case Command::Setup: load(*command.setup, false); break;
       case Command::Slider: moveTo(command.id, command.text, false); break;
@@ -448,7 +454,6 @@ class Instrument {
        reads the grid drawn here, as the last picture frame left it. */
     scoreTick(brain_->score, nowMs_, running_, brain_->clock, pictureRun_->phosphor().grid().data(),
               keyMask(brain_->keyRoot, brain_->keyScale), strike_, midiOut_.get());
-    if (stopOut_) { stopOut_ = false; midiOut_->panic(); }  // a Stop's All Notes Off, after the score's note-offs
     keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
     /* The picture's frame, when a sixtieth of a second of audio has gone: the
        capture, and the photocell and the picture's sources stepped from the
@@ -537,6 +542,28 @@ class Instrument {
     }
     wakesUntil(frames);
     render(left, right, done, frames);
+    if (keyboard_->learned() != learnedSeen_) keepLearned();
+  }
+
+  /* A split point the keyboard learned from a note it was handed (15 Nov):
+     in the plugin, a host's note, which reaches the instrument and never the
+     face. Kept as the face's own hand on it, `splitAt`, so a project reopened
+     splits there, and told to the face as a hand the host moved - its
+     version counted and the id among the moved - so the face, which polls
+     the state and moves only what the host moved, shows the point and lets
+     Learn go. On the site the face hears every note first and sends the
+     point before the note (hostSendSplit), which lets the keyboard's Learn
+     go, so this never runs there. A hand allocates, and this is the audio
+     thread's: once a press of Learn, which a player makes by hand. */
+  void keepLearned() {
+    learnedSeen_ = keyboard_->learned();
+    Json hand = Json::array();
+    hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view("splitAt")));
+    hand.a.push_back(Json::string(std::string_view(std::to_string(keyboard_->splitPoint()))));
+    remember("c:splitAt", std::move(hand));
+    changed_ = true;
+    hostVersion_++;
+    if (std::find(hostMoved_.begin(), hostMoved_.end(), "splitAt") == hostMoved_.end()) hostMoved_.emplace_back("splitAt");
   }
 
   /* A host parameter's walk: from where its slider stands to the value put,
@@ -880,6 +907,11 @@ class Instrument {
        always one. Not a hand on the setup: it is where the instrument is
        playing, not what it plays. The gate follows at the next block. */
     if (id == "keyboardPresent") { keyboard_->setPresent(text != u"0"); return; }
+    /* Learn armed or let go on the face (15 Nov), so the keyboard learns the
+       split from whatever note comes next, a host's included. Not a hand: a
+       project reopened is not waiting for a key, and the point learned is
+       kept as one (keepLearned). */
+    if (id == "splitLearn") { keyboard_->learnSplit(text == u"1"); return; }
     /* How long a stage switched in or out crossfades (the generator's
        `switchMs`), in milliseconds: parity's handle on the switch as it
        was, at nought, which is the null for its check that the wheel on the
@@ -912,10 +944,15 @@ class Instrument {
          out still has sounding and All Notes Off, in that order, as the
          page's own score and MIDI out did. Until 14 Nov the page sent its
          All Notes Off before the instrument's note-offs and the instrument
-         sent none of its own. At the step rather than here because what is
-         sent between blocks has no block to go out in: the site's module
-         empties its list of what was sent at each block's top. */
-      if (was && !running_) stopOut_ = true;
+         sent none of its own. Sent here, at once, since 15 Nov: the panic
+         ends every note the MIDI out has sounding, the score's among them,
+         before its All Notes Off, so the order is the same as when it waited
+         for the step, and the score's own note-offs at the step find nothing
+         left sounding and send nothing. It waited until the site's module
+         stopped emptying its list of what was sent at each block's top,
+         which lost anything sent between blocks; at the top of the next
+         block now, as anything a handler sends is. */
+      if (was && !running_) midiOut_->panic();
       return;
     }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, lfos_)) return;
@@ -1471,6 +1508,7 @@ class Instrument {
   std::unique_ptr<Generator> core_;
   std::unique_ptr<GeneratorNotes> notes_;
   std::unique_ptr<Keyboard> keyboard_;
+  int learnedSeen_ = 0;  // the keyboard's learned() last kept as a hand
   std::unique_ptr<Matrix> matrix_;
   std::unique_ptr<CoreSources> sources_;
   std::unique_ptr<Brain> brain_;  // what a setup sets beyond the generator
@@ -1528,7 +1566,6 @@ class Instrument {
   Limiter limiter_;          // the page's limiter and clamp, on the heard pair (5a)
   bool limiterOn_ = true;    // off only for a harness's null
   bool running_ = true;      // the site's Stop and Run (5a)
-  bool stopOut_ = false;     // a Stop's All Notes Off, owed at the next step
 };
 
 }  // namespace scope
