@@ -1,0 +1,18 @@
+--- core/tests/tools/render_cpp.cpp	2026-11-15 03:24:33.293729335 +0000
++++ scratch/tools/render_gov.cpp	2026-11-15 03:34:54.370841727 +0000
+@@ -462,6 +462,15 @@
+     } else if (name == "eye") {
+       const auto& m = pic.pictures().meter();
+       std::printf("eye %.9g %.9g %s\n", m.seen(), m.seenRate(), m.verdict().c_str());
++    } else if (name == "budget") {
++      // Scratch (the listening study): what the governor did, and each voice as LAYER:NOTE:HELD:CUT.
++      const auto& g = inst_.generator();
++      const auto& b = g.budget();
++      std::printf("budget %.6g %d %d %d %d %d %d %d", b.units, b.asked[0], b.asked[1], b.unison[0], b.unison[1], b.askedFactor, b.factor, b.silenced);
++      for (int l = 0; l < 2; l++)
++        for (const auto& v : l ? g.voicesB() : g.voices())
++          std::printf(" %d:%d:%d:%d", l, v.note, v.held ? 1 : 0, scope::Generator::cutting(v) ? 1 : 0);
++      std::printf("\n");
+     } else if (name == "limiter") {
+       std::printf("limiter %.9g %.9g %d\n", static_cast<double>(inst_.limiterReduction()), inst_.limiting(), inst_.latency());
+     } else if (name == "grid") reads::grid(inst_);

@@ -1,0 +1,38 @@
+--- core/include/scope/generator.h	2026-11-15 03:24:33.246671609 +0000
++++ scratch/inc-fit/scope/generator.h	2026-11-15 03:34:47.073426017 +0000
+@@ -149,7 +149,10 @@
+ 
+ class Generator {
+  public:
+-  static constexpr double kVoiceBudget = 350;
++#ifndef SCRATCH_BUDGET
++#define SCRATCH_BUDGET 350
++#endif
++  static constexpr double kVoiceBudget = SCRATCH_BUDGET;  // scratch: the listening study's
+   // Every key a pedal can hold, and the tails let ring past them: more is made room for as it comes.
+   static constexpr std::size_t kVoicesKept = 128 + kPolyTails;
+ 
+@@ -960,19 +963,19 @@
+ 
+   double voiceCost(const LayerSettings& t, int n, int factor, bool fmRouted, bool syncRouted, bool shapeRouted) const {
+     double c = 2.5;
+-    if (t.noise) c += 3;
++    if (t.noise) c += 0.9;  // scratch fit to the core in WebAssembly (was 3)
+     else {
+       const bool fm = t.fmIndex > 0 || t.warp != 0 || fmRouted, sync = t.syncRatio != 1 || syncRouted;
+       const bool ring = t.ringMix > 0, sub = t.subLevel > 0;
+       const std::string& s = t.shapeName;
+       if (fm || sync || ring || sub || n > 1) {
+-        const double copy = s == "morph" ? 6.8 : s == "drawbars" ? 5.3 : s == "pulse" ? 2.8 : s == "wavetable" ? 2.2 : 2;
++        const double copy = s == "morph" ? 6.8 : s == "drawbars" ? 8.2 : s == "pulse" ? 2.8 : s == "wavetable" ? 2.2 : 2;
+         c += 2.3 + n * (copy + (fm ? 1.9 : 0) + (sync ? 1.6 : 0) + (ring ? 1.3 : 0)) + (sub ? 2.5 : 0);
+-      } else c += s == "morph" ? 7 : s == "drawbars" ? 5.5 : s == "pulse" ? 2.4 : s == "wavetable" ? 2.5 : 2;
++      } else c += s == "morph" ? 7 : s == "drawbars" ? 10.7 : s == "pulse" ? 2.4 : s == "wavetable" ? 2.5 : 2;
+     }
+     if (t.drive > 0 || t.fold > 0 || shapeRouted) c += factor == 4 ? 30 : factor == 2 ? 17 : NAN;
+     if (t.crushBits > 0 || t.crushHz > 0) c += 2;
+-    if (t.vcfType > 0) c += 4;
++    if (t.vcfType > 0) c += 1.7;  // scratch fit (was 4)
+     return c;
+   }
+ 

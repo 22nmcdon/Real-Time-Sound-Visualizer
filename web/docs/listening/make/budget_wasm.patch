@@ -1,0 +1,41 @@
+--- core/tests/tools/budget_cpp.cpp	2026-11-15 03:24:33.293729335 +0000
++++ scratch/tools/budget_wasm.cpp	2026-11-15 03:30:48.633084084 +0000
+@@ -30,7 +30,6 @@
+ #include <chrono>
+ #include <cstdio>
+ #include <cstdlib>
+-#include <fstream>
+ #include <memory>
+ #include <sstream>
+ #include <string>
+@@ -86,7 +85,9 @@
+ };
+ 
+ int script(const char* path) {
+-  std::ifstream file(path);
++  std::string all;
++  if (FILE* f = std::fopen(path, "rb")) { char buf[4096]; std::size_t n; while ((n = std::fread(buf, 1, sizeof buf, f)) > 0) all.append(buf, n); std::fclose(f); }
++  std::istringstream file(all);
+   Rig rig;
+   rig.make(44100);
+   std::vector<std::vector<float>> bufs(6);
+@@ -160,7 +161,11 @@
+       for (int r = 0; r < tries; r++) {
+         for (auto& b : bufs) b.assign(static_cast<std::size_t>(n), 0.0f);
+         const auto t0 = std::chrono::steady_clock::now();
+-        rig.gen->block(bufs[0].data(), bufs[1].data(), static_cast<int>(n), bufs[2].data(), bufs[3].data(), bufs[4].data(), bufs[5].data());
++        // In blocks of 128, as the worklet runs the core (the scratch copy's one change of method).
++        for (long at = 0; at < n; at += 128) {
++          const int m = static_cast<int>(std::min<long>(128, n - at));
++          rig.gen->block(bufs[0].data() + at, bufs[1].data() + at, m, bufs[2].data() + at, bufs[3].data() + at, bufs[4].data() + at, bufs[5].data() + at);
++        }
+         const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+         if (ms < best) best = ms;
+       }
+@@ -177,3 +182,6 @@
+   if (std::string(argv[1]) == "--bank") { std::printf("%zu\n", scope::presets().size()); return 0; }
+   return script(argv[1]);
+ }
++// Exceptions are off for the wasm build, as core/wasm/scope_wasm.cpp has it.
++extern "C" void* __cxa_allocate_exception(std::size_t) { std::abort(); }
++extern "C" void __cxa_throw(void*, void*, void (*)(void*)) { std::abort(); }
