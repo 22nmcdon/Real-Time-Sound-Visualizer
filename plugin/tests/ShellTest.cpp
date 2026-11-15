@@ -423,7 +423,10 @@ int main() {
       p.pageSlider("amp", u"120"); if (presses) p.pageClick("morphStoreB");
       p.processBlock(buf, none);
     };
-    const auto slide = [&](ScopeProcessor& p) { const double a = heardAt(p, 0), b = heardAt(p, 100); return b / std::fmax(a, 1e-9); };
+    const auto slide = [&](ScopeProcessor& p) {
+      const double a = heardAt(p, 0);
+      const double b = heardAt(p, 100);
+      return b / std::fmax(a, 1e-9); };
     ScopeProcessor sent;
     sent.prepareToPlay(rate, block);
     unstaged(sent);

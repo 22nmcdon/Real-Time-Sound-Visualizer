@@ -296,6 +296,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   int panelLayer_ = 0;                          // the layer the panel showed at the last block
   // The parameters not moved by the host, read back from their sliders: a setup loaded, or the panel's layer changed.
   void readBack(bool unmovedOnly);
+  void followKnob(const std::string& id, double value);
   std::vector<scope::Instrument::HostSlider> moved_;  // the parameters moved since the last block
   std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block, with room made in prepare
   std::vector<float> inL_, inR_;                      // the host's input this block, copied out of the buffer

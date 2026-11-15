@@ -228,6 +228,14 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   the port's menu ever the instrument's, would too. Nothing else sends from a handler
   today. The fix is to empty the list after the worklet has read it rather than before
   the block; left, since nothing now hits it. Found by the Stop fix (14 Nov).
+- ~~**A host parameter moved to the value the page last gave it is not heard.**~~ Fixed
+  with the morph (14 Nov): the plugin's processor noted the page's own move of a parameter
+  (`pageSet_`) so that the audio thread would not take it for the host's, and never let
+  the note go, so a host that later moved that parameter to the same value moved nothing.
+  The morph's store made it plain - storing B puts the fader and its parameter at 100,
+  and automating the Morph back to 100 after A was heard as the page's - and the shell
+  test's row went red on it before the note was spent once seen. Any of the fifteen
+  parameters a player had dragged on the page had it too. Found by the morph fix.
 - **Learn in the plugin hears the screen's keys only.** The split point is learned by
   the face from the next key it hears (`midiNoteOn`) and sent to the instrument; in the
   plugin a host's notes go to the instrument and not through the face, so pressing

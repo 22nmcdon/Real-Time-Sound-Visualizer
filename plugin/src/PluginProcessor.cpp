@@ -69,7 +69,11 @@ void ScopeProcessor::pageSlider(const std::string& id, const std::u16string& tex
      page has opened round the move. The value it will hold is noted first,
      so an audio thread that finds it there before the slider's command has
      reached it knows it for the page's. */
-  const double value = scope::jsNumber(scope::utf16To8(text));
+  followKnob(id, scope::jsNumber(scope::utf16To8(text)));
+}
+
+// A host parameter put where the page's move leaves its slider, noted as the page's.
+void ScopeProcessor::followKnob(const std::string& id, double value) {
   if (!std::isfinite(value)) return;
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
     if (id != kKnobs[i].slider) continue;
@@ -103,7 +107,14 @@ void ScopeProcessor::pageControl(const std::string& id, scope::Json value) {
     if (const auto part = scope::jsonParse(value.s)) scope::warmCycles(*part);
   queue(scope::Instrument::control(id, std::move(value)));
 }
-void ScopeProcessor::pageClick(const std::string& id) { queue(scope::Instrument::click(id)); }
+void ScopeProcessor::pageClick(const std::string& id) {
+  if (!queue(scope::Instrument::click(id))) return;
+  /* Storing an end of the morph puts its fader there (Instrument::keepMorph),
+     so the host's Morph follows, as it follows the page's own move of the
+     fader: left where it was, a host that then moved it to where it already
+     read changed nothing, and the fader stayed at the end just stored. */
+  if (id == "morphStoreA" || id == "morphStoreB") followKnob("morphPos", id == "morphStoreB" ? 100 : 0);
+}
 void ScopeProcessor::pageFade(std::string_view json) { queue(scope::Instrument::fade(json)); }
 void ScopeProcessor::pageRoutings(std::string_view text) { queue(scope::Instrument::routings(text)); }
 // A preset from the page: its drawn cycles built here first, as a drawing's are.
@@ -370,8 +381,14 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
     const float v = knobs_[i]->get();
     if (v == applied_[i]) continue;
     applied_[i] = v;
-    // The page's own move, set by pageSlider and reaching the slider through the queue: no hand of the host's.
-    if (v == pageSet_[i].load()) continue;
+    /* The page's own move, set by pageSlider and reaching the slider through
+       the queue: no hand of the host's. Seen once, the note is spent, so a
+       host that later moves the parameter to the same value is heard: kept,
+       a store of B (followKnob, at 100) left every later host move to 100
+       taken for the page's, and the Morph automated back to B stayed at A.
+       Spent only if the page has not noted another value meanwhile. */
+    float noted = pageSet_[i].load();
+    if (v == noted) { pageSet_[i].compare_exchange_strong(noted, std::numeric_limits<float>::quiet_NaN()); continue; }
     moved_.push_back({ kKnobs[i].slider, v });
   }
   /* The host's MIDI, as bytes at their samples, not JUCE's reading of them:
