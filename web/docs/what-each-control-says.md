@@ -547,7 +547,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | device | Device | Which input Mic draws. The site’s choice only: in the plugin, the host’s input is used. | 87 | - |
 | kindMic | Input is | Says a microphone is plugged in, so it is never sent to the speakers: it would hear them and feed back. | 103 | - |
 | kindLine | Input is | Says a line input is plugged in, a keyboard or an interface, which has no ear, so it may be heard through the page. | 115 | yes — a claim you make that the browser cannot check; get it wrong with a microphone and the feedback loop is real |
-| monitorLive | Hear it through the page | Plays a line input through the page, tens of milliseconds late. Only for a line; wear headphones the first time. | 112 | yes — the latency shown is the browser’s output side only, a floor; hearing the instrument directly and letting the page only look has none |
+| monitorLive | Hear it through the page | Plays a line input through the page, tens of milliseconds late. Only for a line, never a band split; wear headphones the first time. | 132 | yes — the latency shown is the browser’s output side only, a floor; hearing the instrument directly and letting the page only look has none |
 
 ### Scope & measure
 

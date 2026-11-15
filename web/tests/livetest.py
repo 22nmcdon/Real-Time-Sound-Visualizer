@@ -228,10 +228,11 @@ with sync_playwright() as pw:
           "at most %.3f" % shut)
     # The head's credit, since F1 took the small mark beside the name.
     check("the head says so", "band" in got["credit"].lower(), got["credit"])
-    # Was "and says it is not monitored" in the source's describe(), the page
-    # brain's words; the instrument's credit for the split names the bands and
-    # not the monitoring (web/docs/after-stage-5.md), so what says it on the
-    # site is the monitor box, unavailable. Its null is the line input below.
+    # The page's own microphone source said "not monitored" over a split
+    # until stage 5's step 6; the instrument's credit named the bands alone
+    # until 14 Nov, and says it again. Its null is the line input below, whose
+    # credit says "monitored" and not this.
+    check("and the head says the split is not monitored", "not monitored" in got["credit"], got["credit"])
     check("and the monitor box says it cannot be monitored, being unavailable", got["box"] is True, str(got["box"]))
 
     ui = p.evaluate("""() => ({
@@ -330,6 +331,7 @@ with sync_playwright() as pw:
             box: el.monitorLive.disabled,
             ticked: el.monitorLive.checked,
             where: fxWhereText(),
+            credit: el.credit.textContent,
             latency: el.monitorLatency.textContent,
           };
         }""")
@@ -373,6 +375,10 @@ with sync_playwright() as pw:
     # the instrument's credit does not say it (after-stage-5.md), and the face
     # says it where the effects say what they act on.
     check("the face says it is heard", lined["where"] == "On your input, drawn and heard.", lined["where"])
+    # And the head's credit since 14 Nov, as the page's own source said it until step 6.
+    check("and the head says it is monitored", lined["credit"].endswith(", monitored")
+          and "not monitored" not in lined["credit"], lined["credit"])
+    null("and before the toggle the head did not", not start["credit"].endswith("monitored"), start["credit"])
     null("and before the toggle it said it was not", start["where"] != lined["where"], start["where"])
     check("and the latency is stated rather than left to be discovered",
           "ms" in lined["latency"], lined["latency"])
@@ -398,17 +404,32 @@ with sync_playwright() as pw:
     before = wiring()
     p.locator("#micBands").click(); p.wait_for_timeout(1500)
     split = wiring()
-    p.locator("#kindMic").click()
-    # Was "the wish dropped, and the box unavailable" as well (state.monitorLive
-    # false, monitorChains empty) on ?brain=js. On the site the split shuts
-    # the level, and nothing is heard, but the wish survives it: the box
-    # stays ticked and enabled over a split nobody can hear, and the input
-    # made whole again is monitored again unasked - a site defect, in
-    # web/docs/after-stage-5.md, the owner's to fix. Its half that holds is
-    # the speakers'; its null is the reading before the split.
+    # Both halves since 14 Nov. Until then the split shut the level and kept
+    # the wish: the box stayed ticked and enabled over a split nobody could
+    # hear, and Whole monitored the input again unasked (after-stage-5.md).
+    # Now the source refuses a split (setMonitor) and the wish goes with it,
+    # so Whole starts from off, as calling it a line input again does above.
     check("splitting into bands takes the input off the speakers",
           before["monitored"] is True and before["gain"] > 0.99 and split["gain"] == 0, "%s -> %s" % (before, split))
     null("before the split the same level was open", before["gain"] > 0.99, str(before["gain"]))
+    dropped = lambda w: w["wanted"] is False and w["ticked"] is False and w["box"] is True and w["monitored"] is False
+    check("and the wish goes with the split: the box unticked and unavailable", dropped(split), str(split))
+    null("before the split the box was ticked and available, and the wish held", not dropped(before), str(before))
+    null("the split as it was until 14 Nov, the box ticked and enabled over it, is not that",
+         not dropped(dict(split, wanted=True, ticked=True, box=False)))
+    p.locator("#micWhole").click(); p.wait_for_timeout(1500)
+    whole = wiring()
+    p.wait_for_timeout(300)
+    quiet = p.evaluate("""async () => { let most = 0;
+      for (let k = 0; k < 6; k++) { most = Math.max(most, state.source.gain); await new Promise((r) => setTimeout(r, 100)); }
+      return most; }""")
+    unasked = lambda w, most: w["monitored"] is False and w["wanted"] is False and w["ticked"] is False and most == 0
+    check("and Whole again starts from off: not monitored, the box unticked, the level shut",
+          unasked(whole, quiet) and whole["box"] is False, "%s, at most %.3f" % (whole, quiet))
+    null("Whole as it was until 14 Nov, monitored again unasked, is not that",
+         not unasked(dict(whole, monitored=True, wanted=True, ticked=True), 1.0))
+    p.locator("#micBands").click(); p.wait_for_timeout(1500)
+    p.locator("#kindMic").click()
     # Left as a band split: this section borrowed the source the ones below
     # were written against rather than bringing its own.
 

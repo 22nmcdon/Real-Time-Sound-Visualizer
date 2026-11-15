@@ -202,3 +202,28 @@ def run_batch6(kit):
     null("an oscillator at full depth on the rotation goes past the same bound", wrot > 0.5 + 1e-9, "%.3f" % wrot)
     wover = max(abs(float(r["loop"][2])) - 0.5 * float(r["sources"][1]) for r in wild)
     null("and past half the photocell's value, which it does not answer to", wover > 0.1, "%.3f over" % wover)
+
+    # --- a reticle that is not a number reads nothing ---
+    # The reticle's control with no comma (photoReticle "0.5"), so its v is
+    # not a number: since 14 Nov that reads as no reading, as a reticle off
+    # the screen does, and the slewed value falls to nought and stays there.
+    # Until then the reading was NaN, std::fmin dropped it and the value
+    # climbed by the slew every frame, to eight in four seconds. The nulls:
+    # the same run with the reticle given as two numbers reads the figure, so
+    # nought is not all this can read; and the climb as it was, by two a
+    # second from where it stood, breaks the same bound.
+    head = [["make", 48000, code({"persistence": "0.12", "photoOn": True})], ["midi", 0x90, 57, 127], ["to", 1.0]]
+    def reticle(text):
+        rows = kit.render(head + [["control", "photoReticle", text], ["every", 0.05, "sources"], ["to", 5.0]])
+        return [float(r["sources"][1]) for r in rows]
+    nan_rows, good_rows = reticle("0.5"), reticle("0.5,0.5")
+    late = nan_rows[len(nan_rows) // 2:]
+    print("    no comma: at most %.4f, the last second at most %.4f; as two numbers at most %.4f"
+          % (max(nan_rows), max(late), max(good_rows)))
+    check("a reticle that is not a number reads nothing: never past one, and nought once the slew has run",
+          len(nan_rows) >= 70 and all(math.isfinite(x) and 0 <= x <= 1 for x in nan_rows) and max(late) == 0,
+          "at most %.4f, late %.4f" % (max(nan_rows), max(late)))
+    null("the same reticle given as two numbers reads the figure", max(good_rows) > 0.05, "%.4f" % max(good_rows))
+    climb = [min(8, 2 * 0.05 * k) for k in range(len(nan_rows))]
+    null("the climb as it was, two a second, breaks the same bound", not (all(0 <= x <= 1 for x in climb) and max(climb[len(climb) // 2:]) == 0))
+

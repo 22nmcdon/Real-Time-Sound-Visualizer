@@ -125,12 +125,12 @@ with sync_playwright() as pw:
     send(0x90, 60, 0)
     check("a note-on at velocity zero is a note-off", held() == [], str(held()))
 
-    # The face's stack, and only the face's: on the site the page cuts a
-    # port's message into pieces of three bytes, and the instrument's keyboard
-    # drops the half message the cut leaves, so the third note here is never
-    # heard (in Mono the instrument plays E4, the face says G4 - batch 4,
-    # web/docs/after-stage-5.md). The core's parse of the message whole is
-    # pieces/midi.py's.
+    # The face's stack. What the instrument hears of the same bytes is held
+    # below, "what the instrument hears of a port's bytes": until 14 Nov the
+    # page cut a port's message into pieces of three bytes and the
+    # instrument's keyboard dropped the half message the cut left, so the
+    # third note here was never heard (in Mono the instrument played E4 and
+    # the face said G4 - batch 4, web/docs/after-stage-5.md).
     send(0x90, 60, 100, 64, 100, 67, 100)
     check("running status: one status byte, three notes", held() == [60, 64, 67],
           str(held()))
@@ -368,6 +368,59 @@ with sync_playwright() as pw:
           vel["base"] == "strike" and vel["preset"] == "fm", str(vel))
     check("choosing FM adds velocity's routing onto the FM depth beside what is there, and Level and strike takes it off alone",
           vel["fm"] == ["lfo1>gen.freq@0.35", "midi.key>gen.fm@0.30"] and vel["strike"] == ["lfo1>gen.freq@0.35"], str(vel))
+
+    print("\n--- what the instrument hears of a port's bytes ---")
+    # The page hands the instrument a port's bytes as whole messages since 14
+    # Nov (midiPieces): read off the pitch the instrument draws in Mono, where
+    # the last note is the one played. A running status of three notes plays
+    # G4, the third, and a clock byte between a note and its velocity plays
+    # the note. The null is each with the page's cut as it was, at every
+    # status byte and every third byte: E4 for the first, and the second's
+    # note lost, so what sounds is the note held before it.
+    OLD_CUT = """() => { midiPieces = (data) => {
+      const out = []; let piece = [];
+      for (const byte of data) {
+        if ((byte >= 0x80 || piece.length === 3) && piece.length) { out.push(piece); piece = []; }
+        piece.push(byte);
+      }
+      if (piece.length) out.push(piece);
+      return out;
+    }; }"""
+    PITCH = """async () => {
+      await new Promise((r) => setTimeout(r, 500));
+      const w = state.source.getLatestWindow(16384)[0], rate = state.source.sampleRate;
+      let first = -1, last = -1, ups = 0;
+      for (let i = 1; i < w.length; i++) if (w[i - 1] <= 0 && w[i] > 0) { if (first < 0) first = i; last = i; ups++; }
+      return ups > 2 ? (ups - 1) * rate / (last - first) : 0;
+    }"""
+    def heard(old):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.add_init_script(STUB)
+        q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1200)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        q.evaluate("() => midiConnect()"); q.wait_for_timeout(200)
+        if old: q.evaluate(OLD_CUT)
+        q.evaluate("() => el.midiMono.click()"); q.wait_for_timeout(200)
+        out = {}
+        q.evaluate("(d) => __send(d)", [0x90, 60, 100, 64, 100, 67, 100])
+        out["running"] = q.evaluate(PITCH)
+        out["face"] = q.evaluate("() => midi.notes.map((n) => n.note)")
+        q.evaluate("(d) => __send(d)", [0x90, 72, 100])
+        q.evaluate("(d) => __send(d)", [0x90, 62, 0xF8, 100])
+        out["clock"] = q.evaluate(PITCH)
+        q.evaluate("() => midiPanic()")
+        q.close()
+        return out
+    whole, cut = heard(False), heard(True)
+    print("    whole messages %s; the old cut %s" % ({k: round(v, 1) if isinstance(v, float) else v for k, v in whole.items()},
+                                                     {k: round(v, 1) if isinstance(v, float) else v for k, v in cut.items()}))
+    check("three notes under one running status: the instrument plays the third, G4, as the face holds it",
+          close(whole["running"], HZ(67), 2) and whole["face"] == [60, 64, 67], str(whole))
+    null("with the old cut the instrument plays E4, the half message dropped", close(cut["running"], HZ(64), 2), str(cut))
+    check("a clock byte between a note and its velocity: the instrument plays the note, D4",
+          close(whole["clock"], HZ(62), 2), str(whole))
+    null("with the old cut the note is lost and C5, held before it, sounds on", close(cut["clock"], HZ(72), 3), str(cut))
 
     print("\n--- and nothing else broke ---")
     p.evaluate("""() => {

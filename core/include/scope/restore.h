@@ -2025,6 +2025,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "midiPolyJust") keys.setPolyJust(checked);
   else if (id == "midiLayers") keys.setLayers(text == "split" ? LayerMode::Split : text == "layer" ? LayerMode::Layer : LayerMode::Off);
   else if (id == "midiLayerPair") keys.setPair(text == "against");
+  // The split point learned from a key on the face (after stage 5): Learn is the face's, the point the instrument's.
+  else if (id == "splitAt") keys.setSplitPoint(written.empty() ? NAN : number);
   else if (id == "pictureMovesA") b.pictureMoves[0] = pictureMovesOf(text, "A");
   // How the picture responds (11 Nov), on the hands the Picture's link says.
   else if (id == "pictureResponds") pictureWriteWith(b, keys, [&](Brain::PictureHand& h) { h.responds = pictureRespondsOf(toU16(text)); });

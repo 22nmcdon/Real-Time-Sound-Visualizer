@@ -385,6 +385,83 @@ int main() {
   check("an LFO on the morph's fader walks the sliders in the plugin as the core walks them, block by block",
         morphOff == 0 && unswept > 0.05, "off by " + num(morphOff) + "; the fader left at B differs by " + num(unswept));
 
+  /* The morph's ends stored as the editor stores them (14 Nov): its presses,
+     pageClick("morphStoreA") and "morphStoreB", queued as the page's are,
+     and then the host automating the Morph parameter with no editor open -
+     the Level at 20 at A and 120 at B, so the fader at B is six times as
+     loud as at A. Until then the ends lived in the page alone and the
+     instrument was never given them: the null is the same presses left
+     out, where the fader moves nothing. And kept with the project: the
+     state saved after the stores, opened in a fresh plugin, slides the same,
+     and the same state with its ends taken out (the bug's project) does
+     not. */
+  {
+    const auto heardAt = [&](ScopeProcessor& p, double pos) {
+      p.knob("morph")->setValueNotifyingHost(p.knob("morph")->convertTo0to1(pos));
+      juce::AudioBuffer<float> buf(2, block);
+      double sum = 0; int n = 0;
+      for (int k = 0; k < 40; ++k) {
+        juce::MidiBuffer none;
+        buf.clear();
+        p.processBlock(buf, none);
+        if (k < 20) continue;
+        for (int i = 0; i < block; ++i) { sum += buf.getSample(0, i) * buf.getSample(0, i); n++; }
+      }
+      return std::sqrt(sum / n);
+    };
+    const auto held = [&](ScopeProcessor& p) {
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      m.addEvent(juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)), 0);
+      p.processBlock(buf, m);
+    };
+    const auto stored = [&](ScopeProcessor& p, bool presses) {
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer none;
+      p.pageSlider("amp", u"20"); if (presses) p.pageClick("morphStoreA");
+      p.processBlock(buf, none);
+      p.pageSlider("amp", u"120"); if (presses) p.pageClick("morphStoreB");
+      p.processBlock(buf, none);
+    };
+    const auto slide = [&](ScopeProcessor& p) { const double a = heardAt(p, 0), b = heardAt(p, 100); return b / std::fmax(a, 1e-9); };
+    ScopeProcessor sent;
+    sent.prepareToPlay(rate, block);
+    unstaged(sent);
+    stored(sent, true);
+    juce::MemoryBlock saved;
+    sent.getStateInformation(saved);
+    held(sent);
+    const double sentSlide = slide(sent);
+    ScopeProcessor unsent;
+    unsent.prepareToPlay(rate, block);
+    unstaged(unsent);
+    stored(unsent, false);
+    held(unsent);
+    const double unsentSlide = slide(unsent);
+    check("the ends stored by the editor's presses, the host's Morph moves the sound with no editor open: B six times A",
+          sentSlide > 4 && sentSlide < 8, num(sentSlide));
+    check("null: the same with the presses left out, the fader moves nothing", std::fabs(unsentSlide - 1) < 0.05, num(unsentSlide));
+    const auto reopened = [&](const juce::MemoryBlock& state) {
+      ScopeProcessor d;
+      d.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+      d.prepareToPlay(rate, block);
+      unstaged(d);
+      held(d);
+      return slide(d);
+    };
+    auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(saved.getData()), saved.getSize()));
+    const bool hadEnds = decoded.setup.get(u"morphA") != nullptr && decoded.setup.get(u"morphB") != nullptr;
+    decoded.setup.erase(u"morphA");
+    decoded.setup.erase(u"morphB");
+    const auto stripped = scope::encodeSetup(decoded.setup);
+    juce::MemoryBlock without;
+    if (stripped) without.append(stripped->data(), stripped->size());
+    const double keptSlide = reopened(saved), strippedSlide = reopened(without);
+    check("and a project saved after the stores reopens with its ends: the Morph slides the same",
+          hadEnds && keptSlide > 4 && keptSlide < 8, num(keptSlide));
+    check("null: the same project with its ends taken out slides nothing", std::fabs(strippedSlide - 1) < 0.05, num(strippedSlide));
+  }
+
   /* A preset by name, loaded in the plugin through the core's restore: "Wah",
      a ramp through a resonant filter an LFO sweeps. Held to the core told the
      same preset and the same notes directly; the same notes on the preset the

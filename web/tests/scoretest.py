@@ -88,8 +88,11 @@ with sync_playwright() as pw:
     # the site now, so they are held on the instrument's score, which is the
     # one that plays: its notes reach the port on the chosen channel, a
     # hidden page still sends all-notes-off there, and its playhead moves. A
-    # Stop that ends the instrument's MIDI-out note is not checked: the
-    # instrument sends none (web/docs/after-stage-5.md).
+    # Stop ends the instrument's MIDI-out notes, below: since 14 Nov the
+    # instrument does it when it is told (Instrument::change, scopeRunning),
+    # its sounding notes ended and then All Notes Off; until then the page
+    # sent its All Notes Off first and the instrument's note-offs came a
+    # step later, of its score's own accord.
 
     print("\n--- MIDI out, from the instrument's score ---")
     p.evaluate("() => midiConnect()"); p.wait_for_timeout(300)
@@ -116,6 +119,73 @@ with sync_playwright() as pw:
           out["ons"] >= 3 and out["channels"] == [2], str(out))
     check("null: the channel check is not the first channel's", not (out["channels"] == [0]))
     check("hiding the page sends all-notes-off on that channel", [0xB2, 123, 0] in out["hidden"], str(out["hidden"]))
+
+    print("\n--- Stop ends what the instrument sent ---")
+    # What a Stop must send: a note-off for every note the score has sounding,
+    # then All Notes Off on the chosen channel, after them, and no note-on
+    # after it. Two nulls: the order as it was until 14 Nov, a literal, and a
+    # live run with the instrument never told of the Stop, where its score
+    # plays on.
+    def stop_run(tell):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.add_init_script(STUB)
+        q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(1500)
+        corpus.old_opening(q)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        q.locator("#trace").click(position={"x": 5, "y": 5}); q.wait_for_timeout(400)
+        q.evaluate("() => midiConnect()"); q.wait_for_timeout(300)
+        got = q.evaluate("""async (tell) => {
+          el.midiOut.value = 'out1'; el.midiOutCh.value = '2';
+          el.midiOut.dispatchEvent(new Event('change'));
+          document.getElementById('dispXY').click();
+          const call = scopeHost.call;
+          if (!tell) scopeHost.call = (name, ...a) => (name === 'scopeControl' && a[0] === 'scopeRunning' ? Promise.resolve(null) : call(name, ...a));
+          midiNoteOn(57, 100); midiNoteOn(64, 100);
+          el.scoreOn.checked = true; el.scoreOn.dispatchEvent(new Event('change'));
+          /* Stopped while the score has a note sounding: a step whose column
+             is dark ends the last step's notes, so a Stop at any moment can
+             find nothing to end. */
+          const held = () => {
+            const on = new Set();
+            for (const m of __sent) {
+              if ((m[0] & 0xf0) === 0x90 && m[2] > 0) on.add(m[1]);
+              else if ((m[0] & 0xf0) === 0x80 || (m[0] & 0xf0) === 0x90) on.delete(m[1]);
+            }
+            return on.size;
+          };
+          await __wait(1000);
+          for (let t = 0; t < 4000 && !held(); t += 4) await __wait(4);
+          const before = __sent.map((m) => m.slice());
+          __sent.length = 0;
+          setRunning(false);
+          await __wait(600);
+          return { before, after: __sent.map((m) => m.slice()) };
+        }""", tell)
+        q.close()
+        return got
+    def sounding(log):
+        on = set()
+        for m in log:
+            if (m[0] & 0xf0) == 0x90 and m[2] > 0: on.add(m[1])
+            elif (m[0] & 0xf0) == 0x80 or ((m[0] & 0xf0) == 0x90 and m[2] == 0): on.discard(m[1])
+        return on
+    def stopped_well(before, after):
+        held = sounding(before)
+        offs = {m[1]: i for i, m in enumerate(after) if (m[0] & 0xf0) == 0x80}
+        cc = [i for i, m in enumerate(after) if m == [0xB2, 123, 0]]
+        ons = [m for m in after if (m[0] & 0xf0) == 0x90 and m[2] > 0]
+        return (len(held) > 0 and all(n in offs for n in held) and len(cc) > 0
+                and all(offs[n] < cc[0] for n in held) and not ons)
+    told, untold = stop_run(True), stop_run(False)
+    print("    %d sent before; sounding %s; after Stop %s" % (len(told["before"]), sorted(sounding(told["before"])), told["after"]))
+    print("    untold: after Stop %s" % untold["after"][:8])
+    check("Stop ends the score's sounding notes on the port, then All Notes Off after them, and nothing more",
+          stopped_well(told["before"], told["after"]), str(told["after"]))
+    check("null: the order as it was until 14 Nov, All Notes Off and then the note-offs, is not that",
+          not stopped_well(told["before"], [[0xB2, 123, 0]] + [[0x82, n, 0] for n in sorted(sounding(told["before"]))]))
+    check("null: the instrument never told of the Stop plays on", not stopped_well(untold["before"], untold["after"]),
+          str(untold["after"][:8]))
 
     # With real frames: the box ticked, a second of playing, the instrument's
     # playhead as it serves it (Instrument::clockServed); the null is the box

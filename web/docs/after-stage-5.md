@@ -8,11 +8,30 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
 
 ## Defects on the site
 
-- **Learn's split point does not reach the instrument.** On the default page,
+- ~~**Learn's split point does not reach the instrument.**~~ Fixed after stage 5 (14 Nov):
+  the face sends the learned note as the `splitAt` control before the note itself
+  (`hostSendSplit`, `Keyboard::setSplitPoint`), so the key that set the split plays in the
+  upper hand there as here, and the instrument keeps it as a hand, so a project reopened
+  splits where it was learned. layertest's Learn row reads the instrument's lanes: G3
+  learned, A3 is in B's lanes; its null, the send cut, puts A3 in A's. Learn itself stays
+  the face's: in the plugin it learns from the screen's keys, since a host's notes go to
+  the instrument and not through the face. What was found: On the default page,
   learning a split point moves the face's point only; the core keeps splitting at
   C4. Found by step 3's batch 2 (13 Nov), recorded in `STAGE5-INVENTORY.md`. A
   player would hit this.
-- **The morph's two ends live only in the face.** The page stores A and B from
+- ~~**The morph's two ends live only in the face.**~~ Fixed after stage 5 (14 Nov): the
+  face's *A* and *B* are presses the instrument hears (`HOST_CLICKS`), and it stores the
+  ends from its own sliders and writes them into the setup its state is made from
+  (`Instrument::keepMorph`), so the instrument walks the morph, a host automating the
+  fader with the editor shut moves the sound, and a project reopened keeps its ends. The
+  page's walk (`morphStep`) stays, as the face's view of the instrument's: it puts the
+  face's knobs where the instrument's fader puts them, every handler run and nothing
+  sent, since the instrument serves no slider it walked; only the instrument's walk is
+  heard. setupmorphtest's new row cuts the face's walk and hears 440 halfway from 220 to
+  880; its null, the stores kept from the instrument, stays at 880. The plugin's shell
+  test stores by the editor's presses and automates the Morph with no editor (B six times
+  A's level), and reopens the project; the nulls are the presses left out and the
+  project's ends taken out. What was found: The page stores A and B from
   its own sliders and walks them itself, sending each slider as a hand's; the
   instrument has a morph of its own (`morphStore`, `Instrument::storeMorph`)
   that neither the site nor the plugin's editor ever stores into. So in the
@@ -28,12 +47,29 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   the instrument does, which is nothing. Registering them in the core would
   change what Scan reads for a setup that routes them, so it was left for a
   decision. Found 14 Nov.
-- **Stop does not end the instrument's MIDI-out notes.** Stopping the scope
+- ~~**Stop does not end the instrument's MIDI-out notes.**~~ Fixed after stage 5 (14
+  Nov): told of a Stop (`scopeRunning`), the instrument ends its score's notes at the next
+  step and then sends every note its MIDI out still has sounding and All Notes Off, in
+  that order; the page no longer sends its own All Notes Off on Stop while the instrument
+  is told. Measured, the instrument's score had been ending its notes at its next step of
+  its own accord, after the page's All Notes Off; what it never sent was the panic.
+  scoretest's Stop row requires the note-offs, then All Notes Off, then nothing; its
+  nulls are the old order, as a literal, and the instrument never told, which plays on.
+  On the way: the site's module empties its list of what the instrument sent at each
+  block's top, so anything the instrument sends between blocks, from a control's handler,
+  is lost - which is why the panic waits for the next step (below, newly found). What
+  was found: Stopping the scope
   ended the sounding note and sent all-notes-off on the page's own score (the
   check scoretest held on `?brain=js`); the instrument's score sends neither
   on Stop. Hiding the page still sends all-notes-off. Found when scoretest was
   moved to the default, 14 Nov.
-- **A MIDI clock byte inside a note-on loses the note.** The page's `midiBytes`
+- ~~**A MIDI clock byte inside a note-on loses the note.**~~ Fixed after stage 5 (14 Nov),
+  with the running status below: the page cuts a port's bytes into whole messages
+  (`midiPieces`), a real-time byte a message of its own wherever it falls, each note
+  under a running status given its status byte, so the core's keyboard, which reads
+  whole messages as the plugin's host hands them, hears what the face does. miditest
+  reads the instrument's pitch in Mono: `90 3E F8 64` plays D4, where the old cut lost
+  the note and the one before sounded on. What was found: The page's `midiBytes`
   cuts at every status byte and the core's keyboard drops the half message.
   Web MIDI and the plugin's host hand over whole messages, so in practice this
   can hardly happen; low priority. Found by batch 2 (13 Nov).
@@ -51,7 +87,10 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   freeze its grid, or its reading - is the owner's call, and the plugin,
   which has no Stop, may want the same answer. Found by step 3's batch 3 (13
   Nov); scantest.py's held run stays on `?brain=js&core=js` until then.
-- **A port's notes under one running status lose the third.** A message
+- ~~**A port's notes under one running status lose the third.**~~ Fixed after stage 5 (14
+  Nov) by the same cut (`midiPieces`): miditest's running-status row now holds the
+  instrument, G4 from `90 3C 64 40 64 43 64` in Mono, and its null, the old cut, plays
+  E4. What was found: A message
   carrying several notes under one status byte (`90 3C 64 40 64 43 64`) is cut
   by the page's `midiBytes` into three-byte pieces, and the core's keyboard
   drops the half message: in Mono the face holds 60, 64 and 67 and the
@@ -75,7 +114,13 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   say "cycling". Whether the grid or the meter is at fault is not known.
   Found by batch 4 (13 Nov); harmonytest's two meter rows stay on
   `?brain=js` until it is decided.
-- **The generator still sounding 400 ms after it was set silent.** Strike's
+- **The generator still sounding 400 ms after it was set silent.** Looked for after stage
+  5 (14 Nov) and not reproduced: striketest run nine times, three at a time on the cloud
+  machine, and its nulls at Strike nought and B reading its own stayed under its bound
+  every time (A's rise -0.006 to 0.007 against the bound of 0.01; nine of nine passed). The suite no longer calls `genSet("amp", 0)` - since step 6 its
+  checks run on the instrument, which `genSet` does not reach - so the race, if it was
+  one, was between the page's own generator and its worklet, which are gone. Left listed
+  in case strike's null fails again. What was found: Strike's
   null once failed with readings reproduced exactly by a generator left
   audible, as if `genSet("amp", 0)` had not landed. It could be a race between
   the page and the audio engine; it did not recur in four runs alone. Found by
@@ -95,7 +140,12 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   rule that a strained limiter means running away never fires there.
   Found by step 3's batch 5 (13 Nov); step 5's list has the decision.
 
-- **A band split keeps the wish to monitor, and gives it back unasked.** On
+- ~~**A band split keeps the wish to monitor, and gives it back unasked.**~~ Fixed after
+  stage 5 (14 Nov): the site's source refuses to monitor a split (`setMonitor`), the split
+  asks it again (`hostSplit`, `applyMonitor`), and the box is unavailable over one
+  (`syncLive`), so the wish goes with the split and Whole starts from off. livetest's split
+  row holds both halves, each against the reading before and the old behaviour as a
+  literal; run on the old code the two go red. What was found: On
   the default page, a declared line input monitored, then split into bands,
   is taken off the speakers (the level in front of the monitor chain shuts),
   but the wish survives: the Monitor box stays ticked and enabled over a split
@@ -107,15 +157,23 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   monitored over a split, and a player can be put on the speakers by a press
   that was about the picture. Found by step 3's batch 6 (14 Nov);
   livetest.py's split row holds the half that is right and says so.
-- **The site's credit line no longer says whether a live input is
-  monitored.** The page's own microphone source said "not monitored" over a
+- ~~**The site's credit line no longer says whether a live input is
+  monitored.**~~ Fixed after stage 5 (14 Nov): "splitting your input into four bands, not
+  monitored" and "drawing your input, monitored" (`makeBrainSource`'s `describe`).
+  livetest checks both; on the old words both go red. What was found: The page's own microphone source said "not monitored" over a
   band split and ", monitored" on a monitored line input; the instrument's
   credit (`makeBrainSource`'s `describe`) names the bands or "drawing your
   input" and says nothing of the speakers. The effects' line still says it
   ("On your input, drawn and heard."), and the Monitor box does, so this is a
   wording to put back, low priority. Found by batch 6 (14 Nov).
-- **A reticle that is not a number makes the core's photocell climb past
-  one.** With the reticle's position not a number (the `photoReticle`
+- ~~**A reticle that is not a number makes the core's photocell climb past
+  one.**~~ Fixed after stage 5 (14 Nov): a reading that is not a number is no reading, as
+  a reticle off the screen is, and the slewed value falls to nought (`photoStep`) - no
+  reading rather than the last good one, since a reticle with no position is not on the
+  picture. `core/tests/pieces/photo.py` renders the instrument with `photoReticle` "0.5"
+  and requires the value never past one and nought once the slew has run; its nulls are
+  the same reticle given as two numbers, which reads 0.34, and the old climb as a literal,
+  and with the guard taken out it reads eight. What was found: With the reticle's position not a number (the `photoReticle`
   control without a comma, or a value that does not read), the core's
   photocell reads NaN and its slewed value, `std::fmin` dropping the NaN,
   climbs by the slew limit every frame - past one, to eight in four seconds.
@@ -161,6 +219,22 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   why (wasmtest.py). Every current Chromium, Firefox and Safari makes it, so
   nobody is known to hit this; a codec that took the module from the worklet,
   or decoded there, would remove the case. Found by step 6 (14 Nov).
+
+- **What the instrument sends to a MIDI port between blocks is lost on the site.** The
+  site's module (`core/wasm/scope_wasm.cpp`, `brain_block`) empties its list of what was
+  sent at the top of every block, so a MIDI-out message sent from a control's handler,
+  which the worklet applies between blocks, never reaches the port: a Stop's panic did
+  this until it was moved to the next step (14 Nov), and `MidiOut::choose`'s panic, were
+  the port's menu ever the instrument's, would too. Nothing else sends from a handler
+  today. The fix is to empty the list after the worklet has read it rather than before
+  the block; left, since nothing now hits it. Found by the Stop fix (14 Nov).
+- **Learn in the plugin hears the screen's keys only.** The split point is learned by
+  the face from the next key it hears (`midiNoteOn`) and sent to the instrument; in the
+  plugin a host's notes go to the instrument and not through the face, so pressing
+  *Split point* and playing a key on the controller learns nothing until a key on the
+  screen is played. The core's keyboard can learn for itself (`learnSplit`), but the
+  learned point would then have to come back to the face and be kept as a hand. Found by
+  the Learn fix (14 Nov).
 
 ## Sounds and presets
 

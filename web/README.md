@@ -6773,3 +6773,24 @@ with a narrower job, look for the suites that build it themselves. They now
 test what the part does in its new job (here: nothing, no delay and unity
 after the instrument), and what it used to do goes to the core
 (`core/tests/pieces/lookahead.py`, the instrument's limiter at four rates).
+
+**What the face knows and the instrument does not (14 Nov, the fixes after stage 5).**
+Five of the eight fixes were the same shape: the face did something the page's own brain
+had heard, and since stage 5 nothing told the instrument. A split point learned, the
+morph's two ends stored, a band split's refusal to be monitored - each lived in the face
+and passed every check that read the face. Four things that cost time. A value with no
+control of its own (the learned split, like the photocell's reticle) is sent as a
+`scopeControl` by a name the core's `controlChange` knows, and comes back from a
+project's hands through a special case in `hostHand`, since there is no element to
+write. A store that captures the panel is not a hand to replay: a press replayed after
+the hands captures the sliders as they ended, so `keepMorph` writes the ends into the
+setup the state is made from instead, as a drawing's cycles are. The site's module
+empties its list of what the instrument sent to a MIDI port at each block's top, so
+anything sent from a control's handler, between blocks, never arrives - a Stop's panic
+is owed to the next step for that reason (`stopOut_`). And a port's bytes are handed to
+the instrument as whole messages (`midiPieces`): the core reads up to three bytes at a
+time, and a cut at every status byte and every third byte lost a note to a clock tick
+and the third note of a running status, while the face, parsing the bytes whole, held
+them all. The face's morph walk survives as a view, run inside `hostSync.applying` so
+that nothing it moves is sent: a walk that sent its sliders as well would be a second
+morph, heard on top of the instrument's.

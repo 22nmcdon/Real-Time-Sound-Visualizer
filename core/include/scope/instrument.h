@@ -448,6 +448,7 @@ class Instrument {
        reads the grid drawn here, as the last picture frame left it. */
     scoreTick(brain_->score, nowMs_, running_, brain_->clock, pictureRun_->phosphor().grid().data(),
               keyMask(brain_->keyRoot, brain_->keyScale), strike_, midiOut_.get());
+    if (stopOut_) { stopOut_ = false; midiOut_->panic(); }  // a Stop's All Notes Off, after the score's note-offs
     keyboard_->arpTick(nowMs_);  // the step due this frame, if one is
     /* The picture's frame, when a sixtieth of a second of audio has gone: the
        capture, and the photocell and the picture's sources stepped from the
@@ -820,6 +821,24 @@ class Instrument {
     scope::moveSlider(id, text, *brain_, *core_, *keyboard_, lfos_);
     keepSlider(id, fromHost);
   }
+  /* An end of the morph stored from the panel as it stands, the fader put at
+     it, and both ends written into the setup the state is made from - B
+     against A, as a code has it, so storing A again rewrites B's
+     differences. The fader is kept as a hand on its slider, which replaces
+     any earlier one and tells the host's Morph parameter where it is now. */
+  void keepMorph(bool endB) {
+    morphStore(*brain_, endB);
+    if (setup_.type != Json::Type::Object) setup_ = Json::object();
+    const Brain& b = *brain_;
+    const auto refB = [&b](const std::string& id) {
+      if (b.morphA) for (const auto& [mid, v] : *b.morphA) if (mid == id) return v;
+      return morphHome(id);
+    };
+    setup_.set("morphA", Json::string(std::string_view(encodeMorphEnd(b.morphA, morphHome))));
+    setup_.set("morphB", Json::string(std::string_view(encodeMorphEnd(b.morphB, refB))));
+    setup_.set("morphPos", Json::number(endB ? 100 : 0));
+    keepSlider("morphPos", false);
+  }
   void keepSlider(const std::string& id, bool fromHost) {
     /* The Output is not a hand on the setup (G7): the state carries it as
        `pluginOutput`, beside the setup, so a load - which clears the hands -
@@ -883,7 +902,22 @@ class Instrument {
        notes, and the hearing holds its readings, as the page's do. Not a
        hand on the setup: where the scope is, not what it plays. The plugin
        has no Stop and never sends it. */
-    if (id == "scopeRunning") { running_ = text != u"0"; pictureRun_->hold(!running_); return; }
+    if (id == "scopeRunning") {
+      const bool was = running_;
+      running_ = text != u"0";
+      pictureRun_->hold(!running_);
+      /* Stopping the scope stops everything it sent (K4, the page's
+         setRunning until stage 5): at the next step the score's notes end,
+         as scoreTick finds the scope stopped, and then every note the MIDI
+         out still has sounding and All Notes Off, in that order, as the
+         page's own score and MIDI out did. Until 14 Nov the page sent its
+         All Notes Off before the instrument's note-offs and the instrument
+         sent none of its own. At the step rather than here because what is
+         sent between blocks has no block to go out in: the site's module
+         empties its list of what was sent at each block's top. */
+      if (was && !running_) stopOut_ = true;
+      return;
+    }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, lfos_)) return;
     Json hand = Json::array();
     hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view(id)));
@@ -935,6 +969,14 @@ class Instrument {
       if (c.running) c.anchor(c.now());
       return;
     }
+    /* The morph's two ends stored (after stage 5): until 14 Nov they lived in
+       the face alone, which walked them and sent each slider as a hand, so
+       in the plugin a host automating the fader with the editor shut moved
+       nothing, and a project reopened had no ends. Stored here, they are the
+       setup's own fields, as a preset's ends are, rather than a hand: a
+       press replayed after the hands would capture the sliders as they
+       ended, not as they were when it was pressed. */
+    if (id == "morphStoreA" || id == "morphStoreB") { keepMorph(id == "morphStoreB"); return; }
     if (!controlClick(id, *brain_, *core_, *keyboard_, matrix_.get())) return;
     // The Clear button wipes the next frame and leaves nothing to keep.
     if (id == "clearButton") return;
@@ -1486,6 +1528,7 @@ class Instrument {
   Limiter limiter_;          // the page's limiter and clamp, on the heard pair (5a)
   bool limiterOn_ = true;    // off only for a harness's null
   bool running_ = true;      // the site's Stop and Run (5a)
+  bool stopOut_ = false;     // a Stop's All Notes Off, owed at the next step
 };
 
 }  // namespace scope

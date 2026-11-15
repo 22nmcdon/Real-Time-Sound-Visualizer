@@ -126,13 +126,10 @@ with sync_playwright() as pw:
           and route["names"] == ["A · X", "A · Y", "B · X", "B · Y"]
           and route["figures"] == [[0, 1], [2, 3]], str(route))
 
-    # The split point learned from the next key stays on ?brain=js (its own
-    # page, at the end), and is listed in plugin/STAGE5-INVENTORY.md: on the
-    # default page the Learn button and the next key move the face's point
-    # ("at G3") and not the instrument's - G3 learned, A3 still lands in A's
-    # lanes, where the point is C4 - so the check as it stood, reading the
-    # page's midi.layers.point and genSettings(1).voices, passed on the default
-    # for the page's reason. It cannot move without a change to the page.
+    # The split point learned from the next key is held below, on its own
+    # page, on the instrument's lanes: until 14 Nov Learn moved the face's
+    # point alone (web/docs/after-stage-5.md), and the check read the page's
+    # midi.layers.point, which passed whatever the instrument split at.
 
     print("\n--- each layer its own draw rule: the readout ---")
     # Which notes each layer draws is pieces/layer.py's on the core's
@@ -394,35 +391,56 @@ with sync_playwright() as pw:
     check("no page errors", not bad, "; ".join(bad[:3]))
     p.close()
 
-    print("\n--- the split point learned, on the face ---")
-    # On ?brain=js from batch 2 until stage 5, step 5b's second half, which
-    # took that brain off the site: the Learn button does not reach the
-    # instrument (web/docs/after-stage-5.md), so this held the page's own
-    # keyboard, layer B's voices included. Moved to the default, it holds
-    # what the face does - asks for a key, learns it, says where, and the key
-    # still plays - and no longer layer B's voices, which were the page's
-    # brain's and are the instrument's to take once the point reaches it.
-    p = b.new_page(viewport={"width": 1400, "height": 900})
-    p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
-    p.goto(f"file://{ART}/scope.html?picture=0"); p.wait_for_timeout(1500)
-    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
-    learn = p.evaluate("""async () => {
+    print("\n--- the split point learned, on the instrument ---")
+    # On ?brain=js from batch 2 until stage 5, step 5b's second half; then on
+    # the default, holding only what the face did, since Learn did not reach
+    # the instrument. Since 14 Nov the face sends the learned note before the
+    # note itself (hostSendSplit, Keyboard::setSplitPoint), so this reads the
+    # instrument's lanes: G3 learned, A3 must land in B's lanes, where at the
+    # old C4 it lands in A's. The null is the same run with the face's send
+    # taken out, which is the bug as it was: A3 in A's lanes.
+    LEARN = """async (cut) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      setScreenKeys(true); setMidiMode('poly');
+      if (cut) hostSendSplit = () => {};
+      setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
-      midi.layers.point = 60;
-      await wait(60);
+      await wait(200);
       el.midiSplitLearn.click();
       const asking = el.midiSplitLearn.textContent;
-      midiNoteOn(65, 100);
-      return { asking, point: midi.layers.point, learning: midi.layers.learning,
-               said: el.midiSplitLearn.textContent,
-               played: midi.notes.map((n) => n.note), kind: state.source.kind };
-    }""")
-    print("    %s" % learn)
+      midiNoteOn(55, 100);
+      const out = { asking, point: midi.layers.point, learning: midi.layers.learning,
+                    said: el.midiSplitLearn.textContent,
+                    played: midi.notes.map((n) => n.note), kind: state.source.kind };
+      midiNoteOff(55);
+      await wait(400);
+      midiNoteOn(57, 100);
+      return out;
+    }"""
+    def learned(cut):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1500)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        q.evaluate(BIN, BIN_SRC)
+        out = q.evaluate(LEARN, cut)
+        e = [round(x[0], 5) for x in q.evaluate(LANES, [57])]
+        out["a"], out["b"] = e[0] + e[1], e[2] + e[3]
+        state = q.evaluate("() => scopeHost.call('scopeState').then((s) => s && s.code)")
+        out["kept"] = q.evaluate("(code) => JSON.stringify((decodeSetup(code) || {}).pluginHands || [])", state)
+        q.close()
+        return out
+    learn, null = learned(False), learned(True)
+    print("    learned %s" % {k: learn[k] for k in ("asking", "point", "said", "played", "a", "b")})
+    print("    send cut %s" % {k: null[k] for k in ("point", "a", "b")})
     check("the split point is learned from the next key, which still plays",
-          learn["asking"] == "play a key" and learn["point"] == 65 and not learn["learning"]
-          and learn["said"] == "at F4" and learn["played"] == [65] and learn["kind"] == "host", str(learn))
+          learn["asking"] == "play a key" and learn["point"] == 55 and not learn["learning"]
+          and learn["said"] == "at G3" and learn["played"] == [55] and learn["kind"] == "host", str(learn))
+    check("the instrument splits at the learned point: A3 over a learned G3 is in B's lanes",
+          learn["b"] > 10 * learn["a"] and learn["b"] > 1e-3, "A %.5f B %.5f" % (learn["a"], learn["b"]))
+    check("... and the instrument keeps it, a hand its state carries for a project reopened",
+          '["c","splitAt","55"]' in learn["kept"], learn["kept"][:300])
+    check("null: with the face's send cut, A3 is in A's lanes, the bug as it was",
+          null["point"] == 55 and null["a"] > 10 * null["b"] and '"splitAt"' not in null["kept"], "A %.5f B %.5f" % (null["a"], null["b"]))
     check("no page errors on the instrument's face", not bad, "; ".join(bad[:3]))
     b.close()
 

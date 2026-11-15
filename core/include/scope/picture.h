@@ -392,6 +392,13 @@ class PictureSources {
   void photoStep(const Phosphor& phosphor, double elapsedMs, bool spectrogram) {
     if (!on || spectrogram) { photoRaw_ = 0; photo_ = 0; return; }
     photoRaw_ = phosphor.read(u, v);
+    /* A reticle that is not a number - the reticle's control with no comma,
+       or a value that does not read - reads as no reading, as a reticle off
+       the screen does, and the slewed value falls to nought. Until 14 Nov
+       the reading was NaN and std::fmin dropped it, so the slewed value
+       climbed by the slew limit every frame, past one to eight in four
+       seconds (the page's Math.min would have kept the NaN instead). */
+    if (!std::isfinite(photoRaw_)) photoRaw_ = 0;
     const double most = kPhotoSlew * std::fmax(0.0, elapsedMs) / 1000;
     photo_ += std::fmax(-most, std::fmin(most, photoRaw_ - photo_));
   }

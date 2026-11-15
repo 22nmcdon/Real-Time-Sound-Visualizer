@@ -317,6 +317,50 @@ with sync_playwright() as pw:
     check("null: with the view back in the walk, those ends take the timebase, the zoom and the level to B's",
           old_code["null"] == {"timebase": 5, "zoom": 20, "level": 600}, str(old_code["null"]))
 
+    print("\n--- the instrument walks it ---")
+    # Until 14 Nov the two ends lived in the face alone, which walked them
+    # and sent each slider as a hand; the instrument, which has a morph of its
+    # own, was never given the ends, so in the plugin a host moving the fader
+    # with the editor shut moved nothing. Now the stores are presses the
+    # instrument keeps (Instrument::keepMorph). So this cuts the face's walk
+    # (morphApply, which since then only puts the face's knobs where the
+    # instrument's fader is) and reads the pitch the instrument drew: halfway
+    # from 220 to 880 is 440 there. The null is the same run with the stores
+    # kept from the instrument, which is the bug as it was: the fader moves
+    # and the instrument goes on playing B's 880.
+    def walked(cut_stores):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.add_init_script(STUB)
+        q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1500)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        corpus.held_tone(q)
+        out = q.evaluate("""async (cut) => {
+          if (cut) { HOST_CLICKS.delete('morphStoreA'); HOST_CLICKS.delete('morphStoreB'); }
+          morphApply = () => {};
+          __set('freq', 220); await __wait(150);
+          el.morphStoreA.click();
+          __set('freq', 880); await __wait(150);
+          el.morphStoreB.click(); await __wait(150);
+          const atB = await __pitch();
+          __set('morphPos', 50); await __wait(300);
+          const half = await __pitch();
+          const s = await scopeHost.call('scopeState');
+          const kept = decodeSetup(s.code) || {};
+          return { atB, half, face: Number(el.freq.value), a: kept.morphA || '', b: kept.morphB || '' };
+        }""", cut_stores)
+        q.close()
+        return out
+    heard, unheard = walked(False), walked(True)
+    print("    stores sent %s" % heard)
+    print("    stores kept from the instrument %s" % unheard)
+    check("the instrument walks the morph itself: its fader halfway plays 440 with the face's walk cut",
+          abs(heard["atB"] - 880) < 20 and abs(heard["half"] - 440) < 15 and heard["face"] == 880, str(heard))
+    check("... and keeps both ends in the setup its state is made from, so a project reopened has them",
+          heard["a"].startswith("=") and "freq:880" in heard["b"], "%r %r" % (heard["a"], heard["b"]))
+    check("null: with the stores kept from it, the instrument stays at B's 880 as the fader moves",
+          abs(unheard["half"] - 880) < 20 and unheard["a"] == "" and unheard["b"] == "", str(unheard))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 

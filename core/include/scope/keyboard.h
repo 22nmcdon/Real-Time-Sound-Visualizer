@@ -318,6 +318,16 @@ class Keyboard {
     applyNotes();
   }
   void learnSplit() { layers_.learning = !layers_.learning; }
+  /* The split point the face learned (after stage 5): the face hears the next
+     key and sends the note, before the note itself, so the key that set the
+     split is in the upper hand, as the page's own keyboard put it. A point
+     that is not a whole note is left alone, as a setup's splitAt is. */
+  void setSplitPoint(double note) {
+    if (!std::isfinite(note) || note != std::floor(note)) return;
+    layers_.point = static_cast<int>(std::fmax(0, std::fmin(127, note)));
+    layers_.learning = false;
+    applyNotes();
+  }
   void setPair(bool against) { layers_.against = against; syncLayers(); applyNotes(); }
   void setHold(bool on) { hold_ = on; }
   void setPresent(bool on) { present_ = on; }
