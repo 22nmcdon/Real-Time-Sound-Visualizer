@@ -6,10 +6,11 @@ with menus inside menus. This is a mockup to look at and click, not a change to 
 instrument. Nothing in `scope.html` or the core has been touched.
 
 **The page:** [`mockups/play/index.html`](mockups/play/index.html), one self-contained
-file. Open it in a browser, choose a layout along the top, and play it with the computer
+file. It opens on round 2's layout D (below); round 1's Today, A, B and C are kept beside it
+for reference. Open it in a browser, choose a layout along the top, and play it with the computer
 keys (A to K, W E T Y U, Z and X for the octave, Space for the pedal) or the keys under
-the mockup. The pictures beside it (`00-today.png` to `05-b-at-960x600.png`) are the same
-layouts at 1400x900, for reading this without opening the page.
+the mockup. The pictures beside it (`00-today.png` to `08-d-drawer-in-panel.png`) are the same
+layouts, for reading this without opening the page.
 
 ## The three complaints
 
@@ -45,8 +46,9 @@ notes, on `testing` at `58e62c0`:
 - **Tune a chord** is hidden behind the section's dots (`data-more`), so in Poly the one
   tick that acts is the one not shown, and the two that do not act are.
 - **Interval** (on the Generator) shows in Poly, where chords ignore it.
-- The Chord window is built at **25 ms** (`kArpGather`, `MIDI_GATHER`); the owner's coming
-  change makes it 0 to 15, default 10. The mockup deals with the coming one.
+- The Chord window was built at **25 ms** (`kArpGather`, `MIDI_GATHER`) when round 1 was
+  drawn; it is now the look-ahead, 0 to 15 ms, default 10, which the mockup deals with
+  since round 2 (below).
 
 ## The three layouts
 
@@ -137,7 +139,7 @@ sees one parameter where there were two, or the two stay and the five is only th
 envelope's drawing, the drawn cycle, the Plane, a brush's stroke; no help for sections of
 plain values.
 
-## Recommendation
+## Recommendation (round 1; the owner's verdict on it is under Round 2)
 
 **A, with B's rule inside each editor and C's strip as the Hands line's drawing.** A is
 the only one that frees column 1 at both sizes, it reuses the editor the face already has
@@ -191,15 +193,136 @@ Mono · Poly fits a column) with only Hands and Figure as lines.
   real face under `xvfb-run -a`, and the editor has to fit the plugin's 960x600, which the
   mockup measures as fitting with room (its first column fits at both sizes).
 
+## Round 2: the owner's verdict, and D
+
+### The verdict on round 1 (16 Nov)
+
+- **Keep:** A is the right idea in general, with B's rule (only what applies) inside it.
+  The Notes switch, Dyad · Mono · Poly, as C has it, always on Play at the top of the
+  Keyboard section - but not Split and Layered in it. The keyboard strip always visible
+  in Poly (the room A frees), live, and a control as C's is: press a key to split there,
+  press a place to set the count.
+- **What was wrong with A**, all three: too many clicks; the editor covers too much,
+  hiding the Generator, envelope and filter; and the editor's own layout, wordy option
+  cards and the options-left, diagram-right split. The owner's suggestion, not certain:
+  "a toggle overlay instead of a popup menu, then you can toggle to access different
+  things" - read as the deeper settings opening inside the Keyboard's column, chosen by a
+  small toggle, never covering the other columns, compact switches rather than cards,
+  one click to anything common.
+
+### D, the mix
+
+The Notes switch on top; under it the strip, always there, live, and a control; under
+that the deeper settings, in column 1 only. Two choices on the page, independent of each
+other, for the owner to feel:
+
+**How the settings open**
+
+1. **Switch**: a small segmented switch, *Hands · Figure · Expression* (no Hands outside
+   Poly), swapping one panel in place under the strip.
+2. **Accordion**: each group's header is a line with its value (A's summary line, opened
+   in place), one open at a time.
+3. **Drawer**: *More: Hands · Figure* under the strip; the drawer slides over column 1
+   only, from under the strip, with its own switch and a close; Expression stays in the
+   column under it when shut.
+
+**Where the hands choice, One · Key · Notes · Layer, lives**
+
+- **(a) Above the strip**, a small switch, Poly only.
+- **(b) In the strip's corner**: the strip is a box with the choice in its head, so they
+  read as one object.
+- **(c) In the Hands panel**, the strip only showing the result (and no longer a control).
+
+What each panel holds, only what applies: Hands - the split point and Learn by key; by
+notes, Counted (lowest · highest), How many (only in (c), since otherwise the strip sets
+it) and the Chord window. Figure - Outline (count and which), with two hands *Each* or *A
+vs B*, and Tune a chord in Poly; Hold the interval in Dyad; nothing in Mono. Expression -
+its four menus.
+
+**The Chord window as now built** is the look-ahead: by notes, every note waits the window
+(0 to 15 ms, default 10), and the notes within it are dealt together, by pitch, before any
+sounds, so nothing is ever moved and there is no "moved in its gather". At 0 there is no
+wait and dealing is strict. The mockup shows a waiting note grey, and the strike lane under
+the strip shows the window against where your notes landed. (A note let go before its
+window closes is dropped unheard in the mockup; what the instrument does with it is the
+core's.)
+
+### Fit, every combination
+
+The page's *Measure every combination* runs D at both windows, each toggle and each place
+of the hands choice, through Dyad, Mono, Poly alone and Poly with each hands choice, with
+every panel open in turn, and reports column 1 at its tightest (always Poly split by
+notes, with the most open). Columns 2 and 3 are as today in every case (185 and 413 px
+spare at 1400x900, 141 and 323 at 960x600).
+
+| Column 1, tightest, px spare | Switch | Accordion | Drawer (column; drawer itself) |
+|---|---|---|---|
+| 1400x900, (a) above | 145 | 66 | 105; fits |
+| 1400x900, (b) corner | 138 | 59 | 98; fits |
+| 1400x900, (c) panel | 180 | 101 | 139; fits |
+| 960x600 at 90%, (a) above | 89 | 3 | 58; fits |
+| 960x600 at 90%, (b) corner | 80 | **over by 7** | 49; fits |
+| 960x600 at 90%, (c) panel | 120 | 34 | 89; fits |
+
+Against Today's 63 and 30. The accordion pays a line per header whether open or not, and
+at the plugin's minimum with the corner box it does not fit.
+
+### The three toggles, each in three lines
+
+**Switch.** *Answers:* one press reaches anything, nothing is covered, columns 2 and 3
+never move. *Costs:* one panel at a time, so the Chord window is out of sight while you
+set the outline; what sits under the panel changes height with it (here nothing does).
+*Elsewhere:* the tab cards one level down - Ink's oscillator extras (FM · Sync · Noise),
+the Picture's Advanced (Reads · Responds · Score); not where two panels are wanted at once.
+
+**Accordion.** *Answers:* every group says its value in its header while one is open, one
+press for anything. *Costs:* a line per header always, the least room (over at 960x600
+with the corner box); opening one moves the headers under it, the movement under the
+pointer the Bench's real columns were built to avoid, though here it follows the
+pointer's own press. *Elsewhere:* sections whose groups are worth naming with their
+values - Routings, a brush's settings; a long list runs out first in a column that may
+not scroll.
+
+**Drawer.** *Answers:* the strip and Expression stay the column's resting face; the
+settings slide over column 1 only and the Generator, envelope and filter stay in view.
+*Costs:* two presses (the word, then the drawer's own switch), Expression hidden while it
+is open, and a second place with a close. *Elsewhere:* the modulation editor a column
+wide - good for settings visited in a sitting (the Brushes panel, the score), poor for
+something tweaked while playing.
+
+**The hands choice:** (a) above reads as two rows that belong together and keeps the
+strip a control; (b) the corner makes strip and choice one object for a box's border and
+a row inside it, and is the tightest; (c) in the panel is the quietest column (most room)
+but puts choosing a split one press away and stops the strip being a control.
+
+### My lean, for the owner to overrule by feel
+
+**The switch, with the hands choice above the strip (1a).** It is the one press the owner
+asked for, it fits everywhere with room (145 and 89 px), and it keeps the strip a control
+with its choice next to it. (1b) if the strip and its choice should read as one object;
+it costs 7 to 9 px. The accordion is out at the plugin's minimum unless its headers lose
+their values.
+
+### What building D would touch, beyond A's list above
+
+The same moves as A, without the editor: the Keyboard section's controls stay in its
+column and are shown or hidden by the toggle (moved into the panel's place while it is
+the open one, never copied); the strip is the face's mirror of the dealing (`midiDealt`),
+drawn and pressed; `fittest.py` measures every panel open at the five windows;
+`patchtest.py` gets the switch's rows; `layertest.py` presses the strip; the info line
+gets the strip's and the toggle's words.
+
 ## How the mockup was checked
 
 The dealing is the instrument's rules (`split-by-notes.md`), held by
-`mockups/play/check-dealing.js` (`node web/docs/mockups/play/check-dealing.js`): ten cases -
-rank against fill (A2 under C3 E3 G3), fixed at start against re-sorting, a chord struck
-top first within the window, the same with a window of nought, the window half open at
-10 ms and timed from the first note, the pedal, Highest and the key split. Seen red
-against two mutants of the mockup: fill in place of rank (five cases fail) and a window
-sliding with each note (one fails). Opened in Chromium at both sizes in every layout, with
-each editor open, in the page's dark light, and at 375 px wide (no sideways scroll; the
+`mockups/play/check-dealing.js` (`node web/docs/mockups/play/check-dealing.js`): eleven
+cases - rank against fill (A2 under C3 E3 G3), fixed at start against re-sorting, a chord
+struck top first within the window, the same with a window of nought, the window half open
+at 10 ms and timed from the first note, the look-ahead (nothing dealt before the window
+closes), the pedal, Highest and the key split. Seen red against three mutants of the
+mockup: fill in place of rank (five cases fail), a window sliding with each note (one
+fails) and dealing each note as it lands (the look-ahead's case fails). Opened in Chromium at both sizes in every layout, with
+each editor open, D in every toggle and place of the hands choice, in the page's dark
+light, and at 375 px wide (no sideways scroll; the
 mockup scales down). `designtest.py` reads only `scope.html` and `DESIGN.md`, neither
 changed, so it has nothing new to read; the mockup uses DESIGN.md's tokens hex for hex.

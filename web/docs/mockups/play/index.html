@@ -120,6 +120,12 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
 .pkey .kl { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text-soft); pointer-events: none; }
 .pkey.b .kl { color: var(--line); bottom: 3px; }
 .demos { display: flex; flex-wrap: wrap; gap: 6px; }
+.fit-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 940px; font-variant-numeric: tabular-nums; }
+.fit-table th, .fit-table td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--pg-line); vertical-align: top; }
+.fit-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--pg-soft); font-weight: 500; }
+.fit-table .ok { color: var(--pg-good); } .fit-table .over { color: var(--pg-bad); font-weight: 500; }
+.fit-table small { color: var(--pg-soft); }
+#allFit { overflow-x: auto; }
 
 /* ---- the face: the Play tab at the instrument's own size, in its one light ---- */
 .face {
@@ -279,6 +285,46 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
 .face svg .k:hover { opacity: 0.8; }
 .face svg .slot { cursor: pointer; }
 
+/* D: the strip's box (the hands choice in its corner), the accordion's
+   headers, the panel, and the drawer over column 1 only. */
+.face .title .link-btn.tiny { font-size: 9px; letter-spacing: 0.14em; margin-left: auto; padding-bottom: 1px; }
+.face .title .link-btn.tiny + .dots { margin-left: 6px; }
+.face .switch.mini button { padding: 2px 7px; font-size: 9px; letter-spacing: 0.12em; }
+.face .dbox { border: 1px solid var(--line); background: var(--paper); padding: 4px 5px 5px; margin-top: 8px; }
+.face .dbox-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.face .dcap { min-height: 0; margin: 4px 0 2px; font-size: 11.5px; }
+.face.compact .dcap { font-size: 11px; }
+.face .dpanel { padding: 2px 0 0; }
+.face .dpanel > .check:first-child, .face .dpanel > .row:first-child { margin-top: 6px; }
+.face .dexpr .row:first-child { margin-top: 6px; }
+.face .acc-h {
+  display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: baseline; gap: 0 8px; width: 100%;
+  background: none; border: 0; border-bottom: 1px solid var(--line); padding: 6px 2px 5px; text-align: left; color: var(--charcoal);
+}
+.face.compact .acc-h { grid-template-columns: 52px minmax(0, 1fr) auto; padding: 4px 2px 3px; }
+.face .acc-h:hover { background: var(--wash); }
+.face .acc-h .val { font-size: 12.5px; line-height: 1.35; min-width: 0; }
+.face .acc-h .val i { font-style: normal; color: var(--text-soft); }
+.face .acc-h .chev { color: var(--blush-deep); font-size: 15px; line-height: 1; }
+.face .acc-h[aria-expanded="true"] .lab { color: var(--blush-deep); }
+.face .acc-h + .dpanel { padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.face .drawer-row .grow { gap: 12px; }
+.face .drawer {
+  position: absolute; left: -10px; right: -10px; bottom: 0; z-index: 15; background: var(--paper);
+  border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(36, 31, 29, 0.10); padding: 8px 10px; display: flex; flex-direction: column;
+}
+.face .drawer-head { display: flex; align-items: center; gap: 8px; }
+.face .drawer-head .close-btn { width: 26px; height: 26px; font-size: 13px; }
+.face.compact .drawer { padding: 6px 8px 4px; }
+.face .drawer .lab, .face .dpanel .lab { flex-basis: 84px; }
+.face.compact .drawer .lab, .face.compact .dpanel .lab { flex-basis: 70px; }
+.face.compact .drawer .row { margin-top: 4px; }
+.face .drawer-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .face .drawer { animation: drawer-in 280ms ease; }
+  @keyframes drawer-in { from { transform: translateY(14px); opacity: 0; } }
+}
+
 /* C: the band across the top of the tab. */
 .face .band { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px; }
 .face.compact .band { padding-bottom: 8px; margin-bottom: 10px; }
@@ -308,13 +354,14 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
       <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
     </div>
   </div>
-  <p class="small">Each layout is drawn at the Play tab's real size, its cards and its three columns, with the Generator, Amp envelope and Voice filter where they are today. Every menu and switch works, the editors open and close, and the hands diagram plays: use <kbd>A</kbd>&ndash;<kbd>K</kbd> and <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> on your keyboard, or the keys under the mockup. The dealing follows the instrument's rules: rank at the start, lowest or highest N, the Chord window gathering notes by pitch, and a note never changing hand once its gather closes. The face is in the instrument's one light; only this page follows yours.</p>
+  <p class="small">Each layout is drawn at the Play tab's real size, its cards and its three columns, with the Generator, Amp envelope and Voice filter where they are today. Every menu and switch works, the editors open and close, and the hands diagram plays: use <kbd>A</kbd>&ndash;<kbd>K</kbd> and <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> on your keyboard, or the keys under the mockup. The dealing follows the instrument's rules: rank at the start, lowest or highest N, and the Chord window as now built: by notes, every note waits the window and the notes within it are dealt together by pitch before any sounds, so no note ever changes hand (at 0, no wait and strictly in order). The face is in the instrument's one light; only this page follows yours.</p>
 
   <nav class="layout-tabs" role="tablist" aria-label="Layouts" id="layoutTabs">
     <button type="button" role="tab" data-layout="T" aria-selected="false"><b>Today</b><span>as built, for comparison</span></button>
-    <button type="button" role="tab" data-layout="A" aria-selected="true"><b>A · Summary lines</b><span>a line per question, an editor each</span></button>
+    <button type="button" role="tab" data-layout="A" aria-selected="false"><b>A · Summary lines</b><span>a line per question, an editor each</span></button>
     <button type="button" role="tab" data-layout="B" aria-selected="false"><b>B · Only what applies</b><span>grouped, all on show, diagram inline</span></button>
     <button type="button" role="tab" data-layout="C" aria-selected="false"><b>C · One strip</b><span>five modes, the diagram is the control</span></button>
+    <button type="button" role="tab" data-layout="D" aria-selected="true"><b>D · The mix</b><span>round 2: switch, strip, settings in the column</span></button>
   </nav>
   <p class="what" id="what"></p>
   <div class="bar">
@@ -324,6 +371,20 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
       <button type="button" data-size="compact" aria-pressed="false">960 &times; 600 at 90%</button>
     </div>
     <button type="button" class="pg-btn" id="resetBtn">Start again</button>
+  </div>
+  <div class="bar" id="dBar">
+    <span class="lbl">Settings open by</span>
+    <div class="pg-switch" role="group" aria-label="How D's settings open" id="dToggle">
+      <button type="button" data-dtoggle="seg" aria-pressed="true">1 · Switch</button>
+      <button type="button" data-dtoggle="acc" aria-pressed="false">2 · Accordion</button>
+      <button type="button" data-dtoggle="drawer" aria-pressed="false">3 · Drawer</button>
+    </div>
+    <span class="lbl">Hands choice</span>
+    <div class="pg-switch" role="group" aria-label="Where D's hands choice lives" id="dWhere">
+      <button type="button" data-dwhere="above" aria-pressed="true">a · Above the strip</button>
+      <button type="button" data-dwhere="corner" aria-pressed="false">b · In its corner</button>
+      <button type="button" data-dwhere="panel" aria-pressed="false">c · In the panel</button>
+    </div>
   </div>
   <div class="stage-wrap" id="wrap"><div class="stage" id="stage"><div class="face" id="face"></div></div></div>
   <div class="fit-line" id="fit"></div>
@@ -350,6 +411,7 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
   </div>
 
   <dl class="verdict" id="verdict"></dl>
+  <div id="allWrap"><p class="small"><button type="button" class="pg-btn" id="allBtn">Measure every combination</button> D at both windows, each toggle and each place for the hands choice, through Dyad, Mono and Poly with each hands choice and every panel open; the tightest column 1 of each.</p><div id="allFit"></div></div>
 </div>
 <script>
 (function () {
@@ -367,14 +429,14 @@ const DEFAULTS = {
   bend: "2", wheel: "vibrato", pressure: "off", velocity: "strike", interval: "0"
 };
 let S = Object.assign({}, DEFAULTS);
-let view = { layout: "A", size: "big", editor: null, learn: false };
+let view = { layout: "D", size: "big", editor: null, learn: false };
 try {
-  const v = JSON.parse(localStorage.getItem("playMockup.view") || "{}");
-  if (["T", "A", "B", "C"].includes(v.layout)) view.layout = v.layout;
+  const v = JSON.parse(localStorage.getItem("playMockup.view2") || "{}");
+  if (["T", "A", "B", "C", "D"].includes(v.layout)) view.layout = v.layout;
   if (["big", "compact"].includes(v.size)) view.size = v.size;
 } catch (e) { /* private window: start at A, big */ }
 function remember() {
-  try { localStorage.setItem("playMockup.view", JSON.stringify({ layout: view.layout, size: view.size })); } catch (e) { /* no storage */ }
+  try { localStorage.setItem("playMockup.view2", JSON.stringify({ layout: view.layout, size: view.size })); } catch (e) { /* no storage */ }
 }
 
 const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
@@ -398,11 +460,12 @@ const layered = () => poly() && S.hands === "layer";
 const handName = (h) => layered() ? (h === 0 ? "A" : "B") : (h === 0 ? "Lower" : "Upper");
 const handsWord = () => layered() ? "A · B layered" : "Lower · Upper";
 function ink(h) {
+  if (h === undefined) return "var(--unresolved)";
   if (!twoHands()) return "var(--charcoal)";
   return h === 1 ? "var(--hand-b)" : "var(--hand-a)";
 }
 function wash(h, pct) {
-  const c = !twoHands() ? "var(--charcoal)" : h === 1 ? "var(--hand-b)" : "var(--hand-a)";
+  const c = h === undefined ? "var(--unresolved)" : !twoHands() ? "var(--charcoal)" : h === 1 ? "var(--hand-b)" : "var(--hand-a)";
   return "color-mix(in srgb, " + c + " " + pct + "%, var(--paper))";
 }
 
@@ -419,7 +482,7 @@ function wash(h, pct) {
      a gather again as one.
    The window is timed from the gather's first note and is half open.
 --------------------------------------------------------------------------- */
-let held = [];            // { n, t, hand, gid, moved, pedal }
+let held = [];            // { n, t, hand, gid, pedal }; hand undefined while its gather waits
 const gathers = new Map(); // gid -> { id, t0, open, timer }
 let gidSeq = 0, pedal = false, slow = false, sound = false;
 let lastStrike = null;     // the notes of the last strike, for the timing lane
@@ -441,17 +504,28 @@ function dealGather(gid) {
   const all = held.map((h) => h.n);
   for (const h of held) {
     if (h.gid !== gid) continue;
-    const nh = handFor(h, all);
-    if (h.hand !== undefined && h.hand !== nh) { h.moved = true; voiceMove(h); }
-    h.hand = nh;
+    h.hand = handFor(h, all);
   }
 }
+/* The look-ahead (built 16 Nov): by notes, every note waits the window, and
+   the notes that started within it of the first are dealt together, by
+   pitch, before any of them sounds - so nothing is ever moved. The close is
+   a timer for playing, and is also done by any later note whose time is past
+   it, so the checks can feed times of their own. */
+function closeGather(g) {
+  if (!g.open) return;
+  g.open = false; clearTimeout(g.timer);
+  dealGather(g.id);
+  for (const h of held) if (h.gid === g.id) voiceOn(h);
+}
+function closeDue(t) { for (const g of gathers.values()) if (g.open && t - g.t0 >= g.w) closeGather(g); }
 function noteOn(n, t) {
   if (t === undefined) t = performance.now();
   if (view.learn) { S.splitAt = n; view.learn = false; redeal(); render(); return; }
+  closeDue(t);
   const old = held.findIndex((h) => h.n === n);
   if (old >= 0) { voiceOff(held[old]); held.splice(old, 1); }
-  const h = { n: n, t: t, hand: undefined, gid: 0, moved: false, pedal: false };
+  const h = { n: n, t: t, hand: undefined, gid: 0, pedal: false };
   if (!lastStrike || t - lastStrike.tl > 45 * slowF()) lastStrike = { t0: t, tl: t, arr: [] };
   lastStrike.tl = t;
   if (byNotes() && S.windowMs > 0) {
@@ -460,22 +534,28 @@ function noteOn(n, t) {
     if (!g) {
       g = { id: ++gidSeq, t0: t, w: winNow(), open: true };
       gathers.set(g.id, g);
-      g.timer = setTimeout(() => { g.open = false; paint(); }, winNow());
+      g.timer = setTimeout(() => { closeGather(g); paint(); }, winNow());
     }
     h.gid = g.id;
-  } else {
-    h.gid = ++gidSeq;
-    gathers.set(h.gid, { id: h.gid, t0: t, w: 0, open: false });
+    held.push(h);
+    lastStrike.arr.push({ n: n, t: t, gid: h.gid });
+    paint();
+    return;
   }
+  h.gid = ++gidSeq;
+  gathers.set(h.gid, { id: h.gid, t0: t, w: 0, open: false });
   held.push(h);
   lastStrike.arr.push({ n: n, t: t, gid: h.gid });
   dealGather(h.gid);
   voiceOn(h);
   paint();
 }
-function noteOff(n) {
+function noteOff(n, t) {
+  closeDue(t === undefined ? performance.now() : t);
   const i = held.findIndex((h) => h.n === n && !h.pedal);
   if (i < 0) return;
+  // Let go before its gather closed: it never sounded, and is not dealt.
+  if ((gathers.get(held[i].gid) || {}).open) { held.splice(i, 1); paint(); return; }
   if (pedal) held[i].pedal = true;
   else { voiceOff(held[i]); held.splice(i, 1); }
   paint();
@@ -495,6 +575,7 @@ function allOff() {
   paint();
 }
 function redeal() {
+  for (const g of gathers.values()) closeGather(g);
   const order = held.slice().sort((a, b) => a.t - b.t);
   const groups = [];
   for (const h of order) {
@@ -504,7 +585,7 @@ function redeal() {
   const so = [];
   for (const g of groups) {
     for (const h of g.items) so.push(h.n);
-    for (const h of g.items) { const nh = handFor(h, so); const was = h.hand; h.hand = nh; h.moved = false; if (was !== nh) voiceMove(h); }
+    for (const h of g.items) { const nh = handFor(h, so); const was = h.hand; h.hand = nh; if (was !== nh) voiceMove(h); }
   }
 }
 
@@ -647,8 +728,7 @@ function stackSVG(w, h) {
     out.push(T(6, y + hh / 2 + 4, nn(x.n), ' style="font-size:' + Math.min(12, hh - 2) + 'px;fill:var(--charcoal);font-variant-numeric:tabular-nums"'));
     out.push(T(w - 14, y + hh / 2 + 4, handName(x.hand), ' text-anchor="end" style="font-size:' + Math.min(11.5, hh - 3) + "px;font-weight:500;fill:" + ink(x.hand) + '"'));
     const tags = [];
-    if (g.open) tags.push("gathering");
-    if (x.moved) tags.push("moved in its gather");
+    if (g.open) tags.push("waiting the window");
     if (x.pedal) tags.push("held by the pedal");
     if (tags.length && hh > 11) out.push(T(w - 70, y + hh / 2 + 4, tags.join(" · "), ' text-anchor="end" style="font-size:10.5px;font-style:italic;fill:var(--text-soft)"'));
   });
@@ -662,7 +742,7 @@ function stackSVG(w, h) {
   const ty = lineY + 4;
   out.push('<rect x="54" y="' + (ty - 10) + '" width="' + (said.length * 5.2 + 8) + '" height="13" style="fill:var(--paper)"/>');
   out.push(T(58, ty, said, ' style="font-size:10px;fill:var(--blush-deep)"'));
-  if (anyOpen) out.push(T(6, 12, "gathering…", ' style="font-size:10.5px;fill:var(--blush-deep);font-style:italic"'));
+  if (anyOpen) out.push(T(6, 12, "waiting the window…", ' style="font-size:10.5px;fill:var(--blush-deep);font-style:italic"'));
   out.push("</svg>");
   return out.join("");
 }
@@ -678,14 +758,14 @@ function rowSVG(w, h, o) {
   const out = [svgOpen(w, h)];
   const places = o.slots ? Math.max(8, asc.length) : Math.max(asc.length, N + 1, 5);
   const pw = (w - 8) / places;
-  const r = Math.max(3, Math.min(pw * 0.36, h * 0.3));
+  const r = Math.max(3, Math.min(pw * (o.slots ? 0.3 : 0.36), h * (o.slots ? 0.22 : 0.3)));
   const cy = o.slots ? h * 0.42 : h / 2;
   for (let i = 0; i < places; i++) {
     const fromEnd = low ? i : places - 1 - i;
     const inCount = fromEnd < N;
     const x = 4 + i * pw;
     if (o.slots) {
-      const can = fromEnd < 6;
+      const can = fromEnd < 6 && !o.noclick;
       out.push('<rect x="' + (x + 1) + '" y="1" width="' + (pw - 2) + '" height="' + (h - 2) + '"' + (can ? ' class="slot" data-count="' + (fromEnd + 1) + '"' : "") +
         ' style="fill:' + (inCount ? wash(counted, 12) : wash(other, 7)) + ';stroke:var(--line)"/>');
       if (h > 40) out.push(T(x + pw / 2, h - 5, can ? String(fromEnd + 1) : "·", ' text-anchor="middle" style="font-size:9.5px;fill:var(--text-soft);pointer-events:none"'));
@@ -747,7 +827,7 @@ function laneWords() {
   const span = (arr[arr.length - 1].t - arr[0].t) / f;
   const gs = new Set(arr.map((a) => a.gid)).size;
   return "<b>" + arr.length + " note" + (arr.length > 1 ? "s" : "") + " over " + span.toFixed(span < 10 ? 1 : 0) + " ms</b>, window " + S.windowMs + " ms: " +
-    (S.windowMs === 0 ? "each dealt alone, as it landed." : gs === 1 ? (arr.length > 1 ? "one chord, dealt by pitch." : "a gather of one.") : gs + " gathers, each dealt by pitch among what was held.");
+    (S.windowMs === 0 ? "no wait, each dealt as it landed." : gs === 1 ? (arr.length > 1 ? "one chord, dealt by pitch " + S.windowMs + " ms after the first, before any sounded." : "a note alone, sounding " + S.windowMs + " ms late.") : gs + " chords, each dealt by pitch among what was held.");
 }
 
 /* The figure: per hand, which notes make the outline and which way each leans. */
@@ -1097,7 +1177,166 @@ LIVE.lane = (el) => laneSVG(el.clientWidth || 140, el.clientHeight || 28);
 /* ---------------------------------------------------------------------------
    Render, measure, scale.
 --------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+   Round 2 (16 Nov, the owner's verdict on A, B and C): D, the mix. The Notes
+   switch always on top of Play; the strip always under it, live and a
+   control; the deeper settings in the Keyboard's own column, reached by a
+   toggle of one of three kinds, never covering columns 2 and 3. Where the
+   hands choice lives is a second, independent option.
+--------------------------------------------------------------------------- */
+let dview = { toggle: "seg", where: "above", panel: "hands", acc: "hands", drawer: null };
+try {
+  const d = JSON.parse(localStorage.getItem("playMockup.d") || "{}");
+  if (["seg", "acc", "drawer"].includes(d.toggle)) dview.toggle = d.toggle;
+  if (["above", "corner", "panel"].includes(d.where)) dview.where = d.where;
+} catch (e) { /* no storage */ }
+function rememberD() { try { localStorage.setItem("playMockup.d", JSON.stringify({ toggle: dview.toggle, where: dview.where })); } catch (e) { /* no storage */ } }
+
+const HANDS4 = [["one", "One"], ["key", "Key"], ["notes", "Notes"], ["layer", "Layer"]];
+function dGroups() {
+  const g = [];
+  if (poly()) g.push(["hands", "Hands"]);
+  g.push(["figure", "Figure"]);
+  if (dview.toggle !== "drawer") g.push(["expr", "Expression"]);
+  return g;
+}
+function exprWords() {
+  const w = { vibrato: "vibrato", picture: "picture", scan: "scan", off: "nothing" };
+  return "bend ±" + S.bend + " <i>· wheel " + w[S.wheel] + (S.pressure !== "off" ? " · pressure " + w[S.pressure] : "") + "</i>";
+}
+function dPanel(which) {
+  const compact = view.size === "compact";
+  if (which === "hands") {
+    let s = dview.where === "panel" ? '<div class="row">' + sw("hands", HANDS4, "Hands", "tight") + "</div>" : "";
+    if (S.hands === "key") s += '<div class="row"><span class="lab">Split point</span><div class="grow"><button type="button" class="link-btn caps" data-act="learn" aria-pressed="' + view.learn + '">' + (view.learn ? "play a key" : nn(S.splitAt) + " · learn") + "</button></div></div>";
+    else if (S.hands === "notes") s += '<div class="row"><span class="lab">Counted</span><div class="grow">' + sw("splitEnd", [["lower", "Lowest"], ["upper", "Highest"]], "Which end is counted", "tight") + "</div></div>" +
+      (dview.where === "panel" ? '<div class="row"><span class="lab">How many</span><div class="grow">' + sw("splitCount", COUNTS, "How many", "tight") + "</div></div>" : "") +
+      '<div class="row"><span class="lab">Chord window</span><div class="grow"><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window"><span class="reading" data-live="winRead"></span></div></div>';
+    else s += '<p class="note">' + (S.hands === "layer" ? "Every note plays both sounds, A and B." : "Every note plays the one sound.") + "</p>";
+    return s;
+  }
+  if (which === "figure") {
+    if (S.mode === "dyad") return chk("hold", "Hold the interval under one note") + '<p class="note">The two newest notes are the figure, the lower on X.</p>';
+    if (S.mode === "mono") return '<p class="note" style="margin-top:2px">The newest note, and the Generator\'s Interval above it. Nothing to choose.</p>';
+    return '<div class="row"><span class="lab">Outline</span><div class="grow">' + sel("drawCount", DRAWN.map((d) => [d[0], d[0]]), "How many notes make the outline", "flex:0 0 46px") + sel("drawWhich", WHICH, "Which notes", "flex:1 1 0") + "</div></div>" +
+      (twoHands() ? '<div class="row"><span class="lab">Two hands</span><div class="grow">' + sw("pair", [["each", "Each"], ["against", "A vs B"]], "How the two hands are drawn", "tight") + "</div></div>" : "") +
+      chk("polyJust", "Tune a chord to its lowest note");
+  }
+  return '<div class="dexpr">' + expression().replace(/^<div class="group"><div class="title">[^]*?<\/div>/, "").replace(/<\/div>$/, "") + "</div>";
+}
+function layoutD() {
+  const compact = view.size === "compact", where = dview.where, tg = dview.toggle;
+  let k = '<div class="group"><div class="title">Keyboard<button type="button" class="link-btn caps tiny" data-toggle="keysShown" aria-pressed="' + S.keysShown + '">' + (S.keysShown ? "hide keys" : "keys") + '</button><span class="dots">⋯</span></div>';
+  k += '<div class="row">' + sw("mode", MODES, "Notes") + "</div>";
+  if (poly() && where === "above") k += '<div class="row">' + sw("hands", HANDS4, "Hands", "tight") + "</div>";
+  const sh = compact ? 38 : 48;
+  const click = where !== "panel" ? 1 : 0;
+  let strip = '<div data-live="dstrip" data-click="' + click + '" style="height:' + sh + 'px"></div>' +
+    (byNotes() ? '<div data-live="lane" style="height:14px;margin-top:3px"></div>' : "");
+  if (poly() && where === "corner") strip = '<div class="dbox"><div class="dbox-head">' + sw("hands", HANDS4, "Hands", "mini") + "</div>" + strip + "</div>";
+  else strip = '<div style="margin-top:8px">' + strip + "</div>";
+  k += strip + '<p class="dia-cap dcap" data-live="dCap"></p>';
+  let drawer = "";
+  const groups = dGroups();
+  if (tg === "seg") {
+    if (!groups.some((g) => g[0] === dview.panel)) dview.panel = groups[0][0];
+    k += '<div class="row">' + '<div class="switch tight" role="radiogroup" aria-label="Settings">' + groups.map((g) => '<button type="button" class="caps" role="radio" data-dpanel="' + g[0] + '" aria-checked="' + (dview.panel === g[0]) + '">' + g[1] + "</button>").join("") + "</div></div>" +
+      '<div class="dpanel">' + dPanel(dview.panel) + "</div>";
+  } else if (tg === "acc") {
+    if (dview.acc && !groups.some((g) => g[0] === dview.acc)) dview.acc = null;
+    k += '<div class="accs">' + groups.map((g) => {
+      const open = dview.acc === g[0];
+      const words = g[0] === "hands" ? handsWords() : g[0] === "figure" ? figureWordsShort() : exprWords();
+      return '<button type="button" class="acc-h" data-dpanel="' + g[0] + '" aria-expanded="' + open + '"><span class="lab">' + g[1] + '</span><span class="val">' + words + '</span><span class="chev">' + (open ? "−" : "+") + "</span></button>" +
+        (open ? '<div class="dpanel">' + dPanel(g[0]) + "</div>" : "");
+    }).join("") + "</div>";
+  } else {
+    if (dview.drawer && !groups.some((g) => g[0] === dview.drawer)) dview.drawer = null;
+    k += '<div class="row drawer-row"><span class="lab">More</span><div class="grow">' + groups.map((g) => '<button type="button" class="link-btn caps" data-drawer="' + g[0] + '" aria-pressed="' + (dview.drawer === g[0]) + '">' + g[1] + "</button>").join("") + "</div></div>";
+    if (dview.drawer) drawer = '<div class="drawer" role="dialog" aria-label="' + dview.drawer + '"><div class="drawer-head"><div class="switch tight" role="radiogroup" aria-label="Settings">' +
+      groups.map((g) => '<button type="button" class="caps" role="radio" data-drawer="' + g[0] + '" aria-checked="' + (dview.drawer === g[0]) + '">' + g[1] + "</button>").join("") +
+      '</div><button type="button" class="close-btn" data-dclose aria-label="Close">✕</button></div><div class="drawer-body">' + dPanel(dview.drawer) + "</div></div>";
+  }
+  k += "</div>";
+  const c1 = tg === "drawer" ? [k, expression()] : [k];
+  return { cols: [c1, [generator(), ampEnv()], [voiceFilter()]], drawer: drawer };
+}
+LIVE.dstrip = (el) => {
+  const w = el.clientWidth || 240, h = el.clientHeight || 48, click = el.dataset.click === "1";
+  if (byNotes()) return rowSVG(w, h, { slots: true, noclick: !click });
+  let ol = new Set();
+  const rec = held.slice().sort((a, b) => b.t - a.t);
+  if (S.mode === "dyad") ol = new Set(rec.slice(0, 2));
+  else if (S.mode === "mono") ol = new Set(rec.slice(0, 1));
+  else if (!twoHands()) ol = outlineOf(held);
+  return keysSVG(w, h, { lo: view.size === "compact" ? 48 : 41, hi: 84, labels: true, clickSplit: click && S.hands === "key" && poly(), outline: ol });
+};
+LIVE.dCap = () => {
+  if (byNotes() && lastStrike) return laneWords();
+  if (!poly()) return handsSentence();
+  if (S.hands === "key") return handsSentence() + (dview.where !== "panel" ? " <b>Press a key to split there.</b>" : "");
+  if (S.hands === "notes") return handsSentence() + (dview.where !== "panel" ? " <b>Press a place to set how many.</b>" : "");
+  return handsSentence();
+};
+WORDS.add("dCap");
+
+const VERDICT_D = {
+  seg: [["Answers", "One press reaches anything: the Notes switch and the strip are always there, and Hands, Figure or Expression is one press on a switch that swaps a panel in place. Nothing is covered; columns 2 and 3 never move."],
+        ["Costs", "Only one panel shows at a time, so a setting in another (the Chord window while you look at the outline) is a press away and out of sight. The panel's height changes with what it holds, so what is under it in the column is never fixed: here nothing is, and Expression is one of the panels."],
+        ["Elsewhere", "The Bench's own tab cards, one level down: a dense section becomes a row of three or four words over one panel. It suits Ink's oscillator extras (FM · Sync · Noise) and the Picture's Advanced (Reads · Responds · Score). It fails where two panels are wanted at once."]],
+  acc: [["Answers", "Each group's header is a summary line that opens in place (A's lines, without the editor), so the column says what everything is set to while one group is open. One press for anything; nothing is covered."],
+        ["Costs", "The headers cost a line each whether open or shut, so the open panel has three lines less room than the switch's. Opening one group shifts the headers under it, which is the movement under the pointer that the Bench's real columns were built to avoid (CLAUDE.md), though here it is the pointer's own press."],
+        ["Elsewhere", "Fits where a section's groups are worth naming with their values - Routings, the Picture's Advanced, a brush's settings. It reads as a list, and a long list in a column that may not scroll runs out first."]],
+  drawer: [["Answers", "The strip and Expression stay as the column's resting face; the deeper settings slide over column 1 only, from under the strip, and columns 2 and 3 stay in view. Two presses at most: the word under the strip, then the drawer's own switch."],
+           ["Costs", "While it is open, Expression and anything else below the strip in column 1 is hidden, and the drawer is a second place with a close button. At rest the column shows nothing of the split's settings but what the strip draws."],
+           ["Elsewhere", "The modulation editor made the width of one column. Good for settings visited rarely and in a sitting - the Brushes panel, Picture Advanced's score - and poor for something tweaked while playing."]]
+};
+const WHERE_LINES = {
+  above: "The hands choice is a small switch just above the strip, in Poly only: two rows that read together, and the strip below shows the result and is the control.",
+  corner: "The hands choice sits in the strip's own box, its head: strip and choice read as one object, at the cost of a box's border and a row inside it.",
+  panel: "The hands choice is inside the Hands panel, and the strip only shows the result: the quietest column, and choosing a split is one more press (and the strip is no longer a control)."
+};
+
+/* Every combination D can be in, measured: for each size, toggle and place
+   of the hands choice, the tightest column 1 across the modes and hands and
+   every panel open, and whether a drawer fits. */
+function measureAll() {
+  const keep = { S: Object.assign({}, S), view: Object.assign({}, view), dview: Object.assign({}, dview) };
+  const states = [["dyad", "one"], ["mono", "one"], ["poly", "one"], ["poly", "key"], ["poly", "notes"], ["poly", "layer"]];
+  const rows = [];
+  for (const size of ["big", "compact"]) for (const tg of ["seg", "acc", "drawer"]) for (const where of ["above", "corner", "panel"]) {
+    let worst = null, drawerWorst = null;
+    view.layout = "D"; view.size = size; dview.toggle = tg; dview.where = where;
+    for (const st of states) {
+      S.mode = st[0]; S.hands = st[1];
+      const panels = tg === "seg" ? dGroups().map((g) => g[0]) : [null].concat(dGroups().map((g) => g[0]));
+      for (const pn of panels) {
+        if (tg === "seg") dview.panel = pn; else if (tg === "acc") dview.acc = pn; else dview.drawer = pn;
+        render();
+        const m = lastMeasure;
+        const what = st[0] + (st[0] === "poly" ? " " + st[1] : "") + (pn ? ", " + pn : "");
+        if (!worst || m.cols[0] < worst.v) worst = { v: m.cols[0], what: what };
+        if (m.drawer !== null && (!drawerWorst || m.drawer > drawerWorst.v)) drawerWorst = { v: m.drawer, what: what };
+      }
+    }
+    rows.push([size === "big" ? "1400 × 900" : "960 × 600 at 90%", { seg: "Switch", acc: "Accordion", drawer: "Drawer" }[tg], { above: "above the strip", corner: "in its corner", panel: "in the panel" }[where], worst, drawerWorst]);
+  }
+  Object.assign(S, keep.S); Object.assign(view, keep.view); Object.assign(dview, keep.dview);
+  render();
+  return rows;
+}
+function showAll() {
+  const rows = measureAll();
+  const cell = (w) => w.v >= 0 ? '<span class="ok">' + w.v + " spare</span>" : '<span class="over">over by ' + -w.v + "</span>";
+  document.getElementById("allFit").innerHTML = '<table class="fit-table"><thead><tr><th>Window</th><th>Toggle</th><th>Hands choice</th><th>Column 1 at its tightest</th><th>Drawer</th></tr></thead><tbody>' +
+    rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + r[2] + "</td><td>" + cell(r[3]) + " <small>(" + r[3].what + ")</small></td><td>" +
+      (r[4] ? (r[4].v > 1 ? '<span class="over">over by ' + r[4].v + "</span> <small>(" + r[4].what + ")</small>" : '<span class="ok">fits</span>') : "–") + "</td></tr>").join("") + "</tbody></table>";
+  return rows;
+}
+
 const WHAT = {
+  D: "<b>D, the mix</b> (round 2, from the owner's verdict on A, B and C). The Notes switch, Dyad \u00B7 Mono \u00B7 Poly, always on top of the Keyboard section; under it the strip, always there, live, and a control (press a key to split there; by notes, press a place to set how many). The deeper settings stay in column 1, opened by a <b>switch</b>, an <b>accordion</b> or a <b>drawer</b> over column 1 only - choose above - and never cover the Generator, the Amp envelope or the Voice filter. Where the hands choice (One \u00B7 Key \u00B7 Notes \u00B7 Layer) lives is chosen separately. The Chord window is the look-ahead now built: every note waits it, so nothing is ever moved.",
   T: "Today's Keyboard section as built on <i>testing</i> (16 Nov), for comparison: the mode switch, Layers with <i>by key · by notes</i> beside it, the pairing with Learn or the end and the count beside that, Draw, and two ticks that show in every mode though each acts in one. No Chord window yet.",
   A: "<b>Summary lines with editors.</b> Play keeps one line per question - Notes, Hands, Figure - each saying its answer in words, and a small live strip under Hands while there are two. Pressing a line opens an editor over the tab, as a modulation card's does, holding every setting for that question and only those that apply to the mode, with a large live diagram beside them. A switch in the editor's head moves between the three questions. Choosing a split or a layer from Dyad or Mono plays Poly, so the merge the owner asked about happens without a five-way menu.",
   B: "<b>Only what applies, all on show.</b> The Keyboard section is three labelled groups, each a switch rather than a menu, with only the controls the current choice uses beneath it, and the split's diagram under the Hands switch. Nothing opens. Expression moves to the third column, under the Voice filter, to make the room.",
@@ -1122,20 +1361,26 @@ const face = document.getElementById("face");
 function render() {
   const L = view.layout, compact = view.size === "compact";
   face.className = "face" + (compact ? " compact" : "");
-  let cols, band = "";
+  let cols, band = "", drawer = "";
   if (L === "T") cols = today();
   else if (L === "A") cols = layoutA();
   else if (L === "B") cols = layoutB();
-  else { const c = layoutC(); cols = c.cols; band = c.band; }
+  else if (L === "C") { const c = layoutC(); cols = c.cols; band = c.band; }
+  else { const d = layoutD(); cols = d.cols; drawer = d.drawer; }
   const lines = { play: poly() ? "Poly" : S.mode === "dyad" ? "Dyad" : "Mono" };
   face.innerHTML =
     '<div class="cards"><div class="card on"><b>Play</b><span>' + lines.play + (twoHands() ? " · " + handsWord() : "") + ' · sine · 220 Hz</span></div>' +
     '<div class="card"><b>Ink</b><span>Ratio 1:1 · unison · FM off</span></div><div class="card"><b>Space &amp; Memory</b><span>Dry</span></div></div>' +
     '<div class="body' + (band ? " banded" : "") + '">' + band +
-    cols.map((c) => '<div class="col"><div class="col-in">' + c.join("") + '</div><div class="free" hidden></div></div>').join("") + "</div>" +
+    cols.map((c, i) => '<div class="col"><div class="col-in">' + c.join("") + '</div><div class="free" hidden></div>' + (i === 0 ? drawer : "") + "</div>").join("") + "</div>" +
     (L === "A" ? editorA() : "");
   document.getElementById("what").innerHTML = WHAT[L];
-  document.getElementById("verdict").innerHTML = VERDICT[L].map((v) => "<dt>" + v[0] + "</dt><dd>" + v[1] + "</dd>").join("");
+  document.getElementById("dBar").hidden = L !== "D";
+  document.getElementById("allWrap").hidden = L !== "D";
+  document.querySelectorAll("#dToggle button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dtoggle === dview.toggle)));
+  document.querySelectorAll("#dWhere button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dwhere === dview.where)));
+  const vd = L === "D" ? VERDICT_D[dview.toggle].map((v, i) => i === 1 ? [v[0], v[1] + " " + WHERE_LINES[dview.where]] : v) : VERDICT[L];
+  document.getElementById("verdict").innerHTML = vd.map((v) => "<dt>" + v[0] + "</dt><dd>" + v[1] + "</dd>").join("");
   document.querySelectorAll("#layoutTabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.layout === L)));
   document.querySelectorAll("#sizeSwitch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === view.size)));
   scale();
@@ -1149,18 +1394,28 @@ function measure() {
   const body = face.querySelector(".body"); if (!body) return;
   const s = currentScale(); const bt = body.getBoundingClientRect().top;
   const H = parseFloat(getComputedStyle(face).getPropertyValue("--bodyh"));
-  const out = [];
+  const out = [], spares = [];
+  let drawerOver = null;
+  const dr = face.querySelector(".drawer"), more = face.querySelector(".drawer-row");
+  if (dr && more) {
+    dr.style.top = (more.offsetTop + more.offsetHeight + 6) + "px";
+    const body2 = dr.querySelector(".drawer-body");
+    drawerOver = Math.round(body2.scrollHeight - body2.clientHeight);
+  }
   face.querySelectorAll(".col").forEach((col, i) => {
     const inn = col.querySelector(".col-in"), free = col.querySelector(".free");
     free.hidden = true;
     const bottom = (inn.getBoundingClientRect().bottom - bt) / s;
     const spare = Math.round(H - bottom);
+    spares.push(spare);
     out.push(spare >= 0 ? '<span class="ok">Column ' + (i + 1) + ": " + spare + " px spare</span>" : '<span class="over">Column ' + (i + 1) + ": over by " + -spare + " px</span>");
-    if (spare > 46 && !(view.layout === "A" && view.editor)) {
+    if (spare > 46 && !(view.layout === "A" && view.editor) && !(i === 0 && dr)) {
       free.hidden = false; free.style.height = (spare - 12) + "px";
       free.textContent = spare + " px free";
     }
   });
+  if (drawerOver !== null) out.push(drawerOver > 1 ? '<span class="over">Drawer: over by ' + drawerOver + " px</span>" : '<span class="ok">Drawer: fits</span>');
+  lastMeasure = { cols: spares, drawer: drawerOver };
   const ed = face.querySelector(".ed-left");
   if (ed) {
     const over = Math.round(ed.scrollHeight - ed.clientHeight);
@@ -1168,7 +1423,7 @@ function measure() {
   }
   document.getElementById("fit").innerHTML = "<span>" + (view.size === "compact" ? "960 × 600 at 90%, the tab 717 × 452 in the page's pixels." : "1400 × 900, the tab 838 × 556.") + "</span>" + out.join("");
 }
-let lastScale = 1;
+let lastScale = 1, lastMeasure = null;
 const currentScale = () => lastScale;
 function scale() {
   const wrap = document.getElementById("wrap"), stage = document.getElementById("stage");
@@ -1207,6 +1462,12 @@ face.addEventListener("click", (e) => {
   if (t.dataset.count) { S.splitCount = +t.dataset.count; redeal(); render(); return; }
   if (t.dataset.set) { setField(t.dataset.set, t.dataset.val); render(); return; }
   if (t.dataset.hands) { S.hands = t.dataset.hands; S.mode = "poly"; if (["key", "notes"].includes(S.hands)) S.lastSplit = S.hands; view.learn = false; redeal(); render(); return; }
+  if (t.dataset.dpanel) {
+    if (dview.toggle === "acc") dview.acc = dview.acc === t.dataset.dpanel ? null : t.dataset.dpanel; else dview.panel = t.dataset.dpanel;
+    render(); return;
+  }
+  if (t.dataset.drawer) { dview.drawer = dview.drawer === t.dataset.drawer && t.closest(".drawer-row") ? null : t.dataset.drawer; render(); return; }
+  if (t.hasAttribute("data-dclose")) { dview.drawer = null; render(); return; }
   if (t.dataset.open) { view.editor = t.dataset.open; render(); const c = face.querySelector(".close-btn"); if (c && !e.detail) c.focus(); return; }
   if (t.hasAttribute("data-close")) { const was = view.editor; view.editor = null; render(); const b = face.querySelector('.sum[data-open="' + was + '"]'); if (b) b.focus(); return; }
   if (t.dataset.toggle) { S[t.dataset.toggle] = !S[t.dataset.toggle]; render(); return; }
@@ -1227,10 +1488,17 @@ document.getElementById("layoutTabs").addEventListener("click", (e) => {
 });
 document.getElementById("layoutTabs").addEventListener("keydown", (e) => {
   if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-  const order = ["T", "A", "B", "C"], i = order.indexOf(view.layout);
-  view.layout = order[(i + (e.key === "ArrowRight" ? 1 : 3)) % 4]; view.editor = null; remember(); render();
+  const order = ["T", "A", "B", "C", "D"], i = order.indexOf(view.layout);
+  view.layout = order[(i + (e.key === "ArrowRight" ? 1 : 4)) % 5]; view.editor = null; remember(); render();
   document.querySelector('#layoutTabs [data-layout="' + view.layout + '"]').focus();
 });
+document.getElementById("dBar").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.dtoggle) dview.toggle = b.dataset.dtoggle;
+  if (b.dataset.dwhere) dview.where = b.dataset.dwhere;
+  rememberD(); render();
+});
+document.getElementById("allBtn").addEventListener("click", showAll);
 document.getElementById("sizeSwitch").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return; view.size = b.dataset.size; remember(); render();
 });
@@ -1250,6 +1518,7 @@ document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const tag = e.target.tagName;
   if (tag === "SELECT" || tag === "TEXTAREA" || (tag === "INPUT" && e.target.type !== "checkbox" && e.target.type !== "range")) return;
+  if (e.key === "Escape" && dview.drawer && view.layout === "D") { dview.drawer = null; render(); return; }
   if (e.key === "Escape" && view.editor) { const was = view.editor; view.editor = null; render(); const b = face.querySelector('.sum[data-open="' + was + '"]'); if (b) b.focus(); return; }
   if (e.key === " ") { e.preventDefault(); if (!e.repeat) setPedal(true); return; }
   const k = e.key.toLowerCase();
@@ -1261,7 +1530,7 @@ document.addEventListener("keydown", (e) => {
 document.addEventListener("keyup", (e) => {
   if (e.key === " ") { setPedal(false); return; }
   const k = e.key.toLowerCase();
-  if (down.has(k)) { noteOff(down.get(k)); down.delete(k); }
+  if (down.has(k)) { noteOff(down.get(k), e.timeStamp || performance.now()); down.delete(k); }
 });
 window.addEventListener("blur", () => { down.forEach((n) => noteOff(n)); down.clear(); });
 
@@ -1352,7 +1621,10 @@ try {
 window.__playMock = {
   set: (o) => { Object.assign(S, o); redeal(); render(); },
   on: noteOn, off: noteOff, pedal: setPedal, clear: allOff,
-  hands: () => Object.fromEntries(held.map((h) => [nn(h.n), h.hand]))
+  flush: () => { for (const g of gathers.values()) closeGather(g); },
+  measureAll: showAll,
+  hands: () => Object.fromEntries(held.map((h) => [nn(h.n), h.hand === undefined ? "waiting" : h.hand])),
+  sounding: () => voices.size
 };
 
 render();
