@@ -190,7 +190,9 @@ def against(entry, text, tol, inp=None):
     return sketch_diff(entry["sketch"], text, tol, inp)
 
 def stored(entry):
-    """A run as it goes into a file: whole if short, else as its sketch."""
+    """A run as it goes into a file: whole if short, else as its sketch. A run
+    that did not move goes back exactly as it was read."""
+    if entry.get("kept"): return {k: v for k, v in entry.items() if k != "kept"}
     out = entry["output"]
     keep = {k: v for k, v in entry.items() if k != "output"}
     if len(out) <= SKETCH_OVER or entry.get("tool") in WHOLE_TOOLS: keep["output"] = out; return keep
@@ -268,7 +270,8 @@ class Golden:
                       "its file is left as it was" % s)
                 continue
             old = self.files.get(s, {})
-            changed = [k for k in runs if k not in old or against(old[k], runs[k]["output"], 0.0) is not None]
+            # Moved means beyond the tolerance, as the plain run judges it: a run within it was kept (recorded()).
+            changed = [k for k in runs if not runs[k].get("kept")]
             gone = [k for k in old if k not in runs]
             if not changed and not gone and os.path.exists(self._file(s)):
                 print("  KEPT     %s: %d runs, unchanged" % (s, len(runs))); continue
@@ -277,7 +280,7 @@ class Golden:
             print("  WROTE    %s: %d runs, %d new or changed, %d dropped, %d bytes"
                   % (s, len(runs), len(changed), len(gone), os.path.getsize(self._file(s))))
             for k in changed[:5]:
-                said = against(old[k], runs[k]["output"], 0.0) if k in old else "new"
+                said = against(old[k], runs[k]["output"], self.tol) if k in old else "new"
                 print("             %s on %s: %s" % (runs[k]["tool"], runs[k]["input"], said))
         if wrote: self._log(wrote)
 
@@ -392,6 +395,17 @@ class Golden:
         if self.mode == "write":
             out, c = own()
             if out is None: raise SystemExit("the core's %s failed on %s: %s" % (cmd[0], base, c.stderr[-300:]))
+            # A run the core still answers within the tolerance has not moved:
+            # its entry is kept as it was, byte for byte, and the section is
+            # handed the recorded text, as the plain run hands it. Until 16 Nov
+            # the core's own text was handed on and stored, which differs from
+            # the JavaScript's in how it spells a number ("4000" for "4000.0")
+            # and in digits below the tolerance - so six checks that read the
+            # recorded side as text failed and refused their sections on an
+            # unchanged core, and five files were rewritten for nothing.
+            if entry is not None and against(entry, out, self.tol, inp) is None:
+                self.runs[s][key] = dict(entry, kept=True)
+                return subprocess.CompletedProcess(cmd, 0, entry.get("output", out), "")
             self.runs[s][key] = dict(tool=name, input=base, hash=h, output=out)
             return subprocess.CompletedProcess(cmd, 0, out, "")
         if entry is None:
