@@ -316,14 +316,36 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
 .face .drawer-head { display: flex; align-items: center; gap: 8px; }
 .face .drawer-head .close-btn { width: 26px; height: 26px; font-size: 13px; }
 .face.compact .drawer { padding: 6px 8px 4px; }
-.face .drawer .lab, .face .dpanel .lab { flex-basis: 84px; }
-.face.compact .drawer .lab, .face.compact .dpanel .lab { flex-basis: 70px; }
+.face .drawer .lab, .face .dpanel .lab { flex-basis: 72px; }
+.face.compact .drawer .lab, .face.compact .dpanel .lab { flex-basis: 58px; }
 .face.compact .drawer .row { margin-top: 4px; }
 .face .drawer-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 @media (prefers-reduced-motion: no-preference) {
   .face .drawer { animation: drawer-in 280ms ease; }
   @keyframes drawer-in { from { transform: translateY(14px); opacity: 0; } }
 }
+
+/* E: the hands choice centred in the strip's box, the strip between its
+   octave buttons or beside its counted end, and the Two hands pill. */
+.face .ehead { justify-content: center; }
+.face .estrip { display: flex; align-items: stretch; gap: 4px; height: 100%; }
+.face .estrip-svg { flex: 1 1 auto; min-width: 0; }
+.face .oct-btn { flex: 0 0 16px; background: none; border: 1px solid var(--line); border-radius: 1px; padding: 0; color: var(--blush-deep); font-size: 14px; line-height: 1; position: relative; }
+.face .oct-btn:hover { border-color: var(--blush); }
+.face .oct-btn:disabled { color: var(--unresolved); cursor: default; }
+.face .oct-btn.has::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--gold); }
+.face .vswitch.estrip-end { flex: 0 0 40px; align-self: center; border-radius: 10px; }
+.face .vswitch.estrip-end button { padding: 2px 0; font-size: 10px; letter-spacing: 0.02em; text-transform: none; }
+.face .ehead .switch, .face .ehead .pill-toggle { white-space: nowrap; flex: 0 0 auto; }
+.face .ehead { flex-wrap: nowrap; gap: 6px; }
+.face.compact .pill-toggle { padding: 2px 6px; letter-spacing: 0.08em; }
+.face.compact .ehead .switch.mini button { padding: 2px 5px; letter-spacing: 0.08em; }
+.face .pill-toggle { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-size: 9px; letter-spacing: 0.12em; color: var(--text-soft); }
+.face .pill-toggle .pt-dot { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--text-soft); }
+.face .pill-toggle[aria-pressed="true"] { color: var(--charcoal); border-color: var(--blush); }
+.face .pill-toggle[aria-pressed="true"] .pt-dot { background: var(--blush-deep); border-color: var(--blush-deep); }
+.face .ewin { margin: 3px 0 0; font-size: 11.5px; }
+.face .ewin .link-btn { font-size: 11.5px; padding: 0; }
 
 /* C: the band across the top of the tab. */
 .face .band { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px; }
@@ -361,7 +383,8 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
     <button type="button" role="tab" data-layout="A" aria-selected="false"><b>A · Summary lines</b><span>a line per question, an editor each</span></button>
     <button type="button" role="tab" data-layout="B" aria-selected="false"><b>B · Only what applies</b><span>grouped, all on show, diagram inline</span></button>
     <button type="button" role="tab" data-layout="C" aria-selected="false"><b>C · One strip</b><span>five modes, the diagram is the control</span></button>
-    <button type="button" role="tab" data-layout="D" aria-selected="true"><b>D · The mix</b><span>round 2: switch, strip, settings in the column</span></button>
+    <button type="button" role="tab" data-layout="D" aria-selected="false"><b>D · The mix</b><span>round 2: switch, strip, settings in the column</span></button>
+    <button type="button" role="tab" data-layout="E" aria-selected="true"><b>E · The strip is Hands</b><span>round 3: choice on the strip, Figure · Expression</span></button>
   </nav>
   <p class="what" id="what"></p>
   <div class="bar">
@@ -371,6 +394,19 @@ h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-siz
       <button type="button" data-size="compact" aria-pressed="false">960 &times; 600 at 90%</button>
     </div>
     <button type="button" class="pg-btn" id="resetBtn">Start again</button>
+  </div>
+  <div class="bar" id="eBar">
+    <span class="lbl">One sound</span>
+    <div class="pg-switch" role="group" aria-label="How E says one sound" id="eOne">
+      <button type="button" data-eone="toggle" aria-pressed="true">i · Two hands on / off</button>
+      <button type="button" data-eone="none" aria-pressed="false">ii · None of Key · Notes · Layer lit</button>
+    </div>
+    <span class="lbl">Expression</span>
+    <div class="pg-switch" role="group" aria-label="Where E's Expression lives" id="eExpr">
+      <button type="button" data-eexpr="col3" aria-pressed="true">In column 3</button>
+      <button type="button" data-eexpr="switch" aria-pressed="false">In the switch</button>
+      <button type="button" data-eexpr="col1" aria-pressed="false">Under Figure</button>
+    </div>
   </div>
   <div class="bar" id="dBar">
     <span class="lbl">Settings open by</span>
@@ -429,10 +465,10 @@ const DEFAULTS = {
   bend: "2", wheel: "vibrato", pressure: "off", velocity: "strike", interval: "0"
 };
 let S = Object.assign({}, DEFAULTS);
-let view = { layout: "D", size: "big", editor: null, learn: false };
+let view = { layout: "E", size: "big", editor: null, learn: false };
 try {
   const v = JSON.parse(localStorage.getItem("playMockup.view2") || "{}");
-  if (["T", "A", "B", "C", "D"].includes(v.layout)) view.layout = v.layout;
+  if (["T", "A", "B", "C", "D", "E"].includes(v.layout)) view.layout = v.layout;
   if (["big", "compact"].includes(v.size)) view.size = v.size;
 } catch (e) { /* private window: start at A, big */ }
 function remember() {
@@ -758,8 +794,8 @@ function rowSVG(w, h, o) {
   const out = [svgOpen(w, h)];
   const places = o.slots ? Math.max(8, asc.length) : Math.max(asc.length, N + 1, 5);
   const pw = (w - 8) / places;
-  const r = Math.max(3, Math.min(pw * (o.slots ? 0.3 : 0.36), h * (o.slots ? 0.22 : 0.3)));
-  const cy = o.slots ? h * 0.42 : h / 2;
+  const r = Math.max(3, Math.min(pw * (o.slots ? 0.28 : 0.36), h * (o.slots ? 0.17 : 0.3)));
+  const cy = o.slots ? h * 0.5 : h / 2;
   for (let i = 0; i < places; i++) {
     const fromEnd = low ? i : places - 1 - i;
     const inCount = fromEnd < N;
@@ -768,7 +804,7 @@ function rowSVG(w, h, o) {
       const can = fromEnd < 6 && !o.noclick;
       out.push('<rect x="' + (x + 1) + '" y="1" width="' + (pw - 2) + '" height="' + (h - 2) + '"' + (can ? ' class="slot" data-count="' + (fromEnd + 1) + '"' : "") +
         ' style="fill:' + (inCount ? wash(counted, 12) : wash(other, 7)) + ';stroke:var(--line)"/>');
-      if (h > 40) out.push(T(x + pw / 2, h - 5, can ? String(fromEnd + 1) : "·", ' text-anchor="middle" style="font-size:9.5px;fill:var(--text-soft);pointer-events:none"'));
+      if (h > 30) out.push(T(x + 4, 10, can ? String(fromEnd + 1) : "", ' style="font-size:8.5px;fill:var(--text-soft);pointer-events:none"'));
     } else if (!asc.length) {
       out.push('<circle cx="' + (x + pw / 2) + '" cy="' + cy + '" r="' + r + '" style="fill:' + (inCount ? wash(counted, 14) : "var(--paper)") + ';stroke:var(--line);stroke-dasharray:2 2"/>');
     }
@@ -778,7 +814,7 @@ function rowSVG(w, h, o) {
     const cx = 4 + (i + off) * pw + pw / 2, g = gathers.get(x.gid) || {};
     out.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" style="fill:' + ink(x.hand) + ";stroke:" + (g.open ? "var(--charcoal)" : "none") + ';stroke-width:1.5;stroke-dasharray:3 2;pointer-events:none"/>');
     if (x.pedal) out.push('<circle cx="' + cx + '" cy="' + (cy - r - 4) + '" r="2" style="fill:var(--gold)"/>');
-    if (h >= 34) out.push(T(cx, cy + r + 11, nn(x.n), ' text-anchor="middle" style="font-size:9.5px;fill:var(--charcoal);pointer-events:none"'));
+    if (h >= 34) out.push(T(cx, Math.min(h - 3, cy + r + 10), nn(x.n), ' text-anchor="middle" style="font-size:9px;fill:var(--charcoal);pointer-events:none"'));
   });
   const k = Math.min(N, places);
   const lx = low ? 4 + k * pw : 4 + (places - k) * pw;
@@ -1335,7 +1371,136 @@ function showAll() {
   return rows;
 }
 
+/* ---------------------------------------------------------------------------
+   Round 3 (16 Nov): E, from D with the switch and the hands choice in the
+   strip's box. The strip is the Hands section; the choice sits centred in
+   its top edge; octave buttons let any key be the split point; the counted
+   end is on the strip; the Chord window is a note pointing to Settings; the
+   panel switch is Figure and Expression only, or Expression lives elsewhere.
+--------------------------------------------------------------------------- */
+let eview = { one: "toggle", expr: "col3", panel: "figure", lo: 48, winOpen: false };
+try {
+  const d = JSON.parse(localStorage.getItem("playMockup.e") || "{}");
+  if (["toggle", "none"].includes(d.one)) eview.one = d.one;
+  if (["switch", "col1", "col3"].includes(d.expr)) eview.expr = d.expr;
+} catch (e) { /* no storage */ }
+function rememberE() { try { localStorage.setItem("playMockup.e", JSON.stringify({ one: eview.one, expr: eview.expr })); } catch (e) { /* no storage */ } }
+const KINDS3 = [["key", "Key"], ["notes", "Notes"], ["layer", "Layer"]];
+
+function eHead() {
+  // (i) Two hands, on or off, and the three kinds only while on; (ii) the
+  // three kinds alone, none lit for one sound, the lit one pressed again
+  // going back to it. Either way choosing two hands plays Poly.
+  const two = twoHands();
+  const kinds = '<div class="switch mini" role="radiogroup" aria-label="How two hands are shared">' + KINDS3.map((k) =>
+    '<button type="button" class="caps" role="radio" data-ekind="' + k[0] + '" aria-checked="' + (two && S.hands === k[0]) + '">' + k[1] + "</button>").join("") + "</div>";
+  if (eview.one === "toggle") {
+    return '<button type="button" class="pill-toggle caps" data-etwo aria-pressed="' + two + '"><span class="pt-dot"></span>Two hands</button>' + (two ? kinds : "");
+  }
+  return kinds;
+}
+function eStripLive(el) {
+  const W = el.clientWidth || 240, h = el.clientHeight || 44;
+  if (byNotes()) {
+    // The counted end is a toggle at the strip's edge rather than a press on
+    // the end itself: a press on a place already says how many, so a press
+    // on an end would mean two things, and the toggle names where the count
+    // starts, which the places alone do not.
+    const end = '<div class="vswitch estrip-end" role="radiogroup" aria-label="Counted from">' + [["lower", "low"], ["upper", "high"]].map((x) =>
+      '<button type="button" role="radio" data-set="splitEnd" data-val="' + x[0] + '" aria-checked="' + (S.splitEnd === x[0]) + '">' + x[1] + "</button>").join("") + "</div>";
+    return '<div class="estrip">' + (S.splitEnd === "lower" ? end : "") + '<div class="estrip-svg">' + rowSVG(W - 46, h, { slots: true }) + "</div>" + (S.splitEnd === "upper" ? end : "") + "</div>";
+  }
+  const lo = eview.lo, hi = lo + 24;
+  const below = held.filter((x) => x.n < lo).length, above = held.filter((x) => x.n > hi).length;
+  let ol = new Set();
+  const rec = held.slice().sort((a, b) => b.t - a.t);
+  if (S.mode === "dyad") ol = new Set(rec.slice(0, 2)); else if (S.mode === "mono") ol = new Set(rec.slice(0, 1)); else if (!twoHands()) ol = outlineOf(held);
+  const btn = (dir, n, dis) => '<button type="button" class="oct-btn' + (n ? " has" : "") + '" data-eoct="' + dir + '"' + (dis ? " disabled" : "") +
+    ' aria-label="Octave ' + (dir < 0 ? "down" : "up") + (n ? ", " + n + " held " + (dir < 0 ? "below" : "above") : "") + '">' + (dir < 0 ? "‹" : "›") + "</button>";
+  return '<div class="estrip">' + btn(-1, below, lo <= 24) + '<div class="estrip-svg">' +
+    keysSVG(W - 36, h, { lo: lo, hi: hi, labels: true, clickSplit: S.hands === "key" && poly(), outline: ol }) + "</div>" + btn(1, above, hi >= 108) + "</div>";
+}
+LIVE.estrip = eStripLive;
+LIVE.eCap = () => {
+  const range = byNotes() ? "" : " <i>" + nn(eview.lo) + "–" + nn(eview.lo + 24) + "</i>";
+  if (!poly()) return handsSentence() + range;
+  if (!twoHands()) return (eview.one === "none" ? "One sound. Press Key, Notes or Layer for two hands; the lit one again for one." : "One sound. <b>Two hands</b> splits or layers it.") + range;
+  if (S.hands === "key") return handsSentence() + " Press a key to split there; ‹ › for other octaves." + range;
+  if (S.hands === "notes") return byNotes() && lastStrike ? laneWords() : handsSentence() + " Press a place to set how many.";
+  return handsSentence() + range;
+};
+WORDS.add("eCap");
+
+function figureRows() { return dPanel("figure"); }
+function layoutE() {
+  const compact = view.size === "compact";
+  let k = '<div class="group"><div class="title">Keyboard<button type="button" class="link-btn caps tiny" data-toggle="keysShown" aria-pressed="' + S.keysShown + '">' + (S.keysShown ? "hide keys" : "keys") + '</button><span class="dots">⋯</span></div>';
+  k += '<div class="row">' + sw("mode", MODES, "Notes") + "</div>";
+  k += '<div class="dbox ebox"><div class="dbox-head ehead">' + eHead() + "</div>" +
+    '<div data-live="estrip" style="height:' + (compact ? 38 : 46) + 'px"></div></div>';
+  k += '<p class="dia-cap dcap" data-live="eCap"></p>';
+  if (byNotes()) {
+    k += '<p class="note ewin">Chord window: ' + S.windowMs + ' ms, <button type="button" class="link-btn" data-act="ewin" aria-expanded="' + eview.winOpen + '">in Settings</button></p>';
+    if (eview.winOpen) k += '<div class="row ewin-row"><span class="lab">Chord window</span><div class="grow"><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window"><span class="reading" data-live="winRead"></span></div></div><p class="note" style="margin-top:2px">Settings › MIDI on the face; here so the mockup can be played with it.</p>';
+  }
+  const col3 = [voiceFilter()];
+  if (eview.expr === "switch") {
+    k += '<div class="row" style="margin-top:12px"><div class="switch tight" role="radiogroup" aria-label="Settings">' + [["figure", "Figure"], ["expr", "Expression"]].map((g) =>
+      '<button type="button" class="caps" role="radio" data-epanel="' + g[0] + '" aria-checked="' + (eview.panel === g[0]) + '">' + g[1] + "</button>").join("") + "</div></div>" +
+      '<div class="dpanel">' + (eview.panel === "figure" ? figureRows() : dPanel("expr")) + "</div></div>";
+    return { cols: [[k], [generator(), ampEnv()], col3] };
+  }
+  k += '<div class="sub" style="margin-top:14px">Figure <span class="q">how they are drawn</span></div><div class="dpanel">' + figureRows() + "</div></div>";
+  if (eview.expr === "col1") return { cols: [[k, expression()], [generator(), ampEnv()], col3] };
+  return { cols: [[k], [generator(), ampEnv()], col3.concat([expression()])] };
+}
+
+const VERDICT_E = {
+  toggle: "<b>Two hands</b> on and off: one sound is the plain, named state, and Key · Notes · Layer only appear when they mean something. One more press to go from one sound to a split, and two controls in the head while on.",
+  none: "Key · Notes · Layer alone: one press from one sound to any split, and one control. One sound is no button's state - none lit - and going back is pressing the lit one again, which the line under the strip has to teach."
+};
+const EXPR_LINES = {
+  switch: "Expression shares a switch with Figure: column 1 has room, but the outline and the bend are never on show together.",
+  col1: "Expression sits under Figure in column 1: no switch at all, everything on show, at the cost of column 1's room.",
+  col3: "Expression lives in column 3 under the Voice filter, as B had it: column 1 holds only the keyboard's questions, and column 3, which had the most room, takes the four menus."
+};
+function verdictE() {
+  return [["Answers", "Every common thing is one press: the strip is the Hands section, with its choice in its head, the octave buttons for any split point, the counted end at its edge and the places for how many. The Chord window is a note, since it is set once (Settings › MIDI). " + EXPR_LINES[eview.expr]],
+    ["Costs", VERDICT_E[eview.one] + " The strip shows two octaves at a time, so a split point or a held note elsewhere is behind ‹ › (a dot on the button says a note is held there)."],
+    ["Elsewhere", "A drawing that is its section, with its choices on its edges, fits wherever the thing has a picture: the Amp envelope's curve, the drawn cycle, the Plane, a brush. A switch over one panel fits the plain values (Ink's extras, the Picture's Advanced)."]];
+}
+
+/* E's combinations, measured as D's are: both windows, both ways of saying
+   one sound, the three homes for Expression, each mode and hands choice, and
+   each panel open. Columns 1 and 3 at their tightest. */
+function showAllE() {
+  const keep = { S: Object.assign({}, S), view: Object.assign({}, view), eview: Object.assign({}, eview) };
+  const states = [["dyad", "one"], ["mono", "one"], ["poly", "one"], ["poly", "key"], ["poly", "notes"], ["poly", "layer"]];
+  const rows = [];
+  for (const size of ["big", "compact"]) for (const one of ["toggle", "none"]) for (const ex of ["switch", "col1", "col3"]) {
+    let w1 = null, w3 = null;
+    view.layout = "E"; view.size = size; eview.one = one; eview.expr = ex;
+    // The Chord window's slider is the mockup's stand-in for Settings, not a
+    // row of the face, so the fit is measured with it shut.
+    for (const st of states) for (const pn of (ex === "switch" ? ["figure", "expr"] : ["figure"])) for (const win of [false]) {
+      S.mode = st[0]; S.hands = st[1]; eview.panel = pn; eview.winOpen = win;
+      render();
+      const m = lastMeasure, what = st[0] + (st[0] === "poly" ? " " + st[1] : "") + (ex === "switch" ? ", " + pn : "") + (win ? ", window open" : "");
+      if (!w1 || m.cols[0] < w1.v) w1 = { v: m.cols[0], what: what };
+      if (!w3 || m.cols[2] < w3.v) w3 = { v: m.cols[2], what: what };
+    }
+    rows.push([size === "big" ? "1400 × 900" : "960 × 600 at 90%", one === "toggle" ? "(i) Two hands" : "(ii) Key · Notes · Layer", { switch: "in the switch", col1: "under Figure", col3: "in column 3" }[ex], w1, w3]);
+  }
+  Object.assign(S, keep.S); Object.assign(view, keep.view); Object.assign(eview, keep.eview);
+  render();
+  const cell = (w) => (w.v >= 0 ? '<span class="ok">' + w.v + " spare</span>" : '<span class="over">over by ' + -w.v + "</span>") + " <small>(" + w.what + ")</small>";
+  document.getElementById("allFit").innerHTML = '<table class="fit-table"><thead><tr><th>Window</th><th>One sound</th><th>Expression</th><th>Column 1 at its tightest</th><th>Column 3 at its tightest</th></tr></thead><tbody>' +
+    rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + r[2] + "</td><td>" + cell(r[3]) + "</td><td>" + cell(r[4]) + "</td></tr>").join("") + "</tbody></table>";
+  return rows.map((r) => [r[0], r[1], r[2], r[3].v, r[3].what, r[4].v, r[4].what]);
+}
+
 const WHAT = {
+  E: "<b>E, the strip as the Hands section</b> (round 3, from D with the switch and the hands choice in the strip's box). The Notes switch on top; under it the strip, whose box carries the hands choice centred in its top edge and is the whole Hands section: octave buttons ‹ › at its ends so any key can be the split point, the counted end (Low · High) at its edge by notes, a press on a place for how many. The Chord window is only a note under it, since it lives in Settings › MIDI. Then Figure, with Expression in a switch beside it, under it, or in column 3 - choose above, with the two ways of saying one sound.",
   D: "<b>D, the mix</b> (round 2, from the owner's verdict on A, B and C). The Notes switch, Dyad \u00B7 Mono \u00B7 Poly, always on top of the Keyboard section; under it the strip, always there, live, and a control (press a key to split there; by notes, press a place to set how many). The deeper settings stay in column 1, opened by a <b>switch</b>, an <b>accordion</b> or a <b>drawer</b> over column 1 only - choose above - and never cover the Generator, the Amp envelope or the Voice filter. Where the hands choice (One \u00B7 Key \u00B7 Notes \u00B7 Layer) lives is chosen separately. The Chord window is the look-ahead now built: every note waits it, so nothing is ever moved.",
   T: "Today's Keyboard section as built on <i>testing</i> (16 Nov), for comparison: the mode switch, Layers with <i>by key · by notes</i> beside it, the pairing with Learn or the end and the count beside that, Draw, and two ticks that show in every mode though each acts in one. No Chord window yet.",
   A: "<b>Summary lines with editors.</b> Play keeps one line per question - Notes, Hands, Figure - each saying its answer in words, and a small live strip under Hands while there are two. Pressing a line opens an editor over the tab, as a modulation card's does, holding every setting for that question and only those that apply to the mode, with a large live diagram beside them. A switch in the editor's head moves between the three questions. Choosing a split or a layer from Dyad or Mono plays Poly, so the merge the owner asked about happens without a five-way menu.",
@@ -1366,7 +1531,8 @@ function render() {
   else if (L === "A") cols = layoutA();
   else if (L === "B") cols = layoutB();
   else if (L === "C") { const c = layoutC(); cols = c.cols; band = c.band; }
-  else { const d = layoutD(); cols = d.cols; drawer = d.drawer; }
+  else if (L === "D") { const d = layoutD(); cols = d.cols; drawer = d.drawer; }
+  else cols = layoutE().cols;
   const lines = { play: poly() ? "Poly" : S.mode === "dyad" ? "Dyad" : "Mono" };
   face.innerHTML =
     '<div class="cards"><div class="card on"><b>Play</b><span>' + lines.play + (twoHands() ? " · " + handsWord() : "") + ' · sine · 220 Hz</span></div>' +
@@ -1376,10 +1542,13 @@ function render() {
     (L === "A" ? editorA() : "");
   document.getElementById("what").innerHTML = WHAT[L];
   document.getElementById("dBar").hidden = L !== "D";
-  document.getElementById("allWrap").hidden = L !== "D";
+  document.getElementById("eBar").hidden = L !== "E";
+  document.querySelectorAll("#eOne button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.eone === eview.one)));
+  document.querySelectorAll("#eExpr button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.eexpr === eview.expr)));
+  document.getElementById("allWrap").hidden = L !== "D" && L !== "E";
   document.querySelectorAll("#dToggle button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dtoggle === dview.toggle)));
   document.querySelectorAll("#dWhere button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dwhere === dview.where)));
-  const vd = L === "D" ? VERDICT_D[dview.toggle].map((v, i) => i === 1 ? [v[0], v[1] + " " + WHERE_LINES[dview.where]] : v) : VERDICT[L];
+  const vd = L === "E" ? verdictE() : L === "D" ? VERDICT_D[dview.toggle].map((v, i) => i === 1 ? [v[0], v[1] + " " + WHERE_LINES[dview.where]] : v) : VERDICT[L];
   document.getElementById("verdict").innerHTML = vd.map((v) => "<dt>" + v[0] + "</dt><dd>" + v[1] + "</dd>").join("");
   document.querySelectorAll("#layoutTabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.layout === L)));
   document.querySelectorAll("#sizeSwitch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === view.size)));
@@ -1462,6 +1631,19 @@ face.addEventListener("click", (e) => {
   if (t.dataset.count) { S.splitCount = +t.dataset.count; redeal(); render(); return; }
   if (t.dataset.set) { setField(t.dataset.set, t.dataset.val); render(); return; }
   if (t.dataset.hands) { S.hands = t.dataset.hands; S.mode = "poly"; if (["key", "notes"].includes(S.hands)) S.lastSplit = S.hands; view.learn = false; redeal(); render(); return; }
+  if (t.dataset.epanel) { eview.panel = t.dataset.epanel; render(); return; }
+  if (t.dataset.eoct) { eview.lo = Math.max(24, Math.min(84, eview.lo + 12 * +t.dataset.eoct)); paint(); return; }
+  if (t.hasAttribute("data-etwo")) {
+    if (twoHands()) S.hands = "one"; else { S.mode = "poly"; S.hands = S.lastSplit || "notes"; }
+    redeal(); render(); return;
+  }
+  if (t.dataset.ekind) {
+    const k = t.dataset.ekind;
+    if (twoHands() && S.hands === k && eview.one === "none") S.hands = "one";
+    else { S.mode = "poly"; S.hands = k; if (k !== "layer") S.lastSplit = k; }
+    view.learn = false; redeal(); render(); return;
+  }
+  if (t.dataset.act === "ewin") { eview.winOpen = !eview.winOpen; render(); return; }
   if (t.dataset.dpanel) {
     if (dview.toggle === "acc") dview.acc = dview.acc === t.dataset.dpanel ? null : t.dataset.dpanel; else dview.panel = t.dataset.dpanel;
     render(); return;
@@ -1488,8 +1670,8 @@ document.getElementById("layoutTabs").addEventListener("click", (e) => {
 });
 document.getElementById("layoutTabs").addEventListener("keydown", (e) => {
   if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-  const order = ["T", "A", "B", "C", "D"], i = order.indexOf(view.layout);
-  view.layout = order[(i + (e.key === "ArrowRight" ? 1 : 4)) % 5]; view.editor = null; remember(); render();
+  const order = ["T", "A", "B", "C", "D", "E"], i = order.indexOf(view.layout);
+  view.layout = order[(i + (e.key === "ArrowRight" ? 1 : 5)) % 6]; view.editor = null; remember(); render();
   document.querySelector('#layoutTabs [data-layout="' + view.layout + '"]').focus();
 });
 document.getElementById("dBar").addEventListener("click", (e) => {
@@ -1498,7 +1680,13 @@ document.getElementById("dBar").addEventListener("click", (e) => {
   if (b.dataset.dwhere) dview.where = b.dataset.dwhere;
   rememberD(); render();
 });
-document.getElementById("allBtn").addEventListener("click", showAll);
+document.getElementById("allBtn").addEventListener("click", () => (view.layout === "E" ? showAllE() : showAll()));
+document.getElementById("eBar").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.eone) eview.one = b.dataset.eone;
+  if (b.dataset.eexpr) eview.expr = b.dataset.eexpr;
+  rememberE(); render();
+});
 document.getElementById("sizeSwitch").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return; view.size = b.dataset.size; remember(); render();
 });
@@ -1622,7 +1810,7 @@ window.__playMock = {
   set: (o) => { Object.assign(S, o); redeal(); render(); },
   on: noteOn, off: noteOff, pedal: setPedal, clear: allOff,
   flush: () => { for (const g of gathers.values()) closeGather(g); },
-  measureAll: showAll,
+  measureAll: showAll, measureAllE: showAllE,
   hands: () => Object.fromEntries(held.map((h) => [nn(h.n), h.hand === undefined ? "waiting" : h.hand])),
   sounding: () => voices.size
 };

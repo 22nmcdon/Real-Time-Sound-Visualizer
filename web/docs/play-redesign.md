@@ -6,10 +6,10 @@ with menus inside menus. This is a mockup to look at and click, not a change to 
 instrument. Nothing in `scope.html` or the core has been touched.
 
 **The page:** [`mockups/play/index.html`](mockups/play/index.html), one self-contained
-file. It opens on round 2's layout D (below); round 1's Today, A, B and C are kept beside it
-for reference. Open it in a browser, choose a layout along the top, and play it with the computer
+file. It opens on round 3's layout E (below); round 1's Today, A, B and C and round 2's D are
+kept beside it for reference. Open it in a browser, choose a layout along the top, and play it with the computer
 keys (A to K, W E T Y U, Z and X for the octave, Space for the pedal) or the keys under
-the mockup. The pictures beside it (`00-today.png` to `08-d-drawer-in-panel.png`) are the same
+the mockup. The pictures beside it (`00-today.png` to `11-e-none-lit-at-960x600.png`) are the same
 layouts, for reading this without opening the page.
 
 ## The three complaints
@@ -312,6 +312,88 @@ drawn and pressed; `fittest.py` measures every panel open at the five windows;
 `patchtest.py` gets the switch's rows; `layertest.py` presses the strip; the info line
 gets the strip's and the toggle's words.
 
+## Round 3: E, the strip is the Hands section
+
+The owner's call on D (16 Nov): the switch (1), with the hands choice in the strip's box
+(b), and six changes. E is D with them:
+
+1. **The strip is the Hands section.** No Hands panel. The hands choice sits in the
+   strip's box, in its top edge, centred.
+2. **Octave buttons** ‹ › at the strip's two ends, so any key can be the split point;
+   the strip keeps its width and shows two octaves at a time (the line under it names
+   them, *C3–C5*), and a gold dot on a button says a held note is out of view that way.
+3. **One sound is not in line with Key · Notes · Layer.** Two treatments, selectable on
+   the page:
+   - **(i) Two hands, on or off**: a small pill in the strip's head; off is one sound and
+     the strip shows plain held notes; on reveals *Key · Notes · Layer* beside it.
+   - **(ii) Only Key · Notes · Layer**: none lit is one sound, and pressing the lit one
+     again goes back to it; the line under the strip says so while none is lit ("One
+     sound. Press Key, Notes or Layer for two hands; the lit one again for one").
+   Either way, choosing two hands from Dyad or Mono plays Poly.
+4. **Which end is counted** is on the strip, by notes only: a small *low · high* toggle
+   at the strip's edge, on the counted side. Chosen over pressing the end you want
+   counted from, because a press on a place already means *how many*: a press on an end
+   would mean two things, and the second (which end) would be invisible until it
+   happened. The toggle also says, where the count starts, what the places alone do not.
+5. **The Chord window is not on Play.** By notes, one line under the strip: *Chord window:
+   10 ms, in Settings* (Settings › MIDI). In the mockup *in Settings* opens a stand-in
+   slider so the dealing can still be played with; the fit is measured with it shut,
+   since it is not a row of the face.
+6. **The panel switch is Figure · Expression only** (Figure: outline count and which,
+   *Each · A vs B* with two hands, Tune a chord; Hold in Dyad. Expression: bend, wheel,
+   pressure, velocity). Where Expression lives is selectable, and measured.
+
+### Fit, every combination
+
+Columns 1 and 3 at their tightest across Dyad, Mono, Poly alone and each hands choice,
+each panel open (column 2 is today's: 185 px spare at 1400x900, 141 at 960x600). The
+two treatments of one sound measure the same: both are one row in the strip's head.
+
+| | Expression in the switch | under Figure | in column 3 |
+|---|---|---|---|
+| 1400x900, column 1 | 132 | **over by 6** | 191 |
+| 1400x900, column 3 | 413 | 413 | 216 |
+| 960x600 at 90%, column 1 | 69 | **over by 47** | 119 |
+| 960x600 at 90%, column 3 | 323 | 323 | 157 |
+
+So Expression **in column 3**, under the Voice filter: it is the only home where
+everything on Play is on show at once and fits with room at both sizes. Column 1 then
+holds only the keyboard's three questions, and the Figure · Expression switch goes - no
+switch is left on Play but the Notes switch and the hands choice. Under Figure does not
+fit. The switch fits too, if the owner would rather keep Expression next to the keyboard
+and pay a press for it. E opens with Expression in column 3.
+
+### The three lines, for E as drawn (Two hands, Expression in column 3)
+
+**Answers:** every common thing is one press - the strip is the Hands section, its
+choice in its head, ‹ › for any split point, the counted end at its edge, the places for
+how many; the Chord window is a note, since it is set once. Nothing opens over anything.
+**Costs:** (i) is one more press from one sound to a split, and two controls in the head
+while on; (ii) makes one sound no button's state, which its line has to teach. The strip
+shows two octaves, so a split point or held note elsewhere is behind ‹ ›. Expression
+moves away from the keyboard it describes.
+**Elsewhere:** a drawing that is its section, with its choices on its edges, fits
+wherever the thing has a picture - the Amp envelope's curve, the drawn cycle, the Plane,
+a brush - and a switch over one panel the plain values (Ink's extras, the Picture's
+Advanced).
+
+### My lean
+
+(i) **Two hands** on or off: one sound is a named state and the three kinds only appear
+when they mean something, and it costs nothing in height. (ii) is quicker by one press
+and the owner may prefer it by feel; its hint is the cost. Expression in column 3.
+
+### What building E would touch, beyond A's and D's lists
+
+The strip replaces `midiLayersRow` and `midiLayerRow`: the hands choice drives
+`midiLayers` and `midiSplitBy` (one, split by key, split by notes, layered) as a view, the
+octave buttons are the strip's own view state (not stored), the end toggle drives
+`midiSplitEnd`, and the places `midiSplitCount`. The Chord window moves to Settings ›
+MIDI (`data-home="settings"`), which `benchtest.py` checks; Expression's
+`data-col` moves to 3, and the Play fit in `patchtest.py` and `fittest.py` changes with it.
+Learn goes: a press on the strip is the learn, and ‹ › reach any key, though playing the
+split key on a keyboard was Learn's one advantage and could stay as a long press.
+
 ## How the mockup was checked
 
 The dealing is the instrument's rules (`split-by-notes.md`), held by
@@ -322,7 +404,8 @@ at 10 ms and timed from the first note, the look-ahead (nothing dealt before the
 closes), the pedal, Highest and the key split. Seen red against three mutants of the
 mockup: fill in place of rank (five cases fail), a window sliding with each note (one
 fails) and dealing each note as it lands (the look-ahead's case fails). Opened in Chromium at both sizes in every layout, with
-each editor open, D in every toggle and place of the hands choice, in the page's dark
+each editor open, D in every toggle and place of the hands choice, E in both treatments
+of one sound and every home for Expression, in the page's dark
 light, and at 375 px wide (no sideways scroll; the
 mockup scales down). `designtest.py` reads only `scope.html` and `DESIGN.md`, neither
 changed, so it has nothing new to read; the mockup uses DESIGN.md's tokens hex for hex.
