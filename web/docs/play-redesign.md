@@ -409,9 +409,9 @@ The owner on E (16 Nov): "E is definitely the right move." F is E with four chan
    the strip and the line under both: 209 px tall at 1400x900, and the Voice filter's
    column 25 px over at 960x600. Stacking the name, the switch and the keys link in the
    left column, which the strip's height leaves empty anyway, took 31 px off.
-2. **How many octaves.** Beside the switch the strip has about 590 px at 1400x900 and 470
-   at 960x600. Four octaves are 29 white keys: 20 px each at 1400x900, 16 px at 960x600.
-   Three are 22 keys, 21 px at 960x600. So **four at 1400x900, three at 960x600**, the
+2. **How many octaves.** Beside the switch the strip has 586 px at 1400x900 and 494 at
+   960x600. Four octaves are 29 white keys: 20 px each at 1400x900, 17 px at 960x600.
+   Three are 22 keys, 22 px at 960x600. So **four at 1400x900, three at 960x600**, the
    keys never under 20 px, with ‹ › for the rest and the range named in the line.
    (Across the band's whole width, five would fit at 1400x900, but the switch beside the
    strip is worth more than a fifth octave.)
