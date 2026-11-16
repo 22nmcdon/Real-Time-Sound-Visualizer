@@ -6930,10 +6930,40 @@ was rewritten. A writer has to judge "moved" by the same rule the plain run uses
 what has not moved exactly as it was (`golden_runs.py`, `kept`). Second, every rule that
 asks which notes are held "now" has to say what now is: struck at once, a chord's notes
 arrive a millisecond or two apart in no fixed order, so the split by notes deals the
-notes that start within 25 ms of a gather's first as one chord (`Keyboard::kGather`, the
-arpeggiator's figure). Tests that struck notes one after another at the same instant were
-testing that window, not the rule they were written for, and now strike them 40 ms apart
-(`pieces/splitnotes.py`'s `APART`); layertest's 30 ms between notes was too close to the
-window's edge on a loaded machine and is 60. And deciding a note's hand late has a sound:
-a note moved by its gather is released in the first hand, and a release rings, which is
-why how it should sound went to the owner (split-by-notes.md, "Not settled").
+notes that arrive within a window of a gather's first as one chord (10 ms since the
+look-ahead, the entry after this). Tests that struck notes one after another at the same
+instant were testing that window, not the rule they were written for, and now strike them
+40 ms apart (`pieces/splitnotes.py`'s `APART`); layertest's 30 ms between notes was too
+close to the window's edge on a loaded machine and is 60. And deciding a note's hand late
+has a sound: a note moved by its gather is released in the first hand, and a release
+rings, which is why how it should sound went to the owner, who chose the look-ahead.
+
+**A delay that keeps the playing's shape, and the three things that broke "to the sample"
+(16 Nov, the split by notes' look-ahead).** Split by notes every note, release and the
+pedal wait the Chord window, 10 ms unless set (0 to 15; at 0 nothing waits), from their own arrival, so a chord is dealt
+before any of it sounds and nothing moves once it does; the owner's choice over holding a
+gather and letting it go as a block, which would have made every roll and grace note a
+chord. The check that settles it compares the instrument to itself to the bit - a chord
+split by notes against the key split with every note 10 ms later, on every bank preset -
+and getting it there found three things worth knowing before anyone writes a check of that
+kind again. First, the instrument turns a wake's time into a sample with `ceil`, and its
+clock is milliseconds summed block by block, so a wake due exactly on a sample comes out a
+hair past it (a sample late) or a hair before a block's end (played before the block's step,
+where a message on that sample plays after it); a wake within a millionth of a sample of a
+whole sample is now placed on it (`placed`, `Instrument::play`). The arpeggiator's first
+step is served the same way. Second, `render_cpp` starts a new host block at every `to`,
+and the generator retires a finished voice at the end of a block, so two runs whose stops
+differ differ where a released voice ends, by a few samples; give both runs the same stops
+(a message the keyboard ignores - polyphonic pressure - where the other has a note).
+Third, on the site, the worklet is a thread of its own that takes each message as it is
+posted, so three notes the page plays in one turn reached the instrument as far apart as
+the page's work on each took - over 10 ms on a cold page, the look-ahead's whole window,
+and layertest's chord struck at once was dealt a note at a time twice in a dozen pages. What
+one turn sends the worklet now goes together as the turn ends (`send` in the site's host;
+the main-thread stand-in is still told at once). A known limit, said where a reader will hit
+it: notes from a Web MIDI port each arrive in an event of their own, and a page busy for
+more than 10 ms between two notes of a chord still hands them over that far apart; their
+timestamps cannot help, since the keyboard cannot deal a note it has not yet been given.
+The plugin is not affected (a host places each note at its sample) and does not report the
+10 ms to the host as latency, since a host would then play every note in every mode early
+(`PluginProcessor.h`).

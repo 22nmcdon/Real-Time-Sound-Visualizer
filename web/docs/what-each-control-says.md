@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-326 controls: 326 lines, none marked as removed by a later stage, 77 wanting a paragraph
+327 controls: 327 lines, none marked as removed by a later stage, 78 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -18,8 +18,8 @@ added the header's Editing and a link on eleven sections; on 11 Nov, which added
 of *How the picture responds*; and on 12 Nov, with the constellation's prototype, Draw's way,
 its place, its hands and Reseed; and again on 12 Nov, the Width beside the Output; and on
 14 Nov, which took those four away again with the prototype, in stage 5's step 4; and on
-16 Nov, which added the split by notes' three, and took the Quarter turn away when every
-note came to be heard in both ears).
+16 Nov, which added the split by notes' three and its Chord window, and took the Quarter
+turn away when every note came to be heard in both ears).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -97,9 +97,10 @@ them; G3b gives each a `data-say` with the key in the first column:
 | midiPoly | Poly | Every held note sounds, up to eight, each with its own envelope. Draw chooses which of them make the figure's outline. | 118 | yes: outline notes lean to their side and still sound in both ears, the rest drawn along the diagonal; Glide, Phase and Interval do nothing to a chord; the voice budget |
 | midiLayers | Layers | Whether a second sound plays: one, a split with low notes one sound and high another, at a key or by the notes held, or layered, every note both. | 145 | yes: Poly only; kept but not applied while your input is drawn, and the note under it says so |
 | midiSplitLearn | Split point | The key the upper layer starts from. Press it, then play that key on your keyboard or the screen's. | 99 | - |
-| midiSplitBy | Split by | How a split gives each note its hand: at a key, low notes one sound and high another, or by the notes held, counted from one end. | 129 | yes: a note's hand is set as it starts, by its rank among the notes held, and kept until it is let go; a key the pedal holds still counts; a key struck again is ranked again; Learn is the key split's only |
+| midiSplitBy | Split by | How a split gives each note its hand: at a key, low notes one sound and high another, or by the notes held, counted from one end. | 129 | yes: by notes every note waits the Chord window (10 ms by default), so a chord's notes landing a few milliseconds apart are dealt together by pitch before any sounds; a note's hand is set as it starts, by its rank among the notes held, and kept until it is let go; a key the pedal holds still counts; a key struck again is ranked again; Learn is the key split's only |
 | midiSplitEnd | Counted | By notes, which end is counted: the lowest notes held for the lower hand, or the highest for the upper. The rest go to the other hand. | 134 | - |
 | midiSplitCount | How many | By notes, how many the counted hand takes, one to six. With fewer held than that, every note is its own. | 104 | - |
+| midiSplitWindow | Chord window | Split by notes, every note waits this many ms so a chord struck at once is dealt by pitch. 0 plays at once. Here until Play is laid out again. | 142 | yes: 0 to 15 ms, 10 by default; the release and the pedal wait alike, so each note keeps its length and a roll its gaps; at 0 each note is dealt by its rank as it arrives |; in Settings' MIDI section for now, by the owner's word, until Play's Poly and split rows are redesigned
 | midiLayerPair | How the two layers are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y. Every note is heard in both ears. | 133 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B draws A on X only and B on Y only, and each note is heard in both ears at the Width all the same |
 | midiDrawCount | Draw | How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears. | 132 | - |
 | midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |

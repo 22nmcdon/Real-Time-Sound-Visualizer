@@ -56,6 +56,7 @@ SWEEP = """async ([bands]) => {
   const lanes = laneCount();
   setView('bench');
   const over = [], cases = [], mismeasured = [];
+  let splitRow = null;
   let planeRows = null;
   const rackOpened = [];
   const measure = (label) => {
@@ -113,6 +114,32 @@ SWEEP = """async ([bands]) => {
        beside its menu in Learn's place, the wider of its two ways. */
     el.midiSplitBy.value = 'notes'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     measure('tone+keys+photo+layers+planeB+bynotes');
+    /* And the row itself (16 Nov): the pairing menu, the end and the count
+       on one line inside it, each as wide as it is on its own so its value
+       reads whole - the menus are flex items, and a row too narrow squeezes
+       them rather than breaking the line, which would still fit the tab. The
+       null puts the Chord window's menu back beside the count, where it was
+       first built and did not fit (it lives in Settings for now). */
+    setBenchTab('play'); await wait(80);
+    const natural = (m) => {
+      const c = m.cloneNode(true); c.removeAttribute('id'); c.hidden = false;
+      c.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;flex:none;width:auto;min-width:0;max-width:none';
+      m.parentNode.appendChild(c); const w = c.getBoundingClientRect().width; c.remove(); return w;
+    };
+    const lineOf = (menus) => {
+      const row = el.midiLayerRow.getBoundingClientRect(), boxes = menus.map((m) => m.getBoundingClientRect());
+      return { shown: menus.every((m) => !m.hidden && m.offsetParent),
+               oneLine: Math.max(...boxes.map((b) => b.top)) - Math.min(...boxes.map((b) => b.top)) <= 2,
+               inside: boxes.every((b) => b.left >= row.left - 1 && b.right <= row.right + 1),
+               whole: menus.every((m, i) => boxes[i].width >= natural(m) - 1),
+               widths: boxes.map((b, i) => Math.round(b.width) + '/' + Math.round(natural(menus[i]))) };
+    };
+    const three = [el.midiLayerPair, el.midiSplitEnd, el.midiSplitCount];
+    splitRow = lineOf(three);
+    const home = el.midiSplitWindow.parentNode, grow = el.midiSplitCount.parentNode;
+    grow.appendChild(el.midiSplitWindow); await wait(60);
+    splitRow.widened = lineOf(three.concat([el.midiSplitWindow]));
+    home.appendChild(el.midiSplitWindow);
     el.midiSplitBy.value = 'key'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     /* And the rack (F5) at its tallest: every effect on, so no module is
        folded to its line, and each one opened in turn with its rest showing,
@@ -156,7 +183,7 @@ SWEEP = """async ([bands]) => {
     row.cardsOver = el.benchBody.scrollHeight - el.benchBody.clientHeight;
     document.body.dataset.chips = ''; await wait(80);
   }
-  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row };
+  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row, splitRow };
 }"""
 
 # The Picture's Advanced (11 Nov): with a split, so what Scan reads and the
@@ -259,6 +286,14 @@ with sync_playwright() as pw:
             check("the layered case had the upper's own Turn in the screen's rotation's place, the Radius row, the header's "
                   "Editing and every section's link showing, each the hand's own (%dx%d)" % (w, h),
                   r["planeRows"] == [False, False, False, False, 0], str(r["planeRows"]))
+            sr = r["splitRow"] or {}
+            check("split by notes, the pairing, the end and the count are on one line inside the row, each read whole (%dx%d)" % (w, h),
+                  sr.get("shown") and sr.get("oneLine") and sr.get("inside") and sr.get("whole"), str(sr))
+            wid = sr.get("widened") or {}
+            # Not at 1100x860, whose column is wide enough for four: the rows at the other four sizes are what put it in Settings.
+            if (w, h) != (1100, 860):
+                check("null: the Chord window's menu beside the count, a fourth, does not read whole (%dx%d)" % (w, h),
+                      not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
                   r["rackOpened"] == ["plane", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 

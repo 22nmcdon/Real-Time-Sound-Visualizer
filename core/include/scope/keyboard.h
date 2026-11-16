@@ -142,9 +142,9 @@ struct Panel {
    where the note ranked among those held as it began, which nothing after
    changes. An arpeggio's step is a copy of a held note, a few octaves up, and
    keeps that note's hand. Read only while the split is by notes.
-   `gather` (16 Nov) is which gather the note started in: the notes that start
-   within kGather of a gather's first are one struck chord, ranked together by
-   pitch rather than in the order the fingers happened to land
+   `gather` (16 Nov) is which gather the note started in: the notes that
+   arrive within the Chord window of a gather's first are one struck chord, ranked
+   together by pitch rather than in the order the fingers happened to land
    (split-by-notes.md, "A struck chord"). */
 struct Held { int note; double velocity; int hand = 0; int gather = 0; };
 
@@ -156,6 +156,21 @@ enum class LayerMode { Off, Split, Layer };
 enum class SplitBy { Key, Notes };
 // How many notes a split by notes counts at the most: the owner's six (split-by-notes.md).
 inline constexpr int kSplitCountMost = 6;
+/* The split by notes' Chord window (the owner's, 16 Nov): how long every note
+   waits there, in whole milliseconds, and so how far apart a chord's notes can
+   land and still be dealt as one. Ten by default because a tight block chord
+   lands within about ten, a 5-pin MIDI cable takes about one a note (three
+   bytes at 31 250 baud) and a roll a player means as a roll is slower; and
+   because the wait is latency on every note in that mode, which a player
+   feels by 25. Fifteen at the most, for a player who spreads a chord wider
+   and will take the wait. Nought waits for nothing and deals strictly as the
+   notes come. Its own figure, not the arpeggiator's kArpGather: that one
+   waits once a phrase, for a chord to start stepping from. */
+inline constexpr int kChordWindowDefault = 10;
+inline constexpr int kChordWindowMost = 15;
+inline int chordWindowOf(double ms) {
+  return std::isfinite(ms) ? static_cast<int>(std::fmax(0, std::fmin(kChordWindowMost, std::trunc(ms)))) : kChordWindowDefault;
+}
 
 inline DrawWhich drawWhichNamed(std::string_view w) {
   return w == "lowest" ? DrawWhich::Lowest : w == "highest" ? DrawWhich::Highest
@@ -171,94 +186,62 @@ class Keyboard {
   explicit Keyboard(NoteTarget& target, RealtimeIn* realtime = nullptr) : t_(target), realtime_(realtime) {
     notes_.reserve(128);
     sustained_.reserve(128);
-    pending_.reserve(128);
+    ahead_.reserve(256);
+    wakes_.reserve(256);
+    pitches_.reserve(256);
     for (auto& list : chord_) list.reserve(kPolyVoices);
     inner_.reserve(kPolyVoices);
   }
 
   // --- the stack ------------------------------------------------------------
 
+  /* The split by notes looks ahead (the owner's decision, 16 Nov,
+     split-by-notes.md): while it deals the hands, every note, every release
+     and the pedal wait the Chord window from their own arrival and then happen in
+     the order they came, so a roll, a grace note or a run keeps its gaps to
+     the sample, only later. A struck chord's notes reach the keyboard a
+     millisecond or two apart in whatever order the fingers land; waiting
+     means every note that arrives within the window of a gather's first is
+     known before that first sounds, so the gather is dealt as one chord, by
+     pitch, and no note is ever moved once it sounds - which is what left a
+     moved note ringing on in the other hand's sound (the ghost) when the
+     gather sounded at once and dealt again. Everything else - the key split,
+     every other mode, the arpeggiator's own steps - plays at once. The
+     arrivals are kept in `ahead_` and played at the keyboard's wakes, which
+     the instrument serves at their sample. A Chord window of nought looks
+     ahead not at all: every note is played at once, each its own gather,
+     dealt strictly as it comes. */
+  bool lookingAhead() const {
+    return layers_.window > 0 && layersOn() && layers_.mode == LayerMode::Split && layers_.by == SplitBy::Notes;
+  }
+
   // midiNoteOn
   void noteOn(int note, double velocity) {
     if (velocity == 0) { noteOff(note); return; }
-    // Struck again under the pedal: held by a finger now.
-    forget(sustained_, note);
-    // The split point is learned from a key, and the key still plays.
-    // Learn is the key split's: by notes there is no point to learn.
-    if (layers_.learning && layers_.by == SplitBy::Key) { layers_.point = note; layers_.learning = false; learned_++; }
-    const auto at = find(note);
-    if (at != notes_.end()) notes_.erase(at);
-    /* A gather opens with the first note after the last one closed and
-       closes kGather later, timed from its first note rather than sliding,
-       so a fast run is not one long chord. Kept whatever the split, since a
-       control moved to the split by notes deals what is held by its gathers. */
-    if (!(now_ < gatherUntil_)) {
-      // A gather whose close was never woken for (a caller that does not wake the keyboard) strikes now.
-      if (!pending_.empty()) strikeGathered();
-      gather_++;
-      gatherUntil_ = now_ + kGather;
-    }
-    /* Its hand by notes: ranked among every note held as it starts (a key
-       held only by the pedal still sounds, so it counts), and a key struck
-       again is a note starting again, so it is ranked again. The notes of its
-       own gather that came before it are dealt again with it, as one chord;
-       nothing that started before the gather moves. */
-    notes_.push_back({ note, velocity / 127, 0, gather_ });
-    const bool notesSplit = layersOn() && layers_.mode == LayerMode::Split && layers_.by == SplitBy::Notes;
-    for (auto& h : notes_) {
-      if (h.gather != gather_) continue;
-      const int was = h.hand;
-      h.hand = dealtAmong(h);
-      /* A note moved by its gather (sounding a millisecond or two in the hand
-         it was first dealt) is struck in the hand it is in now: that hand's
-         fade restarts for it, as it would have had the note arrived in it. */
-      if (notesSplit && &h != &notes_.back() && h.hand != was) strikes_[h.hand]++;
-      for (auto& p : pending_) if (p.note == h.note && p.gather == h.gather) p.hand = h.hand;
-    }
-    // Counted for the layer it is in: split, a bass note restarts only the bass's fade.
-    if (layersOn() && layers_.mode == LayerMode::Split) strikes_[handOf(notes_.back())]++;
-    else { strikes_[0]++; strikes_[1]++; }
-    applyNotes();
-    /* And on the screen, where Scan reads (P7b): the layers the note is in,
-       A's as 1 and B's as 2. Split by notes the layers are not known until
-       the gather closes, so the strike waits for it (a wake at its close,
-       kGather at the most): an arc laid in the hand a note was dealt first
-       would stay in that hand's picture for as long as the Persistence keeps
-       it, which a moved sound does not. */
-    if (!onStrike_) return;
-    if (notesSplit) {
-      if (pending_.empty()) wakes_.push_back(gatherUntil_);
-      pending_.push_back(notes_.back());
-    } else onStrike_(note, velocity / 127, layersOf(note));
+    if (lookingAhead()) { wait(Ahead::On, note, velocity); return; }
+    catchUp();
+    start(note, velocity, -1, 0);
   }
 
   // midiNoteOff. Under the pedal the key comes up and the note does not.
   void noteOff(int note) {
-    const auto at = find(note);
-    if (at == notes_.end()) return;
-    if (sustain_) { remember(sustained_, note); return; }
-    notes_.erase(at);
-    applyNotes();
+    if (lookingAhead()) { wait(Ahead::Off, note, 0); return; }
+    catchUp();
+    stop(note);
   }
 
-  // midiSetPedal: half-way and past is down, as MIDI has it for a switch.
+  /* midiSetPedal: half-way and past is down, as MIDI has it for a switch.
+     Split by notes it waits with the notes, so a key let go just before the
+     pedal goes down is still let go, as it was played. */
   void setPedal(double value) {
-    pedalTarget_ = std::fmax(0.0, std::fmin(1.0, value));
-    const bool down = pedalTarget_ >= 64.0 / 127;
-    if (down != sustain_) {
-      sustain_ = down;
-      if (!down && !sustained_.empty()) {
-        for (std::size_t i = notes_.size(); i-- > 0;) {
-          if (holds(sustained_, notes_[i].note)) notes_.erase(notes_.begin() + static_cast<std::ptrdiff_t>(i));
-        }
-        sustained_.clear();
-        applyNotes();
-      }
-    }
+    if (lookingAhead()) { wait(Ahead::Pedal, 0, value); return; }
+    catchUp();
+    pedal(value);
   }
 
   // midiPanic. What the pedal was holding goes; the pedal stays where it is.
   void panic() {
+    ahead_.clear();  // nothing waiting plays after a panic
     sustained_.clear();
     if (notes_.empty()) return;
     notes_.clear();
@@ -401,6 +384,10 @@ class Keyboard {
     redeal();
     applyNotes();
   }
+  /* The Chord window (16 Nov): changing it deals nothing; what waits plays when it is due, and
+     a window of nought plays it ahead of the next arrival (catchUp). */
+  void setSplitWindow(double ms) { layers_.window = chordWindowOf(ms); }
+  int splitWindow() const { return layers_.window; }
   SplitBy splitBy() const { return layers_.by; }
   bool splitCountUpper() const { return layers_.countUpper; }
   int splitCount() const { return layers_.count; }
@@ -472,7 +459,7 @@ class Keyboard {
     const auto at = std::min_element(wakes_.begin(), wakes_.end());
     const double when = *at;
     wakes_.erase(at);
-    if (!pending_.empty() && when >= gatherUntil_) strikeGathered();
+    while (!ahead_.empty() && !(when < ahead_.front().at)) playAhead();
     arpTick(when);
   }
   struct ArpState {
@@ -504,15 +491,17 @@ class Keyboard {
     SplitBy by = SplitBy::Key;
     bool countUpper = false;
     int count = 1;
+    int window = kChordWindowDefault;
   };
   Settings settings() const {
     return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_,
-             layers_.by, layers_.countUpper, layers_.count };
+             layers_.by, layers_.countUpper, layers_.count, layers_.window };
   }
   void setSettings(const Settings& s) {
     mode_ = s.mode; draws_ = s.draws; layers_.mode = s.layers; layers_.point = s.point; layers_.against = s.against;
     layers_.learning = false; polyJust_ = s.polyJust; hold_ = s.hold; truth_ = s.truth; follow_ = s.follow;
     layers_.by = s.by; layers_.countUpper = s.countUpper; layers_.count = std::max(1, std::min(kSplitCountMost, s.count));
+    layers_.window = chordWindowOf(s.window);
     // A setup loaded over held keys deals them by its own split, as a control moved would.
     redeal();
   }
@@ -575,7 +564,7 @@ class Keyboard {
   struct Interval { int index = 0, octaves = 0; };
   struct Layers {
     LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; int edit = 0;
-    SplitBy by = SplitBy::Key; bool countUpper = false; int count = 1;
+    SplitBy by = SplitBy::Key; bool countUpper = false; int count = 1; int window = kChordWindowDefault;
   };
   int learned_ = 0;
 
@@ -612,14 +601,102 @@ class Keyboard {
       notes_[i].hand = layers_.countUpper ? (counted ? 1 : 0) : (counted ? 0 : 1);
     }
   }
-  /* The gather closed: each note it struck laid on the screen in the hand it
-     was dealt last - the hand it is in now, or for a note let go inside the
-     gather the hand it sounded in. */
-  void strikeGathered() {
-    for (const auto& p : pending_) {
-      if (onStrike_) onStrike_(p.note, p.velocity, p.hand + 1);
+  /* What waits in the look-ahead: a note, a release or the pedal, the moment
+     it is due (its arrival and the Chord window), and for a note, once its gather
+     is dealt, the gather and its hand. */
+  struct Ahead {
+    enum Kind { On, Off, Pedal };
+    Kind kind; int note; double value; double at; int gather; int hand;
+  };
+  void wait(Ahead::Kind kind, int note, double value) {
+    ahead_.push_back({ kind, note, value, now_ + layers_.window, 0, -1 });
+    wakes_.push_back(now_ + layers_.window);
+  }
+  /* The look-ahead's first arrival, played. A note not yet dealt opens a
+     gather and deals it: the notes waiting undealt are exactly those that
+     arrived within the Chord window of this one, since this one arrived first and
+     is due now - so the window is timed from the gather's first note rather
+     than sliding (a fast run is not one long chord), and half open (a note
+     arriving as the first sounds, at the same sample, waits for the next).
+     Each is ranked among the notes held now and the rest of its gather, by
+     pitch. */
+  void playAhead() {
+    if (ahead_.front().kind == Ahead::On && ahead_.front().hand < 0) dealGather();
+    const Ahead a = ahead_.front();
+    ahead_.erase(ahead_.begin());
+    if (a.kind == Ahead::On) start(a.note, a.value, a.hand, a.gather);
+    else if (a.kind == Ahead::Off) stop(a.note);
+    else pedal(a.value);
+  }
+  /* What waits, played now, in order: a control has left the split by notes
+     and something arrives to be played at once, which must not pass what came
+     before it (a release overtaking its own note would leave the note held). */
+  void catchUp() { while (!ahead_.empty()) playAhead(); }
+  void dealGather() {
+    gather_++;
+    for (auto& a : ahead_) if (a.kind == Ahead::On && a.hand < 0) a.gather = gather_;
+    // Every pitch held or gathered, once: a key held and struck again in the gather is one note.
+    pitches_.clear();
+    for (const auto& h : notes_) if (!holds(pitches_, h.note)) pitches_.push_back(h.note);
+    for (const auto& a : ahead_) if (a.kind == Ahead::On && a.gather == gather_ && !holds(pitches_, a.note)) pitches_.push_back(a.note);
+    for (auto& a : ahead_) {
+      if (a.kind != Ahead::On || a.gather != gather_) continue;
+      int beyond = 0;
+      for (const int p : pitches_) if (layers_.countUpper ? p > a.note : p < a.note) beyond++;
+      const bool counted = beyond < layers_.count;
+      a.hand = layers_.countUpper ? (counted ? 1 : 0) : (counted ? 0 : 1);
     }
-    pending_.clear();
+  }
+
+  /* A note starting, in a hand already dealt (`hand` 0 or 1, from the
+     look-ahead) or, played at once, dealt now. */
+  void start(int note, double velocity, int hand, int gather) {
+    // Struck again under the pedal: held by a finger now.
+    forget(sustained_, note);
+    // The split point is learned from a key, and the key still plays.
+    // Learn is the key split's: by notes there is no point to learn.
+    if (layers_.learning && layers_.by == SplitBy::Key) { layers_.point = note; layers_.learning = false; learned_++; }
+    const auto at = find(note);
+    if (at != notes_.end()) notes_.erase(at);
+    if (hand < 0) {
+      /* Played at once (not split by notes), a note still keeps its gather
+         and a hand by notes, since a control moved to the split by notes
+         deals what is held by its gathers (redeal): ranked among every note
+         held, a pedal-held key included, and the notes of its own gather
+         that came before it dealt again with it. Nothing here is heard. */
+      if (!(now_ < gatherUntil_)) { gather_++; gatherUntil_ = now_ + layers_.window; }
+      notes_.push_back({ note, velocity / 127, 0, gather_ });
+      for (auto& h : notes_) if (h.gather == gather_) h.hand = dealtAmong(h);
+    } else notes_.push_back({ note, velocity / 127, hand, gather });
+    // Counted for the layer it is in: split, a bass note restarts only the bass's fade.
+    if (layersOn() && layers_.mode == LayerMode::Split) strikes_[handOf(notes_.back())]++;
+    else { strikes_[0]++; strikes_[1]++; }
+    applyNotes();
+    // And on the screen, where Scan reads (P7b): the layers the note is in, A's as 1 and B's as 2.
+    if (onStrike_) onStrike_(note, velocity / 127, layersOf(note));
+  }
+
+  void stop(int note) {
+    const auto at = find(note);
+    if (at == notes_.end()) return;
+    if (sustain_) { remember(sustained_, note); return; }
+    notes_.erase(at);
+    applyNotes();
+  }
+
+  void pedal(double value) {
+    pedalTarget_ = std::fmax(0.0, std::fmin(1.0, value));
+    const bool down = pedalTarget_ >= 64.0 / 127;
+    if (down != sustain_) {
+      sustain_ = down;
+      if (!down && !sustained_.empty()) {
+        for (std::size_t i = notes_.size(); i-- > 0;) {
+          if (holds(sustained_, notes_[i].note)) notes_.erase(notes_.begin() + static_cast<std::ptrdiff_t>(i));
+        }
+        sustained_.clear();
+        applyNotes();
+      }
+    }
   }
 
   std::vector<Held>::iterator find(int note) {
@@ -922,13 +999,10 @@ class Keyboard {
   // The arpeggiator, and what it needs from outside: the time, the tempo, the
   // out, its random walk, and its timers.
   static constexpr double kArpGather = 25;  // ARP_GATHER: how long the first key waits for the chord
-  /* How long after a gather's first note a note is still part of the same
-     struck chord, for the split by notes (16 Nov): the arpeggiator's figure,
-     so one instrument has one idea of "at once". */
-  static constexpr double kGather = kArpGather;
   int gather_ = 0;
   double gatherUntil_ = -std::numeric_limits<double>::infinity();
-  std::vector<Held> pending_;  // the gather's notes, for the strike laid when it closes
+  std::vector<Ahead> ahead_;  // what waits in the look-ahead, in the order it arrived
+  std::vector<int> pitches_;  // dealGather's scratch
   std::function<void()> onLayers_;  // the panel's syncLayerPanel
   std::function<void(int, double, int)> onStrike_;  // the instrument's scanStrike (P7b)
   std::function<void(double)> onSwell_;  // the Picture slider, from the expression pedal

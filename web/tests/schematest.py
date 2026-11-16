@@ -59,6 +59,7 @@ CONTROL = {
     "layers": "midiLayers", "layerPair": "midiLayerPair",
     # The split by notes (16 Nov): beside Layers, and beside the pairing menu.
     "splitBy": "midiSplitBy", "splitEnd": "midiSplitEnd", "splitCount": "midiSplitCount",
+    "splitWindow": "midiSplitWindow",
     # One menu shows whichever layer is on the panel.
     "midiDrawWhichB": "midiDrawWhich",
     # Button groups, a button a value, in the menu's order: the group must

@@ -3949,6 +3949,64 @@ int main() {
           lowerOnly(byNotes) && keptNotes == "notes", say(byNotes) + "; the project keeps splitBy " + keptNotes);
     check("null: the same project split by key at C4 plays all four in the lower hand",
           !lowerOnly(byKey) && byKey[2] > 1e-3 && byKey[3] > 1e-3 && keptKey != "notes", say(byKey) + "; splitBy " + keptKey);
+
+    /* The look-ahead (16 Nov): split by notes the keyboard holds every note
+       back 10 ms, so it can deal a chord before any of it sounds, and the
+       host is not told (PluginProcessor.h says why). A host's C3 at sample
+       40 of the third block, into the same project split by notes and by
+       key: the first sample heard is exactly 10 ms of samples later by
+       notes, and the host is told the same latency for both. The null is a
+       figure that counted the look-ahead, 10 ms more, which the told figure
+       must not be. */
+    double windowKept = -1;
+    const auto onset = [&](const char* by, const char* window = nullptr) {
+      const std::string json = std::string(R"({"shape":"sine","midiMode":"poly","layers":"split","splitAt":60,"splitBy":")") + by
+          + R"(","splitEnd":"lower","splitCount":1,"pictureAmount":0,"display":"xy")"
+          + (window ? std::string(R"(,"splitWindow":)") + window : std::string()) + "}";
+      const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(json)));
+      ScopeProcessor p;
+      if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
+      p.prepareToPlay(rate, block);
+      int first = -1;
+      for (int k = 0; k < 24; ++k) {
+        juce::AudioBuffer<float> buf(2, block);
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 2) m.addEvent(juce::MidiMessage::noteOn(1, 48, static_cast<juce::uint8>(100)), 40);
+        p.processBlock(buf, m);
+        for (int i = 0; i < block && first < 0; ++i)
+          if (std::fabs(buf.getSample(0, i)) + std::fabs(buf.getSample(1, i)) > 1e-6) first = k * block + i;
+      }
+      p.reportLatency();
+      juce::MemoryBlock saved;
+      p.getStateInformation(saved);
+      const auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(saved.getData()), saved.getSize()));
+      const auto* kept = decoded.setup.get(u"splitWindow");
+      windowKept = kept && kept->type == scope::Json::Type::Number ? kept->n : -1;
+      return std::make_pair(first, p.getLatencySamples());
+    };
+    const auto [notesAt, notesTold] = onset("notes");
+    const auto [keyAt, keyTold] = onset("key");
+    const int ahead = static_cast<int>(std::lround(0.010 * rate));
+    check("a host's note split by notes sounds exactly 10 ms of samples after the same note split by key",
+          keyAt > 2 * block && notesAt - keyAt == ahead,
+          "by notes from sample " + std::to_string(notesAt) + ", by key from " + std::to_string(keyAt) + ", 10 ms is " + std::to_string(ahead));
+    check("and the host is told the same latency for both: the look-ahead is not reported",
+          notesTold == keyTold && notesTold >= 0, "told " + std::to_string(notesTold) + " by notes, " + std::to_string(keyTold) + " by key");
+    check("null: a figure that counted the look-ahead would be 10 ms more than the key split's", notesTold != keyTold + ahead,
+          std::to_string(keyTold + ahead));
+    /* The Chord window (16 Nov) is the project's: one that sets it to 0
+       plays a host's note split by notes at once, on the key split's sample,
+       and keeps the 0 in its state; one set to 15 waits 15 ms. The null is
+       the default's 10 ms, which neither may be. */
+    const int zeroAt = onset("notes", "0").first;
+    const double zeroKept = windowKept;
+    const int fifteenAt = onset("notes", "15").first;
+    check("a project with a Chord window of 0 plays a host's note split by notes at once, and keeps the 0",
+          zeroAt == keyAt && zeroKept == 0, "from sample " + std::to_string(zeroAt) + ", kept " + num(zeroKept));
+    check("and one of 15 waits 15 ms of samples", fifteenAt - keyAt == static_cast<int>(std::lround(0.015 * rate)),
+          std::to_string(fifteenAt - keyAt));
+    check("null: the default window's 10 ms is neither", zeroAt - keyAt != ahead && fifteenAt - keyAt != ahead);
   }
 
   std::printf("\n--- the latency told to the host ---\n");
