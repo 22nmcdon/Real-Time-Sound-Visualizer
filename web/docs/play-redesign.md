@@ -6,10 +6,10 @@ with menus inside menus. This is a mockup to look at and click, not a change to 
 instrument. Nothing in `scope.html` or the core has been touched.
 
 **The page:** [`mockups/play/index.html`](mockups/play/index.html), one self-contained
-file. It opens on round 4's layout F (below); round 1's Today, A, B and C, round 2's D and
-round 3's E are kept beside it for reference. Open it in a browser, choose a layout along the top, and play it with the computer
+file. It opens on round 5's layout G (below); the earlier rounds' layouts, Today and A to F,
+are kept beside it for reference. Open it in a browser, choose a layout along the top, and play it with the computer
 keys (A to K, W E T Y U, Z and X for the octave, Space for the pedal) or the keys under
-the mockup. The pictures beside it (`00-today.png` to `14-f-by-notes-at-960x600.png`) are the same
+the mockup. The pictures beside it (`00-today.png` to `17-g-at-960x600.png`) are the same
 layouts, for reading this without opening the page.
 
 ## The three complaints
@@ -476,6 +476,69 @@ Play (`data-col` gives way to a band), which `layouttest.py`, `patchtest.py` and
 the pairing and Tune a chord, out of `#midiGroup`) joins it. The strip's octave count
 follows the compact face (`setCompact`).
 
+## Round 5: G, everything about the notes in the band
+
+The owner on F (16 Nov): "F is definitely the right move." G is F with three changes.
+
+1. **Keys on screen leaves the band.** Its home: **the screen's toolbar**, beside Clear
+   and Enlarge, because the keys open under the screen, so the button belongs on the
+   screen's own toolbar, next to what they cover, rather than on a tab that is about the
+   sound. It is not on the tab, so the mockup only names it (the screen is not drawn).
+   Settings' *This window* was the other candidate; it is set more often than that.
+2. **Two hands at the band's top left**, beside its name, Poly only. With it on, *Key ·
+   Notes · Layer* sit centred in the strip's top edge as before; with it off, or in Dyad
+   and Mono, the strip's box has no head.
+3. **Figure on the band's face**, in the left column under the Dyad · Mono · Poly switch,
+   only what the mode uses: *Hold the interval* in Dyad; in Poly *Outline* (count and
+   which, side by side), *Tune a chord* as a short tick, and with two hands *Each · A vs
+   B* beside it; in Mono a one-line note. **Column 1 is Expression alone.**
+
+### Fit, every mode and hands choice
+
+| | Band | Column 1 | Column 2 | Column 3 |
+|---|---|---|---|---|
+| 1400x900, **Amp under the Generator (today)** | 139 | 222 | 30 | 258 |
+| 1400x900, Amp under the Voice filter | 139 | 222 | 210 | 78 |
+| 960x600 at 90%, **Amp under the Generator (today)** | 125 | 164 | 5 | 187 |
+| 960x600 at 90%, Amp under the Voice filter | 125 | 164 | 158 | 35 |
+
+**The band is no taller than F's** (139 and 125 px, tallest in Poly with two hands): the
+left column, name and pill, the switch, Outline's two menus side by side, and Tune a chord
+with Each · A vs B on one line, fits in the height the strip's box and its line already
+take. So nothing is over, and columns 2 and 3 are as they are today; column 1 gains what
+Figure took in F (222 and 164 px spare). The tightest number is again column 2's 5 px at
+960x600, and the smallest fix if the built face is over there is unchanged: the Amp
+envelope under the Voice filter (35 px or more in every column), the selector's other
+setting.
+
+A first version stacked Outline's row with a 100 px height it inherited from the face's
+row style and put column 2 64 px over; with the row its natural height the left column
+is no taller than the strip.
+
+**What the left column costs the strip.** The left column is wider than F's (228 px at
+1400x900, 212 at 960x600, so the Outline menus and *bass and melody* fit), and the strip
+narrower: 544 and 444 px against F's 586 and 494. Four octaves at 1400x900 are 19 px a
+key, three at 960x600 are 20 px. Still a fingertip; if 19 is too small at 1400x900, three
+octaves there would be 25 px.
+
+### The three lines
+
+**Answers:** everything about the notes is in the band - how they sound (the switch),
+how they are shared (Two hands top left, Key · Notes · Layer on the strip) and how they
+are drawn (under the switch, only what the mode uses) - and column 1 is Expression alone.
+Nothing is over and no section moves. **Costs:** the strip loses 42 to 50 px of width to
+the left column; keys on screen goes to the screen's toolbar. **Elsewhere:** a band that
+holds an instrument's whole playing surface, with the sound's sections as columns under
+it - the same split would suit the painting's Brushes (the brush and its strip on top,
+its sound's sections under).
+
+### What building G would touch, beyond F's list
+
+The Figure section is the band's left column rather than a column-1 section (the Draw
+menus, the pairing and Tune a chord, out of `#midiGroup`); `keysOpen` moves to the screen's
+toolbar (`#screenFrame`'s row, which Enlarge carries), so `enlargetest.py` and
+`windowtest.py` see one more button there and `fittest.py` one fewer row on Play.
+
 ## How the mockup was checked
 
 The dealing is the instrument's rules (`split-by-notes.md`), held by
@@ -488,7 +551,7 @@ mockup: fill in place of rank (five cases fail), a window sliding with each note
 fails) and dealing each note as it lands (the look-ahead's case fails). Opened in Chromium at both sizes in every layout, with
 each editor open, D in every toggle and place of the hands choice, E in both treatments
 of one sound and every home for Expression, F with both homes for Figure and for the Amp
-envelope, in the page's dark
+envelope, G with both homes for the Amp envelope, in the page's dark
 light, and at 375 px wide (no sideways scroll; the
 mockup scales down). `designtest.py` reads only `scope.html` and `DESIGN.md`, neither
 changed, so it has nothing new to read; the mockup uses DESIGN.md's tokens hex for hex.
