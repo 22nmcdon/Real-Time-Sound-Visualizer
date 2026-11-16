@@ -409,6 +409,17 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   `stepFade`): a knob's ring for a Key routing is the page's reckoning of the
   fade, where its gain is the instrument's. Found by step 6 (14 Nov).
 
+- **`--write-golden` refuses keyboard, matrix and level on an unchanged core** (found 15
+  Nov, item 1 of the owner's list). A rewrite run failed six checks - the dyad's wide
+  interval and clamps, mono's interval, the loop's total into a slot, an edit's depth, a
+  full-scale sine's level, and hearing the generator - and so refused those three files;
+  the plain run straight after passed all 1933 checks on the same tree. The six read the
+  recorded side of a comparison, and under `--write-golden` that side seems to come from
+  somewhere else; not looked into further. The same run rewrote functions, picture, scan,
+  score and restore for differences of 1e-13 and below, which nothing had asked for: a
+  rewrite keeps a file only when it differs, so it should probably keep one that differs
+  within the tolerance too.
+
 ## Owner's list
 
 - A few minor things from trying the click, swell and Width fixes on the testing
@@ -423,6 +434,99 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   windows fittest and windowtest measure and requires every header box the same, the mark
   shown only under `testing`; the nulls are the root, which shows none, and the mark put
   into the flow, which moves the header.
+- ~~**A single note sounds different in Poly from in Dyad or Mono**~~ (the owner, 15 Nov).
+  Fixed 15 Nov. Rendered offline one note at a time in each mode, on the base and every
+  bank preset, the three agreed in level, envelope, glide, filter and pitch and differed in
+  one thing: which way round the figure went. A dyad's lone note has its right channel a
+  quarter turn *ahead* (the Phase knob's default); Poly's quarter turn (`polyRound`, on in
+  the base and the bank) laid the right a quarter of the period *late*. The same circle
+  traced the other way: heard in the other ear, since a lone note's channels a quarter
+  apart are heard in the leading one, and read differently by Scan, which reads the figure
+  at the voice's own phase - the base sine with Scan at half came out 5 per cent louder in
+  Poly. The quarter turn now delays the *left* (`sound`, `scope/voices.h`), which is the
+  dyad's relation exactly for any wave; three quarters' delay on the right would have done
+  it for a sine, but the drawbars' 16' runs the phase over two cycles and would have needed
+  seven quarters, a silent right ear for a low note's first fifteen milliseconds.
+  `core/tests/pieces/modes.py`: a sine, the drawbars and a saw alone go round the same way
+  in all three modes with the right leading by a quarter period, and Scan at half makes
+  them as loud within one per cent (0.2137, 0.2145, 0.2145); the nulls are the dyad's own
+  left laid a quarter late, which goes round the other way, and the dyad with Phase at 270,
+  which Scan reads 5 per cent louder; against the core as it was, every check but the nulls
+  goes red. Kept different, by design, and said where a player meets it: Mono's second
+  channel is the Interval knob's (a lone note is a unison only at unison); Dyad's Hold keeps
+  the last interval; Interval, Phase and Tuning act in Dyad and Mono and are idle in Poly
+  (already in the controls' words); a split or a layer is Poly's alone, so a split preset
+  played in Dyad plays its lower hand's sound everywhere; and Poly with the Quarter turn
+  off draws the diagonal, which Harmonic tone, a dyad that does not name it, shows if it is
+  switched to Poly. Every Poly preset's sound moved with it, a chord held two seconds from
+  11 per cent quieter (Bass under the tine piano) to 3 per cent louder (Tine piano), all
+  through Scan and the picture; Harmonic tone is unchanged to the bit. No golden
+  recording moved: they are the page's old JavaScript's answers, and the core's voices still
+  match them to 1e-12 (a rewrite tried with `--write-golden --because` found only float
+  noise of 1e-13 and below, so it was put back). The bank's thumbnails were drawn again
+  (`write_figures.py`), each ring now going the dyad's way round, and the plugin's shell
+  test, which read the turned ear as the right, reads the left, as notetest's *no lag* row
+  does the right (the voice itself) for the same reason. Two checks now fail, both for
+  the owner's ear rather than for a fix here. honestytest's pass with the reverb's switch
+  pressed (Mix 0.15) measures Tine piano as Breathing (late 0.055 to 0.066, where it read
+  0.000); without the reverb it is Settled as before, and on the page before this change
+  the same pass already failed, on Bass under the pad's bass. And responsetest's *Swell
+  off, a chord held alone unsplit, at 100* rises 1.65 dB against its bound of 1.5 - but
+  that check reads one onset of a chaotic loop: on the core before this change it read
+  1.33 at its onset of half a second and 2.15 to 3.65 at onsets 10 to 100 ms later. So
+  the claim it holds was true by luck before; whether the bound, the Swell or the sound
+  should give is the owner's. Neither preset nor bound was moved.
+- ~~**With Harmonic tone loaded, any note turns the header to Custom**~~ (the owner, 15 Nov;
+  seen on the testing site). Fixed 15 Nov. Harmonic tone is a dyad, and in Dyad and Mono a
+  note writes the Frequency (and in Dyad the Interval), so the knobs follow the hands; the
+  header compared the setup with the preset's, field by field, and a note was a changed
+  frequency. Undo counted it too: a note after a trusted key press was a step. Both
+  comparisons now read a field still where the hands last put it as unmoved (`asPlayed`,
+  `handsPlayed`, written by `midiApplyNotesTo`), so playing is never editing and a knob
+  turned by hand still is. What it costs: a frequency turned by hand and then played over
+  is the hands' again. headertest loads every bank preset, plays a chord on the letters
+  with the real keyboard and then B3 alone, and requires the header to name it unedited
+  with no step in undo; the null is the comparison as it was (`asPlayed` bypassed), which
+  marks Harmonic tone edited, and a knob turned by the keys, which marks it.
+- ~~**Editing a preset turns the header to Custom**~~ (the owner, 15 Nov). Done 15 Nov: an
+  edited preset keeps its name, with *· edited* after its heading in the heading's small
+  capitals and the softer ink (`#presetEdited`), and the mark is worked out by comparing
+  with the preset's values, never stored, so undo back to them, or a knob turned home,
+  clears it. Custom is now only a sound that is no preset: a code pasted, a saved one
+  deleted. The heading takes no width of its own, so the header is laid out the same to
+  the hundredth of a pixel with the mark or without it at all five windows (headertest; the
+  null gives the heading its width back and the header moves), and fittest holds the face.
+  Saving is as it was, and saves under its new name, unedited. An edited preset is no
+  program for the plugin's host (`hostSendSetup` sends no name for it).
+- ~~**After an edit the arrows go back to the start of the bank**~~ (the owner, 15 Nov).
+  Fixed 15 Nov, by the same change: the arrows step from `el.preset.value`, which an edit
+  used to empty, so they stepped from Custom, whose next is the first and previous the last.
+  The edited preset keeps its place now. headertest edits the middle of the bank and
+  requires the arrows to load the cards beside it; the null, that those are not the bank's
+  ends.
+- ~~**A note held while a menu is opened, and let go before it closes, sounds on**~~ (the
+  owner, 15 Nov). Fixed 15 Nov. An open menu is the browser's own window and takes every
+  key and pointer event; the page never hears the keyup, and nothing says what was let go
+  when it closes - headless Chromium does the same, so keystest reproduces the real thing on
+  the computer keyboard. Now a pointer let go anywhere ends its note, and once a menu a
+  pointer opened is seen closed (a choice from it, the next key or press the page hears, or
+  the window's focus) the keys are asked again (`screenRecheck`): a mouse is not holding a
+  key then; a typed key keeps its note only if its own auto-repeat arrives within 800 ms;
+  a finger only if it moves. What it costs: a chord held through a menu keeps only the key
+  the keyboard repeats, and a finger held perfectly still is let go. keystest: a typed note
+  let go with the menu open ends once it closes, and shut with Escape, by the next key; one
+  still held and repeating is kept; a note held by the pointer on the screen's keys while a
+  second pointer opens and chooses from the menu ends (here a stand-in, since headless
+  Chromium opens no menu from a touch); a pointer let go anywhere ends its note. The nulls
+  are the page without the recheck, which holds every one, and another pointer's release,
+  which ends nothing. Window and page focus already ended everything (`midiPanic`).
+- ~~**While a menu has the focus the computer keyboard plays nothing**~~ (the owner, 15
+  Nov). Fixed 15 Nov: a menu chosen from with the pointer gives the focus back (it is
+  blurred, so the keys play), and one reached with Tab, or worked by its own keys after the
+  pointer opened it, keeps the focus and stays a menu - its arrows, letters, Enter and
+  Escape are its own, which is what keeps it usable from the keyboard. keystest: after a
+  pointer's choice S plays D3; the null leaves the focus on the menu and S plays nothing;
+  a menu focused from the keyboard keeps the focus, Down moves it and S plays nothing.
 
 ## Already planned for after stage 5
 

@@ -99,7 +99,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | midiDrawCount | Draw | How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears. | 132 | - |
 | midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
 | midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
-| polyRound | Quarter turn | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the right, so it draws a ring rather than a diagonal line. | 131 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
+| polyRound | Quarter turn | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the left, so the right leads as in Dyad and it draws Dyad's ring, not a line. | 150 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
 | midiHold | Hold the interval | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
 
 ### Expression
@@ -429,7 +429,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | editHandA | Editing: Lower | Puts the lower hand on the face: its own sections show and write its values. Named A when layered. Only with a split or layers. | 127 | yes — a section linked is both hands whichever is chosen; the hand’s figure’s ink on its dot; the tab cards say where the hands differ |
 | editHandB | Editing: Upper | Puts the upper hand on the face: its own sections show and write its values. Named B when layered. Only with a split or layers. | 127 | - |
 | presetPrev | The previous preset | Loads the previous sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through. | 130 | - |
-| preset | Plain sine | The sound loaded now, with its heading above it; Custom once you change it. Press to open the preset browser. | 109 | - |
+| preset | Plain sine | The sound loaded now, with its heading above it, and edited once you change it; Custom for a code pasted. Press to open the preset browser. | 139 | - |
 | presetNext | The next preset | Loads the next sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through. | 126 | - |
 | presetBrowse | Browse | Opens the preset browser: the bank under Settled and Breathing, and your saved sounds. Choosing a card there loads nothing. | 123 | - |
 | presetSaveHead | Save | Opens the preset browser at its save field, to keep the sound as it is now under a name of your own, in this browser. | 117 | - |

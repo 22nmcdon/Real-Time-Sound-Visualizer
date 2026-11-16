@@ -364,8 +364,13 @@ with sync_playwright() as pw:
     p.keyboard.press("Escape"); p.wait_for_timeout(150)
     p.evaluate("() => { el.freq.value = '300'; el.freq.dispatchEvent(new Event('input')); }")
     p.wait_for_timeout(1200)
-    custom = p.evaluate("() => [el.preset.value, el.presetCurrent.textContent]")
-    check("moving a control off a preset says Custom", custom == ["", "Custom"], str(custom))
+    custom = p.evaluate("() => [el.preset.value, el.presetCurrent.textContent, !el.presetEdited.hidden]")
+    # Custom until 15 Nov (the owner's list): now the preset's name, edited.
+    check("moving a control off a preset keeps its name and says it is edited",
+          custom == ["n:Plain sine", "Plain sine", True], str(custom))
+    p.evaluate("() => { el.presetCode.value = encodeSetup(snapshot()); loadCode(el.presetCode.value); }"); p.wait_for_timeout(300)
+    pasted = p.evaluate("() => [el.preset.value, el.presetCurrent.textContent, !el.presetEdited.hidden]")
+    check("and a code pasted, which is no preset, says Custom", pasted == ["", "Custom", False], str(pasted))
 
     print("\n--- the footer: saving, deleting, the setup code ---")
     # Saved with a note held, so it has a figure; then one saved in silence,

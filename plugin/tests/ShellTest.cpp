@@ -3102,31 +3102,34 @@ int main() {
     const double change = std::fmax(bend(tl, letGo, letGo + 1920), bend(tr, letGo, letGo + 1920));
     check("with the quarter turn on, letting go of one of two notes makes no pop: no ear bends more than three times the steady note does",
           steady > 0 && change < 3 * steady, "after the change " + num(change) + ", steady " + num(steady));
-    // The measure can see a pop: the same right ear with a step of a hundredth put in after the change.
-    std::vector<float> stepped = tr;
+    // The measure can see a pop: the turned ear (the left since 15 Nov) with a step of a hundredth put in after the change.
+    std::vector<float> stepped = tl;
     for (int i = letGo + 500; i < static_cast<int>(stepped.size()); ++i) stepped[static_cast<std::size_t>(i)] += 0.01f;
     check("null: a step of a hundredth in that ear reads as one", bend(stepped, letGo, letGo + 1920) > 3 * steady,
           num(bend(stepped, letGo, letGo + 1920)));
 
     /* And the glide holds a sine's level: switched on under a held note, the
-       right's peak over each period through the glide is the steady peak.
-       The straight mix of the wave and its quarter-late self came down to
-       0.78 halfway (-2.2 dB). */
+       turned ear's peak over each period through the glide is the steady
+       peak. The straight mix of the wave and its quarter-late self came down
+       to 0.78 halfway (-2.2 dB). The turned ear is the left since 15 Nov (the
+       owner's list: the right a quarter late drew the mirror of a dyad's
+       ring); read on the right, which is no longer turned, these two checks
+       held for nothing, and the null below is what said so. */
     const auto [gl, gr] = played(true, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, 24064);
     const int period = static_cast<int>(rate / 220.0);
     double peak = 0, least = 1e9;
-    for (int i = 20000; i < 20000 + period; ++i) peak = std::fmax(peak, std::fabs(gr[static_cast<std::size_t>(i)]));
+    for (int i = 20000; i < 20000 + period; ++i) peak = std::fmax(peak, std::fabs(gl[static_cast<std::size_t>(i)]));
     for (int at = 24064; at < 24064 + 1920; at += period / 4) {
       double m = 0;
-      for (int i = at; i < at + period; ++i) m = std::fmax(m, std::fabs(gr[static_cast<std::size_t>(i)]));
+      for (int i = at; i < at + period; ++i) m = std::fmax(m, std::fabs(gl[static_cast<std::size_t>(i)]));
       least = std::fmin(least, m);
     }
     check("switched on under a held sine, the quarter turn glides in at the sine's level, within a per cent",
           peak > 0.1 && least > 0.99 * peak, "least " + num(least / peak) + " of the steady peak");
     const auto [ol, orr] = played(false, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, -1);
     double apart = 0;
-    for (int i = 30000; i < 40000; ++i) apart = std::fmax(apart, std::fabs(gr[static_cast<std::size_t>(i)] - orr[static_cast<std::size_t>(i)]));
-    check("null: and it has turned - the right is not what it is with the switch off", apart > 0.1, "apart by " + num(apart));
+    for (int i = 30000; i < 40000; ++i) apart = std::fmax(apart, std::fabs(gl[static_cast<std::size_t>(i)] - ol[static_cast<std::size_t>(i)]));
+    check("null: and it has turned - the left is not what it is with the switch off", apart > 0.1, "apart by " + num(apart));
   }
 
   std::printf("\n--- the hands: pitch bend, the wheel, pressure ---\n");

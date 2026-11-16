@@ -114,8 +114,10 @@ inline bool innerRole(const std::string& role) {
 
 constexpr int kPolyTails = 8;
 // The quarter turn (polyRound, P8g): a voice on both channels alike - alone,
-// or inner - heard on the right a quarter of its period late, from a ring of
-// its own output. The page's ROUND_RING says why a delay and what it costs.
+// or inner - heard on the left a quarter of its period late, from a ring of
+// its own output, so the right leads as a dyad's does (15 Nov; `sound` says
+// why). A delay rather than a second phase per voice, which would compute
+// every voice twice; what it costs is a quarter period's lag on the left.
 constexpr int kRoundRing = 4096;
 inline bool roundsRole(const std::string& role) { return role == "xy" || role == "u" || innerRole(role); }
 
@@ -297,8 +299,21 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     g[1] += (t[1] - g[1]) * roleGlide;
     const double turnTo = round && voice.rounds ? 1 : 0;
     voice.turn += (turnTo - voice.turn) * roleGlide;
-    double right = a;
-    // Written whenever the switch is on, and glided over the mix's length (the page says why).
+    /* The quarter turn delays the LEFT channel, so the right leads by a
+       quarter of the period, as a dyad's lone note's right channel leads at
+       its default Phase of a quarter turn. Until 15 Nov it delayed the right,
+       which put the right a quarter LATE: the same circle traced the other way
+       round, so a note alone in Poly drew the mirror of the one in Dyad or
+       Mono, and Scan and the picture, reading the figure, made a different
+       sound of it (the owner heard it: after-stage-5.md, Owner's list). A
+       right channel three quarters late would lead by a quarter on a sine,
+       but the drawbars' 16' runs the phase over two cycles, so it would have
+       to be seven quarters late, and that is a silent right ear for a low
+       note's first fifteen milliseconds; a quarter's lag on the left is the
+       dyad exactly, whatever the wave, the whole voice a quarter of its
+       period later on the left. Written whenever the switch is on, and glided
+       over the mix's length (the page says why). */
+    double left = a;
     if (round || voice.turn > 1e-9) {
       if (voice.ring.empty()) {
         if (!c.spareRings.empty()) { voice.ring = std::move(c.spareRings.back()); c.spareRings.pop_back(); }
@@ -314,11 +329,11 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
                         + (voice.ring[static_cast<std::size_t>(i1)] - voice.ring[static_cast<std::size_t>(i0)]) * part;
       voice.at = (voice.at + 1) % kRoundRing;
       const double t = voice.turn, u = 1 - t;
-      if (t > 0) right = (u * a + t * late) / std::sqrt(u * u + t * t);
+      if (t > 0) left = (u * a + t * late) / std::sqrt(u * u + t * t);
     } else if (voice.turn != 0) {
       voice.turn = 0;
     }
-    c.mix[0] += a * g[0]; c.mix[1] += right * g[1];
+    c.mix[0] += left * g[0]; c.mix[1] += a * g[1];
   }
 }
 

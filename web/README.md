@@ -6814,3 +6814,23 @@ obvious can be wrong: lane one's full scale was to be the null for lane three's,
 moves the upper hand's figure too, because lane one is the trigger's lane and its scale
 moves where every lane's window is cut - the null became the core as it was, built inside
 the piece (`core/tests/pieces/lanescale.py`).
+
+**Two comparisons that read a mirror, and a window the page cannot see into (15 Nov, the
+owner's list).** Three things worth knowing. First, a check against a mirror needs a
+statistic the mirror moves: Poly's quarter turn put a lone note's right channel a quarter
+*late* while Dyad's Phase puts it a quarter *ahead*, and every reading the earlier checks
+took of it - each channel's level, the two channels' correlation, the spectrum - is the
+same for a circle and its mirror, so the two modes agreed on every number and still
+sounded on different sides and fed Scan a different wave. The signed area of the figure
+(which way round it goes) and the lag at which the right best matches the left are what
+see it (`core/tests/pieces/modes.py`), and Scan, which reads the figure at the voice's
+phase, is the one part of the sound that hears it. Second, "has the sound been changed"
+was asked of a setup the hands also write: in Dyad and Mono a note is the Frequency knob,
+so a compare that is right for a knob is wrong for a note - and two places asked it, the
+header and undo, so a fix in one would have left the other. Both now go through one
+helper (`asPlayed`); a third place that asks the question should too. Third, an open
+`<select>` is the browser's own window: it takes the key and pointer releases made while it
+is open, and the page hears nothing when it closes - in headless Chromium as on the
+desktop, so this one can be reproduced with real key presses rather than a stand-in. The
+answer is to ask again once the page is seen to have its events back, with a key's own
+auto-repeat as the only evidence it is still down (`screenRecheck`).

@@ -45,7 +45,8 @@ with sync_playwright() as pw:
     # One history since G4: what was versions[versions.on] is undoHistory.
     state = lambda: p.evaluate("""() => ({ value: el.preset.value, heading: document.getElementById('presetLabel').textContent,
       name: el.presetCurrent.textContent, freq: Number(el.freq.value), undo: undoHistory.undo.length,
-      redo: undoHistory.redo.length, undoOff: el.undoButton.disabled, redoOff: el.redoButton.disabled })""")
+      redo: undoHistory.redo.length, undoOff: el.undoButton.disabled, redoOff: el.redoButton.disabled,
+      edited: !el.presetEdited.hidden && presetEdited })""")
     CLEAR = "undoHistory.undo = []; undoHistory.redo = []; undoRebase(); paintUndo();"
     settle = lambda: p.wait_for_timeout(700)
 
@@ -99,12 +100,14 @@ with sync_playwright() as pw:
     for _ in range(5): p.keyboard.press("ArrowUp")
     settle(); turned = state()
     check("null: with nothing done there is nothing to undo", start["undo"] == 0 and start["undoOff"], str(start))
-    check("a knob turned by five key presses is one step, and says Custom",
-          turned["freq"] != start["freq"] and turned["undo"] == 1 and not turned["undoOff"] and turned["value"] == "",
+    # Until 15 Nov this said Custom; an edit keeps the preset's name and says it is edited.
+    check("a knob turned by five key presses is one step, and says it is the preset edited",
+          turned["freq"] != start["freq"] and turned["undo"] == 1 and not turned["undoOff"] and turned["value"] == "b:Slow pad"
+          and turned["edited"],
           str((start["freq"], turned)))
     p.click("#undoButton"); settle(); undone = state()
     check("undo puts back the sound and its name, and redo is offered",
-          undone["freq"] == start["freq"] and undone["value"] == "b:Slow pad" and undone["name"] == "Slow pad"
+          undone["freq"] == start["freq"] and undone["value"] == "b:Slow pad" and undone["name"] == "Slow pad" and not undone["edited"]
           and undone["undo"] == 0 and undone["redo"] == 1 and not undone["redoOff"], str(undone))
     p.keyboard.press("Control+Shift+Z"); settle(); redone = state()
     check("Ctrl+Shift+Z redoes it", redone["freq"] == turned["freq"] and redone["undo"] == 1 and redone["redo"] == 0, str(redone))
@@ -121,7 +124,8 @@ with sync_playwright() as pw:
     p.click("#presetNext"); p.wait_for_timeout(1500); stepped = state()
     p.click("#undoButton"); settle(); unstepped = state()
     check("a preset loaded with the arrow is one step, and undo goes back off it",
-          stepped["undo"] == fresh["undo"] + 1 and unstepped["value"] == "" and unstepped["freq"] == fresh["freq"],
+          stepped["undo"] == fresh["undo"] + 1 and unstepped["value"] == "b:Slow pad" and unstepped["edited"]
+          and unstepped["freq"] == fresh["freq"],
           str((stepped, unstepped)))
     # Spread out: five presses 250 ms apart, so the history is looked at
     # twice between each - still one step, since it waits 400 ms for them to
@@ -177,6 +181,75 @@ with sync_playwright() as pw:
     p.keyboard.press("Escape"); p.wait_for_timeout(150)
     check("Ctrl+Z while typing a name is the field's, not the sound's",
           field["undo"] == before_typing and before_typing > 0, str((before_typing, field)))
+
+    print("\n--- playing is not editing, an edit is the preset edited, and the arrows step from it (15 Nov) ---")
+    # The owner's list, items 2 to 4. With Harmonic tone loaded, a dyad, a
+    # note wrote the Frequency and the Interval, as Dyad's notes do, and the
+    # header compared those with the preset's and said Custom. So: every bank
+    # preset (by the bank, not by name - the bank changes by ear), a chord
+    # played on the letters with the real keyboard, and the header must still
+    # name it, unedited, with no step in undo. The null: the same chord with
+    # the comparison as it was (the hands' writes counted, asPlayed bypassed)
+    # marks Harmonic tone - and a real edit, a knob turned by the keys, marks
+    # any of them.
+    p.evaluate("() => setScreenKeys(true)")
+    def chord_on(value, nobble=False):
+        p.evaluate("(v) => { applyPreset(v); }", value); p.wait_for_timeout(600)
+        p.evaluate("() => { document.activeElement && document.activeElement.blur && document.activeElement.blur(); %s %s }"
+                   % (CLEAR, "asPlayed = (now) => now;" if nobble else ""))
+        for k in ("a", "d", "g"): p.keyboard.down(k); p.wait_for_timeout(40)
+        p.wait_for_timeout(900)
+        during = state()
+        for k in ("a", "d", "g"): p.keyboard.up(k)
+        # Then B3 alone, 247 Hz, so a dyad's Frequency is left off its preset's 220.
+        p.keyboard.down("j"); p.wait_for_timeout(300); p.keyboard.up("j")
+        p.wait_for_timeout(900)
+        return during, state()
+    played = {}
+    for value in browser:
+        during, after = chord_on(value)
+        played[value] = (during, after)
+    still = [v for v, (d, a) in played.items() if not (d["value"] == v and not d["edited"] and a["value"] == v
+                                                          and not a["edited"] and a["undo"] == 0)]
+    print("    %d bank presets played; %s" % (len(played), "every one still named" if not still else "moved: %s" % still))
+    check("a chord played on any bank preset leaves the header naming it, unedited, and no step in undo",
+          len(played) >= 9 and not still, str([(v, played[v]) for v in still][:2]))
+    harmonic = next(v for v in browser if p.evaluate("(v) => (findPreset(v).midiMode || 'dyad') !== 'poly'", v))
+    old = chord_on(harmonic, nobble=True)
+    p.reload(); p.wait_for_timeout(1200)
+    if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    p.evaluate("() => { setView('bench'); setScreenKeys(true); }")
+    check("null: on %s, a dyad, with the hands' writes counted as the page counted them, the chord marks it edited" % harmonic,
+          old[0]["edited"] and old[1]["edited"] and old[1]["freq"] != 220, str(old))
+    # A real edit marks it; undo back to its own values clears the mark.
+    p.evaluate("(v) => { applyPreset(v); }", harmonic); p.wait_for_timeout(600)
+    p.evaluate("() => { %s showControl('amp'); el.amp.focus(); }" % CLEAR)
+    for _ in range(4): p.keyboard.press("ArrowUp")
+    settle(); edited = state()
+    shown = p.evaluate("() => [document.getElementById('presetLabel').textContent, el.presetEdited.textContent, getComputedStyle(el.presetEdited).color]")
+    check("null: a knob turned by the keys marks it, the name kept and edited after its heading in the softer ink",
+          edited["value"] == harmonic and edited["edited"] and edited["name"] == harmonic[2:]
+          and shown[1].strip() == "· edited" and shown[2] == "rgb(107, 97, 90)", str((edited, shown)))
+    p.click("#undoButton"); settle(); back = state()
+    check("and undo back to its own values clears edited", back["value"] == harmonic and not back["edited"], str(back))
+    # The arrows from an edited preset: the cards beside it, not the bank's
+    # ends, which is where they went from Custom until 15 Nov.
+    mid = browser[len(browser) // 2]
+    def edited_then(arrow):
+        p.evaluate("(v) => { applyPreset(v); }", mid); p.wait_for_timeout(500)
+        p.evaluate("() => { showControl('amp'); el.amp.focus(); }")
+        p.keyboard.press("ArrowUp"); p.keyboard.press("ArrowUp"); settle()
+        was = state()
+        p.click(arrow); p.wait_for_timeout(500)
+        return was, state()
+    (was_n, nxt_e), (was_p, prv_e) = edited_then("#presetNext"), edited_then("#presetPrev")
+    at = browser.index(mid)
+    check("from %s edited, the arrows load the cards beside it in the browser's order" % mid,
+          was_n["edited"] and was_p["edited"] and nxt_e["value"] == browser[at + 1] and prv_e["value"] == browser[at - 1]
+          and not nxt_e["edited"], str((nxt_e["value"], prv_e["value"], browser[at - 1:at + 2])))
+    check("null: those are not the bank's ends, where the arrows went from Custom",
+          nxt_e["value"] != browser[0] and prv_e["value"] != browser[-1])
+    p.evaluate("() => setScreenKeys(false)")
 
     print("\n--- A and B are gone (G4) ---")
     # The versions went with G4: the header has neither button, and the page
@@ -330,6 +403,35 @@ with sync_playwright() as pw:
     flowed = opened("testing/scope.html", 1400, 900, inflow=True)
     check("null: the mark put into the flow moves the header", flowed["boxes"] != marked[0][2]["boxes"])
     shutil.rmtree(site, ignore_errors=True)
+
+    print("\n--- the edited mark moves nothing (15 Nov) ---")
+    # At the five windows, every box in the header with a preset loaded and
+    # with it edited, on a short name under a long heading (Slow pad, under
+    # Breathing), where a mark that took width would widen the button. The
+    # null: the heading given its own width back, which moves the header.
+    EDITED_BOXES = """(inflow) => {
+      applyPreset('b:Slow pad');
+      const box = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v * 100) / 100); };
+      const all = () => { const o = {}; document.querySelectorAll('.top-bar, .top-bar .head > *, .top-bar .preset-bar > *').forEach((e, i) => { o[i + ':' + (e.id || e.className)] = box(e); }); return o; };
+      if (inflow) document.querySelector('.preset-heading').style.width = 'auto';
+      const plain = all();
+      setPresetValue('b:Slow pad', true);
+      const m = el.presetEdited.getBoundingClientRect(), btn = el.preset.getBoundingClientRect();
+      return { plain, edited: all(), shown: !el.presetEdited.hidden && m.width > 0, inside: m.right <= btn.right + 0.01 };
+    }"""
+    def edited_at(w, h, inflow=False):
+        q = b.new_page(viewport={"width": w, "height": h})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(1200)
+        got = q.evaluate(EDITED_BOXES, inflow)
+        q.close()
+        return got
+    eds = [(w, h, edited_at(w, h)) for w, h in ((1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600))]
+    for w, h, e in eds: print("    %dx%d: edited shown %s, inside the button %s, header %s" % (w, h, e["shown"], e["inside"], "the same" if e["plain"] == e["edited"] else "MOVED"))
+    check("with the edited mark the header is laid out the same to the hundredth of a pixel at every window, the mark inside the preset's button",
+          all(e["shown"] and e["inside"] and e["plain"] == e["edited"] for *_, e in eds))
+    flowed_e = edited_at(1400, 900, inflow=True)
+    check("null: the heading given its own width, the mark moves the header", flowed_e["plain"] != flowed_e["edited"])
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

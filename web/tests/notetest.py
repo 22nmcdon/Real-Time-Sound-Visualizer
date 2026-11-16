@@ -120,7 +120,12 @@ ENDS = """({ code, note, other }) => {
     for (let k = 0; k < 40; k++) brain.block(128, L, R, pics, null);
     brain.midi([0x90, note, 100]);
     const out = new Float32Array(40 * 128);
-    for (let k = 0; k < 40; k++) { brain.block(128, L, R, pics, null); out.set(L, k * 128); }
+    /* The right: the voice itself. Since 15 Nov the quarter turn delays the
+       left (the owner's list: a right a quarter late drew the mirror of a
+       dyad's ring), so a block's last sample on the left is the voice a
+       quarter of a period earlier, mid-block, and this read there was the
+       step's no longer, for that reason and not for any lag. */
+    for (let k = 0; k < 40; k++) { brain.block(128, L, R, pics, null); out.set(R, k * 128); }
     return out;
   };
   const a = go(null), b = go(other);

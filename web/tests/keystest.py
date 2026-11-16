@@ -357,6 +357,121 @@ with sync_playwright() as pw:
     # Drive recording its answer for the lane's kind - was checked here until
     # P5 cut the rack.
 
+    print("\n--- a note let go while a menu is open, and the keys after a menu (15 Nov) ---")
+    # The owner's list, items 5 and 6. A menu opened with the pointer is the
+    # browser's own window: headless Chromium, like the desktop browsers,
+    # hands it the key let go while it is open, and the page never hears the
+    # keyup - so this is the real failure, not a stand-in. The nulls run the
+    # same hands with the page's recheck or its handing back of the focus
+    # taken out (each a named function or call the fix added), which is the
+    # page as it was.
+    def menu_run(hands, nobble=None):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(900)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        q.evaluate("() => { setScreenKeys(true); showControl('midiLayers'); }"); q.wait_for_timeout(300)
+        if nobble: q.evaluate(nobble)
+        out = hands(q)
+        q.close()
+        return out
+    held = lambda q: q.evaluate("() => midi.notes.map((n) => n.note)")
+    def typed_through_menu(q):
+        q.keyboard.down("a"); q.wait_for_timeout(150)
+        before = held(q)
+        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.keyboard.up("a"); q.wait_for_timeout(200)
+        q.keyboard.press("ArrowDown"); q.keyboard.press("Enter"); q.wait_for_timeout(1200)
+        return {"before": before, "after": held(q), "split": q.evaluate("() => el.midiLayers.value"),
+                "focus": q.evaluate("() => document.activeElement.id")}
+    NO_RECHECK = "() => { screenRecheck = () => {}; }"
+    typed = menu_run(typed_through_menu)
+    typed_old = menu_run(typed_through_menu, NO_RECHECK)
+    check("a typed note let go while a menu is open ends once it closes", typed["before"] == [48] and typed["after"] == []
+          and typed["split"] == "split", str(typed))
+    null("without the recheck, as the page was, the note sounds on", typed_old["after"] == [48], str(typed_old))
+    # The same while the menu is shut with Escape and the next key chooses in
+    # it: the note still ends, from that key, which only a closed menu lets
+    # the page hear.
+    def typed_then_escape(q):
+        q.keyboard.down("a"); q.wait_for_timeout(150)
+        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.keyboard.up("a"); q.wait_for_timeout(200)
+        q.keyboard.press("Escape"); q.wait_for_timeout(100)
+        q.keyboard.press("Tab"); q.wait_for_timeout(1100)
+        return held(q)
+    esc, esc_old = menu_run(typed_then_escape), menu_run(typed_then_escape, NO_RECHECK)
+    check("and shut with Escape, by the next key the page hears", esc == [], str(esc))
+    null("without the recheck it sounds on", esc_old == [48], str(esc_old))
+    # Still held through the menu: the key's own repeat keeps it. Playwright
+    # sends no auto-repeat, so the repeat is sent as a keyboard sends it.
+    def held_through_menu(q):
+        q.keyboard.down("a"); q.wait_for_timeout(150)
+        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.keyboard.press("ArrowDown"); q.keyboard.press("Enter"); q.wait_for_timeout(300)
+        for _ in range(12):
+            q.evaluate("() => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', key: 'a', repeat: true, bubbles: true }))")
+            q.wait_for_timeout(80)
+        out = held(q)
+        q.keyboard.up("a"); q.wait_for_timeout(150)
+        return out, held(q)
+    still, let_go = menu_run(held_through_menu)
+    check("a key still held through the menu, repeating, keeps its note, and ends it when let go", still == [48] and let_go == [],
+          str((still, let_go)))
+    # The keys on the screen: a finger on a key while another opens the menu.
+    # Here the stand-in is needed - headless Chromium opens no menu from a
+    # touch - so the second pointer's press on the menu is dispatched, and
+    # the first pointer's release is the one the open menu would have kept.
+    def finger_through_menu(q):
+        k = q.evaluate("""() => { const r = el.keysBed.querySelector('[data-note="52"]').getBoundingClientRect();
+          return [r.x + r.width / 2, r.y + r.height * 0.8]; }""")
+        q.mouse.move(*k); q.mouse.down(); q.wait_for_timeout(150)
+        before = held(q)
+        q.evaluate("""() => { el.midiLayers.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 9, pointerType: 'touch', bubbles: true }));
+          el.midiLayers.focus(); el.midiLayers.value = 'layer'; el.midiLayers.dispatchEvent(new Event('change', { bubbles: true })); }""")
+        q.wait_for_timeout(1100)
+        out = held(q)
+        q.mouse.up()
+        return before, out
+    finger, finger_old = menu_run(finger_through_menu), menu_run(finger_through_menu, NO_RECHECK)
+    check("a note held by the pointer on the screen's keys while a menu opens and closes is ended", finger == ([52], []), str(finger))
+    null("without the recheck it sounds on", finger_old == ([52], [52]), str(finger_old))
+    # A pointer let go anywhere ends its note, however its capture went.
+    def let_go_elsewhere(q, pid=1):
+        k = q.evaluate("""() => { const r = el.keysBed.querySelector('[data-note="55"]').getBoundingClientRect();
+          return [r.x + r.width / 2, r.y + r.height * 0.8]; }""")
+        q.mouse.move(*k); q.mouse.down(); q.wait_for_timeout(150)
+        before = held(q)
+        q.evaluate("() => document.body.dispatchEvent(new PointerEvent('pointerup', { pointerId: %d, pointerType: 'mouse', bubbles: true }))" % pid)
+        q.wait_for_timeout(150)
+        return before, held(q)
+    anywhere = menu_run(let_go_elsewhere)
+    check("a pointer let go anywhere ends its note", anywhere == ([55], []), str(anywhere))
+    other = menu_run(lambda q: let_go_elsewhere(q, 7))
+    null("another pointer let go there ends nothing", other == ([55], [55]), str(other))
+    # Item 6: after a choice made with the pointer, the letters play again;
+    # a menu reached with Tab and worked by its keys stays a menu.
+    def play_after_choice(q):
+        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.keyboard.press("ArrowDown"); q.keyboard.press("Enter"); q.wait_for_timeout(200)
+        q.keyboard.down("s"); q.wait_for_timeout(150)
+        out = {"focus": q.evaluate("() => document.activeElement.id"), "held": held(q), "split": q.evaluate("() => el.midiLayers.value")}
+        q.keyboard.up("s")
+        return out
+    after = menu_run(play_after_choice)
+    after_old = menu_run(play_after_choice, "() => { HTMLSelectElement.prototype.blur = function () {}; }")
+    check("after a menu choice made with the pointer the letters play again", after["held"] == [50] and after["focus"] != "midiLayers"
+          and after["split"] == "split", str(after))
+    null("with the focus left on the menu, as the page left it, they play nothing", after_old["held"] == [], str(after_old))
+    def tab_to_menu(q):
+        q.evaluate("() => { el.midiLayers.previousElementSibling ? el.midiLayers.previousElementSibling.focus() : null; el.midiLayers.focus(); }")
+        q.keyboard.press("ArrowDown"); q.wait_for_timeout(100)
+        q.keyboard.press("s"); q.wait_for_timeout(150)
+        return {"focus": q.evaluate("() => document.activeElement.id"), "held": held(q), "split": q.evaluate("() => el.midiLayers.value")}
+    tabbed = menu_run(tab_to_menu)
+    check("a menu reached by the keyboard keeps the focus and its keys choose in it: Down moves it, and S plays nothing",
+          tabbed["focus"] == "midiLayers" and tabbed["split"] != "off" and tabbed["held"] == [], str(tabbed))
+
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()
 
