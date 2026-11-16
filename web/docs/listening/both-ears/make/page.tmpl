@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Both ears</title>
+<style>
+/* DESIGN.md's paper and ink: the brand's tokens, its stacks without the webfonts (fallback faces only, so nothing is fetched).
+   The instrument itself has no dark theme (DESIGN.md, section 3); this page is a document read away from it, and was asked to
+   follow the reader's light, so its dark tokens are the same paper and ink turned over, kept warm. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f;
+  --text-soft: #6b615a; --line: #e4d9cc; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --slate: #5c6488; --shadow: rgba(36, 31, 29, 0.06);
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --cream: #1c1917; --cream-2: #231f1c; --paper: #282320; --charcoal: #f4ede3; --text: #e2d8cc;
+    --text-soft: #b0a598; --line: #3d3631; --blush-deep: #d9a6a0; --gold: #c9a66e;
+    --sage: #98a98a; --rust: #d08a72; --slate: #9aa2c8; --shadow: rgba(0, 0, 0, 0.3);
+  }
+}
+:root[data-theme="dark"] {
+  --cream: #1c1917; --cream-2: #231f1c; --paper: #282320; --charcoal: #f4ede3; --text: #e2d8cc;
+  --text-soft: #b0a598; --line: #3d3631; --blush-deep: #d9a6a0; --gold: #c9a66e;
+  --sage: #98a98a; --rust: #d08a72; --slate: #9aa2c8; --shadow: rgba(0, 0, 0, 0.3);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--cream); color: var(--text); font: 300 16px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased; }
+main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--blush-deep); font-weight: 500; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; color: var(--charcoal); line-height: 1.25; }
+h1 { font-size: 34px; margin: 6px 0 12px; }
+h2 { font-size: 24px; margin: 0 0 6px; }
+h3 { font-size: 18px; margin: 22px 0 6px; }
+strong { font-weight: 600; color: var(--charcoal); }
+.sheet { background: var(--paper); border: 1px solid var(--line); border-radius: 1px; padding: 24px;
+  margin: 28px 0; box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px var(--shadow); }
+.listen { border-left: 3px solid var(--gold); padding: 2px 0 2px 12px; margin: 10px 0; color: var(--charcoal); font-size: 15px; }
+.takes { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; margin: 14px 0; }
+.take { border: 1px solid var(--line); border-radius: 1px; padding: 10px; background: var(--cream); }
+.take-name { font-size: 14px; color: var(--charcoal); margin-bottom: 6px; font-weight: 500; }
+audio { width: 100%; }
+.figs { display: flex; gap: 6px; }
+.figs figure { margin: 0; flex: 1; text-align: center; }
+.figs figcaption { font-size: 11px; color: var(--text-soft); }
+svg.fig { width: 100%; height: auto; display: block; }
+svg.fig .frame { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
+svg.fig .ink { fill: none; stroke: var(--slate); stroke-width: 0.8; stroke-linejoin: round; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; display: block; overflow-x: auto; }
+th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500;
+  color: var(--text-soft); border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: bottom; }
+td { border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; }
+.verdict { font-family: var(--serif); color: var(--charcoal); font-size: 18px; }
+.small { font-size: 14px; color: var(--text-soft); }
+code { font-family: var(--mono); font-size: 0.9em; }
+ul, ol { padding-left: 20px; }
+.status { font-size: 13px; color: var(--rust); }
+.figlabel { font-size: 11px; color: var(--text-soft); margin: 8px 0 3px; }
+svg.fig .ink2 { fill: none; stroke: var(--sage); stroke-width: 0.8; stroke-linejoin: round; }
+svg.fig .ink3 { fill: none; stroke: var(--rust); stroke-width: 0.8; stroke-linejoin: round; }
+details { margin: 10px 0; }
+summary { cursor: pointer; color: var(--charcoal); font-size: 15px; }
+.ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.way { border-top: 3px solid var(--gold); padding-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Real-Time Sound Visualizer &middot; a listening study</div>
+<h1>Both ears</h1>
+<p>The owner, 16 November, after the options on the <a href="../one-to-two/index.html">one-to-two page</a>: <em>&ldquo;the solutions
+given still have the sounds jumping in and out of each ear. This is also especially prevalent with the new note which only appears
+in one ear when played. Why can't the sound just reach both ears? Would that affect the picture or cause the picture to not be true
+to sound?&rdquo;</em></p>
+<p>Why it happens: what you hear <em>is</em> the screen. The left speaker is the screen's X and the right its Y, so a note's place
+between your ears is its place on the screen, and a second note has to go somewhere. Every fix so far softened the jump and kept
+that rule. There are two ways out, and both are here to hear. Every take is the instrument itself, its core rendered offline
+(<code>core/tests/tools/render_cpp.cpp</code>), with each way a switch in a scratch copy of the core: nothing in the instrument has
+changed. The write-up is <code>web/docs/both-ears.md</code>.</p>
+<p class="small"><strong>Stereo, and best on headphones.</strong> 16-bit, 44.1 kHz. Way 1 and Way 2 come out about %LOUD_OWNER% dB louder
+than today on the first phrase and %LOUD_CHORD% dB on the chord, since every note is now in both ears at full; a build would take that back
+with the level. <span id="status" class="status"></span></p>
+
+<section class="sheet">
+<div class="eyebrow">The two ways</div>
+<h2>Keep the picture and change what is heard, or keep them one and change the picture</h2>
+<div class="ways">
+<div class="way"><h3>Way 1: what is heard, apart from what is drawn</h3>
+<p>The screen is drawn exactly as today, and Scan and the whole loop read it as today. What comes out of the speakers is a separate
+mix of the same notes: each note in both ears, with an image of its own that never depends on what else is held. Three widths:</p>
+<ul>
+<li><strong>(a) nearly mono:</strong> each note the same in both ears.</li>
+<li><strong>(b) gentle width:</strong> each note's left an <em>eighth</em> of its own cycle behind its right &mdash; half today's quarter
+turn &mdash; so it is a little wide and centred at every pitch (coherence 0.71). A turn of the note's own cycle rather than a fixed
+Haas delay, since a fixed delay of half a millisecond would leave a low C almost mono and comb-filter a high one.</li>
+<li><strong>(c) wide:</strong> each note its own quarter turn, as a note alone is today, for every note always.</li>
+</ul></div>
+<div class="way"><h3>Way 2: heard and drawn stay one; every note on both sides</h3>
+<p>Every note on both channels with its own quarter turn, in Dyad and in Poly (the one-to-two page's option D, carried to Dyad), so the
+speakers are still literally the screen and the ears are steady. What goes is the figure of one note drawn <em>against</em> another,
+X against Y: the screen draws the notes' rings summed instead, and Scan reads that.</p></div>
+</div>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">The owner's phrase</div>
+<h2>A bass alone, a high note added, the bass alone again</h2>
+<p class="small">Harmonic tone as the bank has it (Dyad), picture at 96 with its Swell: C2 from 0.2 s, E4 added at 1.8 s and let go at
+3.4 s, C2 alone until 5.2 s, then its release. Six seconds. Under each take, the figure at each of the three moments, drawn with the picture off so that only the notes draw it.</p>
+<div class="takes">%OWNER_TODAY%</div>
+<h3>Way 1</h3>
+<p>The screen is the same in every Way 1 take <em>by construction</em> &mdash; and proved the same to the bit, below &mdash; so the figures
+in grey-blue are today's. The ones in rust are what a real oscilloscope, fed the speakers, would draw instead.</p>
+<div class="takes">%OWNER_W1%</div>
+<h3>Way 2</h3>
+<div class="takes">%OWNER_W2%</div>
+<h3>Each note in each ear, at every entry and exit (picture off, limiter off)</h3>
+%OWNER_TABLE%
+<p class="small">Each note read off its own fundamental by lock-in in each ear. Coherence: 1 the same in both ears (narrow, centred),
+0 a quarter turn (as wide as one note gets), &minus;1 opposite. &ldquo;Gone&rdquo; is more than 40 dB under the other ear. The
+last column releases the E at sixteen moments across one turn of the dyad's drift (3.8 ms): today the bass comes back at whatever
+angle the release caught; in either way it comes back as it left, since its image is its own. With the picture on, as the takes are, the bass's balance between the ears
+stays within 0.1 dB and its coherence within 0.06 in every way and every span (5th to 95th percentile of 100 ms readings); today,
+while the E is held, what little of the bass the picture puts into the right ear swings between 42 and 15 dB under the left.</p>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">Where it matters more</div>
+<h2>A chord built up and let go note by note</h2>
+<p class="small">Tine piano as the bank has it (Poly, Scan at 50): C3 at 0.2 s, E3 at 1.1, G3 at 2.0, C4 at 2.9; let go from the top, C4
+at 3.8, G3 at 4.7, E3 at 5.6, C3 at 6.5. Seven seconds. Figures: C3 alone, with E3, all four, and C3 alone again.</p>
+<div class="takes">%CHORD_TAKES%</div>
+<h3>Each note in each ear, today</h3>
+%CHORD_TODAY%
+<p class="small">Measured on Tine piano's voices made plain &mdash; one sine each, its FM, Scan and routings off and held at full &mdash;
+so each note can be read off its own fundamental; the image is the voice's routing, which none of that touches. Today the lowest and
+highest notes lean to their sides (6 dB) and lose their width; an inner note sits in the middle, wide. So a note's place changes
+every time the chord does: E3 goes from the right edge to the middle when G3 arrives; G3 from the right to the middle when C4 does,
+and back as C4 goes.</p>
+<details><summary>The same for Way 1 (a), (b), (c) and Way 2</summary>
+%CHORD_OTHERS%
+</details>
+<p>In every one of them each note reads &minus;7.3 dB in each ear in all seven spans, with the same coherence throughout (1.00, 0.71,
+0.00 and 0.00): nothing any note does moves another.</p>
+<h3>A second, quieter cause: the limiter</h3>
+<p>The limiter is last of all, on what is heard, and pulls the whole sound down as it gets loud &mdash; so a held note gets quieter as
+others join it, in both ears alike. It does not move a note between the ears, but it is heard. With every note in both ears at full the
+pair is louder in each ear and it pulls harder:</p>
+%LIMITER%
+<p class="small">On the plain voices held at full, which is louder than Tine piano's own decay ever gets; the shipped preset falls to a
+quarter while held and the limiter does much less. In the owner's phrase its share on the bass is under 0.3 dB, the same in every version.</p>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">Way 1 and the picture</div>
+<h2>The picture and Scan are unchanged, to the bit</h2>
+%PROOF%
+<p>The nulls: the scratch copy with every switch off renders the core's heard pair to the bit too, so the copy is the core; every Way
+1 build's heard pair differs from today's, so the comparison sees a difference where there is one; and Way 2's drawn lanes, grid and
+readings fail it, as they should.</p>
+<h3>What Way 1 changes about honesty to the sound</h3>
+<ul>
+<li><strong>The speakers are no longer the screen.</strong> A real oscilloscope fed the output would draw a different figure from the
+one on the screen &mdash; the rust figures above. Every note you hear is still drawn, and everything drawn is heard; what is
+given up is that the heard pair <em>is</em> X and Y. That is the rule <code>making-it-one-instrument.md</code> already relaxed in its
+Question 2 (&ldquo;kept as coherence rather than identity: nothing is heard that is not drawn&rdquo;); P4's &ldquo;a voice is heard
+where it is drawn&rdquo; is what goes.</li>
+<li><strong>Everything the loop does is unchanged.</strong> The picture, its reads, Scan's table and every routing's depth are today's,
+so the picture still shapes the sound exactly as today: the shaping, Scan and the plane's effects act on the heard notes as they
+act on the drawn ones.</li>
+<li><strong>One thread from the heard pair into the loop remains:</strong> the limiter's reduction is handed to the picture meter, whose
+&ldquo;running away&rdquo; verdict trips past 6 dB of it. Louder in each ear, Way 1 works the limiter harder on a loud held chord
+(6.1 dB at most on the plain chord against 4.3 today). It did not change a verdict in any run here; a build would either accept that
+or hand the meter the limiting the drawn pair would have needed.</li>
+</ul>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">What each costs</div>
+<h2>Way 1 keeps the picture; Way 2 keeps the speakers as the screen</h2>
+<ul>
+<li><strong>Way 1</strong> costs the heard pair being X and Y, and processing: what is heard goes through a second plane (the phaser,
+chorus, delay and reverb, and the oversampled shaping stage, run twice), and a dyad's two notes each need two voice chains instead of
+one. Poly's per-note image is a ring each note already has. The picture loses nothing.</li>
+<li><strong>Way 2</strong> costs the figure. A dyad no longer draws its X-against-Y figure, and a chord's outer notes are no longer the
+figure's axes: the screen draws rings summed. Scan reads that figure, so every Poly preset sounds different and is measured again, and
+the bank's thumbnails change.</li>
+<li><strong>The widths</strong> cost nothing different from each other: (a) is the steadiest and the least spacious, and drops the Phase
+knob's effect on what is heard, since Phase is the angle between the ears; (c) is today's lone note for every note, and the widest;
+(b) is between.</li>
+</ul>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">Recommendation</div>
+<h2>Way 1, at (b) or (c) as the ear says</h2>
+<p class="verdict">Way 1 answers the question as it was asked: the sound reaches both ears, and the picture is not touched.</p>
+<p>Way 2 keeps the speakers and the screen one, but by giving up harmony as geometry's figure, the first of the features the plan ranks.
+Between (b) and (c): (c) is what a single note already sounds like, so nothing you know changes until a second note arrives; (b) keeps
+a chord narrower and safer summed to mono. The one-to-two page's option A is still worth having for the picture's sake: in Dyad the
+drawn figure still comes back at whatever angle a release catches, and the picture shapes the sound.</p>
+</section>
+</main>
+<script>
+/* Each take from its .wav, or, where the host will not serve that media type, from the base64 beside it
+   (the painting study's way with strokes.b64.txt): fetched as text, atob'd into bytes, played from a blob. */
+(function () {
+  var failed = 0;
+  function fromText(audio, src) {
+    return fetch(src.replace(/\.wav$/, ".b64.txt")).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    }).then(function (t) {
+      var bin = atob(t.trim()), bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      audio.src = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
+    });
+  }
+  document.querySelectorAll("audio[data-src]").forEach(function (audio) {
+    var src = audio.getAttribute("data-src");
+    fetch(src, { method: "HEAD" }).then(function (r) {
+      var type = r.headers.get("content-type") || "";
+      if (!r.ok || type.indexOf("audio") < 0) throw new Error("not served as audio");
+      audio.src = src;
+    }).catch(function () {
+      return fromText(audio, src);
+    }).catch(function () {
+      failed++;
+      document.getElementById("status").textContent = failed + " take(s) could not be loaded from here; open the page from a server.";
+      audio.src = src;
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -437,6 +437,20 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   in both modes (B and C) - or no lean at all (D) if the ear wants it, at the cost of two notes
   drawn against each other. **To listen:** `web/docs/listening/one-to-two/index.html`, eight
   stereo takes, today's three modes and the four options.
+- **Why can't the sound just reach both ears?** (the owner, 16 Nov, after the one-to-two
+  options: every one still had notes jumping between the ears, the new note worst, heard in one
+  ear only.) Investigated, not yet changed: `both-ears.md`. The heard pair is the screen's X and
+  Y, so a note's place between the ears is its place on the screen. Way 1 keeps the screen and
+  makes what is heard a separate mix, each note in both ears with an image of its own; built in
+  a scratch core at three widths, it draws the lanes, the grid and Scan's table the same to the
+  bit as today on both phrases, and every note reads the same in both ears through every entry
+  and exit (today the E4 is 92 dB under in the left). Its cost: a scope on the speakers no
+  longer draws the screen's figure, and a second plane's processing. Way 2 keeps them one by
+  putting every note on both sides with its own quarter turn, at the cost of the X-against-Y
+  figure. Recommended: Way 1, at (b) or (c) by ear. **To listen:**
+  `web/docs/listening/both-ears/index.html`, eight stereo takes: the owner's phrase today, in
+  Way 1's three widths and in Way 2, and a chord built up and let go on Tine piano today, in Way
+  1 (b) and in Way 2.
 - ~~Offered and not yet answered: a small "Testing" label in the header shown only
   on the testing site, so the two pages can be told apart without reading the
   address.~~ Done 15 Nov: *Testing*, in small capitals in the brand's secondary ink inside a
