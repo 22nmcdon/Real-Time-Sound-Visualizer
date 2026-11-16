@@ -138,8 +138,16 @@ with sync_playwright() as pw:
       for (let i = 0; i < pl.length; i++) w = Math.max(w, Math.abs(hl[i] - pl[i]), Math.abs(hr[i] - pr[i]));
       let z = 0; for (let i = 0; i < pl.length; i++) z = Math.max(z, Math.abs(hl[i] - pr[i]));
       return { w, z }; }""")
-    check("what is heard is the picture, sample for sample", same["w"] < 1e-6, "worst %.3g" % same["w"])
-    check("and the comparison fails with the heard sides crossed", same["z"] > 0.05, "%.3g" % same["z"])
+    # Until 16 Nov what was heard was the picture, sample for sample, and the
+    # outer notes leaned in the ears as on the screen. Every note is heard in
+    # both ears at full now, the same in each, whatever the picture leans
+    # (web/docs/both-ears.md): each note's energy in the left the right's.
+    even = lambda hl, hr: all(abs(hl[k] / max(hr[k], 1e-12) - 1) < 0.03 and abs(hl[k] / max(hl[0], 1e-12) - 1) < 0.03
+                              for k in range(3))
+    check("what is heard is every note in both ears alike, each as loud as the others, where the picture leans them",
+          even(r["hl"], r["hr"]), "heard L %s, heard R %s" % (rounded(r["hl"]), rounded(r["hr"])))
+    check("null: the picture, which was what was heard, leans them", not even(r["pl"], r["pr"]) and same["w"] > 0.05,
+          "picture L %s, R %s; heard from it by %.3g" % (rounded(r["pl"]), rounded(r["pr"]), same["w"]))
     # The first version panned the drawn notes as a dyad does - bass left,
     # melody right - and this check asserted it. Played, a chord came apart
     # across the ears: the root alone in one and everything else in the other.

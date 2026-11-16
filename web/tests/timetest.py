@@ -293,9 +293,16 @@ with sync_playwright() as pw:
           np.abs(flat["L"] - flat["R"]).max() < 1e-7, "")
 
     print("\n--- once, and to every pair ---")
-    solo = run({"tone": {"freq": 220, "interval": 7, "delayMix": 0.5, "delayMs": 30, "chorusMix": 0.5}, "n": 8820})
-    check("outside poly what is heard is exactly what is drawn - the echo is not added twice",
-          np.array_equal(solo["HL"], solo["L"]) and np.array_equal(solo["HR"], solo["R"]), "")
+    # Since 16 Nov what is heard is its own pair - every note in both ears at
+    # the Width - through a plane of its own. A lone note in Dyad at a Width of
+    # one is the drawn pair exactly, so through the delay and chorus it must
+    # still be: the echo added once. (Until 16 Nov this was a fifth, whose
+    # heard pair was its drawn pair; each of its notes is in both ears now.)
+    solo = run({"tone": {"freq": 220, "interval": 0, "phase": 1.0, "delayMix": 0.5, "delayMs": 30, "chorusMix": 0.5}, "n": 8820})
+    check("a lone note outside poly is heard exactly as it is drawn - the echo is not added twice",
+          np.array_equal(solo["HL"], solo["L"]) and np.array_equal(solo["HR"], solo["R"]) and np.abs(solo["L"]).max() > 0.1, "")
+    fifth = run({"tone": {"freq": 220, "interval": 7, "delayMix": 0.5, "delayMs": 30, "chorusMix": 0.5}, "n": 8820})
+    check("null: a fifth is heard apart from its figure, each note in both ears", not np.array_equal(fifth["HL"], fifth["L"]), "")
     # In poly, with no feedback, each pair is its own dry signal plus a copy
     # 50 ms late. Every pair's dry is known from the same run with the delay
     # off, so the delayed run can be read exactly.

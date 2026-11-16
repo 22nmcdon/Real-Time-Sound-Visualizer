@@ -198,7 +198,10 @@ with sync_playwright() as pw:
     # are not the poly voices', and a mutation that shaped a chord's voices
     # at the base rate passed every check above.
     one_voice = run({"voices": [{"note": 95, "freq": 2000, "velocity": 1, "role": "xy"}], "fold": 1,
-                     "attackMs": 1, "sustain": 1})["HL"]
+                     "attackMs": 1, "sustain": 1})["HR"]
+    # The heard right, the voice itself: since 16 Nov the left is the quarter
+    # turn's, read between the ring's samples by a straight line, which on its
+    # own leaves a floor near -95 dB at 2 kHz that is the read's, not the fold's.
     fold_poly = off_grid(one_voice, 2000)
     check("a chord's voice is folded at twice the rate too: under -95 dB",
           fold_poly < -95, "%.1f dB" % fold_poly)
