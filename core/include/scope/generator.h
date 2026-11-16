@@ -293,6 +293,9 @@ class Generator {
   void reswing() {
     phaseL_ = 0; phaseR_ = 0;
     oscL_.n = 0; oscR_.n = 0;
+    // And the dyad's heard voices' (16 Nov), or their oscillators run on where the drawn ones began again.
+    for (auto& h : heardDyad_) { h.osc.n = 0; h.oscOld.n = 0; }
+    oldOsc_.n = 0;
   }
 
   void gate(bool open, double velocity) { env_.gate(open, velocity); fenv_.gate(open, velocity); menvGate(open); }

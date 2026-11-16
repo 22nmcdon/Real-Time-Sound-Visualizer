@@ -1511,9 +1511,12 @@ apart = [n for n, _ in runs if not n.startswith("effect") and not n.startswith("
 # from the figure (core/tests/pieces/ears.py). Where the figure has every note
 # on both axes at full - a dyad's lone note, a voice drawn on both, at a
 # hundred - it is still the lanes; where the figure parts the notes - a dyad's
-# interval, a voice leaned onto X or Y or on one alone, a chord - it is heard
+# interval or its Ratio routed, a voice leaned onto X or Y or on one alone, a chord - it is heard
 # apart. So the runs that part must all be those, and some must.
-parted = {n for n, text in runs if re.search(r"set interval [1-9]", text)
+def ratio_routed(text):
+    return any(len(r.split("/")) > 3 and r.split("/")[3] == "3"
+               for line in text.split("\n") if " routes " in line for r in line.split(" routes ", 1)[1].split("+"))
+parted = {n for n, text in runs if re.search(r"set interval [1-9]", text) or ratio_routed(text)
           or re.search(r"voices [01] \S*/(x|y|xonly|yonly)(\+|\s|$)", text) or re.search(r"voices [01] \S*\+", text)}
 print("    heard apart from the lanes: " + ", ".join(apart))
 check("in every run whose figure has each note on both axes at full, what is heard is what is drawn - A's lanes and B's, summed - and the score's voice, in the middle",
