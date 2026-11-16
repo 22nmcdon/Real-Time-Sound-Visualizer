@@ -135,11 +135,22 @@ struct Panel {
   int interval = 0;
 };
 
-struct Held { int note; double velocity; };
+/* A held note, and since the split by notes (16 Nov) the hand it was dealt
+   when it started: 0 the lower, 1 the upper. Kept on the note, not worked out
+   from it, because by notes a hand is not a function of the pitch - it is
+   where the note ranked among those held as it began, which nothing after
+   changes. An arpeggio's step is a copy of a held note, a few octaves up, and
+   keeps that note's hand. Read only while the split is by notes. */
+struct Held { int note; double velocity; int hand = 0; };
 
 enum class NoteMode { Dyad, Mono, Poly };
 enum class DrawWhich { Outer, Lowest, Highest, Recent };
 enum class LayerMode { Off, Split, Layer };
+/* How a split decides a hand (16 Nov): at a key, as it always did, or by the
+   notes held - the lowest few, or the highest few, are the counted hand. */
+enum class SplitBy { Key, Notes };
+// How many notes a split by notes counts at the most: one hand's fingers (split-by-notes.md).
+inline constexpr int kSplitCountMost = 5;
 
 inline DrawWhich drawWhichNamed(std::string_view w) {
   return w == "lowest" ? DrawWhich::Lowest : w == "highest" ? DrawWhich::Highest
@@ -167,12 +178,16 @@ class Keyboard {
     // Struck again under the pedal: held by a finger now.
     forget(sustained_, note);
     // The split point is learned from a key, and the key still plays.
-    if (layers_.learning) { layers_.point = note; layers_.learning = false; learned_++; }
+    // Learn is the key split's: by notes there is no point to learn.
+    if (layers_.learning && layers_.by == SplitBy::Key) { layers_.point = note; layers_.learning = false; learned_++; }
     const auto at = find(note);
     if (at != notes_.end()) notes_.erase(at);
-    notes_.push_back({ note, velocity / 127 });
+    /* Its hand by notes, dealt now and kept: ranked among the notes held as
+       it starts (a key held only by the pedal still sounds, so it counts),
+       and a key struck again is a note starting again, so it is ranked again. */
+    notes_.push_back({ note, velocity / 127, dealt(note, notes_.data(), notes_.size()) });
     // Counted for the layer it is in: split, a bass note restarts only the bass's fade.
-    if (layersOn() && layers_.mode == LayerMode::Split) strikes_[note >= layers_.point ? 1 : 0]++;
+    if (layersOn() && layers_.mode == LayerMode::Split) strikes_[handOf(notes_.back())]++;
     else { strikes_[0]++; strikes_[1]++; }
     applyNotes();
     // And on the screen, where Scan reads (P7b): the layers the note is in, A's as 1 and B's as 2.
@@ -336,6 +351,23 @@ class Keyboard {
     applyNotes();
   }
   void setPair(bool against) { layers_.against = against; syncLayers(); applyNotes(); }
+  /* The split by notes' own controls (16 Nov). Moving one deals the held
+     notes again, as if struck in the order they were: a count turned with a
+     chord held is heard at once, where keeping their hands would make the
+     control do nothing until the next note. That is the control acting, not
+     a note: no note's start ever moves another note's hand. */
+  void setSplitBy(SplitBy by) { layers_.by = by; layers_.learning = false; redeal(); applyNotes(); }
+  void setSplitCount(bool upper, int count) {
+    layers_.countUpper = upper;
+    layers_.count = std::max(1, std::min(kSplitCountMost, count));
+    redeal();
+    applyNotes();
+  }
+  SplitBy splitBy() const { return layers_.by; }
+  bool splitCountUpper() const { return layers_.countUpper; }
+  int splitCount() const { return layers_.count; }
+  // The hand a held note plays in while split: 0 the lower, 1 the upper.
+  int handOf(const Held& h) const { return layers_.by == SplitBy::Notes ? h.hand : h.note >= layers_.point ? 1 : 0; }
   void setHold(bool on) { hold_ = on; }
   void setPresent(bool on) { present_ = on; }
   // Whether the generator is on its own, to lay out a figure for each layer: not while the input is drawn.
@@ -429,13 +461,21 @@ class Keyboard {
     LayerMode layers = LayerMode::Off;
     int point = 60;
     bool against = false, polyJust = false, hold = false, truth = true, follow = false;
+    // The split by notes (16 Nov): a setup without its fields is a split by key, as every code before it was.
+    SplitBy by = SplitBy::Key;
+    bool countUpper = false;
+    int count = 1;
   };
   Settings settings() const {
-    return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_ };
+    return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_,
+             layers_.by, layers_.countUpper, layers_.count };
   }
   void setSettings(const Settings& s) {
     mode_ = s.mode; draws_ = s.draws; layers_.mode = s.layers; layers_.point = s.point; layers_.against = s.against;
     layers_.learning = false; polyJust_ = s.polyJust; hold_ = s.hold; truth_ = s.truth; follow_ = s.follow;
+    layers_.by = s.by; layers_.countUpper = s.countUpper; layers_.count = std::max(1, std::min(kSplitCountMost, s.count));
+    // A setup loaded over held keys deals them by its own split, as a control moved would.
+    redeal();
   }
   // midiApplyNotes: what `restore` ends the keyboard with, so what is under
   // the hands outranks what the setup asked for.
@@ -483,15 +523,39 @@ class Keyboard {
   // The layers a note is in, as scanStrike picks them: A alone without layers, its half in a split, both layered.
   int layersOf(int note) const {
     if (!layersOn()) return 1;
-    if (layers_.mode == LayerMode::Split) return note >= layers_.point ? 2 : 1;
+    if (layers_.mode == LayerMode::Split) {
+      if (layers_.by == SplitBy::Key) return note >= layers_.point ? 2 : 1;
+      for (const auto& h : notes_) if (h.note == note) return h.hand + 1;
+      return 1;
+    }
     return 3;
   }
   void setSwell(std::function<void(double)> f) { onSwell_ = std::move(f); }
 
  private:
   struct Interval { int index = 0, octaves = 0; };
-  struct Layers { LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; int edit = 0; };
+  struct Layers {
+    LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; int edit = 0;
+    SplitBy by = SplitBy::Key; bool countUpper = false; int count = 1;
+  };
   int learned_ = 0;
+
+  /* The hand a note starting now is dealt by notes, among the `n` held before
+     it: its rank from the counted end. Rank, not "fill the counted hand
+     first" (split-by-notes.md says why): with Lower: 1 and C3 holding the
+     lower hand, an A2 struck under it is the lowest note held, so it is the
+     lower hand's too, and C3 stays where it was. Fewer held than the count
+     follows: every note is within the count of the end. */
+  int dealt(int note, const Held* held, std::size_t n) const {
+    int beyond = 0;  // held notes nearer the counted end than this one
+    for (std::size_t i = 0; i < n; i++) if (layers_.countUpper ? held[i].note > note : held[i].note < note) beyond++;
+    const bool counted = beyond < layers_.count;
+    return layers_.countUpper ? (counted ? 1 : 0) : (counted ? 0 : 1);
+  }
+  // Every held note dealt again in the order it was struck, each ranked among those struck before it.
+  void redeal() {
+    for (std::size_t i = 0; i < notes_.size(); i++) notes_[i].hand = dealt(notes_[i].note, notes_.data(), i);
+  }
 
   std::vector<Held>::iterator find(int note) {
     return std::find_if(notes_.begin(), notes_.end(), [note](const Held& h) { return h.note == note; });
@@ -531,7 +595,7 @@ class Keyboard {
       std::size_t n = 0;
       if (!on) { if (which == 0) for (const auto& h : notes_) mine[n++] = h; }
       else if (layers_.mode == LayerMode::Layer) for (const auto& h : notes_) mine[n++] = h;
-      else for (const auto& h : notes_) if ((h.note >= layers_.point) == (which == 1)) mine[n++] = h;
+      else for (const auto& h : notes_) if (handOf(h) == which) mine[n++] = h;
       const std::size_t from = n > kPolyVoices ? n - kPolyVoices : 0;
       for (std::size_t i = from; i < n; i++) sounding[count++] = mine[i];
     }
@@ -665,7 +729,7 @@ class Keyboard {
         base[j] = h;
       }
     }
-    for (int o = 0; o < arp_.octaves; o++) for (const auto& h : base) seq.push_back({ h.note + 12 * o, h.velocity });
+    for (int o = 0; o < arp_.octaves; o++) for (const auto& h : base) seq.push_back({ h.note + 12 * o, h.velocity, h.hand });
     if (arp_.mode == "down") std::reverse(seq.begin(), seq.end());
     // Up and back without playing either end twice in a row.
     if (arp_.mode == "updown" && seq.size() > 2) {

@@ -109,6 +109,11 @@ SWEEP = """async ([bands]) => {
                  document.getElementById('handsPick').hidden,
                  [...document.querySelectorAll('.hand-link')].filter((link) => link.hidden || link.getAttribute('aria-pressed') !== 'false').length];
     measure('tone+keys+photo+layers+planeB');
+    /* Split by notes (16 Nov): the Split row with the end and the count
+       beside its menu in Learn's place, the wider of its two ways. */
+    el.midiSplitBy.value = 'notes'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
+    measure('tone+keys+photo+layers+planeB+bynotes');
+    el.midiSplitBy.value = 'key'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     /* And the rack (F5) at its tallest: every effect on, so no module is
        folded to its line, and each one opened in turn with its rest showing,
        on top of the layered rows above. Which module was open is read back

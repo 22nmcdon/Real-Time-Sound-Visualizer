@@ -22,6 +22,7 @@ over the C++ core. A native desktop build in Python and Qt was retired in P0 of
 | `docs/shaping-the-sound.md` | the next sound plan, Stages G–L: more shapes, inside the voice, the X–Y plane as effects, sound driving the drawings, the picture playing music, breadth. G0 (the saw), G1's drawbars and morph, S5 (the page's key), S6 (the clock), K1's crossings, K2 (the quantiser), J2's pitched harmonograph, S8's *Play the figure*, Stage I (the plane's nine operations with S2, and I1's delay and chorus, on the generator and, through S1's effects worklet, on a live input or a file), and Stage H (the voice's second oscillator, sync, sub and unison; drive, fold and crush; a filter in every note) are built, and so are the rest of G (pulse, noises, wavetable, a drawn and a grabbed cycle), J and K, the breadth of L, S10's voice budget and S6's start and stop. The plan is built |
 | `docs/making-it-one-instrument.md` | the plan that comes before any new feature, measured by whether the instrument gets reached for: what it is (*the sound is made from what the screen remembers* - the phosphor read back at audio rate as Scan, at control rate as the picture stage, at tempo as the score), why the picture barely moves the sound today (measured), two plugins from one codebase with the synth first (it adds only what needs an ink the loop can reach) and the effect after, what goes and the rule for the host's parameters, and stages P0-P9 with the Scan experiment run from the start. Not built |
 | `docs/the-picture-amount.md` | a study of the picture stage, measured on the core: why its swell is inconsistent (a sound moved by its own picture through a range that closes in two seconds oscillates by itself, and notes land on its swells), what else it does (loud, noise-driven, a switch-like knob, every Settled preset made Breathing), and four options; recommended: read the other hand's picture against a slow, wide range, which keeps the swell and passes the owner's consistency test. Decided with the owner on 11 Nov and built on 12 Nov as *How the picture responds* (Responds to, Rise and Fall, Swell), each hand's own, on fixed scales a held chord cannot swell on by itself; its last section has what was built and measured |
+| `docs/split-by-notes.md` | a split by the notes held as well as at a key: the lowest or highest few notes one hand, each note's hand dealt by its rank as it starts and kept; rank over fill, the pedal, a repeated key, the count of one to five, and the additive fields that need no decode pass. Built 16 Nov |
 | `docs/midi-and-the-audio-path.md` | the design note underneath it: MIDI in, a real audio path for the generator, the picture's transforms shaping the sound, two visualisers at once |
 | `docs/scan-experiment/` | P2 of the plan: the phosphor recorded from six presets, scanned along four paths at three softnesses, rendered and measured, with the scripts that do it. Softness makes the tables warm; a centred path plays a symmetric figure out of tune, an off-centre one mostly not. Run; the go or no-go waits on listening |
 | `docs/z-axis-lane.md` | brightness as a third axis: written for the retired desktop build, kept as an idea for the plugin |
@@ -6834,3 +6835,22 @@ is open, and the page hears nothing when it closes - in headless Chromium as on 
 desktop, so this one can be reproduced with real key presses rather than a stand-in. The
 answer is to ask again once the page is seen to have its events back, with a key's own
 auto-repeat as the only evidence it is still down (`screenRecheck`).
+
+**A hand that is not a function of the pitch has to be kept on the note (16 Nov, the split
+by notes).** By key, a note's hand was worked out from its pitch wherever it was asked -
+the layers' chords, the strike counters, the picture's strike - and so every place asked
+the same question and got the same answer. By notes the answer depends on what was held
+when the note began, which no later reading can work out again, so the hand is dealt once
+and carried on the note (`Held::hand`, and `hand` on the face's `midi.notes`). Two places
+copied notes and dropped it without complaint, because a field with a default compiles and
+runs: the arpeggiator's steps, which are held notes a few octaves up and were built from
+the note and its velocity alone, and the face's `arpFollow`, which builds the steps it
+shows from the instrument's numbers. Both now carry it, and pieces/splitnotes.py's
+arpeggio row is what caught the first - with the hand dropped, every step plays in the
+lower hand, and a step from a note dealt low (the obvious fixture) cannot tell. Second, a
+row that fits is not the only way to fit a control: the Split row of its own put Play 11 px
+over at 1400x900, and the answer was two rows that had room to spare across them (the
+Layers menu's and the pairing menu's), not a smaller control. Third, a test of which hand
+a note is in can be made from sound alone: give one hand no level (`bAmp` nought) and read
+each note's bin in the output - which is how the plugin's shell test holds a host's chord to
+the site's hands without any way into the instrument's layers.

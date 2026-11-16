@@ -449,6 +449,68 @@ with sync_playwright() as pw:
           "A %.5f B %.5f; %s" % (alone["a"], alone["b"], alone["kept"][:200]))
     check("null: with both the point's send and Learn's cut, A3 is in A's lanes, the bug as it was",
           null["point"] == 55 and null["a"] > 10 * null["b"] and '"splitAt"' not in null["kept"], "A %.5f B %.5f" % (null["a"], null["b"]))
+
+    print("\n--- the split by notes: the face and the instrument deal the same hands ---")
+    # The rule itself, with its nulls, is core/tests/pieces/splitnotes.py's on
+    # the core's keyboard. What is here is the face: its Split row, told to the
+    # instrument as a hand's change, and its mirror (layerNotes, which the
+    # readout and the strikes read) dealing the hands the instrument's lanes
+    # show. Lower: 1 over C3 E3 G3 and then A2 under them: by rank A2 and C3
+    # are the lower hand and E3 and G3 the upper; the key split at C4 would
+    # put all four in A. The null cuts the face's sends (hostControl), so the
+    # instrument never hears "by notes" and splits at its key while the face
+    # deals by notes - the two disagree, which this check must see.
+    NOTES = """async (cut) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      setScreenKeys(true); el.midiPoly.click();
+      el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
+      await wait(150);
+      const row = { split: !el.midiSplitBy.hidden, learnByKey: !el.midiSplitLearn.hidden, endByKey: !el.midiSplitEnd.hidden };
+      if (cut) hostSync.on = false;
+      const pick = (id, v) => { el[id].value = v; el[id].dispatchEvent(new Event('change', { bubbles: true })); };
+      pick('midiSplitBy', 'notes'); pick('midiSplitEnd', 'lower'); pick('midiSplitCount', '1');
+      if (cut) hostSync.on = true;
+      row.learnByNotes = !el.midiSplitLearn.hidden; row.endByNotes = !el.midiSplitEnd.hidden && !el.midiSplitCount.hidden;
+      await wait(150);
+      for (const n of [48, 52, 55, 45]) { midiNoteOn(n, 100); await wait(30); }
+      const face = [0, 1].map((l) => layerNotes(l).map((h) => h.note).sort((a, b) => a - b));
+      const code = snapshot();
+      state.lastReadout = 0; await wait(400);
+      return { row, face, readout: el.readoutDetail.textContent,
+               code: { splitBy: code.splitBy, splitEnd: code.splitEnd, splitCount: code.splitCount } };
+    }"""
+    def by_notes(cut):
+        q = b.new_page(viewport={"width": 1400, "height": 900})
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1500)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        q.evaluate(BIN, BIN_SRC)
+        out = q.evaluate(NOTES, cut)
+        e = q.evaluate(LANES, [45, 48, 52, 55])
+        # Each note's energy in A's two lanes and in B's.
+        out["a"] = [round(e[0][i] + e[1][i], 5) for i in range(4)]
+        out["b"] = [round(e[2][i] + e[3][i], 5) for i in range(4)]
+        q.close()
+        return out
+    told, cut = by_notes(False), by_notes(True)
+    print("    told %s" % told)
+    print("    the face's sends cut: A %s, B %s" % (cut["a"], cut["b"]))
+    in_hands = lambda r, low, high: all(r["a"][i] > 10 * r["b"][i] and r["a"][i] > 1e-3 for i in low) \
+        and all(r["b"][i] > 10 * r["a"][i] and r["b"][i] > 1e-3 for i in high)
+    check("by key or by notes shows beside Layers with a split, and under it Learn by key, the end and the count by notes",
+          told["row"] == {"split": True, "learnByKey": True, "endByKey": False, "learnByNotes": False, "endByNotes": True},
+          str(told["row"]))
+    check("the face deals Lower: 1 by rank: A2 and C3 the lower hand, E3 and G3 the upper",
+          told["face"] == [[45, 48], [52, 55]], str(told["face"]))
+    check("and the instrument plays those hands: A2 and C3 in A's lanes, E3 and G3 in B's",
+          in_hands(told, [0, 1], [2, 3]), "A %s B %s" % (told["a"], told["b"]))
+    check("null: the instrument never told, it splits at its key and all four are in A's lanes",
+          in_hands(cut, [0, 1, 2, 3], []) and not in_hands(cut, [0, 1], [2, 3]) and cut["face"] == [[45, 48], [52, 55]],
+          "A %s B %s" % (cut["a"], cut["b"]))
+    check("the split by notes is in the setup the face writes, and in the readout",
+          told["code"] == {"splitBy": "notes", "splitEnd": "lower", "splitCount": 1}
+          and "split by notes: lowest 1 to the lower hand" in told["readout"], str(told["code"]) + " " + told["readout"][:200])
+
     check("no page errors on the instrument's face", not bad, "; ".join(bad[:3]))
     b.close()
 

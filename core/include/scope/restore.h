@@ -1412,6 +1412,15 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
             ? static_cast<int>(std::fmax(0, std::fmin(127, at->n))) : 60;
   }
   k.against = fieldStr("layerPair") == u"against";
+  /* The split by notes (16 Nov). Three fields beside splitAt rather than a new
+     meaning for it, with defaults that are the key split, so a code from
+     before them is the split it always was and no decode pass is needed. */
+  k.by = fieldStr("splitBy") == u"notes" ? SplitBy::Notes : SplitBy::Key;
+  k.countUpper = fieldStr("splitEnd") == u"upper";
+  {
+    const double n = fieldNum("splitCount");
+    k.count = std::isfinite(n) ? static_cast<int>(std::fmax(1, std::fmin(kSplitCountMost, std::trunc(n)))) : 1;
+  }
   // Whose sound each layer's picture moves: a value the menu has not got is the layer's own.
   for (int l = 0; l < 2; l++) {
     const Json* v = s(l == 0 ? "pictureMovesA" : "pictureMovesB");
@@ -2025,6 +2034,10 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "midiPolyJust") keys.setPolyJust(checked);
   else if (id == "midiLayers") keys.setLayers(text == "split" ? LayerMode::Split : text == "layer" ? LayerMode::Layer : LayerMode::Off);
   else if (id == "midiLayerPair") keys.setPair(text == "against");
+  // The split by notes (16 Nov): which way the split decides, and the end it counts and how many.
+  else if (id == "midiSplitBy") keys.setSplitBy(text == "notes" ? SplitBy::Notes : SplitBy::Key);
+  else if (id == "midiSplitEnd") keys.setSplitCount(text == "upper", k.count);
+  else if (id == "midiSplitCount") keys.setSplitCount(k.countUpper, static_cast<int>(orElse(number, 1)));
   // The split point learned from a key on the face (after stage 5): Learn is the face's, the point the instrument's.
   else if (id == "splitAt") keys.setSplitPoint(written.empty() ? NAN : number);
   else if (id == "pictureMovesA") b.pictureMoves[0] = pictureMovesOf(text, "A");

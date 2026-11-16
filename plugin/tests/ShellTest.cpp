@@ -3869,6 +3869,71 @@ int main() {
     }
   }
 
+  std::printf("\n--- a host's chord split by notes (16 Nov) ---\n");
+  {
+    /* The split by notes (web/docs/split-by-notes.md), decided by the core's
+       keyboard, so the plugin's hands are the site's. A project that splits
+       by notes, Lower: 1, with the upper hand silent (bAmp nought), handed
+       over as a host hands a state over; then the host plays C3 E3 G3 and,
+       while they are held, A2. The site deals A2 and C3 to the lower hand
+       and E3 and G3 to the upper (layertest.py reads the same chord off the
+       site's lanes), so only A2 and C3 may be heard. The null is the same
+       project split by key at C4, which the instrument would play if it did
+       not read the new fields: all four in the lower hand, all four heard. */
+    const auto heardOf = [&](const char* by) {
+      const std::string json = std::string(R"({"shape":"sine","midiMode":"poly","layers":"split","splitAt":60,"splitBy":")") + by
+          + R"(","splitEnd":"lower","splitCount":1,"bAmp":0,"pictureAmount":0,"display":"xy"})";
+      const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(json)));
+      ScopeProcessor p;
+      if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
+      p.prepareToPlay(rate, block);
+      std::vector<float> mono;
+      for (int k = 0; k < 48; ++k) {
+        juce::AudioBuffer<float> buf(2, block);
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 0) for (const int note : { 48, 52, 55 })
+          m.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 10 + note);
+        if (k == 4) m.addEvent(juce::MidiMessage::noteOn(1, 45, static_cast<juce::uint8>(100)), 10);
+        p.processBlock(buf, m);
+        for (int i = 0; i < block; ++i) mono.push_back(buf.getSample(0, i) + buf.getSample(1, i));
+      }
+      // A Hann-windowed single bin at each note, over the last 16384 samples.
+      std::array<double, 4> level {};
+      const std::size_t n = 16384, from = mono.size() - n;
+      const int notes[4] = { 45, 48, 52, 55 };
+      for (int j = 0; j < 4; ++j) {
+        const double f = juce::MidiMessage::getMidiNoteInHertz(notes[j]);
+        double re = 0, im = 0;
+        for (std::size_t i = 0; i < n; ++i) {
+          const double w = 0.5 - 0.5 * std::cos(2 * juce::MathConstants<double>::pi * static_cast<double>(i) / static_cast<double>(n - 1));
+          const double ph = 2 * juce::MathConstants<double>::pi * f * static_cast<double>(i) / rate;
+          re += mono[from + i] * w * std::cos(ph);
+          im -= mono[from + i] * w * std::sin(ph);
+        }
+        level[static_cast<std::size_t>(j)] = std::hypot(re, im) / static_cast<double>(n);
+      }
+      juce::MemoryBlock saved;
+      p.getStateInformation(saved);
+      const auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(saved.getData()), saved.getSize()));
+      const auto* kept = decoded.setup.get(u"splitBy");
+      return std::make_pair(level, kept && kept->type == scope::Json::Type::String ? scope::utf16To8(kept->s) : std::string("-"));
+    };
+    const auto [byNotes, keptNotes] = heardOf("notes");
+    const auto [byKey, keptKey] = heardOf("key");
+    const auto say = [](const std::array<double, 4>& l) {
+      return "A2 " + num(l[0]) + ", C3 " + num(l[1]) + ", E3 " + num(l[2]) + ", G3 " + num(l[3]);
+    };
+    const auto lowerOnly = [](const std::array<double, 4>& l) {
+      const double top = std::fmax(l[0], l[1]);
+      return l[0] > 1e-3 && l[1] > 1e-3 && l[2] < top * 0.01 && l[3] < top * 0.01;
+    };
+    check("a host's C3 E3 G3 and then A2, split by notes with the lowest one counted: A2 and C3 in the lower hand, as the site deals them, and E3 and G3 in the upper, silent here",
+          lowerOnly(byNotes) && keptNotes == "notes", say(byNotes) + "; the project keeps splitBy " + keptNotes);
+    check("null: the same project split by key at C4 plays all four in the lower hand",
+          !lowerOnly(byKey) && byKey[2] > 1e-3 && byKey[3] > 1e-3 && keptKey != "notes", say(byKey) + "; splitBy " + keptKey);
+  }
+
   std::printf("\n--- the latency told to the host ---\n");
   {
     /* The oversampled stages put the sound 31 samples late each - the

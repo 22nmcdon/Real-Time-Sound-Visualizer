@@ -117,6 +117,9 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     else if (cmd == "layers") k.setLayers(arg(1) == "split" ? scope::LayerMode::Split : arg(1) == "layer" ? scope::LayerMode::Layer : scope::LayerMode::Off);
     else if (cmd == "learn") k.learnSplit();
     else if (cmd == "pair") k.setPair(arg(1) == "against");
+    // The split by notes (16 Nov): "splitby notes|key", "splitcount lower|upper N".
+    else if (cmd == "splitby") k.setSplitBy(arg(1) == "notes" ? scope::SplitBy::Notes : scope::SplitBy::Key);
+    else if (cmd == "splitcount") k.setSplitCount(arg(1) == "upper", static_cast<int>(num(arg(2))));
     else if (cmd == "hold") k.setHold(arg(1) == "1");
     else if (cmd == "gen") {
       const std::string v = arg(2);

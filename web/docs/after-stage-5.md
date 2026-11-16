@@ -528,6 +528,19 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   pointer's choice S plays D3; the null leaves the focus on the menu and S plays nothing;
   a menu focused from the keyboard keeps the focus, Down moves it and S plays nothing.
 
+- **A chord struck at once is dealt in the order its notes arrive** (found building the
+  split by notes, 16 Nov; for the owner's ear). A note's hand is fixed when it starts, as
+  the owner decided, by its rank among the notes held at that moment. But a chord's
+  notes reach the keyboard a millisecond or two apart in no fixed order, so with Lower: 1
+  a bass note and a right-hand chord struck together put whichever note came first in the
+  lower hand, and the bass beside it: two notes low, the bass's sound on a chord note.
+  Played one hand a moment before the other it behaves; on the beat it will sometimes
+  not. A fix within the rule: deal the notes that start within a few milliseconds of the
+  first as one chord, by pitch, as the arpeggiator already waits 25 ms for a chord
+  (`kArpGather`) - which means holding a note's hand open, and so its sound, for those
+  milliseconds, or moving it once it has begun. Not built without the owner's word, since
+  either is the "nothing moves" rule bent.
+
 ## Already planned for after stage 5
 
 - Each voice's real cycle sent from the core to the page, which is what brings
