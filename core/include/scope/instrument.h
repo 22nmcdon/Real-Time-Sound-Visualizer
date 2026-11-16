@@ -260,6 +260,8 @@ class Instrument {
     const auto size = static_cast<std::size_t>(std::max(64, samplesPerBlock));
     pictureL_.assign(size, 0.0f); pictureR_.assign(size, 0.0f); spare_.assign(size, 0.0f); mono_.assign(size, 0.0f);
     pictureBL_.assign(size, 0.0f); pictureBR_.assign(size, 0.0f);
+    meterL_.assign(size, 0.0f); meterR_.assign(size, 0.0f);
+    meterLimiter_.prepare(sampleRate);
     // The limiter starts as the page's node does when its chain is made: open, and its lookahead empty.
     limiter_.prepare(sampleRate);
   }
@@ -271,7 +273,16 @@ class Instrument {
      its chains: nought or below, the node's reduction, which opens above
      nought and is read as nought until it has come down. */
   float limiterReduction() const { return limiter_.reduction(); }
-  double limiting() const { return limiterOn_ ? std::fmin(0.0, static_cast<double>(limiter_.reduction())) : 0.0; }
+  /* What the picture's meter is handed (16 Nov): the reduction the drawn
+     pair would have needed, as it was heard before every note was heard in
+     both ears - the lanes summed, the score, at the Output - from a limiter
+     of its own that is never heard. Every note in both ears is louder than a
+     leaned note was, and a held chord works the heard limiter up to two and a
+     half decibels harder; handed that, the meter's running-away verdict, and
+     the push it holds, would move with how wide you listen (on a loud chord
+     on Bass under the pad it did, where the picture had not). So the loop
+     reads the picture's own loudness, at any Width. */
+  double limiting() const { return limiterOn_ ? std::fmin(0.0, static_cast<double>(meterLimiter_.reduction())) : 0.0; }
 
   // A setup loaded as a preset is: the core restored, the hands on it since put back.
   void load(const Json& setup, bool fromHost) {
@@ -1423,7 +1434,7 @@ class Instrument {
         }
         publish(ring);
         core_->hear(left + at, heardR, n);  // the Output, on what is heard and never on the bands drawn
-        limit(left + at, heardR, n);
+        limit(left + at, heardR, n, left + at, heardR);
         continue;
       }
       if (drawsInput_) {
@@ -1438,7 +1449,8 @@ class Instrument {
           for (int k = 0; k < n; ++k) mono_[static_cast<std::size_t>(k)] = input_->right ? (inL[k] + inR[k]) * 0.5f : inL[k];
           core_->setInput(mono_.data(), n);
         }
-        core_->block(pictureL_.data(), pictureR_.data(), n, left + at, heardR, pictureBL_.data(), pictureBR_.data());
+        core_->block(pictureL_.data(), pictureR_.data(), n, left + at, heardR, pictureBL_.data(), pictureBR_.data(),
+                     meterL_.data(), meterR_.data());
         core_->setInput(nullptr, 0);
       }
       /* The figures the generator lays out, as the page's tone source lays
@@ -1471,7 +1483,8 @@ class Instrument {
         ring = (ring + 1) % kPictureFrames;
       }
       publish(ring);
-      limit(left + at, heardR, n);
+      if (drawsInput_) limit(left + at, heardR, n, left + at, heardR);
+      else limit(left + at, heardR, n, meterL_.data(), meterR_.data());
     }
   }
 
@@ -1479,9 +1492,19 @@ class Instrument {
      after the Output and the Width, which the generator's `hear` and its
      heard pair have already put on, and never on the picture, which is what
      came out before them. */
-  void limit(float* left, float* right, int n) {
+  /* And the meter's limiter on `asDrawnL`, `asDrawnR` (see `limiting`):
+     where what is heard is the picture - the input, drawn whole or in bands -
+     the heard pair itself, read before the heard limiter changes it. */
+  void limit(float* left, float* right, int n, const float* asDrawnL, const float* asDrawnR) {
     if (hooks.beforeLimit) hooks.beforeLimit(left, right, n);
-    if (limiterOn_) limiter_.process(left, right, n);
+    if (limiterOn_) {
+      if (asDrawnL != meterL_.data()) {
+        std::copy(asDrawnL, asDrawnL + n, meterL_.begin());
+        std::copy(asDrawnR, asDrawnR + n, meterR_.begin());
+      }
+      meterLimiter_.process(meterL_.data(), meterR_.data(), n);
+      limiter_.process(left, right, n);
+    }
   }
 
   /* The last of the picture, the page's screen, for the hearing to read: its
@@ -1536,6 +1559,7 @@ class Instrument {
   double nowMs_ = 0, lastBlockMs_ = 0;  // the matrix's clock: audio time, not the wall's
   std::vector<float> pictureL_, pictureR_, spare_, mono_;  // a block's worth, made in prepare
   std::vector<float> pictureBL_, pictureBR_;  // layer B's pair, as the generator draws it
+  std::vector<float> meterL_, meterR_;  // the drawn pair as it was heard, for the meter's limiter (16 Nov)
   const Input* input_ = nullptr;  // this block's, while it is rendered
   bool drawsInput_ = false;       // drawing the input rather than the generator
   bool bands_ = false;            // the input split into four bands, drawn as lanes
@@ -1564,6 +1588,7 @@ class Instrument {
   std::atomic<std::size_t> fadeLength_ { 0 };
   std::atomic<unsigned> fadeSeq_ { 0 };
   Limiter limiter_;          // the page's limiter and clamp, on the heard pair (5a)
+  Limiter meterLimiter_;     // the same on the drawn pair as heard, never heard: what the meter reads (`limiting`)
   bool limiterOn_ = true;    // off only for a harness's null
   bool running_ = true;      // the site's Stop and Run (5a)
 };

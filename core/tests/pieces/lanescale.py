@@ -32,7 +32,7 @@ def code(setup):
 
 SPLIT = {"v": 11, "display": "xy", "midiMode": "poly", "layers": "split", "splitAt": 60, "layerPair": "each",
          "shape": "sine", "bShape": "sine", "freq": 220, "oscScan": 100, "bScan": 100, "scanReadsA": "A", "scanReadsB": "B",
-         "pictureAmount": 0, "bPictureAmount": 0, "persistence": "0.12", "l0r": 40, "l0a": 100, "polyRound": True}
+         "pictureAmount": 0, "bPictureAmount": 0, "persistence": "0.12", "l0r": 40, "l0a": 100}
 
 
 def old_core(kit):

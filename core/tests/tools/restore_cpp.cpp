@@ -70,7 +70,7 @@ Json layerBJson(const scope::LayerBSettings& t) {
 Json toneJson(const scope::Tone& t) {
   Json o = layerJson(t);
   o.set("freq", num(t.freq)); o.set("interval", num(t.interval));
-  o.set("octaves", num(t.octaves)); o.set("just", flag(t.just)); o.set("phase", num(t.phase)); o.set("polyRound", flag(t.polyRound));
+  o.set("octaves", num(t.octaves)); o.set("just", flag(t.just)); o.set("phase", num(t.phase));
   o.set("pitchBend", num(t.pitchBend)); o.set("vibrato", num(t.vibrato));
   // The kind and the drawings' fields were here too until G2: the tone has none of them now.
   o.set("inputMode", num(t.inputMode)); o.set("inputDepth", num(t.inputDepth));

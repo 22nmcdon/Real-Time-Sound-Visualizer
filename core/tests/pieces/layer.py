@@ -99,8 +99,18 @@ def run(kit):
     null("A's picture read as B's has not B's note", not b_has(aX))
     check("and the heard pair has all three", min(heard) > 0.03, str(np.round(heard, 4)))
     null("A's picture alone, read as heard, has not all three", not min(aX) > 0.03)
-    worst = float(max(np.max(np.abs(hl - al - bl)), np.max(np.abs(hr - ar - br))))
-    check("because it is A's lanes and B's summed, sample for sample", worst < 1e-6, "worst %.3g" % worst)
+    # Since 16 Nov what is heard is every note in both ears, whatever the
+    # roles that lean it on the screen: each of the three as loud in the left
+    # as in the right. Until then it was A's lanes and B's summed, sample for
+    # sample, where A's G3 was half as loud on the left as on the right.
+    heardR = [bin_at(tail(hr), f) for f in (c, g, e)]
+    db = lambda a, b: abs(20 * np.log10(max(a, 1e-12) / max(b, 1e-12)))
+    worst = max(db(a, b) for a, b in zip(heard, heardR))
+    check("and each of them is in both ears alike, within 0.5 dB", worst < 0.5, "worst %.2f dB" % worst)
+    drawnL = [bin_at(tail(al + bl), f) for f in (c, g, e)]
+    drawnR = [bin_at(tail(ar + br), f) for f in (c, g, e)]
+    null("A's lanes and B's summed, as was heard, lean A's notes 6 dB to their sides",
+         max(db(a, b) for a, b in zip(drawnL, drawnR)) > 5, "%.2f dB" % max(db(a, b) for a, b in zip(drawnL, drawnR)))
     without = float(np.max(np.abs(hl - al)))
     null("the comparison fails with B left out", without > 0.05, "%.3g" % without)
     # "A caller that asks for no lanes of B's hears exactly the same" was the

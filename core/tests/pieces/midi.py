@@ -60,7 +60,9 @@ def run(kit):
                             "lag": None if w[-1] == "-" else float(w[-1])})
             elif s[0] == "hear":
                 v = [float(x) for x in next(l for l in it if l.startswith("block ") and len(l) > 200000).split()[1:]]
-                out.append((v[:s[1]], v[s[1]:2 * s[1]]))
+                # The drawn pair, X and Y, after the heard pair: since 16 Nov each
+                # note is in both ears, so a dyad's two notes are read off the figure.
+                out.append((v[2 * s[1]:3 * s[1]], v[3 * s[1]:4 * s[1]]))
         return out
 
     def is_unison(t, note):
@@ -134,13 +136,15 @@ def run(kit):
     check("a played fifth is exactly 3:2 in just tuning", ratio(fifth, True) == 1.5, "%r" % ratio(fifth, True))
     check("and the tempered ratio in equal", abs(ratio(fifth, False) - 2 ** (7 / 12)) < 1e-12, "%r" % ratio(fifth, False))
 
-    # --- the note in the samples (:263, :290, :293, :296): the heard pair ---
+    # --- the note in the samples (:263, :290, :293, :296): the drawn pair ---
+    # Read off the heard pair until 16 Nov, when it was the figure; every note
+    # is in both ears now, and the figure is where the two notes are apart.
     n = RATE
     just, = play([("click", "midiDyad"), ("click", "tuneJust"), ("on", 57), ("on", 64), ("wait", 4), ("hear", n)])
     tempered, = play([("click", "midiDyad"), ("click", "tuneEqual"), ("on", 57), ("on", 64), ("wait", 4), ("hear", n)])
     jl, jr = hz_of(just[0]), hz_of(just[1])
     el_, er = hz_of(tempered[0]), hz_of(tempered[1])
-    check("and the note is in the samples: A3 on the left, a just fifth above it on the right",
+    check("and the note is in the samples: A3 on X, a just fifth above it on Y",
           abs(jl - HZ(57)) < 2 and abs(jr / jl - 1.5) < 0.01, "%.4f, %.4f" % (jl, jr))
     null("the samples are not a fourth", abs(jr / jl - 4 / 3) > 0.01)
     claimed = abs(2 * HZ(57) * 2 ** (7 / 12) - 3 * HZ(57))

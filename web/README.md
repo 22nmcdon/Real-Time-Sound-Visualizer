@@ -102,7 +102,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
 | `wordstest.py` | the info line: the page's words are the doc's, every control on the face has its line, a quick sweep over a row of knobs leaves it and a rest changes it, touching takes it at once, More and ? open the card with its steps, the switch is remembered, and it sits in the Picture section at three sizes taking no height; and no word the page can show - its text, hidden panels and the cheat sheet included, tooltips, the info line, the sources' descriptions - names a tab, view or drawer that has gone (G8), with nulls planted in each |
 | `outputtest.py` | Level in the Generator and the master Output (G7): where each is and Level on the Generator's link; the Output's law (the knob's fraction squared) and its reading in decibels; no setup's - a preset, a code, undo under real keys and the morph leave it, each against Level, which they move; this browser's storage, and the page opening at unity with storage refused; the picture the same to the bit and the heard pair a quarter on the compiled instrument the page carries and on the page's own generator, played deterministically on the main thread; the meter at the Output's gain; the site's instrument told the remembered Output as it connects, each with its null |
-| `widthtest.py` | The master Width (12 Nov), the Output's twin: where it is (after the Output, before the meter); its law (the knob's fraction) and reading; no setup's - a preset, a code, New, undo under real keys and the morph leave it, against Level; this browser's storage, and a hundred with storage refused; on the compiled instrument and the page's generator, mono to the bit at nought once landed and glided there, half the side at fifty, the heard pair the drawn pair to the bit at a hundred, the picture the same to the bit; the instrument's state; the site's instrument told the remembered Width; and the Key held through a note's release on the page and at the speakers (serial, real time), each with its null |
+| `widthtest.py` | The master Width (12 Nov), the Output's twin: where it is (after the Output, before the meter); its law (the knob's fraction) and reading; no setup's - a preset, a code, New, undo under real keys and the morph leave it, against Level; this browser's storage, and a hundred with storage refused; on the compiled instrument and the page's generator, since 16 Nov each note's own: mono to the bit at nought once landed and glided there, at fifty a sine's side sin(pi/8)/sin(pi/4) of its side at a hundred (the old law's half the null) with each ear as loud, the heard pair the drawn pair at a hundred, the picture the same to the bit; the instrument's state; the site's instrument told the remembered Width; and the Key held through a note's release on the page and at the speakers (serial, real time), each with its null |
 | `enlargetest.py` | Enlarge (G4): the button and Esc, Esc closing a panel first; Picture only hiding the reticle, the loop, the hand's mark, the verdict, the panes, and every ink off the trace in X-Y and Y-T; the instrument's phosphor grid and Scan's table the same with it on and off and with Which hands on one hand; the Trail fading the canvas at the square of the Persistence (Half) or Short's and the grid at the Persistence, and doing nothing on the face; the light kept as it opens and closes; Which hands by ink; the panes beside it at 1400x900 and 960x600; no undo step and nothing stored; and the header one row before any sound at three windows, each with its null |
 | `washtest.py` | the screen fades to the paper: a figure at 0.0255 and at 0.12 comes back to within two levels of a cleared screen, read off the canvas's own pixels; and no axis name or time mark stays under the next one, in X-Y and Y-T |
 | `regress.py` | every preset applies, the three displays cycle, sources switch cleanly |
@@ -5894,6 +5894,57 @@ sound as it was; it lands there because it glides on the Output's one-pole
 and snap. And nothing above a hundred: the tine piano's side is already ten
 decibels over its middle, and widening past the figure would hand the
 limiter the work. Its id is `stereoWidth`, since `width` was the pulse's.
+
+**Every note in both ears, and the Width each note's own (16 Nov).** The
+owner heard a second note move the first between the ears, in Dyad (the
+right channel became the upper note) and in Poly (the outer notes lean 6 dB),
+and asked why the sound could not just reach both ears
+(`web/docs/both-ears.md`). The rule that made it was the heard pair being the
+figure. What is heard is now a second mix of the same voices
+(`scope::sound`'s `c.heard`, and the Dyad's `heardDyad_`): each voice in both
+ears at full, its left behind its right by the Width's fraction of a quarter
+of its own cycle, read from the ring the quarter turn already kept. Through a
+plane of its own (`planeH_`), set and ticked as the picture's, so the rack
+acts on both; the governor counts the second pass (and in Dyad the three heard
+voices). Things learned on the way, each of which would otherwise be found again:
+
+- *The picture stays the same to the bit only if nothing heard feeds back.*
+  The limiter's reduction is handed to the picture meter, whose running-away
+  verdict holds the stage's push; every note in both ears is up to 2.5 dB
+  louder on a held chord, and on Bass under the pad a loud chord tripped the
+  verdict where it had not. So the meter reads a limiter of its own on the
+  drawn pair as it used to be heard (`Instrument::limiting`, `meterLimiter_`),
+  never heard. With that, the drawn lanes, the grid and every reading are the
+  same to the bit at any Width, across the bank (`core/tests/pieces/ears.py`).
+- *A voice's ring outlives it on the left.* A voice dropped - its release
+  over, or the governor's fade done - used to take its last quarter-period
+  from the left in one sample, which for a low note cut by the governor is
+  most of its level (`budget.py`'s step check went to 0.82). Its ring is heard
+  out apart from the pools (`RingTail`), and summed among the voices in the
+  order they were born, with its quarter frozen once it falls silent: a voice
+  moves from the pool to the tails at the end of a block, and any difference
+  in where it was summed was a bit of rounding that the reverb carried, so
+  `render.py`'s "reading moves nothing" failed until the order was the same.
+- *Effects ticked from `effect()` (the input drawn through the plane) must not
+  tick the heard plane*, which only `block()` sets up: it crashed on a null
+  pointer the first time.
+- *A ring is no fixture for a turn.* With the quarter turn always on, a lone
+  note in Poly is a ring, and a ring turned is the same ring:
+  `layerplane.py`'s B note is on X alone now (the `xonly` role), and its
+  screen-rotation check holds a fifth.
+- *A dyad's change of interval now starts the two phases in step* (option A of
+  `one-to-two-notes.md`), the old right crossfaded out over 30 ms at equal
+  power, before the voice chain; the heard upper note crossfades with it. So a
+  dyad reached two ways draws one figure, and the lower note comes back as the
+  ring it left as.
+
+What it costs: the speakers are not the screen any more - a real oscilloscope
+on the output draws each note's ring summed, not the figure; the heard limiter
+works harder on chords; and the second plane, with all four time modules on,
+takes the generator from 17 to 28 ms a second of audio natively (31 to 55 with
+the plane's 4x shaping too). The Quarter turn's switch went with it: always
+on, and an old code's `polyRound` is read by nothing (codes are keyed, so no
+decode pass). The Width no longer touches an input drawn: it has no notes.
 
 **A module switched on starts from silence (11 Nov).** The delay's lines, the
 chorus's, the phaser's states and the reverb's network are written only while

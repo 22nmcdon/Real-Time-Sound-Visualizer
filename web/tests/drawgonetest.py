@@ -40,12 +40,26 @@ PROTOTYPE_CODE = ("eyJ2IjoxMSwic2hhcGUiOiJzaW5lIiwiY3ljbGVzIjoiIiwiZGlzcGxheSI6I
                   "LjMiLCJ0aW1lYmFzZSI6MywibWlkaU1vZGUiOiJwb2x5IiwicG9seVJvdW5kIjp0cnVlLCJwaWN0dXJlQW1vdW50IjowfQ")
 
 
-def moved_code():
-    # The prototype's code with one field moved (the quarter turn off), for the null.
+def recoded(**moved):
+    """The prototype's code with fields moved, or taken out where given None, as the page writes a code."""
     import base64, json
     setup = json.loads(base64.urlsafe_b64decode(PROTOTYPE_CODE + "=" * (-len(PROTOTYPE_CODE) % 4)))
-    setup["polyRound"] = False
-    return base64.urlsafe_b64encode(json.dumps(setup, separators=(",", ":")).encode()).decode().rstrip("=")
+    for k, v in moved.items():
+        if v is None: setup.pop(k, None)
+        else: setup[k] = v
+    return base64.b64encode(json.dumps(setup, separators=(",", ":")).encode()).decode().rstrip("=")
+
+
+# What the prototype's code comes back out as: the same, less the quarter turn's
+# switch, which went on 16 Nov (always on now, so a code's polyRound is read by
+# nothing and not written back).
+BACK_CODE = recoded(polyRound=None)
+
+
+def moved_code():
+    # The prototype's code with one field moved (the timebase), for the null.
+    # Until 16 Nov the field moved was the quarter turn, which is read by nothing now.
+    return recoded(timebase=5)
 
 
 fails = []
@@ -104,11 +118,11 @@ with sync_playwright() as pw:
         print("\n--- %s, %s ---" % (query, brain))
         p, errors = opened(b, query)
         r = p.evaluate(LOAD, PROTOTYPE_CODE)
-        check("a code from the prototype loads and comes back out of its setup unchanged, on " + brain,
-              r["back"] == PROTOTYPE_CODE and r["mode"] == "poly", "%s, %s" % (r["mode"], r["back"][:24]))
+        check("a code from the prototype loads and comes back out of its setup unchanged but for the quarter turn's switch, on " + brain,
+              r["back"] == BACK_CODE and r["mode"] == "poly", "%s, %s" % (r["mode"], r["back"][:24]))
         if query.startswith("?brain=js"):
             other = p.evaluate(LOAD, moved_code())
-            null("a code with one field moved does not come back as the prototype's", other["back"] != PROTOTYPE_CODE,
+            null("a code with one field moved does not come back as the prototype's", other["back"] != BACK_CODE,
                  other["back"][-24:])
             r = p.evaluate(LOAD, PROTOTYPE_CODE)
         check("on the address it handed out, a held chord draws the one figure: the source asks for its figures, on " + brain,

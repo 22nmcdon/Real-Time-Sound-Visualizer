@@ -6257,20 +6257,21 @@ iruns["sizes"] = [["make", 96000, 128, ocode["Pluck"]], NOTE_ON(50)] + [["block"
 # reads nothing. Half a second at 48 kHz, every ninth sample.
 iruns["scanned"] = [["make", 48000, 128, ocode["Scanned fifth"]], NOTE_ON(57)] + blocks(200, 128, 9) \
     + [["setup", ocode["Scanned interference"]]] + blocks(150, 128, 9)
-# The quarter turn (P8g): a lone note, then a chord over it, then the switch
-# turned off with the chord held - a saw through the filter, so the turned
-# right channel has the whole voice chain's state behind it - and its twin with
-# the switch off from the start, which is the null for the check below.
+# The quarter turn (P8g, always on since 16 Nov): a lone note, then a chord
+# over it - a saw through the filter, so the turned channel has the whole voice
+# chain's state behind it - and its twin heard at Width nought, every note the
+# same in both ears, which is the null for the check below. (Until 16 Nov the
+# twin had the switch off, and the first turned it off with the chord held.)
 ROUND = {"midiMode": "poly", "shape": "ramp", "vcfType": 1, "vcfCut": 600, "timebase": 3}
-for name, on in (("rounded", True), ("unrounded", False)):
-    iruns[name] = [["make", 48000, 128, ocode_of(dict(ROUND, polyRound=on))], NOTE_ON(57)] + blocks(30) \
-        + [NOTE_ON(64), NOTE_ON(69)] + blocks(30) + [["control", "polyRound", False]] + blocks(20) \
+for name, width in (("rounded", []), ("unrounded", [["slider", "stereoWidth", "0"]])):
+    iruns[name] = [["make", 48000, 128, ocode_of(ROUND)]] + width + [NOTE_ON(57)] + blocks(30) \
+        + [NOTE_ON(64), NOTE_ON(69)] + blocks(50) \
         + [NOTE_OFF(57), NOTE_OFF(64), NOTE_OFF(69)] + blocks(10)
 # The hands (6 Nov): pitch bend at the default range and at twelve, the wheel's
 # vibrato, the wheel given to the Picture amount, pressure given to vibrato -
 # the page's keyboard and the core's reading the same bytes, and Expression's
 # menus changed between them. A chord in poly, so every voice is bent.
-iruns["expression"] = [["make", 48000, 128, ocode_of(dict(ROUND, polyRound=False))], NOTE_ON(57), NOTE_ON(64)] + blocks(10) \
+iruns["expression"] = [["make", 48000, 128, ocode_of(ROUND)], NOTE_ON(57), NOTE_ON(64)] + blocks(10) \
     + [["midi", 0xE0, 0x7F, 0x7F]] + blocks(10) + [["midi", 0xE0, 0x00, 0x30]] + blocks(10) \
     + [["midi", 0xB0, 1, 127]] + blocks(40) + [["control", "midiBendRange", "12"]] + blocks(10) \
     + [["control", "midiWheelTo", "picture"], ["midi", 0xB0, 1, 64]] + blocks(10) \
@@ -6560,7 +6561,7 @@ check("and the runs had sound in them, states that changed, MIDI sent and refusa
           icount("refused", "no"), icount("presets", "state ")))
 # The quarter turn shows: the lone note's two heard channels, from the tenth
 # block to the thirtieth, against each other - a quarter-period apart, a saw's
-# correlation is far from one; laid on both alike, it is one.
+# correlation is far from one; heard at Width nought, it is one.
 def ipair(name, first, last):
     ls, rs = [], []
     for line in [l for l in iout[name][1] if l.startswith("block ")][first:last]:
@@ -6572,7 +6573,7 @@ def icorr(a, b):
     ab = sum(x * y for x, y in zip(a, b)); aa = sum(x * x for x in a); bb = sum(y * y for y in b)
     return ab / math.sqrt(aa * bb) if aa > 0 and bb > 0 else float("nan")
 rc, uc = icorr(*ipair("rounded", 10, 30)), icorr(*ipair("unrounded", 10, 30))
-check("the quarter turn parts a lone note's two channels, and without it they are one (the null)",
+check("the quarter turn parts a lone note's two heard channels, and at Width nought they are one (the null)",
       rc < 0.6 and uc > 0.999999, "%.4f turned, %.7f not" % (rc, uc))
 # And what the input runs played, read off the samples, since two sides that
 # both ignored the input would agree perfectly: drawn with nothing on the

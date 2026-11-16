@@ -1366,10 +1366,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
                                || (j->type == Json::Type::String && j->s.empty()));
     setA("just", truthy ? 1 : 0);
   }
-  {
-    // The quarter turn (P8g): only a true one, as the page reads `=== true`.
-    setA("polyRound", fieldFlag("polyRound") ? 1 : 0);
-  }
+  // The quarter turn (P8g) is always on since 16 Nov: an old code's `polyRound`, either way, is read by nothing.
   {
     // Expression (6 Nov), as the page's restore reads it: a range on the menu's list, or two.
     const double range = fieldNum("bendRange");
@@ -2049,7 +2046,6 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "scanReadsA") b.scanReads[0] = scanReadsOf(text, "A");
   else if (id == "scanReadsB") b.scanReads[1] = scanReadsOf(text, "B");
   else if (id == "midiHold") keys.setHold(checked);
-  else if (id == "polyRound") gen.set("polyRound", checked ? 1 : 0, 0);
   // Expression's menus (6 Nov): a vibrato no longer given to stops, as the page's expressionLetGo has it.
   else if (id == "midiBendRange" || id == "midiWheelTo" || id == "midiPressureTo") {
     double range = keys.bendRange();

@@ -60,7 +60,7 @@ BASS_UNDER_TINE = {
     "layerPair": "each", "atk": 2, "dec": 500, "sus": 70, "rel": 150, "bShape": "sine", "bRatio": 1, "bFm": 8,
     "bVcf": 1, "bVcfCut": 700, "bAtk": 1, "bDec": 1000, "bSus": 25, "bRel": 500,
     "mod": "env.note>gen.fm@0.400;midi.key>gen.fm@0.300", "display": "xy", "persistence": "0.3",
-    "oscScan": 20, "bScan": 45, "scanStrike": 100, "pictureAmount": 0, "polyRound": True,
+    "oscScan": 20, "bScan": 45, "scanStrike": 100, "pictureAmount": 0,
 }
 
 # The setup the page makes of it, loaded as a pasted code is.

@@ -20,19 +20,23 @@ this holds, each against the way it would fail, after the Output's own test:
   the browser refuses its storage;
 - what is heard and the picture, on the compiled instrument the page carries
   and on the core's generator through the bridge (compiled_core.js; the
-  page's own until stage 5's step 6), played deterministically on this thread:
-  at nought the heard pair is one channel twice, to the bit, once the glide
-  has landed, and not in the block it was set in (no step); at fifty its side
-  is half; at a hundred the heard pair IS the drawn pair, to the bit, which is
-  what it was before the Width existed (with one hand, no score and the
-  Output at unity, the heard pair was the lanes); and every picture lane the
-  same to the bit whatever it is. Each with its null;
+  page's own until stage 5's step 6), played deterministically on this thread.
+  Since 16 Nov the Width is each note's own (web/docs/both-ears.md): a note's
+  left behind its right by the Width's fraction of a quarter of its cycle. So
+  on a lone sine: at nought the heard pair is one channel twice, to the bit,
+  once the glide has landed, and not in the block it was set in (no step); at
+  fifty its side is sin(pi/8) / sin(pi/4), 0.541, of the side at a hundred,
+  and each ear as loud as at a hundred - where the Width as it was, the pair's
+  side scaled, made it 0.5 (the null); at a hundred the heard pair is the
+  drawn pair; and every picture lane the same to the bit whatever it is.
+  Each with its null (ears.py in the core's pieces holds the rest: every note
+  of a chord in both ears, steady as notes come and go);
 - on the site's instrument in its worklet, the Width this browser remembers
   is sent as it connects, and is what the instrument's state says;
 - the Key: held through a note's release while the Envelope is above nought
   and nought after, on both brains, so the tine piano's bark rings out.
 """
-import os, sys
+import math, os, sys
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,8 +74,8 @@ INSTRUMENT = """async ([width, blocks]) => {
   // linear, and this holds what the instrument makes before it, to the sample.
   for (const x of [a, b]) x.control('limiter', '0');
   if (width !== null) b.slider('stereoWidth', String(width));
-  const out = { picture: true, landedMono: true, firstBlockMono: true, half: 0, ratioMax: 0, asDrawn: true, bAsDrawn: true,
-                firstRatio: null, peak: 0, sideA: 0 };
+  const out = { picture: true, landedMono: true, firstBlockMono: true, asDrawn: 0, bAsDrawn: 0,
+                firstRatio: null, peak: 0, sideA: 0, sides: [0, 0], ears: [0, 0, 0, 0] };
   for (const x of [a, b]) x.midi([0x90, 57, 100]);
   for (let k = 0; k < blocks; k++) {
     const run = (x) => {
@@ -82,36 +86,45 @@ INSTRUMENT = """async ([width, blocks]) => {
     };
     const ra = run(a), rb = run(b);
     for (let c = 0; c < 6; c++) for (let i = 0; i < 128; i++) if (ra.pics[c][i] !== rb.pics[c][i]) out.picture = false;
+    let sa2 = 0, sb2 = 0;
     for (let i = 0; i < 128; i++) {
       out.peak = Math.max(out.peak, Math.abs(ra.hl[i]));
       out.sideA = Math.max(out.sideA, Math.abs(ra.hl[i] - ra.hr[i]));
-      if (ra.hl[i] !== ra.pics[0][i] || ra.hr[i] !== ra.pics[1][i]) out.asDrawn = false;
-      if (rb.hl[i] !== rb.pics[0][i] || rb.hr[i] !== rb.pics[1][i]) out.bAsDrawn = false;
+      // Once the drawn turn has glided in (4 ms, to a millionth well before) and the Width landed.
+      if (k >= 110) out.asDrawn = Math.max(out.asDrawn, Math.abs(ra.hl[i] - ra.pics[0][i]), Math.abs(ra.hr[i] - ra.pics[1][i]));
+      if (k >= 110) out.bAsDrawn = Math.max(out.bAsDrawn, Math.abs(rb.hl[i] - rb.pics[0][i]), Math.abs(rb.hr[i] - rb.pics[1][i]));
       if (k === 0 && rb.hl[i] !== rb.hr[i]) out.firstBlockMono = false;
       // Landed: a millionth of one is 13.8 time constants of 20 ms, 104 blocks.
       if (k >= 110 && rb.hl[i] !== rb.hr[i]) out.landedMono = false;
-      // The side against the untouched one's, where there is side to divide.
       const sa = ra.hl[i] - ra.hr[i], sb = rb.hl[i] - rb.hr[i];
-      if (k === 1 && out.firstRatio === null && Math.abs(sa) > 0.02) out.firstRatio = sb / sa;
-      if (k >= 110 && Math.abs(sa) > 0.02) {
-        out.half = Math.max(out.half, Math.abs(sb / sa - (width === null ? 1 : width / 100)));
-        out.ratioMax = Math.max(out.ratioMax, Math.abs(sb / sa));
+      sa2 += sa * sa; sb2 += sb * sb;
+      if (k >= 110) {
+        out.sides[0] += sa * sa; out.sides[1] += sb * sb;
+        out.ears[0] += ra.hl[i] ** 2; out.ears[1] += rb.hl[i] ** 2; out.ears[2] += ra.hr[i] ** 2; out.ears[3] += rb.hr[i] ** 2;
       }
     }
+    // The side against the untouched one's, a block's power at a time.
+    if (k === 1) out.firstRatio = Math.sqrt(sb2 / sa2);
   }
   out.state = b.state();
+  out.ratio = Math.sqrt(out.sides[1] / out.sides[0]);
+  out.earsDb = [10 * Math.log10(out.ears[1] / out.ears[0]), 10 * Math.log10(out.ears[3] / out.ears[2])];
   return out;
 }"""
 
 # The core's generator, compiled (compiled_core.js; the page's own until stage
 # 5's step 6), twice, the Width at `w` in one: a ramp through the
 # delay, the dyad's pair (its right a quarter-cycle on), so the pair is stereo.
+# Since 16 Nov a dyad's lone note is heard with its left the drawn left and its
+# right turned by the Width's fraction of the Phase; the delay, after, mixes
+# the two (its repeats on the diagonal), so what is read is the pair whole.
 GENERATOR = """([w]) => {
   const lfosOf = () => [{ shape: 'sine', rate: 0.2, depth: 0.5, phase: 0, held: 0, value: 0 }, { shape: 'sine', rate: 0.5, depth: 0.3, phase: 0, held: 0, value: 0 }];
   const a = compiledGenerator(48000, GEN_SLOTS, lfosOf()), b = compiledGenerator(48000, GEN_SLOTS, lfosOf());
-  for (const x of [a, b]) { x.set('shape', 'ramp'); x.set('phase', Math.PI / 2); x.set('delayMix', 0.4); x.set('delayMs', 30); }
+  // The delay's repeats on the diagonal (its own Width at nought): a module's spread is its own, after a note's.
+  for (const x of [a, b]) { x.set('shape', 'ramp'); x.set('phase', Math.PI / 2); x.set('delayMix', 0.4); x.set('delayMs', 30); x.set('delayWidth', 0); }
   b.set('stereoWidth', w);
-  const out = { picture: true, mono: true, asDrawn: true, side: 0, half: 0, firstMono: true };
+  const out = { picture: true, mono: true, asDrawn: true, side: 0, firstMono: true, left: true, right: false };
   for (let k = 0; k < 160; k++) {
     const pa = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128)), pb = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128));
     a.block(pa[0], pa[1], 128, pa[2], pa[3], pa[4], pa[5]);
@@ -123,8 +136,8 @@ GENERATOR = """([w]) => {
       out.side = Math.max(out.side, Math.abs(pa[2][i] - pa[3][i]));
       if (k >= 110 && pb[2][i] !== pb[3][i]) out.mono = false;
       if (k === 0 && pb[2][i] !== pb[3][i]) out.firstMono = false;
-      const sa = pa[2][i] - pa[3][i], sb = pb[2][i] - pb[3][i];
-      if (k >= 110 && Math.abs(sa) > 0.02) out.half = Math.max(out.half, Math.abs(sb / sa - w));
+      if (pa[2][i] !== pb[2][i]) out.left = false;
+      if (pa[3][i] !== pb[3][i]) out.right = true;
     }
   }
   return out;
@@ -274,19 +287,24 @@ with sync_playwright() as pw:
     mono = p.evaluate(INSTRUMENT, [0, 140])
     half = p.evaluate(INSTRUMENT, [50, 140])
     null = p.evaluate(INSTRUMENT, [None, 140])
-    print("    %s" % {k: v for k, v in mono.items() if k != "state"})
+    print("    %s" % {k: v for k, v in mono.items() if k not in ("state", "ears", "sides")})
     check("the compiled instrument at Width nought: every picture lane the same to the bit as at a hundred",
           mono["picture"] and mono["peak"] > 0.05, str(mono["peak"]))
-    check("and what it hears one channel twice, to the bit, once landed", mono["landedMono"] and mono["sideA"] > 0.05, str(mono))
+    check("and what it hears one channel twice, to the bit, once landed", mono["landedMono"] and mono["sideA"] > 0.05, str(mono["sideA"]))
     check("glided, not stepped: the block it was set in is not mono, and the next still has most of its side",
           not mono["firstBlockMono"] and mono["firstRatio"] is not None and 0.5 < mono["firstRatio"] < 1, str(mono["firstRatio"]))
-    check("null: at a hundred in both, the pair is never mono", not null["landedMono"] and null["picture"], str({k: v for k, v in null.items() if k != "state"}))
-    check("at fifty its side is half the untouched one's, the picture still the same",
-          half["picture"] and half["half"] < 1e-5 and not half["landedMono"], str(half["half"]))
-    check("null: at nought the side is nothing like half", abs(mono["ratioMax"] - 0.5) > 0.4, str(mono["ratioMax"]))
-    check("at a hundred the heard pair is the drawn pair to the bit, as before the Width",
-          null["asDrawn"] and null["bAsDrawn"], str(null))
-    check("null: at fifty it is not", not half["bAsDrawn"], str(half["bAsDrawn"]))
+    check("null: at a hundred in both, the pair is never mono", not null["landedMono"] and null["picture"], str(null["landedMono"]))
+    want = math.sin(math.pi / 8) / math.sin(math.pi / 4)
+    check("at fifty the note's side is sin(pi/8) / sin(pi/4) of the untouched one's, an eighth of its cycle, the picture still the same",
+          half["picture"] and abs(half["ratio"] - want) < 0.005 and not half["landedMono"], "%.4f, want %.4f" % (half["ratio"], want))
+    check("null: the Width as it was, the side scaled, would have made it a half", abs(want - 0.5) > 0.03 and abs(half["ratio"] - 0.5) > 0.03,
+          "%.4f" % half["ratio"])
+    check("and each ear as loud as at a hundred, within 0.05 dB: the note is turned, not narrowed",
+          all(abs(d) < 0.05 for d in half["earsDb"]) and all(abs(d) < 0.05 for d in mono["earsDb"]),
+          "fifty %s, nought %s" % (half["earsDb"], mono["earsDb"]))
+    check("at a hundred the heard pair is the drawn pair, once the drawn turn has glided in, within a millionth",
+          null["asDrawn"] < 1e-6 and null["bAsDrawn"] < 1e-6, "%.2g, %.2g" % (null["asDrawn"], null["bAsDrawn"]))
+    check("null: at fifty it is not", half["bAsDrawn"] > 0.01, "%.3f" % half["bAsDrawn"])
     states = p.evaluate("""([a, b]) => [typeof a, decodeSetup(typeof a === 'string' ? a : a.code).pluginWidth, decodeSetup(typeof b === 'string' ? b : b.code).pluginWidth]""", [null["state"], half["state"]])
     check("the instrument's state: no pluginWidth at a hundred, 50 at fifty", states[1] is None and states[2] == 50, str(states))
     gen = p.evaluate(GENERATOR, [0])
@@ -295,7 +313,8 @@ with sync_playwright() as pw:
     check("the compiled generator: the picture pair and B's the same to the bit, the heard pair mono at nought",
           gen["picture"] and gen["mono"] and gen["side"] > 0.05, str(gen))
     check("glided there, not stepped: its first block is not mono", not gen["firstMono"], str(gen))
-    check("and its side half at fifty", ghalf["picture"] and ghalf["half"] < 1e-5 and not ghalf["mono"], str(ghalf))
+    check("and at fifty a dyad's lone note is turned, neither mono nor the lanes, the picture the same",
+          ghalf["picture"] and ghalf["right"] and not ghalf["mono"] and not ghalf["asDrawn"], str(ghalf))
     check("null: at one it is not mono, and is the lanes to the bit", gnull["picture"] and not gnull["mono"] and gnull["asDrawn"], str(gnull))
     check("null: at nought the heard pair is not the lanes", not gen["asDrawn"], str(gen))
     check("no page errors", not errors, "; ".join(errors[:3]))

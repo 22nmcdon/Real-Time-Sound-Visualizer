@@ -21,11 +21,12 @@
 //
 // `reuse VELOCITY` is what makes the rest safe to believe: a voice that takes
 // the quarter-turn ring and the shaper a retired voice left behind sounds
-// exactly as one that made them new. Two generators play one history, a
-// chord let go until every voice has retired, the first with the quarter
-// turn and the drive on - so its voices make rings and shapers and leave
-// them - and the second with both off, so none does; then both, with both
-// on, strike one note, the first at velocity one and the second at VELOCITY. Printed: the most the two heard pairs differ
+// exactly as one that made them new. The first generator plays a chord let
+// go until every voice has retired, with the drive on, so its voices make
+// rings and shapers and leave them; the second plays the same blocks with no
+// chord and the drive off, so none does. (Until 16 Nov the second played the
+// chord with the quarter turn off; every voice in Poly writes its ring now,
+// for what is heard.) Then both, with the drive on, strike one note, the first at velocity one and the second at VELOCITY. Printed: the most the two heard pairs differ
 // over the note's first 4096 samples, left and right. At VELOCITY one they
 // must be the same to the bit; another velocity is the null.
 #include <atomic>
@@ -86,15 +87,13 @@ int main(int argc, char** argv) {
         w.note = note; w.freq = 440 * std::pow(2.0, (note - 69) / 12.0); w.velocity = vel; w.role = role;
         return w;
       };
-      g.set("polyRound", turnedBefore ? 1 : 0);
       g.set("drive", turnedBefore ? 0.5 : 0);
       std::vector<scope::NoteWant> chord { want(60, "x", 1), want(64, "u", 1), want(67, "y", 1) }, none;
-      g.setVoices(&chord, 0);
+      g.setVoices(turnedBefore ? &chord : &none, 0);
       run(30, false);
       g.setVoices(&none, 0);
       for (int k = 0; k < 2000 && !g.voices().empty(); ++k) run(1, false);
       const bool retired = g.voices().empty();
-      g.set("polyRound", 1);
       g.set("drive", 0.5);
       /* A block of silence first, in which the second history's shaper
          crosses in (11 Nov): struck at once it would be fading in where the

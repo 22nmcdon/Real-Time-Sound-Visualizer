@@ -345,11 +345,11 @@ with sync_playwright() as pw:
     p.click("#preset"); p.wait_for_timeout(200)
     p.click("#presetNew"); p.wait_for_timeout(300)
     fresh = p.evaluate("""() => ({ value: el.preset.value, label: el.presetCurrent.textContent, open: el.presetDialog.open,
-      shape: genSettings().shape, amount: el.pictureAmount.value, round: el.polyRound.checked, mode: midi.mode,
+      shape: genSettings().shape, amount: el.pictureAmount.value, mode: midi.mode,
       scan: snapshot().oscScan, same: JSON.stringify(Object.keys(BASE_SETUP).map((k) => snapshot()[k])) === JSON.stringify(Object.values(BASE_SETUP)) })""")
     check("New goes back to the base, a still plain sine, says so on the strip, and closes the browser",
           fresh == {"value": "n:Plain sine", "label": "Plain sine", "open": False, "shape": "sine", "amount": "0",
-                    "round": True, "mode": "poly", "scan": 0, "same": True}, str(fresh))
+                    "mode": "poly", "scan": 0, "same": True}, str(fresh))
 
     print("\n--- the page's keys, and Custom ---")
     p.click("#preset"); p.wait_for_timeout(200)

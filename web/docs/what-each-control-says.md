@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-327 controls: 327 lines, none marked as removed by a later stage, 78 wanting a paragraph
+326 controls: 326 lines, none marked as removed by a later stage, 77 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -18,7 +18,8 @@ added the header's Editing and a link on eleven sections; on 11 Nov, which added
 of *How the picture responds*; and on 12 Nov, with the constellation's prototype, Draw's way,
 its place, its hands and Reseed; and again on 12 Nov, the Width beside the Output; and on
 14 Nov, which took those four away again with the prototype, in stage 5's step 4; and on
-16 Nov, which added the split by notes' three).
+16 Nov, which added the split by notes' three, and took the Quarter turn away when every
+note came to be heard in both ears).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -99,11 +100,10 @@ them; G3b gives each a `data-say` with the key in the first column:
 | midiSplitBy | Split by | How a split gives each note its hand: at a key, low notes one sound and high another, or by the notes held, counted from one end. | 129 | yes: a note's hand is set as it starts, by its rank among the notes held, and kept until it is let go; a key the pedal holds still counts; a key struck again is ranked again; Learn is the key split's only |
 | midiSplitEnd | Counted | By notes, which end is counted: the lowest notes held for the lower hand, or the highest for the upper. The rest go to the other hand. | 134 | - |
 | midiSplitCount | How many | By notes, how many the counted hand takes, one to six. With fewer held than that, every note is its own. | 104 | - |
-| midiLayerPair | How the two layers are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y, heard left and right. | 121 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B puts A in the left ear only and B in the right |
+| midiLayerPair | How the two layers are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y. Every note is heard in both ears. | 133 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B draws A on X only and B on Y only, and each note is heard in both ears at the Width all the same |
 | midiDrawCount | Draw | How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears. | 132 | - |
 | midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
 | midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
-| polyRound | Quarter turn | In Poly, a lone note or an inner voice is heard a quarter-cycle later on the left, so the right leads as in Dyad and it draws Dyad's ring, not a line. | 150 | yes: what it costs - summed to mono, the even harmonics of a rich wave cancel, as a dyad's lone note's already do |
 | midiHold | Hold the interval | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
 
 ### Expression
@@ -320,7 +320,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | scanSoft | Softness | How much the light is blurred before Scan reads it. At nought thin lines read as spikes and buzz; higher is rounder. Only while Scan is on. | 139 | - |
 | scanMemory | Persistence | How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more. | 133 | yes — the screen’s, shared by both hands; the photocell’s memory too; the same setting as the menu over the screen |
 | output | Output | How loud you hear it, after everything, and nothing else: the picture, Scan and the loop are the same at any setting. No preset changes it. | 139 | yes — both hands’, on what is heard alone, like a monitor’s volume; −6 dB at 71, −12 dB at 50, unity at the top; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it; its meter is what is heard |
-| stereoWidth | Width | How wide you hear it: nought puts the middle in both ears, a hundred is the pair as drawn. The picture and Scan are the same at any setting. | 140 | yes — both hands’, on what is heard alone, before the Output; the side of the pair scaled by it, so nought is mono and a hundred the sound as it was; nothing above a hundred, where the limiter would do the widening; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it |
+| stereoWidth | Width | How wide each note is heard: at nought every note the same in both ears, at a hundred each its own ring. No note moves as others join it. | 137 | yes — both hands’, on what is heard alone, before the Output; every note in both ears whatever else is held, its left behind its right by up to a quarter of its own cycle, so a hundred is a lone note as it always was, fifty an eighth and nought mono; the rack's modules come after it, so a delay's or a reverb's own spread is theirs; the picture, Scan and the loop are the same to the bit at any setting; the input is heard as it comes; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it |
 
 ### Picture › Advanced
 

@@ -26,7 +26,7 @@ TRAILER = 17
 def core(kit, sets=(), routes=None):
     """The six lanes' last 8192 samples, after 32768, for one setup."""
     ev = ["at 0 set shape sine", "at 0 set shape sine 1",
-          "at 0 voices 0 48/%r/1/x+55/%r/1/y" % (HZ(48), HZ(55)), "at 0 voices 1 69/%r/1/xy" % HZ(69)]
+          "at 0 voices 0 48/%r/1/x+55/%r/1/y" % (HZ(48), HZ(55)), "at 0 voices 1 69/%r/1/xonly" % HZ(69)]
     for field, value, layer in sets:
         ev.append("at 0 set %s %s %d" % (field, ("true" if value else "false") if isinstance(value, bool) else repr(value), layer))
     if routes:
@@ -74,14 +74,20 @@ def run(kit):
     flat = core(kit, [("planeOwn", True, 1)])
     turned = core(kit, [("planeOwn", True, 1), ("planeTurn", math.pi / 4, 1)])
     back = core(kit, [("planeOwn", True, 1), ("planeTurn", -math.pi / 4, 1)])
-    check("unturned, B's one note is a diagonal: X and Y the same", peak(flat[4]) > 0.1 and apart(flat[4], flat[5]) < 1e-6)
-    on_y = lambda t: peak(t[4]) < 1e-3 * peak(flat[4]) and abs(peak(t[5]) / peak(flat[4]) - math.sqrt(2)) < 0.01
-    check("an eighth of a turn lays it on the Y axis: X nought, Y the diagonal's length", on_y(turned),
-          "X %.5f, Y %.4f of the diagonal" % (peak(turned[4]), peak(turned[5]) / peak(flat[4])))
-    null("unturned is not on the Y axis", not on_y(flat))
-    check("and the other way lays it on the X axis instead, the same length",
-          peak(back[5]) < 1e-3 * peak(flat[4]) and apart(back[4], turned[5]) < 1e-4, "%.5f %.5f" % (peak(back[5]), peak(back[4])))
-    null("the eighth one way is not on the X axis", not peak(turned[5]) < 1e-3 * peak(flat[4]))
+    # B's one note on X alone (the role A against B gives the lower hand), a
+    # line on the X axis. Until 16 Nov it was a note on both axes, a diagonal;
+    # a lone note there is a ring now (the quarter turn is always on), and a
+    # ring turned is the same ring, so it could not show a turn.
+    check("unturned, B's one note is on the X axis: Y nought", peak(flat[4]) > 0.1 and peak(flat[5]) < 1e-9,
+          "X %.4f, Y %.2g" % (peak(flat[4]), peak(flat[5])))
+    on_diag = lambda t: apart(t[4], t[5]) < 1e-4 * peak(flat[4]) and abs(peak(t[5]) / peak(flat[4]) - math.sqrt(0.5)) < 0.01
+    check("an eighth of a turn lays it on the diagonal: X and Y the same, each the line's length over root two", on_diag(turned),
+          "X - Y %.2g, Y %.4f of the line" % (apart(turned[4], turned[5]), peak(turned[5]) / peak(flat[4])))
+    null("unturned is not on the diagonal", not on_diag(flat))
+    check("and the other way lays it on the other diagonal, the same length",
+          apart(back[4], -back[5]) < 1e-4 * peak(flat[4]) and apart(back[4], turned[4]) < 1e-4,
+          "%.2g %.5f" % (apart(back[4], -back[5]), apart(back[4], turned[4])))
+    null("the eighth one way is not on the other diagonal", not apart(turned[4], -turned[5]) < 1e-4 * peak(flat[4]))
 
     # --- each layer's share of the sound through its own plane ---
     # A mirror on X rectifies the left channel, which puts the note's octave
@@ -112,13 +118,12 @@ def run(kit):
     # eighth of a turn. A's depth on it is a different number, and is nothing.
     turn = lambda own, b: core(kit, [("planeOwn", own, 1)], [{"held": 1, "heldB": 1, "slot": TURN, "amount": 0.9, "amountB": b}])
     t_on, t_none, t_off = turn(True, 0.25), turn(True, 0), turn(False, 0.25)
-    check("a routing on Turn at B's depth of a quarter turns B an eighth: its diagonal on the Y axis",
-          peak(t_on[4]) < 1e-3 * peak(t_on[5]) and abs(peak(t_on[5]) / peak(flat[4]) - math.sqrt(2)) < 0.01,
-          "%.5f %.4f" % (peak(t_on[4]), peak(t_on[5])))
-    check("and at B's depth of nought, whatever A's, B is not turned", apart(t_none[4], t_none[5]) < 1e-6 and peak(t_none[4]) > 0.1)
+    check("a routing on Turn at B's depth of a quarter turns B an eighth: its line on a diagonal",
+          on_diag(t_on), "%.2g %.4f" % (apart(t_on[4], t_on[5]), peak(t_on[5]) / peak(flat[4])))
+    check("and at B's depth of nought, whatever A's, B is not turned", peak(t_none[5]) < 1e-9 and peak(t_none[4]) > 0.1)
     flat_off = core(kit)
     check("and with B's own plane off the routing turns nothing", same(t_off[4], flat_off[4]) and same(t_off[5], flat_off[5]))
-    null("at A's depth, 0.9 for B too, B is turned", apart(turn(True, 0.9)[4], turn(True, 0.9)[5]) > 0.01)
+    null("at A's depth, 0.9 for B too, B is turned", peak(turn(True, 0.9)[5]) > 0.01)
 
     # --- B's own echo and chorus ---
     # B's note is 440 Hz: an echo half a period late, at half level, is the
@@ -156,14 +161,16 @@ def run(kit):
     # --- the screen's rotation, and B turning itself ---
     # Was: the page's beamX/beamY after state.rotate = 0.125 set by hand, B's
     # one note on both axes - kept a diagonal with the Plane the upper's own,
-    # laid on the Y axis linked. Here the instrument's own grid, natively: its
+    # laid on the Y axis linked. Since 16 Nov a fifth in the upper hand, C5 and
+    # G5: one note there is a ring now, which a turn leaves as it was. Here the instrument's own grid, natively: its
     # rotation moved on the panel (the Turn's slider, 12.5 per cent, an eighth),
     # the link pressed as a hand presses it, and B's figure read off the grid
     # by its spread across and up from its centre of light.
     code = base64.b64encode(json.dumps({"v": 4, "shape": "sine", "pictureAmount": 0}).encode()).decode().rstrip("=")
     def grid(*hands):
         lines = [["make", 48000, 128, code], ["click", "dispXY"], ["click", "midiPoly"],
-                 ["control", "midiLayers", "split"], *hands, ["midi", 0x90, 72, 100]] + [["block", 128]] * 60 + [["grid"]]
+                 ["control", "midiLayers", "split"], *hands, ["midi", 0x90, 72, 100], ["midi", 0x90, 79, 100]] \
+            + [["block", 128]] * 60 + [["grid"]]
         out = kit.instrument(lines)
         assert not any(l == "no" for l in out), "a move refused"
         return tuple(float(v) for v in [l for l in out if l.startswith("grid ")][-1].split()[1:])

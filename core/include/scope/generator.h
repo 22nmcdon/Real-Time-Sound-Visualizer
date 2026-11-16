@@ -104,7 +104,6 @@ struct Tone : LayerSettings, PlaneTone {
   double octaves = 0;
   bool just = true;
   double phase = kPi / 2;
-  bool polyRound = false;  // poly's quarter turn (P8g): see the page's ROUND_RING
   double pitchBend = 0, vibrato = 0;  // the keyboard's, in semitones (6 Nov): see the page's tone
   // The Envelope card's own (8 Nov), whether env.note reads it, and its four times.
   bool menvOwn = false;
@@ -119,7 +118,9 @@ struct Tone : LayerSettings, PlaneTone {
   double scoreDecayMs = 400, scoreLevel = 0.4;
   // The master Output (G7), as a gain on what is heard alone: the page's tone says why.
   double output = 1;
-  // The master Width (12 Nov), nought (mono) to one (the pair as it is), on what is heard alone.
+  /* The master Width (12 Nov), on what is heard alone: since 16 Nov each
+     note's own, nought every note the same in both ears and one each its own
+     quarter turn (`sound` and the Dyad's heard voices say how). */
   double stereoWidth = 1;
   // How long a stage switched in or out mid-sound crossfades, in ms (the page's tone says why).
   double switchMs = kSwitchMs;
@@ -159,7 +160,7 @@ class Generator {
         loopNow_(genMod_.size(), 0.0), loopNowB_(genMod_.size(), 0.0), loopOn_(genMod_.size(), 0), loopSeen_(genMod_.size(), 0),
         heldNow_(genMod_.size(), 0.0), heldNowB_(genMod_.size(), 0.0), heldTo_(genMod_.size(), 0.0), heldToB_(genMod_.size(), 0.0),
         heldStep_(genMod_.size(), 0.0), heldStepB_(genMod_.size(), 0.0), heldMoving_(genMod_.size(), 0),
-        env_(rate, a_.env), fenv_(rate, a_.fenv), menv_(rate, a_.menv), plane_(rate), ctx_(rate),
+        env_(rate, a_.env), fenv_(rate, a_.fenv), menv_(rate, a_.menv), plane_(rate), planeH_(rate), ctx_(rate),
         scoreAttack_(1 / std::max(1.0, jsRound(0.002 * rate))),
         shapeL_(2, ctx_.taps2), shapeR_(2, ctx_.taps2),
         noiseL_(random_), noiseR_(random_) {
@@ -198,7 +199,6 @@ class Generator {
     else if (field == "interval") a.interval = static_cast<int>(value);
     else if (field == "octaves") a.octaves = value;
     else if (field == "just") a.just = value != 0;
-    else if (field == "polyRound") a.polyRound = value != 0;
     else if (field == "pitchBend") a.pitchBend = value;
     else if (field == "vibrato") a.vibrato = value;
     else if (field == "phase") a.phase = value;
@@ -417,8 +417,11 @@ class Generator {
 
   // --- the block -------------------------------------------------------------
 
+  /* `asDrawnL`, `asDrawnR`, where given: the drawn pair as it was heard
+     before 16 Nov - the lanes summed and the score, at the Output - which the
+     instrument's meter reads the limiting of (Instrument::limiting says why). */
   void block(float* outL, float* outR, int n, float* heardL = nullptr, float* heardR = nullptr,
-             float* outBL = nullptr, float* outBR = nullptr) {
+             float* outBL = nullptr, float* outBR = nullptr, float* asDrawnL = nullptr, float* asDrawnR = nullptr) {
     const double dt = 1 / rate_;
     loopGlideStart();
     const bool poly = a_.voices.has_value();
@@ -445,13 +448,25 @@ class Generator {
     plane_.setSwitchStep(switchStep, switchPrime);
     const bool planeOn = plane_.setup(a_, twistRouted, echoRouted, layered && (b_.planeOwn || timeOwn != 0) ? &b_ : nullptr,
                                       b_.planeTurn, turnRouted, phaserRouted, reverbRouted, b_.planeOwn, timeOwn);
-    govern(fmRouted, syncRouted, shapeRouted, planeOn);
+    /* What is heard goes through a plane of its own, set and ticked as the
+       picture's (16 Nov): the effects and the shaping act on every note in
+       both ears as they act on the figure, and the picture's plane never sees
+       the heard pair. Asked only where the heard pair is. */
+    const bool heard = heardL != nullptr;
+    planeH_.setSwitchStep(switchStep, switchPrime);
+    planeH_.setup(a_, twistRouted, echoRouted, layered && (b_.planeOwn || timeOwn != 0) ? &b_ : nullptr,
+                  b_.planeTurn, turnRouted, phaserRouted, reverbRouted, b_.planeOwn, timeOwn);
+    const double dyadBase = intervalRatio(a_.interval, a_.just) * std::pow(2.0, a_.octaves);
+    // The upper note counted while the interval has one, not through a crossfade's 30 ms: what
+    // the governor asks has to be the same wherever a host's blocks fall.
+    govern(fmRouted, syncRouted, shapeRouted, planeOn, heard, dyadBase != 1);
     voiceFxFor(a_, vxA_, fmRouted, syncRouted, shapeRouted);
     const int wantShape = a_.shapeOS == 4 && govFactor_ == 4 ? 4 : 2;
     if (wantShape != ctx_.shapeFactor) {
       ctx_.shapeFactor = wantShape;
       shapeL_ = Shaper(wantShape, wantShape == 4 ? ctx_.taps4 : ctx_.taps2);
       shapeR_ = Shaper(wantShape, wantShape == 4 ? ctx_.taps4 : ctx_.taps2);
+      for (auto& h : heardDyad_) h.shp.reset(wantShape, wantShape == 4 ? ctx_.taps4 : ctx_.taps2);
     }
     voiceFxFor(b_, vxB_, fmRouted, syncRouted, shapeRouted);
     // The stages' crossfades start where they are asked on the first block (the page's switchStarted says why).
@@ -461,6 +476,7 @@ class Generator {
       vxB_.shapeW = vxB_.shaping ? 1 : 0;
       vxA_.shapeWait = vxB_.shapeWait = 0;
       plane_.settleSwitch();
+      planeH_.settleSwitch();
     }
     // The bend's offset blocker, and the oscillator held on a second after a bend (the page says why).
     vxA_.dcK = vxB_.dcK = poleFor(1000 / (kTwoPi * kBendDcHz), rate_);
@@ -547,16 +563,38 @@ class Generator {
       }
 
       double l, r;
+      // The heard pair (16 Nov), apart from the drawn one, and the Width it is made at.
+      double hl = 0, hr = 0;
+      if (heard || asDrawnL) outputStep(outGlide);
+      const double width = widthNow_;
 
       if (poly) {
+        // The quarter turn always (polyRound went 16 Nov): a lone note and an inner voice draw a ring.
         sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq) + pitchOct), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_,
-              a_.polyRound, glide);
+              true, glide, heard ? width : -1, &tailsA_);
         l = ctx_.mix[0]; r = ctx_.mix[1];
+        hl = ctx_.heard[0]; hr = ctx_.heard[1];
       } else {
         const double hz = (clockHz > 0 ? clockHz
                            : ctx_.qMask ? quantise(qA_, freq, ctx_.qMask, ctx_.qHold, ctx_.qGlide) : freq) * fmIn;
         lastHz_ = hz;
         if (clockReset) { phaseL_ = 0; phaseR_ = 0; }
+        /* A change of interval (16 Nov, option A of web/docs/one-to-two-notes.md):
+           the right put back in step with the left at the new ratio, and the
+           right as it was crossfaded out over kDyadFadeMs at equal power. The
+           phases used to run on through a change, so a note let go brought the
+           lower note back at whatever angle the two had drifted to, and a dyad
+           reached two ways drew two figures; lining them up with no crossfade
+           would click. Not on noise, which has no figure to come back to, and
+           whose second stream would draw from the random sequence. */
+        if (dyadRatio_ == 0) dyadRatio_ = dyadBase;
+        if (dyadBase != dyadRatio_ && !a_.noise) {
+          oldRatio_ = dyadRatio_; oldPhase_ = phaseR_; dyadX_ = 0;
+          phaseR_ = std::fmod(phaseL_ * dyadBase, kPhaseWrap);
+          oldOsc_ = oscR_; oscR_.n = 0;
+          for (std::size_t k = 1; k < heardDyad_.size(); k++) { heardDyad_[k].oscOld = heardDyad_[k].osc; heardDyad_[k].osc.n = 0; }
+        }
+        dyadRatio_ = dyadBase;
         phaseL_ += kTwoPi * hz * dt;
         phaseR_ += kTwoPi * hz * ratio * dt;
         if (phaseL_ >= kPhaseWrap) phaseL_ -= kPhaseWrap;
@@ -564,6 +602,19 @@ class Generator {
         if (phaseR_ < 0) phaseR_ += kPhaseWrap;
         const double stepL = std::fabs(hz) / rate_;
         const double stepR = std::fabs(hz * ratio) / rate_;
+        const bool fading = dyadX_ < 1;
+        const double stepOld = std::fabs(hz * oldRatio_) / rate_;
+        if (fading) {
+          oldPhase_ += kTwoPi * hz * oldRatio_ * dt;
+          if (oldPhase_ >= kPhaseWrap) oldPhase_ -= kPhaseWrap;
+          dyadX_ = std::fmin(1.0, dyadX_ + 1000 * dt / kDyadFadeMs);
+        }
+        const double fadeIn = fading ? std::sin(kPi / 2 * dyadX_) : 1, fadeOut = fading ? std::cos(kPi / 2 * dyadX_) : 0;
+        // The plain wave with Scan over it, at a phase: what the dyad's heard voices read.
+        const auto plain = [&](double at, double step) {
+          const double w = waveAt(a_.shape, at, step, bars, amount);
+          return vxA_.scanW > 0 ? scanMix(w, vxA_.scanPrev, vxA_.scanNext, at, step, vxA_.scanX, vxA_.scanW) : w;
+        };
         double wl, wr;
         if (a_.noise) {
           wl = noiseStep(noiseL_, a_.noiseShape, phaseL_, stepL, random_);
@@ -571,12 +622,36 @@ class Generator {
         } else if (vxA_.on) {
           wl = oscStep(oscL_, phaseL_, 0, hz, a_, bars, amount, vxA_, rate_);
           wr = oscStep(oscR_, phaseR_, phase, hz * ratio, a_, bars, amount, vxA_, rate_);
+          if (fading) wr = fadeIn * wr + fadeOut * oscStep(oldOsc_, oldPhase_, phase, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
         } else {
           wl = waveAt(a_.shape, phaseL_, stepL, bars, amount);
           wr = waveAt(a_.shape, phaseR_ + phase, stepR, bars, amount);
           if (vxA_.scanW > 0) {
             wl = scanMix(wl, vxA_.scanPrev, vxA_.scanNext, phaseL_, stepL, vxA_.scanX, vxA_.scanW);
             wr = scanMix(wr, vxA_.scanPrev, vxA_.scanNext, phaseR_ + phase, stepR, vxA_.scanX, vxA_.scanW);
+          }
+          if (fading) wr = fadeIn * wr + fadeOut * plain(oldPhase_ + phase, stepOld);
+        }
+        // The dyad heard as two voices (16 Nov), before the drawn pair's chain moves on: see `hearDyad`.
+        double hu[3] = { 0, 0, 0 };
+        const bool upper = dyadBase != 1, upperWas = fading && oldRatio_ != 1;
+        if (heard && !a_.noise) {
+          const double turn = width * phase;
+          if (vxA_.on) {
+            hu[0] = oscStep(heardDyad_[0].osc, phaseL_, turn, hz, a_, bars, amount, vxA_, rate_);
+            for (int s = 1; s <= 2; s++) {
+              const double at = s == 1 ? 0 : turn;
+              auto& h = heardDyad_[static_cast<std::size_t>(s)];
+              if (upper) hu[s] += fadeIn * oscStep(h.osc, phaseR_, at, hz * ratio, a_, bars, amount, vxA_, rate_);
+              if (upperWas) hu[s] += fadeOut * oscStep(h.oscOld, oldPhase_, at, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
+            }
+          } else {
+            hu[0] = plain(phaseL_ + turn, stepL);
+            for (int s = 1; s <= 2; s++) {
+              const double at = s == 1 ? 0 : turn;
+              if (upper) hu[s] += fadeIn * plain(phaseR_ + at, stepR);
+              if (upperWas) hu[s] += fadeOut * plain(oldPhase_ + at, stepOld);
+            }
           }
         }
         if (vxA_.shapeRun) {
@@ -585,23 +660,50 @@ class Generator {
           wr = switchBlend(wr, shapeR_.step(wr, ctx_.shaping), vxA_.shapeW);
         }
         if (vxA_.crushing) { wl = crushStep(crushL_, wl, a_, vxA_, rate_); wr = crushStep(crushR_, wr, a_, vxA_, rate_); }
+        const double fl = vxA_.filtering && gated_ ? fenv_.step() : 0;
         if (vxA_.filtering) {
-          const double fl = gated_ ? fenv_.step() : 0;
           wl = svfStep(vcfL_, wl, vcfCoef(vcfL_, a_, hz, fl, vxA_.vcfPush, vxA_.cut, rate_), vxA_.vcfK, a_.vcfType);
           wr = svfStep(vcfR_, wr, vcfCoef(vcfR_, a_, hz * ratio, fl, vxA_.vcfPush, vxA_.cut, rate_), vxA_.vcfK, a_.vcfType);
         }
         l = amp * wl;
         r = amp * wr;
+        if (heard) {
+          if (a_.noise) {
+            // Noise has two streams and no note to turn: the right drawn from the left's towards its own.
+            const double u = 1 - width;
+            hl = l;
+            hr = width == 1 ? r : (width * r + u * l) / std::sqrt(width * width + u * u);
+          } else {
+            const bool run[3] = { true, upper || upperWas, upper || upperWas };
+            const double f[3] = { hz, hz * ratio, hz * ratio };
+            for (std::size_t s = 0; s < 3; s++) {
+              if (!run[s]) continue;
+              auto& h = heardDyad_[s];
+              double w = hu[s];
+              if (vxA_.shapeRun) {
+                if (vxA_.shapeFresh) h.shp.clear();
+                w = switchBlend(w, h.shp.step(w, ctx_.shaping), vxA_.shapeW);
+              }
+              if (vxA_.crushing) w = crushStep(h.cr, w, a_, vxA_, rate_);
+              if (vxA_.filtering) w = svfStep(h.vcf, w, vcfCoef(h.vcf, a_, f[s], fl, vxA_.vcfPush, vxA_.cut, rate_), vxA_.vcfK, a_.vcfType);
+              hu[s] = w;
+            }
+            // The lower note's left is the drawn left: the same phase through the same chain.
+            hl = l + amp * (run[1] ? hu[1] : 0);
+            hr = amp * (hu[0] + (run[2] ? hu[2] : 0));
+          }
+        }
       }
 
       if (inMode == 2) {
         const double g = 1 + inDepth * 2 * xin;
-        l *= g; r *= g;
+        l *= g; r *= g; hl *= g; hr *= g;
       }
 
       if (planeOn) {
-        planeTick(dt);
+        planeTick(dt, heard);
         plane_.step(Plane::A, l, r); l = plane_.x; r = plane_.y;
+        if (heard) { planeH_.step(Plane::A, hl, hr); hl = planeH_.x; hr = planeH_.y; }
       }
       // Nothing clamped: the page's block says why.
       outL[i] = static_cast<float>(l);
@@ -609,7 +711,7 @@ class Generator {
 
       // Layer B through its plane whether or not its lanes were asked for,
       // since it is heard either way.
-      double bx = 0, by = 0;
+      double bx = 0, by = 0, hbx = 0, hby = 0;
       if (layered) {
         const WaveTables barsOfB = tablesFor(b_, barsB_, genModB_);
         const double amountOfB = shapeAmount(b_, modBOr0(slot::Morph) * 1.5, modBOr0(slot::Width) * 0.45,
@@ -617,9 +719,13 @@ class Generator {
         shapeFade(vxB_, switchStep, switchPrime);
         if (vxB_.shapeRun) setShaping(ctx_.shaping, b_, modBOr0(slot::Drive) * 0.5, modBOr0(slot::Fold) * 0.5);
         sound(voicesB_, b_, barsOfB, amountOfB, std::pow(2.0, modB(slot::Freq) + pitchOct), 1 - modB(slot::Amp), dt, roleGlide,
-              vxB_, ctx_, a_.polyRound, glide);
+              vxB_, ctx_, true, glide, heard ? width : -1, &tailsB_);
         bx = ctx_.mix[0]; by = ctx_.mix[1];
-        if (planeOn) { plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y; }
+        hbx = ctx_.heard[0]; hby = ctx_.heard[1];
+        if (planeOn) {
+          plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y;
+          if (heard) { planeH_.step(Plane::B, hbx, hby, true); hbx = planeH_.x; hby = planeH_.y; }
+        }
       }
       if (outBL) { outBL[i] = static_cast<float>(bx); outBR[i] = static_cast<float>(by); }
 
@@ -636,24 +742,40 @@ class Generator {
         if (live == 0) scoreStruck_ = 0;
       }
 
-      // What is heard: the lanes, summed, and the score's voice, at the Output (G7).
-      if (heardL) {
-        outputStep(outGlide);
-        double hl = outL[i] + bx + scored, hr = outR[i] + by + scored;
-        widen(hl, hr);
-        heardL[i] = static_cast<float>(hl * outNow_);
-        heardR[i] = static_cast<float>(hr * outNow_);
+      /* What is heard: the heard pairs, summed, and the score's voice, at the
+         Output (G7). Until 16 Nov this was the lanes, summed, with the Width
+         squeezing their side: a note was heard where it was drawn, so a second
+         note moved the first between the ears, and a dyad at Width nought could
+         cancel. The heard pairs are summed in double, the lanes were in float:
+         what is heard is not the picture rounded any more. */
+      if (heard) {
+        heardL[i] = static_cast<float>((hl + hbx + scored) * outNow_);
+        heardR[i] = static_cast<float>((hr + hby + scored) * outNow_);
+      }
+      if (asDrawnL) {
+        asDrawnL[i] = static_cast<float>((outL[i] + bx + scored) * outNow_);
+        asDrawnR[i] = static_cast<float>((outR[i] + by + scored) * outNow_);
       }
     }
 
     for (auto* pool : { &voices_, &voicesB_ }) {
+      RingTails* tails = pool == &voices_ ? &tailsA_ : &tailsB_;
       for (std::size_t v = pool->size(); v-- > 0;) {
         const Voice& voice = (*pool)[v];
         if (!voice.held && (voice.env.stage() == Envelope::Stage::Idle || voice.gone)) {
+          // Its ring heard out on the left first, where what is heard is asked (RingTail says why).
+          if (heard) tailRing((*pool)[v], tails, quarterOf((*pool)[v], rate_));
           retireVoice((*pool)[v], ctx_);
           pool->erase(pool->begin() + static_cast<long>(v));
         }
       }
+    }
+    // A layer gone quiet has no tails left to hear: its rings back to the spares.
+    for (auto* t : { poly ? nullptr : &tailsA_, layered ? nullptr : &tailsB_ }) {
+      if (t == nullptr) continue;
+      for (auto& tail : t->list)
+        if (ctx_.spareRings.size() < ctx_.spareRings.capacity()) ctx_.spareRings.push_back(std::move(tail.ring));
+      t->list.clear();
     }
   }
 
@@ -667,10 +789,9 @@ class Generator {
     for (int i = 0; i < n; i++) {
       outputStep(glide);
       if (right) {
-        double l = left[i], r = right[i];
-        widen(l, r);
-        left[i] = static_cast<float>(l * outNow_);
-        right[i] = static_cast<float>(r * outNow_);
+        // No Width: the input has no notes to turn (16 Nov), and its pair is heard as it comes.
+        left[i] = static_cast<float>(left[i] * outNow_);
+        right[i] = static_cast<float>(right[i] * outNow_);
       } else {
         left[i] = static_cast<float>(left[i] * outNow_);
       }
@@ -697,15 +818,6 @@ class Generator {
     // The Width on the Output's glide and snap (the page's widthNow says why).
     widthNow_ += (a_.stereoWidth - widthNow_) * glide;
     if (std::fabs(a_.stereoWidth - widthNow_) < kOutputSnap) widthNow_ = a_.stereoWidth;
-  }
-  /* The Width on a heard pair, before the Output: its side scaled, and the
-     pair passed as it is at one, since rebuilt from its middle and side it
-     would not be the same to the bit (the page's block says more). */
-  void widen(double& l, double& r) const {
-    if (widthNow_ == 1) return;
-    const double mid = (l + r) * 0.5, side = (l - r) * 0.5 * widthNow_;
-    l = mid + side;
-    r = mid - side;
   }
   // LEVEL_GLIDE_MS, LEVEL_SNAP and CUT_SNAP, and the page's levelsStep, where the page says why.
   static constexpr double kLevelGlideMs = 20, kLevelSnap = 1e-6, kCutSnap = 1e-6;
@@ -946,7 +1058,8 @@ class Generator {
     return w;
   }
 
-  void planeTick(double dt) {
+  // And the heard pair's plane where `heard`: the block's alone, which sets it up (`effect` has no heard pair of its own).
+  void planeTick(double dt, bool heard = false) {
     const PlanePushes a { modOr0(slot::Radius), modOr0(slot::Twist), modOr0(slot::Echo), modOr0(slot::EchoTime), 0,
                           modOr0(slot::Phaser), modOr0(slot::DelayTone), modOr0(slot::Reverb),
                           modOr0(slot::ReverbSize), modOr0(slot::ReverbTone) };
@@ -954,6 +1067,7 @@ class Generator {
                           modBOr0(slot::Turn), modBOr0(slot::Phaser), modBOr0(slot::DelayTone), modBOr0(slot::Reverb),
                           modBOr0(slot::ReverbSize), modBOr0(slot::ReverbTone) };
     plane_.tick(a_, a, dt, &b_, b);
+    if (heard) planeH_.tick(a_, a, dt, &b_, b);
   }
 
   // --- S10: the governor ------------------------------------------------------
@@ -1005,17 +1119,21 @@ class Generator {
     return best;
   }
 
-  void govern(bool fmRouted, bool syncRouted, bool shapeRouted, bool planeOn) {
+  void govern(bool fmRouted, bool syncRouted, bool shapeRouted, bool planeOn, bool heard, bool dyadUpper) {
     const bool poly = a_.voices.has_value(), layered = b_.voices.has_value();
     Pools pools;
     if (poly) pools.at[pools.n++] = &voices_;
     if (layered) pools.at[pools.n++] = &voicesB_;
-    int countA = poly ? liveIn(voices_) : 2;
+    /* The dyad's two drawn voices, and since 16 Nov what is heard of it: the
+       lower note's right, and the upper note's left and right while there is
+       one (noise is heard from its drawn pair). Poly's heard pair is one more
+       read of each voice's ring, which costs nothing the model can see. */
+    int countA = poly ? liveIn(voices_) : 2 + (heard && !a_.noise ? (dyadUpper ? 3 : 1) : 0);
     int countB = layered ? liveIn(voicesB_) : 0;
     const int askedA = unisonAsked(a_), askedB = unisonAsked(b_), askedF = a_.shapeOS == 4 ? 4 : 2;
-    // A pass through the plane for each layer's pair; the heard pair's own
-    // passes went with it in P4 (the page's govern).
-    const int passes = 1 + (layered ? 1 : 0);
+    // A pass through the plane for each layer's pair, and since 16 Nov again
+    // for what is heard of it, which has a plane of its own (planeH_).
+    const int passes = (1 + (layered ? 1 : 0)) * (heard ? 2 : 1);
     const double planeCost = plane_.factor() == 1 ? 3.3 : plane_.factor() == 2 ? 30 : plane_.factor() == 4 ? 60 : 0;
     const double fixed = !planeOn ? 0
       : passes * ((plane_.nonlinearOn() ? planeCost : 0) + (plane_.timeOn() ? 5.3 : 0));
@@ -1089,6 +1207,22 @@ class Generator {
   Registration barsA_, barsB_;
 
   double phaseL_ = 0, phaseR_ = 0;
+  // The dyad's change of interval (16 Nov): the ratio it was at, the right as
+  // it was and its oscillator, and how far through the crossfade (one is done).
+  static constexpr double kDyadFadeMs = 30;
+  double dyadRatio_ = 0, oldRatio_ = 1, oldPhase_ = 0, dyadX_ = 1;
+  Osc oldOsc_;
+  /* The dyad heard as two voices (16 Nov): the lower note's right, and the
+     upper note's left and right, each with its own oscillator (and the one it
+     is crossfading from), shaper, crush and filter. The lower note's left is
+     the drawn left. */
+  struct HeardVoice {
+    Osc osc, oscOld;
+    Shaper shp { 2, lowpassTaps(2) };
+    Crush cr;
+    VcfState vcf;
+  };
+  std::array<HeardVoice, 3> heardDyad_;
   const float* inBuf_ = nullptr;
   int inLen_ = 0;
   struct { bool low = true; long since = 0, period = 0; } clock_;
@@ -1108,7 +1242,9 @@ class Generator {
   double bendNow_ = 0, vibNow_ = 0, vibPhase_ = 0;  // the bend and the vibrato as they glide, and its cycle
   VcfState vcfL_, vcfR_;
   std::vector<Voice> voices_, voicesB_;
+  RingTails tailsA_, tailsB_;  // each layer's rings let go, heard out on the left (16 Nov)
   Plane plane_;
+  Plane planeH_;  // what is heard, set and ticked as plane_ is (16 Nov)
   VoiceContext ctx_;
   Quantiser qA_;
   double lastHz_ = 0;

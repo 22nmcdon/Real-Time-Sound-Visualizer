@@ -54,6 +54,7 @@ def alias_floor(x, f0):
 
 
 def voices(vs):
+    if isinstance(vs, str): return vs  # "none", an empty chord
     return "+".join("%d/%r/%r/%s" % (v["note"], v["freq"], v["velocity"], v["role"]) for v in vs)
 
 
@@ -230,10 +231,19 @@ def run(kit):
           str([round(floors[("fold", f, 1)] - floors[("fold", f, 4)], 1) for f in (2000, 4000)]))
 
     # --- once, and to every pair (:261 to :286) ---
-    solo = core({"freq": 220, "interval": 7, "planeMirror": 3, "planeLimit": 1, "planeRadius": 0.3})
-    check("outside poly what is heard is exactly what is drawn - the pair is not done twice",
+    # Since 16 Nov what is heard is a pair of its own, every note in both
+    # ears at the Width, through a plane of its own set as the picture's. A
+    # lone note in Dyad at Width one is the drawn pair exactly, so through the
+    # mirror and the clip it must still be: the heard pair goes through its
+    # plane once, as the drawn pair does. (Until 16 Nov this was a fifth, whose
+    # heard pair was its drawn pair; now each of its notes is in both ears.)
+    solo = core({"freq": 220, "interval": 0, "phase": 1.0, "planeMirror": 3, "planeLimit": 1, "planeRadius": 0.3})
+    check("a lone note outside poly is heard exactly as it is drawn, through the mirror and the clip once - not done twice",
           np.array_equal(solo["HL"], solo["L"]) and np.array_equal(solo["HR"], solo["R"]))
     null("and the drawn pair is not the plain figure", not np.array_equal(solo["L"], x0))
+    fifth = core({"freq": 220, "interval": 7, "planeMirror": 3, "planeLimit": 1, "planeRadius": 0.3})
+    null("a fifth's heard pair is not its drawn pair: each note is in both ears",
+         not np.array_equal(fifth["HL"], fifth["L"]), "%.3f" % np.abs(fifth["HL"] - fifth["L"]).max())
     v = [{"note": 57, "freq": 220, "velocity": 1, "role": "x"}, {"note": 64, "freq": 329.63, "velocity": 1, "role": "y"}]
     vb = [{"note": 69, "freq": 440, "velocity": 1, "role": "xy"}]
     chord = core({"voices": v, "planeMirror": 3}, n=8820, skip=4410, toneB={"shape": "sine", "amp": 0.8, "voices": vb})
@@ -242,13 +252,23 @@ def run(kit):
     raw = {k: round(float(np.min(loose[k])), 3) for k in ("HL", "BL")}
     check("in poly layer A's picture and layer B's are each mirrored, and so what is heard",
           all(x > -0.02 for x in lows.values()) and raw["HL"] < -0.5 and raw["BL"] < -0.5, "%s; unmirrored %s" % (lows, raw))
-    summed = max(np.abs(chord["HL"] - chord["L"] - chord["BL"]).max(), np.abs(chord["HR"] - chord["R"] - chord["BR"]).max())
-    check("and what is heard is the two mirrored pictures summed, sample for sample", summed < 1e-6, "worst %.2e" % summed)
-    oncesum = np.abs(loose["L"] + loose["BL"])
-    gap = np.abs(chord["HL"] - oncesum).max()
+    # What is heard is each hand's heard pair through its own pass of the
+    # plane, summed: the chord with A's hand alone plus with B's alone. Not
+    # the sum mirrored, which the comparison tells apart. (Until 16 Nov it was
+    # the two drawn pictures summed; it is each note in both ears now.)
+    onlyA = core({"voices": v, "planeMirror": 3}, n=8820, skip=4410)
+    onlyB = core({"voices": "none", "planeMirror": 3}, n=8820, skip=4410, toneB={"shape": "sine", "amp": 0.8, "voices": vb})
+    summed = max(np.abs(chord["HL"] - onlyA["HL"] - onlyB["HL"]).max(), np.abs(chord["HR"] - onlyA["HR"] - onlyB["HR"]).max())
+    check("and what is heard is each hand's heard pair mirrored on its own, summed, sample for sample", summed < 1e-6,
+          "worst %.2e" % summed)
+    looseA = core({"voices": v}, n=8820, skip=4410)
+    looseB = core({"voices": "none"}, n=8820, skip=4410, toneB={"shape": "sine", "amp": 0.8, "voices": vb})
+    gap = np.abs(chord["HL"] - np.abs(looseA["HL"] + looseB["HL"])).max()
     check("and not the sum mirrored, which the comparison tells apart", gap > 0.05, "%.3f" % gap)
-    null("the unmirrored chord's heard pair is not the mirrored pictures summed",
-         np.abs(loose["HL"] - chord["L"] - chord["BL"]).max() >= 1e-6)
+    null("the unmirrored chord's heard pair is not the mirrored hands summed",
+         np.abs(loose["HL"] - onlyA["HL"] - onlyB["HL"]).max() >= 1e-6)
+    null("and the mirrored chord's heard pair is not its drawn pictures summed any more",
+         np.abs(chord["HL"] - chord["L"] - chord["BL"]).max() >= 1e-6)
 
     # --- the delay oversampling costs (:304) ---
     one, two, four = (core({"freq": 220, "interval": 0, "planeMirror": 3, "planeOS": o}, n=8820)["L"] for o in (1, 2, 4))
@@ -300,7 +320,10 @@ def run(kit):
     def figure(controls, routing=None, blocks=120, take=35):
         lines = [["make", 48000, 128, ""]]
         lines += [["control", "shape", "sine"], ["control", "interval", "0"], ["slider", "phase", "0"],
-                  ["slider", "amp", "55"], ["slider", "envSustain", "100"], ["control", "polyRound", False]]
+                  ["slider", "amp", "55"], ["slider", "envSustain", "100"],
+                  # A lone note drawn as a line: Dyad at a Phase of nought. Until 16 Nov this
+                  # was Poly with the quarter turn switched off, which is always on now.
+                  ["click", "midiDyad"]]
         lines += controls
         if routing: lines.append(["routings", routing])
         lines += [["midi", 0x90, 57, 127]] + [["block", 128]] * blocks

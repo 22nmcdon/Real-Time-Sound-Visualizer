@@ -546,6 +546,13 @@ the synth's features should be chosen knowing that.
   - *Found on the way:* fourteen checks in six suites asserted the gap between the two
     pairs, each correctly; all were rewritten to the one pair, with nulls, and none was
     dropped.
+  - *Changed, 16 Nov (the owner's, after [both-ears.md](both-ears.md)):* the one pair went.
+    The lean was heard as the first note moving when a second came, so what is heard is a
+    second mix of the same voices, each in both ears at full with its own image at the
+    Width, through a plane of its own; what is drawn is as P4 left it, to the bit, and the
+    loop reads only the drawn pair (its meter included). Coherence stays as Question 2 put
+    it - nothing is heard that is not drawn, and every drawn note is heard - and "a voice is
+    heard where it is drawn" goes.
   - *Always heard, built:* *Hear the generator* is gone. Whatever generator is playing -
     the site's instrument, the page's own, a rack's lane - asks for its sound as it
     arrives, and a press anywhere asks again, since a browser starts sound only after one.

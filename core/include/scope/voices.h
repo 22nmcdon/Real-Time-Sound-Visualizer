@@ -93,8 +93,9 @@ struct NoteWant {
   std::string role = "u";
 };
 
-// Left and right, which is picture X and picture Y: a voice is heard where it
-// is drawn (P4). The outer notes lean to their sides, full on their own and
+// Left and right, which is picture X and picture Y: a voice is drawn where P4
+// put it, and since 16 Nov heard apart from where it is drawn (`sound`'s
+// heard pair, `c.heard`). The outer notes lean to their sides, full on their own and
 // half on the other; an inner voice is on both at an outer note's power. The
 // page's ROLES says why leaning and not splitting.
 constexpr double kPolyLean = 0.5;
@@ -129,6 +130,10 @@ struct Voice {
   double phase = 0, span = 0, freq = 0, hz = 0;
   bool held = true, wanted = false, gone = false, inner = false, rounds = false;
   int born = 0, fade = 0;
+  /* The quarter its left is heard at once it has fallen silent, let go
+     (16 Nov): held where it was, so a voice's last quarter-period heard from
+     the pool and from the tails it moves to at a block's end is one value. */
+  double stillQuarter = -1;
   Envelope env, fenv;
   std::array<double, 2> gains {}, targets {};
   std::vector<double> ring;  // the quarter turn's, made the first time it turns
@@ -143,6 +148,39 @@ struct Voice {
   Voice(double rate, const LayerTone& tone) : env(rate, tone.env), fenv(rate, tone.fenv) {}
 };
 
+/* A voice's ring let go with it (16 Nov), still to be heard on the left:
+   what is heard of a voice is its left up to a quarter of its period late, so
+   a voice dropped - its release over, or the governor's fade done - took that
+   much of its sound from the left ear in one sample, and on a low note cut by
+   the governor most of its level. And the moment a released voice is dropped
+   is the end of the block it fell silent in, so where a host's blocks fell
+   decided where its left ear stopped. Its ring is heard out here instead, the
+   last of it, apart from the voices: the pools, the governor and the picture
+   are as they were (the drawn left reads the same ring, and drops it as it
+   always did). One list a layer, room made with the generator, kept in the
+   order the voices were born: `sound` sums the tails among the voices in that
+   order, so a voice adds the same value at the same place in the sum whether
+   it is still in the pool or a tail - otherwise the sum's rounding moved with
+   where the host's blocks fell, a bit at a time, and the reverb carried it. */
+struct RingTail {
+  std::vector<double> ring;
+  int at = 0, born = 0, left = 0;
+  double quarter = 0, now = 0;
+};
+struct RingTails {
+  std::vector<RingTail> list;
+  RingTails() { list.reserve(64); }
+};
+
+// The ring read `back` samples behind `at`, between samples: the quarter turn's read.
+inline double ringLate(const std::vector<double>& ring, int at, double back) {
+  back = std::fmin(kRoundRing - 2, back);
+  const int whole = static_cast<int>(std::floor(back));
+  const double part = back - whole;
+  const int i0 = (at - whole + kRoundRing) % kRoundRing, i1 = (i0 - 1 + kRoundRing) % kRoundRing;
+  return ring[static_cast<std::size_t>(i0)] + (ring[static_cast<std::size_t>(i1)] - ring[static_cast<std::size_t>(i0)]) * part;
+}
+
 // What `reconcileVoices` and `sound` share with the rest of the core.
 struct VoiceContext {
   double rate = 48000;
@@ -156,7 +194,10 @@ struct VoiceContext {
   int shapeFactor = 2;
   std::vector<double> taps2 = lowpassTaps(2), taps4 = lowpassTaps(4);
   Random* random = nullptr;
-  std::array<double, 2> mix {};  // left and right, drawn and heard
+  std::array<double, 2> mix {};  // left and right, as drawn
+  // What is heard (16 Nov): every voice in both ears at the Width, whatever
+  // else is held. `sound` says how; filled only when it is asked a width.
+  std::array<double, 2> heard {};
   /* What retired voices leave: a quarter turn's ring and a shaper each, for
      the next voices born to take rather than make. A voice made both the
      first time it turned or was shaped, 33 kilobytes, so every note struck -
@@ -174,6 +215,32 @@ struct VoiceContext {
     spareShapers.reserve(kSpares);
   }
 };
+
+/* A voice's ring handed to the tails, where it is heard out on the left:
+   as long as the Width puts its left behind, and two samples. Where there is
+   no room, or no ring, it goes as it did. */
+inline std::size_t tailRing(Voice& v, RingTails* tails, double quarter) {
+  if (tails == nullptr || v.ring.empty() || tails->list.size() >= tails->list.capacity()) return std::numeric_limits<std::size_t>::max();
+  RingTail t;
+  t.ring = std::move(v.ring);
+  v.ring.clear();
+  t.at = v.at;
+  t.born = v.born;
+  t.quarter = quarter;
+  // Long enough for its left at any Width, a quarter at most.
+  t.left = 2 + static_cast<int>(std::ceil(std::fmin(kRoundRing - 2, quarter)));
+  auto& list = tails->list;
+  std::size_t at = 0;
+  while (at < list.size() && list[at].born < t.born) at++;
+  list.insert(list.begin() + static_cast<long>(at), std::move(t));
+  return at;
+}
+// The quarter a voice let go is heard at: held once it fell silent, or its own now.
+inline double quarterOf(const Voice& v, double rate) {
+  if (v.stillQuarter >= 0) return v.stillQuarter;
+  const double hz = std::fabs(v.hz);
+  return hz > 0 ? rate / (4 * hz) : 0;
+}
 
 // A voice let go: what it made is kept for the next voice born.
 inline void retireVoice(Voice& v, VoiceContext& c) {
@@ -246,12 +313,44 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
   }
 }
 
-// One sample of a layer: every voice summed into the picture's pair and the
-// heard pair, `c.mix`.
+// One sample of a layer: every voice summed into the picture's pair, `c.mix`,
+// and, given a `width` of nought to one, into the heard pair, `c.heard`.
+//
+// The heard pair (16 Nov, the owner's, after web/docs/both-ears.md): each
+// voice in both ears at full, its left `width` of a quarter of its own period
+// behind its right, read from the same ring the quarter turn reads. So at
+// nought a voice is the same in both ears, at one it is the quarter turn - a
+// lone note as it was drawn and heard before - and between, a turn of the
+// note's own cycle rather than a fixed delay, which would leave a low note
+// nearly mono and comb-filter a high one. None of it depends on what else is
+// held: the roles' lean (P4) and the turn's glide are the picture's, and a
+// note no longer moves between the ears as others join it. The picture is
+// `c.mix` as it was, to the bit (core/tests/pieces/ears.py).
+//
+// `round` is the quarter turn (polyRound until 16 Nov): the generator always
+// asks it now, and it stays a switch here for the functions' recordings.
 inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveTables& bars, double amount,
                   double bend, double duck, double dt, double roleGlide, const VoiceFx& vx, VoiceContext& c,
-                  bool round = false, double glide = 1) {
+                  bool round = false, double glide = 1, double width = -1, RingTails* tails = nullptr) {
   c.mix = { 0, 0 };
+  c.heard = { 0, 0 };
+  const bool hearing = width >= 0;
+  // The rings of voices let go, heard out on the left (RingTail says why),
+  // summed among the voices in the order they were born.
+  const bool tailing = hearing && tails != nullptr;
+  std::size_t nextTail = 0;
+  if (tailing) {
+    for (auto& t : tails->list) {
+      t.ring[static_cast<std::size_t>(t.at)] = 0;
+      t.now = ringLate(t.ring, t.at, width * t.quarter);
+      t.at = (t.at + 1) % kRoundRing;
+      t.left--;
+    }
+  }
+  const auto tailsBefore = [&](int born) {
+    if (!tailing) return;
+    while (nextTail < tails->list.size() && tails->list[nextTail].born < born) c.heard[0] += tails->list[nextTail++].now;
+  };
   for (auto& voice : voices) {
     if (voice.gone) continue;
     if (glide >= 1) voice.hz = voice.freq;
@@ -289,9 +388,10 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     if (vx.crushing) w = crushStep(voice.cr, w, tone, vx, c.rate);
     if (vx.filtering) w = svfStep(voice.vcf, w, vcfCoef(voice.vcf, tone, f, voice.fenv.step(), vx.vcfPush, vx.cut, c.rate), vx.vcfK, tone.vcfType);
     double a = vx.level * duck * voice.env.step() * w;
+    bool cut = false;
     if (voice.fade > 0) {
       a *= 0.5 - 0.5 * std::cos(kPi * voice.fade / c.cutSamples);
-      if (--voice.fade == 0) voice.gone = true;
+      if (--voice.fade == 0) { voice.gone = true; cut = true; }
     }
     auto& g = voice.gains;
     const auto& t = voice.targets;
@@ -314,19 +414,24 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
        period later on the left. Written whenever the switch is on, and glided
        over the mix's length (the page says why). */
     double left = a;
-    if (round || voice.turn > 1e-9) {
+    if (round || hearing || voice.turn > 1e-9) {
       if (voice.ring.empty()) {
         if (!c.spareRings.empty()) { voice.ring = std::move(c.spareRings.back()); c.spareRings.pop_back(); }
         voice.ring.assign(kRoundRing, 0.0);
         voice.at = 0;
       }
       voice.ring[static_cast<std::size_t>(voice.at)] = a;
-      const double back = std::fmin(kRoundRing - 2, f > 0 ? c.rate / (4 * std::fabs(f)) : 0);
-      const int whole = static_cast<int>(std::floor(back));
-      const double part = back - whole;
-      const int i0 = (voice.at - whole + kRoundRing) % kRoundRing, i1 = (i0 - 1 + kRoundRing) % kRoundRing;
-      const double late = voice.ring[static_cast<std::size_t>(i0)]
-                        + (voice.ring[static_cast<std::size_t>(i1)] - voice.ring[static_cast<std::size_t>(i0)]) * part;
+      const auto lateBy = [&](double back) { return ringLate(voice.ring, voice.at, back); };
+      const double quarter = f > 0 ? c.rate / (4 * std::fabs(f)) : 0;
+      const double late = lateBy(quarter);
+      // At one, with the pitch its own, the drawn quarter's read: a lone note heard as it was, to the bit.
+      if (hearing) {
+        if (!voice.held && voice.env.stage() == Envelope::Stage::Idle && voice.stillQuarter < 0) voice.stillQuarter = quarter;
+        const double heardQuarter = voice.stillQuarter >= 0 ? voice.stillQuarter : quarter;
+        tailsBefore(voice.born);
+        c.heard[0] += lateBy(width * heardQuarter);
+        c.heard[1] += a;
+      }
       voice.at = (voice.at + 1) % kRoundRing;
       const double t = voice.turn, u = 1 - t;
       if (t > 0) left = (u * a + t * late) / std::sqrt(u * u + t * t);
@@ -334,6 +439,22 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
       voice.turn = 0;
     }
     c.mix[0] += left * g[0]; c.mix[1] += a * g[1];
+    // The governor's fade done: the ring heard out from the next sample, and not in this one's sum again.
+    if (cut && tailing) {
+      const std::size_t at = tailRing(voice, tails, f > 0 ? c.rate / (4 * std::fabs(f)) : 0);
+      if (at != std::numeric_limits<std::size_t>::max() && at <= nextTail) nextTail++;
+    }
+  }
+  tailsBefore(std::numeric_limits<int>::max());
+  // Tails heard out: their rings back to the spares, the rest kept in order.
+  if (tailing) {
+    auto& list = tails->list;
+    std::size_t keep = 0;
+    for (std::size_t k = 0; k < list.size(); k++) {
+      if (list[k].left > 0) { if (keep != k) list[keep] = std::move(list[k]); keep++; continue; }
+      if (c.spareRings.size() < c.spareRings.capacity()) c.spareRings.push_back(std::move(list[k].ring));
+    }
+    while (list.size() > keep) list.pop_back();
   }
 }
 

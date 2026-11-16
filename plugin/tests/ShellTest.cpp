@@ -333,8 +333,11 @@ int main() {
     dyadOff = std::fmax(dyadOff, std::fabs(dyad.l[i] - dyadWant[0][i]) + std::fabs(dyad.r[i] - dyadWant[1][i]));
     dyadOffLate = std::fmax(dyadOffLate, std::fabs(dyad.l[i] - dyadLate[0][i]) + std::fabs(dyad.r[i] - dyadLate[1][i]));
   }
+  /* The null's margin was 1e-3 until 16 Nov: a change of interval now starts
+     the dyad's two phases in step (option A), so a key a sample late moves
+     the sound less than it did (8e-4); it is still told apart, by far. */
   check("two keys through the plugin are the core's keyboard playing its generator, a velocity of nought a release",
-        dyadOff == 0 && dyadOffLate > 1e-3, "off by " + num(dyadOff) + "; the second key a sample late would be off by " + num(dyadOffLate));
+        dyadOff == 0 && dyadOffLate > 1e-4, "off by " + num(dyadOff) + "; the second key a sample late would be off by " + num(dyadOffLate));
   /* With routings: the matrix's routes reach the generator at the top of each
      block, an LFO on the pitch and the key's velocity ducking the level. The
      same notes with no routings are the null - the routes have to be heard. */
@@ -1376,11 +1379,12 @@ int main() {
         const scope::Json* v = decoded.setup.get(k);
         return v ? scope::utf16To8(scope::jsonStringify(*v)) : std::string("-");
       };
+      // The quarter turn's switch (polyRound) went on 16 Nov: always on, and named by no setup.
       return field("shape") + " " + field("midiMode") + " " + field("polyRound") + " " + field("pictureAmount");
     };
     const std::string base = opened(nullptr), other = opened(corpusText("Harmonic tone").c_str());
     check("with nothing asked for, the plugin opens on the base, a plain still sine; asked for another, on that",
-          base == "\"sine\" \"poly\" true 0" && other != base, base + " | " + other);
+          base == "\"sine\" \"poly\" - 0" && other != base, base + " | " + other);
   }
   /* Each of the nine automated from block 20 over the dark saw fifth below
      (`opening`): heard from that block and not a sample before, and its slider
@@ -1484,10 +1488,15 @@ int main() {
     check("null: the Level automated as far moves the picture too", level.second != still.second && apart(still.first, level.first, 20 * block, end) > 0.01);
     /* The Width (12 Nov) automated to nought: the picture the same to the
        bit and, once its glide has landed, both channels one, to the bit; the
-       null is the same plugin left at a hundred, whose channels differ. */
+       null is the same plugin left at a hundred, whose channels differ.
+       Since 16 Nov the Width is each note's, before the rack, and the Plane's
+       twist, which the picture pushes on the opening sound, turns the pair
+       after it: so on the base with the picture off, where nothing turns it. */
     const auto withWidth = [&](bool turned) {
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
+      if (const auto code = scope::encodeSetup(scope::baseSetup())) p.pageSetup(*code);
+      unstaged(p);
       std::vector<float> l, r;
       juce::AudioBuffer<float> buf(2, block);
       for (int k = 0; k < 200; ++k) {
@@ -1505,7 +1514,9 @@ int main() {
     bool mono = true;
     for (std::size_t i = tail; i < wl.size(); ++i) mono = mono && wl[i] == wr[i];
     check("automating the Width to nought puts one channel in both ears, to the bit, and the picture is the same to the bit",
-          mono && wpic == spic && apart(wl, wr, 0, 20 * block) > 0.01, "before the move " + num(apart(wl, wr, 0, 20 * block)));
+          mono && wpic == spic && apart(wl, wr, 0, 20 * block) > 0.01,
+          "before the move " + num(apart(wl, wr, 0, 20 * block)) + ", after " + num(apart(wl, wr, tail, wl.size()))
+          + (wpic == spic ? ", the picture the same" : ", the picture moved"));
     check("null: left at a hundred the channels differ", apart(sl, sr, 20 * block, end) > 0.01, num(apart(sl, sr, 20 * block, end)));
   }
   /* Kept with the project, beside the setup and never in it (G7): saved at
@@ -3064,8 +3075,11 @@ int main() {
        that became the lone note again glided in samples written before the
        second note came. Each ear's largest second difference in the 40 ms
        after the second note is let go, against the steady note's: with the
-       stale ring the right's was forty times it. */
-    const auto played = [&](bool round, const std::vector<std::pair<int, juce::MidiMessage>>& notes, int switchAt) {
+       stale ring the right's was forty times it. The quarter turn is always on
+       since 16 Nov, and what is heard is each note in both ears at the Width;
+       `width` is where the Width starts, and `switchAt` the block the host's
+       Width parameter takes it to a hundred (until 16 Nov, the switch turned on). */
+    const auto played = [&](int width, const std::vector<std::pair<int, juce::MidiMessage>>& notes, int switchAt) {
       ScopeProcessor p;
       p.prepareToPlay(rate, 128);
       /* On the plain sine, in poly, which the quarter turn is for: opened on
@@ -3073,16 +3087,18 @@ int main() {
          of these checks passed on a sound that never turned - its null below
          is what said so. */
       scope::Json base = scope::baseSetup();
-      base.set("polyRound", scope::Json::boolean(round && switchAt < 0));
       if (const auto code = scope::encodeSetup(base)) p.pageSetup(*code);
       unstaged(p);
+      // Set after the first block: the setup's load reads the parameters back from the panel.
+      auto* knob = p.knob(std::string_view("width"));
       std::vector<float> l, r;
       juce::AudioBuffer<float> b(2, 128);
       for (int at = 0; at < static_cast<int>(rate * 1.5); at += 128) {
         b.clear();
         juce::MidiBuffer m;
         for (const auto& [when, msg] : notes) if (at <= when && when < at + 128) m.addEvent(msg, when - at);
-        if (switchAt >= 0 && at == switchAt) p.pageControl("polyRound", scope::Json::boolean(true));
+        if (at == 128) knob->setValueNotifyingHost(knob->convertTo0to1(static_cast<float>(width)));
+        if (switchAt >= 0 && at == switchAt) knob->setValueNotifyingHost(knob->convertTo0to1(100));
         p.processBlock(b, m);
         for (int i = 0; i < 128; ++i) { l.push_back(b.getSample(0, i)); r.push_back(b.getSample(1, i)); }
       }
@@ -3097,7 +3113,7 @@ int main() {
     const std::vector<std::pair<int, juce::MidiMessage>> twoThenOne {
       { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) }, { 24000, juce::MidiMessage::noteOn(1, 64, static_cast<juce::uint8>(100)) },
       { letGo, juce::MidiMessage::noteOff(1, 64) } };
-    const auto [tl, tr] = played(true, twoThenOne, -1);
+    const auto [tl, tr] = played(100, twoThenOne, -1);
     const double steady = std::fmax(bend(tl, letGo + 6720, letGo + 11520), bend(tr, letGo + 6720, letGo + 11520));
     const double change = std::fmax(bend(tl, letGo, letGo + 1920), bend(tr, letGo, letGo + 1920));
     check("with the quarter turn on, letting go of one of two notes makes no pop: no ear bends more than three times the steady note does",
@@ -3108,14 +3124,16 @@ int main() {
     check("null: a step of a hundredth in that ear reads as one", bend(stepped, letGo, letGo + 1920) > 3 * steady,
           num(bend(stepped, letGo, letGo + 1920)));
 
-    /* And the glide holds a sine's level: switched on under a held note, the
-       turned ear's peak over each period through the glide is the steady
-       peak. The straight mix of the wave and its quarter-late self came down
-       to 0.78 halfway (-2.2 dB). The turned ear is the left since 15 Nov (the
-       owner's list: the right a quarter late drew the mirror of a dyad's
-       ring); read on the right, which is no longer turned, these two checks
-       held for nothing, and the null below is what said so. */
-    const auto [gl, gr] = played(true, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, 24064);
+    /* And the turn holds a sine's level: the host's Width taken from nought to
+       a hundred under a held note, the turned ear's peak over each period
+       through the glide is the steady peak - a note is turned between the
+       ears, never narrowed. Until 16 Nov this was the quarter turn's switch
+       turned on, where the straight mix of the wave and its quarter-late self
+       came down to 0.78 halfway (-2.2 dB). The turned ear is the left since 15
+       Nov (the owner's list: the right a quarter late drew the mirror of a
+       dyad's ring); read on the right, which is not turned, these two checks
+       would hold for nothing, and the null below is what says so. */
+    const auto [gl, gr] = played(0, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, 24064);
     const int period = static_cast<int>(rate / 220.0);
     double peak = 0, least = 1e9;
     for (int i = 20000; i < 20000 + period; ++i) peak = std::fmax(peak, std::fabs(gl[static_cast<std::size_t>(i)]));
@@ -3124,12 +3142,12 @@ int main() {
       for (int i = at; i < at + period; ++i) m = std::fmax(m, std::fabs(gl[static_cast<std::size_t>(i)]));
       least = std::fmin(least, m);
     }
-    check("switched on under a held sine, the quarter turn glides in at the sine's level, within a per cent",
+    check("the host's Width taken up under a held sine turns it in at the sine's level, within a per cent",
           peak > 0.1 && least > 0.99 * peak, "least " + num(least / peak) + " of the steady peak");
-    const auto [ol, orr] = played(false, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, -1);
+    const auto [ol, orr] = played(0, { { 0, juce::MidiMessage::noteOn(1, 57, static_cast<juce::uint8>(100)) } }, -1);
     double apart = 0;
     for (int i = 30000; i < 40000; ++i) apart = std::fmax(apart, std::fabs(gl[static_cast<std::size_t>(i)] - ol[static_cast<std::size_t>(i)]));
-    check("null: and it has turned - the left is not what it is with the switch off", apart > 0.1, "apart by " + num(apart));
+    check("null: and it has turned - the left is not what it is with the Width left at nought", apart > 0.1, "apart by " + num(apart));
   }
 
   std::printf("\n--- the hands: pitch bend, the wheel, pressure ---\n");
@@ -3164,8 +3182,8 @@ int main() {
     };
     const auto fresh = [&](ScopeProcessor& p) {
       p.prepareToPlay(rate, block);
+      // A lone note in Poly is turned since 16 Nov (polyRound went); its left is read here, as before.
       scope::Json base = scope::baseSetup();
-      base.set("polyRound", scope::Json::boolean(false));
       if (const auto code = scope::encodeSetup(base)) p.pageSetup(*code);
       unstaged(p);
     };
@@ -3285,7 +3303,6 @@ int main() {
     ScopeProcessor p;
     p.prepareToPlay(rate, block);
     scope::Json base = scope::baseSetup();
-    base.set("polyRound", scope::Json::boolean(false));
     if (const auto code = scope::encodeSetup(base)) p.pageSetup(*code);
     unstaged(p);
     auto* level = p.knob(std::string_view("level"));

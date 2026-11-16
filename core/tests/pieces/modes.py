@@ -5,7 +5,7 @@ Dyad or Mono. Rendered offline, the three agreed in level, envelope, filter
 and pitch, and differed in one thing: which way round the figure goes. A
 dyad's lone note is two copies of one voice with the right channel's phase a
 quarter turn on (the Phase knob's default), so the right LEADS; Poly's quarter
-turn (polyRound, on in the base and the bank) laid the right channel a quarter
+turn (polyRound then, on in the base and the bank; always since 16 Nov) laid the right channel a quarter
 of the period LATE. The same circle traced the other way - on a sine nothing
 else, since every statistic of a circle survives a mirror, but a lone note's
 channels a quarter apart are heard in the leading ear, so the note sat on the
@@ -24,8 +24,9 @@ since Scan reads it at the voice's own phase and so is not mirror-blind.
 Kept different, by design, and so not checked to agree: Mono's second
 channel is the Interval knob's (a lone note is a unison only at unison);
 Dyad's Hold keeps the last interval; Dyad and Mono follow the Phase knob,
-which Poly's quarter turn does not; a split or a layer is Poly's alone;
-and Poly with the Quarter turn off draws the diagonal line.
+which Poly's quarter turn does not; and a split or a layer is Poly's alone.
+What is heard is each note in both ears at the Width (ears.py), at a
+hundred, the default, the quarter turn - which is what is read here.
 """
 import math, os, struct
 
@@ -33,7 +34,7 @@ from pieces.pulse import setup_code
 
 RATE = 48000
 NOTE = 60
-BASE = {"shape": "sine", "midiMode": "poly", "polyRound": True, "pictureAmount": 0, "display": "xy",
+BASE = {"shape": "sine", "midiMode": "poly", "pictureAmount": 0, "display": "xy",
         "persistence": "0.3", "timebase": 3, "scanStrike": 0}
 
 
