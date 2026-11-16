@@ -424,6 +424,19 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
 
 - A few minor things from trying the click, swell and Width fixes on the testing
   site (13 Nov), to be written here.
+- **The first note's width and level jump when a second is added** (the owner, 16 Nov, on
+  Harmonic tone). Investigated, not yet changed: `one-to-two-notes.md`. In Dyad, Harmonic
+  tone's mode, the bass leaves the right ear at the sample the second key goes down (the right
+  channel *is* the upper note), and when it is let go comes back at whatever angle the release
+  caught - sixteen releases a quarter of a millisecond apart bring it back anywhere from the same
+  in both ears to opposite, almost never the ring it started as. In Poly it leans 6 dB and loses
+  its quarter turn (coherence 0.00 to 1.00) in 4 ms, and comes back as it was. A split does not
+  move it. The picture and, on the Poly presets, Scan move its timbre too, but no faster than the
+  sound's own breathing. Recommended: put Dyad's right channel back in step when the interval
+  changes (A), and let the first note keep its quarter turn and stay in both ears, leaning 6 dB,
+  in both modes (B and C) - or no lean at all (D) if the ear wants it, at the cost of two notes
+  drawn against each other. **To listen:** `web/docs/listening/one-to-two/index.html`, eight
+  stereo takes, today's three modes and the four options.
 - ~~Offered and not yet answered: a small "Testing" label in the header shown only
   on the testing site, so the two pages can be told apart without reading the
   address.~~ Done 15 Nov: *Testing*, in small capitals in the brand's secondary ink inside a

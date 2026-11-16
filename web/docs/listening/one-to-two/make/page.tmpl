@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One note to two</title>
+<style>
+/* DESIGN.md's paper and ink: the brand's tokens, its stacks without the webfonts (fallback faces only, so nothing is fetched).
+   The instrument itself has no dark theme (DESIGN.md, section 3); this page is a document read away from it, and was asked to
+   follow the reader's light, so its dark tokens are the same paper and ink turned over, kept warm. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f;
+  --text-soft: #6b615a; --line: #e4d9cc; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --slate: #5c6488; --shadow: rgba(36, 31, 29, 0.06);
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --cream: #1c1917; --cream-2: #231f1c; --paper: #282320; --charcoal: #f4ede3; --text: #e2d8cc;
+    --text-soft: #b0a598; --line: #3d3631; --blush-deep: #d9a6a0; --gold: #c9a66e;
+    --sage: #98a98a; --rust: #d08a72; --slate: #9aa2c8; --shadow: rgba(0, 0, 0, 0.3);
+  }
+}
+:root[data-theme="dark"] {
+  --cream: #1c1917; --cream-2: #231f1c; --paper: #282320; --charcoal: #f4ede3; --text: #e2d8cc;
+  --text-soft: #b0a598; --line: #3d3631; --blush-deep: #d9a6a0; --gold: #c9a66e;
+  --sage: #98a98a; --rust: #d08a72; --slate: #9aa2c8; --shadow: rgba(0, 0, 0, 0.3);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--cream); color: var(--text); font: 300 16px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased; }
+main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--blush-deep); font-weight: 500; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; color: var(--charcoal); line-height: 1.25; }
+h1 { font-size: 34px; margin: 6px 0 12px; }
+h2 { font-size: 24px; margin: 0 0 6px; }
+h3 { font-size: 18px; margin: 22px 0 6px; }
+strong { font-weight: 600; color: var(--charcoal); }
+.sheet { background: var(--paper); border: 1px solid var(--line); border-radius: 1px; padding: 24px;
+  margin: 28px 0; box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px var(--shadow); }
+.listen { border-left: 3px solid var(--gold); padding: 2px 0 2px 12px; margin: 10px 0; color: var(--charcoal); font-size: 15px; }
+.takes { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; margin: 14px 0; }
+.take { border: 1px solid var(--line); border-radius: 1px; padding: 10px; background: var(--cream); }
+.take-name { font-size: 14px; color: var(--charcoal); margin-bottom: 6px; font-weight: 500; }
+audio { width: 100%; }
+.figs { display: flex; gap: 6px; }
+.figs figure { margin: 0; flex: 1; text-align: center; }
+.figs figcaption { font-size: 11px; color: var(--text-soft); }
+svg.fig { width: 100%; height: auto; display: block; }
+svg.fig .frame { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
+svg.fig .ink { fill: none; stroke: var(--slate); stroke-width: 0.8; stroke-linejoin: round; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; display: block; overflow-x: auto; }
+th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500;
+  color: var(--text-soft); border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: bottom; }
+td { border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; }
+.verdict { font-family: var(--serif); color: var(--charcoal); font-size: 18px; }
+.small { font-size: 14px; color: var(--text-soft); }
+code { font-family: var(--mono); font-size: 0.9em; }
+ul, ol { padding-left: 20px; }
+.status { font-size: 13px; color: var(--rust); }
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow">Real-Time Sound Visualizer &middot; a listening study</div>
+<h1>One note to two: what happens to the first note</h1>
+<p>The owner's report, 16 November, on Harmonic tone: <em>a bass note in the left, then a higher note in the right, then back
+to just the bass &mdash; the first note dips in and out of the ears; its width and level change instantly when another note is
+added.</em> Every take here is the instrument itself, the core rendered offline through
+<code>core/tests/tools/render_cpp.cpp</code>, and every option is a scratch copy of the core's headers: nothing in the instrument
+has changed. The full write-up is <code>web/docs/one-to-two-notes.md</code>.</p>
+<p class="small">The phrase in every take: C2 alone from 0.2 s, E4 added at 1.8 s and let go at 3.4 s, C2 alone again until 5.2 s,
+then its release. Harmonic tone as the bank has it (it plays in Dyad, the mode's default, since it names none), the picture at
+96 with its Swell. <strong>Stereo, and best on headphones</strong>: the issue is between the ears. 16-bit, 44.1 kHz, six seconds
+each. <span id="status" class="status"></span></p>
+
+<section class="sheet">
+<div class="eyebrow">What happens today</div>
+<h2>The bass's place is decided by what else is held</h2>
+<p>A note alone is drawn as a ring: its right channel is the same note a quarter of a cycle ahead. To the ear that is the widest
+a single note can be &mdash; both ears equally loud and not moving together (coherence nought). A second note changes that, in a
+different way in each mode:</p>
+<ul>
+<li><strong>Dyad</strong> (Harmonic tone): the left channel is the lower note and the right the upper, so the bass's right
+ear stops being the bass at all &mdash; it is gone from the right <em>at the sample the key goes down</em>. When the E is let go
+the right becomes the bass again, but its phase has run on at five times the speed all the while, so the bass comes back at
+whatever angle the release happened to catch: anywhere from the same in both ears (narrow, centred) to opposite (wide,
+hollow) &mdash; never, except by chance, the ring it started as. That is the &ldquo;doesn't come back the same&rdquo;.</li>
+<li><strong>Poly</strong>: the lowest and highest notes lean to their sides, full on their own and half on the other, and only a
+note alone or an inner voice gets the quarter turn. So the bass goes from both ears at full, a quarter apart, to its right ear
+6 dB down <em>and moving in step with its left</em> &mdash; narrower and to the left &mdash; in 4 ms, and back when the E goes.
+It does come back as it started.</li>
+<li><strong>A split</strong>: each hand is its own figure, so the bass stays a ring whatever the right hand does.</li>
+</ul>
+<div class="takes">%TODAY%</div>
+<p class="small">Under each take, the figure as drawn (with the picture off, so only the notes draw it): alone, with the E,
+and alone again. In Poly today the pair draws a smear along the diagonal, since the bass is in phase in both channels.</p>
+<h3>The bass's own image, read off its harmonics in each ear (picture off)</h3>
+%TODAY_TABLE%
+<p class="small">The bass's harmonics by lock-in in each ear, which the E's do not touch. Coherence: 0 is the quarter turn (wide),
+1 the same in both ears (narrow, centred), &minus;1 opposite. &ldquo;Both ears&rdquo; is the bass's power summed over the two,
+against alone.</p>
+<h3>Where the Dyad's bass comes back depends on the instant the E is let go</h3>
+<p>Sixteen releases, each a quarter of a millisecond later than the one before (the drift between the two channels turns once in
+3.8 ms at this interval). The bass's coherence once it is alone again:</p>
+<table><thead><tr><th></th><th colspan="16">sixteen release moments across 3.8 ms</th></tr></thead><tbody>%SWEEP%</tbody></table>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">What does not cause it</div>
+<h2>Ruled out, with numbers</h2>
+<ul>
+<li><strong>Level normalisation by voice count:</strong> there is none; a voice is summed at its own level. With the picture off
+the bass's left ear reads &minus;11.22 dB alone, with the E and after it, in Dyad, to the hundredth.</li>
+<li><strong>The envelope:</strong> nothing is restarted; the bass's left ear does not move by a hundredth of a dB at either event
+in Dyad. In Poly the voice is kept by its note and never reborn or re-phased.</li>
+<li><strong>The limiter:</strong> at most 0.06 dB of reduction while the two are held (0.3 dB in the split).</li>
+<li><strong>The picture swinging the image:</strong> its Twist turns the figure, which would swing a narrow image between the ears;
+measured, the balance between the ears moves by under 1.5 dB however the bass came back.</li>
+<li><strong>The picture changing the timbre at once:</strong> it does change it &mdash; the E doubles what is lit (cover 0.17 to
+0.34) and the loop's Fold and Echo follow &mdash; but no faster than the sound's own breathing: Fold moves 0.02 to 0.03 in the
+100 ms after the E, where it moves 0.03 in 100 ms of its own; Echo 0.04 to 0.08 against its own 0.19 to 0.24. That is Breathing doing
+what it says, and it is the same in every version below (the last table).</li>
+<li><strong>Scan's table:</strong> Harmonic tone has Scan off. On the bank's Poly presets it is on, and there it is a real,
+slower cause: on Tine piano the held bass gets up to 6 dB louder over the 0.4 s after the E, because Scan reads the two-note
+figure into every voice (0.0 dB with Scan off). It glides with the screen's persistence and is the picture shaping the sound,
+so no option touches it.</li>
+</ul>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">The options</div>
+<h2>A and B for Dyad, C and D for Poly</h2>
+<p><strong>A.</strong> When the dyad's interval changes, put the right channel back in step with the left (at the new ratio, from the
+left's phase) and crossfade the old right into the new over 30 ms, so it neither clicks nor jumps. The bass leaves the right as
+today, but comes back as the ring it started as, every time; and a dyad reached two ways now draws one figure.
+<strong>B.</strong> A, and lean as Poly leans: the bass's own quarter turn stays in the right at half while the E is held, and the
+E's own copy goes into the left at half. The bass stays in both ears; Dyad's figure is sheared.</p>
+<div class="takes">%OPTIONS_DYAD%</div>
+<p><strong>C.</strong> Keep the quarter turn on the outer notes too, not only on a note alone or an inner voice: the bass still leans
+6 dB, but keeps its width (coherence nought throughout), and the pair draws an open figure where today it draws a diagonal smear.
+<strong>D.</strong> No lean at all: every note on both sides with its own quarter turn, so a note's image never depends on what
+else is held. The two notes no longer draw against each other: the figure is their two rings summed.</p>
+<div class="takes">%OPTIONS_POLY%</div>
+<h3>The bass's own image in each (picture off)</h3>
+%OPTIONS_TABLE%
+<h3>The picture's share, the same in every version (picture on, as the takes are)</h3>
+<p class="small">How far the bass wanders from the same bass held alone through the same six seconds, from the E's entry to
+the bass's release: its harmonics' centre (in harmonic numbers; it breathes between about 1.2 and 7 by itself) and its level,
+both on average.</p>
+<table><thead><tr><th>Version</th><th>Centre of its harmonics, against alone</th><th>Level, against alone, dB</th></tr></thead>
+<tbody>%PICTURE%</tbody></table>
+</section>
+
+<section class="sheet">
+<div class="eyebrow">Recommendation</div>
+<h2>A in any case; then B with C, unless the ear wants D</h2>
+<p class="verdict">A is a fix: the Dyad's bass should come back as it left, and today it comes back at a chance angle.</p>
+<p>B and C make the two modes treat the first note alike: it stays in both ears, keeps its width, and leans 6 dB towards its
+side while another is held, in 30 ms (Dyad) or 4 ms (Poly). What it costs: Dyad's figure is no longer a pure X against Y; and in
+both, the bass still leans. D is the one with no change at all to the first note, and it costs the two-note figure. Which of a
+6 dB lean and no lean sounds right is the ear's to say.</p>
+</section>
+</main>
+<script>
+/* Each take from its .wav, or, where the host will not serve that media type, from the base64 beside it
+   (the painting study's way with strokes.b64.txt): fetched as text, atob'd into bytes, played from a blob. */
+(function () {
+  var failed = 0;
+  function fromText(audio, src) {
+    return fetch(src.replace(/\.wav$/, ".b64.txt")).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    }).then(function (t) {
+      var bin = atob(t.trim()), bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      audio.src = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
+    });
+  }
+  document.querySelectorAll("audio[data-src]").forEach(function (audio) {
+    var src = audio.getAttribute("data-src");
+    fetch(src, { method: "HEAD" }).then(function (r) {
+      var type = r.headers.get("content-type") || "";
+      if (!r.ok || type.indexOf("audio") < 0) throw new Error("not served as audio");
+      audio.src = src;
+    }).catch(function () {
+      return fromText(audio, src);
+    }).catch(function () {
+      failed++;
+      document.getElementById("status").textContent = failed + " take(s) could not be loaded from here; open the page from a server.";
+      audio.src = src;
+    });
+  });
+})();
+</script>
+</body>
+</html>
