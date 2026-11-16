@@ -295,7 +295,8 @@ class Generator {
     oscL_.n = 0; oscR_.n = 0;
     // And the dyad's heard voices' (16 Nov), or their oscillators run on where the drawn ones began again.
     for (auto& h : heardDyad_) { h.osc.n = 0; h.oscOld.n = 0; }
-    oldOsc_.n = 0;
+    oldOsc_.n = 0; handOscL_.n = 0; handOscR_.n = 0;
+    handX_ = 1;
   }
 
   void gate(bool open, double velocity) { env_.gate(open, velocity); fenv_.gate(open, velocity); menvGate(open); }
@@ -580,6 +581,7 @@ class Generator {
       } else {
         const double hz = (clockHz > 0 ? clockHz
                            : ctx_.qMask ? quantise(qA_, freq, ctx_.qMask, ctx_.qHold, ctx_.qGlide) : freq) * fmIn;
+        const double prevHz = lastHz_ > 0 ? lastHz_ : hz;
         lastHz_ = hz;
         if (clockReset) { phaseL_ = 0; phaseR_ = 0; }
         /* A change of interval (16 Nov, option A of web/docs/one-to-two-notes.md):
@@ -592,10 +594,47 @@ class Generator {
            whose second stream would draw from the random sequence. */
         if (dyadRatio_ == 0) dyadRatio_ = dyadBase;
         if (dyadBase != dyadRatio_ && !a_.noise) {
-          oldRatio_ = dyadRatio_; oldPhase_ = phaseR_; dyadX_ = 0;
-          phaseR_ = std::fmod(phaseL_ * dyadBase, kPhaseWrap);
-          oldOsc_ = oscR_; oscR_.n = 0;
-          for (std::size_t k = 1; k < heardDyad_.size(); k++) { heardDyad_[k].oscOld = heardDyad_[k].osc; heardDyad_[k].osc.n = 0; }
+          /* A note that goes on through the change moves between the dyad's
+             two places (16 Nov, the owner's pop): the lower of two let go, and
+             the upper is the lone note now, so its pitch is the left's; or a
+             note added under a lone one, which is the upper now. The interval
+             and the pitch move in the same sample. Until this, the old right
+             was crossfaded out at the NEW pitch times the old ratio - the E of
+             C2 and E4, let go of its C2, played five times too high for 30 ms -
+             and the lower place switched from one note to the other at full,
+             over the note it was taking from. So the note that goes on is
+             handed over: its own phase carried into its new place, the lower
+             place's leaving note and arriving one crossfaded in a straight
+             line (two copies of one note sum to it, where equal power would
+             swell it by 3 dB), and the right, which is the same note on both
+             sides of the change, left to run on. Within a quarter-tone, since
+             a just interval's upper note is not the equal-tempered key's. */
+          const double was = dyadRatio_;
+          const auto near = [](double a, double b) { return a > 0 && b > 0 && std::fabs(std::log2(a / b)) < 1.0 / 24; };
+          const bool down = was != 1 && dyadBase == 1 && near(hz, prevHz * was);
+          const bool up = was == 1 && dyadBase != 1 && near(hz * dyadBase, prevHz);
+          if (down || up) {
+            handDown_ = down;
+            handX_ = 0;
+            handOscL_ = oscL_; handOscR_ = heardDyad_[0].osc;
+            if (down) {
+              // The bass leaving the lower place at its own pitch; the upper note goes on there, at its phase.
+              handPhase_ = phaseL_; handRatio_ = prevHz / hz;
+              phaseL_ = phaseR_;
+            } else {
+              // The lone note leaving the lower place for the upper, where the right already is it.
+              handPhase_ = phaseR_; handRatio_ = intervalRatio(a_.interval, a_.just) * octave;
+              heardDyad_[1].osc = oscL_; heardDyad_[2].osc = heardDyad_[0].osc;
+            }
+            oscL_.n = 0; heardDyad_[0].osc.n = 0;
+            dyadX_ = 1;
+          } else {
+            // The old right at its own pitch against the new, as it was before the change.
+            oldRatio_ = was * prevHz / hz; oldPhase_ = phaseR_; dyadX_ = 0;
+            phaseR_ = std::fmod(phaseL_ * dyadBase, kPhaseWrap);
+            oldOsc_ = oscR_; oscR_.n = 0;
+            for (std::size_t k = 1; k < heardDyad_.size(); k++) { heardDyad_[k].oscOld = heardDyad_[k].osc; heardDyad_[k].osc.n = 0; }
+          }
         }
         dyadRatio_ = dyadBase;
         phaseL_ += kTwoPi * hz * dt;
@@ -613,6 +652,16 @@ class Generator {
           dyadX_ = std::fmin(1.0, dyadX_ + 1000 * dt / kDyadFadeMs);
         }
         const double fadeIn = fading ? std::sin(kPi / 2 * dyadX_) : 1, fadeOut = fading ? std::cos(kPi / 2 * dyadX_) : 0;
+        // The handover's straight line: the lower place's arriving note at `handIn`, its leaving one at 1 - handIn.
+        const bool handing = handX_ < 1;
+        const double stepHand = std::fabs(hz * handRatio_) / rate_;
+        if (handing) {
+          handPhase_ += kTwoPi * hz * handRatio_ * dt;
+          if (handPhase_ >= kPhaseWrap) handPhase_ -= kPhaseWrap;
+          if (handPhase_ < 0) handPhase_ += kPhaseWrap;
+          handX_ = std::fmin(1.0, handX_ + 1000 * dt / kDyadFadeMs);
+        }
+        const double handIn = handing ? handX_ : 1;
         // The plain wave with Scan over it, at a phase: what the dyad's heard voices read.
         const auto plain = [&](double at, double step) {
           const double w = waveAt(a_.shape, at, step, bars, amount);
@@ -626,6 +675,7 @@ class Generator {
           wl = oscStep(oscL_, phaseL_, 0, hz, a_, bars, amount, vxA_, rate_);
           wr = oscStep(oscR_, phaseR_, phase, hz * ratio, a_, bars, amount, vxA_, rate_);
           if (fading) wr = fadeIn * wr + fadeOut * oscStep(oldOsc_, oldPhase_, phase, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
+          if (handing) wl = handIn * wl + (1 - handIn) * oscStep(handOscL_, handPhase_, 0, hz * handRatio_, a_, bars, amount, vxA_, rate_);
         } else {
           wl = waveAt(a_.shape, phaseL_, stepL, bars, amount);
           wr = waveAt(a_.shape, phaseR_ + phase, stepR, bars, amount);
@@ -634,25 +684,31 @@ class Generator {
             wr = scanMix(wr, vxA_.scanPrev, vxA_.scanNext, phaseR_ + phase, stepR, vxA_.scanX, vxA_.scanW);
           }
           if (fading) wr = fadeIn * wr + fadeOut * plain(oldPhase_ + phase, stepOld);
+          if (handing) wl = handIn * wl + (1 - handIn) * plain(handPhase_, stepHand);
         }
         // The dyad heard as two voices (16 Nov), before the drawn pair's chain moves on: see `hearDyad`.
         double hu[3] = { 0, 0, 0 };
         const bool upper = dyadBase != 1, upperWas = fading && oldRatio_ != 1;
+        // The upper place through a handover: the note leaving it (the lower let go) or arriving (one added under).
+        const bool upperLeaving = handing && handDown_;
+        const double upperGain = handing ? (handDown_ ? 1 - handIn : handIn) : fadeIn;
         if (heard && !a_.noise) {
           const double turn = width * phase;
           if (vxA_.on) {
             hu[0] = oscStep(heardDyad_[0].osc, phaseL_, turn, hz, a_, bars, amount, vxA_, rate_);
+            if (handing) hu[0] = handIn * hu[0] + (1 - handIn) * oscStep(handOscR_, handPhase_, turn, hz * handRatio_, a_, bars, amount, vxA_, rate_);
             for (int s = 1; s <= 2; s++) {
               const double at = s == 1 ? 0 : turn;
               auto& h = heardDyad_[static_cast<std::size_t>(s)];
-              if (upper) hu[s] += fadeIn * oscStep(h.osc, phaseR_, at, hz * ratio, a_, bars, amount, vxA_, rate_);
+              if (upper || upperLeaving) hu[s] += upperGain * oscStep(h.osc, phaseR_, at, hz * ratio, a_, bars, amount, vxA_, rate_);
               if (upperWas) hu[s] += fadeOut * oscStep(h.oscOld, oldPhase_, at, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
             }
           } else {
             hu[0] = plain(phaseL_ + turn, stepL);
+            if (handing) hu[0] = handIn * hu[0] + (1 - handIn) * plain(handPhase_ + turn, stepHand);
             for (int s = 1; s <= 2; s++) {
               const double at = s == 1 ? 0 : turn;
-              if (upper) hu[s] += fadeIn * plain(phaseR_ + at, stepR);
+              if (upper || upperLeaving) hu[s] += upperGain * plain(phaseR_ + at, stepR);
               if (upperWas) hu[s] += fadeOut * plain(oldPhase_ + at, stepOld);
             }
           }
@@ -677,7 +733,7 @@ class Generator {
             hl = l;
             hr = width == 1 ? r : (width * r + u * l) / std::sqrt(width * width + u * u);
           } else {
-            const bool run[3] = { true, upper || upperWas, upper || upperWas };
+            const bool run[3] = { true, upper || upperWas || upperLeaving, upper || upperWas || upperLeaving };
             const double f[3] = { hz, hz * ratio, hz * ratio };
             for (std::size_t s = 0; s < 3; s++) {
               if (!run[s]) continue;
@@ -1215,6 +1271,11 @@ class Generator {
   static constexpr double kDyadFadeMs = 30;
   double dyadRatio_ = 0, oldRatio_ = 1, oldPhase_ = 0, dyadX_ = 1;
   Osc oldOsc_;
+  // A note handed between the dyad's places (16 Nov): the lower place's leaving note, its pitch against
+  // the new and its oscillators, how far through (one is done), and whether it was the lower let go.
+  double handPhase_ = 0, handRatio_ = 1, handX_ = 1;
+  bool handDown_ = false;
+  Osc handOscL_, handOscR_;
   /* The dyad heard as two voices (16 Nov): the lower note's right, and the
      upper note's left and right, each with its own oscillator (and the one it
      is crossfading from), shaper, crush and filter. The lower note's left is

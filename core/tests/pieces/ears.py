@@ -219,3 +219,61 @@ def run(kit):
             check("a lone note in Dyad at Width 100 is heard as it is drawn, to the bit", same, "%d samples" % n)
         else:
             null("and at fifty it is not", not same, "%.3f" % float(np.max(np.abs(r["R"][:n] - r["Y"][:n]))))
+
+    # --- a note let go of two in Dyad, either one (16 Nov, the owner's pop) ---
+    # Holding E4 and adding C2 under it, then letting the C2 go, popped: the
+    # interval and the pitch move in the same sample, and the old right was
+    # crossfaded out at the new pitch times the old ratio - the E played five
+    # times too high for 30 ms - while the lower place switched from C2 to the
+    # E at full over the E it was taking from. Letting the E go did not pop,
+    # since the pitch stays the C2's. Read in each ear and on the drawn lanes,
+    # around the release: the largest move a sample against the steady sound's
+    # on both sides of it, and the note that goes on, by lock-in at its own
+    # pitch in 30 ms windows, against its own level once settled. Both orders,
+    # at Width 0, 50 and 100, Harmonic tone with the picture off; and Mono, whose
+    # pitch moves under a held interval when its newest note is let go.
+    def around(x, t, f):
+        i = int(t * RATE)
+        d = np.abs(np.diff(x))
+        steady = max(d[i - int(0.3 * RATE): i - int(0.01 * RATE)].max(), d[i + int(0.15 * RATE): i + int(0.45 * RATE)].max())
+        jump = d[i - 64: i + int(0.04 * RATE)].max() / max(steady, 1e-12)
+        settled = lockin(x, x, f, t + 0.15, t + 0.45, win=0.03)[0]
+        swing = max(abs(lockin(x, x, f, t + k * 0.01, t + k * 0.01 + 0.031, win=0.03)[0] - settled) for k in range(-3, 10))
+        return jump, swing
+    E4, C2 = hz(64), hz(36)
+    worst = {}
+    for order, notes, goes_on in (("the low let go", (64, 36), E4), ("the high let go", (36, 64), C2)):
+        ev = [(0.2, 0x90, notes[0], 100), (1.0, 0x90, notes[1], 100), (2.0, 0x80, notes[1], 0), (3.0, 0x80, notes[0], 0)]
+        for width in (0, 50, 100):
+            r = render(HT, ev, 2.6, width, full=True)
+            for ear in ("L", "R", "X", "Y"):
+                j, s = around(r[ear], 2.0, goes_on)
+                key = (order, ear)
+                worst[key] = (max(worst.get(key, (0, 0))[0], j), max(worst.get(key, (0, 0))[1], s))
+    for order in ("the low let go", "the high let go"):
+        heard = [worst[(order, e)] for e in ("L", "R")]
+        drawn = [worst[(order, e)] for e in ("X", "Y")]
+        check("in Dyad, %s: no ear steps more than one and a half times the steady sound does, at Width 0, 50 and 100, and the note "
+              "that goes on keeps its level within 1.5 dB" % order,
+              all(j < 1.5 and s < 1.5 for j, s in heard), "steps %s, swings %s dB" % ([round(j, 2) for j, _ in heard], [round(s, 2) for _, s in heard]))
+        check("and the drawn lanes do not step there either", all(j < 1.5 for j, _ in drawn), "steps %s" % [round(j, 2) for j, _ in drawn])
+    # The null: the check fed the old fault, a steady E with its last 30 ms
+    # before a release replaced by the same note five times as high, faded out.
+    t = np.arange(int(2.6 * RATE)) / RATE
+    old = 0.3 * np.sin(2 * np.pi * E4 * t)
+    k0, n30 = int(2.0 * RATE), int(0.03 * RATE)
+    fade = np.cos(np.pi / 2 * np.arange(n30) / n30)
+    old[k0:k0 + n30] = 0.3 * (np.sin(2 * np.pi * E4 * t[k0:k0 + n30]) * np.sin(np.pi / 2 * np.arange(n30) / n30)
+                              + np.sin(2 * np.pi * 5 * E4 * t[k0:k0 + n30]) * fade)
+    j, s = around(old, 2.0, E4)
+    null("the old crossfade - the leaving note five times too high, faded out - reads as a step", j > 1.5, "x%.1f" % j)
+
+    # Mono: the newest note is the pitch and the Interval holds above it; let it go and the older is the pitch again.
+    mono = dict(HT, midiMode="mono", interval=4)
+    ev = [(0.2, 0x90, 48, 100), (1.0, 0x90, 55, 100), (2.0, 0x80, 55, 0), (3.0, 0x80, 48, 0)]
+    steps = []
+    for width in (0, 100):
+        r = render(mono, ev, 2.6, width, full=True)
+        steps += [around(r[ear], 2.0, hz(48))[0] for ear in ("L", "R", "X", "Y")]
+    check("in Mono, the newest note let go back to the older: no ear or lane steps more than one and a half times the steady sound",
+          max(steps) < 1.5, "worst x%.2f" % max(steps))

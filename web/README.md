@@ -5932,6 +5932,19 @@ voices). Things learned on the way, each of which would otherwise be found again
   note in Poly is a ring, and a ring turned is the same ring:
   `layerplane.py`'s B note is on X alone now (the `xonly` role), and its
   screen-rotation check holds a fifth.
+- *In Dyad the interval and the pitch can move in the same sample, and a note
+  can change places.* Let go of the C2 under a held E4 and the pitch becomes
+  the E's while the interval becomes a unison: option A's fading old right was
+  advanced at the new pitch times the old ratio, so the E faded out five times
+  too high (the owner heard it pop), and the lower place switched from the C2
+  to the E at full over the E it was taking from. The old right now keeps its
+  own pitch, and a note that goes on through the change - the upper let go of
+  its lower note, or a lone note with one added under it - is handed over: its
+  phase carried into its new place and the lower place's leaving and arriving
+  notes crossfaded in a straight line, since two copies of one note sum to it
+  where equal power swells it 3 dB (`handX_`). `ears.py` reads it both ways
+  round at three Widths and in Mono, against a step fed in, and was red on the
+  core before the fix; its lone pop was the low release, the high was fine.
 - *A dyad's change of interval now starts the two phases in step* (option A of
   `one-to-two-notes.md`), the old right crossfaded out over 30 ms at equal
   power, before the voice chain; the heard upper note crossfades with it. So a
