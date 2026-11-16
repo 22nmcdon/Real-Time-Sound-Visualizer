@@ -428,14 +428,16 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   rewrite keeps a file only when it differs, so it should probably keep one that differs
   within the tolerance too.
 
-- **Checks that read a recording by the JavaScript's spelling of a number** (found 16
+- ~~**Checks that read a recording by the JavaScript's spelling of a number**~~ Mended
+  the same day: a real one-line change to the level could not be written because of
+  it. The six look for their values with every number spelt one way (`has`, `spelt`).
+  What was found: (found 16
   Nov, fixing `--write-golden`): the dyad's `"set octaves 2."` and `"set freq 4000.0"`,
   mono's interval, the loop's total into a slot, an edit's depth (`"0.69999999999999996/"`),
   a full-scale sine's `"1.0000000000000000"` and hearing the generator's sources. While a
   run is the JavaScript's recording they pass; once a change to the sound moves that run
   and `--write-golden` stores the core's text, they fail on spelling alone and refuse the
-  section, though nothing they mean has moved. Reading the number rather than the text
-  would mend each; left until a change first needs it.
+  section, though nothing they mean has moved.
 
 ## Owner's list
 

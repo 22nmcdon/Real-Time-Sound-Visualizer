@@ -98,6 +98,23 @@ unrelated change leaves the files - and the git diff - alone; for each run that
 moved, it prints where it first differs from the old file, since a gzipped
 file is not readable as a diff.
 
+"Moved" is the plain run's rule: past the tolerance. A run the core still
+answers within it is kept as it was, byte for byte, and the section is handed
+the recording, as the plain run hands it; only a run that moved takes the
+core's text, and only a file with one is written (16 Nov). Before that the
+core's text stood in for every recorded run under `--write-golden`, which
+spells numbers its own way (`4000` for `4000.0`) and differs below the
+tolerance: six checks that read the recorded text failed on an unchanged core
+and refused keyboard, matrix, level and hearing, and functions, picture, scan,
+score and restore were rewritten for nothing. Checks that look for a value in a
+run's text look for it with every number spelt one way (`has`, `spelt` in
+core_tests.py), so a run the core's text has replaced reads as the recording
+did. Seen on 16 Nov: on an unchanged core the writer keeps all fifteen files
+and refuses none, where the old one rewrote five and refused four; with the
+level's attack moved by a millionth and the dyad's top clamp moved to 3999 Hz,
+it wrote level alone (seven runs, by about 1.3e-7), logged the reason, refused
+keyboard for its clamp check and kept the other thirteen.
+
 Why a reason and not a bound: refusing a rewrite past some size of change
 would stop the changes worth making and pass the small wrong ones. A reason
 that has to be written down puts the judgement with whoever meant the change,
