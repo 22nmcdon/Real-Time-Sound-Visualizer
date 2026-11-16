@@ -469,26 +469,47 @@ with sync_playwright() as pw:
       const row = { split: !el.midiSplitBy.hidden, learnByKey: !el.midiSplitLearn.hidden, endByKey: !el.midiSplitEnd.hidden };
       if (cut) hostSync.on = false;
       const pick = (id, v) => { el[id].value = v; el[id].dispatchEvent(new Event('change', { bubbles: true })); };
-      pick('midiSplitBy', 'notes'); pick('midiSplitEnd', 'lower'); pick('midiSplitCount', '1');
+      if (args.point) { midi.layers.point = args.point; hostSendSplit(); }
+      else { pick('midiSplitBy', 'notes'); pick('midiSplitEnd', 'lower'); pick('midiSplitCount', '1'); }
       if (cut) hostSync.on = true;
       row.learnByNotes = !el.midiSplitLearn.hidden; row.endByNotes = !el.midiSplitEnd.hidden && !el.midiSplitCount.hidden;
-      await wait(150);
-      // 60 ms apart, so each is a note of its own: within 25 ms of the first they are one struck chord (the gather).
-      for (const n of notes) { midiNoteOn(n, 100); if (apart) await wait(apart); }
+      // Longer before a reading made soon after the notes, so the split has surely reached the instrument.
+      await wait(args.soon ? 400 : 150);
+      // 60 ms apart, so each is a note of its own: within 10 ms of the first they are one struck chord (the gather).
+      /* args.busy keeps the page busy that long after each note, as a cold
+         page's work on a note can; args.turn lets a turn end between them. */
+      const busy = (ms) => { const until = performance.now() + ms; while (performance.now() < until); };
+      for (const n of notes) {
+        midiNoteOn(n, 100);
+        if (args.busy) busy(args.busy);
+        if (args.turn) await wait(0);
+        if (apart) await wait(apart);
+      }
+      /* Soon after the chord, where a note dealt to one hand and moved to the
+         other would ring on in the first (the 25 ms gather's ghost): each
+         note's energy in each hand's lanes over the last 4096 samples, read
+         args.soon ms after the last note. */
+      let soon = null;
+      if (args.soon) {
+        await wait(args.soon);
+        const w = state.source.getLatestWindow(4096), rate = state.source.sampleRate;
+        soon = w.map((x) => [45, 48, 52, 55].map((n) => window.__bin(x, 440 * Math.pow(2, (n - 69) / 12), rate)));
+      }
       if (!apart) await wait(60);
       const face = [0, 1].map((l) => layerNotes(l).map((h) => h.note).sort((a, b) => a - b));
       const code = snapshot();
       state.lastReadout = 0; await wait(400);
-      return { row, face, readout: el.readoutDetail.textContent,
+      return { row, face, soon, readout: el.readoutDetail.textContent,
                code: { splitBy: code.splitBy, splitEnd: code.splitEnd, splitCount: code.splitCount } };
     }"""
-    def by_notes(cut, notes=None, apart=None):
+    def by_notes(cut, notes=None, apart=None, soon=None, point=None, busy=0, turn=False):
         q = b.new_page(viewport={"width": 1400, "height": 900})
         q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
         q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1500)
         if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
         q.evaluate(BIN, BIN_SRC)
-        out = q.evaluate(NOTES, {"cut": cut, "notes": notes, "apart": apart})
+        out = q.evaluate(NOTES, {"cut": cut, "notes": notes, "apart": apart, "soon": soon, "point": point,
+                                 "busy": busy, "turn": turn})
         e = q.evaluate(LANES, [45, 48, 52, 55])
         # Each note's energy in A's two lanes and in B's.
         out["a"] = [round(e[0][i] + e[1][i], 5) for i in range(4)]
@@ -528,6 +549,45 @@ with sync_playwright() as pw:
     check("null: the same three 60 ms apart are three notes, each the lowest as it starts, and all three the lower hand's",
           apart["face"] == [[48, 52, 55], []] and in_hands(apart, [1, 2, 3], []) and not in_hands(apart, [1], [2, 3]),
           "A %s B %s" % (apart["a"], apart["b"]))
+
+    # A chord the page plays in one turn is struck at once however long the
+    # page takes over each note (16 Nov): what a turn sends the worklet goes
+    # as the turn ends, in order. The page kept busy 15 ms after each of
+    # G3 E3 C3, which put them further apart in the instrument than its 10 ms
+    # look-ahead when each was sent as it was played, is still one chord: C3
+    # the lower hand, E3 and G3 the upper. The null lets a turn end between
+    # the notes, so each goes when it is played, 15 ms apart: three notes,
+    # each the lowest as it starts, all the lower hand's.
+    slow, turns = by_notes(False, [55, 52, 48], 0, None, None, 15), by_notes(False, [55, 52, 48], 0, None, None, 15, True)
+    print("    busy 15 ms a note, one turn: A %s B %s; a turn between: A %s B %s" % (slow["a"], slow["b"], turns["a"], turns["b"]))
+    check("G3 E3 C3 played in one turn with the page busy 15 ms after each are one chord in the instrument: C3 low, E3 G3 high",
+          in_hands(slow, [1], [2, 3]), "A %s B %s" % (slow["a"], slow["b"]))
+    check("null: a turn between them, each sent as played 15 ms apart, and all three are the lower hand's",
+          in_hands(turns, [1, 2, 3], []) and not in_hands(turns, [1], [2, 3]), "A %s B %s" % (turns["a"], turns["b"]))
+
+    # No ghost (16 Nov, the look-ahead): split by notes the instrument holds
+    # every note back 10 ms and deals the chord before any of it sounds, so
+    # E3 and G3, the upper hand's, are not in the lower hand's lanes even in
+    # the first moments after the chord, where the 25 ms gather this replaced
+    # sounded them low and moved them, leaving each ringing on in the lower
+    # hand for its release. Read 80 ms after G3 E3 C3 struck at once, top
+    # first, over the last 4096 samples - a window that holds the onset, so
+    # every note leaks a little into every bin (A2, never played, reads a
+    # third of C3) - against the key split at D3, which deals the same hands
+    # and has nothing to move, read 70 ms after: the same moment in its
+    # notes' lives, since by key nothing waits. The null is the same three
+    # 60 ms apart, all the lower hand's, read alike: E3 and G3 are in A's
+    # lanes then, so the reading can see a note there. (The core's render
+    # check, splitnotes.py, holds the same to the bit; this is the site.)
+    near, spread = by_notes(False, [55, 52, 48], 0, 80), by_notes(False, [55, 52, 48], 60, 80)
+    keyed = by_notes(False, [55, 52, 48], 0, 70, 50)
+    in_a = lambda r: [round(r["soon"][0][i] + r["soon"][1][i], 5) for i in range(4)]
+    print("    80 ms after, the lower hand's lanes: at once %s, the key split %s, 60 ms apart %s" % (in_a(near), in_a(keyed), in_a(spread)))
+    no_ghost = lambda r: in_a(r)[1] > 1e-2 and all(in_a(r)[i] < 2 * in_a(keyed)[i] + 1e-3 for i in (2, 3))
+    check("80 ms after G3 E3 C3 struck at once, E3 and G3 in the lower hand's lanes are no more than the key split leaves",
+          no_ghost(near), "by notes %s, by key %s" % (in_a(near), in_a(keyed)))
+    check("null: the same three 60 ms apart are all the lower hand's, and E3 and G3 in its lanes are many times that",
+          not no_ghost(spread), str(in_a(spread)))
 
     check("no page errors on the instrument's face", not bad, "; ".join(bad[:3]))
     b.close()

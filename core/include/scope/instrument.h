@@ -511,10 +511,18 @@ class Instrument {
     // is struck the same way at the sample its time falls on.
     int done = 0;
     const double blockMs = stepStartMs_ + 1000.0 * stepPos_ / rate_;  // this piece's first sample
-    const double endMs = blockMs + 1000.0 * frames / rate_;
     const auto wakesUntil = [&](int until) {
-      for (auto wake = keyboard_->arpWake(); wake && *wake < endMs; wake = keyboard_->arpWake()) {
-        const int at = std::clamp(static_cast<int>(std::ceil((*wake - blockMs) * rate_ / 1000)), done, frames);
+      /* Where in the piece a wake falls, in samples. The clock is milliseconds
+         summed block by block, so a wake due on a sample (a note the split by
+         notes holds back 10 ms, 480 samples at 48 kHz) comes out a hair either
+         side of it; within a millionth of a sample it is on it, so it plays at
+         that sample and on the same side of a step as a message there would. */
+      const auto placed = [&](double wake) {
+        const double x = (wake - blockMs) * rate_ / 1000, whole = std::round(x);
+        return std::fabs(x - whole) < 1e-6 ? whole : x;
+      };
+      for (auto wake = keyboard_->arpWake(); wake && placed(*wake) < frames; wake = keyboard_->arpWake()) {
+        const int at = std::clamp(static_cast<int>(std::ceil(placed(*wake))), done, frames);
         if (at > until) break;
         render(left, right, done, at);
         done = at;

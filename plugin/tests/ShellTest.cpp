@@ -3932,6 +3932,45 @@ int main() {
           lowerOnly(byNotes) && keptNotes == "notes", say(byNotes) + "; the project keeps splitBy " + keptNotes);
     check("null: the same project split by key at C4 plays all four in the lower hand",
           !lowerOnly(byKey) && byKey[2] > 1e-3 && byKey[3] > 1e-3 && keptKey != "notes", say(byKey) + "; splitBy " + keptKey);
+
+    /* The look-ahead (16 Nov): split by notes the keyboard holds every note
+       back 10 ms, so it can deal a chord before any of it sounds, and the
+       host is not told (PluginProcessor.h says why). A host's C3 at sample
+       40 of the third block, into the same project split by notes and by
+       key: the first sample heard is exactly 10 ms of samples later by
+       notes, and the host is told the same latency for both. The null is a
+       figure that counted the look-ahead, 10 ms more, which the told figure
+       must not be. */
+    const auto onset = [&](const char* by) {
+      const std::string json = std::string(R"({"shape":"sine","midiMode":"poly","layers":"split","splitAt":60,"splitBy":")") + by
+          + R"(","splitEnd":"lower","splitCount":1,"pictureAmount":0,"display":"xy"})";
+      const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(json)));
+      ScopeProcessor p;
+      if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
+      p.prepareToPlay(rate, block);
+      int first = -1;
+      for (int k = 0; k < 24; ++k) {
+        juce::AudioBuffer<float> buf(2, block);
+        buf.clear();
+        juce::MidiBuffer m;
+        if (k == 2) m.addEvent(juce::MidiMessage::noteOn(1, 48, static_cast<juce::uint8>(100)), 40);
+        p.processBlock(buf, m);
+        for (int i = 0; i < block && first < 0; ++i)
+          if (std::fabs(buf.getSample(0, i)) + std::fabs(buf.getSample(1, i)) > 1e-6) first = k * block + i;
+      }
+      p.reportLatency();
+      return std::make_pair(first, p.getLatencySamples());
+    };
+    const auto [notesAt, notesTold] = onset("notes");
+    const auto [keyAt, keyTold] = onset("key");
+    const int ahead = static_cast<int>(std::lround(0.010 * rate));
+    check("a host's note split by notes sounds exactly 10 ms of samples after the same note split by key",
+          keyAt > 2 * block && notesAt - keyAt == ahead,
+          "by notes from sample " + std::to_string(notesAt) + ", by key from " + std::to_string(keyAt) + ", 10 ms is " + std::to_string(ahead));
+    check("and the host is told the same latency for both: the look-ahead is not reported",
+          notesTold == keyTold && notesTold >= 0, "told " + std::to_string(notesTold) + " by notes, " + std::to_string(keyTold) + " by key");
+    check("null: a figure that counted the look-ahead would be 10 ms more than the key split's", notesTold != keyTold + ahead,
+          std::to_string(keyTold + ahead));
   }
 
   std::printf("\n--- the latency told to the host ---\n");

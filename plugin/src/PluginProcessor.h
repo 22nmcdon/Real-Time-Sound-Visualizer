@@ -67,7 +67,18 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
      Measured on the audio thread a tenth of a second after the load, when the
      stages' routes have been made, into `latencyWanted_`; told to JUCE on
      the message thread by `reportLatency`, which a timer calls, since
-     setLatencySamples tells the host's wrapper under a lock. */
+     setLatencySamples tells the host's wrapper under a lock.
+
+     Not counted, on purpose (16 Nov): the split by notes' look-ahead, the
+     10 ms the keyboard holds every note back while it deals the hands
+     (Keyboard::kLookAhead, web/docs/split-by-notes.md). A host makes up a
+     reported latency by playing everything that much early - every note in
+     every mode, and the audio beside it - so told, the key split and every
+     other mode would be shifted to cover a delay they do not have, and the
+     figure would change as the split is switched, which hosts take mid-phrase
+     no better than the stages'. Untold, notes split by notes sound 10 ms
+     late, from a track as live, which is the cost the owner accepted for the
+     dealing. */
   void reportLatency();
   int latencyMeasured() const { return latencyWanted_.load(); }
   // How late the stages put the sound this block, whatever the host was told: the shell test's way in.

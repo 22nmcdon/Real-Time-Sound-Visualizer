@@ -87,7 +87,13 @@ class Out : public scope::NoteOut {
 void run(const std::vector<std::string>& head, const std::vector<std::vector<std::string>>& commands) {
   bool present = true;
   bool screen = false;  // the strikes laid on the screen, logged (16 Nov, the gather): not in the recorded runs
-  for (const auto& kv : head) { if (kv == "present=0") present = false; if (kv == "screen=1") screen = true; }
+  // Each wake served by `at`, logged with its time (16 Nov, the look-ahead): when a note waiting sounds. Not in the recorded runs.
+  bool wakes = false;
+  for (const auto& kv : head) {
+    if (kv == "present=0") present = false;
+    if (kv == "screen=1") screen = true;
+    if (kv == "wakes=1") wakes = true;
+  }
   std::vector<scope::Lfo> lfos(2);
   scope::Generator gen(48000, scope::slot::Used, lfos);
   std::vector<std::string> log;
@@ -140,7 +146,11 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
     else if (cmd == "bpm") k.setTempo(num(arg(1)));
     else if (cmd == "at") {
       const double until = num(arg(1));
-      while (k.arpWake() && *k.arpWake() <= until) { k.setNow(*k.arpWake()); k.wakeArp(); }
+      while (k.arpWake() && *k.arpWake() <= until) {
+        if (wakes) log.push_back("wake " + show(*k.arpWake()));
+        k.setNow(*k.arpWake());
+        k.wakeArp();
+      }
       now = until;
       k.setNow(now);
     } else if (cmd == "tick") k.arpTick(now);

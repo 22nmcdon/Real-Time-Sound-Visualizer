@@ -548,9 +548,9 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   a menu focused from the keyboard keeps the focus, Down moves it and S plays nothing.
 
 - ~~**A chord struck at once is dealt in the order its notes arrive**~~ Dealt as one chord
-  since 16 Nov (the owner's decision): notes within 25 ms of a gather's first are ranked
-  together by pitch (`Keyboard::kGather`, split-by-notes.md). How a note moved by its
-  gather should sound is the entry after this one. What was found: (found building the
+  since 16 Nov (the owner's decision): split by notes every note waits 10 ms, and the
+  notes that arrive within 10 ms of a gather's first are ranked together by pitch before
+  any sounds (`Keyboard::kLookAhead`, split-by-notes.md). What was found: (found building the
   split by notes, 16 Nov; for the owner's ear). A note's hand is fixed when it starts, as
   the owner decided, by its rank among the notes held at that moment. But a chord's
   notes reach the keyboard a millisecond or two apart in no fixed order, so with Lower: 1
@@ -563,17 +563,21 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   milliseconds, or moving it once it has begun. Not built without the owner's word, since
   either is the "nothing moves" rule bent.
 
-- **A note its gather moves rings on in the hand it was first dealt** (found building the
-  gather, 16 Nov; for the owner). The gather's first notes sound at once in a provisional
-  hand, and one moved by a lower note arriving is let go there - a release - and struck in
-  the other. Measured on the bank (split-by-notes.md, "Not settled", has the method): the
-  moved notes are 2 to 22 dB under the chord from 30 to 100 ms, and up to 46 dB over what
-  the key split leaves at those pitches in the lower hand, through 300 ms on the Tine
-  piano. Audible. Two other ways, measured: cut a moved note in the governor's 10 ms fade
-  (the ghost then -30 to -64 dB after 10 ms in seven presets of nine, but -3 to -10 dB in
-  its first 10 ms), or hold every gather's notes until it closes (no ghost, up to 25 ms
-  of latency on the first note of every gather, by notes only). The branch sounds at once
-  and releases until the owner chooses.
+- ~~**A note its gather moves rings on in the hand it was first dealt**~~ Gone since 16 Nov
+  (the owner's decision): no note is dealt again once it sounds. Split by notes every note,
+  release and the pedal wait 10 ms from their own arrival, so the chord is known before
+  any of it sounds, and each note then sounds at its own moment, its gaps and length kept;
+  the key split and every other mode play at once, as before. The instrument now plays a
+  struck chord split by notes, on every bank preset, to the bit as the key split does
+  10 ms later (`core/tests/pieces/splitnotes.py`). What was found (found building the
+  gather, 16 Nov): the gather's first notes sounded at once in a provisional hand, and one
+  moved by a lower note arriving was let go there - a release - and struck in the other.
+  Measured on the bank: the moved notes were 2 to 22 dB under the chord from 30 to 100 ms,
+  and up to 46 dB over what the key split leaves at those pitches in the lower hand,
+  through 300 ms on the Tine piano. Two other ways were measured and put to the owner -
+  cutting a moved note in the governor's 10 ms fade, or holding each gather's notes until
+  it closed (up to 25 ms on a gather's first note, and a roll made a block) - and the owner
+  chose a fixed 10 ms on every note instead (split-by-notes.md, "Settled").
 
 ## Already planned for after stage 5
 
