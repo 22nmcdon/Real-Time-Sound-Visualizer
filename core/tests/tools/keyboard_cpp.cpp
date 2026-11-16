@@ -86,7 +86,8 @@ class Out : public scope::NoteOut {
 
 void run(const std::vector<std::string>& head, const std::vector<std::vector<std::string>>& commands) {
   bool present = true;
-  for (const auto& kv : head) if (kv == "present=0") present = false;
+  bool screen = false;  // the strikes laid on the screen, logged (16 Nov, the gather): not in the recorded runs
+  for (const auto& kv : head) { if (kv == "present=0") present = false; if (kv == "screen=1") screen = true; }
   std::vector<scope::Lfo> lfos(2);
   scope::Generator gen(48000, scope::slot::Used, lfos);
   std::vector<std::string> log;
@@ -94,6 +95,9 @@ void run(const std::vector<std::string>& head, const std::vector<std::vector<std
   Realtime clock(log);
   scope::Keyboard k(target, &clock);
   k.setPresent(present);
+  if (screen) k.setStrike([&log](int note, double velocity, int layers) {
+    log.push_back("screen " + std::to_string(note) + " " + show(velocity) + " " + std::to_string(layers));
+  });
   Out out(log);
   k.setOut(&out);
   double now = 0;

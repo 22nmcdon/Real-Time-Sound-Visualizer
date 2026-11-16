@@ -84,6 +84,17 @@ def _one(call):
 # be. It used to count as no difference at all - `max` never takes a NaN after
 # a number - which is how a run the page answered with NaN, and the core with
 # memory read past the end of a vector, passed as the same to 1e-12.
+# A recorded run and the core's spell the same number differently - the
+# JavaScript's "4000.0" and "1.0000000000000000" are the core's "4000" and "1" -
+# so a check that looks for a value in a run's text looks for it with every
+# number in both spelt one way (`has`), to twelve figures, where the tolerance
+# is. Until 16 Nov six checks read the recording's spelling, and once a change
+# to the sound moved their run and --write-golden stored the core's text they
+# failed on the spelling alone and refused their sections.
+_NUM = re.compile(r"(?<![\w.])-?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?(?![\w])")
+def spelt(text): return _NUM.sub(lambda m: "%.12g" % float(m.group(0)), text)
+def has(text, needle): return spelt(needle) in spelt(text)
+
 def worst(a, b):
     if len(a) != len(b): return float("inf")
     return max((0.0 if x == y or (math.isnan(x) and math.isnan(y)) else
@@ -2043,7 +2054,7 @@ kkn = subprocess.run([gate_core, os.path.join(BUILD, "keyboard_key_null.txt")], 
 check("null: a core whose Key is its gate, nought the moment the keys are up, is not the page's",
       kdiff(kkn, kslice(kjs, next(k for k, (n, _) in enumerate(kruns) if n == "key-release"))) is not None)
 check("the dyad sets an interval wider than an octave, and clamps the pitch at both ends",
-      "set octaves 2." in kout("dyad") and "set freq 4000.0" in kout("dyad-edges") and "set freq 30.00" in kout("dyad-edges"))
+      has(kout("dyad"), "set octaves 2 ") and has(kout("dyad-edges"), "set freq 4000 ") and has(kout("dyad-edges"), "set freq 30 "))
 check("a chord leaves notes heard and not drawn, by every rule",
       all(r in kout("poly-rules") for r in ("/u+", "/x+", "/y")) and "/xy " in kout("poly-one"))
 check("past eight held notes the oldest stops sounding", "poly 8 2 11" in kout("poly-many"))
@@ -2056,7 +2067,7 @@ check("the pedal holds released keys, and lets them go", "sustained 60" in kout(
 check("bytes: running status, a clock tick inside a note, and the realtime handed on",
       "realtime 248" in kout("bytes") and "notes 64/" in kout("bytes"))
 check("mono plays the panel's interval under its note, and a key reswings nothing (G2 took the pendulums)",
-      "set interval 4.0" in kout("panel") and "reswing" not in ktext and ":: reswing" not in kjs and ":: reswing" not in kcpp)
+      has(kout("panel"), "set interval 4 ") and "reswing" not in ktext and ":: reswing" not in kjs and ":: reswing" not in kcpp)
 # A controller walked towards where it was moved, once learned; since F4b
 # (7 Nov) none is learned. What a controller still does: the wheel sets the
 # vibrato through Expression, and a drawbar's controller sets nothing.
@@ -2474,8 +2485,8 @@ check("a preset loaded under a fade lands: its first frame is its last, no ghost
 check("null: the same routings arriving by an edit fade in, so its first frame is not its last", not settles_at_once("preset-edit"))
 fo = frame_lines("fade-out")
 check("a routing taken off is heard fading, then forgotten", "heard 3" in "\n".join(fo) and fo[-1].split("heard ")[1].startswith("0"))
-check("the loop's total into one slot is held to a half", "/1.0000000000000000/1.0000000000000000/0" in mout("reach")
-      and "u/0.50000000000000000/" in mout("reach"))
+check("the loop's total into one slot is held to a half", has(mout("reach"), "/1.0000000000000000/1.0000000000000000/0")
+      and has(mout("reach"), "u/0.50000000000000000/"))
 def route_list(line):
     m = re.search(r"routes (\S+)", line)
     if not m or m.group(1) == "-": return []
@@ -2523,7 +2534,7 @@ check("an edit keeps the routings it kept: an event on one fires on the next cou
       ed.count(":: fire gen.kick") == 3 and ":: fire gen.kick 0.69999999999999996" in ed
       and ":: fire gen.kick 0.20000000000000001" in ed, "%d fired" % ed.count(":: fire gen.kick"))
 check("an edit's depth arrives whole, and one past its reach is held to it",
-      "amounts 0.69999999999999996/u+0.12345678901234500/u+" in ed and "photo>gen.freq@0.500" in ed)
+      has(ed, "amounts 0.69999999999999996/u+0.12345678901234500/u+") and has(ed, "photo>gen.freq@0.500"))
 check("codes: the page's own rounding, and the malformed parts skipped",
       "level>gen.freq@-0.063" in mout("codes") and "g>h>i@0.188" in mout("codes") and "m>n@-0.250" in mout("codes")
       and "bad" not in mout("codes") and "c>d" not in mout("codes") and "j@k>l@1.000" in mout("codes")
@@ -3188,7 +3199,7 @@ check("the level rises to a tone's RMS on a 20 ms attack and falls on a 250 ms r
       "first step %.5f, after 20 frames %.5f of %.5f, half way down after %d frames" % (env[0], env[19], rms, down))
 L = lvout("level-full")
 check("a full-scale sine reads one, and louder reads one still, while the follower itself goes on up",
-      abs(float(lvfield(L[10], "level")) - 1) < 2e-3 and lvfield(L[-1], "level") == "1.0000000000000000" and float(lvfield(L[-1], "env")) > 1.1,
+      abs(float(lvfield(L[10], "level")) - 1) < 2e-3 and float(lvfield(L[-1], "level")) == 1 and float(lvfield(L[-1], "env")) > 1.1,
       "%s, then %s at %s" % (lvfield(L[10], "level"), lvfield(L[-1], "level"), lvfield(L[-1], "env")))
 def lvnull(what, name, old, new):
     text = dict(lvruns)[name]
@@ -4493,9 +4504,9 @@ check("a note out of silence fires the onset once; a note stopping does not; non
 L = hout("hear-gen")
 src = lambda l: hfield(l, "sources", 9)
 check("hearing the generator, every source is a loop with the picture's reach and the onset a loop; not, none are; the routes touched at each change",
-      src(L[1])[0] == "1/0.50000000000000000" and src(L[1])[8] == "1/0.0000000000000000" and src(L[3])[0] == "0/0.0000000000000000"
+      spelt(src(L[1])[0]) == spelt("1/0.5") and spelt(src(L[1])[8]) == spelt("1/0") and spelt(src(L[3])[0]) == spelt("0/0")
       and hfield(L[1], "touched") == "1" and hfield(L[3], "touched") == "2" and hfield(L[6], "touched") == "3" and hfield(L[8], "touched") == "3"
-      and src(L[8])[0] == "1/0.50000000000000000", "%s %s, touched %s %s %s %s" % (src(L[1])[0], src(L[3])[0], hfield(L[1], "touched"),
+      and spelt(src(L[8])[0]) == spelt("1/0.5"), "%s %s, touched %s %s %s %s" % (src(L[1])[0], src(L[3])[0], hfield(L[1], "touched"),
                                                                                    hfield(L[3], "touched"), hfield(L[6], "touched"), hfield(L[8], "touched")))
 L = [l for l in hout("hear-trig") if l.startswith("frame")]
 b0, b1, b2 = (float(hfield(L[i], "bright")) for i in (9, 19, 29))

@@ -409,7 +409,15 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   `stepFade`): a knob's ring for a Key routing is the page's reckoning of the
   fade, where its gain is the instrument's. Found by step 6 (14 Nov).
 
-- **`--write-golden` refuses keyboard, matrix and level on an unchanged core** (found 15
+- ~~**`--write-golden` refuses keyboard, matrix and level on an unchanged core**~~ Fixed
+  16 Nov. Both faults were one: under `--write-golden` a recorded run was answered with
+  the core's own text, which spells numbers its own way (`4000` for the JavaScript's
+  `4000.0`, `1` for `1.0000000000000000`) and differs below the tolerance; the six checks
+  read the recorded side as text, and a file was stored afresh when its text differed at
+  all. Now a run the core still answers within the tolerance is kept as it was, byte for
+  byte, and the section is handed the recording, as the plain run hands it; only a run
+  that moved past the tolerance is the core's text, and only a file with one is written.
+  What was found: (found 15
   Nov, item 1 of the owner's list). A rewrite run failed six checks - the dyad's wide
   interval and clamps, mono's interval, the loop's total into a slot, an edit's depth, a
   full-scale sine's level, and hearing the generator - and so refused those three files;
@@ -419,6 +427,17 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   score and restore for differences of 1e-13 and below, which nothing had asked for: a
   rewrite keeps a file only when it differs, so it should probably keep one that differs
   within the tolerance too.
+
+- ~~**Checks that read a recording by the JavaScript's spelling of a number**~~ Mended
+  the same day: a real one-line change to the level could not be written because of
+  it. The six look for their values with every number spelt one way (`has`, `spelt`).
+  What was found: (found 16
+  Nov, fixing `--write-golden`): the dyad's `"set octaves 2."` and `"set freq 4000.0"`,
+  mono's interval, the loop's total into a slot, an edit's depth (`"0.69999999999999996/"`),
+  a full-scale sine's `"1.0000000000000000"` and hearing the generator's sources. While a
+  run is the JavaScript's recording they pass; once a change to the sound moves that run
+  and `--write-golden` stores the core's text, they fail on spelling alone and refuse the
+  section, though nothing they mean has moved.
 
 ## Owner's list
 
@@ -528,7 +547,10 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   pointer's choice S plays D3; the null leaves the focus on the menu and S plays nothing;
   a menu focused from the keyboard keeps the focus, Down moves it and S plays nothing.
 
-- **A chord struck at once is dealt in the order its notes arrive** (found building the
+- ~~**A chord struck at once is dealt in the order its notes arrive**~~ Dealt as one chord
+  since 16 Nov (the owner's decision): notes within 25 ms of a gather's first are ranked
+  together by pitch (`Keyboard::kGather`, split-by-notes.md). How a note moved by its
+  gather should sound is the entry after this one. What was found: (found building the
   split by notes, 16 Nov; for the owner's ear). A note's hand is fixed when it starts, as
   the owner decided, by its rank among the notes held at that moment. But a chord's
   notes reach the keyboard a millisecond or two apart in no fixed order, so with Lower: 1
@@ -540,6 +562,18 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
   (`kArpGather`) - which means holding a note's hand open, and so its sound, for those
   milliseconds, or moving it once it has begun. Not built without the owner's word, since
   either is the "nothing moves" rule bent.
+
+- **A note its gather moves rings on in the hand it was first dealt** (found building the
+  gather, 16 Nov; for the owner). The gather's first notes sound at once in a provisional
+  hand, and one moved by a lower note arriving is let go there - a release - and struck in
+  the other. Measured on the bank (split-by-notes.md, "Not settled", has the method): the
+  moved notes are 2 to 22 dB under the chord from 30 to 100 ms, and up to 46 dB over what
+  the key split leaves at those pitches in the lower hand, through 300 ms on the Tine
+  piano. Audible. Two other ways, measured: cut a moved note in the governor's 10 ms fade
+  (the ghost then -30 to -64 dB after 10 ms in seven presets of nine, but -3 to -10 dB in
+  its first 10 ms), or hold every gather's notes until it closes (no ghost, up to 25 ms
+  of latency on the first note of every gather, by notes only). The branch sounds at once
+  and releases until the owner chooses.
 
 ## Already planned for after stage 5
 
