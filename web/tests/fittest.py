@@ -56,6 +56,7 @@ SWEEP = """async ([bands]) => {
   const lanes = laneCount();
   setView('bench');
   const over = [], cases = [], mismeasured = [];
+  let splitRow = null;
   let planeRows = null;
   const rackOpened = [];
   const measure = (label) => {
@@ -113,6 +114,38 @@ SWEEP = """async ([bands]) => {
        beside its menu in Learn's place, the wider of its two ways. */
     el.midiSplitBy.value = 'notes'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     measure('tone+keys+photo+layers+planeB+bynotes');
+    /* And the rows themselves (16 Nov, the Chord window): the pairing menu,
+       the end and the count on one line inside their row, and the window on
+       its own row, its label on one line - a menu squeezed or wrapped would
+       still fit the tab. The null widens the window's menu by 120 px. */
+    setBenchTab('play'); await wait(80);
+    /* Each menu at least as wide as it is on its own, so its value reads
+       whole: the menus are flex items, and a row too narrow squeezes them
+       inside it rather than breaking the line. */
+    const natural = (m) => {
+      const c = m.cloneNode(true); c.removeAttribute('id'); c.hidden = false;
+      c.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;flex:none;width:auto;min-width:0;max-width:none';
+      m.parentNode.appendChild(c); const w = c.getBoundingClientRect().width; c.remove(); return w;
+    };
+    const menus = [el.midiLayerPair, el.midiSplitEnd, el.midiSplitCount];
+    const lineOf = () => {
+      const row = el.midiLayerRow.getBoundingClientRect(), own = el.midiSplitWindowRow.getBoundingClientRect();
+      const boxes = menus.map((m) => m.getBoundingClientRect()), win = el.midiSplitWindow.getBoundingClientRect();
+      const label = el.midiSplitWindowRow.querySelector('label'), lineH = parseFloat(getComputedStyle(label).lineHeight) || 16;
+      return { shown: [el.midiSplitEnd, el.midiSplitCount, el.midiSplitWindow].every((m) => !m.hidden && m.offsetParent),
+               oneLine: Math.max(...boxes.map((b) => b.top)) - Math.min(...boxes.map((b) => b.top)) <= 2,
+               inside: boxes.every((b) => b.left >= row.left - 1 && b.right <= row.right + 1)
+                       && win.left >= own.left - 1 && win.right <= own.right + 1,
+               whole: menus.every((m, i) => boxes[i].width >= natural(m) - 1) && win.width >= natural(el.midiSplitWindow) - 1,
+               labelOneLine: label.getBoundingClientRect().height <= lineH * 1.5,
+               widths: boxes.concat([win]).map((b, i) => Math.round(b.width) + '/' + Math.round(natural(menus.concat([el.midiSplitWindow])[i]))) };
+    };
+    splitRow = lineOf();
+    // The null: the window's menu made 120 px wider than it is on its own.
+    const was = el.midiSplitWindow.style.minWidth;
+    el.midiSplitWindow.style.minWidth = (natural(el.midiSplitWindow) + 120) + 'px'; await wait(60);
+    splitRow.widened = lineOf();
+    el.midiSplitWindow.style.minWidth = was;
     el.midiSplitBy.value = 'key'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     /* And the rack (F5) at its tallest: every effect on, so no module is
        folded to its line, and each one opened in turn with its rest showing,
@@ -156,7 +189,7 @@ SWEEP = """async ([bands]) => {
     row.cardsOver = el.benchBody.scrollHeight - el.benchBody.clientHeight;
     document.body.dataset.chips = ''; await wait(80);
   }
-  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row };
+  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row, splitRow };
 }"""
 
 # The Picture's Advanced (11 Nov): with a split, so what Scan reads and the
@@ -259,6 +292,12 @@ with sync_playwright() as pw:
             check("the layered case had the upper's own Turn in the screen's rotation's place, the Radius row, the header's "
                   "Editing and every section's link showing, each the hand's own (%dx%d)" % (w, h),
                   r["planeRows"] == [False, False, False, False, 0], str(r["planeRows"]))
+            sr = r["splitRow"] or {}
+            check("split by notes, the pairing, the end and the count on one line and the Chord window on its own, inside their rows, each read whole (%dx%d)" % (w, h),
+                  sr.get("shown") and sr.get("oneLine") and sr.get("inside") and sr.get("whole") and sr.get("labelOneLine"), str(sr))
+            wid = sr.get("widened") or {}
+            check("null: the window's menu 120 px wider than itself does not read whole inside its row (%dx%d)" % (w, h),
+                  not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
                   r["rackOpened"] == ["plane", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 

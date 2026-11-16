@@ -350,6 +350,12 @@ with sync_playwright() as pw:
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await settle();
       out['poly+split+keys'] = fits();
+      // Split by notes (16 Nov): the end, the count and the Chord window beside the pairing, in Learn's place.
+      el.midiSplitBy.value = 'notes'; el.midiSplitBy.dispatchEvent(new Event('change'));
+      await settle();
+      out['poly+split by notes+keys'] = fits();
+      el.midiSplitBy.value = 'key'; el.midiSplitBy.dispatchEvent(new Event('change'));
+      await settle();
       // The upper hand, every section its own, so each title's link shows (G6).
       document.getElementById('editHandB').click();
       document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => link.click());

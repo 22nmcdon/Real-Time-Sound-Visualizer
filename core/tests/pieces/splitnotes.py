@@ -30,7 +30,7 @@ def hands(chord):
 # it sounds, so every run ends with an `at` past the last command, which
 # serves the wakes the waiting notes sound at.
 APART = 40
-AHEAD = 10   # Keyboard::kLookAhead
+AHEAD = 10   # the Chord window's default, kChordWindowDefault
 
 
 def timeline(commands, spaced):
@@ -75,8 +75,9 @@ def sounded(kit, setup, commands):
     return events
 
 
-def by_notes(end="lower", count=1):
-    return ["mode poly", "layers split", "splitby notes", "splitcount %s %d" % (end, count)]
+def by_notes(end="lower", count=1, window=None):
+    return ["mode poly", "layers split", "splitby notes", "splitcount %s %d" % (end, count)] + (
+        ["splitwindow %r" % window] if window is not None else [])
 
 
 def played(timed):
@@ -489,6 +490,75 @@ def run(kit):
     null("the key split played at once is not the same", not any(unshifted))
     null("the chord dealt low and moved high as F#2 arrives (the gather's ghost) is not the same, on any preset", not any(ghosts))
 
+    # --- the Chord window is a setting (the owner's, 16 Nov): 0 to 15 ms ---
+    # At nought nothing waits and the dealing is the strict rank rule, each
+    # note ranked among those held as it arrives, whatever landed first. Over
+    # the random notes above: every note sounds at the command that played it
+    # (no wake), and each in the hand the rank rule gives it. The null is a
+    # window of 1 ms, the least that waits, which sounds every note late.
+    def strict(cmds, end, count):
+        """The rank rule's hand for each note struck, in Python, as (time, note, hand), at the moment it was played."""
+        held, out, t = [], [], 0.0
+        upper = end == "upper"
+        for c in cmds:
+            w = c.split()
+            if w[0] == "at": t = float(w[1]); continue
+            n = int(w[1])
+            held = [h for h in held if h != n]
+            if w[0] == "off": continue
+            beyond = sum(1 for h in held if (h > n if upper else h < n))
+            counted = beyond < count
+            out.append((t, n, (1 if counted else 0) if upper else (0 if counted else 1)))
+            held.append(n)
+        return out
+    for end, count in (("lower", 1), ("lower", 3), ("upper", 2)):
+        ev = sounded(kit, by_notes(end, count, 0), cmds)
+        got = [(t, n, h) for t, n, h, k in ev if k == "on"]
+        # A note can drop out of its hand's eight voices and come back; only the moments notes are played are read.
+        want = strict(cmds, end, count)
+        played_at = [(t, n, h) for t, n, h in got if (t, n) in {(a, b) for a, b, _ in want}][:len(want)]
+        woken = any(" :: wake" in l for l in kit.run("keyboard_cpp", "run wakes=1\n%s\nend" % "\n".join(by_notes(end, count, 0) + cmds)).split("\n"))
+        check("Chord window 0, %s %d: every one of %d notes sounds the moment it is played, in the hand the strict rank gives it"
+              % (end, count, len(want)), played_at == want and not woken,
+              "woken %s, differing %s" % (woken, [x for x in zip(played_at, want) if x[0] != x[1]][:3]))
+    late = [(t, n) for t, n, h, k in sounded(kit, by_notes("lower", 1, 1), cmds) if k == "on"][:5]
+    null("a window of 1 ms sounds every note a millisecond late", late != [(t, n) for t, n, _ in strict(cmds, "lower", 1)][:5], str(late))
+    # And the block chord top first at 0, 2, 4 and 6 ms, at nought, is dealt
+    # as it arrives - all four the lower hand's - where 10 deals it by pitch.
+    _, ch = split(kit, "lower", 1, "splitwindow 0", *played(block), spaced=False)
+    got = hands(ch[-1])
+    check("at 0 the top-first block chord is dealt strictly, as it arrives: all four low", got == (sorted(n for _, _, n in block), []), str(got))
+    null("at the default 10 it is dealt by pitch, C3 alone low", got != ([C3], [E3, G3, C4]))
+    # Fifteen gathers what ten does not: C3 12 ms after G3.
+    def window_of(ms):
+        _, ch = split(kit, "lower", 1, "splitwindow %d" % ms, "at 0", "on %d 100" % G3, "at 12", "on %d 100" % C3, spaced=False)
+        return hands(ch[-1])
+    check("a Chord window of 15 gathers C3 12 ms after G3 into one chord: C3 low, G3 high", window_of(15) == ([C3], [G3]), str(window_of(15)))
+    null("at 10, C3 12 ms after G3 is a note of its own: both low", window_of(10) == ([C3, G3], []), str(window_of(10)))
+    # And to the bit on the instrument: at nought, split by notes, F#2 struck
+    # and then C5 G4 E4 1 ms apart (strictly F#2 low and the chord high, as
+    # the key split at C4 has them) is heard as the key split at once, with no
+    # wait, on every bank preset - the window read from the setup code, as a
+    # project or a preset carries it. The null is the default window, 10 ms late.
+    first = [(0, on(FS2)), (1, on(C5)), (2, on(G4_)), (3, on(E4_)), (300, off(G4_)), (350, off(FS2)), (420, off(C5)), (421, off(E4_))]
+    at_once, waited = [], []
+    for name, code in kit.preset_codes().items():
+        strict_heard = heard(code, dict(split_by, splitWindow=0), first, "w0")
+        key = heard(code, by_key, first, "w0key")
+        at_once.append((name, bool(np.array_equal(strict_heard, key))))
+        waited.append(bool(np.array_equal(heard(code, split_by, first, "w10"), key)))
+    check("a Chord window of 0, every bank preset: F#2 then C5 G4 E4 split by notes is the key split at once, to the bit",
+          all(ok for _, ok in at_once), str([n for n, ok in at_once if not ok]))
+    null("the default window of 10 is not: it waits", not any(waited))
+    # And the window as the face sets it, by the instrument's control rather
+    # than a setup: nought there is nought, not the default a menu's nought
+    # would read as if taken for unset. The null is the control set to 10.
+    code = kit.preset_codes()["Tine piano"]
+    by_control = heard(code, split_by, [(-100, ["control", "midiSplitWindow", "0"])] + first, "w0c")
+    same_as_key = bool(np.array_equal(by_control, heard(code, by_key, first, "w0ckey")))
+    check("the Chord window set to 0 by the instrument's control plays at once, as the key split, to the bit", same_as_key)
+    ten = heard(code, split_by, [(-100, ["control", "midiSplitWindow", "10"])] + first, "w10c")
+    null("set to 10 by the control it waits", not np.array_equal(ten, heard(code, by_key, first, "w0ckey")))
     # --- the count runs to six (the owner's, 16 Nov), and no further ---
     # Seven notes struck from the bottom with Lower: 6: the first six are the
     # lower hand. Asked for seven, the keyboard holds it at six.

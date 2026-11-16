@@ -3941,9 +3941,11 @@ int main() {
        notes, and the host is told the same latency for both. The null is a
        figure that counted the look-ahead, 10 ms more, which the told figure
        must not be. */
-    const auto onset = [&](const char* by) {
+    double windowKept = -1;
+    const auto onset = [&](const char* by, const char* window = nullptr) {
       const std::string json = std::string(R"({"shape":"sine","midiMode":"poly","layers":"split","splitAt":60,"splitBy":")") + by
-          + R"(","splitEnd":"lower","splitCount":1,"pictureAmount":0,"display":"xy"})";
+          + R"(","splitEnd":"lower","splitCount":1,"pictureAmount":0,"display":"xy")"
+          + (window ? std::string(R"(,"splitWindow":)") + window : std::string()) + "}";
       const auto code = scope::encodeSetup(*scope::jsonParse(scope::utf8To16(json)));
       ScopeProcessor p;
       if (code) p.setStateInformation(code->data(), static_cast<int>(code->size()));
@@ -3959,6 +3961,11 @@ int main() {
           if (std::fabs(buf.getSample(0, i)) + std::fabs(buf.getSample(1, i)) > 1e-6) first = k * block + i;
       }
       p.reportLatency();
+      juce::MemoryBlock saved;
+      p.getStateInformation(saved);
+      const auto decoded = scope::decodeSetup(std::string_view(static_cast<const char*>(saved.getData()), saved.getSize()));
+      const auto* kept = decoded.setup.get(u"splitWindow");
+      windowKept = kept && kept->type == scope::Json::Type::Number ? kept->n : -1;
       return std::make_pair(first, p.getLatencySamples());
     };
     const auto [notesAt, notesTold] = onset("notes");
@@ -3971,6 +3978,18 @@ int main() {
           notesTold == keyTold && notesTold >= 0, "told " + std::to_string(notesTold) + " by notes, " + std::to_string(keyTold) + " by key");
     check("null: a figure that counted the look-ahead would be 10 ms more than the key split's", notesTold != keyTold + ahead,
           std::to_string(keyTold + ahead));
+    /* The Chord window (16 Nov) is the project's: one that sets it to 0
+       plays a host's note split by notes at once, on the key split's sample,
+       and keeps the 0 in its state; one set to 15 waits 15 ms. The null is
+       the default's 10 ms, which neither may be. */
+    const int zeroAt = onset("notes", "0").first;
+    const double zeroKept = windowKept;
+    const int fifteenAt = onset("notes", "15").first;
+    check("a project with a Chord window of 0 plays a host's note split by notes at once, and keeps the 0",
+          zeroAt == keyAt && zeroKept == 0, "from sample " + std::to_string(zeroAt) + ", kept " + num(zeroKept));
+    check("and one of 15 waits 15 ms of samples", fifteenAt - keyAt == static_cast<int>(std::lround(0.015 * rate)),
+          std::to_string(fifteenAt - keyAt));
+    check("null: the default window's 10 ms is neither", zeroAt - keyAt != ahead && fifteenAt - keyAt != ahead);
   }
 
   std::printf("\n--- the latency told to the host ---\n");

@@ -1421,6 +1421,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     const double n = fieldNum("splitCount");
     k.count = std::isfinite(n) ? static_cast<int>(std::fmax(1, std::fmin(kSplitCountMost, std::trunc(n)))) : 1;
   }
+  // The Chord window (16 Nov), additive as the three before it: a code without it waits the default ten.
+  k.window = chordWindowOf(fieldNum("splitWindow"));
   // Whose sound each layer's picture moves: a value the menu has not got is the layer's own.
   for (int l = 0; l < 2; l++) {
     const Json* v = s(l == 0 ? "pictureMovesA" : "pictureMovesB");
@@ -2038,6 +2040,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "midiSplitBy") keys.setSplitBy(text == "notes" ? SplitBy::Notes : SplitBy::Key);
   else if (id == "midiSplitEnd") keys.setSplitCount(text == "upper", k.count);
   else if (id == "midiSplitCount") keys.setSplitCount(k.countUpper, static_cast<int>(orElse(number, 1)));
+  // Not orElse, which reads nought as unset: nought is the window that waits for nothing.
+  else if (id == "midiSplitWindow") keys.setSplitWindow(text.empty() ? kChordWindowDefault : number);
   // The split point learned from a key on the face (after stage 5): Learn is the face's, the point the instrument's.
   else if (id == "splitAt") keys.setSplitPoint(written.empty() ? NAN : number);
   else if (id == "pictureMovesA") b.pictureMoves[0] = pictureMovesOf(text, "A");

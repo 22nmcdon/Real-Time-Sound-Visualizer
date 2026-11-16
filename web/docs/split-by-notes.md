@@ -52,13 +52,17 @@ other way.
   note, is all bass with Lower: 1, as the owner wants. The strike on the screen is laid
   as each note sounds, in its hand, and restarts that hand's fade once. The key split,
   every other mode and the arpeggiator's own steps play at once, as before, to the bit.
-- **Why 10 ms** (the owner's figure). A tight block chord lands within about 10 ms; a
-  5-pin MIDI cable takes about 1 ms a note (three bytes at 31 250 baud), so a chord of
-  six spreads over 6 ms on the wire alone; a roll a player means as a roll is slower.
-  And it is latency on every note in this mode, which a player starts to feel at about
-  25. It is `Keyboard::kLookAhead`, its own figure rather than the arpeggiator's 25 ms
-  (`kArpGather`, which waits once a phrase for a chord to step from); to gather a wider
-  spread, widen it there - one line - at that cost.
+- **Why 10 ms, and the Chord window** (the owner's figure, then the owner's setting, both
+  16 Nov). A tight block chord lands within about 10 ms; a 5-pin MIDI cable takes about
+  1 ms a note (three bytes at 31 250 baud), so a chord of six spreads over 6 ms on the
+  wire alone; a roll a player means as a roll is slower. And it is latency on every note
+  in this mode, which a player starts to feel at about 25. So 10 is the default of the
+  *Chord window*, 0 to 15 ms in whole milliseconds: a player who spreads a chord wider
+  can take 15 and its wait, and at **0 nothing waits at all** - every note sounds as it
+  arrives and is dealt strictly by its rank as it comes, whatever landed first, which is
+  the dealing as it was before the gather (shown to the bit, below). The default is
+  `kChordWindowDefault`, its own figure rather than the arpeggiator's 25 ms
+  (`kArpGather`, which waits once a phrase for a chord to step from).
 - **Which end is counted.** *Lowest* and a count N gives a note the lower hand
   if fewer than N held notes are below it, and the upper otherwise; *highest*
   is the mirror, counted from the top, for the upper hand.
@@ -97,17 +101,19 @@ to the lower hand*.
 
 ## Stored
 
-Three fields beside `splitAt`: `splitBy` (`key` or `notes`), `splitEnd`
-(`lower` or `upper`) and `splitCount` (1 to 6), all menus in `SETUP_FIELDS`
+Four fields beside `splitAt`: `splitBy` (`key` or `notes`), `splitEnd`
+(`lower` or `upper`), `splitCount` (1 to 6) and, since the evening of 16 Nov, `splitWindow`
+(the Chord window, 0 to 15, default 10), all menus in `SETUP_FIELDS`
 and the core's schema. The split has become a structure - how it decides, then
 the key, or the end and the count - but no field already stored changes meaning:
 `layers` is still whether there is a split, and `splitAt` still the key. So the
 fields are additive, with defaults (`key`, `lower`, 1) that are the key split,
 and every code from before them is the split it was: no version bump and no
 decode pass in `migrateSetup`, as CLAUDE.md allows for a purely additive field.
-The plugin keeps them in its state, which is the setup it was given and the
-hands moved since (`midiSplitBy`, `midiSplitEnd`, `midiSplitCount` are menus the
-instrument hears, `HOST_CONTROLS`).
+A code without `splitWindow` waits the default 10, as every code saved between the
+look-ahead and the setting did. The plugin keeps them in its state, which is the setup
+it was given and the hands moved since (`midiSplitBy`, `midiSplitEnd`, `midiSplitCount`,
+`midiSplitWindow` are menus the instrument hears, `HOST_CONTROLS`).
 
 ## Where it lives
 
@@ -189,7 +195,19 @@ itself - the chord dealt low and moved high as F#2 arrives - neither the same on
 preset). Against mutants of the core each check above goes red: the gather released at
 once, no look-ahead, releases or the pedal played at once, no catching up, a repeat
 counted twice, the held notes left out of the rank, the gather dealt a note at a time, and
-a window of 15.5 ms. Against the 25 ms gather this replaced (its keyboard, from the commit
+a window of 15.5 ms.
+
+The Chord window's own: at 0, over the 162 random notes for Lower 1, Lower 3 and Upper 2,
+every note sounds at the command that played it with no wake, in the hand the strict rank
+gives it (null: a window of 1 ms, every note late); the top-first block chord at 0 is dealt
+as it arrives, all low (null: the default 10, by pitch); 15 gathers C3 12 ms after G3 where
+10 does not (null: 10's answer). On the instrument, at 0, F#2 then C5 G4 E4 split by notes
+is heard to the bit as the key split at once on every bank preset, whether the window came
+in the setup or by the instrument's control (nulls: 10, from either, waits). Mutants: the
+control reading 0 as unset, the setup's field ignored, a window fixed at 10, and a 0 that
+still waits, each red. And once, by hand: at 0 the instrument renders to the bit what the
+core before the gather (`ebbdf5b^`) rendered, on every bank preset with Lower 1 and 2, a
+top-first chord, a late bass, a pedal and releases: eighteen renders, identical. Against the 25 ms gather this replaced (its keyboard, from the commit
 before) fifteen go red, among them the timing, the random notes' moves in all three
 settings, the strikes and the render to the bit.
 

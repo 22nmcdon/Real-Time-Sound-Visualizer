@@ -143,7 +143,7 @@ struct Panel {
    changes. An arpeggio's step is a copy of a held note, a few octaves up, and
    keeps that note's hand. Read only while the split is by notes.
    `gather` (16 Nov) is which gather the note started in: the notes that
-   arrive within kLookAhead of a gather's first are one struck chord, ranked
+   arrive within the Chord window of a gather's first are one struck chord, ranked
    together by pitch rather than in the order the fingers happened to land
    (split-by-notes.md, "A struck chord"). */
 struct Held { int note; double velocity; int hand = 0; int gather = 0; };
@@ -156,6 +156,21 @@ enum class LayerMode { Off, Split, Layer };
 enum class SplitBy { Key, Notes };
 // How many notes a split by notes counts at the most: the owner's six (split-by-notes.md).
 inline constexpr int kSplitCountMost = 6;
+/* The split by notes' Chord window (the owner's, 16 Nov): how long every note
+   waits there, in whole milliseconds, and so how far apart a chord's notes can
+   land and still be dealt as one. Ten by default because a tight block chord
+   lands within about ten, a 5-pin MIDI cable takes about one a note (three
+   bytes at 31 250 baud) and a roll a player means as a roll is slower; and
+   because the wait is latency on every note in that mode, which a player
+   feels by 25. Fifteen at the most, for a player who spreads a chord wider
+   and will take the wait. Nought waits for nothing and deals strictly as the
+   notes come. Its own figure, not the arpeggiator's kArpGather: that one
+   waits once a phrase, for a chord to start stepping from. */
+inline constexpr int kChordWindowDefault = 10;
+inline constexpr int kChordWindowMost = 15;
+inline int chordWindowOf(double ms) {
+  return std::isfinite(ms) ? static_cast<int>(std::fmax(0, std::fmin(kChordWindowMost, std::trunc(ms)))) : kChordWindowDefault;
+}
 
 inline DrawWhich drawWhichNamed(std::string_view w) {
   return w == "lowest" ? DrawWhich::Lowest : w == "highest" ? DrawWhich::Highest
@@ -182,7 +197,7 @@ class Keyboard {
 
   /* The split by notes looks ahead (the owner's decision, 16 Nov,
      split-by-notes.md): while it deals the hands, every note, every release
-     and the pedal wait kLookAhead from their own arrival and then happen in
+     and the pedal wait the Chord window from their own arrival and then happen in
      the order they came, so a roll, a grace note or a run keeps its gaps to
      the sample, only later. A struck chord's notes reach the keyboard a
      millisecond or two apart in whatever order the fingers land; waiting
@@ -193,8 +208,12 @@ class Keyboard {
      gather sounded at once and dealt again. Everything else - the key split,
      every other mode, the arpeggiator's own steps - plays at once. The
      arrivals are kept in `ahead_` and played at the keyboard's wakes, which
-     the instrument serves at their sample. */
-  bool lookingAhead() const { return layersOn() && layers_.mode == LayerMode::Split && layers_.by == SplitBy::Notes; }
+     the instrument serves at their sample. A Chord window of nought looks
+     ahead not at all: every note is played at once, each its own gather,
+     dealt strictly as it comes. */
+  bool lookingAhead() const {
+    return layers_.window > 0 && layersOn() && layers_.mode == LayerMode::Split && layers_.by == SplitBy::Notes;
+  }
 
   // midiNoteOn
   void noteOn(int note, double velocity) {
@@ -365,6 +384,10 @@ class Keyboard {
     redeal();
     applyNotes();
   }
+  /* The Chord window (16 Nov): changing it deals nothing; what waits plays when it is due, and
+     a window of nought plays it ahead of the next arrival (catchUp). */
+  void setSplitWindow(double ms) { layers_.window = chordWindowOf(ms); }
+  int splitWindow() const { return layers_.window; }
   SplitBy splitBy() const { return layers_.by; }
   bool splitCountUpper() const { return layers_.countUpper; }
   int splitCount() const { return layers_.count; }
@@ -468,15 +491,17 @@ class Keyboard {
     SplitBy by = SplitBy::Key;
     bool countUpper = false;
     int count = 1;
+    int window = kChordWindowDefault;
   };
   Settings settings() const {
     return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_,
-             layers_.by, layers_.countUpper, layers_.count };
+             layers_.by, layers_.countUpper, layers_.count, layers_.window };
   }
   void setSettings(const Settings& s) {
     mode_ = s.mode; draws_ = s.draws; layers_.mode = s.layers; layers_.point = s.point; layers_.against = s.against;
     layers_.learning = false; polyJust_ = s.polyJust; hold_ = s.hold; truth_ = s.truth; follow_ = s.follow;
     layers_.by = s.by; layers_.countUpper = s.countUpper; layers_.count = std::max(1, std::min(kSplitCountMost, s.count));
+    layers_.window = chordWindowOf(s.window);
     // A setup loaded over held keys deals them by its own split, as a control moved would.
     redeal();
   }
@@ -539,7 +564,7 @@ class Keyboard {
   struct Interval { int index = 0, octaves = 0; };
   struct Layers {
     LayerMode mode = LayerMode::Off; int point = 60; bool against = false; bool learning = false; int edit = 0;
-    SplitBy by = SplitBy::Key; bool countUpper = false; int count = 1;
+    SplitBy by = SplitBy::Key; bool countUpper = false; int count = 1; int window = kChordWindowDefault;
   };
   int learned_ = 0;
 
@@ -577,19 +602,19 @@ class Keyboard {
     }
   }
   /* What waits in the look-ahead: a note, a release or the pedal, the moment
-     it is due (its arrival and kLookAhead), and for a note, once its gather
+     it is due (its arrival and the Chord window), and for a note, once its gather
      is dealt, the gather and its hand. */
   struct Ahead {
     enum Kind { On, Off, Pedal };
     Kind kind; int note; double value; double at; int gather; int hand;
   };
   void wait(Ahead::Kind kind, int note, double value) {
-    ahead_.push_back({ kind, note, value, now_ + kLookAhead, 0, -1 });
-    wakes_.push_back(now_ + kLookAhead);
+    ahead_.push_back({ kind, note, value, now_ + layers_.window, 0, -1 });
+    wakes_.push_back(now_ + layers_.window);
   }
   /* The look-ahead's first arrival, played. A note not yet dealt opens a
      gather and deals it: the notes waiting undealt are exactly those that
-     arrived within kLookAhead of this one, since this one arrived first and
+     arrived within the Chord window of this one, since this one arrived first and
      is due now - so the window is timed from the gather's first note rather
      than sliding (a fast run is not one long chord), and half open (a note
      arriving as the first sounds, at the same sample, waits for the next).
@@ -639,7 +664,7 @@ class Keyboard {
          deals what is held by its gathers (redeal): ranked among every note
          held, a pedal-held key included, and the notes of its own gather
          that came before it dealt again with it. Nothing here is heard. */
-      if (!(now_ < gatherUntil_)) { gather_++; gatherUntil_ = now_ + kLookAhead; }
+      if (!(now_ < gatherUntil_)) { gather_++; gatherUntil_ = now_ + layers_.window; }
       notes_.push_back({ note, velocity / 127, 0, gather_ });
       for (auto& h : notes_) if (h.gather == gather_) h.hand = dealtAmong(h);
     } else notes_.push_back({ note, velocity / 127, hand, gather });
@@ -974,17 +999,6 @@ class Keyboard {
   // The arpeggiator, and what it needs from outside: the time, the tempo, the
   // out, its random walk, and its timers.
   static constexpr double kArpGather = 25;  // ARP_GATHER: how long the first key waits for the chord
-  /* The split by notes' look-ahead (the owner's, 16 Nov): how long every
-     note, release and pedal waits there, and so how long after a gather's
-     first note a note is still part of the same struck chord. Ten
-     milliseconds because a tight block chord lands within about ten, a
-     5-pin MIDI cable takes about one a note (three bytes at 31 250 baud),
-     and a roll a player means as a roll is slower; and because the wait is
-     latency on every note in that mode, which a player feels by 25. Its own
-     figure, not the arpeggiator's kArpGather: that one waits once a phrase,
-     for a chord to start stepping from, and is felt as nothing. To gather a
-     wider spread, widen it here - one line - at that cost in latency. */
-  static constexpr double kLookAhead = 10;
   int gather_ = 0;
   double gatherUntil_ = -std::numeric_limits<double>::infinity();
   std::vector<Ahead> ahead_;  // what waits in the look-ahead, in the order it arrived
