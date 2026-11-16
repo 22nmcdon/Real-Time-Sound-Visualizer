@@ -5652,7 +5652,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         note can be anywhere on the keyboard. A note's hand is settled as it starts, by where it
         ranks among the notes held then (one held by the pedal counts), and it keeps it until you
         let go: a note added under a held chord can join the lower hand, and nothing already
-        sounding moves. With fewer held than the count, all of them are the counted hand's.
+        sounding moves. A chord struck at once is one chord: notes that start within 25 ms of
+        each other are ranked together by pitch, whichever finger landed first, so the bass is
+        the bass. With fewer held than the count, all of them are the counted hand's.
         <i>Layered</i> sends every note to both, so each is two voices at once.
         <br><br>
         The two are the <i>lower</i> and the <i>upper</i> hand on a split, <i>A</i> and
