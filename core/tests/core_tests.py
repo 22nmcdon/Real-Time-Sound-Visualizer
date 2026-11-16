@@ -1507,8 +1507,17 @@ struck_runs = {n for n, text in runs if " strike " in text}
 # And the Output's runs, whose heard pair is the lanes at a gain: held below.
 apart = [n for n, _ in runs if not n.startswith("effect") and not n.startswith("output-moved")
          and not one_pair(grow(n)[0], n in struck_runs)]
-check("in every run what is heard is what is drawn - A's lanes and B's, summed - and the score's voice, in the middle",
-      not apart and struck_runs, ", ".join(apart[:4]))
+# Since 16 Nov what is heard is every note in both ears at the Width, apart
+# from the figure (core/tests/pieces/ears.py): one note at a time it is still
+# the lanes - a dyad's lone note, a voice alone on both axes, at a hundred -
+# and a run holding a chord is heard apart from its picture. So the runs that
+# part must all be chords, and some must: the menv-poly runs, whose voices
+# lean on X and Y.
+chord_runs = {n for n, text in runs if re.search(r"voices [01] [^\s]*\+", text)}
+check("in every run of one note at a time what is heard is what is drawn - A's lanes and B's, summed - and the score's voice, in the middle",
+      set(apart) <= chord_runs and struck_runs, ", ".join(n for n in apart if n not in chord_runs)[:300])
+check("and a run holding a chord is heard apart from its picture, every note in both ears",
+      any(n.startswith("menv-poly") for n in apart), ", ".join(apart[:6]))
 lay = grow("layered")[0]
 swapped = [x for k in range(len(col(lay, 0))) for x in (col(lay, 0)[k], col(lay, 1)[k], col(lay, 2)[k], col(lay, 3)[k],
                                                         col(lay, 0)[k], col(lay, 5)[k])]
@@ -1724,10 +1733,13 @@ def level_glides(g, start, to):
     over = max(abs(g[j + 1][1] - g[j][1]) - LPOLE * (g[j + 1][0] - g[j][0]) * abs(to - g[j][1]) * (1 + 1e-6) - 2e-6
                for j in range(len(g) - 1))
     return over <= 0 and abs(g[0][1] - start) < 0.01 and g[-1][1] == to, over
-ga, gb = lane_gains(lm, ls, 0, 128, 20480), lane_gains(lm, ls, 4, 128, 20480)
+# B's right lane (5): its left is the quarter turn's since 16 Nov, always on,
+# a quarter of the period late, so its ratio between the runs is the gain a
+# quarter ago blended through the turn's glide. The right is the voice itself.
+ga, gb = lane_gains(lm, ls, 0, 128, 20480), lane_gains(lm, ls, 5, 128, 20480)
 (oka, overa), (okb, overb) = level_glides(ga, 1, 2), level_glides(gb, 1, 0.5)
 check("each hand's level glides a sample at a time where it was put, the pole's share a sample, and lands exactly there",
-      oka and okb and max(abs(x) for x in col(ls, 4)) > 0.05,
+      oka and okb and max(abs(x) for x in col(ls, 5)) > 0.05,
       "over the pole by %.3g and %.3g; A from %.4f to %r, B from %.4f to %r" % (overa, overb, ga[0][1], ga[-1][1], gb[0][1], gb[-1][1]))
 check("null: a level set at once, a block of the old gain and then the new, is a step",
       not level_glides([(k, 1.0) for k in range(128)] + [(128 + k, 2.0) for k in range(128)], 1, 2)[0])
@@ -6263,8 +6275,9 @@ iruns["scanned"] = [["make", 48000, 128, ocode["Scanned fifth"]], NOTE_ON(57)] +
 # same in both ears, which is the null for the check below. (Until 16 Nov the
 # twin had the switch off, and the first turned it off with the chord held.)
 ROUND = {"midiMode": "poly", "shape": "ramp", "vcfType": 1, "vcfCut": 600, "timebase": 3}
-for name, width in (("rounded", []), ("unrounded", [["slider", "stereoWidth", "0"]])):
-    iruns[name] = [["make", 48000, 128, ocode_of(ROUND)]] + width + [NOTE_ON(57)] + blocks(30) \
+# The twin opened at nought (pluginWidth in its code), so it is there from the first sample, not gliding.
+for name, width in (("rounded", {}), ("unrounded", {"pluginWidth": 0})):
+    iruns[name] = [["make", 48000, 128, ocode_of(dict(ROUND, **width))], NOTE_ON(57)] + blocks(30) \
         + [NOTE_ON(64), NOTE_ON(69)] + blocks(50) \
         + [NOTE_OFF(57), NOTE_OFF(64), NOTE_OFF(69)] + blocks(10)
 # The hands (6 Nov): pitch bend at the default range and at twelve, the wheel's
@@ -6526,12 +6539,18 @@ check("the instrument's Width leaves its picture as it was, every lane, the gene
       ipictures_same(wb, ub) and len(wb) == 274)
 # Landed later than the Output's quarter: from one to nought within a
 # millionth is 13.8 time constants, 104 blocks from block 4, so the
-# generator's span starts at 110 rather than 106.
-WSPANS = [(110, 124)] + OSPANS[1:]
-check("and at nought what it hears is one channel twice, to the bit, once landed: the generator, the input, the bands, and after a preset",
+# generator's span starts at 110 rather than 106. Since 16 Nov the Width is
+# each note's, and the input - drawn whole or in bands - has no notes: it is
+# heard as it comes at any Width, the unity run's to the bit, where the Width
+# as it was made it one channel twice (the null below: those spans are two).
+WSPANS = [(110, 124), OSPANS[3]]
+INSPANS = [OSPANS[1], OSPANS[2]]
+check("and at nought what it hears is one channel twice, to the bit, once landed: the generator, and after a preset",
       imono(wb, WSPANS), "widest %g" % iside(wb, WSPANS))
-check("null: at a hundred the same spans are two channels", all(iside(ub, [sp]) > 0.01 for sp in WSPANS),
-      "%s" % [round(iside(ub, [sp]), 3) for sp in WSPANS])
+check("and the input, drawn whole and in bands, is heard as it comes, the run at a hundred's to the bit",
+      all(wb[k][0] == ub[k][0] for lo, hi in INSPANS for k in range(lo, hi)))
+check("null: at a hundred the same spans are two channels", all(iside(ub, [sp]) > 0.01 for sp in WSPANS + INSPANS),
+      "%s" % [round(iside(ub, [sp]), 3) for sp in WSPANS + INSPANS])
 whands = [h for st in istates("width") for h in st.get("pluginHands", []) if h[1] == "stereoWidth"]
 wfirst = next((i for i, st in enumerate(istates("width")) if "pluginWidth" in st), None)
 check("the state keeps the Width beside the setup, through a preset's load, and as no hand",
