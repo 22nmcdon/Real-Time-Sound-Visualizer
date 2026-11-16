@@ -155,3 +155,17 @@ def run(kit):
     got = hands(ch[-1])
     check("and back to the key split, the point decides again: all three below C4", got == ([C3, E3, G3], []), str(got))
     null("still by notes, C3 alone would be low", got != ([C3], [E3, G3]))
+
+    # --- the count runs to six (the owner's, 16 Nov), and no further ---
+    # Seven notes struck from the bottom with Lower: 6: the first six are the
+    # lower hand. Asked for seven, the keyboard holds it at six.
+    up = [48, 50, 52, 53, 55, 57, 59]
+    _, ch = split(kit, "lower", 6, *["on %d 100" % n for n in up])
+    got = hands(ch[-1])
+    check("Lower: 6 over seven notes struck from the bottom: six are the lower hand, the seventh the upper",
+          got == (up[:6], up[6:]), str(got))
+    null("held at five, the sixth would be the upper hand's", got != (up[:5], up[5:]))
+    _, ch = split(kit, "lower", 7, *["on %d 100" % n for n in up])
+    got = hands(ch[-1])
+    check("asked for seven, the count stays at six", got == (up[:6], up[6:]), str(got))
+    null("unheld, all seven would be the lower hand's", got != (up, []))

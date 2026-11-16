@@ -149,8 +149,8 @@ enum class LayerMode { Off, Split, Layer };
 /* How a split decides a hand (16 Nov): at a key, as it always did, or by the
    notes held - the lowest few, or the highest few, are the counted hand. */
 enum class SplitBy { Key, Notes };
-// How many notes a split by notes counts at the most: one hand's fingers (split-by-notes.md).
-inline constexpr int kSplitCountMost = 5;
+// How many notes a split by notes counts at the most: the owner's six (split-by-notes.md).
+inline constexpr int kSplitCountMost = 6;
 
 inline DrawWhich drawWhichNamed(std::string_view w) {
   return w == "lowest" ? DrawWhich::Lowest : w == "highest" ? DrawWhich::Highest

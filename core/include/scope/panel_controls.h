@@ -137,7 +137,7 @@ inline constexpr SelectSpec kSelects[] = {
   { "midiLayerPair", "each" "\x1f" "against", "each" },
   { "midiSplitBy", "key" "\x1f" "notes", "key" },
   { "midiSplitEnd", "lower" "\x1f" "upper", "lower" },
-  { "midiSplitCount", "1" "\x1f" "2" "\x1f" "3" "\x1f" "4" "\x1f" "5", "1" },
+  { "midiSplitCount", "1" "\x1f" "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6", "1" },
   { "pictureMovesA", "A" "\x1f" "B" "\x1f" "both", "A" },
   { "pictureMovesB", "B" "\x1f" "A" "\x1f" "both", "B" },
   { "pictureResponds", "change" "\x1f" "level" "\x1f" "both", "change" },

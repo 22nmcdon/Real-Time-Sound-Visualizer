@@ -17,15 +17,15 @@ other way.
   exactly that jump. Letting a note go deals nothing again either: with Lower: 2
   over E3 G3 C4 and C3 struck under them, G3 stays low, and when E3 and G3 are
   let go C4 stays the upper hand's though it is now second from the bottom.
-- **Rank, not fill** (decided 16 Nov). Two readings of "the lowest N go to the
+- **Rank, not fill** (the owner's decision, 16 Nov, with fill as the test's null). Two readings of "the lowest N go to the
   lower hand" were possible for a note struck while others are held: its *rank*
   among the notes held at that moment (the lower hand's if fewer than N held
   notes are below it), or *filling* the counted hand first (the lower hand's if
   that hand holds fewer than N). They differ when a note arrives under a held
   chord: with Lower: 1 and C3 E3 G3 held, A2 is the lowest note held, so by rank
   it joins the lower hand (which then holds two); by fill the lower hand is full
-  and A2 goes high. Rank is the one built, because it is what the brief says ("its
-  rank among the notes held at that moment"), and because it is what a bass line
+  and A2 goes high. Rank is the owner's choice, and it is what the brief said ("its
+  rank among the notes held at that moment"), and it is what a bass line
   walking legato under a held chord wants: the new bass note is the bass. Fill would
   hand it to the melody. The cost: the lower hand can hold more than N notes for a
   moment, while one bass note overlaps the next.
@@ -34,7 +34,7 @@ other way.
   is the mirror, counted from the top, for the upper hand.
 - **Fewer notes held than the count** all go to the counted hand - which rank
   gives without a rule of its own, since every note is within N of the end.
-- **The sustain pedal** (decided 16 Nov): a key let go under the pedal is still
+- **The sustain pedal** (the owner's decision, 16 Nov): a key let go under the pedal is still
   held - it still sounds - so it counts in the rank. With Lower: 1, C3 let go
   under the pedal and G3 struck: G3 is the upper hand's.
 - **A key struck again** starts again, so it is ranked again: with Lower: 1, G3
@@ -52,16 +52,15 @@ other way.
   starting or stopping moves another note's hand.
 - **Learn is the key split's.** It is hidden by notes, choosing by notes lets it
   go, and the instrument's keyboard ignores it while splitting by notes.
-- **N is one to five**: one hand's fingers. A count past five is a chord in one
-  hand that no hand plays; and each hand has eight voices (`kPolyVoices`), so the
-  other hand keeps at least three.
+- **N is one to six** (the owner's call, 16 Nov: "from 1 to about 6"). Each hand
+  has eight voices (`kPolyVoices`), so at six the other hand keeps at least two.
 
 ## The control
 
 The Layers menu, with *split*, gains *by key · by notes* beside it, so the row
 reads "Layers: split, by notes". Under it, beside the pairing menu (*a figure
 each · A against B*), is Learn's *at C4* by key, or the end (*lowest · highest*)
-and the count (*1* to *5*) by notes. A row of its own was tried first and put
+and the count (*1* to *6*) by notes. A row of its own was tried first and put
 Play 11 px over at 1400x900 (patchtest); beside a label the three menus left the
 first 21 px. So a split adds no row. The readout says *split by notes: lowest 1
 to the lower hand*.
@@ -69,7 +68,7 @@ to the lower hand*.
 ## Stored
 
 Three fields beside `splitAt`: `splitBy` (`key` or `notes`), `splitEnd`
-(`lower` or `upper`) and `splitCount` (1 to 5), all menus in `SETUP_FIELDS`
+(`lower` or `upper`) and `splitCount` (1 to 6), all menus in `SETUP_FIELDS`
 and the core's schema. The split has become a structure - how it decides, then
 the key, or the end and the count - but no field already stored changes meaning:
 `layers` is still whether there is a split, and `splitAt` still the key. So the
