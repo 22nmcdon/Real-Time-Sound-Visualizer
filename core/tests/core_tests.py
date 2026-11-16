@@ -1508,16 +1508,18 @@ struck_runs = {n for n, text in runs if " strike " in text}
 apart = [n for n, _ in runs if not n.startswith("effect") and not n.startswith("output-moved")
          and not one_pair(grow(n)[0], n in struck_runs)]
 # Since 16 Nov what is heard is every note in both ears at the Width, apart
-# from the figure (core/tests/pieces/ears.py): one note at a time it is still
-# the lanes - a dyad's lone note, a voice alone on both axes, at a hundred -
-# and a run holding a chord is heard apart from its picture. So the runs that
-# part must all be chords, and some must: the menv-poly runs, whose voices
-# lean on X and Y.
-chord_runs = {n for n, text in runs if re.search(r"voices [01] [^\s]*\+", text)}
-check("in every run of one note at a time what is heard is what is drawn - A's lanes and B's, summed - and the score's voice, in the middle",
-      set(apart) <= chord_runs and struck_runs, ", ".join(n for n in apart if n not in chord_runs)[:300])
-check("and a run holding a chord is heard apart from its picture, every note in both ears",
-      any(n.startswith("menv-poly") for n in apart), ", ".join(apart[:6]))
+# from the figure (core/tests/pieces/ears.py). Where the figure has every note
+# on both axes at full - a dyad's lone note, a voice drawn on both, at a
+# hundred - it is still the lanes; where the figure parts the notes - a dyad's
+# interval, a voice leaned onto X or Y or on one alone, a chord - it is heard
+# apart. So the runs that part must all be those, and some must.
+parted = {n for n, text in runs if re.search(r"set interval [1-9]", text)
+          or re.search(r"voices [01] \S*/(x|y|xonly|yonly)(\+|\s|$)", text) or re.search(r"voices [01] \S*\+", text)}
+print("    heard apart from the lanes: " + ", ".join(apart))
+check("in every run whose figure has each note on both axes at full, what is heard is what is drawn - A's lanes and B's, summed - and the score's voice, in the middle",
+      set(apart) <= parted and struck_runs, ", ".join(n for n in apart if n not in parted)[:300])
+check("and a run whose figure parts its notes - an interval, a lean, a chord - is heard apart from its picture, every note in both ears",
+      any(n.startswith("menv-poly") for n in apart) and any(n.startswith("dyad-") for n in apart), ", ".join(apart[:6]))
 lay = grow("layered")[0]
 swapped = [x for k in range(len(col(lay, 0))) for x in (col(lay, 0)[k], col(lay, 1)[k], col(lay, 2)[k], col(lay, 3)[k],
                                                         col(lay, 0)[k], col(lay, 5)[k])]
