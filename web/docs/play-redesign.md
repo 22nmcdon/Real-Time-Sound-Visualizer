@@ -6,10 +6,10 @@ with menus inside menus. This is a mockup to look at and click, not a change to 
 instrument. Nothing in `scope.html` or the core has been touched.
 
 **The page:** [`mockups/play/index.html`](mockups/play/index.html), one self-contained
-file. It opens on round 3's layout E (below); round 1's Today, A, B and C and round 2's D are
-kept beside it for reference. Open it in a browser, choose a layout along the top, and play it with the computer
+file. It opens on round 4's layout F (below); round 1's Today, A, B and C, round 2's D and
+round 3's E are kept beside it for reference. Open it in a browser, choose a layout along the top, and play it with the computer
 keys (A to K, W E T Y U, Z and X for the octave, Space for the pedal) or the keys under
-the mockup. The pictures beside it (`00-today.png` to `11-e-none-lit-at-960x600.png`) are the same
+the mockup. The pictures beside it (`00-today.png` to `14-f-by-notes-at-960x600.png`) are the same
 layouts, for reading this without opening the page.
 
 ## The three complaints
@@ -394,6 +394,88 @@ MIDI (`data-home="settings"`), which `benchtest.py` checks; Expression's
 Learn goes: a press on the strip is the learn, and ‹ › reach any key, though playing the
 split key on a keyboard was Learn's one advantage and could stay as a long press.
 
+## Round 4: F, the Keyboard as a band
+
+The owner on E (16 Nov): "E is definitely the right move." F is E with four changes.
+
+1. **The Keyboard is a band** across the top of the tab's body, a row of its own over
+   all three columns, as C's was, so the strip is wide. In it: the Keyboard's name, the
+   Dyad · Mono · Poly switch and *keys on screen*, stacked on the left; on the right the
+   strip's box with the hands choice centred in its top edge and ‹ › at its ends, the
+   line under it, and by notes the *Chord window: 10 ms, in Settings* note on the same
+   line, right-aligned; the low · high toggle at the counted edge and the places for how
+   many as in E.
+   A first band put the Keyboard's title on a row of its own, the switch under it beside
+   the strip and the line under both: 209 px tall at 1400x900, and the Voice filter's
+   column 25 px over at 960x600. Stacking the name, the switch and the keys link in the
+   left column, which the strip's height leaves empty anyway, took 31 px off.
+2. **How many octaves.** Beside the switch the strip has about 590 px at 1400x900 and 470
+   at 960x600. Four octaves are 29 white keys: 20 px each at 1400x900, 16 px at 960x600.
+   Three are 22 keys, 21 px at 960x600. So **four at 1400x900, three at 960x600**, the
+   keys never under 20 px, with ‹ › for the rest and the range named in the line.
+   (Across the band's whole width, five would fit at 1400x900, but the switch beside the
+   strip is worth more than a fifth octave.)
+3. **Two hands only in Poly.** In Dyad and Mono the box has no head: the strip shows what
+   is held, the two newest ringed in Dyad (X and Y, named in the line with their
+   interval), the newest in Mono.
+4. **Expression is column 1.** Figure (outline count and which, Each · A vs B with two
+   hands, Tune a chord; Hold in Dyad) has two homes, selectable: (a) a line under the
+   strip in the band; (b) column 1, a section under Expression. The Amp envelope's home
+   is selectable too: under the Generator as today, or under the Voice filter.
+
+### Fit, every combination
+
+The band's height (its tallest, over every mode and hands choice) and each column's
+tightest spare, in px:
+
+| | Band | Column 1 | Column 2 | Column 3 |
+|---|---|---|---|---|
+| 1400x900, Figure in the band, Amp under the Generator | 178 | 183 | **over by 9** | 219 |
+| 1400x900, Figure in the band, Amp under the Voice filter | 178 | 183 | 171 | 39 |
+| 1400x900, **Figure in column 1, Amp under the Generator** | 139 | 74 | 30 | 258 |
+| 1400x900, Figure in column 1, Amp under the Voice filter | 139 | 74 | 210 | 78 |
+| 960x600 at 90%, Figure in the band, Amp under the Generator | 158 | 131 | **over by 28** | 154 |
+| 960x600 at 90%, Figure in the band, Amp under the Voice filter | 158 | 131 | 125 | 2 |
+| 960x600 at 90%, **Figure in column 1, Amp under the Generator** | 125 | 36 | 5 | 187 |
+| 960x600 at 90%, Figure in column 1, Amp under the Voice filter | 125 | 36 | 158 | 35 |
+
+The tightest state is always Poly with two hands (the box's head and the longest line).
+
+### My lean: Figure in column 1 (b)
+
+With Figure in column 1 nothing else moves: the Generator and Amp envelope keep column 2
+and the Voice filter column 3, as today, and everything fits at both sizes. The band is
+39 px shorter, and column 1 holds the two sections about how the notes are played and
+drawn, Expression and Figure, where the owner said there was room. Figure in the band
+keeps everything about the notes in one place across the top, but only fits if the Amp
+envelope leaves the Generator for the Voice filter's column, and then with 2 px at the
+plugin's minimum.
+
+The tightest number in the lean is column 2's 5 px at 960x600, and the mock is within
+about a dozen pixels of the face. If the built face comes out over there, the smallest
+change is the Amp envelope moving under the Voice filter (35 px spare in every column
+at 960x600), which is the selector's other setting. The next smallest is the strip's
+height at the compact size (40 px now; 34 takes 6 px off every column).
+
+### The three lines, for F as leaned (Figure in column 1)
+
+**Answers:** the strip is the width of the tab less the switch, four octaves at once with
+keys a fingertip wide, so a split point is one press; the hands choice is Poly's only,
+so Dyad and Mono show only what is held; every column keeps today's sections or gains
+room. **Costs:** the band's 125 to 139 px come out of all three columns; Expression and
+Figure, which a player sets and leaves, are the column nearest the keyboard, while the
+Generator they used to sit beside is the middle. **Elsewhere:** a band is the shape for a
+thing played across - the keys now, a score or a step row later - with the sections of
+plain values as columns under it.
+
+### What building F would touch, beyond E's list
+
+`#midiGroup` leaves the column flow for a row of its own over the Bench's three columns on
+Play (`data-col` gives way to a band), which `layouttest.py`, `patchtest.py` and
+`fittest.py` read; Expression keeps `data-col="1"` and a Figure section (the Draw menus,
+the pairing and Tune a chord, out of `#midiGroup`) joins it. The strip's octave count
+follows the compact face (`setCompact`).
+
 ## How the mockup was checked
 
 The dealing is the instrument's rules (`split-by-notes.md`), held by
@@ -405,7 +487,8 @@ closes), the pedal, Highest and the key split. Seen red against three mutants of
 mockup: fill in place of rank (five cases fail), a window sliding with each note (one
 fails) and dealing each note as it lands (the look-ahead's case fails). Opened in Chromium at both sizes in every layout, with
 each editor open, D in every toggle and place of the hands choice, E in both treatments
-of one sound and every home for Expression, in the page's dark
+of one sound and every home for Expression, F with both homes for Figure and for the Amp
+envelope, in the page's dark
 light, and at 375 px wide (no sideways scroll; the
 mockup scales down). `designtest.py` reads only `scope.html` and `DESIGN.md`, neither
 changed, so it has nothing new to read; the mockup uses DESIGN.md's tokens hex for hex.
