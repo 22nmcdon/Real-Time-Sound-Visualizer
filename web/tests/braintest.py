@@ -449,6 +449,9 @@ with sync_playwright() as pw:
       await new Promise((r) => setTimeout(r, 400));
       posted.length = 0;
       hostApply({ version: hostSync.seen + 1, code: encodeSetup(Object.assign(snapshot(), { pluginBands: true })) });
+      // Read once the turn has ended, when what it sent the worklet is posted (16 Nov, the site host's `send`):
+      // read inside the turn, nothing has been posted yet and "not a word back" could not fail.
+      await new Promise((r) => setTimeout(r, 0));
       out.quiet = [state.source.channels, state.micBands, posted.filter((m) => /^srcBands/.test(m))];
       el.micWhole.click();
       await new Promise((r) => setTimeout(r, 600));

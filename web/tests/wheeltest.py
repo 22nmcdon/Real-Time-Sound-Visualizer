@@ -92,10 +92,14 @@ with sync_playwright() as pw:
     top = round(start / 100 * 127)
     down = [round(top * (1 - k / 24)) for k in range(25)]
     values = down + [0] * 15 + down[::-1]
-    sent = p.evaluate("""(values) => {
+    # Read once the turn has ended: since 16 Nov what one turn of the page
+    # sends the worklet goes together as the turn ends (the site host's `send`),
+    # so a read inside the turn sees nothing posted yet.
+    sent = p.evaluate("""async (values) => {
       window.__posted.length = 0;
       midiBytes([0x90, 57, 100], performance.now());
       for (const v of values) midiBytes([0xb0, 1, v], performance.now());
+      await new Promise((r) => setTimeout(r, 0));
       const posted = window.__posted.slice();
       return { posted, amount: Number(el.pictureAmount.value) };
     }""", values)
@@ -104,9 +108,10 @@ with sync_playwright() as pw:
     check("each step of the wheel goes to the instrument once, as the port's bytes, and not again as a hand on the slider",
           len(ccs) == len(values) and [m["bytes"][2] for m in ccs] == values and not hands and sent["amount"] == round(values[-1] / 127 * 100),
           "%d controllers for %d steps, %d hands, the page's slider at %s" % (len(ccs), len(values), len(hands), sent["amount"]))
-    hand = p.evaluate("""() => {
+    hand = p.evaluate("""async () => {
       window.__posted.length = 0;
       el.pictureAmount.value = '35'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 0));
       return window.__posted.filter((m) => m.op === 'slider' && m.id === 'pictureAmount').map((m) => String(m.value));
     }""")
     check("and a hand on the same slider is still sent: the count can see one", hand == ["35"], str(hand))
