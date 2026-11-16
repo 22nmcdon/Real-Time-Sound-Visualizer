@@ -460,7 +460,8 @@ with sync_playwright() as pw:
     # put all four in A. The null cuts the face's sends (hostControl), so the
     # instrument never hears "by notes" and splits at its key while the face
     # deals by notes - the two disagree, which this check must see.
-    NOTES = """async (cut) => {
+    NOTES = """async (args) => {
+      const cut = args.cut, notes = args.notes || [48, 52, 55, 45], apart = args.apart == null ? 60 : args.apart;
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
@@ -472,20 +473,22 @@ with sync_playwright() as pw:
       if (cut) hostSync.on = true;
       row.learnByNotes = !el.midiSplitLearn.hidden; row.endByNotes = !el.midiSplitEnd.hidden && !el.midiSplitCount.hidden;
       await wait(150);
-      for (const n of [48, 52, 55, 45]) { midiNoteOn(n, 100); await wait(30); }
+      // 60 ms apart, so each is a note of its own: within 25 ms of the first they are one struck chord (the gather).
+      for (const n of notes) { midiNoteOn(n, 100); if (apart) await wait(apart); }
+      if (!apart) await wait(60);
       const face = [0, 1].map((l) => layerNotes(l).map((h) => h.note).sort((a, b) => a - b));
       const code = snapshot();
       state.lastReadout = 0; await wait(400);
       return { row, face, readout: el.readoutDetail.textContent,
                code: { splitBy: code.splitBy, splitEnd: code.splitEnd, splitCount: code.splitCount } };
     }"""
-    def by_notes(cut):
+    def by_notes(cut, notes=None, apart=None):
         q = b.new_page(viewport={"width": 1400, "height": 900})
         q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
         q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1500)
         if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
         q.evaluate(BIN, BIN_SRC)
-        out = q.evaluate(NOTES, cut)
+        out = q.evaluate(NOTES, {"cut": cut, "notes": notes, "apart": apart})
         e = q.evaluate(LANES, [45, 48, 52, 55])
         # Each note's energy in A's two lanes and in B's.
         out["a"] = [round(e[0][i] + e[1][i], 5) for i in range(4)]
@@ -510,6 +513,21 @@ with sync_playwright() as pw:
     check("the split by notes is in the setup the face writes, and in the readout",
           told["code"] == {"splitBy": "notes", "splitEnd": "lower", "splitCount": 1}
           and "split by notes: lowest 1 to the lower hand" in told["readout"], str(told["code"]) + " " + told["readout"][:200])
+
+    # A chord struck at once (16 Nov, the gather): G3 E3 C3 top first in one
+    # tick reach the instrument in one block, and are one chord, dealt by
+    # pitch - C3 the lower hand, E3 and G3 the upper - on the face and in the
+    # instrument's lanes. The null is the same notes 60 ms apart, three notes
+    # in turn, each the lowest held as it starts: all three the lower hand's,
+    # which is what a chord struck at once was dealt before the gather.
+    once, apart = by_notes(False, [55, 52, 48], 0), by_notes(False, [55, 52, 48], 60)
+    print("    at once: face %s A %s B %s; 60 ms apart: face %s A %s B %s"
+          % (once["face"], once["a"], once["b"], apart["face"], apart["a"], apart["b"]))
+    check("G3 E3 C3 struck at once, top first: one chord, C3 the lower hand and E3 G3 the upper, on the face and in the lanes",
+          once["face"] == [[48], [52, 55]] and in_hands(once, [1], [2, 3]), "A %s B %s" % (once["a"], once["b"]))
+    check("null: the same three 60 ms apart are three notes, each the lowest as it starts, and all three the lower hand's",
+          apart["face"] == [[48, 52, 55], []] and in_hands(apart, [1, 2, 3], []) and not in_hands(apart, [1], [2, 3]),
+          "A %s B %s" % (apart["a"], apart["b"]))
 
     check("no page errors on the instrument's face", not bad, "; ".join(bad[:3]))
     b.close()

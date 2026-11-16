@@ -50,6 +50,7 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -140,8 +141,12 @@ struct Panel {
    from it, because by notes a hand is not a function of the pitch - it is
    where the note ranked among those held as it began, which nothing after
    changes. An arpeggio's step is a copy of a held note, a few octaves up, and
-   keeps that note's hand. Read only while the split is by notes. */
-struct Held { int note; double velocity; int hand = 0; };
+   keeps that note's hand. Read only while the split is by notes.
+   `gather` (16 Nov) is which gather the note started in: the notes that start
+   within kGather of a gather's first are one struck chord, ranked together by
+   pitch rather than in the order the fingers happened to land
+   (split-by-notes.md, "A struck chord"). */
+struct Held { int note; double velocity; int hand = 0; int gather = 0; };
 
 enum class NoteMode { Dyad, Mono, Poly };
 enum class DrawWhich { Outer, Lowest, Highest, Recent };
@@ -166,6 +171,7 @@ class Keyboard {
   explicit Keyboard(NoteTarget& target, RealtimeIn* realtime = nullptr) : t_(target), realtime_(realtime) {
     notes_.reserve(128);
     sustained_.reserve(128);
+    pending_.reserve(128);
     for (auto& list : chord_) list.reserve(kPolyVoices);
     inner_.reserve(kPolyVoices);
   }
@@ -182,16 +188,48 @@ class Keyboard {
     if (layers_.learning && layers_.by == SplitBy::Key) { layers_.point = note; layers_.learning = false; learned_++; }
     const auto at = find(note);
     if (at != notes_.end()) notes_.erase(at);
-    /* Its hand by notes, dealt now and kept: ranked among the notes held as
-       it starts (a key held only by the pedal still sounds, so it counts),
-       and a key struck again is a note starting again, so it is ranked again. */
-    notes_.push_back({ note, velocity / 127, dealt(note, notes_.data(), notes_.size()) });
+    /* A gather opens with the first note after the last one closed and
+       closes kGather later, timed from its first note rather than sliding,
+       so a fast run is not one long chord. Kept whatever the split, since a
+       control moved to the split by notes deals what is held by its gathers. */
+    if (!(now_ < gatherUntil_)) {
+      // A gather whose close was never woken for (a caller that does not wake the keyboard) strikes now.
+      if (!pending_.empty()) strikeGathered();
+      gather_++;
+      gatherUntil_ = now_ + kGather;
+    }
+    /* Its hand by notes: ranked among every note held as it starts (a key
+       held only by the pedal still sounds, so it counts), and a key struck
+       again is a note starting again, so it is ranked again. The notes of its
+       own gather that came before it are dealt again with it, as one chord;
+       nothing that started before the gather moves. */
+    notes_.push_back({ note, velocity / 127, 0, gather_ });
+    const bool notesSplit = layersOn() && layers_.mode == LayerMode::Split && layers_.by == SplitBy::Notes;
+    for (auto& h : notes_) {
+      if (h.gather != gather_) continue;
+      const int was = h.hand;
+      h.hand = dealtAmong(h);
+      /* A note moved by its gather (sounding a millisecond or two in the hand
+         it was first dealt) is struck in the hand it is in now: that hand's
+         fade restarts for it, as it would have had the note arrived in it. */
+      if (notesSplit && &h != &notes_.back() && h.hand != was) strikes_[h.hand]++;
+      for (auto& p : pending_) if (p.note == h.note && p.gather == h.gather) p.hand = h.hand;
+    }
     // Counted for the layer it is in: split, a bass note restarts only the bass's fade.
     if (layersOn() && layers_.mode == LayerMode::Split) strikes_[handOf(notes_.back())]++;
     else { strikes_[0]++; strikes_[1]++; }
     applyNotes();
-    // And on the screen, where Scan reads (P7b): the layers the note is in, A's as 1 and B's as 2.
-    if (onStrike_) onStrike_(note, velocity / 127, layersOf(note));
+    /* And on the screen, where Scan reads (P7b): the layers the note is in,
+       A's as 1 and B's as 2. Split by notes the layers are not known until
+       the gather closes, so the strike waits for it (a wake at its close,
+       kGather at the most): an arc laid in the hand a note was dealt first
+       would stay in that hand's picture for as long as the Persistence keeps
+       it, which a moved sound does not. */
+    if (!onStrike_) return;
+    if (notesSplit) {
+      if (pending_.empty()) wakes_.push_back(gatherUntil_);
+      pending_.push_back(notes_.back());
+    } else onStrike_(note, velocity / 127, layersOf(note));
   }
 
   // midiNoteOff. Under the pedal the key comes up and the note does not.
@@ -434,6 +472,7 @@ class Keyboard {
     const auto at = std::min_element(wakes_.begin(), wakes_.end());
     const double when = *at;
     wakes_.erase(at);
+    if (!pending_.empty() && when >= gatherUntil_) strikeGathered();
     arpTick(when);
   }
   struct ArpState {
@@ -552,9 +591,35 @@ class Keyboard {
     const bool counted = beyond < layers_.count;
     return layers_.countUpper ? (counted ? 1 : 0) : (counted ? 0 : 1);
   }
-  // Every held note dealt again in the order it was struck, each ranked among those struck before it.
+  /* A note's hand among every other note held now: how a note starting is
+     dealt, and with it the notes of its gather, which started together. */
+  int dealtAmong(const Held& h) const {
+    int beyond = 0;
+    for (const auto& o : notes_) if (&o != &h && (layers_.countUpper ? o.note > h.note : o.note < h.note)) beyond++;
+    return layers_.countUpper ? (beyond < layers_.count ? 1 : 0) : (beyond < layers_.count ? 0 : 1);
+  }
+  /* Every held note dealt again in the order it was struck, each ranked among
+     those struck before it and those of its own gather, so a chord struck at
+     once is dealt again as one. */
   void redeal() {
-    for (std::size_t i = 0; i < notes_.size(); i++) notes_[i].hand = dealt(notes_[i].note, notes_.data(), i);
+    for (std::size_t i = 0; i < notes_.size(); i++) {
+      int beyond = 0;
+      for (std::size_t j = 0; j < notes_.size(); j++) {
+        if (j == i || (j > i && notes_[j].gather != notes_[i].gather)) continue;
+        if (layers_.countUpper ? notes_[j].note > notes_[i].note : notes_[j].note < notes_[i].note) beyond++;
+      }
+      const bool counted = beyond < layers_.count;
+      notes_[i].hand = layers_.countUpper ? (counted ? 1 : 0) : (counted ? 0 : 1);
+    }
+  }
+  /* The gather closed: each note it struck laid on the screen in the hand it
+     was dealt last - the hand it is in now, or for a note let go inside the
+     gather the hand it sounded in. */
+  void strikeGathered() {
+    for (const auto& p : pending_) {
+      if (onStrike_) onStrike_(p.note, p.velocity, p.hand + 1);
+    }
+    pending_.clear();
   }
 
   std::vector<Held>::iterator find(int note) {
@@ -857,6 +922,13 @@ class Keyboard {
   // The arpeggiator, and what it needs from outside: the time, the tempo, the
   // out, its random walk, and its timers.
   static constexpr double kArpGather = 25;  // ARP_GATHER: how long the first key waits for the chord
+  /* How long after a gather's first note a note is still part of the same
+     struck chord, for the split by notes (16 Nov): the arpeggiator's figure,
+     so one instrument has one idea of "at once". */
+  static constexpr double kGather = kArpGather;
+  int gather_ = 0;
+  double gatherUntil_ = -std::numeric_limits<double>::infinity();
+  std::vector<Held> pending_;  // the gather's notes, for the strike laid when it closes
   std::function<void()> onLayers_;  // the panel's syncLayerPanel
   std::function<void(int, double, int)> onStrike_;  // the instrument's scanStrike (P7b)
   std::function<void(double)> onSwell_;  // the Picture slider, from the expression pedal

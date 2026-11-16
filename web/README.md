@@ -6854,3 +6854,22 @@ Layers menu's and the pairing menu's), not a smaller control. Third, a test of w
 a note is in can be made from sound alone: give one hand no level (`bAmp` nought) and read
 each note's bin in the output - which is how the plugin's shell test holds a host's chord to
 the site's hands without any way into the instrument's layers.
+
+**A recording handed on is the recording, and "at once" is a window (16 Nov, the gather and
+`--write-golden`).** Two things a later reader would otherwise find again. First, a
+writer that answers a recorded run with the thing being recorded changes what every
+check downstream reads: under `--write-golden` the tests were handed the core's text in
+place of the JavaScript's recording, and six checks that read that text - a substring
+such as `"set freq 4000.0"`, which the core spells `4000` - failed on an unchanged core
+and refused their sections, while every file whose digits differed below the tolerance
+was rewritten. A writer has to judge "moved" by the same rule the plain run uses, and keep
+what has not moved exactly as it was (`golden_runs.py`, `kept`). Second, every rule that
+asks which notes are held "now" has to say what now is: struck at once, a chord's notes
+arrive a millisecond or two apart in no fixed order, so the split by notes deals the
+notes that start within 25 ms of a gather's first as one chord (`Keyboard::kGather`, the
+arpeggiator's figure). Tests that struck notes one after another at the same instant were
+testing that window, not the rule they were written for, and now strike them 40 ms apart
+(`pieces/splitnotes.py`'s `APART`); layertest's 30 ms between notes was too close to the
+window's edge on a loaded machine and is 60. And deciding a note's hand late has a sound:
+a note moved by its gather is released in the first hand, and a release rings, which is
+why how it should sound went to the owner (split-by-notes.md, "Not settled").
