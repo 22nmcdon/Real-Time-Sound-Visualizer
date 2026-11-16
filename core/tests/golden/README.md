@@ -160,3 +160,5 @@ change over the eye's time since 5a), every number in it unmoved.
 ## The log
 
 Each rewrite of a file since stage 5's step 6, as `--write-golden --because` writes it.
+
+- 2026-11-16: The split by notes adds three setup fields, splitBy, splitEnd and splitCount, whose defaults are the key split. Rewrote setup (2 of 13 runs: the codec's run, whose every decoded setup gains the three keys at their defaults, and the table of fields, which gains them with their rules; neither differs from its recording in anything else). The rewrite also offered functions, picture, scan, score and restore, which write mode stores afresh wherever the core's digits differ at all; they passed against their recordings to the tolerance before and after, so they were left as recorded.
