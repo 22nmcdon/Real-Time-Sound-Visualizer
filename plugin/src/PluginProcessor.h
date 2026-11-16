@@ -71,7 +71,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
 
      Not counted, on purpose (16 Nov): the split by notes' look-ahead, the
      10 ms the keyboard holds every note back while it deals the hands
-     (Keyboard::kLookAhead, web/docs/split-by-notes.md). A host makes up a
+     (the Chord window, web/docs/split-by-notes.md). A host makes up a
      reported latency by playing everything that much early - every note in
      every mode, and the audio beside it - so told, the key split and every
      other mode would be shifted to cover a delay they do not have, and the

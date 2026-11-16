@@ -573,9 +573,12 @@ with sync_playwright() as pw:
     # hand for its release. Read 80 ms after G3 E3 C3 struck at once, top
     # first, over the last 4096 samples - a window that holds the onset, so
     # every note leaks a little into every bin (A2, never played, reads a
-    # third of C3) - against the key split at D3, which deals the same hands
-    # and has nothing to move, read 70 ms after: the same moment in its
-    # notes' lives, since by key nothing waits. The null is the same three
+    # third of C3, and the leakage varies twofold from page to page with
+    # where the onset falls) - so each is held under a quarter of C3, where
+    # the key split at D3, which deals the same hands and has nothing to
+    # move, leaves about a tenth (read 70 ms after, the same moment in its
+    # notes' lives, and printed beside it). The ghost was some thirty times
+    # that: G3 over C3 itself. The null is the same three
     # 60 ms apart, all the lower hand's, read alike: E3 and G3 are in A's
     # lanes then, so the reading can see a note there. (The core's render
     # check, splitnotes.py, holds the same to the bit; this is the site.)
@@ -583,10 +586,10 @@ with sync_playwright() as pw:
     keyed = by_notes(False, [55, 52, 48], 0, 70, 50)
     in_a = lambda r: [round(r["soon"][0][i] + r["soon"][1][i], 5) for i in range(4)]
     print("    80 ms after, the lower hand's lanes: at once %s, the key split %s, 60 ms apart %s" % (in_a(near), in_a(keyed), in_a(spread)))
-    no_ghost = lambda r: in_a(r)[1] > 1e-2 and all(in_a(r)[i] < 2 * in_a(keyed)[i] + 1e-3 for i in (2, 3))
-    check("80 ms after G3 E3 C3 struck at once, E3 and G3 in the lower hand's lanes are no more than the key split leaves",
+    no_ghost = lambda r: in_a(r)[1] > 1e-2 and all(in_a(r)[i] < 0.25 * in_a(r)[1] for i in (2, 3))
+    check("80 ms after G3 E3 C3 struck at once, E3 and G3 in the lower hand's lanes are under a quarter of C3 there, as the key split's leakage is",
           no_ghost(near), "by notes %s, by key %s" % (in_a(near), in_a(keyed)))
-    check("null: the same three 60 ms apart are all the lower hand's, and E3 and G3 in its lanes are many times that",
+    check("null: the same three 60 ms apart are all the lower hand's, and E3 and G3 in its lanes are as strong as C3",
           not no_ghost(spread), str(in_a(spread)))
 
     check("no page errors on the instrument's face", not bad, "; ".join(bad[:3]))

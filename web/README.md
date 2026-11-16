@@ -6876,7 +6876,7 @@ rings, which is why how it should sound went to the owner, who chose the look-ah
 
 **A delay that keeps the playing's shape, and the three things that broke "to the sample"
 (16 Nov, the split by notes' look-ahead).** Split by notes every note, release and the
-pedal wait 10 ms from their own arrival (`Keyboard::kLookAhead`), so a chord is dealt
+pedal wait the Chord window, 10 ms unless set (0 to 15; at 0 nothing waits), from their own arrival, so a chord is dealt
 before any of it sounds and nothing moves once it does; the owner's choice over holding a
 gather and letting it go as a block, which would have made every roll and grace note a
 chord. The check that settles it compares the instrument to itself to the bit - a chord

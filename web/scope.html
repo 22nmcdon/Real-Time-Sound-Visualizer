@@ -2232,32 +2232,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 </select>
               </div>
             </div>
-            <!-- The Chord window (16 Nov), split by notes only: a row of its own,
-                 since four menus beside the pairing would not read whole in
-                 the column at four of the five windows fittest measures. -->
-            <div class="menu-row" id="midiSplitWindowRow" hidden>
-              <label class="menu-label" for="midiSplitWindow">Chord window</label>
-              <div class="grow">
-                <select id="midiSplitWindow" style="flex:1 1 0; min-width:0" aria-label="Chord window: how long every note waits, split by notes, so a chord struck at once is dealt by pitch; nought plays at once">
-                  <option value="0">0 ms</option>
-                  <option value="1">1 ms</option>
-                  <option value="2">2 ms</option>
-                  <option value="3">3 ms</option>
-                  <option value="4">4 ms</option>
-                  <option value="5">5 ms</option>
-                  <option value="6">6 ms</option>
-                  <option value="7">7 ms</option>
-                  <option value="8">8 ms</option>
-                  <option value="9">9 ms</option>
-                  <option value="10" selected>10 ms</option>
-                  <option value="11">11 ms</option>
-                  <option value="12">12 ms</option>
-                  <option value="13">13 ms</option>
-                  <option value="14">14 ms</option>
-                  <option value="15">15 ms</option>
-                </select>
-              </div>
-            </div>
             <p class="menu-note" id="midiLayersNote" hidden></p>
             <div class="menu-row stack" id="midiDrawRow" hidden>
               <label class="menu-label" for="midiDrawCount">Draw</label>
@@ -2447,6 +2421,34 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <option value="">Off</option></select>
                 <select id="midiOutCh" aria-label="MIDI out channel" style="flex:0 0 auto"></select>
                 <span class="reading" id="midiOutStatus">off</span></div>
+            </div>
+            <!-- The Chord window (16 Nov): split by notes, how long every note
+                 waits so a chord is dealt by pitch. Here for now, by the owner's
+                 word, until Play's Poly and split rows are laid out again:
+                 beside the count it squeezed every menu below the width it
+                 reads at, and a row of its own put Play 11 px over. -->
+            <div class="menu-row" id="midiSplitWindowRow">
+              <label class="menu-label" for="midiSplitWindow">Chord window</label>
+              <div class="grow">
+                <select id="midiSplitWindow" style="flex:1 1 0; min-width:0" aria-label="Chord window: how long every note waits, split by notes, so a chord struck at once is dealt by pitch; nought plays at once">
+                  <option value="0">0 ms</option>
+                  <option value="1">1 ms</option>
+                  <option value="2">2 ms</option>
+                  <option value="3">3 ms</option>
+                  <option value="4">4 ms</option>
+                  <option value="5">5 ms</option>
+                  <option value="6">6 ms</option>
+                  <option value="7">7 ms</option>
+                  <option value="8">8 ms</option>
+                  <option value="9">9 ms</option>
+                  <option value="10" selected>10 ms</option>
+                  <option value="11">11 ms</option>
+                  <option value="12">12 ms</option>
+                  <option value="13">13 ms</option>
+                  <option value="14">14 ms</option>
+                  <option value="15">15 ms</option>
+                </select>
+              </div>
             </div>
             <p class="menu-note">Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
               and right line outs go to a stereo line input &mdash; that is the organ itself,
@@ -5678,8 +5680,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         note can be anywhere on the keyboard. A note's hand is settled as it starts, by where it
         ranks among the notes held then (one held by the pedal counts), and it keeps it until you
         let go: a note added under a held chord can join the lower hand, and nothing already
-        sounding moves. By notes every note waits the <i>Chord window</i> beside the count,
-        10 ms unless you change it, its release and the pedal with it, so a chord struck at
+        sounding moves. By notes every note waits the <i>Chord window</i> (in Settings' MIDI
+        section for now), 10 ms unless you change it, its release and the pedal with it, so a chord struck at
         once is one chord: notes that start within the window of the first are ranked together
         by pitch, whichever finger landed first, so the bass is the bass, and each then sounds
         when it was played, only that much late &mdash; a roll or a grace note keeps its gaps.
@@ -17328,7 +17330,6 @@ function syncMidi() {
     el.midiSplitLearn.hidden = !split || byNotes;
     el.midiSplitEnd.hidden = !split || !byNotes;
     el.midiSplitCount.hidden = !split || !byNotes;
-    el.midiSplitWindowRow.hidden = !split || !byNotes;
     el.midiSplitEnd.value = midi.layers.end;
     el.midiSplitCount.value = String(midi.layers.count);
     el.midiSplitWindow.value = String(midi.layers.window);
@@ -23559,7 +23560,7 @@ const CONTROL_WORDS = {
   "midiSplitBy": ["Split by", "How a split gives each note its hand: at a key, low notes one sound and high another, or by the notes held, counted from one end."],
   "midiSplitEnd": ["Counted", "By notes, which end is counted: the lowest notes held for the lower hand, or the highest for the upper. The rest go to the other hand."],
   "midiSplitCount": ["How many", "By notes, how many the counted hand takes, one to six. With fewer held than that, every note is its own."],
-  "midiSplitWindow": ["Chord window", "Split by notes, every note waits this many milliseconds so a chord struck at once is dealt by pitch, whichever note lands first. 0 plays at once."],
+  "midiSplitWindow": ["Chord window", "Split by notes, every note waits this many ms so a chord struck at once is dealt by pitch. 0 plays at once. Here until Play is laid out again."],
   "midiLayerPair": ["How the two layers are drawn", "A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y, heard left and right."],
   "midiDrawCount": ["Draw", "How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears."],
   "midiDrawWhich": ["Draw", "Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y."],

@@ -550,7 +550,7 @@ nothing is lost. Each entry says who found it, when, and what is known so far.
 - ~~**A chord struck at once is dealt in the order its notes arrive**~~ Dealt as one chord
   since 16 Nov (the owner's decision): split by notes every note waits 10 ms, and the
   notes that arrive within 10 ms of a gather's first are ranked together by pitch before
-  any sounds (`Keyboard::kLookAhead`, split-by-notes.md). What was found: (found building the
+  any sounds (the Chord window, 10 ms by default, split-by-notes.md). What was found: (found building the
   split by notes, 16 Nov; for the owner's ear). A note's hand is fixed when it starts, as
   the owner decided, by its rank among the notes held at that moment. But a chord's
   notes reach the keyboard a millisecond or two apart in no fixed order, so with Lower: 1

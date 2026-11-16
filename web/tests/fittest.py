@@ -114,38 +114,32 @@ SWEEP = """async ([bands]) => {
        beside its menu in Learn's place, the wider of its two ways. */
     el.midiSplitBy.value = 'notes'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     measure('tone+keys+photo+layers+planeB+bynotes');
-    /* And the rows themselves (16 Nov, the Chord window): the pairing menu,
-       the end and the count on one line inside their row, and the window on
-       its own row, its label on one line - a menu squeezed or wrapped would
-       still fit the tab. The null widens the window's menu by 120 px. */
+    /* And the row itself (16 Nov): the pairing menu, the end and the count
+       on one line inside it, each as wide as it is on its own so its value
+       reads whole - the menus are flex items, and a row too narrow squeezes
+       them rather than breaking the line, which would still fit the tab. The
+       null puts the Chord window's menu back beside the count, where it was
+       first built and did not fit (it lives in Settings for now). */
     setBenchTab('play'); await wait(80);
-    /* Each menu at least as wide as it is on its own, so its value reads
-       whole: the menus are flex items, and a row too narrow squeezes them
-       inside it rather than breaking the line. */
     const natural = (m) => {
       const c = m.cloneNode(true); c.removeAttribute('id'); c.hidden = false;
       c.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;flex:none;width:auto;min-width:0;max-width:none';
       m.parentNode.appendChild(c); const w = c.getBoundingClientRect().width; c.remove(); return w;
     };
-    const menus = [el.midiLayerPair, el.midiSplitEnd, el.midiSplitCount];
-    const lineOf = () => {
-      const row = el.midiLayerRow.getBoundingClientRect(), own = el.midiSplitWindowRow.getBoundingClientRect();
-      const boxes = menus.map((m) => m.getBoundingClientRect()), win = el.midiSplitWindow.getBoundingClientRect();
-      const label = el.midiSplitWindowRow.querySelector('label'), lineH = parseFloat(getComputedStyle(label).lineHeight) || 16;
-      return { shown: [el.midiSplitEnd, el.midiSplitCount, el.midiSplitWindow].every((m) => !m.hidden && m.offsetParent),
+    const lineOf = (menus) => {
+      const row = el.midiLayerRow.getBoundingClientRect(), boxes = menus.map((m) => m.getBoundingClientRect());
+      return { shown: menus.every((m) => !m.hidden && m.offsetParent),
                oneLine: Math.max(...boxes.map((b) => b.top)) - Math.min(...boxes.map((b) => b.top)) <= 2,
-               inside: boxes.every((b) => b.left >= row.left - 1 && b.right <= row.right + 1)
-                       && win.left >= own.left - 1 && win.right <= own.right + 1,
-               whole: menus.every((m, i) => boxes[i].width >= natural(m) - 1) && win.width >= natural(el.midiSplitWindow) - 1,
-               labelOneLine: label.getBoundingClientRect().height <= lineH * 1.5,
-               widths: boxes.concat([win]).map((b, i) => Math.round(b.width) + '/' + Math.round(natural(menus.concat([el.midiSplitWindow])[i]))) };
+               inside: boxes.every((b) => b.left >= row.left - 1 && b.right <= row.right + 1),
+               whole: menus.every((m, i) => boxes[i].width >= natural(m) - 1),
+               widths: boxes.map((b, i) => Math.round(b.width) + '/' + Math.round(natural(menus[i]))) };
     };
-    splitRow = lineOf();
-    // The null: the window's menu made 120 px wider than it is on its own.
-    const was = el.midiSplitWindow.style.minWidth;
-    el.midiSplitWindow.style.minWidth = (natural(el.midiSplitWindow) + 120) + 'px'; await wait(60);
-    splitRow.widened = lineOf();
-    el.midiSplitWindow.style.minWidth = was;
+    const three = [el.midiLayerPair, el.midiSplitEnd, el.midiSplitCount];
+    splitRow = lineOf(three);
+    const home = el.midiSplitWindow.parentNode, grow = el.midiSplitCount.parentNode;
+    grow.appendChild(el.midiSplitWindow); await wait(60);
+    splitRow.widened = lineOf(three.concat([el.midiSplitWindow]));
+    home.appendChild(el.midiSplitWindow);
     el.midiSplitBy.value = 'key'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     /* And the rack (F5) at its tallest: every effect on, so no module is
        folded to its line, and each one opened in turn with its rest showing,
@@ -293,11 +287,13 @@ with sync_playwright() as pw:
                   "Editing and every section's link showing, each the hand's own (%dx%d)" % (w, h),
                   r["planeRows"] == [False, False, False, False, 0], str(r["planeRows"]))
             sr = r["splitRow"] or {}
-            check("split by notes, the pairing, the end and the count on one line and the Chord window on its own, inside their rows, each read whole (%dx%d)" % (w, h),
-                  sr.get("shown") and sr.get("oneLine") and sr.get("inside") and sr.get("whole") and sr.get("labelOneLine"), str(sr))
+            check("split by notes, the pairing, the end and the count are on one line inside the row, each read whole (%dx%d)" % (w, h),
+                  sr.get("shown") and sr.get("oneLine") and sr.get("inside") and sr.get("whole"), str(sr))
             wid = sr.get("widened") or {}
-            check("null: the window's menu 120 px wider than itself does not read whole inside its row (%dx%d)" % (w, h),
-                  not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
+            # Not at 1100x860, whose column is wide enough for four: the rows at the other four sizes are what put it in Settings.
+            if (w, h) != (1100, 860):
+                check("null: the Chord window's menu beside the count, a fourth, does not read whole (%dx%d)" % (w, h),
+                      not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
                   r["rackOpened"] == ["plane", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 

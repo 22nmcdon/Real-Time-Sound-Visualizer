@@ -99,6 +99,13 @@ Play 11 px over at 1400x900 (patchtest); beside a label the three menus left the
 first 21 px. So a split adds no row. The readout says *split by notes: lowest 1
 to the lower hand*.
 
+The Chord window (16 Nov, evening) is in Settings' MIDI section, after MIDI out, **for now**:
+the owner means to lay Play's Poly and split rows out again, and until then it has no room
+there. Beside the count it squeezed every menu below the width it reads at, in four of the
+five windows fittest measures, and a row of its own put Play 11 px over at 1400x900 and
+960x600. fittest holds the three menus that are there to their natural widths, with the
+window's menu put back beside them as the null.
+
 ## Stored
 
 Four fields beside `splitAt`: `splitBy` (`key` or `notes`), `splitEnd`
