@@ -83,16 +83,16 @@ CORE = """(setup) => {
   for (const k in setup.tone) core.set(k, setup.tone[k]);
   for (const k in setup.toneB || {}) core.set(k, setup.toneB[k], 1);
   if (setup.route) core.setRoutes([{ held: setup.route.held, slot: DRIVE_SLOT, amount: 1 }]);
-  const out = { L: [], HL: [], BL: [] };
+  const out = { L: [], HL: [], HR: [], BL: [] };
   for (const step of setup.steps || [{ n: setup.n }]) {
     for (const k in step.tone || {}) core.set(k, step.tone[k]);
     const n = step.n, L = new Float32Array(n), R = new Float32Array(n);
     const HL = new Float32Array(n), HR = new Float32Array(n), BL = new Float32Array(n), BR = new Float32Array(n);
     core.block(L, R, n, HL, HR, BL, BR);
-    for (let i = 0; i < n; i++) { out.L.push(L[i]); out.HL.push(HL[i]); out.BL.push(BL[i]); }
+    for (let i = 0; i < n; i++) { out.L.push(L[i]); out.HL.push(HL[i]); out.HR.push(HR[i]); out.BL.push(BL[i]); }
   }
   const from = setup.skip || 0;
-  return { L: out.L.slice(from), HL: out.HL.slice(from), BL: out.BL.slice(from) };
+  return { L: out.L.slice(from), HL: out.HL.slice(from), HR: out.HR.slice(from), BL: out.BL.slice(from) };
 }"""
 
 with sync_playwright() as pw:
