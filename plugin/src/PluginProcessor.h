@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -44,12 +45,13 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   bool producesMidi() const override { return true; }
   bool isMidiEffect() const override { return false; }
   /* How long it goes on after the last note: the longer release of the two
-     layers, and the echo's repeats until they are 60 dB down. It was half a
-     second whatever the echo did, so a host that stops processing a silent
-     track cut the echoes off. Worked out on the audio thread as the setup
-     changes (`tailFor`) and read from wherever the host asks. A known limit:
-     layer B's own echo, and a loop that keeps itself going under Scan, are
-     not counted; the second has no end to report. */
+     layers, the delay's repeats and the reverb's decay until they are 60 dB
+     down (Instrument::tailSeconds has what is counted when, and why the
+     delay always is). It was half a second whatever the echo did, so a host
+     that stops processing a silent track cut the echoes off. Worked out on
+     the audio thread as the setup changes and read from wherever the host
+     asks. A known limit: a loop that keeps itself going under Scan is not
+     counted; it has no end to report. */
   double getTailLengthSeconds() const override { return tail_.load(); }
 
   /* The latency told to the host (12 Nov): how late the oversampled stages
@@ -85,7 +87,6 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   int stageDelayNow() const { return instrument_.stageDelay(); }
   // The limiter's lookahead (5a), which the host is told on top of the stages'.
   int limiterLatency() const { return instrument_.latency(); }
-  static double tailFor(const scope::Tone& a, const scope::LayerSettings& b);
 
   /* The bank as the host's programs (6 Nov): the plain sine the plugin opens
      on, then the bank in the browser's order. A program chosen is a state
@@ -157,6 +158,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   const scope::Tone& tone() const { return instrument_.tone(); }
   const scope::LayerSettings& toneB() const { return instrument_.toneB(); }
   scope::Keyboard::Settings keys() const { return instrument_.keyboard().settings(); }
+  int editHand() const { return instrument_.keyboard().edit(); }  // the hand the face edits
   // The routings, for the shell test to set. Not to be touched while the audio thread runs.
   scope::Matrix& matrix() { return instrument_.matrix(); }
   const scope::Hearing& hearing() const { return instrument_.hearing(); }
@@ -285,6 +287,10 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   // sliders the host has moved since the last, and the code (hostPull on the page).
   struct PageState { int version = 0; int loads = 0; std::string moved; std::string code; };
   PageState pageState() const;
+  // The page's commands refused because the queue was full (queue): for the shell test.
+  long refusedCommands() const { return refused_.load(std::memory_order_relaxed); }
+  // How many the queue holds before it refuses one: a host not processing, and a page still moving.
+  static constexpr std::size_t kQueueMost = 4096;
   double slider(const char* id) const { return instrument_.slider(id); }
 
  private:
@@ -315,8 +321,16 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   std::optional<scope::Json> pending_;         // waiting for the next block, or for prepareToPlay
   juce::SpinLock queueLock_;
   std::vector<scope::Instrument::Command> queue_, taken_;
+  /* What the audio thread last published - the state before it is encoded,
+     with the counts that go with it - and whether a reader has taken it
+     since (publish, pageState). */
+  struct Published { int version = 0; int loads = 0; std::string moved; scope::Json setup; bool fresh = false; };
   mutable juce::SpinLock publishLock_;
-  PageState published_;
+  mutable Published published_;
+  // The readers' side: the last state taken and encoded, for every reader until the next. Never the audio thread's.
+  mutable std::mutex readerLock_;
+  mutable PageState read_;
+  std::atomic<long> refused_ { 0 };
   std::atomic<double> rate_ { 48000.0 };
   std::atomic<double> tail_ { 0.5 };
   void timerCallback() override { reportLatency(); }
