@@ -48,6 +48,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <map>
 #include <optional>
 #include <string>
@@ -223,8 +224,20 @@ class Controls {
      options are fixed: a pair on a fourth lane is a value only four lanes -
      two figures, or the band split - have. Two lanes, the generator's pair, until told. */
   void setLanes(int n) { lanes_ = std::max(1, n); }
-  double range(const std::string& id) const { return ranges_.at(id); }
-  const std::string& select(const std::string& id) const { return selects_.at(id); }
+  /* An id the panel has not got reads as NaN, and a menu's as nothing,
+     rather than throwing: these are read on the audio thread, where a
+     throw ends the host (the outside review, 17 Nov), and in the page's
+     core, built without exceptions, where it aborted. A write to one is
+     refused (setRange), so NaN goes nowhere. */
+  double range(const std::string& id) const {
+    const auto it = ranges_.find(id);
+    return it == ranges_.end() ? std::numeric_limits<double>::quiet_NaN() : it->second;
+  }
+  const std::string& select(const std::string& id) const {
+    static const std::string none;
+    const auto it = selects_.find(id);
+    return it == selects_.end() ? none : it->second;
+  }
   // Number() of a menu's value, as a handler reads it.
   double selectNumber(const std::string& id) const { return jsStringToNumber(utf8To16(select(id))); }
 

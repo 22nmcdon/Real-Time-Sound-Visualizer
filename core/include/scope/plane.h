@@ -265,6 +265,8 @@ class Plane {
     nlWait_ = { 0, 0 };
   }
   bool timeOn() const { return timeOn_; }
+  // The reverb's decay to 60 dB down at a size, in seconds, as timeTick sets its gains: the tail a host is told.
+  static double reverbT60(double size) { return kReverbT60Low * std::pow(kReverbT60Span, size); }
 
  private:
   // A routing on the echo's level keeps the line running at nought.

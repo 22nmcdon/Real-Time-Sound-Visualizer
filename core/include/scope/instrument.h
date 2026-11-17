@@ -220,6 +220,7 @@ class Instrument {
     bandFilters();
     pictureSource_.capacity = static_cast<double>(kPictureFrames);
     pictureSource_.channels = 2;
+    lanesServed_.store(2, std::memory_order_relaxed);
     pictureSource_.lanes = false;
     /* The latest n frames of the ring, oldest first, nought before the start
        of what it holds - which the capacity says it never asks for - into
@@ -385,6 +386,23 @@ class Instrument {
     const int firstStep = stepPos_ == 0 ? 0 : kStepFrames - stepPos_;
     const int steps = firstStep < frames ? (frames - firstStep + kStepFrames - 1) / kStepFrames : 0;
     for (std::size_t i = 0; i < sliderCount; ++i) rampTo(sliders[i].id, sliders[i].value, std::max(1, steps));
+    /* A block of no frames still brings its events: JUCE's VST3 wrapper
+       hands MIDI over in a processBlock of none, and the loop below, which
+       plays a piece at a time, played nothing and dropped them, so a
+       note-off there left the note held (the outside review, 17 Nov). Each
+       goes to the clock and the keyboard at the block's first frame, as
+       play does; an arpeggiator's wake waits for a block with room for it. */
+    if (frames <= 0) {
+      const double now = stepStartMs_ + 1000.0 * stepPos_ / rate_;
+      for (std::size_t k = 0; k < eventCount; ++k) {
+        outAt_ = 0;
+        keyboard_->setNow(now);
+        clockIn_->at(now - events[k].earlyMs);
+        keyboard_->bytes(events[k].data, events[k].size);
+      }
+      if (keyboard_->learned() != learnedSeen_) keepLearned();
+      return;
+    }
     int pos = 0;
     std::size_t e = 0;
     while (pos < frames) {
@@ -643,6 +661,15 @@ class Instrument {
   /* The setup code of everything that can have changed: the setup loaded,
      the hands on it since, the controllers learned. */
   std::string stateCode() const {
+    const auto code = encodeSetup(stateSetup());
+    return code ? *code : std::string();
+  }
+  /* The same before it is encoded, which is all of it the audio thread
+     makes: the plugin's publish copies this and its message thread encodes
+     it (the outside review, 17 Nov - encoding on every block that changed
+     anything was 48 us on a bank preset, and milliseconds once the hands had
+     grown). */
+  Json stateSetup() const {
     Json setup = setup_.type == Json::Type::Object ? setup_ : Json::object();
     setup.erase("pluginSliders");
     setup.erase("pluginHands");
@@ -662,9 +689,10 @@ class Instrument {
     setup.erase("pluginWidth");
     if (brain_ && brain_->panel.range("stereoWidth") != rangeSpec("stereoWidth")->value)
       setup.set("pluginWidth", Json::number(brain_->panel.range("stereoWidth")));
-    const auto code = encodeSetup(setup);
-    return code ? *code : std::string();
+    return setup;
   }
+  // How many hands the state keeps, for a harness: what remember compacts.
+  std::size_t handCount() const { return hands_.size(); }
 
   // Scan's reading (P7a), for a harness: the paths, the holds, the freeze.
   const ScanReader& scan() const { return *scan_; }
@@ -689,7 +717,7 @@ class Instrument {
      band split's - so the page, which knows how many frames the ring is,
      reads the lane count off the length. Two lanes are pictureSnapshot's. */
   std::vector<float> pictureServed() const {
-    const std::size_t lanes = static_cast<std::size_t>(std::clamp(pictureSource_.channels, 1, kRingLanes));
+    const std::size_t lanes = static_cast<std::size_t>(std::clamp(lanesServed_.load(std::memory_order_relaxed), 1, kRingLanes));
     std::vector<float> out(kPictureFrames * lanes);
     const std::size_t at = pictureAt_.load(std::memory_order_acquire);
     for (std::size_t k = 0; k < kPictureFrames; ++k) {
@@ -816,9 +844,61 @@ class Instrument {
     return 0;
   }
   // How many lanes the picture has: two, or four for a figure a layer or the band split.
-  int pictureLanes() const { return pictureSource_.channels; }
+  int pictureLanes() const { return lanesServed_.load(std::memory_order_relaxed); }
   // How late the oversampled stages put the sound, as the setup stands (Generator::stageDelay).
   int stageDelay() const { return core_ ? core_->stageDelay() : 0; }
+
+  /* How long the sound goes on after the last note, for a host that stops
+     processing a silent track (the plugin's getTailLengthSeconds): the
+     longer release of the two hands, then the delay's repeats until they are
+     60 dB down, then the reverb's decay to the same, since the reverb is the
+     end of the chain and rings on what the delay sends it. At most a minute.
+
+     The delay is counted always, at the longer of the two hands' times and
+     feedbacks where B has its own (the outside review, 17 Nov): the Picture's
+     Motion pushes its level in from a Mix of nought (kStageBundles), and the
+     Picture amount can leave nought at any moment - the expression pedal,
+     the wheel or pressure given to it - with nothing in the setup changing
+     to say so; and a rack switch only sets a Mix to nought. Counted only on
+     its Mix, as it was, a host cut the Picture's echoes off. A routing on the
+     delay's time can lengthen it, so with one the longest time the knob
+     has is taken. The reverb is counted by its size (plane.h's law, 0.3 s
+     to 9 s), the larger of the two hands', where either Mix is up or a
+     routing reaches its level, and at the size a routing on it can push to.
+     The cost: a still sine with neither on reports three seconds of tail it
+     will never use, which a host spends processing silence. */
+  double tailSeconds() const {
+    const Tone& a = core_->tone();
+    const LayerBSettings& b = core_->toneB();
+    bool timeRouted = false, reverbRouted = false, sizeRouted = false;
+    const auto look = [&](const std::vector<Routing>& list) {
+      for (const auto& r : list) {
+        if (r.destId == "gen.echoTime") timeRouted = true;
+        if (r.destId == "gen.reverb") reverbRouted = true;
+        if (r.destId == "gen.reverbSize") sizeRouted = true;
+      }
+    };
+    look(matrix_->routings());
+    look(matrix_->stage());
+    const bool bOwnDelay = (b.timeOwn & 4) != 0, bOwnReverb = (b.timeOwn & 8) != 0;
+    double tail = std::fmax(a.env.releaseMs, b.env.releaseMs) / 1000;
+    const auto repeats = [](double feedback) {
+      const double fb = std::fmax(0.0, std::fmin(0.9, feedback));
+      return fb > 0 ? std::log(0.001) / std::log(fb) : 1;
+    };
+    double delayMs = a.delayMs, feedback = a.delayFeedback;
+    if (bOwnDelay) { delayMs = std::fmax(delayMs, b.delayMs); feedback = std::fmax(feedback, b.delayFeedback); }
+    if (timeRouted) delayMs = std::fmax(delayMs, 2000.0);
+    tail += delayMs / 1000 * (repeats(feedback) + 1);
+    if (a.reverbMix > 0 || (bOwnReverb && b.reverbMix > 0) || reverbRouted) {
+      double size = bOwnReverb ? std::fmax(a.reverbSize, b.reverbSize) : a.reverbSize;
+      if (sizeRouted) size += 0.5;
+      size = std::fmax(0.0, std::fmin(1.0, size));
+      const double pre = (bOwnReverb ? std::fmax(a.reverbPreMs, b.reverbPreMs) : a.reverbPreMs) / 1000;
+      tail += pre + Plane::reverbT60(size);
+    }
+    return std::fmin(60.0, tail);
+  }
 
   // What the owners and their tests read.
   const Tone& tone() const { return core_->tone(); }
@@ -1145,6 +1225,7 @@ class Instrument {
     channels.resize(static_cast<std::size_t>(std::max(2, lanes)));
     fitView(*brain_);
     pictureSource_.channels = lanes > 0 ? lanes : 2;
+    lanesServed_.store(pictureSource_.channels, std::memory_order_relaxed);
     pictureSource_.lanes = lanes > 0;
     // Two layers are two figures, and an input has no layers: a split is kept, not applied (layersOn).
     keyboard_->setLayable(lanes == 0 && !drawsInput_);
@@ -1226,6 +1307,36 @@ class Instrument {
 
   // A hand remembered, in place of an earlier one it makes redundant.
   void remember(std::string key, Json hand) {
+    /* Presses that choose which hand the face edits, and the photocell's
+       switch, are never made redundant by the search below, so a player
+       flicking between the hands grew the list without end: 2,000 flicks
+       were 48 KB of state code, built and encoded on the audio thread on
+       every block that changed anything (the outside review, 17 Nov). Each
+       press of Editing only says which hand the hands after it go to - the
+       keyboard's edit, set by nothing else (Keyboard::setEdit) - so one
+       straight after another leaves the earlier saying nothing, and one that
+       chooses the hand already chosen says nothing itself: the hand chosen
+       before any is A, or the editHandB a load keeps first. Two presses of
+       the photocell in a row leave it as it was, and go together. A link's
+       press is not compacted: linking copies one hand into the other, so
+       two presses are not none. */
+    const auto pressed = [](const Json& h) {
+      return h.type == Json::Type::Array && h.a.size() == 2 && h.a[0].type == Json::Type::String && h.a[0].s == u"k"
+          && h.a[1].type == Json::Type::String ? std::u16string_view(h.a[1].s) : std::u16string_view();
+    };
+    const auto editChoice = [&](const Json& h) {
+      const auto id = pressed(h);
+      return id == u"editHandA" ? 0 : id == u"editHandB" ? 1 : -1;
+    };
+    if (const int chosen = editChoice(hand); chosen >= 0) {
+      if (!hands_.empty() && editChoice(hands_.back().hand) >= 0) hands_.pop_back();
+      int before = 0;
+      for (std::size_t i = hands_.size(); i-- > 0;) if (const int c = editChoice(hands_[i].hand); c >= 0) { before = c; break; }
+      if (chosen == before) return;
+    } else if (pressed(hand) == u"photoButton" && !hands_.empty() && pressed(hands_.back().hand) == u"photoButton") {
+      hands_.pop_back();
+      return;
+    }
     /* A hand on a control the list already has makes the earlier one
        redundant: what the control says now is the later. Not when a hand
        between them is on a control whose handler reads this one, or this
@@ -1476,6 +1587,7 @@ class Instrument {
          until G2) were heard and never drawn. */
       const Layout lay = drawsInput_ ? Layout::One : notes_->layout();
       pictureSource_.channels = lay == Layout::Each ? 4 : 2;
+      lanesServed_.store(pictureSource_.channels, std::memory_order_relaxed);
       layOutPicture(lay);
       std::size_t ring = pictureAt_.load(std::memory_order_relaxed);
       for (int k = 0; k < n; ++k) {
@@ -1537,6 +1649,13 @@ class Instrument {
   // Scan's paths and tables (P7a): the generator reads the tables, which are made in prepare.
   std::unique_ptr<ScanReader> scan_;
   CaptureSource pictureSource_;
+  /* Its lane count again, for the plugin's message thread, which serves the
+     ring (pictureServed) while the audio thread may change how many lanes it
+     has: a plain int read on one thread and written on another is a data
+     race (the outside review, 17 Nov). Written beside every write of
+     `channels`; the ring itself tears across a block, as pictureSnapshot
+     says, which a picture survives. */
+  std::atomic<int> lanesServed_ { 2 };
   std::size_t captureMost_ = 0;  // the most a capture asks of the ring, which its lanes are made room for
 
   std::vector<Lfo> lfos_;
