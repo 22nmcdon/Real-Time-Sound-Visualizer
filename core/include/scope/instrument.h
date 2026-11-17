@@ -1385,17 +1385,21 @@ class Instrument {
       gridSeq_.fetch_add(1, std::memory_order_acq_rel);
     }
     {
-      // snprintf into a buffer of the block's own: no allocation on the audio thread.
+      /* Into a buffer of the block's own: no allocation on the audio thread.
+         The numbers through writeDouble rather than %.17g, which a host's
+         comma-decimal locale would write as 0,5 for the page to misread. */
       char text[kFadeText];
       std::size_t n = 0;
       bool full = false;
       if (matrix_->fadeMode() != FadeMode::Off) {
         matrix_->eachGain([&](const std::string& key, double g0, double g1, const Routing& r, bool inSetup) {
           if (full) return;
-          char b[64];
-          if (r.amountB) std::snprintf(b, sizeof b, "%.17g", *r.amountB); else b[0] = '\0';
-          const int wrote = std::snprintf(text + n, kFadeText - n, "%s\t%.17g\t%.17g\t%.17g\t%s\t%d\n",
-                                          key.c_str(), g0, g1, r.amount, b, inSetup ? 1 : 0);
+          char b[32], c0[32], c1[32], a[32];
+          const auto g17 = [](char* out, double x) { writeDouble(out, 32, x, std::chars_format::general, 17); };
+          if (r.amountB) g17(b, *r.amountB); else b[0] = '\0';
+          g17(c0, g0); g17(c1, g1); g17(a, r.amount);
+          const int wrote = std::snprintf(text + n, kFadeText - n, "%s\t%s\t%s\t%s\t%s\t%d\n",
+                                          key.c_str(), c0, c1, a, b, inSetup ? 1 : 0);
           // A line that would not fit is left off whole, and so is every one after it.
           if (wrote < 0 || static_cast<std::size_t>(wrote) >= kFadeText - n) { full = true; return; }
           n += static_cast<std::size_t>(wrote);

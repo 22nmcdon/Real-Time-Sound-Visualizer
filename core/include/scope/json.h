@@ -39,6 +39,8 @@
 #include <utility>
 #include <vector>
 
+#include "scope/chars.h"
+
 namespace scope {
 
 // --- Number.prototype.toString ------------------------------------------------
@@ -357,7 +359,7 @@ class JsonParser {
       while (i_ < t_.size() && t_[i_] >= u'0' && t_[i_] <= u'9') i_++;
     }
     const std::string text = toAscii(t_.substr(start, i_ - start));
-    v = Json::number(std::strtod(text.c_str(), nullptr));
+    v = Json::number(readDouble(text));
     return true;
   }
   bool value(Json& v, int depth) {

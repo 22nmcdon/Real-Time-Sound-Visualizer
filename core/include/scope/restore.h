@@ -141,7 +141,7 @@ inline double rangeStep(const RangeSpec& r, double v) {
 
 inline double rangeSanitise(const RangeSpec& r, std::string_view written) {
   double v = NAN;
-  if (htmlValidFloat(written)) v = std::strtod(std::string(written).c_str(), nullptr);
+  if (htmlValidFloat(written)) v = readDouble(written);
   if (!std::isfinite(v)) v = r.max < r.min ? r.min : r.min + (r.max - r.min) / 2;
   v = std::fmax(r.min, std::fmin(r.max, v));
   const double snapped = rangeStep(r, v);
@@ -1113,18 +1113,19 @@ inline void relane(Brain& b) {
 /* Number(x.toPrecision(4)), as the page rounds Persistence's slider to a
    fraction: four significant figures of the exact value, a tie going to the
    larger, read back as the nearest double. glibc's printf writes the exact
-   decimal expansion of a double, so eighty digits of it decide the rounding. */
+   decimal expansion of a double, so eighty digits of it decide the rounding;
+   to_chars at a precision is the same expansion in any locale (chars.h). */
 inline double jsToPrecision4(double x) {
   if (!std::isfinite(x) || x == 0) return x;
   char buf[128];
-  std::snprintf(buf, sizeof buf, "%.80e", std::fabs(x));
+  writeDouble(buf, sizeof buf, std::fabs(x), std::chars_format::scientific, 80);
   const char* e = std::strchr(buf, 'e');
   int exponent = std::atoi(e + 1);
   long n = (buf[0] - '0') * 1000L + (buf[2] - '0') * 100L + (buf[3] - '0') * 10L + (buf[4] - '0');
   if (buf[5] >= '5') n++;
   if (n == 10000) { n = 1000; exponent++; }
   std::snprintf(buf, sizeof buf, "%lde%d", n, exponent - 3);
-  const double v = std::strtod(buf, nullptr);
+  const double v = readDouble(buf);
   return x < 0 ? -v : v;
 }
 
