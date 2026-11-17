@@ -72,7 +72,9 @@ DEFAULTS = dict(rate=44100.0, samples=6000, planeMirror=0, planeRadius=0.4, plan
                 phaserRate=0.3, phaserDepth=0.7, phaserFeedback=0.3, bPhaserRate=0.3, bPhaserDepth=0.7,
                 bPhaserFeedback=0.3, reverbSize=0.4, reverbTone=0.6, reverbPreMs=10, bReverbSize=0.4,
                 bReverbTone=0.6, bReverbPreMs=10, eqLowHz=160, eqMidHz=1000, eqMidWidth=1, eqHighHz=4000,
-                bEqLowHz=160, bEqMidHz=1000, bEqMidWidth=1, bEqHighHz=4000, ev="")
+                bEqLowHz=160, bEqMidHz=1000, bEqMidWidth=1, bEqHighHz=4000, ev="",
+                # The EQ's switch (17 Nov), on here so the bands are what is under test; off is tested below.
+                eqOn=1, bEqOn=1)
 
 
 def plane_run(kit, **p):
@@ -159,6 +161,23 @@ def run(kit):
     tenth = plane_run(kit, **trio, **dict(eq, eqLow=0, eqMid=0, eqHigh=0.1))
     null("and a tenth of a decibel on one band is not", not np.array_equal(plain, tenth),
          "%.2e" % float(np.abs(plain - tenth).max()))
+    # --- its switch, a field (17 Nov): off is no EQ, to the bit, whatever its curve keeps ---
+    off = plane_run(kit, **trio, **dict(eq, eqOn=0))
+    check("an EQ switched off with its curve kept - every band set - is the same to the bit as none, with the trio on",
+          np.array_equal(plain, off))
+    alone = plane_run(kit, **dict(eq, eqOn=0)), plane_run(kit)
+    check("and alone, the same to the bit as the plane with nothing on", np.array_equal(alone[0], alone[1]))
+    on = plane_run(kit, **trio, **eq)
+    null("and the same curve switched on is not", not np.array_equal(plain, on), "%.2e" % float(np.abs(plain - on).max()))
+    # The upper hand's own switch: its own EQ off while the lower's is on - its pair as with B's own bands at nought.
+    beq_off = plane_run(kit, bown=1, town=16, **eq, bEqLow=-6, bEqLowHz=300, bEqOn=0)
+    beq_flat = plane_run(kit, bown=1, town=16, **eq, bEqLow=0, bEqLowHz=300, bEqOn=1)
+    beq_in = plane_run(kit, bown=1, town=16, **eq, bEqLow=-6, bEqLowHz=300, bEqOn=1)
+    a_ref = plane_run(kit, eqat="pre", **outside)
+    check("the upper hand's own switched off is no EQ on its pair, to the bit, the lower's still in on its own",
+          np.array_equal(beq_off[:, 2:], beq_flat[:, 2:]) and float(np.abs(beq_off[:, :2] - a_ref[:, :2]).max()) < 1e-9,
+          "%.2e %.2e" % (float(np.abs(beq_off[:, 2:] - beq_flat[:, 2:]).max()), float(np.abs(beq_off[:, :2] - a_ref[:, :2]).max())))
+    null("and its own switched on is its bands", float(np.abs(beq_in[:, 2:] - beq_flat[:, 2:]).max()) > 1e-3)
 
     # --- a line stays a line ---
     line = plane_run(kit, inp=3, **eq)[:, :2]

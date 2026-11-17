@@ -72,7 +72,7 @@ Json layerBJson(const scope::LayerBSettings& t) {
   if (gEq) {
     o.set("eqLow", num(t.eqLow)); o.set("eqLowHz", num(t.eqLowHz)); o.set("eqMid", num(t.eqMid));
     o.set("eqMidHz", num(t.eqMidHz)); o.set("eqMidWidth", num(t.eqMidWidth)); o.set("eqHigh", num(t.eqHigh));
-    o.set("eqHighHz", num(t.eqHighHz));
+    o.set("eqHighHz", num(t.eqHighHz)); o.set("eqOn", flag(t.eqOn));
   }
   o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn)); o.set("timeOwn", num(t.timeOwn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
@@ -115,7 +115,7 @@ Json toneJson(const scope::Tone& t) {
   if (gEq) {
     o.set("eqLow", num(t.eqLow)); o.set("eqLowHz", num(t.eqLowHz)); o.set("eqMid", num(t.eqMid));
     o.set("eqMidHz", num(t.eqMidHz)); o.set("eqMidWidth", num(t.eqMidWidth)); o.set("eqHigh", num(t.eqHigh));
-    o.set("eqHighHz", num(t.eqHighHz));
+    o.set("eqHighHz", num(t.eqHighHz)); o.set("eqOn", flag(t.eqOn));
   }
   o.set("menvOwn", flag(t.menvOwn)); o.set("menvEvery", flag(t.menvEvery)); o.set("menvAttackMs", num(t.menv.attackMs)); o.set("menvDecayMs", num(t.menv.decayMs));
   o.set("menvSustain", num(t.menv.sustain)); o.set("menvReleaseMs", num(t.menv.releaseMs));
@@ -468,7 +468,7 @@ int main(int argc, char** argv) {
       if (gEq) {
         echo.set("eqLow", num(e.eqLow)); echo.set("eqLowPos", num(e.eqLowPos)); echo.set("eqMid", num(e.eqMid));
         echo.set("eqMidPos", num(e.eqMidPos)); echo.set("eqWidth", num(e.eqWidth)); echo.set("eqHigh", num(e.eqHigh));
-        echo.set("eqHighPos", num(e.eqHighPos));
+        echo.set("eqHighPos", num(e.eqHighPos)); echo.set("eqOn", flag(e.eqOn));
       }
       return echo;
     };

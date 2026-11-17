@@ -73,7 +73,9 @@ INSTRUMENT = """async ([width, blocks]) => {
   // The limiter off (5a): it is last on the heard pair, 6 ms late and not
   // linear, and this holds what the instrument makes before it, to the sample.
   for (const x of [a, b]) x.control('limiter', '0');
-  if (width !== null) b.slider('stereoWidth', String(width));
+  // The first at a hundred, where its heard pair is its picture lanes; since 17 Nov the default is fifty.
+  a.slider('stereoWidth', '100');
+  b.slider('stereoWidth', width !== null ? String(width) : '100');
   const out = { picture: true, landedMono: true, firstBlockMono: true, asDrawn: 0, bAsDrawn: 0,
                 firstRatio: null, peak: 0, sideA: 0, sides: [0, 0], ears: [0, 0, 0, 0] };
   for (const x of [a, b]) x.midi([0x90, 57, 100]);
@@ -123,6 +125,8 @@ GENERATOR = """([w]) => {
   const a = compiledGenerator(48000, GEN_SLOTS, lfosOf()), b = compiledGenerator(48000, GEN_SLOTS, lfosOf());
   // The delay's repeats on the diagonal (its own Width at nought): a module's spread is its own, after a note's.
   for (const x of [a, b]) { x.set('shape', 'ramp'); x.set('phase', Math.PI / 2); x.set('delayMix', 0.4); x.set('delayMs', 30); x.set('delayWidth', 0); }
+  // The first at one, the pair as it is (the default is a half since 17 Nov).
+  a.set('stereoWidth', 1);
   b.set('stereoWidth', w);
   const out = { picture: true, mono: true, asDrawn: true, side: 0, firstMono: true, left: true, right: false };
   for (let k = 0; k < 160; k++) {
@@ -175,6 +179,8 @@ KEY_HEARD = """async ([routed]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const tine = PRESETS.flatMap(([, e]) => e).find(([, s]) => (s.mod || '').includes('midi.key>gen.fm'));
   restore(Object.assign({}, tine[1], { mod: routed ? 'midi.key>gen.fm@0.300' : '' }));
+  // At a hundred, where the bark's width was measured; the default is fifty since 17 Nov.
+  el.stereoWidth.value = '100'; el.stereoWidth.dispatchEvent(new Event('input'));
   midiNoteOn(57, 100);
   await applyGeneratorSound();
   const chain = Array.from(monitorChains)[0];
@@ -215,8 +221,8 @@ with sync_playwright() as pw:
     check("the Width is in the Picture section, after the Output and before the meter",
           where["picture"] and where["afterOutput"] and where["meterAfter"], str(where))
     check("null: Level, read the same way, is not in the Picture section", not where["ampPicture"])
-    check("a knob with the host's dot, at 100%, no modulation destination and no hand's",
-          where["knob"] and where["host"] and where["dest"] is None and not where["hand"] and where["reading"] == "100%", str(where))
+    check("a knob with the host's dot, at 50% (the owner's default since 17 Nov), no modulation destination and no hand's",
+          where["knob"] and where["host"] and where["dest"] is None and not where["hand"] and where["reading"] == "50%", str(where))
 
     print("\n--- its law and its reading ---")
     law = p.evaluate("""() => {
@@ -271,18 +277,18 @@ with sync_playwright() as pw:
     p.close()
     p2, errors2 = opened(b, context=shared)
     back = p2.evaluate("() => [el.stereoWidth.value, el.stereoWidthValue.textContent, genSettings().stereoWidth]")
-    p2.evaluate("() => { el.stereoWidth.value = '100'; el.stereoWidth.dispatchEvent(new Event('input')); }")
+    p2.evaluate("() => { el.stereoWidth.value = '50'; el.stereoWidth.dispatchEvent(new Event('input')); }")
     cleared = p2.evaluate("() => localStorage.getItem('scope.width')")
     check("this browser remembers the Width: written as it moves, and the page opens at it",
           stored == "28" and back == ["28", "28%", 0.28], "%r, %r" % (stored, back))
-    check("and at a hundred it keeps nothing", cleared is None, repr(cleared))
+    check("and at its default, fifty, it keeps nothing", cleared is None, repr(cleared))
     check("no page errors", not errors and not errors2, "; ".join((errors + errors2)[:3]))
     p2.close()
     shared.close()
     p3, errors3 = opened(b, init="Object.defineProperty(window, 'localStorage', { get() { throw new Error('refused'); } });")
     refused = p3.evaluate("() => { const at = el.stereoWidth.value; el.stereoWidth.value = '40'; el.stereoWidth.dispatchEvent(new Event('input')); return [at, el.stereoWidthValue.textContent, genSettings().stereoWidth]; }")
-    check("with the browser's storage refused the page opens at a hundred and the Width still works, unremembered",
-          not errors3 and refused == ["100", "40%", 0.4], "%r; %s" % (refused, errors3[:2]))
+    check("with the browser's storage refused the page opens at its default, fifty, and the Width still works, unremembered",
+          not errors3 and refused == ["50", "40%", 0.4], "%r; %s" % (refused, errors3[:2]))
     p3.close()
 
     print("\n--- what is heard, and the picture ---")
@@ -309,7 +315,7 @@ with sync_playwright() as pw:
           null["asDrawn"] < 1e-6 and null["bAsDrawn"] < 1e-6, "%.2g, %.2g" % (null["asDrawn"], null["bAsDrawn"]))
     check("null: at fifty it is not", half["bAsDrawn"] > 0.01, "%.3f" % half["bAsDrawn"])
     states = p.evaluate("""([a, b]) => [typeof a, decodeSetup(typeof a === 'string' ? a : a.code).pluginWidth, decodeSetup(typeof b === 'string' ? b : b.code).pluginWidth]""", [null["state"], half["state"]])
-    check("the instrument's state: no pluginWidth at a hundred, 50 at fifty", states[1] is None and states[2] == 50, str(states))
+    check("the instrument's state: no pluginWidth at fifty, its default, and 100 at a hundred", states[1] == 100 and states[2] is None, str(states))
     gen = p.evaluate(GENERATOR, [0])
     ghalf = p.evaluate(GENERATOR, [0.5])
     gnull = p.evaluate(GENERATOR, [1])
@@ -372,8 +378,8 @@ with sync_playwright() as pw:
           sw["start"] == [False, True, False, False] and sw["drawn"][:4] == [True, False, True, 0.3] and sw["ring"] == "1px", str(sw))
     check("and the setup names both: the switch and the sound's Width, in the snapshot and in its code",
           sw["drawn"][4:6] == [True, 30] and sw["decoded"] == {"widthDrawn": True, "soundWidth": 30}, str(sw["decoded"]))
-    check("a code made Drawn too loads Drawn too at its own Width; New goes back to Heard and a hundred",
-          sw["loaded"][:4] == [True, 0.3, "30", False] and sw["afterNew"][:2] == [False, "100"], str((sw["loaded"], sw["afterNew"])))
+    check("a code made Drawn too loads Drawn too at its own Width; New goes back to Heard and fifty, the default",
+          sw["loaded"][:4] == [True, 0.3, "30", False] and sw["afterNew"][:2] == [False, "50"], str((sw["loaded"], sw["afterNew"])))
     check("and the morph walks the sound's Width, which is the setup's", sw["morph"], str(sw["morph"]))
     check("null: the player's Width is none of it - 70 through the switch, the code, New and the load",
           sw["drawn"][6:] == ["70", 0.7] and sw["afterNew"][2] == "70" and sw["loaded"][4] == "70", str(sw))
@@ -427,7 +433,7 @@ with sync_playwright() as pw:
     p, errors = opened(b, settle=3000)
     plain = p.evaluate("""async () => { const s = await scopeHost.call('scopeState'); const setup = decodeSetup(s.code);
       return { width: setup && setup.pluginWidth, knob: el.stereoWidth.value }; }""")
-    check("null: a browser that remembers none leaves the instrument at a hundred, saying nothing", plain["width"] is None and plain["knob"] == "100", str(plain))
+    check("null: a browser that remembers none leaves the instrument at its default, fifty, saying nothing", plain["width"] is None and plain["knob"] == "50", str(plain))
     check("no page errors on the site", not errors, "; ".join(errors[:3]))
     p.close()
     b.close()

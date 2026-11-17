@@ -77,7 +77,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | key | what | line | chars |
 |---|---|---|---|
-| fx-switch | A rack module's switch | Takes the Mix to nought and keeps it; on puts it back, or its start. Its tag names what the Picture moves it by, faint at nought; its bar, how far. | 147 |
+| fx-switch | A rack module's switch | Takes the Mix to nought and keeps it; on puts it back, or its start. The EQ's keeps its curve: on, it is heard. Its tag names what the Picture moves. | 149 |
 | fx-arrow | A rack module's arrow | Opens the rest of this module under it, one module at a time. | 61 |
 | fx-handle | A rack module's handle | Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last. | 128 |
 | mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on. | 125 |
@@ -88,6 +88,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | mod-depth | A source’s depth | How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same. | 142 |
 | mod-depth-typed | A depth, typed | The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further. | 135 |
 | mod-remove | Take it off | Takes this source off this control. The source goes on moving everything else it is on. | 87 |
+| eq-point | A point on the EQ's curve | A band of the EQ: sideways is where it acts, up and down its gain; Shift or the wheel widens the mid. Double-click resets; right-click for more. | 144 |
 
 ## Play
 
@@ -257,7 +258,10 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | linkEq | EQ’s link | Whether the EQ is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 136 | - |
-| eqLow | Low | Lifts or cuts everything below the low shelf’s corner, up to 12 dB either way: weight under the sound, the figure longer at its lowest notes. | 141 | yes — a shelf, the Web Audio node’s, on both channels alike; where it acts is Low at, under the arrow |
+| eqThumb | The EQ’s curve | What the three bands do together, 20 Hz to 20 kHz; flat and grey while the EQ is off. Press it to shape the curve over the tabs. | 128 | - |
+| eqEditorOn | EQ on or off | Off, the EQ is not there at all and its curve is kept; on, you hear the curve, flat until you shape it. Moving a point switches it on. | 134 | - |
+| eqEditorClose | Close | Closes the EQ’s editor and brings the tab back. The curve stays as you left it. | 79 | - |
+| eqLow | Low | Lifts or cuts everything below the low shelf’s corner, up to 12 dB either way: weight under the sound, the figure longer at its lowest notes. | 141 | yes — a shelf, the Web Audio node’s, on both channels alike; where it acts is Low at, in the editor, under the curve |
 | eqMid | Mid | Lifts or cuts a band around Mid at, as wide as Width, up to 12 dB either way: a boost brings that part forward, a cut hollows it out. | 133 | - |
 | eqHigh | High | Lifts or cuts everything above the high shelf’s corner, up to 12 dB either way: air over the sound, or a darker one with softer corners. | 136 | - |
 | eqLowFreq | Low at | Where the low shelf turns, 40 to 640 Hz, four octaves on the knob: its middle is 160 Hz. The gain is half its full amount there. | 128 | - |

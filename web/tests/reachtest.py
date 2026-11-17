@@ -96,6 +96,12 @@ check("null: and the line that passes is passed, so the rule is not red on every
 on_face = set(by_id)
 missing = [k for k in words if k in on_face and not by_id[k].get("class")]
 check("every described control in the table has a class", not missing, ", ".join(missing))
+# The EQ's editor and switch (17 Nov) came after the audit: each in the table, by hand, with why.
+EQ_IDS = ("eqOn", "eqEditorOn", "eqThumb", "eqEditorClose", "eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth",
+          "eqHigh", "eqHighFreq", "linkEq")
+eq_missing = [k for k in EQ_IDS if not (by_id.get(k) or {}).get("class")]
+check("the EQ's controls, its switch and its editor's included, are each in the table with a class", not eq_missing, ", ".join(eq_missing))
+check("null: a table without the switch's row fails that", "eqOn" in [k for k in EQ_IDS if k not in {r["id"] for r in rows if r["id"] != "eqOn"}])
 SUSPECTS = ("zoom", "timebase", "level", "position", "holdoff", "rotate", "midSide", "lagOn", "beamLevel", "beamXY",
             "traceWidth", "filterOn", "ch1Scale", "dispXY", "dispYT", "pictureOnly", "enlargeButton", "enlargeTrail",
             "graticuleOn", "inkAccent")

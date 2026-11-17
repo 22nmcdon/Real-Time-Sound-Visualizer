@@ -6151,8 +6151,9 @@ golden.section("the EQ, the face against the core (17 Nov)")
 # of the generator is told (in hertz, so the octave laws are held too).
 from playwright.sync_api import sync_playwright as _sync_playwright
 EQ_IDS = ["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq"]
-EQ_KEYS = ["eqLow", "eqLowPos", "eqMid", "eqMidPos", "eqWidth", "eqHigh", "eqHighPos"]
-EQ_GEN = ["eqLow", "eqLowHz", "eqMid", "eqMidHz", "eqMidWidth", "eqHigh", "eqHighHz"]
+# And its switch, a field since 17 Nov (eqOn): the last of each, so the indices above it keep their places.
+EQ_KEYS = ["eqLow", "eqLowPos", "eqMid", "eqMidPos", "eqWidth", "eqHigh", "eqHighPos", "eqOn"]
+EQ_GEN = ["eqLow", "eqLowHz", "eqMid", "eqMidHz", "eqMidWidth", "eqHigh", "eqHighHz", "eqOn"]
 EQ_PAGE = """async (lines) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const out = [];
@@ -6160,7 +6161,8 @@ EQ_PAGE = """async (lines) => {
     const o = JSON.parse(line);
     if (o.op === 'slider') { const s = el[o.id]; s.value = String(o.value); s.dispatchEvent(new Event('input', { bubbles: true })); }
     else if (o.op === 'click') document.getElementById(o.id).click();
-    else if (o.op === 'change') { const c = el[o.id]; c.value = String(o.value); c.dispatchEvent(new Event('change', { bubbles: true })); }
+    else if (o.op === 'change') { const c = el[o.id]; if (c.type === 'checkbox') c.checked = o.value === true; else c.value = String(o.value);
+                                  c.dispatchEvent(new Event('change', { bubbles: true })); }
     else restore(o);
     await wait(0);
     const g = genSettings(0), gb = genSettings(1);
@@ -6199,9 +6201,13 @@ def eop():
     if c < 0.68: return {"op": "click", "id": erng.choice(["linkEq", "linkEq", "linkDelay"])}
     if c < 0.8: return {"op": "click", "id": erng.choice(["editHandA", "editHandB"])}
     if c < 0.85: return {"op": "change", "id": "midiLayers", "value": erng.choice(["off", "split", "layer", "layer"])}
+    # The EQ's switch, a field (17 Nov): pressed as the page's button presses its box.
+    if c < 0.89: return {"op": "change", "id": "eqOn", "value": erng.choice([True, False])}
     if c < 0.93:
         st = {k: evalue(i) for k, i in zip(["eqLow", "eqMidFreq", "bEqLow", "bEqHighFreq", "bEqMidWidth"],
                                              ["eqLow", "eqMidFreq", "eqLow", "eqHighFreq", "eqMidWidth"]) if erng.random() < 0.6}
+        for k in ("eqOn", "bEqOn"):
+            if erng.random() < 0.5: st[k] = erng.choice([True, False, "yes", 1])
         st.update(bPlane=erng.choice([True, True, False]), layers=erng.choice(["split", "layer"]), midiMode="poly")
         return st
     return _json.loads(erng.choice(presets))
@@ -6220,7 +6226,9 @@ EMADE = [{}, {"op": "click", "id": "midiPoly"}, {"op": "change", "id": "midiLaye
          {"op": "click", "id": "editHandB"}, {"op": "slider", "id": "eqLow", "value": 150},                      # 15, 16
          {"op": "slider", "id": "eqMid", "value": "abc"},                                                         # 17
          {"eqLow": 999, "eqMidWidth": 1, "eqHighFreq": -4, "eqMid": "12"},                                        # 18
-         {"op": "change", "id": "midiLayers", "value": "off"}]                                                    # 19
+         {"op": "change", "id": "midiLayers", "value": "off"},                                                    # 19
+         {"op": "change", "id": "eqOn", "value": True}, {"eqLow": 30, "eqOn": True},                              # 20, 21
+         {"bPlane": True, "eqLow": 30, "eqOn": True, "bEqLow": -20, "bEqOn": False, "layers": "layer", "midiMode": "poly"}]  # 22
 def erun():
     start = [_json.loads(erng.choice(presets)) if erng.random() < 0.5 else {}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": erng.choice(["split", "layer"])},
@@ -6249,6 +6257,10 @@ check("a setup with the upper's own loads it, unlinked, a field it lacks the low
       and ep[14]["b"][3] == 20 and ep[14]["a"][0] == 2.5 and ep[14]["b"][6] == ep[14]["a"][6], repr(ep[14]))
 check("out of range is held to the knob's ends, and a code's too", ep[16]["b"][0] == 12 and ep[18]["a"][0] == 12
       and ep[18]["a"][4] == 0.2 and ep[18]["a"][6] == 0 and abs(ep[18]["gen"][6] - 1000) < 1e-9, repr(ep[18]))
+check("its switch, a field: pressed, the lower's is in and the generator told; a setup's eqOn read; the upper's own off "
+      "while the lower's is on", ep[20]["a"][7] is True and ep[20]["gen"][7] is True and ep[21]["a"][7] is True
+      and ep[22]["own"] and ep[22]["a"][7] is True and ep[22]["b"][7] is False and ep[22]["genB"][7] is False, repr(ep[20:23])[:300])
+check("null: and a setup without it is off", ep[19]["a"][7] is False or ep[18]["a"][7] is False, repr(ep[18]["a"]))
 ewrote = sum(1 for i in range(1, len(ep)) if ep[i]["b"] != ep[i - 1]["b"] and ep[i]["own"])
 check("the runs write the upper hand's own EQ %d times" % ewrote, ewrote > 30)
 check("null: and the comparison fails against the page's hands one out of step",

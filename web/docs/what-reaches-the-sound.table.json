@@ -4238,5 +4238,37 @@
 "host": false,
 "figures": [],
 "most": null
+},
+{
+"id": "eqOn",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "the EQ's switch, a field since 17 Nov; not measured by the audit, which ran before it: off is no EQ to the bit (core/tests/pieces/eq.py)"
+},
+{
+"id": "eqEditorOn",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "presses eqOn; not measured by the audit, which ran before it"
+},
+{
+"id": "eqThumb",
+"class": "face only",
+"host": false,
+"figures": [],
+"most": null,
+"note": "opens the EQ's editor; sends nothing"
+},
+{
+"id": "eqEditorClose",
+"class": "face only",
+"host": false,
+"figures": [],
+"most": null,
+"note": "closes the EQ's editor; sends nothing"
 }
 ]

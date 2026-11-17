@@ -412,6 +412,13 @@ each is the slider by its id, so its row is its measure.
 
 <!-- end of table -->
 
+Since the audit (17 Nov), by hand rather than measured, in the table's JSON with a note each:
+the EQ's switch became a field (`eqOn`, pressed by the rack's switch and by the editor's own,
+`eqEditorOn`), *sound by design*; and its editor came, opened by the curve on its line
+(`eqThumb`) and shut by its Close (`eqEditorClose`), both *face only*. The EQ's gains were
+measured when a gain off nought put the EQ in: with the switch a field, a gain moved from code
+while the EQ is off is *idle here*, and moved by a hand it switches the EQ on.
+
 ## The ones that reach the sound through the picture
 
 <!-- reaches: written by hand from the table -->
@@ -521,7 +528,8 @@ Not fixed, because the fix is a decision rather than words:
   as *Input*: in the instrument the speakers never get the shaped trace. `lagMix` (*Heard*)
   likewise measures nought with Lag X-Y on. Both may act on a live input, which this audit did
   not play; the help sheet's "The generator is always heard" makes the same claim. This is the
-  help's open question 2, now measured.
+  help's open question 2, now measured. Decided 17 Nov (the owner's): both rows are shown only
+  while a live input plays, and hidden on the generator, their values and ids kept.
 - `midiFollow` and `autoset` say what they do to the screen truly, and the instrument is not
   told (above). Since fixed: it is told.
 - `ch3Scale`, `ch3Offset`, `ch4Scale`, `ch4Offset`: the page sends them and the instrument

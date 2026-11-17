@@ -272,7 +272,7 @@ int main(int argc, char** argv) {
         { "eqLow", [&](double v) { t.eqLow = v; } }, { "eqLowHz", [&](double v) { t.eqLowHz = v; } },
         { "eqMid", [&](double v) { t.eqMid = v; } }, { "eqMidHz", [&](double v) { t.eqMidHz = v; } },
         { "eqMidWidth", [&](double v) { t.eqMidWidth = v; } }, { "eqHigh", [&](double v) { t.eqHigh = v; } },
-        { "eqHighHz", [&](double v) { t.eqHighHz = v; } },
+        { "eqHighHz", [&](double v) { t.eqHighHz = v; } }, { "eqOn", [&](double v) { t.eqOn = v != 0; } },
       };
       for (const auto& [k, set] : fields) set(d(k));
       // Layer B's own shape, as the page's run holds it.
@@ -305,7 +305,7 @@ int main(int argc, char** argv) {
         { "bEqLow", [&](double v) { b.eqLow = v; } }, { "bEqLowHz", [&](double v) { b.eqLowHz = v; } },
         { "bEqMid", [&](double v) { b.eqMid = v; } }, { "bEqMidHz", [&](double v) { b.eqMidHz = v; } },
         { "bEqMidWidth", [&](double v) { b.eqMidWidth = v; } }, { "bEqHigh", [&](double v) { b.eqHigh = v; } },
-        { "bEqHighHz", [&](double v) { b.eqHighHz = v; } },
+        { "bEqHighHz", [&](double v) { b.eqHighHz = v; } }, { "bEqOn", [&](double v) { b.eqOn = v != 0; } },
       };
       for (const auto& [k, set] : bfields) set(d(k));
       std::map<long, std::vector<std::pair<std::string, double>>> events;

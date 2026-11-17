@@ -1,9 +1,11 @@
 """What the rack's switches start at (17 Nov).
 
-Two of the rack's switches give a setting of their own when they have
-nothing to put back: the Plane a Twist of 15 (PLANE_START) and the EQ the low
-and high shelves up 3 dB (EQ_START), both read from the page here, so a start
-changed on the page is a change seen here.
+The Plane's switch gives a setting of its own when it has nothing to put
+back, a Twist of 15 (PLANE_START), read from the page here, so a start
+changed on the page is a change seen here. The EQ had one too until 17 Nov,
+the low and high shelves up 3 dB (EQ_START); the owner made its switch a
+field (eqOn) that switches on flat, so it has none, and this holds that it
+has gone rather than come back.
 
 Until 17 Nov this also required each start to keep every Settled preset it
 would switch on Settled, measured offline at five key landings. The owner
@@ -33,7 +35,7 @@ def starts():
 def run(kit):
     check, null = kit.check, kit.null
     given = starts()
-    check("the page's two starts read: the Plane's and the EQ's", given["PLANE_START"] == {"planeTwist": 15}
-          and given["EQ_START"] == {"eqLow": 30, "eqMid": 0, "eqHigh": 30}, str(given))
+    check("the page's start reads: the Plane's Twist of 15", given["PLANE_START"] == {"planeTwist": 15}, str(given))
+    check("and the EQ has none: its switch is a field and switches on flat (17 Nov)", given["EQ_START"] is None, str(given))
     null("a start other than the page's is refused: the Plane at Twist 25 is not what the page gives",
          given["PLANE_START"] != {"planeTwist": 25}, str(given["PLANE_START"]))
