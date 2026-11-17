@@ -7118,8 +7118,15 @@ on the Delay, while the hand's Amount is above nought, on or off. It is read fro
 `STAGE_BUNDLES` (`fxPictureReads`), since a later picture matrix will decide which modules a
 read reaches, and it is steady: a first build said *Off – the Picture brings it in* while the
 push passed 0.02 of the range, held 1.5 s to stop it flickering with the reads, and the owner
-chose the connection over the warning before it shipped. `racktest.py` holds the tag at
-Amount 100 with every module off and with two on, and at nought, its null, none.
+chose the connection over the warning before it shipped. Beside the name is a bar a read,
+the Picture section's bars drawn small, filled to the push on the module's control as a
+share of the most that read can push it (`fxPictureShares`: the read held back with the
+loop, at the hand's depth, over the bundle's weight). `racktest.py` holds the tag at Amount
+100 with every module off and with two on, and at nought, its null, none; and each bar to
+the read the core serves (`instrumentFace().stage`) at that depth, painted and read in one
+go so both are of the same moment. The core serves the stage's reads to the face but not the
+offset on a generator control such as the delay's mix, so that is what "the push the core
+reports" can be held to without widening the served frame.
 
 **A compiled core can be stale without a compiler to say so.** `core/wasm/build.py --check`
 builds the module and compares bytes, which needs clang's wasm32 target; the publishing

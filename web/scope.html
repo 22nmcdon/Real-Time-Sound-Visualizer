@@ -1375,7 +1375,11 @@ span.fx-handle { visibility: hidden; }
 }
 .fx-on[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: var(--paper); }
 /* What reaches the module from the Picture: the picture's ink, as a lit row's label. */
-.fx-picture { flex: 0 0 auto; font-size: 9px; letter-spacing: 0.1em; color: var(--blush-deep); white-space: nowrap; }
+.fx-picture { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.fx-picture-name { font-size: 9px; letter-spacing: 0.1em; color: var(--blush-deep); }
+/* The Picture section's bars, small: a bar a read, the height of the tag's letters. */
+.fx-picture .picture-reads { height: 10px; gap: 2px; }
+.fx-picture .picture-reads i { width: 4px; }
 .fx-picture[hidden] { display: none; }
 .fx-sum {
   flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--text-soft);
@@ -2953,7 +2957,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5 16.5 6.25v7.5L10 17.5 3.5 13.75v-7.5Z"/><path d="M10 2.5v15M3.5 10h13" stroke-dasharray="1.6 1.6"/></svg></span>
                 <span class="fx-name" id="planeTitle">Plane</span>
                 <button type="button" class="fx-on caps" data-fx-on="plane" aria-pressed="false">Off</button>
-                <span class="fx-picture caps" data-fx-picture="plane" hidden></span>
+                <span class="fx-picture" data-fx-picture="plane" hidden><span class="fx-picture-name caps"></span><span class="picture-reads" aria-hidden="true"></span></span>
                 <span class="fx-sum" data-fx-sum="plane"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.twist" data-mod-control="planeTwist">
@@ -3119,7 +3123,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13c2.5 0 3-3 5.5-3s2 4.5 4 4.5S14 7 18 7"/><path d="M5 4v12M10 4v12M15 4v12" opacity="0.45"/></svg></span>
                 <span class="fx-name">EQ</span>
                 <button type="button" class="fx-on caps" data-fx-on="eq" aria-pressed="false">Off</button>
-                <span class="fx-picture caps" data-fx-picture="eq" hidden></span>
+                <span class="fx-picture" data-fx-picture="eq" hidden><span class="fx-picture-name caps"></span><span class="picture-reads" aria-hidden="true"></span></span>
                 <span class="fx-sum" data-fx-sum="eq"></span>
                 <div class="fx-main">
                   <div class="menu-row">
@@ -3193,7 +3197,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h3.5l1.5-3.5 1.5 3.5h3l1.5-3.5 1.5 3.5h3.5"/></svg></span>
                 <span class="fx-name">Phaser</span>
                 <button type="button" class="fx-on caps" data-fx-on="phaser" aria-pressed="false">Off</button>
-                <span class="fx-picture caps" data-fx-picture="phaser" hidden></span>
+                <span class="fx-picture" data-fx-picture="phaser" hidden><span class="fx-picture-name caps"></span><span class="picture-reads" aria-hidden="true"></span></span>
                 <span class="fx-sum" data-fx-sum="phaser"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.phaser" data-mod-control="phaserMix">
@@ -3243,7 +3247,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11c2-4.5 4-4.5 6 0s4 4.5 6 0 3-3 4-2"/><path d="M2 8.5c2-4.5 4-4.5 6 0s4 4.5 6 0 3-3 4-2" opacity="0.55"/></svg></span>
                 <span class="fx-name">Chorus</span>
                 <button type="button" class="fx-on caps" data-fx-on="chorus" aria-pressed="false">Off</button>
-                <span class="fx-picture caps" data-fx-picture="chorus" hidden></span>
+                <span class="fx-picture" data-fx-picture="chorus" hidden><span class="fx-picture-name caps"></span><span class="picture-reads" aria-hidden="true"></span></span>
                 <span class="fx-sum" data-fx-sum="chorus"></span>
                 <div class="fx-main">
                   <div class="menu-row">
@@ -3299,7 +3303,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5v11M8 7v8.5M12 9.5v6M16 12v3.5M2.5 15.5h15"/></svg></span>
                 <span class="fx-name" id="timeTitle">Delay</span>
                 <button type="button" class="fx-on caps" data-fx-on="delay" aria-pressed="false">Off</button>
-                <span class="fx-picture caps" data-fx-picture="delay" hidden></span>
+                <span class="fx-picture" data-fx-picture="delay" hidden><span class="fx-picture-name caps"></span><span class="picture-reads" aria-hidden="true"></span></span>
                 <span class="fx-sum" data-fx-sum="delay"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.echo" data-mod-control="delayMix">
@@ -3397,7 +3401,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="10" r="1"/><path d="M8 7a4.2 4.2 0 0 1 0 6M11 5a7 7 0 0 1 0 10M14 3a9.8 9.8 0 0 1 0 14"/></svg></span>
                 <span class="fx-name" id="reverbTitle">Reverb</span>
                 <button type="button" class="fx-on caps" data-fx-on="reverb" aria-pressed="false">Off</button>
-                <span class="fx-picture caps" data-fx-picture="reverb" hidden></span>
+                <span class="fx-picture" data-fx-picture="reverb" hidden><span class="fx-picture-name caps"></span><span class="picture-reads" aria-hidden="true"></span></span>
                 <span class="fx-sum" data-fx-sum="reverb"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.reverb" data-mod-control="reverbMix">
@@ -5405,7 +5409,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         Off is the knob at nought, not the module taken out: the <i>Picture</i> amount still
         pushes the Delay, the Phaser and the Plane's twist in from nought. While the amount is
         above nought a tag by each of those switches names what reaches it, <i>Picture &middot;
-        Motion</i> on the Delay and <i>Picture &middot; Memory</i> on the other two, on or off.
+        Motion</i> on the Delay and <i>Picture &middot; Memory</i> on the other two, on or off, with a
+        small bar beside it, drawn as the Picture section's are, of how far that read is pushing
+        the module now.
         The <i>EQ</i> is three bands, a low shelf, a mid band and a high shelf, their gains on
         its line and where each acts under its arrow; the same on both channels, so a line
         stays a line. It sits after the Plane and before the three the handles move. A module switched on starts from silence, not from what it held when it went
@@ -23130,11 +23136,33 @@ function fxPictureReads(fx) {
   const dests = FX_CONTROLS_PICTURED[fx] || [];
   const reads = STAGE_SOURCES.filter((source) =>
     STAGE_BUNDLES.some(([sourceId, destId]) => sourceId === source.id && dests.includes(destId)));
-  return reads.map((source) => source.label);
+  return reads;
 }
 function fxPictureTag(fx) {
   const reads = fxPictureReads(fx);
-  return reads.length && pictureHands[fxHand(fx)].amount > 0 ? "Picture \u00b7 " + reads.join(", ") : "";
+  return reads.length && pictureHands[fxHand(fx)].amount > 0 ? "Picture \u00b7 " + reads.map((r) => r.label).join(", ") : "";
+}
+/* And how far each read is pushing it now (17 Nov, the owner's): a bar per
+   read named, drawn as the Picture section's three are, filled to the push
+   on the module's control as a share of the most that read can push it -
+   the push is the read (held back with the loop, stagePush) at the hand's
+   depth, amount times the bundle's weight, held to the source's reach as
+   the matrix holds it, and the most is the weight, which is the reach
+   (STAGE_BUNDLES says why). So a full bar is the read at its top with the
+   Amount at 100. A bundle's weight onto two of the module's controls would
+   count once, the dearer; none has two. */
+function fxPictureShares(fx) {
+  const dests = FX_CONTROLS_PICTURED[fx] || [], amount = pictureHands[fxHand(fx)].amount / 100;
+  return fxPictureReads(fx).map((read) => {
+    const source = MOD_SOURCES.get(read.id);
+    let share = 0;
+    for (const [sourceId, destId, weight] of STAGE_BUNDLES) {
+      if (sourceId !== read.id || !dests.includes(destId) || !source) continue;
+      const push = Math.abs(clampLoop(source.value() * routingAmount(source, amount * weight)));
+      share = Math.max(share, Math.min(1, push / weight));
+    }
+    return { key: read.key, label: read.label, share };
+  });
 }
 function fxSummary(fx) {
   if (!fxOn(fx)) return "Off";
@@ -23242,7 +23270,21 @@ function paintRack() {
     const sum = module.querySelector(".fx-sum"), said = fxSummary(fx);
     if (sum.textContent !== said) sum.textContent = said;
     const tag = module.querySelector(".fx-picture"), named = fxPictureTag(fx);
-    if (tag && tag.textContent !== named) { tag.textContent = named; tag.hidden = !named; }
+    if (tag) {
+      const name = tag.querySelector(".fx-picture-name"), bars = tag.querySelector(".picture-reads");
+      if (name.textContent !== named) name.textContent = named;
+      if (tag.hidden !== !named) tag.hidden = !named;
+      if (named) {
+        const shares = fxPictureShares(fx);
+        if (bars.children.length !== shares.length) {
+          bars.replaceChildren(...shares.map((r) => Object.assign(document.createElement("i"), { title: r.label })));
+        }
+        shares.forEach((r, k) => { bars.children[k].dataset.read = r.key; bars.children[k].style.setProperty("--v", r.share.toFixed(3)); });
+        if ((el.pictureReads.dataset.held === "1") !== (bars.dataset.held === "1")) {
+          if (el.pictureReads.dataset.held === "1") bars.dataset.held = "1"; else delete bars.dataset.held;
+        }
+      }
+    }
   }
 }
 document.querySelectorAll(".fx-on[data-fx-on]").forEach((pill) => pill.addEventListener("click", () => switchFx(pill.dataset.fxOn)));
@@ -24579,7 +24621,7 @@ function openGroupDetail(group, anchor) {
 const CONTROL_WORDS = {
   /* Written by web/tools/write_words.py from web/docs/what-each-control-says.md:
      edit the doc and run it, not this. */
-  "fx-switch": ["A rack module's switch", "Takes the Mix to nought and keeps it; on puts it back, or its start. Its tag, Picture · Memory or Motion, is what the Picture moves, on or off."],
+  "fx-switch": ["A rack module's switch", "Takes the Mix to nought and keeps it; on puts it back, or its start. Its tag, Picture · Memory or Motion, and bar show what the Picture moves now."],
   "fx-arrow": ["A rack module's arrow", "Opens the rest of this module under it, one module at a time."],
   "fx-handle": ["A rack module's handle", "Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last."],
   "mod-card": ["A modulation card", "Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on."],

@@ -477,17 +477,39 @@ with sync_playwright() as pw:
         el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
         for (const n of [48, 55, 64, 71]) midiBytes(new Uint8Array([0x90, n, 100]));
         const seen = Object.fromEntries(fxs.map((fx) => [fx, new Set()]));
+        const bars = [];
         for (let k = 0; k < 4; k++) { await wait(500); for (const fx of fxs) seen[fx].add(tag(fx)); }
+        // The meters: painted now and read at once, beside the reads the core
+        // serves (instrumentFace().stage), so both are of the same moment.
+        for (let k = 0; k < 12; k++) {
+          await wait(250);
+          paintRack();
+          const face = instrumentFace();
+          for (const [fx, key] of [['phaser', 'memory'], ['plane', 'memory'], ['delay', 'motion']]) {
+            const tagged = document.querySelector('[data-fx-picture="' + fx + '"]');
+            const i = tagged.querySelector('.picture-reads i');
+            bars.push({ fx, key, drawn: i && i.offsetWidth > 0 ? Number(i.style.getPropertyValue('--v')) : null,
+                        read: i ? i.dataset.read : null,
+                        served: face ? Math.min(1, face.stage[key] * face.stage.hold * amount / 100) : null });
+          }
+        }
+        const shown = document.querySelectorAll('.fx-picture:not([hidden]) .picture-reads i').length;
         for (const n of [48, 55, 64, 71]) midiBytes(new Uint8Array([0x80, n, 0]));
         await wait(200);
-        return Object.fromEntries(fxs.map((fx) => [fx, [...seen[fx]].join(' | ')]));
+        return Object.assign(Object.fromEntries(fxs.map((fx) => [fx, [...seen[fx]].join(' | ')])), { bars, shown });
       };
       const off = await run(100, {}), on = await run(100, { delayMix: 40, phaserMix: 30 }), none = await run(0, {});
       const line = document.querySelector('[data-fx-sum="delay"]').textContent;
       restore({}); await wait(300);
       return { off, on, none, line };
     }""")
-    print("    %s" % tags)
+    for k in ("off", "on", "none"):
+        tags[k + "Bars"], tags[k + "Shown"] = tags[k].pop("bars"), tags[k].pop("shown")
+    print("    %s" % {k: v for k, v in tags.items() if not k.endswith("Bars")})
+    bars = tags["offBars"]
+    worst = max((abs(b["drawn"] - b["served"]) for b in bars if b["drawn"] is not None and b["served"] is not None), default=None)
+    most = max((b["drawn"] or 0) for b in bars)
+    print("    meters at 100: most %.3f, furthest from the core's served read at that depth %s" % (most, worst))
     want = {"plane": "Picture · Memory", "eq": "", "phaser": "Picture · Memory", "chorus": "", "delay": "Picture · Motion", "reverb": ""}
     check("at Amount 100, every module switched off: Memory by the Phaser and the Plane, Motion by the Delay, none elsewhere",
           tags["off"] == want, str(tags["off"]))
@@ -496,6 +518,18 @@ with sync_playwright() as pw:
     check("null: at Amount nought no module has a tag", all(v == "" for v in tags["none"].values()), str(tags["none"]))
     check("and the line beside it still says what the module does: Off for a delay switched off", tags["line"] == "Off",
           tags["line"])
+    check("each tag carries a bar for its read, Memory on the Phaser and the Plane and Motion on the Delay",
+          all(b["drawn"] is not None and b["read"] == b["key"] for b in bars), str(bars[:3]))
+    check("on a moving figure at Amount 100 a bar reads above nought", most > 0.05, "%.3f" % most)
+    check("and each bar is the push the core serves for its read at the hand's depth, within 0.05",
+          worst is not None and worst < 0.05, str(worst))
+    # The null of the last: the same bars against the push at half the depth,
+    # an Amount of 50, are told apart wherever the read is up at all.
+    halved = [abs(b["drawn"] - b["served"] / 2) for b in bars if b["served"] and b["served"] > 0.12]
+    null_ok = bool(halved) and max(halved) >= 0.05
+    check("null: against the push at half the depth the same comparison goes red", null_ok, str(halved[:4]))
+    check("null: at Amount nought there is no tag and no bar", tags["noneShown"] == 0 and tags["offShown"] == 3,
+          "%d at nought, %d at 100" % (tags["noneShown"], tags["offShown"]))
 
     p.evaluate("() => { setBenchTab('space'); openFx('plane', true); }"); p.wait_for_timeout(200)
     os.makedirs(os.path.join(HERE, "shots"), exist_ok=True)
