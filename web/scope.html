@@ -19928,10 +19928,28 @@ el.presetCopy.addEventListener("click", () => {
 /* Paste: the clipboard's code if the browser will hand it over, or else what
    is in the field - a plugin's window and a page without permission both
    refuse, and a code pasted into the field by hand is the way there. */
+/* A code that is not one this page can load says so and changes nothing
+   (the outside review, 17 Nov): the core's codec throws on a code that
+   decodes to a number or true ("NQ" is 5), and hands back an array for "W10",
+   which restored as an empty setup - every control to its default, and
+   Loaded. A code from a newer page (the testing site's) is refused rather
+   than half read: its new fields would be dropped and any whose meaning
+   changed read the old way, which is what the version is there to stop. */
 function loadCode(text) {
-  const setup = decodeSetup(String(text || "").trim());
-  if (setup === null) { sayPreset("That code could not be read.", "warn"); return; }
-  el.presetCode.value = String(text).trim();
+  const code = String(text || "").trim();
+  let setup = null;
+  try { setup = decodeSetup(code); } catch (error) { setup = null; }
+  if (setup === null || typeof setup !== "object" || Array.isArray(setup)) {
+    sayPreset("That code could not be read: it is not a setup.", "warn");
+    return;
+  }
+  const version = Number(setup.v);
+  if (Number.isFinite(version) && version > SETUP_VERSION) {
+    sayPreset("That code is from a newer page (setup version " + version + "; this one reads up to "
+      + SETUP_VERSION + "), so it is not loaded: open it on the page it came from.", "warn");
+    return;
+  }
+  el.presetCode.value = code;
   hostQuietly(() => restore(setup));
   loadedSetup = null;
   setPresetValue("");
