@@ -249,7 +249,6 @@ button { font-family: inherit; cursor: pointer; }
   display: flex; flex-wrap: wrap; align-items: flex-end;
   gap: 8px 16px; min-width: 0; flex: 0 1 auto;
 }
-.group.tight { flex: 0 0 auto; }
 .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 110px; }
 .field.fixed { flex: 0 0 auto; }
 .field-row { display: flex; align-items: center; gap: 10px; }
@@ -1074,7 +1073,7 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 .bench-main {
   flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 14px;
 }
-/* The cards, then search and the drawer's switch at the right of them. */
+/* The cards, then search at the right of them (the drawer's switch was there until F4). */
 .bench-head { flex: 0 0 auto; display: flex; align-items: stretch; gap: 14px; min-width: 0; }
 .bench-tools {
   flex: 0 0 170px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
@@ -2016,7 +2015,7 @@ button.mod-edit-name:hover { color: var(--blush-deep); }
      internally too, or the widest of them - Run, the three-way mode switch
      and Autoset - runs 28px past a 400px screen and takes the page's width
      with it. */
-  .group, .group.tight { flex: 1 1 100%; flex-wrap: wrap; }
+  .group { flex: 1 1 100%; flex-wrap: wrap; }
   .looking { margin-left: 0; }
   .aside { flex-direction: column; }
   .menu-panel {
@@ -22665,8 +22664,9 @@ el.layOver.addEventListener("click", () => setLayout(false));
 });
 
 /* --- the bench ---------------------------------------------------------------
-   Two views over one set of controls, and "views" is meant literally: the
-   groups are MOVED between the settings popover and the bench, never copied.
+   One face since G4 (there were two views, the Scope and the Bench, until
+   then) over one set of controls: the groups are MOVED to their homes -
+   Settings, the panels, the bench - never copied.
    Two copies of a control is two elements answering to one id, and the last
    time that happened in this page a whole readout line silently stopped
    displaying and stayed broken for weeks. Moving them also keeps every
@@ -23793,13 +23793,9 @@ function rowWords(row, label, section) {
   return (label + " " + section + " " + said).toLowerCase();
 }
 
-// Nothing skipped since F4 took the Sources tab's sections away; kept for the next.
-const SEARCH_SKIP = [];
-
 function searchEntries() {
   const out = [];
   for (const group of settingsGroups()) {
-    if (SEARCH_SKIP.includes(group.id)) continue;
     for (const row of group.querySelectorAll(".menu-row, label.check")) {
       // In the rack, the module's name after the section's (F5): Effects > Delay.
       const module = row.closest(".fx-module");
@@ -24754,14 +24750,6 @@ function sayInfo(node) {
     ? "Right-click for modulation and more." : "Right-click for more.";
   el.infoMore.hidden = false;
   delete el.infoLine.dataset.empty;
-}
-
-function clearInfo() {
-  infoAt = null;
-  el.infoLine.dataset.empty = "1";
-  el.infoName.textContent = el.infoValue.textContent = el.infoHand.textContent = "";
-  el.infoHost.hidden = el.infoHand.hidden = el.infoMore.hidden = el.infoMenu.hidden = true;
-  el.infoText.textContent = "Rest the pointer on a control to read what it does.";
 }
 
 function restOn(target) {
@@ -25941,9 +25929,11 @@ function paintRoutings(keepEditor) {
 
 /* --- the settings panel -------------------------------------------------------- */
 
-/* Two popovers, and each one closes the other. A click outside closes both -
-   but "outside" is any `.menu-wrap`, so without the explicit close a click on
-   one button while the other is open would leave both on screen. */
+/* Five popovers - Settings, the Panes, Scope & measure, the Picture's
+   Advanced and Perform - and each one that opens closes the others. A click
+   outside closes them all - but "outside" is any `.menu-wrap`, so without
+   the explicit closes a click on one button while another is open would
+   leave both on screen. (Two, Settings and the Panes, when this was written.) */
 function setMenuOpen(open) {
   el.menuPanel.hidden = !open;
   el.menuButton.setAttribute("aria-expanded", String(open));
@@ -26551,11 +26541,10 @@ document.addEventListener("keydown", (event) => {
 
 /* --- boot ---------------------------------------------------------------------- */
 
-// The panes are canvases inside flex boxes, so their size follows the window
-// rather than any attribute; a resize has to be noticed rather than assumed.
-const watchSize = new ResizeObserver(() => { /* the next frame refits */ });
-[el.trace, el.goni, el.spectrum].forEach((c) => watchSize.observe(c.parentElement));
-
+/* The panes are canvases inside flex boxes, so their size follows the window
+   rather than any attribute: each frame measures its canvas and refits it
+   (fitCanvas). An empty ResizeObserver on them stood here until the review
+   (17 Nov), observing for a callback that did nothing. */
 // The on-screen keys are the site's: the plugin's host has its own (setScreenKeys).
 if (IN_PLUGIN) el.keysOpenRow.hidden = true;
 registerLaneDests(state.channels.length);
