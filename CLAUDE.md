@@ -42,7 +42,7 @@ harness the wash fix had broken a day earlier).
 
 ```
 python3 web/extract.py && node --check web/tests/check.js   # syntax, seconds
-python3 web/tests/run.py                                    # everything, ~37 min
+python3 web/tests/run.py                                    # everything, ~40 min
 python3 web/tests/run.py lane patch                         # just those
 python3 web/tests/run.py -j1                                # one at a time, ~43 min
 python3 core/tests/core_tests.py                            # the core: against its recordings, the face, and its own numbers, ~25 min
