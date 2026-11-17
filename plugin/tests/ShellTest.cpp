@@ -4263,16 +4263,28 @@ int main() {
        to apply them), and its read-back wrote every parameter from it. In
        Logic that is a knob moved, or automation set, lost to a sample-rate
        change. Asked of a plugin prepared and played, and of one set before it
-       was ever prepared, as auval sets them. Then one block, and the
+       was ever prepared, as auval sets them, and - what auval does, and the
+       first fix missed (a4e937e: green here, the Mac's auval still red) - of
+       one handed a program or a state with no block since, as auval's preset
+       and class-info tests leave it: the program waiting won at the next
+       prepare over the parameters set after it. Then one block, and the
        instrument's sliders must be where the parameters are, so the setup
        stays in step. The null: a state handed over after the parameters were
        set still wins, as a project's state must. */
     const auto aside = [](float v01) { return v01 < 0.5f ? 0.8f : 0.2f; };
-    const auto sequence = [&](bool preparedFirst) {
+    enum class Before { prepared, nothing, program, state };
+    const auto sequence = [&](Before before) {
       ScopeProcessor p;
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
-      if (preparedFirst) { p.prepareToPlay(rate, block); buf.clear(); p.processBlock(buf, m); }
+      if (before != Before::nothing) { p.prepareToPlay(rate, block); buf.clear(); p.processBlock(buf, m); }
+      // Handed over and left waiting: no block runs before the parameters are set.
+      if (before == Before::program) p.setCurrentProgram(p.getNumPrograms() - 1);
+      if (before == Before::state) {
+        juce::MemoryBlock held;
+        p.getStateInformation(held);
+        p.setStateInformation(held.getData(), static_cast<int>(held.getSize()));
+      }
       std::array<float, ScopeProcessor::kKnobs.size()> want {};
       for (std::size_t i = 0; i < want.size(); ++i) {
         auto* k = p.knob(i);
@@ -4294,9 +4306,12 @@ int main() {
       }
       return std::make_pair(lost, unfollowed);
     };
-    for (const bool first : { true, false }) {
-      const auto [lost, unfollowed] = sequence(first);
-      check(std::string("every host parameter set ") + (first ? "on a prepared plugin" : "before the plugin was prepared")
+    for (const auto [before, said] : { std::pair { Before::prepared, "on a prepared plugin" },
+                                       std::pair { Before::nothing, "before the plugin was prepared" },
+                                       std::pair { Before::program, "after a program was chosen, with no block since" },
+                                       std::pair { Before::state, "after a state was handed over, with no block since" } }) {
+      const auto [lost, unfollowed] = sequence(before);
+      check(std::string("every host parameter set ") + said
                 + " keeps its value through prepareToPlay, reset and prepareToPlay again (auval), and its slider follows",
             lost.empty() && unfollowed.empty(), "lost: " + lost + "; sliders not there: " + unfollowed);
     }

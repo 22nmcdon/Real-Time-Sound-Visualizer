@@ -41,16 +41,22 @@ ScopeProcessor::ScopeProcessor()
      from this thread on through the audio's own changes, so a gesture's end
      could reach the host before its last value. */
   // A setup loaded: the parameters read back from the panel, so the host shows what it set.
-  instrument_.hooks.loaded = [this] { readBack(keepHostMoves_); };
+  instrument_.hooks.loaded = [this] { readBack(keep_); };
 }
 
-void ScopeProcessor::readBack(bool unmovedOnly) {
+void ScopeProcessor::readBack(Keep keep) {
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
-    /* One the host has moved since it was last applied keeps the host's
-       value, to be applied below. One the page has just set is not the
-       host's, and reads back like any other. */
+    /* One the host has moved keeps the host's value, and is applied to its
+       slider by the next block as any host move is (applied_ made NaN, so
+       that block cannot take it for one already applied). Moved since it was
+       last applied, or - over a state or program handed over - since that
+       was handed over, which is the host's later word. One the page has just
+       set is not the host's, and reads back like any other. */
     const float now = knobs_[i]->get();
-    if (unmovedOnly && now != applied_[i] && now != pageSet_[i].load()) continue;
+    const bool hosts = keep == Keep::sinceApplied ? now != applied_[i] && now != pageSet_[i].load()
+                     : keep == Keep::sinceHandOver ? now != handedTaken_[i]
+                     : false;
+    if (hosts) { applied_[i] = std::numeric_limits<float>::quiet_NaN(); continue; }
     const auto v = static_cast<float>(instrument_.slider(kKnobs[i].slider));
     knobs_[i]->setValueNotifyingHost(knobs_[i]->convertTo0to1(v));
     applied_[i] = knobs_[i]->get();
@@ -282,6 +288,12 @@ void ScopeProcessor::setCurrentProgram(int index) {
   scope::warmCycles(setup);
   const juce::SpinLock::ScopedLockType lock(stateLock_);
   pending_ = setup;
+  handOver();
+}
+
+// The parameters as a state or program is handed over: what the host sets after this is its later word (readBack).
+void ScopeProcessor::handOver() {
+  for (std::size_t i = 0; i < kKnobs.size(); ++i) handedOver_[i] = knobs_[i]->get();
 }
 
 const juce::String ScopeProcessor::getProgramName(int index) {
@@ -319,6 +331,7 @@ void ScopeProcessor::setStateInformation(const void* data, int size) {
   scope::warmCycles(setup);  // here rather than as the audio thread loads it
   const juce::SpinLock::ScopedLockType lock(stateLock_);
   pending_ = std::move(setup);
+  handOver();
 }
 
 bool ScopeProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -361,19 +374,24 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
       const auto decoded = scope::decodeSetup(instrument_.stateCode());
       if (decoded.kind == scope::DecodedSetup::Kind::Read) current = decoded.setup;
     }
-    /* A parameter the host has set since it was last applied keeps the
-       host's value through the load, and reaches the instrument with the
-       first block, as any host move does (auval, 17 Nov). The setup loaded
-       here has never been given it - no block has run since it was set - so
-       reading every parameter back from it put each one the host had set
-       back to the setup's, and auval failed "parameters retain value across
-       reset and initialization"; in Logic, a knob moved or automation set was
-       lost to a change of rate. A state handed over wins over them all, as a
-       project reopened must, so with one waiting every parameter reads back. */
-    keepHostMoves_ = !pending_;
+    /* A parameter the host has set keeps the host's value through the load,
+       and reaches the instrument with the first block, as any host move does
+       (auval, 17 Nov). The setup loaded here has never been given it - no
+       block has run since it was set - so reading every parameter back from
+       it put each one the host had set back to the setup's, and auval failed
+       "parameters retain value across reset and initialization"; in Logic, a
+       knob moved or automation set was lost to a change of rate. Set since
+       it was last applied; or, with a state or program waiting, since that
+       was handed over: the state wins over what the host set before it, as
+       a project reopened must, and not over what it set after. That second
+       half was the first fix's miss (a4e937e): auval chooses each factory
+       preset, with no block after, before it sets the parameters, and the
+       program left waiting won over them. */
+    if (pending_) handedTaken_ = handedOver_;
+    keep_ = pending_ ? Keep::sinceHandOver : Keep::sinceApplied;
     instrument_.prepare(sampleRate, samplesPerBlock, pending_ ? *pending_ : current ? *current : written ? *written
                         : preset ? preset->setup : scope::baseSetup());
-    keepHostMoves_ = false;
+    keep_ = Keep::none;
     pending_.reset();
   }
   tail_.store(instrument_.tailSeconds());
@@ -401,9 +419,14 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   std::optional<scope::Json> arrived;
   {
     const juce::SpinLock::ScopedTryLockType lock(stateLock_);
-    if (lock.isLocked() && pending_) { arrived = std::move(pending_); pending_.reset(); }
+    if (lock.isLocked() && pending_) { arrived = std::move(pending_); pending_.reset(); handedTaken_ = handedOver_; }
   }
-  if (arrived) { instrument_.load(*arrived, true); latencyIn_ = kLatencyAfter; }
+  if (arrived) {
+    keep_ = Keep::sinceHandOver;
+    instrument_.load(*arrived, true);
+    keep_ = Keep::none;
+    latencyIn_ = kLatencyAfter;
+  }
   takePage();
   // The host's transport, where it gives one.
   std::optional<scope::Instrument::Transport> transport;
@@ -420,7 +443,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
      the layers going off: the sliders a layer has now show that layer, so
      their parameters read back, or the host would show A's cutoff while its
      next move wrote B's. */
-  if (instrument_.panelLayer() != panelLayer_) readBack(true);
+  if (instrument_.panelLayer() != panelLayer_) readBack(Keep::sinceApplied);
   // Each parameter the host has moved since the last block, to its slider.
   moved_.clear();
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {

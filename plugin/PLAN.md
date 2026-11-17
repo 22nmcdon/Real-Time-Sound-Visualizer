@@ -2679,16 +2679,26 @@ different number and move only when a parameter arrives.
   it, and the setup had never been given the host's values, which reach it
   only with a block. In Logic that was a knob moved or automation set lost to
   a change of rate or device. Now a load in `prepareToPlay` with no state
-  waiting reads back only the parameters the host has not moved
-  (`readBack(true)`, `keepHostMoves_`), and the first block applies the rest
-  as any host move; a state or program handed over still wins over all of
-  them. `applied_` starts at each parameter's default, so a parameter set
-  before the first prepare reads as the host's. Linux never showed it: no
-  Linux host or test re-prepared with a parameter set and no block between.
-  The shell test runs auval's sequence on a plugin prepared and played and
-  on one never prepared (both red before, every parameter lost), requires
-  the sliders to follow after one block, and as its null a state handed over
-  after the parameters were set still winning.
+  waiting reads back only the parameters the host has moved since they were
+  last applied, and the first block applies the rest as any host move. The
+  first fix (a4e937e) stopped there, was green here and red on the Mac
+  again: auval chooses each factory preset (`setCurrentProgram`) with no
+  block after, so a program was still waiting at the re-initialisation, and
+  "a state waiting wins over everything" threw the parameters set after it
+  away. So a state or program handed over now records the parameters as
+  they stood (`handOver`), and its load keeps every parameter the host has
+  moved since - its later word - and reads back the rest (`readBack`,
+  `Keep::sinceHandOver`); one set before the hand-over is the state's.
+  `applied_` starts at each parameter's default, so a parameter set before
+  the first prepare reads as the host's. Linux never showed it: no Linux
+  host or test re-prepared with a parameter set and no block between. The
+  shell test runs auval's sequence (set, prepare, reset, release, prepare)
+  on a plugin prepared and played, on one never prepared, on one with a
+  program chosen and on one with a state handed over and no block since -
+  the first two red before a4e937e, the last two red on it - requires the
+  sliders to follow after one block, and as its null a state handed over
+  after the parameters were set still winning (seen red when prepare kept
+  the host's values always).
 
 - **A comparison that skipped NaN called NaN and a number the same.**
   `worst` in the parity harness took the largest difference with Python's

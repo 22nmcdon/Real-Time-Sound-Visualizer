@@ -72,7 +72,7 @@ grep -c '  PASS  ' shell-mac.log; grep '  FAIL  ' shell-mac.log
 No xvfb on a Mac: its face checks open a real window on the desktop for a
 few seconds (leave the Mac unlocked). It ends with "the shell plays, serves
 the page, and hands it the picture" or FAILED. On Linux under `xvfb-run -a`
-with the auval fix it was 216 checks passed and none failed; a check that passes
+with the auval fix it was 218 checks passed and none failed; a check that passes
 there and fails here is this weekend's real finding.
 
 ## 4. Install
