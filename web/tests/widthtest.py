@@ -204,7 +204,10 @@ with sync_playwright() as pw:
     where = p.evaluate("""() => {
       const row = el.stereoWidth.closest('.menu-row');
       return { picture: !!row.closest('#pictureBar'), afterOutput: el.output.closest('.menu-row').nextElementSibling === row,
-               meterAfter: row.nextElementSibling === el.levelMeter, knob: row.classList.contains('knob-row'),
+               // Past the sound's own Width and the switch since 16 Nov, the Width's own cells.
+               meterAfter: (() => { const ids = []; let n = el.stereoWidth.closest('.menu-row').nextElementSibling;
+                 while (n && n !== el.levelMeter) { ids.push(n.id); n = n.nextElementSibling; }
+                 return n === el.levelMeter && ids.join() === 'soundWidthRow,widthToRow'; })(), knob: row.classList.contains('knob-row'),
                host: row.classList.contains('host-param'), dest: row.dataset.modDest || null,
                hand: Object.values(HAND_SECTIONS).some((s) => s.controls.includes('stereoWidth')),
                reading: el.stereoWidthValue.textContent, ampPicture: !!el.amp.closest('#pictureBar') };
