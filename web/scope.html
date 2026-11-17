@@ -6017,8 +6017,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <b>Ctrl Z</b> undo and <b>Ctrl Shift Z</b> or <b>Ctrl Y</b> redo (<b>&#8984;</b> on a Mac)
         &middot; <b>M</b> the keys on the screen, open and shut. With the on-screen keys open, the letter rows play notes instead: <b>A</b> to
         <b>'</b> and <b>W</b> to <b>P</b>, <b>Z</b> <b>X</b> octave, and <b>Space</b> held is the
-        sustain pedal. While a menu has the focus its keys are the menu's; one chosen from with the
-        pointer gives them back, and a note let go while a menu was open ends as it closes.</span></li>
+        sustain pedal, whatever has the focus but a field you type into; a menu with the focus
+        keeps its arrows. With the keys shut, a focused menu keeps its letters too, and a focused
+        knob or handle its arrows; a key a control or menu has used is never a shortcut as well.
+        A note let go while a menu was open ends as it closes.</span></li>
     </ul>
   </div>
 </dialog>
@@ -18146,14 +18148,41 @@ for (const type of ["change", "input"]) {
 }
 window.addEventListener("focus", screenRecheck);
 
-/* Typing is looser than the shortcut handler's rule, on purpose. That rule
-   stands down for any focused INPUT, and after touching Latch or Velocity the
-   focus is on one - so typing would stop playing for no reason anyone could
-   see. Only fields that take text are left alone here. */
+/* Who has the keyboard: one rule for every handler that asks (the outside
+   review, 17 Nov). Until then there were four, three of which took any
+   focused INPUT for a field being typed into - and turning a knob focuses
+   its range input, so after a turn Ctrl+Z, S, A, the digits and / did
+   nothing until something else was clicked. A field that takes text keeps
+   every key; a menu (SELECT) does not take text, and with the on-screen keys
+   open the note letters reach the keys over it (it keeps its arrows), where
+   it used to swallow them and S picked Square off the Shape menu. */
 function takesText(target) {
   if (!target) return false;
-  if (target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable) return true;
-  return target.tagName === "INPUT" && !/^(checkbox|radio|range|button|submit|reset)$/.test(target.type);
+  if (target.tagName === "TEXTAREA" || target.isContentEditable) return true;
+  return target.tagName === "INPUT" && !/^(checkbox|radio|range|button|submit|reset|color)$/.test(target.type);
+}
+
+/* The keys a focused widget acts on itself, so a shortcut must leave them:
+   a menu's arrows and type-ahead, a range's arrows, a button's Space, and the
+   arrows and Space of anything that says it is a slider, a menu item, an
+   option or a tab (the envelope's handles, the right-click menu, the rack's
+   handles). Asked as well as event.defaultPrevented, which catches a handler
+   that has used the key, because a native widget's own use of it (a range
+   stepping, a menu choosing) prevents nothing. */
+const WIDGET_ROLES = /^(slider|spinbutton|menuitem|menuitemcheckbox|menuitemradio|option|tab|radio|switch|checkbox|button|listbox|menu|tablist)$/;
+function widgetOwnsKey(target, event) {
+  if (!target || !target.matches || target === document.body) return false;
+  const key = event.key;
+  const arrow = /^Arrow/.test(key) || key === "Home" || key === "End" || key === "PageUp" || key === "PageDown";
+  const press = key === " " || key === "Spacebar" || key === "Enter";
+  if (target.tagName === "SELECT") return arrow || press || key.length === 1;
+  if (target.tagName === "INPUT") return press || (arrow && /^(range|radio|number)$/.test(target.type));
+  const role = target.getAttribute("role") || "";
+  if (WIDGET_ROLES.test(role) || target.closest('[role="menu"], [role="listbox"], [role="tablist"], [role="radiogroup"]')) {
+    return arrow || press;
+  }
+  if (/^(BUTTON|SUMMARY|A)$/.test(target.tagName)) return press || (arrow && target.matches("[data-fx-move]"));
+  return false;
 }
 
 /* Captured at the window, ahead of the shortcut keys, and that is a decision
@@ -20050,7 +20079,7 @@ el.undoButton.addEventListener("click", () => undoStep(true));
 el.redoButton.addEventListener("click", () => undoStep(false));
 // Ctrl or Cmd with Z, with Shift to redo, or Y: not while typing, where the field has its own.
 document.addEventListener("keydown", (event) => {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey || typingInto(event.target)) return;
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || takesText(event.target)) return;
   const key = event.key.toLowerCase();
   if (key === "z") { event.preventDefault(); undoStep(!event.shiftKey); }
   else if (key === "y") { event.preventDefault(); undoStep(false); }
@@ -24557,9 +24586,9 @@ function openInfoCard(node) {
 el.infoMore.addEventListener("click", () => openInfoCard());
 // ? opens the card for the control described, while the window has the keyboard.
 document.addEventListener("keydown", (event) => {
-  if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey) return;
-  const t = event.target;
-  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA)$/.test(t.tagName) && !/^(range|checkbox|radio|button)$/.test(t.type))) return;
+  if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey || event.defaultPrevented) return;
+  // Over the help, ? is the help's own key, which shuts it.
+  if (takesText(event.target) || el.helpDialog.open) return;
   if (!infoAt) return;
   event.preventDefault();
   openInfoCard();
@@ -25098,7 +25127,7 @@ function openControlMenu(control) {
 document.addEventListener("contextmenu", (event) => {
   const t = event.target;
   // A text box keeps the browser's own, for Paste.
-  if (t && t.matches && (t.isContentEditable || t.matches('textarea, input[type="text"], input[type="search"], input[type="number"], input:not([type])'))) return;
+  if (takesText(t)) return;
   event.preventDefault();
   const control = menuControl(t);
   // The long press or the key already opened it; the event that follows is the same press.
@@ -25774,7 +25803,7 @@ document.addEventListener("keydown", (event) => {
   // Space is the transport key everywhere a musician meets one. Left alone
   // where a space is a character, and where a control would take it as a
   // press of itself.
-  if (event.code === "Space" && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(event.target.tagName)) {
+  if (event.code === "Space" && !event.defaultPrevented && !takesText(event.target) && !widgetOwnsKey(event.target, event)) {
     event.preventDefault();
     if (!state.running && state.mode === "single") state.armed = true;
     setRunning(!state.running);
@@ -26196,14 +26225,12 @@ el.photoReticle.addEventListener("keydown", (event) => {
 
 /* --- keys ---------------------------------------------------------------------
    The transport keys a player would expect, and nothing that fires while
-   someone is typing into a field. */
-function typingInto(target) {
-  if (!target) return false;
-  return /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable === true;
-}
-
+   someone is typing into a field, or for a key a widget has already used:
+   until the review (17 Nov) arrowing through the right-click menu moved the
+   trigger level as well, and ? opened the info card and the help together. */
 document.addEventListener("keydown", (event) => {
-  if (typingInto(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (takesText(event.target) || widgetOwnsKey(event.target, event)) return;
   if (el.helpDialog.open && event.key !== "?" ) return;
   if (el.presetDialog.open) return;
 
