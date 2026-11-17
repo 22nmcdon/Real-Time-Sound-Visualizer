@@ -1,4 +1,5 @@
 <!doctype html>
+<html lang="en-GB">
 <meta charset="utf-8">
 <!-- A phone renders a page with no viewport meta at 980 CSS pixels and then
      scales it down, so every media query below the breakpoint stops matching
@@ -440,8 +441,11 @@ input[type="range"]:hover::-moz-range-thumb { background: var(--charcoal); }
   content: ""; position: absolute; left: 50%; top: 9%; width: 2px; height: 40%;
   margin-left: -1px; border-radius: 1px; background: var(--charcoal);
 }
-.knob-row:has(.knob-dial:focus-visible) .knob-face::before {
-  outline: 2px solid var(--blush-deep); outline-offset: 2px;
+/* On the face, not its ::before: that carries the mask that cuts the ring out
+   of a disc, and a mask clips its own element's outline, so a knob with the
+   keyboard's focus looked like one without it until the review (17 Nov). */
+.knob-row:has(.knob-dial:focus-visible) .knob-face {
+  outline: 2px solid var(--blush-deep); outline-offset: 2px; border-radius: 50%;
 }
 .knob-row:has(.knob-dial:disabled) .knob-face { opacity: 0.4; cursor: default; }
 /* What is on it (G5b of the-face-second-pass.md). One ring, three pixels, a
@@ -839,6 +843,9 @@ dialog[open] { display: flex; flex-direction: column; }
 .help-list span { display: block; font-size: 13.5px; }
 .help-list i { font-style: italic; color: var(--charcoal); }
 .help-list span b { display: inline; }
+/* The opening paragraphs name keys in their prose: the rule above that makes
+   an item's heading a block put each of them on a line of its own. */
+.help-list .help-lede b { display: inline; }
 .help-lede { color: var(--blush-deep); font-size: 14px; }
 
 /* Two columns once there is room, so a section of six entries does not make a
@@ -1675,7 +1682,10 @@ body[data-compact] .bench-body { row-gap: 10px; }
   padding: 6px 16px; background: none; border: 0; text-align: left; cursor: pointer;
   font-family: var(--sans); font-size: 13px; color: var(--charcoal);
 }
-.ctx-item:hover, .ctx-item:focus-visible { background: var(--cream); outline: none; }
+.ctx-item:hover, .ctx-item:focus-visible { background: var(--cream); }
+/* Cream on paper is about 1.05 to 1, which is no focus at all: the ring is
+   DESIGN.md's, inset so the menu's edge does not cut it. */
+.ctx-item:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: -2px; }
 .ctx-item .dot-sm { flex: 0 0 auto; background: var(--pip); }
 .ctx-item .ctx-plus { flex: 0 0 7px; color: var(--text-soft); }
 .ctx-item .ctx-side { margin-left: auto; color: var(--text-soft); font-variant-numeric: tabular-nums; }
@@ -2164,9 +2174,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <div class="menu-wrap perform-wrap">
         <button type="button" class="link-btn caps" id="performButton" aria-expanded="false"
                 aria-controls="performPanel">Perform</button>
-        <div class="menu-panel perform-panel" id="performPanel" hidden>
+        <div class="menu-panel perform-panel" id="performPanel" role="dialog" aria-modal="true" aria-labelledby="performName" hidden>
           <div class="measure-head">
-            <span class="measure-name">Perform</span>
+            <span class="measure-name" id="performName">Perform</span>
             <span class="menu-note">Set at the start and played over.</span>
             <button type="button" class="close-btn" id="performClose" aria-label="Close">&times;</button>
           </div>
@@ -2182,9 +2192,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <button type="button" class="link-btn caps" id="menuButton"
                 aria-expanded="false" aria-controls="menuPanel">Settings</button>
 
-        <div class="menu-panel settings-panel" id="menuPanel" hidden>
+        <div class="menu-panel settings-panel" id="menuPanel" role="dialog" aria-modal="true" aria-labelledby="settingsName" hidden>
           <div class="settings-head">
-            <span class="settings-name">Settings</span>
+            <span class="settings-name" id="settingsName">Settings</span>
             <span class="menu-note" id="settingsSub">Set once and left. The audio device is the site's; in the plugin, the host's.</span>
             <button type="button" class="link-btn caps" id="menuClose">Close</button>
           </div>
@@ -4194,9 +4204,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <span class="menu-wrap screen-measure">
         <button type="button" class="link-btn caps" id="measureButton" aria-expanded="false"
                 aria-controls="measurePanel">Scope &amp; measure</button>
-        <div class="menu-panel measure-panel" id="measurePanel" hidden>
+        <div class="menu-panel measure-panel" id="measurePanel" role="dialog" aria-modal="true" aria-labelledby="measureName" hidden>
           <div class="measure-head">
-            <span class="measure-name">Scope &amp; measure</span>
+            <span class="measure-name" id="measureName">Scope &amp; measure</span>
             <span class="menu-note">For reading the screen. Two rows reach the speakers, and say so.</span>
             <button type="button" class="close-btn" id="measureClose" aria-label="Close">&times;</button>
           </div>
@@ -4321,9 +4331,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <span class="menu-wrap picture-more">
         <button type="button" class="link-btn caps" id="pictureMore" aria-expanded="false"
                 aria-controls="picturePanel">Advanced</button>
-        <div class="menu-panel picture-panel" id="picturePanel" hidden>
+        <div class="menu-panel picture-panel" id="picturePanel" role="dialog" aria-modal="true" aria-labelledby="pictureName" hidden>
           <div class="measure-head">
-            <span class="measure-name">Picture</span>
+            <span class="measure-name" id="pictureName">Picture</span>
             <span class="menu-note">What Scan reads and what feeds it; and how the screen looks.</span>
             <button type="button" class="close-btn" id="pictureClose" aria-label="Close">&times;</button>
           </div>
@@ -4346,9 +4356,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             <button type="button" class="link-btn caps" id="panesButton"
                     aria-expanded="false" aria-controls="panesPanel">Panes</button>
 
-            <div class="menu-panel" id="panesPanel" hidden>
+            <div class="menu-panel" id="panesPanel" role="dialog" aria-modal="true" aria-labelledby="panesName" hidden>
               <div class="menu-head">
-                <span class="eyebrow">Panes</span>
+                <span class="eyebrow" id="panesName">Panes</span>
                 <button type="button" class="close-btn" id="panesClose" aria-label="Close">&times;</button>
               </div>
               <div class="menu-group">
@@ -4537,7 +4547,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       </div>
       <!-- A modulation card's editor (F4), over the tabs - their cards too since
            G5a, as the second pass draws it - and beside the screen. -->
-        <div class="mod-editor" id="modEditor" role="dialog" aria-labelledby="srcDetailTitle" hidden>
+        <div class="mod-editor" id="modEditor" role="dialog" aria-modal="true" aria-labelledby="srcDetailTitle" hidden>
           <div class="mod-editor-head">
             <span class="dot-sm" id="srcDetailDot"></span>
             <span class="mod-editor-name" id="srcDetailTitle">LFO 1</span>
@@ -4618,7 +4628,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
              source or by destination, a switch per source, and the fade, which
              moved here from Settings (data-home="routings"). Not called Settings,
              which the header has. -->
-        <div class="mod-editor routings-panel" id="routingsPanel" role="dialog" aria-labelledby="routingsTitle" hidden>
+        <div class="mod-editor routings-panel" id="routingsPanel" role="dialog" aria-modal="true" aria-labelledby="routingsTitle" hidden>
           <div class="routings-head">
             <span class="mod-editor-name" id="routingsTitle">Routings</span>
             <p class="src-desc">Everything the cards are on, in one place</p>
@@ -4684,7 +4694,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
   <div class="keys-bed" id="keysBed"></div>
 </section>
 
-<dialog id="presetDialog" aria-labelledby="presetTitle">
+<dialog id="presetDialog" aria-modal="true" aria-labelledby="presetTitle">
   <div class="preset-head">
     <div class="dialog-title" id="presetTitle">Presets</div>
     <span class="preset-sub">Sorted by what the loop does with a held chord</span>
@@ -4728,11 +4738,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
   </div>
 </dialog>
 
-<dialog id="helpDialog">
+<dialog id="helpDialog" aria-modal="true" aria-labelledby="helpTitle">
   <div class="dialog-head">
     <div>
       <div class="bar-label">Oscilloscope</div>
-      <div class="dialog-title">How this works</div>
+      <div class="dialog-title" id="helpTitle">How this works</div>
     </div>
     <button type="button" class="close-btn" id="helpClose" aria-label="Close">&times;</button>
   </div>
@@ -23927,7 +23937,7 @@ function beginChipDrag(id, chip, event) {
    screen already follow. A second copy of a control is two elements answering
    to one id, and that has cost this page a whole readout line before.        */
 
-let overlay = null;
+let overlay = null, overlayCount = 0;
 
 function closeOverlay() {
   if (!overlay) return;
@@ -23993,8 +24003,13 @@ function openOverlay(anchor, title, sub, fill, opts) {
   back.className = "over-back";
   const node = document.createElement("div");
   node.className = "over" + (o.cls ? " " + o.cls : "");
-  if (o.role) node.setAttribute("role", o.role);
-  node.innerHTML = '<div class="over-head"><span class="over-title"></span>'
+  /* A dialog unless it says otherwise (the right-click menu is a menu), named
+     by its title, and modal: Tab is kept inside it (keepTabInside). */
+  const titleId = "overTitle" + (++overlayCount);
+  node.setAttribute("role", o.role || "dialog");
+  node.setAttribute("aria-labelledby", titleId);
+  if ((o.role || "dialog") === "dialog") node.setAttribute("aria-modal", "true");
+  node.innerHTML = '<div class="over-head"><span class="over-title" id="' + titleId + '"></span>'
     + '<span class="over-sub"></span>'
     + '<button type="button" class="over-close" aria-label="Close">×</button></div>'
     + '<div class="over-body"></div>';
@@ -24019,6 +24034,48 @@ function openOverlay(anchor, title, sub, fill, opts) {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && overlay) { event.preventDefault(); closeOverlay(); }
 });
+
+/* Tab kept inside what is open (the outside review, 17 Nov). Every overlay
+   says it is a modal dialog (or, the right-click menu, a menu), and a
+   screen reader takes that at its word, so Tab has to keep to it: from the
+   last stop to the first and back, and from anywhere outside to its first.
+   The browser does this for the two <dialog>s opened with showModal, but
+   lets the focus out to its own toolbar at the ends, so they are held here
+   as well. Topmost first: a <dialog> is in the top layer, an overlay is
+   opened from a panel, the Panes from the Picture's Advanced. A pointer can
+   still close any of them by pressing outside, as before. */
+function openSurface() {
+  if (el.helpDialog.open) return el.helpDialog;
+  if (el.presetDialog.open) return el.presetDialog;
+  if (overlay) return overlay.node;
+  for (const panel of [el.panesPanel, el.picturePanel, el.measurePanel, el.performPanel, el.menuPanel,
+                       el.routingsPanel, el.modEditor]) {
+    if (!panel.hidden && panel.getClientRects().length) return panel;
+  }
+  return null;
+}
+const TAB_STOPS = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+function tabStops(within) {
+  return Array.from(within.querySelectorAll(TAB_STOPS)).filter((node) =>
+    !node.disabled && node.tabIndex >= 0 && !node.closest("[hidden], [inert]")
+    && node.getClientRects().length && getComputedStyle(node).visibility !== "hidden");
+}
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab" || event.ctrlKey || event.metaKey || event.altKey || window.__noTrap) return;
+  const surface = openSurface();
+  if (!surface) return;
+  const stops = tabStops(surface);
+  if (!stops.length) return;
+  const at = stops.indexOf(document.activeElement);
+  let to = null;
+  if (!surface.contains(document.activeElement)) to = event.shiftKey ? stops[stops.length - 1] : stops[0];
+  else if (event.shiftKey && at <= 0) to = stops[stops.length - 1];
+  else if (!event.shiftKey && at === stops.length - 1) to = stops[0];
+  // A stop the list does not know (a focused element inside that is not a stop) goes by the browser.
+  if (!to) return;
+  event.preventDefault();
+  to.focus();
+}, true);
 
 /* --- a section's detail --------------------------------------------------------
    The prose and the handful of controls marked `data-more`. Prose by rule
