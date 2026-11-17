@@ -53,7 +53,8 @@ def recoded(**moved):
 # What the prototype's code comes back out as: the same, less the quarter turn's
 # switch, which went on 16 Nov (always on now, so a code's polyRound is read by
 # nothing and not written back).
-BACK_CODE = recoded(polyRound=None)
+# And stamped with the version it comes up to, 12 since the EQ's switch became a field (17 Nov).
+BACK_CODE = recoded(polyRound=None, v=12)
 
 
 def moved_code():

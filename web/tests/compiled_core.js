@@ -15,7 +15,12 @@
    `generatorSettings` and `storeGeneratorSetting`. Noise is seeded (`seed`),
    where the JavaScript core drew from Math.random. */
 function compiledGenerator(rate, slots, lfos, seed) {
-  return makeWasmCore(wasmModule(), rate, slots, lfos, seed || 1);
+  const core = makeWasmCore(wasmModule(), rate, slots, lfos, seed || 1);
+  /* At a Width of one, where these suites' checks were written and a lone
+     note is heard as drawn: the instrument opens at a half since 17 Nov (the
+     owner's), which widthtest.py holds, and a suite that wants another sets it. */
+  core.set("stereoWidth", 1); core.set("drawnWidth", 1);
+  return core;
 }
 
 function makeWasmCore(bytes, rate, slots, lfos, seed) {

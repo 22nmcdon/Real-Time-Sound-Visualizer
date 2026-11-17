@@ -258,6 +258,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | linkEq | EQ’s link | Whether the EQ is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 136 | - |
+| eqOn | EQ on | Whether the EQ is in: off, it is not there at all and keeps its curve; on, you hear the curve. Its switch, and the editor's, press it. | 134 | - |
 | eqThumb | The EQ’s curve | What the three bands do together, 20 Hz to 20 kHz; flat and grey while the EQ is off. Press it to shape the curve over the tabs. | 128 | - |
 | eqEditorOn | EQ on or off | Off, the EQ is not there at all and its curve is kept; on, you hear the curve, flat until you shape it. Moving a point switches it on. | 134 | - |
 | eqEditorClose | Close | Closes the EQ’s editor and brings the tab back. The curve stays as you left it. | 79 | - |

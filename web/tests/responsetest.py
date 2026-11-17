@@ -197,7 +197,7 @@ def decoded(code):
     return dict(zip(out[::2], out[1::2]))
 owner_read = decoded(OWNER)
 check("the owner's code, saved at 47 under version 10, reads as %s at version %s" % (owner_read["pictureAmount"], owner_read["v"]),
-      owner_read["pictureAmount"].startswith("75.2") and owner_read["v"].startswith("11"))
+      owner_read["pictureAmount"].startswith("75.2") and owner_read["v"].startswith("12"))
 import base64
 v11 = base64.b64encode(json.dumps({"v": 11, "pictureAmount": 47}).encode()).decode().rstrip("=")
 null("a code saved at version 11 is left at its 47 (%s)" % decoded(v11)["pictureAmount"],
