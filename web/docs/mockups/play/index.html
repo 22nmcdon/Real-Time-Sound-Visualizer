@@ -1,0 +1,2079 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play, three ways</title>
+<meta name="description" content="Three mockups of the oscilloscope's Play tab, for the owner to click: summary lines with editors, everything that applies on show, and one strip.">
+<!-- Not render-blocking, as the brand asks of every webfont: printed first,
+     promoted once loaded, so a reader offline gets the fallback faces. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+/* Two sets of tokens. The instrument's are DESIGN.md's, hex for hex, and
+   never move: the instrument has one light, so the mockup of the face stays
+   in it whatever the reader's system says. The page's own (--pg-*) are the
+   paper around the mockups, and those follow the reader. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d;
+  --text: #3a332f; --text-soft: #6b615a; --line: #e4d9cc;
+  --blush: #d9a6a0; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --unresolved: #b6afa4;
+  --wash: rgba(217, 166, 160, 0.16); --wash-strong: rgba(217, 166, 160, 0.26);
+  --ch1: #241f1d; --ch2: #5c6488; --ch3: #4c4921; --ch4: #6f9169; --ch5: #72245e; --ch6: #a6552d;
+  /* The two hands' inks as the header draws them by default: the lower (A)
+     in the accent, the upper (B) in its X lane's ink. */
+  --hand-a: var(--blush-deep); --hand-b: var(--ch3);
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Georgia, serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --pg-bg: #faf6f0; --pg-sheet: #fffcf7; --pg-under: #f2ebe1; --pg-ink: #241f1d;
+  --pg-text: #3a332f; --pg-soft: #6b615a; --pg-line: #e4d9cc; --pg-accent: #c07f79;
+  --pg-accent-soft: #d9a6a0; --pg-good: #6f7f63; --pg-bad: #a4553f;
+  --pg-shadow: rgba(36, 31, 29, 0.08);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+    --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+    --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+    --pg-shadow: rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+  --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+  --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+  --pg-shadow: rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--pg-bg); color: var(--pg-text);
+  font-family: var(--sans); font-weight: 300; font-size: 16px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px; }
+
+/* ---- the page around the mockups ---- */
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--pg-accent); font-weight: 500; margin: 0; }
+h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 34px; line-height: 1.15; margin: 6px 0 8px; }
+.lede { font-family: var(--script); font-style: italic; font-size: 20px; line-height: 1.45; max-width: 62ch; margin: 0 0 6px; color: var(--pg-text); }
+.page p { max-width: 70ch; }
+.small { font-size: 13.5px; color: var(--pg-soft); }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.pg-btn {
+  background: none; border: 1px solid var(--pg-line); border-radius: 30px; padding: 5px 14px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; color: var(--pg-soft);
+}
+.pg-btn:hover { color: var(--pg-accent); border-color: var(--pg-accent-soft); }
+.pg-btn[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); border-color: var(--pg-ink); }
+.pg-switch { display: inline-flex; border: 1px solid var(--pg-line); border-radius: 30px; overflow: hidden; flex-wrap: wrap; }
+.pg-switch button { background: none; border: 0; padding: 6px 14px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; color: var(--pg-soft); }
+.pg-switch button:hover { color: var(--pg-accent); }
+.pg-switch button[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); }
+.layout-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--pg-line); margin: 22px 0 0; overflow-x: auto; }
+.layout-tabs button {
+  background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 16px 9px; text-align: left;
+  color: var(--pg-soft); min-width: 0; flex: 0 0 auto;
+}
+.layout-tabs button b { display: block; font-family: var(--serif); font-weight: 600; font-size: 18px; color: var(--pg-ink); line-height: 1.2; }
+.layout-tabs button span { font-size: 12.5px; }
+.layout-tabs button[aria-selected="true"] { border-bottom-color: var(--pg-accent); }
+.layout-tabs button[aria-selected="true"] b { color: var(--pg-accent); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 16px 0 12px; }
+.bar .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-soft); font-weight: 500; }
+.stage-wrap { width: 100%; overflow: hidden; }
+.stage { transform-origin: 0 0; }
+.fit-line { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; margin: 8px 0 0; color: var(--pg-soft); font-variant-numeric: tabular-nums; }
+.fit-line .ok { color: var(--pg-good); }
+.fit-line .over { color: var(--pg-bad); font-weight: 500; }
+.verdict { display: grid; grid-template-columns: 9.5em 1fr; gap: 4px 14px; margin: 18px 0 0; max-width: 940px; font-size: 15px; }
+.verdict dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-accent); font-weight: 500; padding-top: 4px; }
+.verdict dd { margin: 0; }
+@media (max-width: 560px) { .verdict { grid-template-columns: 1fr; } .verdict dd { margin-bottom: 8px; } }
+.what { margin: 6px 0 0; font-size: 15px; max-width: 80ch; }
+
+/* The playing keyboard, under the mockup, on the page's paper: it is how the
+   reader plays the mockup, not part of the face. */
+.player { margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--pg-line); background: var(--pg-sheet); border-radius: 1px; }
+.player-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.player-row + .player-row { margin-top: 10px; }
+.player .hint { font-size: 13px; color: var(--pg-soft); }
+.player kbd { font-family: var(--mono); font-size: 11.5px; border: 1px solid var(--pg-line); border-bottom-width: 2px; padding: 0 5px; border-radius: 1px; background: var(--pg-bg); }
+.pkeys { position: relative; height: 92px; width: 100%; user-select: none; -webkit-user-select: none; touch-action: none; margin-top: 10px; }
+.pkey { position: absolute; top: 0; border: 1px solid var(--pg-line); background: var(--paper); border-radius: 0 0 4px 4px; padding: 0; }
+.pkey.w { height: 100%; z-index: 1; }
+.pkey.b { height: 58%; background: var(--text); border-color: var(--charcoal); z-index: 2; }
+.pkey.on { background: var(--blush); }
+.pkey.on.hb { background: color-mix(in srgb, var(--hand-b) 55%, var(--paper)); }
+.pkey .kl { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text-soft); pointer-events: none; }
+.pkey.b .kl { color: var(--line); bottom: 3px; }
+.demos { display: flex; flex-wrap: wrap; gap: 6px; }
+.fit-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 940px; font-variant-numeric: tabular-nums; }
+.fit-table th, .fit-table td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--pg-line); vertical-align: top; }
+.fit-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--pg-soft); font-weight: 500; }
+.fit-table .ok { color: var(--pg-good); } .fit-table .over { color: var(--pg-bad); font-weight: 500; }
+.fit-table small { color: var(--pg-soft); }
+#allFit { overflow-x: auto; }
+
+/* ---- the face: the Play tab at the instrument's own size, in its one light ---- */
+.face {
+  position: relative; background: var(--cream); color: var(--text);
+  font-family: var(--sans); font-weight: 300; font-size: 14px; line-height: 1.4;
+  padding: 14px 16px 16px; border: 1px solid var(--line);
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06);
+  --colw: 254px; --gap: 38px; --bodyh: 556px; --knob: 36px;
+  width: calc(3 * var(--colw) + 2 * var(--gap) + 34px);
+}
+.face.compact { --colw: 224px; --gap: 22px; --bodyh: 452px; --knob: 30px; font-size: 13px; padding: 10px 12px 12px; width: calc(3 * var(--colw) + 2 * var(--gap) + 26px); }
+.face * { box-sizing: border-box; }
+.face .cards { display: flex; gap: 10px; margin-bottom: 14px; }
+.face .card { flex: 1 1 0; border: 1px solid var(--line); background: var(--cream-2); padding: 8px 12px 9px; min-width: 0; }
+.face .card.on { background: var(--paper); box-shadow: inset 0 3px 0 var(--blush-deep); }
+.face .card b { display: block; font-family: var(--serif); font-weight: 500; font-size: 19px; color: var(--charcoal); line-height: 1.3; }
+.face .card:nth-child(3) b { color: var(--blush-deep); }
+.face .card span { display: block; font-size: 11.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.face.compact .cards { margin-bottom: 10px; }
+.face.compact .card { padding: 5px 10px; }
+.face.compact .card b { font-size: 16px; }
+.face.compact .card span { display: none; }
+.face .body { position: relative; height: var(--bodyh); display: grid; grid-template-columns: repeat(3, var(--colw)); column-gap: var(--gap); align-content: start; }
+.face .body.banded { grid-template-rows: auto 1fr; }
+.face .col { min-width: 0; position: relative; }
+.face .col-in { min-width: 0; }
+.face .band { grid-column: 1 / -1; }
+/* What the layout frees in a column: drawn, so the owner sees it. */
+.face .free { border: 1px dashed var(--line); color: var(--unresolved); font-size: 11px; display: grid; place-items: center; text-align: center; margin-top: 4px; letter-spacing: 0.04em; }
+
+.face .group + .group { margin-top: 18px; }
+.face.compact .group + .group { margin-top: 13px; }
+.face .title {
+  display: flex; align-items: center; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em;
+  color: var(--blush-deep); border-bottom: 1px solid var(--line); padding: 0 0 6px; margin-bottom: 10px; font-weight: 400;
+}
+.face.compact .title { margin-bottom: 7px; padding-bottom: 4px; letter-spacing: 0.16em; gap: 6px; }
+.face.compact .title .link { letter-spacing: 0.08em; padding: 1px 5px; white-space: nowrap; }
+.face .title .dots { margin-left: auto; color: var(--text-soft); letter-spacing: 0.1em; font-size: 13px; line-height: 1; }
+.face .title .link { font-size: 8.5px; letter-spacing: 0.14em; color: var(--text-soft); border: 1px solid var(--line); border-radius: 20px; padding: 1px 7px; margin-left: auto; }
+.face .title .link + .dots { margin-left: 4px; }
+.face .sub { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-soft); margin: 12px 0 6px; display: flex; gap: 8px; align-items: baseline; }
+.face .sub:first-child { margin-top: 0; }
+.face .sub .q { text-transform: none; letter-spacing: 0; font-size: 11.5px; color: var(--unresolved); }
+.face.compact .sub { margin: 9px 0 4px; }
+.face .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; min-height: 26px; }
+.face .row:first-child { margin-top: 0; }
+.face.compact .row { margin-top: 5px; gap: 4px 8px; }
+.face .lab { font-size: 12.5px; color: var(--text-soft); flex: 0 0 96px; }
+.face.compact .lab { flex-basis: 74px; font-size: 12px; }
+.face .grow { flex: 1 1 100px; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.face select {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 1px; padding: 4px 6px;
+  font-family: var(--sans); font-size: 13px; color: var(--charcoal); max-width: 100%; min-width: 0; flex: 1 1 0;
+}
+.face.compact select { padding: 3px 4px; font-size: 12px; }
+.face .caps { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; }
+.face .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; align-self: center; max-width: 100%; }
+.face .switch button { background: none; border: none; padding: 6px 13px; color: var(--text-soft); white-space: nowrap; }
+.face .switch.tight button { padding: 5px 9px; }
+.face.compact .switch button { padding: 4px 9px; }
+.face.compact .switch.tight button { padding: 4px 6px; }
+.face .switch button:hover { color: var(--blush-deep); }
+.face .switch button[aria-checked="true"] { background: var(--charcoal); color: var(--cream); }
+.face .switch button:disabled { color: var(--unresolved); cursor: default; }
+.face .link-btn { background: none; border: none; border-bottom: 1px solid var(--blush); padding: 0 0 2px; color: var(--charcoal); }
+.face .link-btn:hover { color: var(--blush-deep); border-bottom-color: var(--blush-deep); }
+.face .link-btn[aria-pressed="true"] { color: var(--blush-deep); border-bottom: 2px solid var(--blush-deep); }
+.face .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; margin-top: 7px; }
+.face.compact .check { font-size: 12.5px; margin-top: 4px; }
+.face .check input { accent-color: var(--blush-deep); margin: 0; }
+.face .note { font-size: 12px; color: var(--text-soft); margin: 6px 0 0; line-height: 1.45; }
+.face .reading { font-size: 12.5px; color: var(--text-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.face .greyed { color: var(--unresolved); }
+.face input[type="range"] { -webkit-appearance: none; appearance: none; background: none; height: 14px; margin: 0; flex: 1 1 80px; min-width: 60px; max-width: 250px; }
+.face input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+.face input[type="range"]::-moz-range-track { height: 2px; background: var(--line); }
+.face input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--blush-deep); margin-top: -5.5px; border: 0; }
+.face input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--blush-deep); border: 0; }
+.face input[type="range"]:hover::-webkit-slider-thumb { background: var(--charcoal); }
+
+/* Knobs, drawn as the face draws them: setting, face, name, read down. */
+.face .knobs { display: flex; gap: 6px; justify-content: space-between; flex-wrap: nowrap; }
+.face .kn { display: grid; justify-items: center; gap: 3px; flex: 1 1 0; min-width: 0; }
+.face .kn .v { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.face .kn .n { font-size: 10px; color: var(--text-soft); white-space: nowrap; }
+.face .kn.off { opacity: 0.45; }
+.face .kface { --a: 90deg; width: var(--knob); height: var(--knob); border-radius: 50%; position: relative; display: grid; place-items: center;
+  background: conic-gradient(from 225deg, var(--blush-deep) 0 var(--a), var(--line) var(--a) 270deg, transparent 270deg);
+  -webkit-mask: radial-gradient(circle, var(--charcoal) 0 calc(50% - 6px), transparent calc(50% - 6px) calc(50% - 4px), var(--charcoal) calc(50% - 4px) calc(50% - 1px), transparent calc(50% - 1px));
+          mask: radial-gradient(circle, var(--charcoal) 0 calc(50% - 6px), transparent calc(50% - 6px) calc(50% - 4px), var(--charcoal) calc(50% - 4px) calc(50% - 1px), transparent calc(50% - 1px));
+}
+.face .kcap { position: absolute; inset: 25%; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1px var(--line); transform: rotate(calc(var(--a) - 135deg)); }
+.face .kcap::after { content: ""; position: absolute; left: 50%; top: 9%; width: 2px; height: 40%; margin-left: -1px; border-radius: 1px; background: var(--charcoal); }
+.face .knob-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.face .knob-row .lab { flex: 0 0 96px; }
+.face.compact .knob-row { margin-top: 5px; }
+.face.compact .knob-row .lab { flex-basis: 74px; }
+.face .hostdot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); margin-right: 5px; vertical-align: middle; }
+.face .env svg { display: block; width: 100%; height: 50px; }
+.face.compact .env svg { height: 38px; }
+
+/* A: one line per question. A button the width of the column, so the whole
+   line is the target; the label where the face's labels are. */
+.face .sum {
+  display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: baseline; width: 100%; gap: 0 10px; text-align: left; background: none;
+  border: 0; border-bottom: 1px solid var(--line); padding: 7px 2px 6px; color: var(--charcoal); min-width: 0;
+}
+.face.compact .sum { padding: 5px 2px 4px; gap: 0 6px; grid-template-columns: 52px minmax(0, 1fr) auto; }
+.face .sum:hover { background: var(--wash); }
+.face .sum .val { min-width: 0; font-size: 13.5px; line-height: 1.35; }
+.face.compact .sum .val { font-size: 12.5px; }
+.face .sum .val i { font-style: normal; color: var(--text-soft); }
+.face .sum .chev { color: var(--blush-deep); font-size: 15px; line-height: 1; }
+.face .sum.quiet .val { color: var(--text-soft); }
+.face .mini { display: block; grid-column: 2 / 4; margin: 4px 0 1px; }
+
+/* The editor over the tab, cards and all, as the modulation editor opens. */
+.face .ed {
+  position: absolute; inset: 0; z-index: 20; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 1px; padding: 14px 18px; box-shadow: 0 6px 24px rgba(36, 31, 29, 0.10);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.face.compact .ed { padding: 10px 12px; }
+.face .ed-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.face.compact .ed-head { margin-bottom: 8px; gap: 8px; }
+.face .ed-name { font-family: var(--serif); font-size: 21px; color: var(--charcoal); font-weight: 500; }
+.face.compact .ed-name { font-size: 18px; }
+.face .ed-desc { font-size: 12px; color: var(--text-soft); flex: 1 1 200px; min-width: 0; }
+.face .close-btn { margin-left: auto; background: none; border: 1px solid var(--line); border-radius: 50%; width: 30px; height: 30px; color: var(--text-soft); line-height: 1; font-size: 15px; flex: 0 0 auto; }
+.face .close-btn:hover { color: var(--blush-deep); border-color: var(--blush); }
+.face .ed-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 0 26px; }
+.face.compact .ed-body { gap: 0 16px; }
+.face .ed-left { min-width: 0; overflow: hidden; }
+.face .ed-right { border-left: 1px solid var(--line); padding-left: 22px; min-width: 0; display: flex; flex-direction: column; }
+.face.compact .ed-right { padding-left: 14px; }
+.face .opts { display: grid; gap: 6px; }
+.face.compact .opts { gap: 4px; }
+.face .opt { display: block; width: 100%; text-align: left; background: var(--paper); border: 1px solid var(--line); border-radius: 1px; padding: 6px 10px 7px; }
+.face.compact .opt { padding: 4px 8px 5px; }
+.face .opt:hover { border-color: var(--blush); }
+.face .opt[aria-checked="true"] { box-shadow: inset 3px 0 0 var(--blush-deep); border-color: var(--blush); }
+.face .opt:disabled { opacity: 0.5; cursor: default; }
+.face .opt b { display: block; font-weight: 400; color: var(--charcoal); font-size: 13.5px; }
+.face .opt span { display: block; font-size: 11.5px; color: var(--text-soft); line-height: 1.35; }
+.face.compact .opt span { font-size: 11px; }
+.face .opt-more { margin: 4px 0 2px 13px; }
+.face .dia { flex: 1 1 auto; min-height: 0; position: relative; }
+.face .dia svg { display: block; width: 100%; height: 100%; }
+.face .dia-cap { font-size: 12px; color: var(--text-soft); margin: 6px 0 0; min-height: 2.9em; line-height: 1.4; }
+.face .ed .dia { overflow: hidden; }
+.face .dia-cap b { font-weight: 500; color: var(--charcoal); }
+.face .hand-a { color: var(--hand-a); font-weight: 500; }
+.face .hand-b { color: var(--hand-b); font-weight: 500; }
+.face svg text { font-family: var(--sans); }
+.face svg .k { cursor: pointer; }
+.face svg .k:hover { opacity: 0.8; }
+.face svg .slot { cursor: pointer; }
+
+/* D: the strip's box (the hands choice in its corner), the accordion's
+   headers, the panel, and the drawer over column 1 only. */
+.face .title .link-btn.tiny { font-size: 9px; letter-spacing: 0.14em; margin-left: auto; padding-bottom: 1px; }
+.face .title .link-btn.tiny + .dots { margin-left: 6px; }
+.face .switch.mini button { padding: 2px 7px; font-size: 9px; letter-spacing: 0.12em; }
+.face .dbox { border: 1px solid var(--line); background: var(--paper); padding: 4px 5px 5px; margin-top: 8px; }
+.face .dbox-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.face .dcap { min-height: 0; margin: 4px 0 2px; font-size: 11.5px; }
+.face.compact .dcap { font-size: 11px; }
+.face .dpanel { padding: 2px 0 0; }
+.face .dpanel > .check:first-child, .face .dpanel > .row:first-child { margin-top: 6px; }
+.face .dexpr .row:first-child { margin-top: 6px; }
+.face .acc-h {
+  display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: baseline; gap: 0 8px; width: 100%;
+  background: none; border: 0; border-bottom: 1px solid var(--line); padding: 6px 2px 5px; text-align: left; color: var(--charcoal);
+}
+.face.compact .acc-h { grid-template-columns: 52px minmax(0, 1fr) auto; padding: 4px 2px 3px; }
+.face .acc-h:hover { background: var(--wash); }
+.face .acc-h .val { font-size: 12.5px; line-height: 1.35; min-width: 0; }
+.face .acc-h .val i { font-style: normal; color: var(--text-soft); }
+.face .acc-h .chev { color: var(--blush-deep); font-size: 15px; line-height: 1; }
+.face .acc-h[aria-expanded="true"] .lab { color: var(--blush-deep); }
+.face .acc-h + .dpanel { padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.face .drawer-row .grow { gap: 12px; }
+.face .drawer {
+  position: absolute; left: -10px; right: -10px; bottom: 0; z-index: 15; background: var(--paper);
+  border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(36, 31, 29, 0.10); padding: 8px 10px; display: flex; flex-direction: column;
+}
+.face .drawer-head { display: flex; align-items: center; gap: 8px; }
+.face .drawer-head .close-btn { width: 26px; height: 26px; font-size: 13px; }
+.face.compact .drawer { padding: 6px 8px 4px; }
+.face .drawer .lab, .face .dpanel .lab { flex-basis: 72px; }
+.face.compact .drawer .lab, .face.compact .dpanel .lab { flex-basis: 58px; }
+.face.compact .drawer .row { margin-top: 4px; }
+.face .drawer-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .face .drawer { animation: drawer-in 280ms ease; }
+  @keyframes drawer-in { from { transform: translateY(14px); opacity: 0; } }
+}
+
+/* E: the hands choice centred in the strip's box, the strip between its
+   octave buttons or beside its counted end, and the Two hands pill. */
+.face .ehead { justify-content: center; }
+.face .estrip { display: flex; align-items: stretch; gap: 4px; height: 100%; }
+.face .estrip-svg { flex: 1 1 auto; min-width: 0; }
+.face .oct-btn { flex: 0 0 16px; background: none; border: 1px solid var(--line); border-radius: 1px; padding: 0; color: var(--blush-deep); font-size: 14px; line-height: 1; position: relative; }
+.face .oct-btn:hover { border-color: var(--blush); }
+.face .oct-btn:disabled { color: var(--unresolved); cursor: default; }
+.face .oct-btn.has::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--gold); }
+.face .vswitch.estrip-end { flex: 0 0 40px; align-self: center; border-radius: 10px; }
+.face .vswitch.estrip-end button { padding: 2px 0; font-size: 10px; letter-spacing: 0.02em; text-transform: none; }
+.face .ehead .switch, .face .ehead .pill-toggle { white-space: nowrap; flex: 0 0 auto; }
+.face .ehead { flex-wrap: nowrap; gap: 6px; }
+.face.compact .pill-toggle { padding: 2px 6px; letter-spacing: 0.08em; }
+.face.compact .ehead .switch.mini button { padding: 2px 5px; letter-spacing: 0.08em; }
+.face .pill-toggle { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-size: 9px; letter-spacing: 0.12em; color: var(--text-soft); }
+.face .pill-toggle .pt-dot { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--text-soft); }
+.face .pill-toggle[aria-pressed="true"] { color: var(--charcoal); border-color: var(--blush); }
+.face .pill-toggle[aria-pressed="true"] .pt-dot { background: var(--blush-deep); border-color: var(--blush-deep); }
+.face .ewin { margin: 3px 0 0; font-size: 11.5px; }
+.face .ewin .link-btn { font-size: 11.5px; padding: 0; }
+
+/* F: the Keyboard's band - the Notes switch beside the strip's box, the
+   line and the Chord window's note under it, Figure on the band's foot. */
+.face .fband { margin-bottom: 14px; padding-bottom: 10px; }
+.face .fgrid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: start; }
+.face .fleft { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.face .ftitle { display: flex; gap: 10px; align-items: center; width: 100%; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--blush-deep); }
+.face .ftitle .dots { margin-left: auto; color: var(--text-soft); letter-spacing: 0.1em; font-size: 13px; }
+.face .fleft .link-btn.tiny { margin-left: 0; }
+.face .fbox { margin-top: 0; }
+.face .fline { display: flex; align-items: baseline; gap: 4px 16px; flex-wrap: wrap; }
+.face .fline .dcap { flex: 1 1 300px; margin: 4px 0 0; }
+.face .fline .ewin { flex: 0 0 auto; margin: 4px 0 0; }
+.face .ffoot { margin-top: 6px; gap: 6px 10px; }
+.face .ffoot .fsub { margin: 0 4px 0 0; }
+.face .ffoot select { flex: 0 0 auto; }
+.face.compact .fgrid { gap: 12px; }
+.face.compact .fleft { gap: 7px; }
+.face.compact .fband { margin-bottom: 10px; padding-bottom: 7px; }
+
+/* G: the band's left column, Two hands beside its name and the figure's
+   settings under the switch. */
+.face .gleft { width: 228px; gap: 8px; }
+.face.compact .gleft { width: 212px; gap: 6px; }
+.face .gleft .ftitle .pill-toggle { margin-left: 4px; }
+.face .gfig { width: 100%; display: flex; flex-direction: column; gap: 5px; }
+.face .gout { display: flex; align-items: center; gap: 6px; width: 100%; flex: 0 0 auto; }
+.face .gticks { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.face .gnote { margin: 0; }
+
+/* C: the band across the top of the tab. */
+.face .band { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px; }
+.face.compact .band { padding-bottom: 8px; margin-bottom: 10px; }
+.face .band-top { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.face .band-line { font-size: 12.5px; color: var(--text-soft); flex: 1 1 160px; min-width: 0; }
+.face .band-strip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: stretch; margin-top: 10px; }
+.face.compact .band-strip { margin-top: 7px; gap: 8px; }
+.face .band-strip .side { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 0; }
+.face .band-foot { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; margin-top: 8px; }
+.face.compact .band-foot { margin-top: 5px; }
+.face .vswitch { display: inline-flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.face .vswitch button { background: none; border: 0; padding: 3px 10px; color: var(--text-soft); font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; }
+.face .vswitch button[aria-checked="true"] { background: var(--charcoal); color: var(--cream); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div>
+      <p class="eyebrow">A mockup for the owner · 16 Nov · nothing here is the instrument</p>
+      <h1>Play, three ways</h1>
+      <p class="lede">The Keyboard section asks three questions in one heap: how notes sound, how they are shared between two sounds, and how they are drawn. Here are three ways to ask them apart.</p>
+    </div>
+    <div class="pg-switch" role="group" aria-label="This page's light" id="theme">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+  <p class="small">Each layout is drawn at the Play tab's real size, its cards and its three columns, with the Generator, Amp envelope and Voice filter where they are today. Every menu and switch works, the editors open and close, and the hands diagram plays: use <kbd>A</kbd>&ndash;<kbd>K</kbd> and <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> on your keyboard, or the keys under the mockup. The dealing follows the instrument's rules: rank at the start, lowest or highest N, and the Chord window as now built: by notes, every note waits the window and the notes within it are dealt together by pitch before any sounds, so no note ever changes hand (at 0, no wait and strictly in order). The face is in the instrument's one light; only this page follows yours.</p>
+
+  <nav class="layout-tabs" role="tablist" aria-label="Layouts" id="layoutTabs">
+    <button type="button" role="tab" data-layout="T" aria-selected="false"><b>Today</b><span>as built, for comparison</span></button>
+    <button type="button" role="tab" data-layout="A" aria-selected="false"><b>A · Summary lines</b><span>a line per question, an editor each</span></button>
+    <button type="button" role="tab" data-layout="B" aria-selected="false"><b>B · Only what applies</b><span>grouped, all on show, diagram inline</span></button>
+    <button type="button" role="tab" data-layout="C" aria-selected="false"><b>C · One strip</b><span>five modes, the diagram is the control</span></button>
+    <button type="button" role="tab" data-layout="D" aria-selected="false"><b>D · The mix</b><span>round 2: switch, strip, settings in the column</span></button>
+    <button type="button" role="tab" data-layout="E" aria-selected="false"><b>E · The strip is Hands</b><span>round 3: choice on the strip, Figure · Expression</span></button>
+    <button type="button" role="tab" data-layout="F" aria-selected="false"><b>F · The Keyboard as a band</b><span>round 4: the strip the tab's width</span></button>
+    <button type="button" role="tab" data-layout="G" aria-selected="true"><b>G · The notes in the band</b><span>round 5: Two hands top left, Figure under the switch</span></button>
+  </nav>
+  <p class="what" id="what"></p>
+  <div class="bar">
+    <span class="lbl">Window</span>
+    <div class="pg-switch" role="group" aria-label="Window size" id="sizeSwitch">
+      <button type="button" data-size="big" aria-pressed="true">1400 &times; 900</button>
+      <button type="button" data-size="compact" aria-pressed="false">960 &times; 600 at 90%</button>
+    </div>
+    <button type="button" class="pg-btn" id="resetBtn">Start again</button>
+  </div>
+  <div class="bar" id="gBar">
+    <span class="lbl">Amp envelope</span>
+    <div class="pg-switch" role="group" aria-label="Where G's Amp envelope lives" id="gAmp">
+      <button type="button" data-gamp="col2" aria-pressed="true">Under the Generator (today)</button>
+      <button type="button" data-gamp="col3" aria-pressed="false">Under the Voice filter</button>
+    </div>
+  </div>
+  <div class="bar" id="fBar">
+    <span class="lbl">Figure</span>
+    <div class="pg-switch" role="group" aria-label="Where F's Figure lives" id="fFig">
+      <button type="button" data-ffig="col1" aria-pressed="true">b · Column 1, under Expression</button>
+      <button type="button" data-ffig="band" aria-pressed="false">a · In the band</button>
+    </div>
+    <span class="lbl">Amp envelope</span>
+    <div class="pg-switch" role="group" aria-label="Where F's Amp envelope lives" id="fAmp">
+      <button type="button" data-famp="col2" aria-pressed="true">Under the Generator (today)</button>
+      <button type="button" data-famp="col3" aria-pressed="false">Under the Voice filter</button>
+    </div>
+  </div>
+  <div class="bar" id="eBar">
+    <span class="lbl">One sound</span>
+    <div class="pg-switch" role="group" aria-label="How E says one sound" id="eOne">
+      <button type="button" data-eone="toggle" aria-pressed="true">i · Two hands on / off</button>
+      <button type="button" data-eone="none" aria-pressed="false">ii · None of Key · Notes · Layer lit</button>
+    </div>
+    <span class="lbl">Expression</span>
+    <div class="pg-switch" role="group" aria-label="Where E's Expression lives" id="eExpr">
+      <button type="button" data-eexpr="col3" aria-pressed="true">In column 3</button>
+      <button type="button" data-eexpr="switch" aria-pressed="false">In the switch</button>
+      <button type="button" data-eexpr="col1" aria-pressed="false">Under Figure</button>
+    </div>
+  </div>
+  <div class="bar" id="dBar">
+    <span class="lbl">Settings open by</span>
+    <div class="pg-switch" role="group" aria-label="How D's settings open" id="dToggle">
+      <button type="button" data-dtoggle="seg" aria-pressed="true">1 · Switch</button>
+      <button type="button" data-dtoggle="acc" aria-pressed="false">2 · Accordion</button>
+      <button type="button" data-dtoggle="drawer" aria-pressed="false">3 · Drawer</button>
+    </div>
+    <span class="lbl">Hands choice</span>
+    <div class="pg-switch" role="group" aria-label="Where D's hands choice lives" id="dWhere">
+      <button type="button" data-dwhere="above" aria-pressed="true">a · Above the strip</button>
+      <button type="button" data-dwhere="corner" aria-pressed="false">b · In its corner</button>
+      <button type="button" data-dwhere="panel" aria-pressed="false">c · In the panel</button>
+    </div>
+  </div>
+  <div class="stage-wrap" id="wrap"><div class="stage" id="stage"><div class="face" id="face"></div></div></div>
+  <div class="fit-line" id="fit"></div>
+
+  <div class="player" id="player">
+    <div class="player-row">
+      <span class="hint"><kbd>A</kbd>&ndash;<kbd>K</kbd> white keys, <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> black, <kbd>Z</kbd> <kbd>X</kbd> octave (<span id="octRead">C3</span>), <kbd>Space</kbd> the sustain pedal.</span>
+    </div>
+    <div class="player-row">
+      <button type="button" class="pg-btn" id="latchBtn" aria-pressed="false" title="For a mouse or a finger: a key pressed stays down until pressed again">Tap to hold</button>
+      <button type="button" class="pg-btn" id="pedalBtn" aria-pressed="false">Pedal</button>
+      <button type="button" class="pg-btn" id="soundBtn" aria-pressed="false" title="A quiet sine for the lower hand and a triangle for the upper">Sound</button>
+      <button type="button" class="pg-btn" id="slowBtn" aria-pressed="false" title="The Chord window, and the strikes below, forty times slower, so a gather can be watched">Slow &times;40</button>
+      <button type="button" class="pg-btn" id="allOff">Let go of everything</button>
+    </div>
+    <div class="player-row demos">
+      <span class="hint">Strike for me:</span>
+      <button type="button" class="pg-btn" data-demo="tight">C E G, 4 ms, top first</button>
+      <button type="button" class="pg-btn" data-demo="rolled">C E G, rolled over 18 ms</button>
+      <button type="button" class="pg-btn" data-demo="walk">A bass walks under a held chord</button>
+      <button type="button" class="pg-btn" data-demo="pedal">A key under the pedal</button>
+    </div>
+    <div class="pkeys" id="pkeys" aria-label="Keys to play the mockup"></div>
+  </div>
+
+  <dl class="verdict" id="verdict"></dl>
+  <div id="allWrap"><p class="small"><button type="button" class="pg-btn" id="allBtn">Measure every combination</button> D at both windows, each toggle and each place for the hands choice, through Dyad, Mono and Poly with each hands choice and every panel open; the tightest column 1 of each.</p><div id="allFit"></div></div>
+</div>
+<script>
+(function () {
+"use strict";
+
+/* ---------------------------------------------------------------------------
+   State. The face's settings, as the mockup holds them. `hands` is the one
+   thing the face spreads over two menus today (Layers, and by key / by notes):
+   one, key, notes or layer. Only the layout and the size are remembered, in
+   this browser, as a convenience; the settings start again each visit.
+--------------------------------------------------------------------------- */
+const DEFAULTS = {
+  mode: "poly", hands: "notes", splitAt: 60, splitEnd: "lower", splitCount: 1, windowMs: 10,
+  pair: "each", drawCount: 2, drawWhich: "outer", polyJust: false, hold: false, keysShown: false,
+  bend: "2", wheel: "vibrato", pressure: "off", velocity: "strike", interval: "0"
+};
+let S = Object.assign({}, DEFAULTS);
+let view = { layout: "G", size: "big", editor: null, learn: false };
+try {
+  const v = JSON.parse(localStorage.getItem("playMockup.view2") || "{}");
+  if (["T", "A", "B", "C", "D", "E", "F", "G"].includes(v.layout)) view.layout = v.layout;
+  if (["big", "compact"].includes(v.size)) view.size = v.size;
+} catch (e) { /* private window: start at A, big */ }
+function remember() {
+  try { localStorage.setItem("playMockup.view2", JSON.stringify({ layout: view.layout, size: view.size })); } catch (e) { /* no storage */ }
+}
+
+const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+const nn = (n) => NAMES[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+const isBlack = (n) => [1, 3, 6, 8, 10].includes(((n % 12) + 12) % 12);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const INTERVALS = [["unison", "1:1"], ["minor second", "15:16"], ["major second", "8:9"], ["minor third", "5:6"],
+  ["major third", "4:5"], ["fourth", "3:4"], ["tritone", "32:45"], ["fifth", "2:3"], ["minor sixth", "5:8"],
+  ["major sixth", "3:5"], ["minor seventh", "5:9"], ["major seventh", "8:15"]];
+function intervalName(semis) {
+  const oct = Math.floor(semis / 12), r = semis % 12;
+  if (semis === 0) return "a unison, 1:1";
+  if (r === 0) return oct === 1 ? "an octave, 1:2" : oct + " octaves";
+  return (oct ? oct + " octave" + (oct > 1 ? "s" : "") + " and " : "") + "a " + INTERVALS[r][0] + ", " + INTERVALS[r][1];
+}
+
+const poly = () => S.mode === "poly";
+const twoHands = () => poly() && S.hands !== "one";
+const byNotes = () => poly() && S.hands === "notes";
+const layered = () => poly() && S.hands === "layer";
+const handName = (h) => layered() ? (h === 0 ? "A" : "B") : (h === 0 ? "Lower" : "Upper");
+const handsWord = () => layered() ? "A · B layered" : "Lower · Upper";
+function ink(h) {
+  if (h === undefined) return "var(--unresolved)";
+  if (!twoHands()) return "var(--charcoal)";
+  return h === 1 ? "var(--hand-b)" : "var(--hand-a)";
+}
+function wash(h, pct) {
+  const c = h === undefined ? "var(--unresolved)" : !twoHands() ? "var(--charcoal)" : h === 1 ? "var(--hand-b)" : "var(--hand-a)";
+  return "color-mix(in srgb, " + c + " " + pct + "%, var(--paper))";
+}
+
+/* ---------------------------------------------------------------------------
+   The keyboard, as the core's keyboard deals it (split-by-notes.md):
+   - a note's hand is set as it starts, by its rank among the notes held then,
+     and kept until it is let go;
+   - by notes, notes starting within the Chord window of a gather's first are
+     one chord, ranked together by pitch among everything held; a note never
+     changes hand once its gather has closed;
+   - a key let go under the pedal is still held, so it still counts;
+   - a key struck again starts again, so it is ranked again;
+   - moving a control deals the held notes again, in the order they started,
+     a gather again as one.
+   The window is timed from the gather's first note and is half open.
+--------------------------------------------------------------------------- */
+let held = [];            // { n, t, hand, gid, pedal }; hand undefined while its gather waits
+const gathers = new Map(); // gid -> { id, t0, open, timer }
+let gidSeq = 0, pedal = false, slow = false, sound = false;
+let lastStrike = null;     // the notes of the last strike, for the timing lane
+const slowF = () => (slow ? 40 : 1);
+const winNow = () => S.windowMs * slowF();
+
+function rankHand(n, among) {
+  const N = S.splitCount;
+  if (S.splitEnd === "lower") return among.filter((m) => m < n).length < N ? 0 : 1;
+  return among.filter((m) => m > n).length < N ? 1 : 0;
+}
+function handFor(h, among) {
+  if (!poly() || S.hands === "one") return 0;
+  if (S.hands === "layer") return 2;
+  if (S.hands === "key") return h.n >= S.splitAt ? 1 : 0;
+  return rankHand(h.n, among);
+}
+function dealGather(gid) {
+  const all = held.map((h) => h.n);
+  for (const h of held) {
+    if (h.gid !== gid) continue;
+    h.hand = handFor(h, all);
+  }
+}
+/* The look-ahead (built 16 Nov): by notes, every note waits the window, and
+   the notes that started within it of the first are dealt together, by
+   pitch, before any of them sounds - so nothing is ever moved. The close is
+   a timer for playing, and is also done by any later note whose time is past
+   it, so the checks can feed times of their own. */
+function closeGather(g) {
+  if (!g.open) return;
+  g.open = false; clearTimeout(g.timer);
+  dealGather(g.id);
+  for (const h of held) if (h.gid === g.id) voiceOn(h);
+}
+function closeDue(t) { for (const g of gathers.values()) if (g.open && t - g.t0 >= g.w) closeGather(g); }
+function noteOn(n, t) {
+  if (t === undefined) t = performance.now();
+  if (view.learn) { S.splitAt = n; view.learn = false; redeal(); render(); return; }
+  closeDue(t);
+  const old = held.findIndex((h) => h.n === n);
+  if (old >= 0) { voiceOff(held[old]); held.splice(old, 1); }
+  const h = { n: n, t: t, hand: undefined, gid: 0, pedal: false };
+  if (!lastStrike || t - lastStrike.tl > 45 * slowF()) lastStrike = { t0: t, tl: t, arr: [] };
+  lastStrike.tl = t;
+  if (byNotes() && S.windowMs > 0) {
+    let g = null;
+    for (const x of gathers.values()) if (x.open && t - x.t0 < winNow()) g = x;
+    if (!g) {
+      g = { id: ++gidSeq, t0: t, w: winNow(), open: true };
+      gathers.set(g.id, g);
+      g.timer = setTimeout(() => { closeGather(g); paint(); }, winNow());
+    }
+    h.gid = g.id;
+    held.push(h);
+    lastStrike.arr.push({ n: n, t: t, gid: h.gid });
+    paint();
+    return;
+  }
+  h.gid = ++gidSeq;
+  gathers.set(h.gid, { id: h.gid, t0: t, w: 0, open: false });
+  held.push(h);
+  lastStrike.arr.push({ n: n, t: t, gid: h.gid });
+  dealGather(h.gid);
+  voiceOn(h);
+  paint();
+}
+function noteOff(n, t) {
+  closeDue(t === undefined ? performance.now() : t);
+  const i = held.findIndex((h) => h.n === n && !h.pedal);
+  if (i < 0) return;
+  // Let go before its gather closed: it never sounded, and is not dealt.
+  if ((gathers.get(held[i].gid) || {}).open) { held.splice(i, 1); paint(); return; }
+  if (pedal) held[i].pedal = true;
+  else { voiceOff(held[i]); held.splice(i, 1); }
+  paint();
+}
+function setPedal(on) {
+  pedal = on;
+  if (!on) { held.filter((h) => h.pedal).forEach(voiceOff); held = held.filter((h) => !h.pedal); }
+  document.getElementById("pedalBtn").setAttribute("aria-pressed", String(on));
+  paint();
+}
+function allOff() {
+  held.forEach(voiceOff); held = []; latched.clear();
+  for (const g of gathers.values()) clearTimeout(g.timer);
+  gathers.clear(); lastStrike = null;
+  demoTimers.forEach(clearTimeout); demoTimers = [];
+  if (pedal) setPedal(false);
+  paint();
+}
+function redeal() {
+  for (const g of gathers.values()) closeGather(g);
+  const order = held.slice().sort((a, b) => a.t - b.t);
+  const groups = [];
+  for (const h of order) {
+    const last = groups[groups.length - 1];
+    if (last && last.gid === h.gid) last.items.push(h); else groups.push({ gid: h.gid, items: [h] });
+  }
+  const so = [];
+  for (const g of groups) {
+    for (const h of g.items) so.push(h.n);
+    for (const h of g.items) { const nh = handFor(h, so); const was = h.hand; h.hand = nh; if (was !== nh) voiceMove(h); }
+  }
+}
+
+/* The outline: which held notes make the figure's outline, for one hand. */
+function outlineOf(list) {
+  const asc = list.slice().sort((a, b) => a.n - b.n);
+  const count = +S.drawCount;
+  if (asc.length <= count) return new Set(asc);
+  let pick = [];
+  if (S.drawWhich === "lowest") pick = asc.slice(0, count);
+  else if (S.drawWhich === "highest") pick = asc.slice(-count);
+  else if (S.drawWhich === "recent") pick = list.slice().sort((a, b) => b.t - a.t).slice(0, count);
+  else { let lo = 0, hi = asc.length - 1, k = 0; while (pick.length < count) { pick.push(k % 2 === 0 ? asc[lo++] : asc[hi--]); k++; } }
+  return new Set(pick);
+}
+function inHand(h, hand) { return h.hand === hand || h.hand === 2; }
+
+/* A quiet voice per note, off until asked for: a sine for the lower hand (or
+   A) and a triangle for the upper (or B), so a split can be heard as well as
+   seen. Nothing of the instrument's sound. */
+let ac = null, master = null;
+const voices = new Map();
+function ensureAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination);
+}
+function voiceOn(h) {
+  if (!sound) return;
+  ensureAudio();
+  const hands = h.hand === 2 ? [0, 1] : [h.hand || 0];
+  const f = 440 * Math.pow(2, (h.n - 69) / 12);
+  const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+  g.gain.setTargetAtTime(0.06 / Math.sqrt(hands.length), ac.currentTime, 0.008);
+  const oscs = hands.map((hd) => { const o = ac.createOscillator(); o.type = hd === 1 ? "triangle" : "sine"; o.frequency.value = f; o.connect(g); o.start(); return o; });
+  voices.set(h, { g: g, oscs: oscs });
+}
+function voiceOff(h) {
+  const v = voices.get(h); if (!v) return;
+  v.g.gain.setTargetAtTime(0, ac.currentTime, 0.05);
+  v.oscs.forEach((o) => o.stop(ac.currentTime + 0.4));
+  voices.delete(h);
+}
+function voiceMove(h) { if (voices.has(h)) { voiceOff(h); setTimeout(() => { if (held.includes(h)) voiceOn(h); }, 0); } }
+
+/* ---------------------------------------------------------------------------
+   Diagrams, as SVG strings at the size of their box. Inks are the face's
+   tokens, so they follow DESIGN.md.
+--------------------------------------------------------------------------- */
+const T = (x, y, s, o) => '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '"' + (o || "") + ">" + s + "</text>";
+const svgOpen = (w, h) => '<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" aria-hidden="true">';
+
+/* A strip of keys, coloured by the hand each would go to (by key, layered)
+   or by the hand each held note was dealt (by notes, one). */
+function keysSVG(w, h, o) {
+  o = o || {};
+  const lo = o.lo || 36, hi = o.hi || 84;
+  const whites = []; for (let n = lo; n <= hi; n++) if (!isBlack(n)) whites.push(n);
+  const ww = w / whites.length, out = [svgOpen(w, h)];
+  const out2 = [];
+  const heldBy = new Map(held.map((x) => [x.n, x]));
+  const outline = o.outline || new Set();
+  const region = (n) => S.hands === "key" && poly() ? (n >= S.splitAt ? 1 : 0) : 0;
+  const keyFill = (n, black) => {
+    const x = heldBy.get(n);
+    if (x) return null;
+    if (layered()) return null;
+    if (S.hands === "key" && poly()) return black ? "color-mix(in srgb, " + ink(region(n)) + " 35%, var(--text))" : wash(region(n), 13);
+    return black ? "var(--text)" : "var(--paper)";
+  };
+  const draw = (n, x, kw, kh, black) => {
+    const hx = heldBy.get(n);
+    const cls = o.clickSplit ? ' class="k" data-split="' + n + '"' : "";
+    const parts = [];
+    if (hx && hx.hand === 2) {
+      parts.push('<rect x="' + x + '" y="0" width="' + kw + '" height="' + kh / 2 + '" style="fill:var(--hand-a)"/>');
+      parts.push('<rect x="' + x + '" y="' + kh / 2 + '" width="' + kw + '" height="' + kh / 2 + '" style="fill:var(--hand-b)"/>');
+    } else if (hx) {
+      parts.push('<rect x="' + x + '" y="0" width="' + kw + '" height="' + kh + '" style="fill:' + ink(hx.hand) + '"/>');
+    } else if (layered()) {
+      parts.push('<rect x="' + x + '" y="0" width="' + kw + '" height="' + kh / 2 + '" style="fill:' + (black ? "color-mix(in srgb, var(--hand-a) 60%, var(--text))" : "color-mix(in srgb, var(--hand-a) 12%, var(--paper))") + '"/>');
+      parts.push('<rect x="' + x + '" y="' + kh / 2 + '" width="' + kw + '" height="' + kh / 2 + '" style="fill:' + (black ? "color-mix(in srgb, var(--hand-b) 60%, var(--text))" : "color-mix(in srgb, var(--hand-b) 12%, var(--paper))") + '"/>');
+    } else {
+      parts.push('<rect x="' + x + '" y="0" width="' + kw + '" height="' + kh + '" style="fill:' + keyFill(n, black) + '"/>');
+    }
+    parts.push('<rect x="' + x + '" y="0" width="' + kw + '" height="' + kh + '" style="fill:transparent;stroke:var(--line);stroke-width:1"' + cls + "/>");
+    if (hx && outline.has(hx) && kh > 22) {
+      parts.push('<circle cx="' + (x + kw / 2) + '" cy="' + (kh - 9) + '" r="' + Math.min(4, kw / 3) + '" style="fill:var(--paper);stroke:var(--charcoal);stroke-width:1"/>');
+    }
+    if (hx && hx.pedal) parts.push('<rect x="' + (x + 1) + '" y="1" width="' + (kw - 2) + '" height="3" style="fill:var(--gold)"/>');
+    return parts.join("");
+  };
+  whites.forEach((n, i) => {
+    out.push(draw(n, i * ww, ww, h, false));
+    if (o.labels && n % 12 === 0 && h > 30) out.push(T(i * ww + 3, h - 4, nn(n), ' style="font-size:9px;fill:var(--text-soft);pointer-events:none"'));
+  });
+  whites.forEach((n, i) => {
+    if (n + 1 <= hi && isBlack(n + 1)) out2.push(draw(n + 1, (i + 1) * ww - ww * 0.3, ww * 0.6, h * 0.6, true));
+  });
+  out.push(out2.join(""));
+  if (S.hands === "key" && poly() && S.splitAt >= lo && S.splitAt <= hi) {
+    let x;
+    if (isBlack(S.splitAt)) x = whites.indexOf(S.splitAt - 1) * ww + ww;
+    else x = whites.indexOf(S.splitAt) * ww;
+    out.push('<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + h + '" style="stroke:var(--blush-deep);stroke-width:2"/>');
+    if (o.labels) {
+      const lab = nn(S.splitAt) + " → Upper";
+      const tw = lab.length * 5.6 + 8;
+      const lx = Math.min(x + 3, w - tw - 1);
+      out.push('<rect x="' + lx + '" y="2" width="' + tw + '" height="14" style="fill:var(--paper);stroke:var(--blush-deep);stroke-width:1"/>');
+      out.push(T(lx + 4, 12.5, lab, ' style="font-size:10px;fill:var(--blush-deep)"'));
+    }
+  }
+  out.push("</svg>");
+  return out.join("");
+}
+
+/* By notes, upright: the notes held stacked by pitch, each in the hand it was
+   dealt, and the line a new note would be dealt by. */
+function stackSVG(w, h) {
+  const asc = held.slice().sort((a, b) => a.n - b.n);
+  const N = S.splitCount, low = S.splitEnd === "lower";
+  const counted = low ? 0 : 1;
+  const out = [svgOpen(w, h)];
+  const slots = Math.max(asc.length, N + 1, 4);
+  const rowH = Math.max(15, Math.min(40, (h - 24) / slots));
+  const yOf = (i) => h - 6 - (i + 1) * rowH;
+  if (!asc.length) {
+    for (let k = 0; k < Math.min(slots, 7); k++) {
+      const i = k, inCount = low ? i < N : i >= slots - N;
+      out.push('<rect x="46" y="' + (yOf(i) + 2) + '" width="' + (w - 54) + '" height="' + (rowH - 4) + '" style="fill:' + (inCount ? wash(counted, 10) : "var(--paper)") + ';stroke:var(--line);stroke-dasharray:3 3"/>');
+    }
+    out.push(T(46, 14, "Hold some notes: they stack here by pitch.", ' style="font-size:11px;fill:var(--text-soft)"'));
+  }
+  const anyOpen = asc.some((x) => (gathers.get(x.gid) || {}).open);
+  asc.forEach((x, i) => {
+    const y = yOf(i) + 2, hh = rowH - 4, g = gathers.get(x.gid) || {};
+    out.push('<rect x="46" y="' + y + '" width="' + (w - 54) + '" height="' + hh + '" style="fill:' + wash(x.hand, 15) + ";stroke:" + (g.open ? ink(x.hand) : "var(--line)") + (g.open ? ";stroke-dasharray:4 3" : "") + '"/>');
+    out.push('<rect x="46" y="' + y + '" width="3" height="' + hh + '" style="fill:' + ink(x.hand) + '"/>');
+    out.push(T(6, y + hh / 2 + 4, nn(x.n), ' style="font-size:' + Math.min(12, hh - 2) + 'px;fill:var(--charcoal);font-variant-numeric:tabular-nums"'));
+    out.push(T(w - 14, y + hh / 2 + 4, handName(x.hand), ' text-anchor="end" style="font-size:' + Math.min(11.5, hh - 3) + "px;font-weight:500;fill:" + ink(x.hand) + '"'));
+    const tags = [];
+    if (g.open) tags.push("waiting the window");
+    if (x.pedal) tags.push("held by the pedal");
+    if (tags.length && hh > 11) out.push(T(w - 70, y + hh / 2 + 4, tags.join(" · "), ' text-anchor="end" style="font-size:10.5px;font-style:italic;fill:var(--text-soft)"'));
+  });
+  // The line: a note struck now below it (lowest) or above it (highest)
+  // goes to the counted hand, whatever the notes already held were dealt.
+  const n = asc.length || Math.min(slots, 7);
+  const k = low ? Math.min(N, n) : Math.max(n - N, 0);
+  const lineY = yOf(k - 1) + 1;
+  out.push('<line x1="40" y1="' + lineY + '" x2="' + (w - 4) + '" y2="' + lineY + '" style="stroke:var(--blush-deep);stroke-width:1.5;stroke-dasharray:5 3"/>');
+  const said = low ? "a note struck under this line → " + handName(0) : "a note struck over this line → " + handName(1);
+  const ty = lineY + 4;
+  out.push('<rect x="54" y="' + (ty - 10) + '" width="' + (said.length * 5.2 + 8) + '" height="13" style="fill:var(--paper)"/>');
+  out.push(T(58, ty, said, ' style="font-size:10px;fill:var(--blush-deep)"'));
+  if (anyOpen) out.push(T(6, 12, "waiting the window…", ' style="font-size:10.5px;fill:var(--blush-deep);font-style:italic"'));
+  out.push("</svg>");
+  return out.join("");
+}
+
+/* By notes, lying down: for a line or a column. With `slots`, it is C's
+   control: eight places from the low end, the counted ones tinted, and a
+   press on a place sets how many. */
+function rowSVG(w, h, o) {
+  o = o || {};
+  const asc = held.slice().sort((a, b) => a.n - b.n);
+  const N = S.splitCount, low = S.splitEnd === "lower";
+  const counted = low ? 0 : 1, other = 1 - counted;
+  const out = [svgOpen(w, h)];
+  const places = o.slots ? Math.max(8, asc.length) : Math.max(asc.length, N + 1, 5);
+  const pw = (w - 8) / places;
+  const r = Math.max(3, Math.min(pw * (o.slots ? 0.28 : 0.36), h * (o.slots ? 0.17 : 0.3)));
+  const cy = o.slots ? h * 0.5 : h / 2;
+  for (let i = 0; i < places; i++) {
+    const fromEnd = low ? i : places - 1 - i;
+    const inCount = fromEnd < N;
+    const x = 4 + i * pw;
+    if (o.slots) {
+      const can = fromEnd < 6 && !o.noclick;
+      out.push('<rect x="' + (x + 1) + '" y="1" width="' + (pw - 2) + '" height="' + (h - 2) + '"' + (can ? ' class="slot" data-count="' + (fromEnd + 1) + '"' : "") +
+        ' style="fill:' + (inCount ? wash(counted, 12) : wash(other, 7)) + ';stroke:var(--line)"/>');
+      if (h > 30) out.push(T(x + 4, 10, can ? String(fromEnd + 1) : "", ' style="font-size:8.5px;fill:var(--text-soft);pointer-events:none"'));
+    } else if (!asc.length) {
+      out.push('<circle cx="' + (x + pw / 2) + '" cy="' + cy + '" r="' + r + '" style="fill:' + (inCount ? wash(counted, 14) : "var(--paper)") + ';stroke:var(--line);stroke-dasharray:2 2"/>');
+    }
+  }
+  const off = o.slots && !low ? places - asc.length : 0;
+  asc.forEach((x, i) => {
+    const cx = 4 + (i + off) * pw + pw / 2, g = gathers.get(x.gid) || {};
+    out.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" style="fill:' + ink(x.hand) + ";stroke:" + (g.open ? "var(--charcoal)" : "none") + ';stroke-width:1.5;stroke-dasharray:3 2;pointer-events:none"/>');
+    if (x.pedal) out.push('<circle cx="' + cx + '" cy="' + (cy - r - 4) + '" r="2" style="fill:var(--gold)"/>');
+    if (h >= 34) out.push(T(cx, Math.min(h - 3, cy + r + 10), nn(x.n), ' text-anchor="middle" style="font-size:9px;fill:var(--charcoal);pointer-events:none"'));
+  });
+  const k = Math.min(N, places);
+  const lx = low ? 4 + k * pw : 4 + (places - k) * pw;
+  out.push('<line x1="' + lx + '" y1="0" x2="' + lx + '" y2="' + h + '" style="stroke:var(--blush-deep);stroke-width:1.5;stroke-dasharray:4 3;pointer-events:none"/>');
+  out.push("</svg>");
+  return out.join("");
+}
+
+/* The last strike's notes against time, with each gather's window: how far
+   apart your fingers were, and what the window made of it. */
+function laneSVG(w, h) {
+  const out = [svgOpen(w, h)];
+  if (!lastStrike || !lastStrike.arr.length) {
+    out.push(T(0, h / 2 + 4, "Strike a chord to see how far apart its notes land.", ' style="font-size:11px;fill:var(--text-soft)"'));
+    out.push("</svg>"); return out.join("");
+  }
+  const f = slowF(), arr = lastStrike.arr, t0 = arr[0].t;
+  const span = (arr[arr.length - 1].t - t0) / f;
+  const max = Math.max(20, span + 5, S.windowMs + 4);
+  const X = (ms) => 6 + (w - 12) * (ms / max);
+  const base = h >= 24 ? h - 13 : h - 2;
+  const seen = new Set();
+  arr.forEach((a) => {
+    if (seen.has(a.gid)) return; seen.add(a.gid);
+    const g = gathers.get(a.gid); if (!g || !g.w) return;
+    const x0 = X((g.t0 - t0) / f), x1 = X((g.t0 - t0 + g.w) / f);
+    out.push('<rect x="' + x0 + '" y="2" width="' + Math.max(1, Math.min(x1, w - 6) - x0) + '" height="' + (base - 2) + '" style="fill:var(--wash);stroke:var(--blush);stroke-dasharray:2 2"/>');
+  });
+  out.push('<line x1="6" y1="' + base + '" x2="' + (w - 6) + '" y2="' + base + '" style="stroke:var(--line)"/>');
+  for (let ms = 0; ms <= max; ms += 5) {
+    out.push('<line x1="' + X(ms) + '" y1="' + base + '" x2="' + X(ms) + '" y2="' + (base + 3) + '" style="stroke:var(--line)"/>');
+    if (ms % 10 === 0 && h >= 24) out.push(T(X(ms), h - 1, ms + (ms + 10 > max ? " ms" : ""), ' text-anchor="' + (ms === 0 ? "start" : ms + 10 > max ? "end" : "middle") + '" style="font-size:9px;fill:var(--text-soft)"'));
+  }
+  arr.forEach((a, i) => {
+    const x = X((a.t - t0) / f), hx = held.find((q) => q.n === a.n && q.gid === a.gid);
+    const c = hx ? ink(hx.hand) : "var(--unresolved)";
+    out.push('<line x1="' + x + '" y1="' + Math.max(2, base - 16) + '" x2="' + x + '" y2="' + base + '" style="stroke:' + c + ';stroke-width:2"/>');
+    if (h >= 40) out.push(T(x + 3, 10 + (i % 3) * 9, nn(a.n), ' style="font-size:9px;fill:' + c + '"'));
+  });
+  out.push("</svg>");
+  return out.join("");
+}
+function laneWords() {
+  if (!lastStrike || !lastStrike.arr.length) return "The shaded box is the Chord window: notes landing inside it are dealt together, by pitch.";
+  const arr = lastStrike.arr, f = slowF();
+  const span = (arr[arr.length - 1].t - arr[0].t) / f;
+  const gs = new Set(arr.map((a) => a.gid)).size;
+  return "<b>" + arr.length + " note" + (arr.length > 1 ? "s" : "") + " over " + span.toFixed(span < 10 ? 1 : 0) + " ms</b>, window " + S.windowMs + " ms: " +
+    (S.windowMs === 0 ? "no wait, each dealt as it landed." : gs === 1 ? (arr.length > 1 ? "one chord, dealt by pitch " + S.windowMs + " ms after the first, before any sounded." : "a note alone, sounding " + S.windowMs + " ms late.") : gs + " chords, each dealt by pitch among what was held.");
+}
+
+/* The figure: per hand, which notes make the outline and which way each leans. */
+function figureSVG(w, h) {
+  const out = [svgOpen(w, h)];
+  const cols = [];
+  if (!poly()) {
+    const rec = held.slice().sort((a, b) => b.t - a.t);
+    if (S.mode === "dyad") {
+      const two = rec.slice(0, 2).sort((a, b) => a.n - b.n);
+      cols.push({ title: "Dyad: the two newest", notes: held, mark: (x) => two[0] === x ? "X" : two[1] === x ? "Y" : null });
+    } else {
+      cols.push({ title: "Mono: the newest", notes: held, mark: (x) => rec[0] === x ? "pitch" : null });
+    }
+  } else if (twoHands() && S.pair === "against") {
+    cols.push({ title: "One figure: " + handName(0) + " on X, " + handName(1) + " on Y", notes: held, mark: (x) => x.hand === 2 ? "X+Y" : x.hand === 0 ? "X" : "Y" });
+  } else {
+    const hands = twoHands() ? [0, 1] : [0];
+    hands.forEach((hd) => {
+      const mine = held.filter((x) => inHand(x, hd));
+      const ol = outlineOf(mine);
+      const olAsc = [...ol].sort((a, b) => a.n - b.n);
+      cols.push({
+        title: (twoHands() ? handName(hd) + "'s figure" : "The figure") + " · outline of " + S.drawCount, hand: hd, notes: mine,
+        mark: (x) => !ol.has(x) ? "diagonal" : olAsc.length < 2 ? "line" : x === olAsc[0] ? "X" : "Y"
+      });
+    });
+  }
+  const cw = w / cols.length;
+  cols.forEach((c, ci) => {
+    const x0 = ci * cw + (ci ? 10 : 0), iw = cw - (ci ? 10 : 0) - (cols.length > 1 && !ci ? 10 : 0);
+    out.push(T(x0, 12, esc(c.title), ' style="font-size:11px;fill:var(--text-soft)"'));
+    const asc = c.notes.slice().sort((a, b) => a.n - b.n);
+    if (!asc.length) { out.push(T(x0, 34, "nothing held", ' style="font-size:11px;font-style:italic;fill:var(--unresolved)"')); return; }
+    const rowH = Math.max(14, Math.min(38, (h - 26) / Math.max(asc.length, 4)));
+    asc.forEach((x, i) => {
+      const y = 20 + (asc.length - 1 - i) * rowH, m = c.mark(x), lit = m && m !== "diagonal";
+      const hd = c.hand !== undefined ? c.hand : x.hand;
+      out.push('<rect x="' + (x0 + 34) + '" y="' + (y + 2) + '" width="' + (iw - 34) + '" height="' + (rowH - 4) + '" style="fill:' + (lit ? wash(hd, 22) : "var(--paper)") + ";stroke:" + (lit ? ink(hd) : "var(--line)") + '"/>');
+      out.push(T(x0, y + rowH / 2 + 4, nn(x.n), ' style="font-size:11px;fill:var(--charcoal)"'));
+      const word = m === "X" ? "leans onto X" : m === "Y" ? "leans onto Y" : m === "X+Y" ? "both: X and Y" : m === "pitch" ? "the pitch" : m === "line" ? "one note: a line" : "along the diagonal";
+      out.push(T(x0 + 40, y + rowH / 2 + 4, word, ' style="font-size:10.5px;fill:' + (lit ? "var(--charcoal)" : "var(--unresolved)") + '"'));
+    });
+  });
+  out.push("</svg>");
+  return out.join("");
+}
+function figureWords() {
+  if (!poly()) {
+    const rec = held.slice().sort((a, b) => b.t - a.t);
+    if (S.mode === "dyad") {
+      if (rec.length < 2) return rec.length ? "One note alone is a unison" + (S.hold ? ", or the last interval above it while Hold is on." : ".") : "Two notes are the figure: the lower on X, the higher on Y.";
+      const two = rec.slice(0, 2).sort((a, b) => a.n - b.n);
+      return "<b>" + nn(two[0].n) + " on X, " + nn(two[1].n) + " on Y</b>: " + intervalName(two[1].n - two[0].n) + ".";
+    }
+    return rec.length ? "<b>" + nn(rec[0].n) + "</b> is the pitch; the Generator's Interval is the second channel above it." : "The newest note is the pitch.";
+  }
+  if (twoHands() && S.pair === "against") return "One figure, " + handName(0) + "'s notes on X and " + handName(1) + "'s on Y, heard left and right.";
+  return "The lowest outline note leans onto X, the rest onto Y; the others are drawn along the diagonal. The lean is only the picture: how wide each note is heard is the Picture section's Width.";
+}
+
+/* What the notes do, for the Notes editor. */
+function modeSVG(w, h) {
+  const kh = Math.min(110, h * 0.45);
+  const out = [];
+  let outline = new Set();
+  if (S.mode === "dyad") { const rec = held.slice().sort((a, b) => b.t - a.t).slice(0, 2); outline = new Set(rec); }
+  if (S.mode === "mono") { const rec = held.slice().sort((a, b) => b.t - a.t).slice(0, 1); outline = new Set(rec); }
+  out.push('<div style="height:' + kh + 'px">' + keysSVG(w, kh, { lo: 48, hi: 84, labels: true, outline: outline }) + "</div>");
+  const hands = twoHands() ? [0, 1] : [0];
+  if (poly()) {
+    const rows = hands.map((hd) => {
+      const used = held.filter((x) => inHand(x, hd)).length;
+      let dots = "";
+      for (let i = 0; i < 8; i++) dots += '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;background:' + (i < used ? ink(hd) : "var(--line)") + '"></span>';
+      return '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;font-size:12px;color:var(--text-soft)"><span style="flex:0 0 74px">' + (twoHands() ? handName(hd) : "Voices") + "</span>" + dots + '<span class="reading">' + used + " of 8</span></div>";
+    });
+    out.push(rows.join(""));
+  }
+  return out.join("");
+}
+
+/* ---------------------------------------------------------------------------
+   Pieces of the face that every layout shares.
+--------------------------------------------------------------------------- */
+const sel = (field, opts, label, style) =>
+  '<select data-field="' + field + '" aria-label="' + esc(label) + '"' + (style ? ' style="' + style + '"' : "") + ">" +
+  opts.map((o) => '<option value="' + o[0] + '"' + (String(S[field]) === String(o[0]) ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+const sw = (field, opts, label, cls) =>
+  '<div class="switch' + (cls ? " " + cls : "") + '" role="radiogroup" aria-label="' + esc(label) + '">' +
+  opts.map((o) => '<button type="button" class="caps" role="radio" data-set="' + field + '" data-val="' + o[0] + '" aria-checked="' + (String(S[field]) === String(o[0])) + '"' + (o[2] ? " disabled" : "") + ">" + o[1] + "</button>").join("") + "</div>";
+const chk = (field, text) => '<label class="check"><input type="checkbox" data-field="' + field + '"' + (S[field] ? " checked" : "") + "> " + text + "</label>";
+const kface = (deg) => '<span class="kface" style="--a:' + deg + 'deg"><span class="kcap"></span></span>';
+const knob = (v, name, deg, o) => '<div class="kn' + (o && o.off ? " off" : "") + '"><span class="v">' + v + "</span>" + kface(deg) + '<span class="n">' + (o && o.host ? '<span class="hostdot"></span>' : "") + name + "</span></div>";
+const link = () => (twoHands() ? '<span class="link">⚭ Same in both</span>' : "");
+const MODES = [["dyad", "Dyad"], ["mono", "Mono"], ["poly", "Poly"]];
+const SHAPES = [["sine", "Sine"], ["tri", "Triangle"], ["saw", "Saw"], ["square", "Square"], ["pulse", "Pulse"], ["morph", "Morph"], ["bars", "Drawbars"], ["cycle", "Drawn cycle"], ["table", "Wavetable"]];
+const DRAWN = [["2", "2 notes"], ["3", "3 notes"], ["4", "4 notes"], ["5", "5 notes"], ["6", "6 notes"], ["7", "7 notes"], ["8", "8 notes"]];
+const WHICH = [["outer", "bass and melody"], ["lowest", "lowest"], ["highest", "highest"], ["recent", "most recent"]];
+const COUNTS = [1, 2, 3, 4, 5, 6].map((n) => [String(n), String(n)]);
+
+function generator() {
+  return '<div class="group"><div class="title">Generator ' + link() + '<span class="dots">⋯</span></div>' +
+    '<div class="row"><span class="lab">Shape</span><div class="grow"><select aria-label="Shape">' + SHAPES.map((o) => "<option>" + o[1] + "</option>").join("") + "</select></div></div>" +
+    '<div class="knob-row"><span class="lab">Glide</span>' + kface(0) + '<span class="reading">off</span></div>' +
+    '<div class="row"><span class="lab">Interval</span><div class="grow">' + sel("interval", [["0", "Unison · 1:1"], ["7", "Fifth · 2:3"], ["4", "Major third · 4:5"], ["12", "Octave · 1:2"]], "Interval") + "</div></div>" +
+    '<div class="knob-row"><span class="lab"><span class="hostdot"></span>Level</span>' + kface(150) + '<span class="reading">0.55</span></div></div>';
+}
+function ampEnv() {
+  return '<div class="group"><div class="title">Amp envelope ' + link() + '<span class="dots">⋯</span></div>' +
+    '<div class="env"><svg viewBox="0 0 250 50" preserveAspectRatio="none"><polyline points="0,48 30,6 120,14 190,14 250,46" style="fill:none;stroke:var(--blush-deep);stroke-width:1.5" vector-effect="non-scaling-stroke"/></svg></div>' +
+    '<div class="knobs" style="margin-top:8px">' + knob("8 ms", "Attack", 30) + knob("120 ms", "Decay", 90) + knob("0.70", "Sustain", 190) + knob("180 ms", "Release", 100) + "</div></div>";
+}
+function voiceFilter() {
+  return '<div class="group"><div class="title">Voice filter ' + link() + '<span class="dots">⋯</span></div>' +
+    '<div class="row"><span class="lab">Type</span><div class="grow"><select aria-label="Filter type"><option>Off</option><option>Low pass</option><option>High pass</option><option>Band pass</option><option>Notch</option></select></div></div>' +
+    '<div class="knobs" style="margin-top:8px">' + knob("2.0 kHz", "Cutoff", 160, { off: 1, host: 1 }) + knob("Q 0.71", "Resonance", 20, { off: 1 }) + knob("0%", "Key track", 0, { off: 1 }) + knob("0.0 oct", "Envelope", 135, { off: 1 }) + "</div></div>";
+}
+function expression() {
+  return '<div class="group"><div class="title">Expression<span class="dots">⋯</span></div>' +
+    '<div class="row"><span class="lab">Pitch bend</span><div class="grow">' + sel("bend", [["1", "±1 semitone"], ["2", "±2 semitones"], ["7", "±7 semitones"], ["12", "±12 semitones"]], "Pitch bend") + "</div></div>" +
+    '<div class="row"><span class="lab">Mod wheel</span><div class="grow">' + sel("wheel", [["vibrato", "Vibrato"], ["picture", "Picture amount"], ["scan", "Scan depth"], ["off", "Nothing"]], "Mod wheel") + "</div></div>" +
+    '<div class="row"><span class="lab">Pressure</span><div class="grow">' + sel("pressure", [["vibrato", "Vibrato"], ["picture", "Picture amount"], ["scan", "Scan depth"], ["off", "Nothing"]], "Pressure") + "</div></div>" +
+    '<div class="row"><span class="lab">Velocity</span><div class="grow">' + sel("velocity", [["strike", "Level and strike"], ["fm", "Level, strike and FM"]], "Velocity") + "</div></div></div>";
+}
+const onScreen = () => '<div class="row"><span class="lab">On screen</span><div class="grow"><button type="button" class="link-btn caps" data-toggle="keysShown" aria-pressed="' + S.keysShown + '">' + (S.keysShown ? "Hide keys" : "Show keys") + "</button></div></div>";
+
+/* The words each question answers with, for A's lines and C's band. */
+function notesWords() {
+  if (S.mode === "dyad") return "Dyad" + (S.hold ? " <i>· holds the interval</i>" : "");
+  if (S.mode === "mono") return "Mono <i>· Interval above</i>";
+  return "Poly <i>· 8 voices a hand" + (S.polyJust ? " · chords tuned" : "") + "</i>";
+}
+function handsWords() {
+  if (!poly()) return "one sound <i>· splits are Poly's</i>";
+  if (S.hands === "one") return "one sound";
+  if (S.hands === "key") return "split at " + nn(S.splitAt);
+  if (S.hands === "layer") return "layered <i>· every note both</i>";
+  return "split by notes <i>· " + (S.splitEnd === "lower" ? "lowest " : "highest ") + S.splitCount + " · " + S.windowMs + " ms</i>";
+}
+function figureWordsShort() {
+  if (S.mode === "dyad") return "the two newest <i>· lower on X</i>";
+  if (S.mode === "mono") return "the newest <i>· and its interval</i>";
+  if (twoHands() && S.pair === "against") return "A against B <i>· one figure</i>";
+  return "outline of " + S.drawCount + " <i>· " + WHICH.find((w) => w[0] === S.drawWhich)[1] + (twoHands() ? " · a figure each" : "") + "</i>";
+}
+function handsSentence() {
+  if (!poly()) return S.mode === "dyad" ? "Two held notes are the two channels: the interval you play is the figure." : "One finger plays the whole figure: the newest note, and the Interval above it.";
+  if (S.hands === "one") return "Every note held sounds and draws, up to eight, in one sound.";
+  if (S.hands === "key") return "Notes under " + nn(S.splitAt) + " play the lower sound; " + nn(S.splitAt) + " and up the upper.";
+  if (S.hands === "layer") return "Every note plays both sounds, A and B.";
+  const end = S.splitEnd === "lower";
+  return "The " + (end ? "lowest " : "highest ") + (S.splitCount > 1 ? S.splitCount + " notes" : "note") + " held play" + (S.splitCount > 1 ? "" : "s") + " the " + (end ? "lower" : "upper") + " sound, the rest the " + (end ? "upper" : "lower") + "; a chord within " + S.windowMs + " ms is dealt by pitch.";
+}
+
+/* The live parts: anything that redraws as notes come and go. Each element
+   names what it draws and is redrawn at its own size. */
+const LIVE = {
+  mini: (el) => { const w = el.clientWidth || 200; return byNotes() ? rowSVG(w, 20) : keysSVG(w, 20, { lo: 36, hi: 84 }); },
+  inline: (el) => {
+    const w = el.clientWidth || 200, h = +el.dataset.h || 60;
+    if (byNotes()) return rowSVG(w, h - 18) + '<div style="height:18px">' + laneSVG(w, 18) + "</div>";
+    return keysSVG(w, h, { lo: 36, hi: 84, labels: true, clickSplit: S.hands === "key" && poly() });
+  },
+  strip: (el) => {
+    const w = el.clientWidth || 400, h = el.clientHeight || 60;
+    if (byNotes()) return rowSVG(w, h, { slots: true });
+    const ol = !twoHands() && poly() ? outlineOf(held) : new Set();
+    return keysSVG(w, h, { lo: 36, hi: 84, labels: true, clickSplit: S.hands === "key" && poly(), outline: ol });
+  },
+  handsDia: (el) => {
+    const w = el.clientWidth || 300, h = el.clientHeight || 200;
+    if (byNotes()) {
+      const lh = 46;
+      return '<div style="height:' + (h - lh - 8) + 'px">' + stackSVG(w, h - lh - 8) + '</div><div style="height:' + lh + 'px;margin-top:8px">' + laneSVG(w, lh) + "</div>";
+    }
+    const kh = Math.min(90, h * 0.42);
+    return '<div style="height:' + kh + 'px">' + keysSVG(w, kh, { lo: 36, hi: 84, labels: true, clickSplit: S.hands === "key" && poly() }) + "</div>" +
+      '<div style="height:' + (h - kh - 10) + 'px;margin-top:10px">' + figureSVG(w, h - kh - 10) + "</div>";
+  },
+  figDia: (el) => figureSVG(el.clientWidth || 300, el.clientHeight || 200),
+  modeDia: (el) => modeSVG(el.clientWidth || 300, el.clientHeight || 200),
+  sumNotes: () => notesWords(), sumHands: () => handsWords(), sumFigure: () => figureWordsShort(),
+  handsCap: () => byNotes() ? laneWords() : handsSentence() + (S.hands === "key" && poly() ? " <b>Press a key in the strip to split there.</b>" : ""),
+  figCap: () => figureWords(),
+  bandLine: () => byNotes() && lastStrike ? laneWords() : handsSentence() + (S.hands === "key" && poly() ? " Press a key in the strip to split there." : byNotes() ? " Press a place in the strip to set how many." : ""),
+  stripCap: () => byNotes() ? laneWords() : S.hands === "key" && poly() ? "Press a key to split there." : "",
+  modeCap: () => S.mode === "dyad" ? figureWords() : S.mode === "mono" ? figureWords() :
+    (held.length ? "<b>" + held.length + " held</b>" + (twoHands() ? ", eight voices to each hand." : ", of eight voices.") : "Every held note sounds, each with its own envelope.")
+};
+/* Words first, then drawings: a drawing takes the height its box has, and
+   that depends on how many lines the caption under it came to. */
+const WORDS = new Set(["sumNotes", "sumHands", "sumFigure", "handsCap", "figCap", "bandLine", "stripCap", "modeCap", "winRead"]);
+function paint() {
+  const live = [...document.querySelectorAll("[data-live]")];
+  live.filter((el) => WORDS.has(el.dataset.live)).forEach((el) => { el.innerHTML = LIVE[el.dataset.live](el); });
+  live.filter((el) => !WORDS.has(el.dataset.live)).forEach((el) => { el.innerHTML = ""; });
+  live.filter((el) => !WORDS.has(el.dataset.live)).forEach((el) => { el.innerHTML = LIVE[el.dataset.live](el); });
+  paintPlayer();
+}
+
+/* ---------------------------------------------------------------------------
+   The four faces. Each returns its columns; render() lays them out.
+--------------------------------------------------------------------------- */
+const layersOf = () => (S.hands === "one" ? "off" : S.hands === "layer" ? "layer" : "split");
+
+function today() {
+  let k = '<div class="group"><div class="title">Keyboard<span class="dots">⋯</span></div>' + onScreen() +
+    '<div class="row">' + sw("mode", MODES, "What held notes do") + "</div>";
+  if (poly()) {
+    k += '<div class="row"><span class="lab">Layers</span><div class="grow"><select data-field="layers" aria-label="Layers">' +
+      [["off", "one"], ["split", "split"], ["layer", "layered"]].map((o) => '<option value="' + o[0] + '"' + (layersOf() === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>" +
+      (layersOf() === "split" ? '<select data-field="splitBy" aria-label="Split by"><option value="key"' + (S.hands === "key" ? " selected" : "") + '>by key</option><option value="notes"' + (S.hands === "notes" ? " selected" : "") + ">by notes</option></select>" : "") +
+      "</div></div>";
+    if (S.hands !== "one") {
+      k += '<div class="row"><div class="grow">' + sel("pair", [["each", "a figure each"], ["against", "A against B"]], "How the two layers are drawn", "flex:1.4 1 0") +
+        (S.hands === "key" ? '<button type="button" class="link-btn caps" data-act="learn" aria-pressed="' + view.learn + '">' + (view.learn ? "play a key" : "at " + nn(S.splitAt)) + "</button>" : "") +
+        (S.hands === "notes" ? sel("splitEnd", [["lower", "lowest"], ["upper", "highest"]], "Counted") + sel("splitCount", COUNTS, "How many", "flex:0.6 1 0") : "") + "</div></div>";
+    }
+    k += '<div class="row"><span class="lab">Draw</span></div><div class="row"><div class="grow">' + sel("drawCount", DRAWN, "How many notes the picture draws") + sel("drawWhich", WHICH, "Which notes", "flex:2 1 0") + "</div></div>";
+  }
+  k += '<label class="check"><input type="checkbox" checked> Quarter turn: a lone note draws a ring</label>' + chk("hold", "Hold the interval under one note") + "</div>";
+  return [[k, expression()], [generator(), ampEnv()], [voiceFilter()]];
+}
+
+function layoutA() {
+  const k = '<div class="group"><div class="title">Keyboard<span class="dots">⋯</span></div>' + onScreen() +
+    '<button type="button" class="sum" data-open="notes"><span class="lab">Notes</span><span class="val" data-live="sumNotes"></span><span class="chev">›</span></button>' +
+    '<button type="button" class="sum' + (poly() ? "" : " quiet") + '" data-open="hands" style="flex-wrap:wrap"><span class="lab">Hands</span><span class="val" data-live="sumHands"></span><span class="chev">›</span>' +
+    (twoHands() ? '<span class="mini" data-live="mini" style="height:18px"></span>' : "") + "</button>" +
+    '<button type="button" class="sum" data-open="figure"><span class="lab">Figure</span><span class="val" data-live="sumFigure"></span><span class="chev">›</span></button></div>';
+  return [[k, expression()], [generator(), ampEnv()], [voiceFilter()]];
+}
+
+function handsOptions(compact) {
+  const o = [
+    ["one", "One sound", "Every note plays the one sound and draws one figure."],
+    ["key", "Split at a key", "Notes under the split point are the lower hand, the rest the upper."],
+    ["notes", "Split by notes", "The lowest (or highest) few notes held are one hand, the rest the other: a bass and its chord wherever you play them."],
+    ["layer", "Layered", "Every note plays both sounds, A and B."]
+  ];
+  return '<div class="opts" role="radiogroup" aria-label="Hands">' + o.map((x) => {
+    const on = poly() && S.hands === x[0] || !poly() && x[0] === "one";
+    let more = "";
+    if (on && poly() && x[0] === "key") more = '<div class="opt-more"><div class="row"><span class="lab">Split point</span><div class="grow"><button type="button" class="link-btn caps" data-act="learn" aria-pressed="' + view.learn + '">' + (view.learn ? "now play a key" : nn(S.splitAt) + " · learn") + "</button></div></div></div>";
+    if (on && poly() && x[0] === "notes") more = '<div class="opt-more">' + notesRows() + "</div>";
+    return '<button type="button" class="opt" role="radio" data-hands="' + x[0] + '" aria-checked="' + on + '"><b>' + x[1] + "</b>" + (compact && !on ? "" : "<span>" + x[2] + "</span>") + "</button>" + more;
+  }).join("") + "</div>";
+}
+function notesRows(tight) {
+  return '<div class="row"><span class="lab">Counted</span><div class="grow">' + sw("splitEnd", [["lower", "Lowest"], ["upper", "Highest"]], "Which end is counted", "tight") + "</div></div>" +
+    '<div class="row"><span class="lab">How many</span><div class="grow">' + sw("splitCount", COUNTS, "How many notes the counted hand takes", "tight") + "</div></div>" +
+    '<div class="row"><span class="lab">Chord window</span><div class="grow"><input type="range" min="0" max="15" step="1" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window"><span class="reading" data-live="winRead">' + S.windowMs + " ms</span></div></div>";
+}
+LIVE.winRead = () => S.windowMs + " ms";
+
+function editorA() {
+  const ed = view.editor; if (!ed) return "";
+  const names = { notes: "Notes", hands: "Hands", figure: "Figure" };
+  const desc = { notes: "How the notes you hold sound.", hands: "How the notes are shared between two sounds.", figure: "How the notes are drawn." };
+  const compact = view.size === "compact";
+  let left = "", right = "";
+  if (ed === "notes") {
+    left = '<div class="opts" role="radiogroup" aria-label="Notes">' + [
+      ["dyad", "Dyad", "Two held notes are the two channels, the lower on X: the interval you play is the figure."],
+      ["mono", "Mono", "The newest note is the pitch; the Generator's Interval puts the second channel above it."],
+      ["poly", "Poly", "Every held note sounds, eight to a hand, each with its own envelope."]
+    ].map((x) => '<button type="button" class="opt" role="radio" data-set="mode" data-val="' + x[0] + '" aria-checked="' + (S.mode === x[0]) + '"><b>' + x[1] + "</b><span>" + x[2] + "</span></button>").join("") + "</div>" +
+      '<div class="sub" style="margin-top:14px">With ' + (S.mode === "dyad" ? "Dyad" : S.mode === "mono" ? "Mono" : "Poly") + "</div>" +
+      (S.mode === "dyad" ? chk("hold", "Hold the interval under one note") + '<p class="note">One finger then walks the last interval up a melody. Off, one note alone is a unison.</p>' :
+       S.mode === "mono" ? '<p class="note" style="margin-top:0">Nothing more here: the Interval and Glide are the Generator\'s, beside the wave they shape.</p>' :
+       chk("polyJust", "Tune a chord to its lowest note") + '<p class="note">Glide slides a chord\'s notes together. Interval and Phase do nothing to a chord.</p>');
+    right = '<div class="dia" data-live="modeDia"></div><p class="dia-cap" data-live="modeCap"></p>';
+  } else if (ed === "hands") {
+    left = (poly() ? "" : '<p class="note" style="margin:0 0 8px">Splits and layers are Poly\'s: choosing one plays Poly.</p>') + handsOptions(compact) +
+      (twoHands() ? '<p class="note">Each section\'s link says whether the two hands share it: <i>Same in both</i>, or each its own.</p>' : "");
+    right = '<div class="dia" data-live="handsDia"></div><p class="dia-cap" data-live="handsCap"></p>';
+  } else {
+    if (poly()) {
+      left = '<div class="row"><span class="lab">Outline</span><div class="grow">' + sel("drawCount", DRAWN, "How many notes make the outline") + "</div></div>" +
+        '<div class="row"><span class="lab">Which</span><div class="grow">' + sel("drawWhich", WHICH, "Which notes make the outline") + "</div></div>" +
+        '<p class="note">' + (twoHands() ? "For the hand being edited (the header's <i>Editing</i>). " : "") + "With two notes held it is the dyad, whatever is chosen.</p>" +
+        (twoHands() ? '<div class="sub" style="margin-top:14px">Two hands</div><div class="opts" role="radiogroup" aria-label="How the two hands are drawn">' +
+          [["each", "A figure each", "Overlaid in their own inks; each is a picture of its own."], ["against", "A against B", "One figure: A's notes on X and B's on Y, heard left and right."]]
+            .map((x) => '<button type="button" class="opt" role="radio" data-set="pair" data-val="' + x[0] + '" aria-checked="' + (S.pair === x[0]) + '"><b>' + x[1] + "</b><span>" + x[2] + "</span></button>").join("") + "</div>" : "");
+    } else {
+      left = '<p class="note" style="margin-top:0">' + (S.mode === "dyad" ? "In Dyad the two newest notes are the figure, the lower on X. There is nothing to choose." : "In Mono the newest note and the Interval above it are the figure. There is nothing to choose.") + "</p>";
+    }
+    right = '<div class="dia" data-live="figDia"></div><p class="dia-cap" data-live="figCap"></p>';
+  }
+  return '<div class="ed" role="dialog" aria-label="' + names[ed] + '"><div class="ed-head"><span class="ed-name">' + names[ed] + "</span>" +
+    '<div class="switch" role="radiogroup" aria-label="Question">' + ["notes", "hands", "figure"].map((q) => '<button type="button" class="caps" role="radio" data-open="' + q + '" aria-checked="' + (ed === q) + '">' + names[q] + "</button>").join("") + "</div>" +
+    (compact ? "" : '<span class="ed-desc">' + desc[ed] + "</span>") +
+    '<button type="button" class="close-btn" data-close aria-label="Close">✕</button></div>' +
+    '<div class="ed-body"><div class="ed-left">' + left + '</div><div class="ed-right">' + right + "</div></div></div>";
+}
+
+function layoutB() {
+  const compact = view.size === "compact";
+  let k = '<div class="group"><div class="title">Keyboard<span class="dots">⋯</span></div>' + onScreen() +
+    '<div class="sub">Notes <span class="q">how they sound</span></div><div class="row">' + sw("mode", MODES, "Notes") + "</div>" +
+    (S.mode === "dyad" ? chk("hold", "Hold the interval under one note") : S.mode === "mono" ? '<p class="note">Interval and Glide: on the Generator.</p>' : chk("polyJust", "Tune a chord to its lowest note")) +
+    '<div class="sub">Hands <span class="q">how they are shared</span></div>' +
+    '<div class="row">' + sw("handsB", [["one", "One"], ["key", "Key"], ["notes", "Notes"], ["layer", "Layer"]], "Hands", "tight") + "</div>";
+  if (!poly()) k += '<p class="note">Splits and layers are Poly\'s: choosing one plays Poly.</p>';
+  else if (S.hands === "key") k += '<div class="row"><span class="lab">Split point</span><div class="grow"><button type="button" class="link-btn caps" data-act="learn" aria-pressed="' + view.learn + '">' + (view.learn ? "play a key" : nn(S.splitAt) + " · learn") + "</button></div></div>";
+  else if (S.hands === "notes") k += compact ?
+    '<div class="row"><span class="lab">Counted</span><div class="grow">' + sel("splitEnd", [["lower", "lowest"], ["upper", "highest"]], "Counted") + sel("splitCount", COUNTS, "How many", "flex:0.6 1 0") + "</div></div>" +
+    '<div class="row"><span class="lab">Window</span><div class="grow"><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window"><span class="reading" data-live="winRead"></span></div></div>' : notesRows();
+  if (twoHands() || poly() && S.hands === "one") k += '<div data-live="inline" data-h="' + (compact ? 40 : (byNotes() ? 58 : 46)) + '" style="margin-top:8px"></div>';
+  k += '<div class="sub">Figure <span class="q">how they are drawn</span></div>';
+  if (poly()) {
+    k += '<div class="row">' + (compact ? "" : '<span class="lab">Outline</span>') + '<div class="grow">' + sel("drawCount", DRAWN.map((d) => [d[0], d[0]]), "How many notes make the outline", "flex:0 0 46px") + sel("drawWhich", WHICH, "Which notes", "flex:2 1 0") + "</div></div>";
+    if (twoHands()) k += '<div class="row"><span class="lab">Two hands</span><div class="grow">' + sel("pair", [["each", "a figure each"], ["against", "A against B"]], "How the two hands are drawn") + "</div></div>";
+  } else k += '<p class="note">' + (S.mode === "dyad" ? "The two newest notes, the lower on X." : "The newest note and the Interval above it.") + "</p>";
+  k += "</div>";
+  return [[k], [generator(), ampEnv()], [voiceFilter(), expression()]];
+}
+
+const MERGED = [["dyad", "Dyad"], ["mono", "Mono"], ["poly", "Poly"], ["split", "Split"], ["layer", "Layered"]];
+function mergedOf() { return !poly() ? S.mode : S.hands === "one" ? "poly" : S.hands === "layer" ? "layer" : "split"; }
+function layoutC() {
+  const compact = view.size === "compact", m = mergedOf();
+  let ctl = "";
+  if (m === "split") {
+    ctl += sw("hands", [["key", "At a key"], ["notes", "By notes"]], "Split by", "tight");
+    if (S.hands === "notes") ctl += sw("splitEnd", [["lower", "Lowest"], ["upper", "Highest"]], "Counted from", "tight") +
+      '<span class="reading">Window</span><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window" style="flex:0 1 110px;min-width:70px"><span class="reading" data-live="winRead"></span>';
+    else ctl += '<button type="button" class="link-btn caps" data-act="learn" aria-pressed="' + view.learn + '">' + (view.learn ? "play a key" : nn(S.splitAt) + " \u00B7 learn") + "</button>";
+  }
+  let fig = "";
+  if (poly()) {
+    fig = '<span class="lab" style="flex:0 0 auto">Outline</span>' + sel("drawCount", DRAWN, "How many notes make the outline", "flex:0 0 auto") + sel("drawWhich", WHICH, "Which notes", "flex:0 0 auto") +
+      (twoHands() ? sw("pair", [["each", "A figure each"], ["against", "A against B"]], "How the two hands are drawn", "tight") : "") + chk("polyJust", "Tune a chord");
+  } else if (S.mode === "dyad") fig = chk("hold", "Hold the interval under one note") + '<span class="reading">The two newest notes, the lower on X.</span>';
+  else fig = '<span class="reading">The newest note, and the Generator\'s Interval above it.</span>';
+  const band = '<div class="band"><div class="band-top">' + sw("merged", MERGED, "Notes and hands", compact ? "tight" : "") +
+    '<div data-live="strip" style="flex:1 1 200px;min-width:0;height:' + (compact ? 34 : 40) + 'px"></div>' +
+    '<button type="button" class="link-btn caps" data-toggle="keysShown" aria-pressed="' + S.keysShown + '">' + (S.keysShown ? "Hide keys" : "Keys") + "</button></div>" +
+    '<p class="dia-cap" data-live="bandLine" style="min-height:0;margin:5px 0 0"></p>' +
+    (ctl ? '<div class="band-foot">' + ctl + "</div>" : "") +
+    '<div class="band-foot">' + fig.replace(/<label class="check">/g, '<label class="check" style="margin-top:0">') + "</div></div>";
+  return { band: band, cols: [[expression(), ampEnv()], [generator()], [voiceFilter()]] };
+}
+LIVE.lane = (el) => laneSVG(el.clientWidth || 140, el.clientHeight || 28);
+
+/* ---------------------------------------------------------------------------
+   Render, measure, scale.
+--------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+   Round 2 (16 Nov, the owner's verdict on A, B and C): D, the mix. The Notes
+   switch always on top of Play; the strip always under it, live and a
+   control; the deeper settings in the Keyboard's own column, reached by a
+   toggle of one of three kinds, never covering columns 2 and 3. Where the
+   hands choice lives is a second, independent option.
+--------------------------------------------------------------------------- */
+let dview = { toggle: "seg", where: "above", panel: "hands", acc: "hands", drawer: null };
+try {
+  const d = JSON.parse(localStorage.getItem("playMockup.d") || "{}");
+  if (["seg", "acc", "drawer"].includes(d.toggle)) dview.toggle = d.toggle;
+  if (["above", "corner", "panel"].includes(d.where)) dview.where = d.where;
+} catch (e) { /* no storage */ }
+function rememberD() { try { localStorage.setItem("playMockup.d", JSON.stringify({ toggle: dview.toggle, where: dview.where })); } catch (e) { /* no storage */ } }
+
+const HANDS4 = [["one", "One"], ["key", "Key"], ["notes", "Notes"], ["layer", "Layer"]];
+function dGroups() {
+  const g = [];
+  if (poly()) g.push(["hands", "Hands"]);
+  g.push(["figure", "Figure"]);
+  if (dview.toggle !== "drawer") g.push(["expr", "Expression"]);
+  return g;
+}
+function exprWords() {
+  const w = { vibrato: "vibrato", picture: "picture", scan: "scan", off: "nothing" };
+  return "bend ±" + S.bend + " <i>· wheel " + w[S.wheel] + (S.pressure !== "off" ? " · pressure " + w[S.pressure] : "") + "</i>";
+}
+function dPanel(which) {
+  const compact = view.size === "compact";
+  if (which === "hands") {
+    let s = dview.where === "panel" ? '<div class="row">' + sw("hands", HANDS4, "Hands", "tight") + "</div>" : "";
+    if (S.hands === "key") s += '<div class="row"><span class="lab">Split point</span><div class="grow"><button type="button" class="link-btn caps" data-act="learn" aria-pressed="' + view.learn + '">' + (view.learn ? "play a key" : nn(S.splitAt) + " · learn") + "</button></div></div>";
+    else if (S.hands === "notes") s += '<div class="row"><span class="lab">Counted</span><div class="grow">' + sw("splitEnd", [["lower", "Lowest"], ["upper", "Highest"]], "Which end is counted", "tight") + "</div></div>" +
+      (dview.where === "panel" ? '<div class="row"><span class="lab">How many</span><div class="grow">' + sw("splitCount", COUNTS, "How many", "tight") + "</div></div>" : "") +
+      '<div class="row"><span class="lab">Chord window</span><div class="grow"><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window"><span class="reading" data-live="winRead"></span></div></div>';
+    else s += '<p class="note">' + (S.hands === "layer" ? "Every note plays both sounds, A and B." : "Every note plays the one sound.") + "</p>";
+    return s;
+  }
+  if (which === "figure") {
+    if (S.mode === "dyad") return chk("hold", "Hold the interval under one note") + '<p class="note">The two newest notes are the figure, the lower on X.</p>';
+    if (S.mode === "mono") return '<p class="note" style="margin-top:2px">The newest note, and the Generator\'s Interval above it. Nothing to choose.</p>';
+    return '<div class="row"><span class="lab">Outline</span><div class="grow">' + sel("drawCount", DRAWN.map((d) => [d[0], d[0]]), "How many notes make the outline", "flex:0 0 46px") + sel("drawWhich", WHICH, "Which notes", "flex:1 1 0") + "</div></div>" +
+      (twoHands() ? '<div class="row"><span class="lab">Two hands</span><div class="grow">' + sw("pair", [["each", "Each"], ["against", "A vs B"]], "How the two hands are drawn", "tight") + "</div></div>" : "") +
+      chk("polyJust", "Tune a chord to its lowest note");
+  }
+  return '<div class="dexpr">' + expression().replace(/^<div class="group"><div class="title">[^]*?<\/div>/, "").replace(/<\/div>$/, "") + "</div>";
+}
+function layoutD() {
+  const compact = view.size === "compact", where = dview.where, tg = dview.toggle;
+  let k = '<div class="group"><div class="title">Keyboard<button type="button" class="link-btn caps tiny" data-toggle="keysShown" aria-pressed="' + S.keysShown + '">' + (S.keysShown ? "hide keys" : "keys") + '</button><span class="dots">⋯</span></div>';
+  k += '<div class="row">' + sw("mode", MODES, "Notes") + "</div>";
+  if (poly() && where === "above") k += '<div class="row">' + sw("hands", HANDS4, "Hands", "tight") + "</div>";
+  const sh = compact ? 38 : 48;
+  const click = where !== "panel" ? 1 : 0;
+  let strip = '<div data-live="dstrip" data-click="' + click + '" style="height:' + sh + 'px"></div>' +
+    (byNotes() ? '<div data-live="lane" style="height:14px;margin-top:3px"></div>' : "");
+  if (poly() && where === "corner") strip = '<div class="dbox"><div class="dbox-head">' + sw("hands", HANDS4, "Hands", "mini") + "</div>" + strip + "</div>";
+  else strip = '<div style="margin-top:8px">' + strip + "</div>";
+  k += strip + '<p class="dia-cap dcap" data-live="dCap"></p>';
+  let drawer = "";
+  const groups = dGroups();
+  if (tg === "seg") {
+    if (!groups.some((g) => g[0] === dview.panel)) dview.panel = groups[0][0];
+    k += '<div class="row">' + '<div class="switch tight" role="radiogroup" aria-label="Settings">' + groups.map((g) => '<button type="button" class="caps" role="radio" data-dpanel="' + g[0] + '" aria-checked="' + (dview.panel === g[0]) + '">' + g[1] + "</button>").join("") + "</div></div>" +
+      '<div class="dpanel">' + dPanel(dview.panel) + "</div>";
+  } else if (tg === "acc") {
+    if (dview.acc && !groups.some((g) => g[0] === dview.acc)) dview.acc = null;
+    k += '<div class="accs">' + groups.map((g) => {
+      const open = dview.acc === g[0];
+      const words = g[0] === "hands" ? handsWords() : g[0] === "figure" ? figureWordsShort() : exprWords();
+      return '<button type="button" class="acc-h" data-dpanel="' + g[0] + '" aria-expanded="' + open + '"><span class="lab">' + g[1] + '</span><span class="val">' + words + '</span><span class="chev">' + (open ? "−" : "+") + "</span></button>" +
+        (open ? '<div class="dpanel">' + dPanel(g[0]) + "</div>" : "");
+    }).join("") + "</div>";
+  } else {
+    if (dview.drawer && !groups.some((g) => g[0] === dview.drawer)) dview.drawer = null;
+    k += '<div class="row drawer-row"><span class="lab">More</span><div class="grow">' + groups.map((g) => '<button type="button" class="link-btn caps" data-drawer="' + g[0] + '" aria-pressed="' + (dview.drawer === g[0]) + '">' + g[1] + "</button>").join("") + "</div></div>";
+    if (dview.drawer) drawer = '<div class="drawer" role="dialog" aria-label="' + dview.drawer + '"><div class="drawer-head"><div class="switch tight" role="radiogroup" aria-label="Settings">' +
+      groups.map((g) => '<button type="button" class="caps" role="radio" data-drawer="' + g[0] + '" aria-checked="' + (dview.drawer === g[0]) + '">' + g[1] + "</button>").join("") +
+      '</div><button type="button" class="close-btn" data-dclose aria-label="Close">✕</button></div><div class="drawer-body">' + dPanel(dview.drawer) + "</div></div>";
+  }
+  k += "</div>";
+  const c1 = tg === "drawer" ? [k, expression()] : [k];
+  return { cols: [c1, [generator(), ampEnv()], [voiceFilter()]], drawer: drawer };
+}
+LIVE.dstrip = (el) => {
+  const w = el.clientWidth || 240, h = el.clientHeight || 48, click = el.dataset.click === "1";
+  if (byNotes()) return rowSVG(w, h, { slots: true, noclick: !click });
+  let ol = new Set();
+  const rec = held.slice().sort((a, b) => b.t - a.t);
+  if (S.mode === "dyad") ol = new Set(rec.slice(0, 2));
+  else if (S.mode === "mono") ol = new Set(rec.slice(0, 1));
+  else if (!twoHands()) ol = outlineOf(held);
+  return keysSVG(w, h, { lo: view.size === "compact" ? 48 : 41, hi: 84, labels: true, clickSplit: click && S.hands === "key" && poly(), outline: ol });
+};
+LIVE.dCap = () => {
+  if (byNotes() && lastStrike) return laneWords();
+  if (!poly()) return handsSentence();
+  if (S.hands === "key") return handsSentence() + (dview.where !== "panel" ? " <b>Press a key to split there.</b>" : "");
+  if (S.hands === "notes") return handsSentence() + (dview.where !== "panel" ? " <b>Press a place to set how many.</b>" : "");
+  return handsSentence();
+};
+WORDS.add("dCap");
+
+const VERDICT_D = {
+  seg: [["Answers", "One press reaches anything: the Notes switch and the strip are always there, and Hands, Figure or Expression is one press on a switch that swaps a panel in place. Nothing is covered; columns 2 and 3 never move."],
+        ["Costs", "Only one panel shows at a time, so a setting in another (the Chord window while you look at the outline) is a press away and out of sight. The panel's height changes with what it holds, so what is under it in the column is never fixed: here nothing is, and Expression is one of the panels."],
+        ["Elsewhere", "The Bench's own tab cards, one level down: a dense section becomes a row of three or four words over one panel. It suits Ink's oscillator extras (FM · Sync · Noise) and the Picture's Advanced (Reads · Responds · Score). It fails where two panels are wanted at once."]],
+  acc: [["Answers", "Each group's header is a summary line that opens in place (A's lines, without the editor), so the column says what everything is set to while one group is open. One press for anything; nothing is covered."],
+        ["Costs", "The headers cost a line each whether open or shut, so the open panel has three lines less room than the switch's. Opening one group shifts the headers under it, which is the movement under the pointer that the Bench's real columns were built to avoid (CLAUDE.md), though here it is the pointer's own press."],
+        ["Elsewhere", "Fits where a section's groups are worth naming with their values - Routings, the Picture's Advanced, a brush's settings. It reads as a list, and a long list in a column that may not scroll runs out first."]],
+  drawer: [["Answers", "The strip and Expression stay as the column's resting face; the deeper settings slide over column 1 only, from under the strip, and columns 2 and 3 stay in view. Two presses at most: the word under the strip, then the drawer's own switch."],
+           ["Costs", "While it is open, Expression and anything else below the strip in column 1 is hidden, and the drawer is a second place with a close button. At rest the column shows nothing of the split's settings but what the strip draws."],
+           ["Elsewhere", "The modulation editor made the width of one column. Good for settings visited rarely and in a sitting - the Brushes panel, Picture Advanced's score - and poor for something tweaked while playing."]]
+};
+const WHERE_LINES = {
+  above: "The hands choice is a small switch just above the strip, in Poly only: two rows that read together, and the strip below shows the result and is the control.",
+  corner: "The hands choice sits in the strip's own box, its head: strip and choice read as one object, at the cost of a box's border and a row inside it.",
+  panel: "The hands choice is inside the Hands panel, and the strip only shows the result: the quietest column, and choosing a split is one more press (and the strip is no longer a control)."
+};
+
+/* Every combination D can be in, measured: for each size, toggle and place
+   of the hands choice, the tightest column 1 across the modes and hands and
+   every panel open, and whether a drawer fits. */
+function measureAll() {
+  const keep = { S: Object.assign({}, S), view: Object.assign({}, view), dview: Object.assign({}, dview) };
+  const states = [["dyad", "one"], ["mono", "one"], ["poly", "one"], ["poly", "key"], ["poly", "notes"], ["poly", "layer"]];
+  const rows = [];
+  for (const size of ["big", "compact"]) for (const tg of ["seg", "acc", "drawer"]) for (const where of ["above", "corner", "panel"]) {
+    let worst = null, drawerWorst = null;
+    view.layout = "D"; view.size = size; dview.toggle = tg; dview.where = where;
+    for (const st of states) {
+      S.mode = st[0]; S.hands = st[1];
+      const panels = tg === "seg" ? dGroups().map((g) => g[0]) : [null].concat(dGroups().map((g) => g[0]));
+      for (const pn of panels) {
+        if (tg === "seg") dview.panel = pn; else if (tg === "acc") dview.acc = pn; else dview.drawer = pn;
+        render();
+        const m = lastMeasure;
+        const what = st[0] + (st[0] === "poly" ? " " + st[1] : "") + (pn ? ", " + pn : "");
+        if (!worst || m.cols[0] < worst.v) worst = { v: m.cols[0], what: what };
+        if (m.drawer !== null && (!drawerWorst || m.drawer > drawerWorst.v)) drawerWorst = { v: m.drawer, what: what };
+      }
+    }
+    rows.push([size === "big" ? "1400 × 900" : "960 × 600 at 90%", { seg: "Switch", acc: "Accordion", drawer: "Drawer" }[tg], { above: "above the strip", corner: "in its corner", panel: "in the panel" }[where], worst, drawerWorst]);
+  }
+  Object.assign(S, keep.S); Object.assign(view, keep.view); Object.assign(dview, keep.dview);
+  render();
+  return rows;
+}
+function showAll() {
+  const rows = measureAll();
+  const cell = (w) => w.v >= 0 ? '<span class="ok">' + w.v + " spare</span>" : '<span class="over">over by ' + -w.v + "</span>";
+  document.getElementById("allFit").innerHTML = '<table class="fit-table"><thead><tr><th>Window</th><th>Toggle</th><th>Hands choice</th><th>Column 1 at its tightest</th><th>Drawer</th></tr></thead><tbody>' +
+    rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + r[2] + "</td><td>" + cell(r[3]) + " <small>(" + r[3].what + ")</small></td><td>" +
+      (r[4] ? (r[4].v > 1 ? '<span class="over">over by ' + r[4].v + "</span> <small>(" + r[4].what + ")</small>" : '<span class="ok">fits</span>') : "–") + "</td></tr>").join("") + "</tbody></table>";
+  return rows;
+}
+
+/* ---------------------------------------------------------------------------
+   Round 3 (16 Nov): E, from D with the switch and the hands choice in the
+   strip's box. The strip is the Hands section; the choice sits centred in
+   its top edge; octave buttons let any key be the split point; the counted
+   end is on the strip; the Chord window is a note pointing to Settings; the
+   panel switch is Figure and Expression only, or Expression lives elsewhere.
+--------------------------------------------------------------------------- */
+let eview = { one: "toggle", expr: "col3", panel: "figure", lo: 48, winOpen: false };
+try {
+  const d = JSON.parse(localStorage.getItem("playMockup.e") || "{}");
+  if (["toggle", "none"].includes(d.one)) eview.one = d.one;
+  if (["switch", "col1", "col3"].includes(d.expr)) eview.expr = d.expr;
+} catch (e) { /* no storage */ }
+function rememberE() { try { localStorage.setItem("playMockup.e", JSON.stringify({ one: eview.one, expr: eview.expr })); } catch (e) { /* no storage */ } }
+const KINDS3 = [["key", "Key"], ["notes", "Notes"], ["layer", "Layer"]];
+
+function eHead() {
+  // (i) Two hands, on or off, and the three kinds only while on; (ii) the
+  // three kinds alone, none lit for one sound, the lit one pressed again
+  // going back to it. Either way choosing two hands plays Poly.
+  const two = twoHands();
+  const kinds = '<div class="switch mini" role="radiogroup" aria-label="How two hands are shared">' + KINDS3.map((k) =>
+    '<button type="button" class="caps" role="radio" data-ekind="' + k[0] + '" aria-checked="' + (two && S.hands === k[0]) + '">' + k[1] + "</button>").join("") + "</div>";
+  if (eview.one === "toggle") {
+    return '<button type="button" class="pill-toggle caps" data-etwo aria-pressed="' + two + '"><span class="pt-dot"></span>Two hands</button>' + (two ? kinds : "");
+  }
+  return kinds;
+}
+function eStripLive(el) {
+  const W = el.clientWidth || 240, h = el.clientHeight || 44;
+  const V = el.dataset.which === "g" ? gview : el.dataset.which === "f" ? fview : eview, span = 12 * (+el.dataset.oct || 2);
+  if (byNotes()) {
+    // The counted end is a toggle at the strip's edge rather than a press on
+    // the end itself: a press on a place already says how many, so a press
+    // on an end would mean two things, and the toggle names where the count
+    // starts, which the places alone do not.
+    const end = '<div class="vswitch estrip-end" role="radiogroup" aria-label="Counted from">' + [["lower", "low"], ["upper", "high"]].map((x) =>
+      '<button type="button" role="radio" data-set="splitEnd" data-val="' + x[0] + '" aria-checked="' + (S.splitEnd === x[0]) + '">' + x[1] + "</button>").join("") + "</div>";
+    return '<div class="estrip">' + (S.splitEnd === "lower" ? end : "") + '<div class="estrip-svg">' + rowSVG(W - 46, h, { slots: true }) + "</div>" + (S.splitEnd === "upper" ? end : "") + "</div>";
+  }
+  const lo = V.lo, hi = lo + span;
+  const below = held.filter((x) => x.n < lo).length, above = held.filter((x) => x.n > hi).length;
+  let ol = new Set();
+  const rec = held.slice().sort((a, b) => b.t - a.t);
+  if (S.mode === "dyad") ol = new Set(rec.slice(0, 2)); else if (S.mode === "mono") ol = new Set(rec.slice(0, 1)); else if (!twoHands()) ol = outlineOf(held);
+  const btn = (dir, n, dis) => '<button type="button" class="oct-btn' + (n ? " has" : "") + '" data-eoct="' + dir + '" data-which="' + (el.dataset.which || "e") + '" data-span="' + span + '"' + (dis ? " disabled" : "") +
+    ' aria-label="Octave ' + (dir < 0 ? "down" : "up") + (n ? ", " + n + " held " + (dir < 0 ? "below" : "above") : "") + '">' + (dir < 0 ? "‹" : "›") + "</button>";
+  return '<div class="estrip">' + btn(-1, below, lo <= 24) + '<div class="estrip-svg">' +
+    keysSVG(W - 36, h, { lo: lo, hi: hi, labels: true, clickSplit: S.hands === "key" && poly(), outline: ol }) + "</div>" + btn(1, above, hi >= 108) + "</div>";
+}
+LIVE.estrip = eStripLive;
+LIVE.eCap = () => {
+  const range = byNotes() ? "" : " <i>" + nn(eview.lo) + "–" + nn(eview.lo + 24) + "</i>";
+  if (!poly()) return handsSentence() + range;
+  if (!twoHands()) return (eview.one === "none" ? "One sound. Press Key, Notes or Layer for two hands; the lit one again for one." : "One sound. <b>Two hands</b> splits or layers it.") + range;
+  if (S.hands === "key") return handsSentence() + " Press a key to split there; ‹ › for other octaves." + range;
+  if (S.hands === "notes") return byNotes() && lastStrike ? laneWords() : handsSentence() + " Press a place to set how many.";
+  return handsSentence() + range;
+};
+WORDS.add("eCap");
+
+function figureRows() { return dPanel("figure"); }
+function layoutE() {
+  const compact = view.size === "compact";
+  let k = '<div class="group"><div class="title">Keyboard<button type="button" class="link-btn caps tiny" data-toggle="keysShown" aria-pressed="' + S.keysShown + '">' + (S.keysShown ? "hide keys" : "keys") + '</button><span class="dots">⋯</span></div>';
+  k += '<div class="row">' + sw("mode", MODES, "Notes") + "</div>";
+  k += '<div class="dbox ebox"><div class="dbox-head ehead">' + eHead() + "</div>" +
+    '<div data-live="estrip" style="height:' + (compact ? 38 : 46) + 'px"></div></div>';
+  k += '<p class="dia-cap dcap" data-live="eCap"></p>';
+  if (byNotes()) {
+    k += '<p class="note ewin">Chord window: ' + S.windowMs + ' ms, <button type="button" class="link-btn" data-act="ewin" aria-expanded="' + eview.winOpen + '">in Settings</button></p>';
+    if (eview.winOpen) k += '<div class="row ewin-row"><span class="lab">Chord window</span><div class="grow"><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window"><span class="reading" data-live="winRead"></span></div></div><p class="note" style="margin-top:2px">Settings › MIDI on the face; here so the mockup can be played with it.</p>';
+  }
+  const col3 = [voiceFilter()];
+  if (eview.expr === "switch") {
+    k += '<div class="row" style="margin-top:12px"><div class="switch tight" role="radiogroup" aria-label="Settings">' + [["figure", "Figure"], ["expr", "Expression"]].map((g) =>
+      '<button type="button" class="caps" role="radio" data-epanel="' + g[0] + '" aria-checked="' + (eview.panel === g[0]) + '">' + g[1] + "</button>").join("") + "</div></div>" +
+      '<div class="dpanel">' + (eview.panel === "figure" ? figureRows() : dPanel("expr")) + "</div></div>";
+    return { cols: [[k], [generator(), ampEnv()], col3] };
+  }
+  k += '<div class="sub" style="margin-top:14px">Figure <span class="q">how they are drawn</span></div><div class="dpanel">' + figureRows() + "</div></div>";
+  if (eview.expr === "col1") return { cols: [[k, expression()], [generator(), ampEnv()], col3] };
+  return { cols: [[k], [generator(), ampEnv()], col3.concat([expression()])] };
+}
+
+const VERDICT_E = {
+  toggle: "<b>Two hands</b> on and off: one sound is the plain, named state, and Key · Notes · Layer only appear when they mean something. One more press to go from one sound to a split, and two controls in the head while on.",
+  none: "Key · Notes · Layer alone: one press from one sound to any split, and one control. One sound is no button's state - none lit - and going back is pressing the lit one again, which the line under the strip has to teach."
+};
+const EXPR_LINES = {
+  switch: "Expression shares a switch with Figure: column 1 has room, but the outline and the bend are never on show together.",
+  col1: "Expression sits under Figure in column 1: no switch at all, everything on show, at the cost of column 1's room.",
+  col3: "Expression lives in column 3 under the Voice filter, as B had it: column 1 holds only the keyboard's questions, and column 3, which had the most room, takes the four menus."
+};
+function verdictE() {
+  return [["Answers", "Every common thing is one press: the strip is the Hands section, with its choice in its head, the octave buttons for any split point, the counted end at its edge and the places for how many. The Chord window is a note, since it is set once (Settings › MIDI). " + EXPR_LINES[eview.expr]],
+    ["Costs", VERDICT_E[eview.one] + " The strip shows two octaves at a time, so a split point or a held note elsewhere is behind ‹ › (a dot on the button says a note is held there)."],
+    ["Elsewhere", "A drawing that is its section, with its choices on its edges, fits wherever the thing has a picture: the Amp envelope's curve, the drawn cycle, the Plane, a brush. A switch over one panel fits the plain values (Ink's extras, the Picture's Advanced)."]];
+}
+
+/* E's combinations, measured as D's are: both windows, both ways of saying
+   one sound, the three homes for Expression, each mode and hands choice, and
+   each panel open. Columns 1 and 3 at their tightest. */
+function showAllE() {
+  const keep = { S: Object.assign({}, S), view: Object.assign({}, view), eview: Object.assign({}, eview) };
+  const states = [["dyad", "one"], ["mono", "one"], ["poly", "one"], ["poly", "key"], ["poly", "notes"], ["poly", "layer"]];
+  const rows = [];
+  for (const size of ["big", "compact"]) for (const one of ["toggle", "none"]) for (const ex of ["switch", "col1", "col3"]) {
+    let w1 = null, w3 = null;
+    view.layout = "E"; view.size = size; eview.one = one; eview.expr = ex;
+    // The Chord window's slider is the mockup's stand-in for Settings, not a
+    // row of the face, so the fit is measured with it shut.
+    for (const st of states) for (const pn of (ex === "switch" ? ["figure", "expr"] : ["figure"])) for (const win of [false]) {
+      S.mode = st[0]; S.hands = st[1]; eview.panel = pn; eview.winOpen = win;
+      render();
+      const m = lastMeasure, what = st[0] + (st[0] === "poly" ? " " + st[1] : "") + (ex === "switch" ? ", " + pn : "") + (win ? ", window open" : "");
+      if (!w1 || m.cols[0] < w1.v) w1 = { v: m.cols[0], what: what };
+      if (!w3 || m.cols[2] < w3.v) w3 = { v: m.cols[2], what: what };
+    }
+    rows.push([size === "big" ? "1400 × 900" : "960 × 600 at 90%", one === "toggle" ? "(i) Two hands" : "(ii) Key · Notes · Layer", { switch: "in the switch", col1: "under Figure", col3: "in column 3" }[ex], w1, w3]);
+  }
+  Object.assign(S, keep.S); Object.assign(view, keep.view); Object.assign(eview, keep.eview);
+  render();
+  const cell = (w) => (w.v >= 0 ? '<span class="ok">' + w.v + " spare</span>" : '<span class="over">over by ' + -w.v + "</span>") + " <small>(" + w.what + ")</small>";
+  document.getElementById("allFit").innerHTML = '<table class="fit-table"><thead><tr><th>Window</th><th>One sound</th><th>Expression</th><th>Column 1 at its tightest</th><th>Column 3 at its tightest</th></tr></thead><tbody>' +
+    rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + r[2] + "</td><td>" + cell(r[3]) + "</td><td>" + cell(r[4]) + "</td></tr>").join("") + "</tbody></table>";
+  return rows.map((r) => [r[0], r[1], r[2], r[3].v, r[3].what, r[4].v, r[4].what]);
+}
+
+/* ---------------------------------------------------------------------------
+   Round 4 (16 Nov, "E is definitely the right move"): F. The Keyboard is a
+   band across the top of the tab's body, so the strip is the tab's width;
+   Two hands only in Poly; Expression in column 1, and Figure either in the
+   band under the strip or in column 1 under Expression. The Amp envelope may
+   leave the Generator's column for the Voice filter's if the band's height
+   asks it to; both are selectable and measured.
+--------------------------------------------------------------------------- */
+let fview = { fig: "col1", amp: "col2", lo: 36, octs: 4, winOpen: false };
+try {
+  const d = JSON.parse(localStorage.getItem("playMockup.f") || "{}");
+  if (["band", "col1"].includes(d.fig)) fview.fig = d.fig;
+  if (["col2", "col3"].includes(d.amp)) fview.amp = d.amp;
+} catch (e) { /* no storage */ }
+function rememberF() { try { localStorage.setItem("playMockup.f", JSON.stringify({ fig: fview.fig, amp: fview.amp })); } catch (e) { /* no storage */ } }
+
+function fHead() {
+  if (!poly()) return "";
+  const two = twoHands();
+  return '<button type="button" class="pill-toggle caps" data-etwo aria-pressed="' + two + '"><span class="pt-dot"></span>Two hands</button>' + (two ?
+    '<div class="switch mini" role="radiogroup" aria-label="How two hands are shared">' + KINDS3.map((k) =>
+      '<button type="button" class="caps" role="radio" data-ekind="' + k[0] + '" aria-checked="' + (S.hands === k[0]) + '">' + k[1] + "</button>").join("") + "</div>" : "");
+}
+LIVE.fCap = () => {
+  const range = byNotes() ? "" : " <i>" + nn(fview.lo) + "–" + nn(fview.lo + 12 * fview.octs) + "</i>";
+  if (S.mode === "dyad") return figureWords() + range;
+  if (S.mode === "mono") return figureWords() + range;
+  if (!twoHands()) return "One sound. <b>Two hands</b> splits or layers it." + range;
+  if (S.hands === "key") return handsSentence() + " Press a key to split there; ‹ › for other octaves." + range;
+  if (S.hands === "notes") return lastStrike ? laneWords() : handsSentence() + " Press a place to set how many.";
+  return handsSentence() + range;
+};
+WORDS.add("fCap");
+function figureInline() {
+  // Figure on one line under the strip: the same controls as its panel,
+  // without their labels' column, since the band is wide and short.
+  if (S.mode === "dyad") return '<span class="sub fsub">Figure</span>' + chk("hold", "Hold the interval under one note") + '<span class="reading">The two newest notes, the lower on X.</span>';
+  if (S.mode === "mono") return '<span class="sub fsub">Figure</span><span class="reading">The newest note, and the Generator\'s Interval above it.</span>';
+  return '<span class="sub fsub">Figure</span><span class="reading">Outline</span>' + sel("drawCount", DRAWN, "How many notes make the outline", "flex:0 0 auto") + sel("drawWhich", WHICH, "Which notes", "flex:0 0 auto") +
+    (twoHands() ? sw("pair", [["each", "Each"], ["against", "A vs B"]], "How the two hands are drawn", "tight") : "") + chk("polyJust", "Tune a chord");
+}
+function layoutF() {
+  const compact = view.size === "compact";
+  // Four octaves at 1400x900 (keys about 20 px wide beside the switch);
+  // three at the compact size, where four would be 17 px.
+  fview.octs = compact ? 3 : 4;
+  let left = '<div class="fleft"><div class="ftitle">Keyboard<span class="dots">\u22EF</span></div>' + sw("mode", MODES, "Notes") +
+    '<button type="button" class="link-btn caps tiny" data-toggle="keysShown" aria-pressed="' + S.keysShown + '">' + (S.keysShown ? "hide keys" : "keys on screen") + "</button></div>";
+  let right = '<div class="fright"><div class="dbox ebox fbox">' + (poly() ? '<div class="dbox-head ehead">' + fHead() + "</div>" : "") +
+    '<div data-live="estrip" data-which="f" data-oct="' + fview.octs + '" style="height:' + (compact ? 40 : 48) + 'px"></div></div>';
+  right += '<div class="fline"><p class="dia-cap dcap" data-live="fCap"></p>' +
+    (byNotes() ? '<p class="note ewin">Chord window: ' + S.windowMs + ' ms, <button type="button" class="link-btn" data-act="fwin" aria-expanded="' + fview.winOpen + '">in Settings</button></p>' : "") + "</div>";
+  if (byNotes() && fview.winOpen) right += '<div class="row ewin-row" style="justify-content:flex-end"><span class="reading">Chord window (Settings \u203A MIDI on the face)</span><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window" style="max-width:160px"><span class="reading" data-live="winRead"></span></div>';
+  if (fview.fig === "band") right += '<div class="band-foot ffoot">' + figureInline().replace(/<label class="check">/g, '<label class="check" style="margin-top:0">') + "</div>";
+  right += "</div>";
+  const b = '<div class="band fband"><div class="fgrid">' + left + right + "</div></div>";
+  const col1 = [expression()];
+  if (fview.fig === "col1") col1.push('<div class="group"><div class="title">Figure<span class="dots">\u22EF</span></div><div class="dpanel">' + figureRows() + "</div></div>");
+  const cols = fview.amp === "col2" ? [col1, [generator(), ampEnv()], [voiceFilter()]] : [col1, [generator()], [voiceFilter(), ampEnv()]];
+  return { band: b, cols: cols };
+}
+
+const VERDICT_F = {
+  fig: {
+    band: "Figure sits on one line under the strip, in the band: everything about the notes is in one place across the top, and column 1 is Expression alone.",
+    col1: "Figure sits in column 1 under Expression: the band is a line shorter, and the figure's settings are a section like any other, away from the strip."
+  },
+  amp: {
+    col2: "The Amp envelope stays under the Generator, as today.",
+    col3: "The Amp envelope moves from under the Generator to under the Voice filter, which has the room: the band takes its height from every column, and the Generator's column was the fullest."
+  }
+};
+function verdictF() {
+  return [["Answers", "The strip is the tab's width, so a split point is a press on a key the size of a fingertip, four octaves at once, with ‹ › for the rest. The Notes switch and the strip share one row; the hands choice is Poly's only, so Dyad and Mono show only what is held. " + VERDICT_F.fig[fview.fig]],
+    ["Costs", "The band's height comes out of all three columns. " + VERDICT_F.amp[fview.amp] + " Expression, a set-once section, takes the column nearest the keyboard."],
+    ["Elsewhere", "A band is the shape for a thing that is played across - the keys, and later a score or a step row; the sections of plain values stay columns under it."]];
+}
+
+/* F's combinations: both windows, both homes for Figure, both for the Amp
+   envelope, each mode and hands choice. The band's height and each column's
+   tightest spare. */
+function showAllF() {
+  const keep = { S: Object.assign({}, S), view: Object.assign({}, view), fview: Object.assign({}, fview) };
+  const states = [["dyad", "one"], ["mono", "one"], ["poly", "one"], ["poly", "key"], ["poly", "notes"], ["poly", "layer"]];
+  const rows = [];
+  for (const size of ["big", "compact"]) for (const fig of ["band", "col1"]) for (const amp of ["col2", "col3"]) {
+    const w = [null, null, null]; let band = 0;
+    view.layout = "F"; view.size = size; fview.fig = fig; fview.amp = amp; fview.winOpen = false;
+    for (const st of states) {
+      S.mode = st[0]; S.hands = st[1];
+      render();
+      const m = lastMeasure, what = st[0] + (st[0] === "poly" ? " " + st[1] : "");
+      const bh = Math.round(face.querySelector(".fband").offsetHeight); if (bh > band) band = bh;
+      m.cols.forEach((v, i) => { if (!w[i] || v < w[i].v) w[i] = { v: v, what: what }; });
+    }
+    rows.push([size === "big" ? "1400 × 900" : "960 × 600 at 90%", fig === "band" ? "in the band" : "column 1", amp === "col2" ? "column 2" : "column 3", band, w]);
+  }
+  Object.assign(S, keep.S); Object.assign(view, keep.view); Object.assign(fview, keep.fview);
+  render();
+  const cell = (x) => (x.v >= 0 ? '<span class="ok">' + x.v + "</span>" : '<span class="over">over by ' + -x.v + "</span>") + " <small>(" + x.what + ")</small>";
+  document.getElementById("allFit").innerHTML = '<table class="fit-table"><thead><tr><th>Window</th><th>Figure</th><th>Amp envelope</th><th>Band, px</th><th>Column 1</th><th>Column 2</th><th>Column 3</th></tr></thead><tbody>' +
+    rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + r[2] + "</td><td>" + r[3] + "</td><td>" + cell(r[4][0]) + "</td><td>" + cell(r[4][1]) + "</td><td>" + cell(r[4][2]) + "</td></tr>").join("") + "</tbody></table>";
+  return rows.map((r) => [r[0], r[1], r[2], r[3]].concat(r[4].map((x) => x.v + " (" + x.what + ")")));
+}
+
+/* ---------------------------------------------------------------------------
+   Round 5 (16 Nov, "F is definitely the right move"): G. The keys-on-screen
+   link leaves the band (its home is the screen's toolbar: the keys open
+   under the screen, so the button belongs beside what they cover). Two
+   hands moves to the band's top left, beside its name, Poly only. Figure's
+   settings come onto the band's face under the Notes switch, only what the
+   mode uses, so column 1 is Expression alone.
+--------------------------------------------------------------------------- */
+let gview = { amp: "col2", lo: 36, octs: 4, winOpen: false };
+try {
+  const d = JSON.parse(localStorage.getItem("playMockup.g") || "{}");
+  if (["col2", "col3"].includes(d.amp)) gview.amp = d.amp;
+} catch (e) { /* no storage */ }
+function rememberG() { try { localStorage.setItem("playMockup.g", JSON.stringify({ amp: gview.amp })); } catch (e) { /* no storage */ } }
+
+function gFigure() {
+  if (S.mode === "dyad") return chk("hold", "Hold the interval under one note");
+  if (S.mode === "mono") return '<p class="note gnote">The newest note, and the Interval above it.</p>';
+  return '<div class="grow gout"><span class="reading">Outline</span>' + sel("drawCount", DRAWN.map((d) => [d[0], d[0]]), "How many notes make the outline", "flex:0 0 42px") + sel("drawWhich", WHICH, "Which notes", "flex:1 1 0") + "</div>" +
+    '<div class="gticks">' + chk("polyJust", "Tune a chord") + (twoHands() ? sw("pair", [["each", "Each"], ["against", "A vs B"]], "How the two hands are drawn", "mini") : "") + "</div>";
+}
+LIVE.gCap = () => {
+  const range = byNotes() ? "" : " <i>" + nn(gview.lo) + "–" + nn(gview.lo + 12 * gview.octs) + "</i>";
+  if (!poly()) return figureWords() + range;
+  if (!twoHands()) return "One sound." + range;
+  if (S.hands === "key") return handsSentence() + " Press a key to split there; ‹ › for other octaves." + range;
+  if (S.hands === "notes") return lastStrike ? laneWords() : handsSentence() + " Press a place to set how many.";
+  return handsSentence() + range;
+};
+WORDS.add("gCap");
+function layoutG() {
+  const compact = view.size === "compact";
+  gview.octs = compact ? 3 : 4;
+  const two = twoHands();
+  const pill = poly() ? '<button type="button" class="pill-toggle caps" data-etwo aria-pressed="' + two + '"><span class="pt-dot"></span>Two hands</button>' : "";
+  const left = '<div class="fleft gleft"><div class="ftitle">Keyboard' + pill + '<span class="dots">⋯</span></div>' + sw("mode", MODES, "Notes") +
+    '<div class="gfig">' + gFigure().replace(/<label class="check">/g, '<label class="check" style="margin-top:0">') + "</div></div>";
+  const head = two ? '<div class="dbox-head ehead"><div class="switch mini" role="radiogroup" aria-label="How two hands are shared">' + KINDS3.map((k) =>
+    '<button type="button" class="caps" role="radio" data-ekind="' + k[0] + '" aria-checked="' + (S.hands === k[0]) + '">' + k[1] + "</button>").join("") + "</div></div>" : "";
+  let right = '<div class="fright"><div class="dbox ebox fbox">' + head +
+    '<div data-live="estrip" data-which="g" data-oct="' + gview.octs + '" style="height:' + (compact ? 40 : 48) + 'px"></div></div>' +
+    '<div class="fline"><p class="dia-cap dcap" data-live="gCap"></p>' +
+    (byNotes() ? '<p class="note ewin">Chord window: ' + S.windowMs + ' ms, <button type="button" class="link-btn" data-act="gwin" aria-expanded="' + gview.winOpen + '">in Settings</button></p>' : "") + "</div>";
+  if (byNotes() && gview.winOpen) right += '<div class="row ewin-row" style="justify-content:flex-end"><span class="reading">Chord window (Settings › MIDI on the face)</span><input type="range" min="0" max="15" value="' + S.windowMs + '" data-field="windowMs" aria-label="Chord window" style="max-width:160px"><span class="reading" data-live="winRead"></span></div>';
+  right += "</div>";
+  const b = '<div class="band fband gband"><div class="fgrid">' + left + right + "</div></div>";
+  const cols = gview.amp === "col2" ? [[expression()], [generator(), ampEnv()], [voiceFilter()]] : [[expression()], [generator()], [voiceFilter(), ampEnv()]];
+  return { band: b, cols: cols };
+}
+function verdictG() {
+  return [["Answers", "Everything about the notes is in the band: how they sound (the switch), how they are shared (Two hands at the top left, Key · Notes · Layer on the strip) and how they are drawn (under the switch, only what the mode uses). The strip is still the tab's width less the left column. Column 1 is Expression alone."],
+    ["Costs", "The band's left column is the tallest thing in it in Poly with two hands, so the band grows by what Figure's rows add over F, and the columns pay for it" + (gview.amp === "col3" ? "; the Amp envelope under the Voice filter is what makes it fit at the plugin's minimum." : ", which at the plugin's minimum puts the Generator's column over unless the Amp envelope moves under the Voice filter (the selector above).") + " Keys on screen leaves the tab for the screen's toolbar."],
+    ["Elsewhere", "A band that holds an instrument's whole playing surface - what it is, how it is shared, how it is drawn - with the sound's sections as columns under it. The same split would suit the painting's Brushes: the brush and its strip on top, its sound's sections under."]];
+}
+function showAllG() {
+  const keep = { S: Object.assign({}, S), view: Object.assign({}, view), gview: Object.assign({}, gview) };
+  const states = [["dyad", "one"], ["mono", "one"], ["poly", "one"], ["poly", "key"], ["poly", "notes"], ["poly", "layer"]];
+  const rows = [];
+  for (const size of ["big", "compact"]) for (const amp of ["col2", "col3"]) {
+    const w = [null, null, null]; let band = { v: 0, what: "" };
+    view.layout = "G"; view.size = size; gview.amp = amp; gview.winOpen = false;
+    for (const st of states) {
+      S.mode = st[0]; S.hands = st[1];
+      render();
+      const m = lastMeasure, what = st[0] + (st[0] === "poly" ? " " + st[1] : "");
+      const bh = Math.round(face.querySelector(".gband").offsetHeight); if (bh > band.v) band = { v: bh, what: what };
+      m.cols.forEach((v, i) => { if (!w[i] || v < w[i].v) w[i] = { v: v, what: what }; });
+    }
+    rows.push([size === "big" ? "1400 × 900" : "960 × 600 at 90%", amp === "col2" ? "under the Generator" : "under the Voice filter", band, w]);
+  }
+  Object.assign(S, keep.S); Object.assign(view, keep.view); Object.assign(gview, keep.gview);
+  render();
+  const cell = (x) => (x.v >= 0 ? '<span class="ok">' + x.v + "</span>" : '<span class="over">over by ' + -x.v + "</span>") + " <small>(" + x.what + ")</small>";
+  document.getElementById("allFit").innerHTML = '<table class="fit-table"><thead><tr><th>Window</th><th>Amp envelope</th><th>Band, px</th><th>Column 1</th><th>Column 2</th><th>Column 3</th></tr></thead><tbody>' +
+    rows.map((r) => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td><td>" + r[2].v + " <small>(" + r[2].what + ")</small></td><td>" + cell(r[3][0]) + "</td><td>" + cell(r[3][1]) + "</td><td>" + cell(r[3][2]) + "</td></tr>").join("") + "</tbody></table>";
+  return rows.map((r) => [r[0], r[1], r[2].v + " (" + r[2].what + ")"].concat(r[3].map((x) => x.v + " (" + x.what + ")")));
+}
+
+const WHAT = {
+  G: "<b>G, everything about the notes in the band</b> (round 5, from F: \u201CF is definitely the right move\u201D). The band's left column holds its name with <b>Two hands</b> beside it (Poly only), the Dyad \u00B7 Mono \u00B7 Poly switch, and under it the figure's settings, only what the mode uses: Hold the interval in Dyad; Outline, Tune a chord and, with two hands, Each \u00B7 A vs B in Poly; a line in Mono. With Two hands on, Key \u00B7 Notes \u00B7 Layer sit centred in the strip's top edge. Column 1 is Expression alone. <i>Keys on screen</i> has left the tab for the screen's toolbar, beside Clear and Enlarge, since the keys open under the screen.",
+  F: "<b>F, the Keyboard as a band</b> (round 4, from E: \u201CE is definitely the right move\u201D). The Keyboard is a row of its own across the top of the tab's body, so the strip is the tab's width and shows four octaves, with \u2039 \u203A for the rest. The Notes switch sits beside it; <b>Two hands</b> appears only in Poly, revealing Key \u00B7 Notes \u00B7 Layer; in Dyad and Mono the strip shows only what is held. Expression is column 1. Figure goes in the band under the strip or in column 1 under Expression, and the Amp envelope under the Generator or under the Voice filter: choose above.",
+  E: "<b>E, the strip as the Hands section</b> (round 3, from D with the switch and the hands choice in the strip's box). The Notes switch on top; under it the strip, whose box carries the hands choice centred in its top edge and is the whole Hands section: octave buttons ‹ › at its ends so any key can be the split point, the counted end (Low · High) at its edge by notes, a press on a place for how many. The Chord window is only a note under it, since it lives in Settings › MIDI. Then Figure, with Expression in a switch beside it, under it, or in column 3 - choose above, with the two ways of saying one sound.",
+  D: "<b>D, the mix</b> (round 2, from the owner's verdict on A, B and C). The Notes switch, Dyad \u00B7 Mono \u00B7 Poly, always on top of the Keyboard section; under it the strip, always there, live, and a control (press a key to split there; by notes, press a place to set how many). The deeper settings stay in column 1, opened by a <b>switch</b>, an <b>accordion</b> or a <b>drawer</b> over column 1 only - choose above - and never cover the Generator, the Amp envelope or the Voice filter. Where the hands choice (One \u00B7 Key \u00B7 Notes \u00B7 Layer) lives is chosen separately. The Chord window is the look-ahead now built: every note waits it, so nothing is ever moved.",
+  T: "Today's Keyboard section as built on <i>testing</i> (16 Nov), for comparison: the mode switch, Layers with <i>by key · by notes</i> beside it, the pairing with Learn or the end and the count beside that, Draw, and two ticks that show in every mode though each acts in one. No Chord window yet.",
+  A: "<b>Summary lines with editors.</b> Play keeps one line per question - Notes, Hands, Figure - each saying its answer in words, and a small live strip under Hands while there are two. Pressing a line opens an editor over the tab, as a modulation card's does, holding every setting for that question and only those that apply to the mode, with a large live diagram beside them. A switch in the editor's head moves between the three questions. Choosing a split or a layer from Dyad or Mono plays Poly, so the merge the owner asked about happens without a five-way menu.",
+  B: "<b>Only what applies, all on show.</b> The Keyboard section is three labelled groups, each a switch rather than a menu, with only the controls the current choice uses beneath it, and the split's diagram under the Hands switch. Nothing opens. Expression moves to the third column, under the Voice filter, to make the room.",
+  C: "<b>One strip</b> (my own). The mode and the hands are one choice of five - Dyad, Mono, Poly, Split, Layered - across a band at the top of the tab. Under it a strip that is the diagram and the control at once: press a key to split there, press a place to set how many notes the counted hand takes. The figure's settings are the band's last line. Nothing opens and nothing is two menus deep; the cost is a band's height out of every column."
+};
+const VERDICT = {
+  T: [["Answers", "Nothing yet: this is the problem as it stands, measured the same way as the three below."],
+      ["Costs", "Five menus with no label between them; Quarter turn shows in Dyad and Mono and Hold the interval in Mono and Poly, each acting in one mode; at 960 &times; 600 the Draw menus are cut to “2 nc” and “bass and me”."],
+      ["Elsewhere", "The same growth by one control at a time is under way in Ink's oscillator extras and the Picture's Advanced."]],
+  A: [["Answers", "All three. Cramp: Play's Keyboard is four lines, and column 1 gains the room drawn dashed. Seeing the split: the editor has room for a diagram that plays, and a small one stays under the Hands line. Menus inside menus: one level - a list of four ways, each with its line, and the chosen way's few settings under it."],
+      ["Costs", "A press before any change, and while an editor is open the Generator and its neighbours are covered (the screen is not). Poly and the split, which a player may want mid-phrase, go one press away. A control the editor holds is not on the face, so <code>showControl</code>, the search and the right-click menu have to open the editor to reach it, as they do for a source's depth today."],
+      ["Elsewhere", "The modulation editor's pattern, so it generalises without a new mechanism: Ink's oscillator extras as one line (“Oscillator: FM 2:1 · sync off”), the Picture's Advanced as three (Scan reads · Responds to · Score), the painting Brushes panel as a line per brush. The risk is a face of lines that say what is set and no longer show it."]],
+  B: [["Answers", "Menus inside menus: every choice is a switch with its controls under it, and only what the choice uses. Seeing the split: the diagram is in the column, under the switch, while you play. Cramp: only partly - the column is fuller, not emptier."],
+      ["Costs", "Height. The three groups and the diagram fill column 1, so Expression goes to the third column under the Voice filter, and at 960 &times; 600 the split by notes has to fall back to two menus to fit (the fit line below says by how much). Every new keyboard control from here on comes out of the same column."],
+      ["Elsewhere", "A rule rather than a layout - group by question, hide what does not apply - which every dense section could follow today. It runs out where more applies at once than fits: the Picture's Advanced and, likely, the Brushes panel."]],
+  C: [["Answers", "Menus inside menus, most directly: one choice of five where today there is a switch, a menu and a menu beside it. Seeing the split: the strip is the control, so setting it is watching it. Cramp: spread across the tab's width."],
+      ["Costs", "A band across all three columns takes its height from the Generator and the Voice filter too, so the Amp envelope moves to column 1 under Expression, which at 960 &times; 600 leaves it a few pixels from over. Five modes hide that a split is Poly with two hands, which the sections' links (<i>Same in both</i>) still assume. <i>At a key · by notes</i> is still a second choice, though on show. Plugin hosts see one parameter where there were two."],
+      ["Elsewhere", "Good where a section has a picture that can be its control - the Amp envelope's drawing, the drawn cycle, the Plane, a brush's stroke. No help for sections of plain values, Expression or the Picture's Advanced."]]
+};
+
+const face = document.getElementById("face");
+function render() {
+  const L = view.layout, compact = view.size === "compact";
+  face.className = "face" + (compact ? " compact" : "");
+  let cols, band = "", drawer = "";
+  if (L === "T") cols = today();
+  else if (L === "A") cols = layoutA();
+  else if (L === "B") cols = layoutB();
+  else if (L === "C") { const c = layoutC(); cols = c.cols; band = c.band; }
+  else if (L === "D") { const d = layoutD(); cols = d.cols; drawer = d.drawer; }
+  else if (L === "E") cols = layoutE().cols;
+  else if (L === "F") { const f = layoutF(); cols = f.cols; band = f.band; }
+  else { const g = layoutG(); cols = g.cols; band = g.band; }
+  const lines = { play: poly() ? "Poly" : S.mode === "dyad" ? "Dyad" : "Mono" };
+  face.innerHTML =
+    '<div class="cards"><div class="card on"><b>Play</b><span>' + lines.play + (twoHands() ? " · " + handsWord() : "") + ' · sine · 220 Hz</span></div>' +
+    '<div class="card"><b>Ink</b><span>Ratio 1:1 · unison · FM off</span></div><div class="card"><b>Space &amp; Memory</b><span>Dry</span></div></div>' +
+    '<div class="body' + (band ? " banded" : "") + '">' + band +
+    cols.map((c, i) => '<div class="col"><div class="col-in">' + c.join("") + '</div><div class="free" hidden></div>' + (i === 0 ? drawer : "") + "</div>").join("") + "</div>" +
+    (L === "A" ? editorA() : "");
+  document.getElementById("what").innerHTML = WHAT[L];
+  document.getElementById("dBar").hidden = L !== "D";
+  document.getElementById("eBar").hidden = L !== "E";
+  document.getElementById("fBar").hidden = L !== "F";
+  document.getElementById("gBar").hidden = L !== "G";
+  document.querySelectorAll("#gAmp button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.gamp === gview.amp)));
+  document.querySelectorAll("#fFig button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.ffig === fview.fig)));
+  document.querySelectorAll("#fAmp button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.famp === fview.amp)));
+  document.querySelectorAll("#eOne button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.eone === eview.one)));
+  document.querySelectorAll("#eExpr button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.eexpr === eview.expr)));
+  document.getElementById("allWrap").hidden = L !== "D" && L !== "E" && L !== "F" && L !== "G";
+  document.querySelectorAll("#dToggle button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dtoggle === dview.toggle)));
+  document.querySelectorAll("#dWhere button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dwhere === dview.where)));
+  const vd = L === "G" ? verdictG() : L === "F" ? verdictF() : L === "E" ? verdictE() : L === "D" ? VERDICT_D[dview.toggle].map((v, i) => i === 1 ? [v[0], v[1] + " " + WHERE_LINES[dview.where]] : v) : VERDICT[L];
+  document.getElementById("verdict").innerHTML = vd.map((v) => "<dt>" + v[0] + "</dt><dd>" + v[1] + "</dd>").join("");
+  document.querySelectorAll("#layoutTabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.layout === L)));
+  document.querySelectorAll("#sizeSwitch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.size === view.size)));
+  scale();
+  paint();
+  measure();
+}
+
+/* How much room each column has left, in the face's own pixels. Measured
+   without the dashed boxes, which then fill what is left. */
+function measure() {
+  const body = face.querySelector(".body"); if (!body) return;
+  const s = currentScale(); const bt = body.getBoundingClientRect().top;
+  const H = parseFloat(getComputedStyle(face).getPropertyValue("--bodyh"));
+  const out = [], spares = [];
+  let drawerOver = null;
+  const dr = face.querySelector(".drawer"), more = face.querySelector(".drawer-row");
+  if (dr && more) {
+    dr.style.top = (more.offsetTop + more.offsetHeight + 6) + "px";
+    const body2 = dr.querySelector(".drawer-body");
+    drawerOver = Math.round(body2.scrollHeight - body2.clientHeight);
+  }
+  face.querySelectorAll(".col").forEach((col, i) => {
+    const inn = col.querySelector(".col-in"), free = col.querySelector(".free");
+    free.hidden = true;
+    const bottom = (inn.getBoundingClientRect().bottom - bt) / s;
+    const spare = Math.round(H - bottom);
+    spares.push(spare);
+    out.push(spare >= 0 ? '<span class="ok">Column ' + (i + 1) + ": " + spare + " px spare</span>" : '<span class="over">Column ' + (i + 1) + ": over by " + -spare + " px</span>");
+    if (spare > 46 && !(view.layout === "A" && view.editor) && !(i === 0 && dr)) {
+      free.hidden = false; free.style.height = (spare - 12) + "px";
+      free.textContent = spare + " px free";
+    }
+  });
+  if (drawerOver !== null) out.push(drawerOver > 1 ? '<span class="over">Drawer: over by ' + drawerOver + " px</span>" : '<span class="ok">Drawer: fits</span>');
+  lastMeasure = { cols: spares, drawer: drawerOver };
+  const ed = face.querySelector(".ed-left");
+  if (ed) {
+    const over = Math.round(ed.scrollHeight - ed.clientHeight);
+    out.push(over > 1 ? '<span class="over">Editor: over by ' + over + " px</span>" : '<span class="ok">Editor: fits</span>');
+  }
+  document.getElementById("fit").innerHTML = "<span>" + (view.size === "compact" ? "960 × 600 at 90%, the tab 717 × 452 in the page's pixels." : "1400 × 900, the tab 838 × 556.") + "</span>" + out.join("");
+}
+let lastScale = 1, lastMeasure = null;
+const currentScale = () => lastScale;
+function scale() {
+  const wrap = document.getElementById("wrap"), stage = document.getElementById("stage");
+  const zoom = view.size === "compact" ? 0.9 : 1;
+  const fw = face.offsetWidth, fh = face.offsetHeight;
+  const s = Math.min(zoom, wrap.clientWidth / fw);
+  lastScale = s;
+  stage.style.transform = "scale(" + s + ")";
+  stage.style.width = fw + "px";
+  wrap.style.height = Math.ceil(fh * s) + "px";
+}
+
+/* ---------------------------------------------------------------------------
+   Events, all delegated.
+--------------------------------------------------------------------------- */
+function setField(f, v) {
+  if (f === "layers") { S.hands = v === "off" ? "one" : v === "layer" ? "layer" : (S.lastSplit || "key"); }
+  else if (f === "splitBy") { S.hands = v; S.lastSplit = v; }
+  else if (f === "handsB") { S.hands = v; if (v !== "one") S.mode = "poly"; if (v === "key" || v === "notes") S.lastSplit = v; }
+  else if (f === "merged") {
+    if (v === "dyad" || v === "mono") S.mode = v;
+    else { S.mode = "poly"; S.hands = v === "poly" ? "one" : v === "layer" ? "layer" : (S.lastSplit || "notes"); }
+  }
+  else if (f === "hands") { S.hands = v; if (v === "key" || v === "notes") S.lastSplit = v; }
+  else if (["splitCount", "windowMs"].includes(f)) S[f] = +v;
+  else S[f] = v;
+  redeal();
+}
+S.lastSplit = "notes";
+Object.defineProperty(S, "handsB", { get: () => (poly() ? S.hands : "none"), enumerable: false });
+Object.defineProperty(S, "merged", { get: () => mergedOf(), enumerable: false });
+
+face.addEventListener("click", (e) => {
+  const t = e.target.closest("button, [data-split], [data-count]"); if (!t) return;
+  if (t.dataset.split) { if (S.hands === "key" && poly()) { S.splitAt = +t.dataset.split; redeal(); render(); } return; }
+  if (t.dataset.count) { S.splitCount = +t.dataset.count; redeal(); render(); return; }
+  if (t.dataset.set) { setField(t.dataset.set, t.dataset.val); render(); return; }
+  if (t.dataset.hands) { S.hands = t.dataset.hands; S.mode = "poly"; if (["key", "notes"].includes(S.hands)) S.lastSplit = S.hands; view.learn = false; redeal(); render(); return; }
+  if (t.dataset.epanel) { eview.panel = t.dataset.epanel; render(); return; }
+  if (t.dataset.eoct) { const V = t.dataset.which === "g" ? gview : t.dataset.which === "f" ? fview : eview; V.lo = Math.max(24, Math.min(108 - +t.dataset.span, V.lo + 12 * +t.dataset.eoct)); paint(); return; }
+  if (t.dataset.act === "gwin") { gview.winOpen = !gview.winOpen; render(); return; }
+  if (t.dataset.act === "fwin") { fview.winOpen = !fview.winOpen; render(); return; }
+  if (t.hasAttribute("data-etwo")) {
+    if (twoHands()) S.hands = "one"; else { S.mode = "poly"; S.hands = S.lastSplit || "notes"; }
+    redeal(); render(); return;
+  }
+  if (t.dataset.ekind) {
+    const k = t.dataset.ekind;
+    if (twoHands() && S.hands === k && eview.one === "none") S.hands = "one";
+    else { S.mode = "poly"; S.hands = k; if (k !== "layer") S.lastSplit = k; }
+    view.learn = false; redeal(); render(); return;
+  }
+  if (t.dataset.act === "ewin") { eview.winOpen = !eview.winOpen; render(); return; }
+  if (t.dataset.dpanel) {
+    if (dview.toggle === "acc") dview.acc = dview.acc === t.dataset.dpanel ? null : t.dataset.dpanel; else dview.panel = t.dataset.dpanel;
+    render(); return;
+  }
+  if (t.dataset.drawer) { dview.drawer = dview.drawer === t.dataset.drawer && t.closest(".drawer-row") ? null : t.dataset.drawer; render(); return; }
+  if (t.hasAttribute("data-dclose")) { dview.drawer = null; render(); return; }
+  if (t.dataset.open) { view.editor = t.dataset.open; render(); const c = face.querySelector(".close-btn"); if (c && !e.detail) c.focus(); return; }
+  if (t.hasAttribute("data-close")) { const was = view.editor; view.editor = null; render(); const b = face.querySelector('.sum[data-open="' + was + '"]'); if (b) b.focus(); return; }
+  if (t.dataset.toggle) { S[t.dataset.toggle] = !S[t.dataset.toggle]; render(); return; }
+  if (t.dataset.act === "learn") { view.learn = !view.learn; render(); return; }
+});
+face.addEventListener("change", (e) => {
+  const t = e.target; if (!t.dataset.field) return;
+  setField(t.dataset.field, t.type === "checkbox" ? t.checked : t.value); render();
+});
+face.addEventListener("input", (e) => {
+  const t = e.target; if (t.dataset.field !== "windowMs") return;
+  S.windowMs = +t.value; paint();
+});
+
+document.getElementById("layoutTabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  view.layout = b.dataset.layout; view.editor = null; view.learn = false; remember(); render();
+});
+document.getElementById("layoutTabs").addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const order = ["T", "A", "B", "C", "D", "E", "F", "G"], i = order.indexOf(view.layout);
+  view.layout = order[(i + (e.key === "ArrowRight" ? 1 : 7)) % 8]; view.editor = null; remember(); render();
+  document.querySelector('#layoutTabs [data-layout="' + view.layout + '"]').focus();
+});
+document.getElementById("dBar").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.dtoggle) dview.toggle = b.dataset.dtoggle;
+  if (b.dataset.dwhere) dview.where = b.dataset.dwhere;
+  rememberD(); render();
+});
+document.getElementById("allBtn").addEventListener("click", () => (view.layout === "G" ? showAllG() : view.layout === "F" ? showAllF() : view.layout === "E" ? showAllE() : showAll()));
+document.getElementById("gBar").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.gamp) gview.amp = b.dataset.gamp;
+  rememberG(); render();
+});
+document.getElementById("fBar").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.ffig) fview.fig = b.dataset.ffig;
+  if (b.dataset.famp) fview.amp = b.dataset.famp;
+  rememberF(); render();
+});
+document.getElementById("eBar").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.eone) eview.one = b.dataset.eone;
+  if (b.dataset.eexpr) eview.expr = b.dataset.eexpr;
+  rememberE(); render();
+});
+document.getElementById("sizeSwitch").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return; view.size = b.dataset.size; remember(); render();
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  allOff(); S = Object.assign(S, DEFAULTS); S.lastSplit = "notes"; view.editor = null; view.learn = false; render();
+});
+window.addEventListener("resize", () => { scale(); paint(); measure(); });
+
+/* ---------------------------------------------------------------------------
+   Playing it: the computer keys as music software lays them out, the keys
+   under the mockup by pointer, and four strikes it can make for you.
+--------------------------------------------------------------------------- */
+const KEYMAP = { a: 0, w: 1, s: 2, e: 3, d: 4, f: 5, t: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14 };
+let octave = 3;
+const down = new Map();
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const tag = e.target.tagName;
+  if (tag === "SELECT" || tag === "TEXTAREA" || (tag === "INPUT" && e.target.type !== "checkbox" && e.target.type !== "range")) return;
+  if (e.key === "Escape" && dview.drawer && view.layout === "D") { dview.drawer = null; render(); return; }
+  if (e.key === "Escape" && view.editor) { const was = view.editor; view.editor = null; render(); const b = face.querySelector('.sum[data-open="' + was + '"]'); if (b) b.focus(); return; }
+  if (e.key === " ") { e.preventDefault(); if (!e.repeat) setPedal(true); return; }
+  const k = e.key.toLowerCase();
+  if (k === "z" || k === "x") { octave = Math.max(1, Math.min(6, octave + (k === "z" ? -1 : 1))); paintPlayer(); return; }
+  if (!(k in KEYMAP) || e.repeat) return;
+  const n = 12 * (octave + 1) + KEYMAP[k];
+  down.set(k, n); noteOn(n, e.timeStamp || performance.now());
+});
+document.addEventListener("keyup", (e) => {
+  if (e.key === " ") { setPedal(false); return; }
+  const k = e.key.toLowerCase();
+  if (down.has(k)) { noteOff(down.get(k), e.timeStamp || performance.now()); down.delete(k); }
+});
+window.addEventListener("blur", () => { down.forEach((n) => noteOff(n)); down.clear(); });
+
+let latch = false; const latched = new Set();
+const pkeys = document.getElementById("pkeys");
+function buildPlayer() {
+  const narrow = pkeys.clientWidth < 620;
+  const lo = 48, hi = narrow ? 72 : 84;
+  const whites = []; for (let n = lo; n <= hi; n++) if (!isBlack(n)) whites.push(n);
+  const ww = 100 / whites.length;
+  const letters = {}; Object.keys(KEYMAP).forEach((c) => { letters[12 * (octave + 1) + KEYMAP[c]] = c.toUpperCase(); });
+  let html = "";
+  whites.forEach((n, i) => {
+    html += '<button type="button" class="pkey w" data-n="' + n + '" style="left:' + (i * ww) + "%;width:" + ww + '%" aria-label="' + nn(n) + '"><span class="kl">' + (letters[n] || (n % 12 === 0 ? nn(n) : "")) + "</span></button>";
+    if (n + 1 <= hi && isBlack(n + 1)) html += '<button type="button" class="pkey b" data-n="' + (n + 1) + '" style="left:' + ((i + 1) * ww - ww * 0.3) + "%;width:" + (ww * 0.6) + '%" aria-label="' + nn(n + 1) + '"><span class="kl">' + (letters[n + 1] || "") + "</span></button>";
+  });
+  pkeys.innerHTML = html;
+  pkeys.dataset.oct = octave; pkeys.dataset.narrow = narrow;
+}
+function paintPlayer() {
+  if (String(pkeys.dataset.oct) !== String(octave) || String(pkeys.dataset.narrow) !== String(pkeys.clientWidth < 620)) buildPlayer();
+  const by = new Map(held.map((h) => [h.n, h]));
+  pkeys.querySelectorAll(".pkey").forEach((b) => {
+    const h = by.get(+b.dataset.n);
+    b.classList.toggle("on", !!h); b.classList.toggle("hb", !!h && h.hand === 1 && twoHands());
+  });
+  document.getElementById("octRead").textContent = "A is " + nn(12 * (octave + 1));
+}
+pkeys.addEventListener("pointerdown", (e) => {
+  const b = e.target.closest(".pkey"); if (!b) return;
+  e.preventDefault();
+  const n = +b.dataset.n;
+  if (latch) { if (latched.has(n)) { latched.delete(n); noteOff(n); } else { latched.add(n); noteOn(n, e.timeStamp); } return; }
+  b.setPointerCapture(e.pointerId);
+  noteOn(n, e.timeStamp);
+  const up = () => { noteOff(n); b.removeEventListener("pointerup", up); b.removeEventListener("pointercancel", up); };
+  b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up);
+});
+document.getElementById("latchBtn").addEventListener("click", (e) => {
+  latch = !latch; e.currentTarget.setAttribute("aria-pressed", String(latch));
+  if (!latch) { latched.forEach((n) => noteOff(n)); latched.clear(); }
+});
+document.getElementById("pedalBtn").addEventListener("click", () => setPedal(!pedal));
+document.getElementById("soundBtn").addEventListener("click", (e) => {
+  sound = !sound; e.currentTarget.setAttribute("aria-pressed", String(sound));
+  if (sound) { ensureAudio(); if (ac.state === "suspended") ac.resume(); held.forEach(voiceOn); } else held.forEach(voiceOff);
+});
+document.getElementById("slowBtn").addEventListener("click", (e) => { slow = !slow; e.currentTarget.setAttribute("aria-pressed", String(slow)); paint(); });
+document.getElementById("allOff").addEventListener("click", allOff);
+
+/* The strikes: [coarse ms, fine ms, what, note]. The fine part is the
+   spread inside a chord, which Slow stretches with the window; the coarse
+   part is the holding, which it does not. */
+let demoTimers = [];
+const DEMOS = {
+  tight: [[0, 0, "on", 67], [0, 2, "on", 64], [0, 4, "on", 48], [1500, 0, "off", 67], [1500, 0, "off", 64], [1500, 0, "off", 48]],
+  rolled: [[0, 0, "on", 67], [0, 9, "on", 64], [0, 18, "on", 48], [1500, 0, "off", 67], [1500, 0, "off", 64], [1500, 0, "off", 48]],
+  walk: [[0, 0, "on", 60], [0, 1, "on", 64], [0, 2, "on", 67], [700, 0, "on", 45], [1300, 0, "off", 45], [1300, 0, "on", 47], [1900, 0, "off", 47], [1900, 0, "on", 48], [2700, 0, "off", 48], [2700, 0, "off", 60], [2700, 0, "off", 64], [2700, 0, "off", 67]],
+  pedal: [[0, 0, "pedal", 1], [0, 0, "on", 48], [500, 0, "off", 48], [1000, 0, "on", 55], [1000, 1, "on", 60], [2200, 0, "pedal", 0], [2600, 0, "off", 55], [2600, 0, "off", 60]]
+};
+document.querySelector(".demos").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-demo]"); if (!b) return;
+  allOff();
+  if (b.dataset.demo !== "walk" && b.dataset.demo !== "pedal" && !byNotes()) { S.mode = "poly"; S.hands = "notes"; S.lastSplit = "notes"; render(); }
+  if ((b.dataset.demo === "walk" || b.dataset.demo === "pedal") && !byNotes()) { S.mode = "poly"; S.hands = "notes"; S.lastSplit = "notes"; render(); }
+  const f = slowF();
+  DEMOS[b.dataset.demo].forEach((ev) => {
+    demoTimers.push(setTimeout(() => {
+      if (ev[2] === "on") noteOn(ev[3]); else if (ev[2] === "off") noteOff(ev[3]); else setPedal(!!ev[3]);
+    }, ev[0] * (f > 1 ? 1.5 : 1) + ev[1] * f));
+  });
+});
+
+/* The page's own light: Auto follows the system; the face never does. */
+document.getElementById("theme").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const v = b.dataset.themeSet;
+  if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
+  document.querySelectorAll("#theme button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  try { localStorage.setItem("playMockup.theme", v); } catch (err) { /* no storage */ }
+});
+try {
+  const th = localStorage.getItem("playMockup.theme");
+  if (th === "light" || th === "dark") document.querySelector('#theme [data-theme-set="' + th + '"]').click();
+} catch (e) { /* no storage */ }
+
+/* For the checks that read the dealing by number (and nothing else). */
+window.__playMock = {
+  set: (o) => { Object.assign(S, o); redeal(); render(); },
+  on: noteOn, off: noteOff, pedal: setPedal, clear: allOff,
+  flush: () => { for (const g of gathers.values()) closeGather(g); },
+  measureAll: showAll, measureAllE: showAllE, measureAllF: showAllF, measureAllG: showAllG,
+  hands: () => Object.fromEntries(held.map((h) => [nn(h.n), h.hand === undefined ? "waiting" : h.hand])),
+  sounding: () => voices.size
+};
+
+render();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { scale(); paint(); measure(); });
+})();
+</script>
+</body>
+</html>
