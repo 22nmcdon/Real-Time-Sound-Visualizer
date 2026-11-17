@@ -125,7 +125,7 @@ with sync_playwright() as pw:
         print("    opened:", first)
         check("opened and unpressed, nothing is drawn and the empty screen says how to play a note, the ways that are true here",
               quiet(first) and first["kind"] == brain and first["gated"]
-              and first["text"].startswith("Play a note: show the keys and type A") and "connect MIDI in Settings" in first["text"],
+              and first["text"].startswith("Play a note: press M for the keys and type A") and "connect MIDI in Settings" in first["text"],
               str(first))
         # A press that plays nothing and opens nothing: the title. Until 10 Nov
         # this was the drone's first moment, with no keyboard there.
@@ -135,8 +135,9 @@ with sync_playwright() as pw:
         print("    pressed:", pressed)
         check("pressed, the sound is on and still nothing sounds, with no keyboard there: no drone before a note",
               quiet(pressed) and pressed["audible"] and pressed["text"] == first["text"], str(pressed))
-        # The keys opened, as a visitor would, and the line names them.
-        p.locator("#keysOpen").click(); p.wait_for_timeout(300)
+        # The keys opened, as a visitor would: with M since 17 Nov, when their
+        # button went to Settings' MIDI. The line names them.
+        p.keyboard.press("m"); p.wait_for_timeout(300)
         opened = p.evaluate(SILENT)
         check("and with the keys opened the line names them and still nothing sounds",
               quiet(opened) and "press a key below" in opened["text"], str(opened))

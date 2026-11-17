@@ -539,6 +539,43 @@ menus, the pairing and Tune a chord, out of `#midiGroup`); `keysOpen` moves to t
 toolbar (`#screenFrame`'s row, which Enlarge carries), so `enlargetest.py` and
 `windowtest.py` see one more button there and `fittest.py` one fewer row on Play.
 
+## Built (17 Nov): G, with the owner's last answers
+
+The owner's answers on G: the strip three octaves at about 25 px a key, with its octave
+buttons; *keys on screen* out of the band into Settings' MIDI, beside the Chord window;
+**M** to open and shut them, as Ableton's computer keyboard is M; and no on-screen keys or
+typing in the plugin, whose host has its own. Built on `web/scope.html` as G draws it, with
+what building it changed:
+
+- **What moved where.** The Keyboard section is the band across Play (`#midiGroup`,
+  `data-band`). Dyad · Mono · Poly, Two hands (in the title, Poly only), Hold, Outline
+  (`midiDrawCount`, `midiDrawWhich`, the row Draw was), Tune a chord (no longer behind the
+  dots) and the pairing are its left; the strip, Key · Notes · Layer, the octave buttons,
+  low · high and the line its right. Learn stays, as *learn from a key* on the line by key:
+  the press on the strip is the main way, and Learn the plugin's way from a host's note.
+  The Chord window's note on the line goes to it in Settings. `keysOpen` is in Settings'
+  MIDI (`#keysOpenRow`), hidden in the plugin. Expression is column 1 alone.
+- **The menus stay.** `midiLayers`, `midiSplitBy`, `midiSplitEnd` and `midiSplitCount` hold
+  the values out of sight, and every switch on the strip writes them through their change
+  events, so the plugin's panel, undo, the setup and every check that writes them are
+  unchanged. Ids are kept; none is copied.
+- **The keys are 24 px at 1400x900**, a pixel short of 25: the left column needs its
+  228 px for Outline's two menus to read whole (`fittest.py` holds that), and the strip has
+  the rest. About 20 px at the compact sizes (17.6 on the plugin's minimum screen).
+- **The short windows.** Under the band, the four sections cannot stay as drawn at 680 tall
+  or at 960x600, so they are shared as at two columns, with Expression alone in the first
+  while that fits: at 1200x680 the Amp envelope goes under the Voice filter; at 960x600
+  with two hands the Voice filter goes under Expression. The knob cells at the compact
+  size go down to 48 px, four to a column, where at 56 the Amp envelope's and the Voice
+  filter's knobs wrapped to a second row.
+- **Checked** by `striptest.py` (new: Two hands and the kinds against the menus and the
+  setup, a press on the strip splitting the instrument's lanes, the places and the ends,
+  the octave buttons, M, each with its null and each seen red against a mutant of the
+  page), `fittest.py` (Outline's menus whole at every window, its null the pairing beside
+  them), `layertest.py` (Learn and the hands, read from the strip), `keystest.py`,
+  `layouttest.py` (the search finds Outline), and the plugin's shell test (the keys'
+  row hidden and M nothing in the plugin, the strip on Play, Learn's key named on the line).
+
 ## How the mockup was checked
 
 The dealing is the instrument's rules (`split-by-notes.md`), held by

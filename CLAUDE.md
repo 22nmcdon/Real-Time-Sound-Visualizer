@@ -498,6 +498,26 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Together did. Frequency, Phase, Glide, Interval and Tuning stay shared.
   Additive throughout, no version bump. `handstest.py` holds it, the core's tests the
   core.
+- **The Keyboard is a band across Play** (17 Nov, `web/docs/play-redesign.md`,
+  the owner's G after five rounds of mockups). A row of its own over the three
+  columns (`data-band`, `.bench-band`, not dealt). Its left: the name with *Two
+  hands* in it (Poly on the generator only), Dyad · Mono · Poly, and under them
+  only what the mode uses of how the notes are drawn - Hold in Dyad, a line in
+  Mono, Outline, Tune a chord and with two hands the pairing in Poly. Its
+  right: the strip, three octaves with its own octave buttons (a view, never
+  stored), Key · Notes · Layer centred on its top edge with Two hands on, a key
+  pressed to split there (Learn stays as *learn from a key*, the plugin's way
+  from a host's note), by notes six places for how many and *low · high* at the
+  counted edge, and a line under it that names the Chord window, which is
+  Settings' (MIDI), with the on-screen keys beside it. The menus that hold the
+  values (`midiLayers`, `midiSplitBy`, `midiSplitEnd`, `midiSplitCount`) are
+  kept out of sight and the switches drive them by their change events, so the
+  plugin, undo and the setup hear what they always heard. Expression is column
+  1 alone; at the short windows the columns are shared under the band
+  (Expression alone while that fits). The on-screen keys open with **M** and
+  are the site's only: in the plugin their row is hidden and M does nothing,
+  since a host has its own keys and musical typing. `striptest.py`,
+  `fittest.py` and the plugin's shell test hold it.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back, and the screen, its toolbar and
   the dock into Enlarge's frame and back. Two elements with one id is how the

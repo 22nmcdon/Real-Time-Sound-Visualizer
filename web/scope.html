@@ -1436,6 +1436,78 @@ span.fx-handle { visibility: hidden; }
    not fit together. */
 .bench-body.dealing .bench-col:empty { display: block; }
 
+/* The Keyboard as a band (17 Nov): a row of its own over Play's columns, so
+   the body wraps, and the band takes the whole first line. Only Play has one;
+   on every other tab the columns are the only line, as before. */
+.bench-body { flex-wrap: wrap; row-gap: 12px; }
+.bench-band { flex: 0 0 100%; min-width: 0; }
+/* The band's own gap is the body's row gap: not a section's margin under it as well. */
+.bench-body .bench-band > .menu-group.kb-band { margin: 0; }
+.bench-body .menu-group.kb-band {
+  display: grid; grid-template-columns: 228px minmax(0, 1fr); column-gap: 18px; align-items: start;
+  margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+.bench-body .kb-band > .menu-title {
+  grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding-bottom: 4px;
+}
+.kb-left { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.kb-right { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
+.kb-figure { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.kb-figure .check { font-size: 13px; }
+.kb-row { display: flex; align-items: center; gap: 6px; width: 100%; }
+.kb-row[hidden] { display: none; }
+.bench-body .kb-band .menu-row { margin-top: 0; flex-wrap: nowrap; gap: 6px; }
+.bench-body .kb-band .menu-row > .menu-label { flex: 0 0 auto; font-size: 12.5px; }
+.bench-body .kb-band .kb-box.menu-row { display: block; position: relative; }
+.kb-search-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.kb-row select { padding: 2px 5px; min-width: 0; }
+.kb-left > .switch button { padding: 4px 13px; }
+#midiDrawWhich { flex: 1 1 0; }
+.kb-say { font-size: 12px; color: var(--text-soft); margin: 0; }
+.kb-box { border: 1px solid var(--line); background: var(--paper); padding: 3px 4px 4px; }
+.kb-box-head { display: flex; justify-content: center; margin-bottom: 3px; }
+.kb-box-head[hidden] { display: none; }
+.kb-strip { display: flex; align-items: stretch; gap: 4px; height: 44px; }
+.kb-keys { flex: 1 1 auto; min-width: 0; position: relative; }
+.kb-keys svg { display: block; width: 100%; height: 100%; }
+.kb-keys .k { cursor: pointer; }
+.kb-oct { flex: 0 0 16px; padding: 0; background: none; border: 1px solid var(--line); border-radius: 1px;
+          color: var(--blush-deep); font-size: 15px; line-height: 1; position: relative; }
+.kb-oct:hover { border-color: var(--blush); }
+.kb-oct:disabled { color: var(--unresolved); cursor: default; }
+/* A held note out of view that way: a gold dot on the button. */
+.kb-oct[data-beyond]::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px;
+                              margin-left: -2px; border-radius: 50%; background: var(--gold); }
+.kb-ends { flex: 0 0 40px; display: flex; align-items: center; }
+.kb-ends[hidden] { display: none; }
+/* One line, whatever it says: the band's height is every column's. The
+   sentence gives way (an ellipsis, the whole of it on the pointer's title)
+   before Learn or the Chord window's note does. */
+.kb-line { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 12px; margin-top: 3px; min-width: 0; }
+#midiStripLine { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-line > :not(#midiStripLine) { flex: 0 0 auto; white-space: nowrap; }
+.kb-line > [hidden] { display: none; }
+.kb-window { margin-left: auto; }
+.kb-playing { display: none; }
+.kb-line .link-btn { font-size: 12px; padding-bottom: 0; }
+.switch.mini button { padding: 2px 8px; font-size: 9.5px; letter-spacing: 0.12em; }
+.switch.vertical { flex-direction: column; border-radius: 20px; }
+.switch.vertical button { padding: 2px 6px; font-size: 10px; letter-spacing: 0.02em; }
+.pill-toggle { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--line);
+               border-radius: 20px; padding: 2px 8px; font-size: 9px; letter-spacing: 0.12em; color: var(--text-soft); }
+.pill-toggle[hidden] { display: none; }
+.pill-toggle .pt-dot { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--text-soft); }
+.pill-toggle:hover { color: var(--blush-deep); }
+.pill-toggle[aria-pressed="true"] { color: var(--charcoal); border-color: var(--blush); }
+.pill-toggle[aria-pressed="true"] .pt-dot { background: var(--blush-deep); border-color: var(--blush-deep); }
+[data-compact] .bench-body .menu-group.kb-band { grid-template-columns: 216px minmax(0, 1fr); column-gap: 12px; padding-bottom: 5px; }
+[data-compact] .bench-body .kb-band > .menu-title { margin-bottom: 3px; padding-bottom: 3px; }
+body[data-compact] .bench-body { row-gap: 10px; }
+[data-compact] .kb-left, [data-compact] .kb-figure { gap: 4px; }
+[data-compact] .kb-row select { padding-block: 2px; }
+[data-compact] .kb-strip { height: 36px; }
+[data-compact] .kb-line { margin-top: 3px; }
+
 /* --- the side column -------------------------------------------------------
    The screen, and the things you point at it. Neither is ever behind a fold.
 
@@ -1776,6 +1848,12 @@ button.mod-edit-name:hover { color: var(--blush-deep); }
 [data-compact] .bench-body .menu-group { margin-bottom: 12px; }
 /* Knobs a size smaller, and a knob alone among menus labelled as they are. */
 [data-compact] .bench-body .knob-face { width: 30px; height: 30px; }
+/* Four to a compact column (17 Nov): at 56 px four cells and their gaps were
+   242 px, and the columns are 224 to 235 at the compact sizes, so the Amp
+   envelope's Release and the Voice filter's Envelope went to a second row,
+   which the Keyboard's band over the columns left no height for. */
+[data-compact] .bench-body .menu-row.knob-row { min-width: 48px; }
+[data-compact] .bench-body :has(> .menu-row.knob-row) { column-gap: 4px; }
 [data-compact] .bench-body .menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) { grid-template-columns: 60px auto auto minmax(0, 1fr); }
 [data-compact] .bench-body .menu-row.knob-row:not(.knob-row + .knob-row):not(:has(+ .knob-row)) > .menu-label { font-size: 11.5px; }
 /* The modulation editor's dozen destinations, and the rack's lines, tighter. */
@@ -2159,70 +2237,107 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             </div>
           </div>
 
-          <div class="menu-group" id="midiGroup" data-tab="play" data-home="bench" data-col="1">
-            <span class="menu-title">Keyboard</span>
-            <div class="menu-row">
-              <span class="menu-label">On screen</span>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="keysOpen"
-                        aria-controls="screenKeys" aria-expanded="false">Show keys</button>
-              </div>
-            </div>
-            <div class="menu-row" id="midiPlayingRow" hidden>
-              <span class="menu-label">Playing</span>
-              <div class="grow"><span class="reading" id="midiMonitor">nothing held</span></div>
-            </div>
-            <!-- No visible label, and that is a cost taken on purpose. Three words
-                 of spaced capitals are 190 px, and beside the 96 px label column
-                 the Bench's 255 px column had 147 left, so the switch wrapped onto
-                 a line of its own and a panel that must never scroll did. Tighter
-                 letter-spacing would fit by three pixels in one font and not in
-                 the fallback; the radiogroup's own name says what it is. -->
-            <div class="menu-row">
+          <!-- The Keyboard as a band (17 Nov, web/docs/play-redesign.md, the
+               owner's G): a row of its own across Play, over the three
+               columns, so the strip is wide enough to play a split on. Its
+               left holds how the notes sound (Dyad, Mono, Poly) and how they
+               are drawn, only what the mode uses; its right the strip, which
+               is how they are shared: Two hands, then Key, Notes or Layer on
+               its top edge, a key pressed to split there, a place pressed for
+               how many. The menus that hold the values (midiLayers,
+               midiSplitBy, midiSplitEnd, midiSplitCount, midiLayerPair) are
+               kept, hidden or shrunk, and the switches drive them through
+               their change events: the plugin, undo and every check hear the
+               menus they always heard. Keys on screen went to Settings' MIDI,
+               beside the Chord window, and has M. -->
+          <div class="menu-group kb-band" id="midiGroup" data-tab="play" data-home="bench" data-band="1">
+            <!-- The pill inside the title, so the section is still found by its
+                 title (decorateGroup, the search, the folds) and named by its first word. -->
+            <span class="menu-title">Keyboard<button type="button" class="pill-toggle caps" id="midiTwoHands" aria-pressed="false" hidden
+                    title="A second sound: split at a key, split by the notes held, or layered"><span class="pt-dot"></span>Two hands</button></span>
+            <div class="kb-left">
+              <!-- No visible label: the radiogroup's own name says what it is. -->
               <div class="switch" role="radiogroup" aria-label="What held notes do">
                 <button type="button" class="caps" id="midiDyad" role="radio" aria-checked="true">Dyad</button>
                 <button type="button" class="caps" id="midiMono" role="radio" aria-checked="false">Mono</button>
                 <button type="button" class="caps" id="midiPoly" role="radio" aria-checked="false">Poly</button>
               </div>
+              <div class="kb-figure">
+                <label class="check" id="midiHoldRow"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
+                <p class="kb-say" id="midiMonoNote" hidden>The newest note, and the Interval above it.</p>
+                <div class="kb-row menu-row" id="midiDrawRow" hidden>
+                  <label class="menu-label" for="midiDrawCount">Outline</label>
+                  <select id="midiDrawCount" aria-label="How many notes the picture's outline draws">
+                    <option value="2" selected>2</option><option value="3">3</option>
+                    <option value="4">4</option><option value="5">5</option>
+                    <option value="6">6</option><option value="7">7</option>
+                    <option value="8">8</option>
+                  </select>
+                  <select id="midiDrawWhich" aria-label="Which notes make the outline">
+                    <option value="outer" selected>bass and melody</option>
+                    <option value="lowest">lowest</option>
+                    <option value="highest">highest</option>
+                    <option value="recent">most recent</option>
+                  </select>
+                </div>
+                <div class="kb-row" id="midiPolyJustRow" hidden>
+                  <label class="check"><input type="checkbox" id="midiPolyJust"> Tune a chord</label>
+                  <select id="midiLayerPair" aria-label="How the two hands are drawn: a figure each, or A against B" hidden>
+                    <option value="each" selected>a figure each</option>
+                    <option value="against">A against B</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <div class="menu-row" id="midiLayersRow" hidden>
-              <label class="menu-label" for="midiLayers">Layers</label>
-              <div class="grow">
-                <select id="midiLayers" aria-label="Whether a second layer of voices plays"
-                        style="flex:1 1 0; min-width:0">
+            <div class="kb-right">
+              <!-- A row to the search: "split" or "hands" finds the strip, as
+                   "split" found the Layers menu, by a name only it reads. -->
+              <div class="kb-box menu-row">
+                <span class="menu-label kb-search-name">Two hands, split and layer</span>
+                <div class="kb-box-head" id="midiKindsRow" hidden>
+                  <div class="switch mini" role="radiogroup" aria-label="How the two hands share the notes">
+                    <button type="button" class="caps" id="midiKindKey" role="radio" aria-checked="false">Key</button>
+                    <button type="button" class="caps" id="midiKindNotes" role="radio" aria-checked="false">Notes</button>
+                    <button type="button" class="caps" id="midiKindLayer" role="radio" aria-checked="false">Layer</button>
+                  </div>
+                </div>
+                <div class="kb-strip">
+                  <div class="kb-ends" id="midiEndLowSide" hidden>
+                    <div class="switch vertical mini" role="radiogroup" aria-label="Which end is counted">
+                      <button type="button" id="midiEndLow" role="radio" aria-checked="true">low</button>
+                      <button type="button" id="midiEndHigh" role="radio" aria-checked="false">high</button>
+                    </div>
+                  </div>
+                  <button type="button" class="kb-oct" id="midiStripDown" aria-label="The strip down an octave">&lsaquo;</button>
+                  <div class="kb-keys" id="midiStrip" role="group" aria-label="The keys held, and which hand each plays in"></div>
+                  <button type="button" class="kb-oct" id="midiStripUp" aria-label="The strip up an octave">&rsaquo;</button>
+                </div>
+              </div>
+              <div class="kb-line">
+                <span class="kb-say" id="midiStripLine"></span>
+                <button type="button" class="link-btn" id="midiSplitLearn" hidden
+                        title="Press, then play the key the upper hand starts from">learn from a key</button>
+                <span class="kb-say kb-window" id="midiWindowNote" hidden>Chord window: <span id="midiWindowValue">10 ms</span>,
+                  <button type="button" class="link-btn" id="midiWindowGo">in Settings</button></span>
+                <span class="kb-say kb-playing" id="midiPlayingRow" hidden><span class="reading" id="midiMonitor">nothing held</span></span>
+              </div>
+              <p class="menu-note" id="midiLayersNote" hidden></p>
+              <!-- The values the switches and the strip set, as menus, out of sight. -->
+              <div id="midiLayersRow" hidden>
+                <select id="midiLayers" aria-label="Whether a second hand plays">
                   <option value="off" selected>one</option>
                   <option value="split">split</option>
                   <option value="layer">layered</option>
                 </select>
-                <!-- The split by notes (16 Nov): how a split decides a note's
-                     hand, beside the menu that chose it, so the row reads
-                     "Layers: split, by notes". Learn, or the end counted and
-                     how many, go beside the pairing menu in the row under it,
-                     so a split adds no row: a row of its own put Play 11 px
-                     over at 1400x900 (patchtest, 16 Nov). -->
-                <select id="midiSplitBy" aria-label="Split: at a key, or by the notes held" hidden>
+                <select id="midiSplitBy" aria-label="Split: at a key, or by the notes held">
                   <option value="key" selected>by key</option>
                   <option value="notes">by notes</option>
                 </select>
-              </div>
-            </div>
-            <!-- No label, for the reason the mode switch above has none: the
-                 Bench column cannot fit one beside a switch and a menu. -->
-            <!-- Edit A / B was here until G6: the header's Editing says which hand
-                 the face edits. -->
-            <div class="menu-row" id="midiLayerRow" hidden>
-              <div class="grow">
-                <select id="midiLayerPair" aria-label="How the two layers are drawn">
-                  <option value="each" selected>a figure each</option>
-                  <option value="against">A against B</option>
-                </select>
-                <button type="button" class="link-btn caps" id="midiSplitLearn" hidden
-                        title="Press, then play the key layer B starts from">at C4</button>
-                <select id="midiSplitEnd" aria-label="Which notes are counted: the lowest held, for the lower hand, or the highest, for the upper" hidden>
+                <select id="midiSplitEnd" aria-label="Which notes are counted: the lowest held, for the lower hand, or the highest, for the upper">
                   <option value="lower" selected>lowest</option>
                   <option value="upper">highest</option>
                 </select>
-                <select id="midiSplitCount" aria-label="How many notes the counted hand takes" hidden>
+                <select id="midiSplitCount" aria-label="How many notes the counted hand takes">
                   <option value="1" selected>1</option>
                   <option value="2">2</option>
                   <option value="3">3</option>
@@ -2232,32 +2347,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 </select>
               </div>
             </div>
-            <p class="menu-note" id="midiLayersNote" hidden></p>
-            <div class="menu-row stack" id="midiDrawRow" hidden>
-              <label class="menu-label" for="midiDrawCount">Draw</label>
-              <div class="grow">
-                <!-- Allowed to shrink. At their natural width the two menus ran
-                     89 px out of the Bench's column, over the next section's
-                     heading - since poly, unseen because the Bench's check
-                     measured height and not width. -->
-                <select id="midiDrawCount" aria-label="How many notes the picture draws"
-                        style="flex:1 1 0; min-width:0">
-                  <option value="2" selected>2 notes</option><option value="3">3 notes</option>
-                  <option value="4">4 notes</option><option value="5">5 notes</option>
-                  <option value="6">6 notes</option><option value="7">7 notes</option>
-                  <option value="8">8 notes</option>
-                </select>
-                <select id="midiDrawWhich" aria-label="Which notes the picture draws"
-                        style="flex:2 1 0; min-width:0">
-                  <option value="outer" selected>bass and melody</option>
-                  <option value="lowest">lowest</option>
-                  <option value="highest">highest</option>
-                  <option value="recent">most recent</option>
-                </select>
-              </div>
-            </div>
-            <label class="check" id="midiPolyJustRow" hidden data-more="1"><input type="checkbox" id="midiPolyJust"> Tune a chord to its lowest note</label>
-            <label class="check"><input type="checkbox" id="midiHold"> Hold the interval under one note</label>
             <p class="menu-note" data-more="1">Two held notes are the two channels, so the interval
               under your hands is the figure on the screen: a fifth draws 2:3 and stands still,
               a third walks. <i>Dyad</i> reads the two most recent notes and puts the lower on
@@ -2420,10 +2509,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="midiOutStatus">off</span></div>
             </div>
             <!-- The Chord window (16 Nov): split by notes, how long every note
-                 waits so a chord is dealt by pitch. Here for now, by the owner's
-                 word, until Play's Poly and split rows are laid out again:
-                 beside the count it squeezed every menu below the width it
-                 reads at, and a row of its own put Play 11 px over. -->
+                 waits so a chord is dealt by pitch. Set once and left, so here
+                 by the owner's word (17 Nov) rather than on Play, where the
+                 strip's line says what it is and links here. -->
             <div class="menu-row" id="midiSplitWindowRow">
               <label class="menu-label" for="midiSplitWindow">Chord window</label>
               <div class="grow">
@@ -2445,6 +2533,20 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                   <option value="14">14 ms</option>
                   <option value="15">15 ms</option>
                 </select>
+              </div>
+            </div>
+            <!-- The keys at the foot of the window (17 Nov): here rather than on
+                 Play, where the band is about the sound, and set about as often as
+                 the Chord window beside it. M opens and shuts them from anywhere,
+                 as Ableton's computer keyboard is M. Not in the plugin, which
+                 hides the row: a host has its own keys and musical typing, and a
+                 plugin window taking letters fights the host's shortcuts. -->
+            <div class="menu-row" id="keysOpenRow">
+              <span class="menu-label">On-screen keys</span>
+              <div class="grow">
+                <button type="button" class="link-btn caps" id="keysOpen"
+                        aria-controls="screenKeys" aria-expanded="false">Show keys</button>
+                <span class="reading">M</span>
               </div>
             </div>
             <p class="menu-note">Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
@@ -4611,7 +4713,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         with what is moving it and the controls either side. <i>Settings &rarr; This window</i>
         turns the line off.</li>
       <li class="help-lede">Nothing sounds until you play a note, as in the plugin:
-        <i>Show keys</i> on the <i>Play</i> tab and press one, or type <b>A</b> to <b>K</b>
+        press <b>M</b> for the keys on the screen and press one, or type <b>A</b> to <b>K</b>
         while they are open, or connect a MIDI keyboard in <i>Settings</i>. Until the first
         note the empty screen says so.</li>
       <li class="help-lede">An oscilloscope draws what a signal is doing. Three ways of
@@ -5673,18 +5775,23 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         published artifact is an iframe that does not grant it, so this works on the GitHub
         Pages copy and not there, and Safari has no Web MIDI at all.</span></li>
 
-      <li><b>Two layers: a split, or one keyboard twice</b>
-        <span>In <i>Poly</i>, <i>Layers</i> gives the waveform generator a second set of
-        voices. <i>Split</i> sends every note from a key upwards to layer B and the rest to
-        layer A &mdash; comping with the left hand, a melody with the right. Press
-        <i>at C4</i> under it and play the key B should start from. Or split <i>by notes</i>
-        rather than <i>by key</i>: <i>lowest</i> and a count gives that many of the lowest notes
-        held to layer A and the rest to B, and <i>highest</i> the other way round, so a bass
-        note can be anywhere on the keyboard. A note's hand is settled as it starts, by where it
+      <li><b>Two hands: a split, or one keyboard twice</b>
+        <span>Play's <i>Keyboard</i> is the band across the top of the tab: how the notes sound
+        (<i>Dyad</i>, <i>Mono</i>, <i>Poly</i>) and how they are drawn on its left, and on its
+        right the strip, the keys held in the hand each plays in, with &lsaquo; &rsaquo; for
+        other octaves. In <i>Poly</i>, <i>Two hands</i>, beside its name, gives the waveform
+        generator a second set of voices, and <i>Key</i>, <i>Notes</i> or <i>Layer</i> on the
+        strip's top edge says how they share the notes. <i>Key</i> sends every note from a key
+        upwards to the upper hand and the rest to the lower &mdash; comping with the left hand,
+        a melody with the right: press a key on the strip to split there, or <i>learn from a
+        key</i> and play it. <i>Notes</i> splits by the notes held instead: the strip becomes
+        places counted from <i>low</i> or <i>high</i>, and pressing a place gives that many of the
+        lowest notes held to the lower hand and the rest to the upper (or the highest to the
+        upper, counted from <i>high</i>), so a bass note can be anywhere on the keyboard. A note's hand is settled as it starts, by where it
         ranks among the notes held then (one held by the pedal counts), and it keeps it until you
         let go: a note added under a held chord can join the lower hand, and nothing already
         sounding moves. By notes every note waits the <i>Chord window</i> (in Settings' MIDI
-        section for now), 10 ms unless you change it, its release and the pedal with it, so a chord struck at
+        section; the strip's line says it and goes there), 10 ms unless you change it, its release and the pedal with it, so a chord struck at
         once is one chord: notes that start within the window of the first are ranked together
         by pitch, whichever finger landed first, so the bass is the bass, and each then sounds
         when it was played, only that much late &mdash; a roll or a grace note keeps its gaps.
@@ -5692,7 +5799,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         top is all bass. The window runs from 0 to 15 ms: wider gathers a looser chord and
         waits longer; at 0 nothing waits and every note is ranked as it arrives. With fewer held than the count, all of
         them are the counted hand's. By key nothing waits.
-        <i>Layered</i> sends every note to both, so each is two voices at once.
+        <i>Layer</i> sends every note to both, so each is two voices at once. Under the
+        switch, <i>Outline</i> is how many notes the figure draws and which, <i>Tune a
+        chord</i> tunes each chord to its lowest note, and with two hands the menu beside it
+        draws a figure each or A against B; in <i>Dyad</i> the one tick is <i>Hold the interval</i>.
         <br><br>
         The two are the <i>lower</i> and the <i>upper</i> hand on a split, <i>A</i> and
         <i>B</i> layered, and <i>Editing</i> in the header says which one the face is showing.
@@ -5721,8 +5831,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         picture stage.</span></li>
 
       <li><b>No keyboard? Keys on the screen</b>
-        <span><i>Show keys</i>, in the Bench's <i>Play</i> tab, puts two octaves along the
-        bottom of the page, and they play exactly what a MIDI keyboard would &mdash; the dyad,
+        <span><b>M</b>, or <i>Show keys</i> in Settings' MIDI section, puts two octaves along the
+        bottom of the page (on the site only: in the plugin your host has its own keys and its
+        own musical typing), and they play exactly what a MIDI keyboard would &mdash; the dyad,
         <i>Hold</i>, the envelope and the note-as-truth all work from them, and they work in
         the published artifact and in Safari, where MIDI does not. Drag across them for a
         glissando. A mouse is one finger, so to hold a dyad tick <i>Tap to hold</i>: each tap then
@@ -5857,8 +5968,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <b>&larr; &rarr;</b> timebase &middot; <b>&uarr; &darr;</b> trigger level &middot;
         <b>+ &minus;</b> zoom &middot; <b>C</b> cursors &middot; <b>?</b> this sheet &middot;
         <b>Esc</b> back from Enlarge &middot;
-        <b>Ctrl Z</b> undo and <b>Ctrl Shift Z</b> or <b>Ctrl Y</b> redo (<b>&#8984;</b> on a Mac).
-        With the on-screen keys open, the letter rows play notes instead: <b>A</b> to
+        <b>Ctrl Z</b> undo and <b>Ctrl Shift Z</b> or <b>Ctrl Y</b> redo (<b>&#8984;</b> on a Mac)
+        &middot; <b>M</b> the keys on the screen, open and shut. With the on-screen keys open, the letter rows play notes instead: <b>A</b> to
         <b>'</b> and <b>W</b> to <b>P</b>, <b>Z</b> <b>X</b> octave, and <b>Space</b> held is the
         sustain pedal. While a menu has the focus its keys are the menu's; one chosen from with the
         pointer gives them back, and a note let go while a menu was open ends as it closes.</span></li>
@@ -6050,7 +6161,10 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "morphGroup",
                   "morphPos", "morphStoreA", "morphStoreB", "morphNote",
                   "midiDyad", "midiMono", "midiPoly", "midiDrawRow", "midiDrawCount", "midiDrawWhich",
-                  "midiLayersRow", "midiLayers", "midiSplitLearn", "midiLayerRow",
+                  "midiLayersRow", "midiLayers", "midiSplitLearn",
+                  "midiTwoHands", "midiKindsRow", "midiKindKey", "midiKindNotes", "midiKindLayer", "midiEndLowSide",
+                  "midiEndLow", "midiEndHigh", "midiStripDown", "midiStripUp", "midiStrip", "midiStripLine",
+                  "midiWindowNote", "midiWindowValue", "midiWindowGo", "midiHoldRow", "midiMonoNote", "keysOpenRow",
                   "midiSplitBy", "midiSplitEnd", "midiSplitCount", "midiSplitWindow", "midiSplitWindowRow",
                   "midiLayerPair", "midiLayersNote", "genTitle", "pictureHandName",
                   "pictureMovesRow", "pictureMovesA", "pictureMovesB",
@@ -17301,16 +17415,32 @@ function syncMidi() {
   el.midiDyad.setAttribute("aria-checked", String(midi.mode === "dyad"));
   el.midiMono.setAttribute("aria-checked", String(midi.mode === "mono"));
   el.midiPoly.setAttribute("aria-checked", String(midi.mode === "poly"));
-  /* Only where a chord can play: on the generator, and in poly. (Until G2
-     also only on the waveform, since in a drawing a note was a ratio and
-     poly did nothing.) */
+  /* Only what the mode uses (17 Nov, the Keyboard's band): Hold in Dyad, a
+     line in Mono, and in Poly the outline, Tune a chord and, with two hands,
+     how they are drawn. Two hands and the strip's kinds only where a chord
+     can play: on the generator, and in poly. (Until G2 also only on the
+     waveform, since in a drawing a note was a ratio and poly did nothing.) */
   {
     const tone = genSettings();
-    el.midiDrawRow.hidden = !(midi.mode === "poly" && tone);
-    el.midiPolyJustRow.hidden = el.midiDrawRow.hidden;
-    el.midiLayersRow.hidden = el.midiDrawRow.hidden;
+    const poly = midi.mode === "poly" && !!tone;
+    el.midiHoldRow.hidden = midi.mode !== "dyad";
+    el.midiMonoNote.hidden = midi.mode !== "mono";
+    el.midiDrawRow.hidden = !poly;
+    el.midiPolyJustRow.hidden = !poly;
     const on = layersOn();
-    el.midiLayerRow.hidden = !on;
+    const two = poly && midi.layers.mode !== "off";
+    el.midiTwoHands.hidden = !poly;
+    el.midiTwoHands.setAttribute("aria-pressed", String(two));
+    el.midiKindsRow.hidden = !two;
+    const split = midi.layers.mode === "split", byNotes = midi.layers.by === "notes";
+    const kind = !two ? "" : split ? (byNotes ? "notes" : "key") : "layer";
+    el.midiKindKey.setAttribute("aria-checked", String(kind === "key"));
+    el.midiKindNotes.setAttribute("aria-checked", String(kind === "notes"));
+    el.midiKindLayer.setAttribute("aria-checked", String(kind === "layer"));
+    el.midiEndLowSide.hidden = kind !== "notes";
+    el.midiEndLow.setAttribute("aria-checked", String(midi.layers.end !== "upper"));
+    el.midiEndHigh.setAttribute("aria-checked", String(midi.layers.end === "upper"));
+    el.midiLayerPair.hidden = !on;
     el.midiLayers.value = midi.layers.mode;
     el.midiLayerPair.value = midi.layers.pair;
     el.pictureMovesRow.hidden = !(on && midi.layers.pair === "each");
@@ -17320,33 +17450,31 @@ function syncMidi() {
     el.scanReadsRow.hidden = el.pictureMovesRow.hidden;
     el.scanReadsA.value = scan.reads[0];
     el.scanReadsB.value = scan.reads[1];
-    /* How the split decides, beside Layers, only while split; under it, by
-       the pairing menu, Learn for the key split and the end counted and how
-       many for the split by notes. */
-    const split = midi.layers.mode === "split", byNotes = midi.layers.by === "notes";
-    el.midiSplitBy.hidden = !split;
     el.midiSplitBy.value = midi.layers.by;
-    el.midiSplitLearn.hidden = !split || byNotes;
-    el.midiSplitEnd.hidden = !split || !byNotes;
-    el.midiSplitCount.hidden = !split || !byNotes;
     el.midiSplitEnd.value = midi.layers.end;
     el.midiSplitCount.value = String(midi.layers.count);
     el.midiSplitWindow.value = String(midi.layers.window);
-    // Short, because it sits beside the menu in a 255 px column: "split" in
-    // the menu and "at C4" beside it read as one phrase.
-    el.midiSplitLearn.textContent = midi.layers.learning ? "play a key"
-      : "at " + midiNoteName(midi.layers.point);
+    // The Chord window is Settings'; the strip's line says what it is and goes there.
+    el.midiWindowNote.hidden = kind !== "notes";
+    el.midiWindowValue.textContent = midi.layers.window + " ms";
+    /* Learn, the key split's other way to its point: a press on the strip
+       is the first, and Learn takes the next key played - in the plugin a
+       host's, which never comes through the face. */
+    el.midiSplitLearn.hidden = kind !== "key";
+    el.midiSplitLearn.textContent = midi.layers.learning ? "now play a key" : "learn from a key";
+    el.midiSplitLearn.setAttribute("aria-pressed", String(!!midi.layers.learning));
     paintHandLinks();
     /* Kept rather than applied while the input is drawn: the choice survives
        the trip, and the page says why nothing is happening instead of a menu
        that reads "split" over a generator playing one layer. */
-    const kept = !el.midiDrawRow.hidden && midi.layers.mode !== "off" && !on;
+    const kept = poly && midi.layers.mode !== "off" && !on;
     el.midiLayersNote.hidden = !kept;
     el.midiLayersNote.textContent = kept
       ? "While your input is drawn the generator plays one layer: layer B's "
         + "picture has nowhere to go. The split comes back with the generator drawn."
       : "";
   }
+  paintStrip();
   el.midiDrawCount.value = String(midi.draws[editLayer()].count);
   el.midiDrawWhich.value = midi.draws[editLayer()].which;
   el.midiPolyJust.checked = midi.polyJust;
@@ -17363,6 +17491,7 @@ function midiSayMonitor(text) {
     + (midi.sustain ? "  ·  pedal" + (midi.sustained.size ? ", holding " + midi.sustained.size : "") : "");
   if (el.midiMonitor) say(el.midiMonitor, midi.last);
   paintScreenKeys();
+  paintStrip();
 }
 
 el.midiConnect.addEventListener("click", midiConnect);
@@ -17384,7 +17513,7 @@ const playHint = { played: false };
 // "A to K" kept on one line: broken after the A, the letters read as a word and a stray K.
 function playHintText() {
   if (screenKeys.open) return "Play a note: press a key below, or type A\u00a0to\u00a0K";
-  const keys = "Play a note: show the keys and type A\u00a0to\u00a0K";
+  const keys = "Play a note: press M for the keys and type A\u00a0to\u00a0K";
   if (!midi.supported) return keys;
   return keys + (midi.access !== null ? ", or play your MIDI keyboard" : ", or connect MIDI in Settings");
 }
@@ -17460,6 +17589,209 @@ el.midiLayerPair.addEventListener("change", () => {
   midiApplyNotes();
   syncMidi();
 });
+/* --- the strip (17 Nov) ---------------------------------------------------------
+   The Keyboard band's right side: the keys held, drawn in the hand each plays
+   in, and the way the hands are set. Three octaves at a time (C3 to C6 to
+   begin with: about 25 px a key at 1400x900, the owner's call over four at
+   19), with its own octave buttons, which only move the view. By notes it is
+   eight places counted from the counted end instead, the held notes in them
+   by pitch, and a press on a place is how many. Painted from `midi.notes` and
+   the layers every time either changes, as the screen's keys are, never kept.
+   A press on a key, splitting at a key, is the split point: Learn's other
+   way, and the one for a mouse. */
+const strip = { base: 48, span: 36, drawing: false };
+// Its own test of a white key: WHITE_KEYS is the screen keys', declared further down.
+const stripWhite = (n) => [0, 2, 4, 5, 7, 9, 11].includes(((n % 12) + 12) % 12);
+
+function stripState() {
+  const poly = midi.mode === "poly" && !!genSettings();
+  const two = poly && midi.layers.mode !== "off";
+  const kind = !two ? "" : midi.layers.mode === "layer" ? "layer" : midi.layers.by === "notes" ? "notes" : "key";
+  return { poly, two, kind };
+}
+// The ink of a hand, as the header's Editing draws it; one hand is the ink of the page.
+function stripInk(hand, two) {
+  return two ? "var(--" + handInk(hand) + ")" : "var(--charcoal)";
+}
+function stripWash(hand, pct) {
+  return "color-mix(in srgb, var(--" + handInk(hand) + ") " + pct + "%, var(--paper))";
+}
+// The hand a held note is drawn in: 2 for both, layered.
+function stripHandOf(held, st) {
+  if (!st.two) return 0;
+  if (st.kind === "layer") return 2;
+  return layerHandOf(held);
+}
+
+function stripKeysSvg(w, h, st) {
+  const lo = strip.base, hi = strip.base + strip.span;
+  const whites = [];
+  for (let n = lo; n <= hi; n++) if (stripWhite(n)) whites.push(n);
+  const ww = w / whites.length;
+  const held = new Map(midi.notes.map((n) => [n.note, n]));
+  const rec = midi.notes.slice(-2).map((n) => n.note).sort((a, b) => a - b);
+  const keySplit = st.kind === "key";
+  const out = ['<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" aria-hidden="true">'];
+  const fillOf = (n, black) => {
+    const x = held.get(n);
+    if (x) {
+      const hand = stripHandOf(x, st);
+      return hand === 2 ? null : stripInk(hand, st.two);
+    }
+    if (keySplit) return black ? "color-mix(in srgb, var(--" + handInk(n >= midi.layers.point ? 1 : 0) + ") 35%, var(--text))"
+                               : stripWash(n >= midi.layers.point ? 1 : 0, 13);
+    if (st.kind === "layer") return black ? "var(--text)" : "color-mix(in srgb, var(--" + handInk(0) + ") 7%, var(--paper))";
+    return black ? "var(--text)" : "var(--paper)";
+  };
+  const key = (n, x, kw, kh, black) => {
+    const f = fillOf(n, black);
+    let body;
+    if (f === null) {
+      body = '<rect x="' + x + '" y="0" width="' + kw + '" height="' + kh / 2 + '" style="fill:var(--' + handInk(0) + ')"/>'
+        + '<rect x="' + x + '" y="' + kh / 2 + '" width="' + kw + '" height="' + kh / 2 + '" style="fill:var(--' + handInk(1) + ')"/>';
+    } else {
+      body = '<rect x="' + x + '" y="0" width="' + kw + '" height="' + kh + '" style="fill:' + f + '"/>';
+    }
+    const mark = midi.mode === "dyad" && held.has(n) && rec.length === 2 && rec.includes(n)
+      ? '<text x="' + (x + kw / 2) + '" y="' + (kh - 5) + '" text-anchor="middle" style="font-size:9px;fill:var(--paper)">'
+        + (n === rec[0] ? "X" : "Y") + "</text>" : "";
+    return body + mark + '<rect class="k" data-note="' + n + '" x="' + x + '" y="0" width="' + kw + '" height="' + kh
+      + '" style="fill:transparent;stroke:var(--line)"><title>' + midiNoteName(n) + "</title></rect>";
+  };
+  whites.forEach((n, i) => {
+    out.push(key(n, i * ww, ww, h, false));
+    if (n % 12 === 0) out.push('<text x="' + (i * ww + 3) + '" y="' + (h - 4) + '" style="font-size:9px;fill:var(--text-soft);pointer-events:none">' + midiNoteName(n) + "</text>");
+  });
+  whites.forEach((n, i) => {
+    if (n + 1 <= hi && !stripWhite(n + 1)) out.push(key(n + 1, (i + 1) * ww - ww * 0.3, ww * 0.6, h * 0.6, true));
+  });
+  if (keySplit && midi.layers.point >= lo && midi.layers.point <= hi) {
+    const p = midi.layers.point;
+    const x = stripWhite(p) ? whites.indexOf(p) * ww : (whites.indexOf(p - 1) + 1) * ww;
+    out.push('<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + h + '" style="stroke:var(--blush-deep);stroke-width:2;pointer-events:none"/>');
+  }
+  out.push("</svg>");
+  return out.join("");
+}
+
+function stripPlacesSvg(w, h, st) {
+  const asc = midi.notes.slice().sort((a, b) => a.note - b.note);
+  const low = midi.layers.end !== "upper", N = midi.layers.count;
+  const counted = low ? 0 : 1;
+  const places = Math.max(8, asc.length), pw = w / places;
+  const r = Math.max(3, Math.min(pw * 0.28, h * 0.2));
+  const out = ['<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" aria-hidden="true">'];
+  for (let i = 0; i < places; i++) {
+    const fromEnd = low ? i : places - 1 - i;
+    const can = fromEnd < 6;
+    out.push('<rect' + (can ? ' class="k" data-count="' + (fromEnd + 1) + '"' : "") + ' x="' + (i * pw + 1) + '" y="1" width="' + (pw - 2) + '" height="' + (h - 2)
+      + '" style="fill:' + (fromEnd < N ? stripWash(counted, 12) : stripWash(1 - counted, 6)) + ';stroke:var(--line)">'
+      + (can ? "<title>" + (fromEnd + 1) + (low ? " from the bottom" : " from the top") + "</title>" : "") + "</rect>");
+    if (can) out.push('<text x="' + (i * pw + 4) + '" y="10" style="font-size:8.5px;fill:var(--text-soft);pointer-events:none">' + (fromEnd + 1) + "</text>");
+  }
+  const off = low ? 0 : places - asc.length;
+  asc.forEach((x, i) => {
+    const cx = (i + off) * pw + pw / 2;
+    out.push('<circle cx="' + cx + '" cy="' + (h * 0.48) + '" r="' + r + '" style="fill:' + stripInk(stripHandOf(x, st), true) + ';pointer-events:none"/>');
+    out.push('<text x="' + cx + '" y="' + Math.min(h - 3, h * 0.48 + r + 10) + '" text-anchor="middle" style="font-size:9px;fill:var(--charcoal);pointer-events:none">'
+      + midiNoteName(x.note) + "</text>");
+  });
+  const k = Math.min(N, places), lx = (low ? k : places - k) * pw;
+  out.push('<line x1="' + lx + '" y1="0" x2="' + lx + '" y2="' + h + '" style="stroke:var(--blush-deep);stroke-width:1.5;stroke-dasharray:4 3;pointer-events:none"/>');
+  out.push("</svg>");
+  return out.join("");
+}
+
+function stripLine(st) {
+  const notes = midi.notes.slice(-2).map((n) => n.note).sort((a, b) => a - b);
+  if (midi.mode === "dyad") {
+    return notes.length === 2 ? midiNoteName(notes[0]) + " on X, " + midiNoteName(notes[1]) + " on Y."
+      : "Two held notes are the figure, the lower on X.";
+  }
+  if (midi.mode === "mono") return "The newest note is the pitch.";
+  if (!st.two) return st.poly ? "One sound." : "";
+  if (st.kind === "key") return midiNoteName(midi.layers.point) + " and up: the upper hand. Press a key to split there.";
+  if (st.kind === "notes") {
+    const end = midi.layers.end === "upper", n = midi.layers.count;
+    return (end ? "Highest " : "Lowest ") + n + ": the " + (end ? "upper" : "lower") + " hand. Press a place for how many.";
+  }
+  return "Every note in both hands, A and B.";
+}
+
+function paintStrip() {
+  if (!el.midiStrip) return;
+  const st = stripState();
+  const byNotes = st.kind === "notes";
+  el.midiStripDown.hidden = byNotes;
+  el.midiStripUp.hidden = byNotes;
+  el.midiStripDown.disabled = strip.base <= 24;
+  el.midiStripUp.disabled = strip.base + strip.span >= 108;
+  const below = midi.notes.some((n) => n.note < strip.base), above = midi.notes.some((n) => n.note > strip.base + strip.span);
+  el.midiStripDown.toggleAttribute("data-beyond", !byNotes && below);
+  el.midiStripUp.toggleAttribute("data-beyond", !byNotes && above);
+  const line = stripLine(st);
+  say(el.midiStripLine, line);
+  if (el.midiStripLine.title !== line) el.midiStripLine.title = line;
+  /* The drawing on the next frame, once for any number of notes: drawn here,
+     it read the strip's size, which lays the page out, on every note, and a
+     chord struck at once came to the face more than the Chord window apart, so
+     the face dealt it note by note while the instrument dealt it as one
+     (layertest's G3 E3 C3, 17 Nov). */
+  if (strip.drawing) return;
+  strip.drawing = true;
+  requestAnimationFrame(drawStrip);
+}
+function drawStrip() {
+  strip.drawing = false;
+  const w = Math.round(el.midiStrip.clientWidth), h = Math.round(el.midiStrip.clientHeight);
+  // Not laid out (another tab, or the store): drawn when it is.
+  if (!(w > 0 && h > 0)) return;
+  const st = stripState();
+  el.midiStrip.innerHTML = st.kind === "notes" ? stripPlacesSvg(w, h, st) : stripKeysSvg(w, h, st);
+}
+new ResizeObserver(() => paintStrip()).observe(el.midiStrip);
+
+// Writes a kept menu as a hand on it would, so the plugin, undo and the rest hear the menu.
+function stripSet(menu, value) {
+  if (menu.value === String(value)) return;
+  menu.value = String(value);
+  menu.dispatchEvent(new Event("change", { bubbles: true }));
+}
+// The split point from the strip, as Learn sets it from a played key (midiNoteOn).
+function stripSplitAt(note) {
+  if (midi.layers.learning) { midi.layers.learning = false; hostSendLearn(); }
+  midi.layers.point = Math.max(0, Math.min(127, note));
+  hostSendSplit();
+  syncMidi();
+  midiApplyNotes();
+}
+/* Two hands remembers which way it last shared them, so off and on again is
+   the split it was; the first time, a split at a key, as a split was. */
+let stripLastTwo = { mode: "split", by: "key" };
+el.midiTwoHands.addEventListener("click", () => {
+  if (midi.layers.mode !== "off") {
+    stripLastTwo = { mode: midi.layers.mode, by: midi.layers.by };
+    stripSet(el.midiLayers, "off");
+    return;
+  }
+  if (stripLastTwo.mode === "split") stripSet(el.midiSplitBy, stripLastTwo.by);
+  stripSet(el.midiLayers, stripLastTwo.mode);
+});
+el.midiKindKey.addEventListener("click", () => { stripSet(el.midiSplitBy, "key"); stripSet(el.midiLayers, "split"); });
+el.midiKindNotes.addEventListener("click", () => { stripSet(el.midiSplitBy, "notes"); stripSet(el.midiLayers, "split"); });
+el.midiKindLayer.addEventListener("click", () => stripSet(el.midiLayers, "layer"));
+el.midiEndLow.addEventListener("click", () => { stripSet(el.midiSplitEnd, "lower"); syncMidi(); });
+el.midiEndHigh.addEventListener("click", () => { stripSet(el.midiSplitEnd, "upper"); syncMidi(); });
+el.midiStrip.addEventListener("click", (event) => {
+  const target = event.target.closest ? event.target.closest("[data-note], [data-count]") : null;
+  if (!target) return;
+  if (target.dataset.count) { stripSet(el.midiSplitCount, target.dataset.count); syncMidi(); return; }
+  if (stripState().kind === "key") stripSplitAt(Number(target.dataset.note));
+});
+el.midiStripDown.addEventListener("click", () => { strip.base = Math.max(24, strip.base - 12); paintStrip(); });
+el.midiStripUp.addEventListener("click", () => { strip.base = Math.min(108 - strip.span, strip.base + 12); paintStrip(); });
+el.midiWindowGo.addEventListener("click", () => showControl(el.midiSplitWindow));
+
 el.pictureMovesA.addEventListener("change", () => { layerPictures.moves[0] = pictureMovesOf(el.pictureMovesA.value, "A"); });
 el.pictureMovesB.addEventListener("change", () => { layerPictures.moves[1] = pictureMovesOf(el.pictureMovesB.value, "B"); });
 // Edit A / B went in G6: the header's Editing (editHandA, editHandB) is the choice, with the hands block.
@@ -17591,6 +17923,10 @@ function screenReleaseAll() {
 
 function setScreenKeys(open) {
   if (screenKeys.open === open) return;
+  /* Not in the plugin (17 Nov): the host has its own keys and musical typing,
+     and a plugin window taking letter keys fights the host's shortcuts. The
+     row that opens them is hidden there, and M does nothing. */
+  if (open && window.__JUCE__) return;
   if (!open) {
     // The screen's pedal goes with its keys; a keyboard's own pedal is its own.
     if (midi.sustain && midi.access === null) midiSetPedal(0);
@@ -22494,7 +22830,16 @@ function setBenchTab(id) {
   try { window.localStorage.setItem(TAB_KEY, id); } catch (error) { /* private window */ }
   if (faceLaidOut) {
     layoutBenchBody();
+    /* The cards after the columns, since building them folds the rack to fit
+       (paintRack, fitRack), which needs the rack in the body. But the chosen
+       card stands differently, so the body's height is the new tab's only
+       once they are built: if it moved, the columns are dealt again into it.
+       Dealt under the old cards, Play was 12 px over at 1100x860 under the
+       Keyboard's band (fittest, 17 Nov); the other order, cards first, left
+       Space & Memory's rack unfolded and over. */
     buildBenchRail();
+    // Against the last deal's height, which building the cards can itself have made (fitRack).
+    if (el.benchBody.clientHeight !== benchDealtIn) layoutBenchBody();
     requestAnimationFrame(paintRoutings);
   }
 }
@@ -22526,6 +22871,8 @@ function unfold(group) {
    does. */
 let benchCols = 0;
 let benchMeasured = new Map();
+// The body's height the columns were last dealt into (setBenchTab deals again if it moved).
+let benchDealtIn = 0;
 
 /* A label is 96px and a slider will not go below 80, so a section is legible
    down to about 240 - and it has to be allowed to go that narrow, because the
@@ -22555,16 +22902,38 @@ function wantColumns() {
   return wide ? 1 : benchColumns();
 }
 
+/* Dealt, then checked: on a tab with the Keyboard's band the columns are
+   dealt into the body's height less the band's, and the body's height read
+   while every section is stacked in the first column to be measured is not
+   always the height it has once they are dealt - 587 against 572 at 1100x860
+   with the second hand's links showing (fittest, 17 Nov). So if the tab then
+   scrolls, it is dealt once more into the height the body really has. */
 function layoutBenchBody() {
+  layoutBenchBodyInto();
+  if (el.benchBody.querySelector(".bench-band") && el.benchBody.scrollHeight > el.benchBody.clientHeight + 1) {
+    layoutBenchBodyInto(el.benchBody.clientHeight);
+  }
+}
+function layoutBenchBodyInto(bodyHeight) {
   const want = wantColumns();
   const all = benchGroupsAll();
   // The other tabs' sections into the store first, so clearing the body
   // below detaches nothing that is not about to be put back.
   for (const group of all) if (tabOf(group) !== benchTab) el.benchStore.appendChild(group);
-  const groups = all.filter((g) => tabOf(g) === benchTab);
+  /* A section marked as a band (the Keyboard, on Play since 17 Nov) is a row
+     of its own across the body, over the columns, and is not dealt: the
+     columns share the rest of the tab's height under it. */
+  const band = all.find((g) => tabOf(g) === benchTab && g.dataset.band !== undefined) || null;
+  const groups = all.filter((g) => tabOf(g) === benchTab && g !== band);
 
   const cols = [];
   el.benchBody.innerHTML = "";
+  if (band) {
+    const row = document.createElement("div");
+    row.className = "bench-band";
+    row.appendChild(band);
+    el.benchBody.appendChild(row);
+  }
   for (let i = 0; i < want; i++) {
     const col = document.createElement("div");
     col.className = "bench-col";
@@ -22583,6 +22952,16 @@ function layoutBenchBody() {
   // Kept for the checks: what each section measured, to set beside what it is.
   benchMeasured = new Map(groups.map((g, i) => [g, heights[i]]));
   for (const group of groups) benchWatch.observe(group);
+  // The band too: Poly's rows and Two hands make it taller, and the columns under it shorter.
+  if (band) benchWatch.observe(band);
+  /* And the body, whose height can change under the columns with nothing in
+     them changing size: the tab cards over it, whose lines are written a few
+     times a second. */
+  benchWatch.observe(el.benchBody);
+  /* And the body: the tab cards over it settle a line taller after a switch
+     of tab (their lines are written a moment later), and a body 15 px shorter
+     than it was dealt into put Play 12 px over at 1100x860, with nothing that
+     changed size under it to say so (fittest, 17 Nov). */
 
   /* A tab whose every section names its column (`data-col`, Play's since
      G3) is laid out as drawn, when there are as many columns as it names:
@@ -22593,7 +22972,24 @@ function layoutBenchBody() {
      Keyboard. With fewer columns - a narrow window - they are dealt. */
   const named = groups.length > 0 && groups.every((g) => Number(g.dataset.col) >= 1);
   const most = named ? Math.max(...groups.map((g) => Number(g.dataset.col))) : 0;
-  if (named && most <= cols.length) {
+  /* As drawn, if it fits. Under the Keyboard's band (17 Nov) the columns have
+     the body's height less the band's, and at the shorter windows Play's
+     Generator and Amp envelope stood taller together than that: so as drawn
+     only when its tallest column fits, and otherwise shared as below, where
+     the first section, Expression, stays in the first column. */
+  /* What a column of them has under the band. Less the last section's own
+     margin too, which the body scrolls to show: counting only the margins
+     between sections put Play 12 px over at 1100x860 (fittest, 17 Nov). */
+  const tail = groups.length ? parseFloat(getComputedStyle(groups[0]).marginBottom || "0") : 0;
+  benchDealtIn = bodyHeight || el.benchBody.clientHeight;
+  const room = benchDealtIn - tail
+    - (band ? band.parentNode.offsetHeight + parseFloat(getComputedStyle(el.benchBody).rowGap || "0") : 0);
+  const drawnFits = () => {
+    const tall = cols.map(() => 0);
+    groups.forEach((g, i) => { const c = Number(g.dataset.col) - 1; tall[c] += heights[i] + (tall[c] > 0 ? 18 : 0); });
+    return Math.max(...tall) <= room;
+  };
+  if (named && most <= cols.length && (!band || drawnFits())) {
     for (const group of groups) cols[Number(group.dataset.col) - 1].appendChild(group);
     return;
   }
@@ -22613,8 +23009,14 @@ function layoutBenchBody() {
       if (pick[0] !== 0) continue;
       const tall = cols.map(() => 0);
       groups.forEach((g, i) => { tall[pick[i]] += heights[i] + (tall[pick[i]] > 0 ? 18 : 0); });
+      /* Under the band, a sharing that fits with the first section alone in
+         its column comes first (the owner's: Expression alone in column 1),
+         then the least tallest column; a tie keeps the page's order, so the
+         Generator stays before its envelope. Scored so the least wins. */
       const worst = Math.max(...tall);
-      if (worst < bestTall - 0.5) { bestTall = worst; best = pick.slice(); }
+      const alone = band && worst <= room && !pick.some((c, i) => i > 0 && c === 0) ? 0 : 1;
+      const score = alone * 1e6 + worst;
+      if (score < bestTall - 0.5 || (Math.abs(score - bestTall) <= 0.5 && pick.join() < best.join())) { bestTall = score; best = pick.slice(); }
     }
     groups.forEach((g, i) => cols[best[i]].appendChild(g));
     return;
@@ -23543,19 +23945,27 @@ const CONTROL_WORDS = {
   "mod-depth": ["A source’s depth", "How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same."],
   "mod-depth-typed": ["A depth, typed", "The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further."],
   "mod-remove": ["Take it off", "Takes this source off this control. The source goes on moving everything else it is on."],
-  "keysOpen": ["On screen", "Puts two octaves of keys along the foot of the window, played by pointer or computer keyboard. Nothing sounds until a note, keys or none."],
+  "midiTwoHands": ["Two hands", "In Poly, a second sound: Key, Notes or Layer on the strip then says how the hands share the notes. Off, every note plays the one sound."],
   "midiDyad": ["Dyad", "Two held notes are the two channels, the lower on X, so the interval you play is the figure: a fifth stands still, a third walks."],
   "midiMono": ["Mono", "The newest note sets the pitch and the Interval menu puts the second channel above it, so one finger plays the whole figure."],
-  "midiPoly": ["Poly", "Every held note sounds, up to eight, each with its own envelope. Draw chooses which of them make the figure's outline."],
-  "midiLayers": ["Layers", "Whether a second sound plays: one, a split with low notes one sound and high another, at a key or by the notes held, or layered, every note both."],
-  "midiSplitLearn": ["Split point", "The key the upper layer starts from. Press it, then play that key on your keyboard or the screen's."],
-  "midiSplitBy": ["Split by", "How a split gives each note its hand: at a key, low notes one sound and high another, or by the notes held, counted from one end."],
-  "midiSplitEnd": ["Counted", "By notes, which end is counted: the lowest notes held for the lower hand, or the highest for the upper. The rest go to the other hand."],
-  "midiSplitCount": ["How many", "By notes, how many the counted hand takes, one to six. With fewer held than that, every note is its own."],
-  "midiSplitWindow": ["Chord window", "Split by notes, every note waits this many ms so a chord struck at once is dealt by pitch. 0 plays at once. Here until Play is laid out again."],
-  "midiLayerPair": ["How the two layers are drawn", "A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y. Every note is heard in both ears."],
-  "midiDrawCount": ["Draw", "How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears."],
-  "midiDrawWhich": ["Draw", "Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y."],
+  "midiPoly": ["Poly", "Every held note sounds, up to eight, each with its own envelope. Outline chooses which of them make the figure's outline."],
+  "midiKindKey": ["Key", "Splits at a key: under it the lower hand, from it up the upper. Press a key on the strip to split there."],
+  "midiKindNotes": ["Notes", "Splits by the notes held: the lowest (or highest) few are one hand, the rest the other, wherever you play them."],
+  "midiKindLayer": ["Layer", "Every note plays in both hands, A and B, so each is two voices at once."],
+  "midiStrip": ["The strip", "The keys held, each in the hand it plays in. Splitting at a key, press one to split there; by notes, press a place for how many."],
+  "midiStripDown": ["Down an octave", "Moves the strip's view down an octave, to see or split at a lower key. It changes what is shown, never the sound."],
+  "midiStripUp": ["Up an octave", "Moves the strip's view up an octave, to see or split at a higher key. It changes what is shown, never the sound."],
+  "midiEndLow": ["Low", "By notes, counts from the bottom: the lowest notes held are the lower hand, the rest the upper."],
+  "midiEndHigh": ["High", "By notes, counts from the top: the highest notes held are the upper hand, the rest the lower."],
+  "midiSplitLearn": ["Learn from a key", "Splitting at a key, takes the split point from the next key played, on your keyboard or, in the plugin, your host's."],
+  "midiWindowGo": ["Chord window", "Goes to the Chord window, in Settings' MIDI: how long every note waits, split by notes, so a chord is dealt by pitch."],
+  "midiLayers": ["Layers", "Whether a second sound plays: one, a split at a key or by the notes held, or layered. The strip's Two hands and Key, Notes, Layer set it."],
+  "midiSplitBy": ["Split by", "How a split gives each note its hand: at a key, or by the notes held, counted from one end. The strip's Key and Notes set it."],
+  "midiSplitEnd": ["Counted", "By notes, which end is counted: the lowest notes held for the lower hand, or the highest for the upper. The strip's low and high set it."],
+  "midiSplitCount": ["How many", "By notes, how many the counted hand takes, one to six. A press on the strip's places sets it. With fewer held, every note is its own."],
+  "midiLayerPair": ["How the two hands are drawn", "A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y. Every note is heard in both ears."],
+  "midiDrawCount": ["Outline", "How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal."],
+  "midiDrawWhich": ["Outline", "Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y."],
   "midiPolyJust": ["Tune a chord", "Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there."],
   "midiHold": ["Hold the interval", "In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison."],
   "midiBendRange": ["Pitch bend", "How far the bend wheel takes every note, either way, in semitones. All the notes bend together, so the figure keeps its shape."],
@@ -23766,6 +24176,8 @@ const CONTROL_WORDS = {
   "midiConnect": ["MIDI in", "Asks the browser for MIDI, then listens to every keyboard connected. Needs a secure page; Safari has no Web MIDI."],
   "midiOut": ["MIDI out", "A port to send the score’s and the arpeggiator’s notes to. With a synth on Local Off, the picture plays it."],
   "midiOutCh": ["MIDI out channel", "The MIDI channel those notes go out on, one to sixteen. Changing it ends every note already sent."],
+  "midiSplitWindow": ["Chord window", "Split by notes, every note waits this many ms so a chord struck at once is dealt by pitch. 0 plays at once."],
+  "keysOpen": ["On-screen keys", "Two octaves of keys along the foot of the window, played by pointer or computer keyboard. M opens and shuts them from anywhere. Not in the plugin."],
   "photoButton": ["On", "Puts a light sensor on the screen, landing on the figure; drag its reticle there to aim it. Off, it reads nought."],
   "photoPlace": ["Place it on the figure", "Moves the reticle to the nearest bright part of the figure, as switching it on does. Off, it switches it on."],
   "routingsBySource": ["By source", "Lists every routing under the card it comes from, each source with its switch."],
@@ -25712,6 +26124,10 @@ document.addEventListener("keydown", (event) => {
 
   switch (event.key) {
     case "?": event.preventDefault(); if (el.helpDialog.open) el.helpDialog.close(); else openHelp(); break;
+    /* The on-screen keys open and shut (17 Nov), as M is Ableton's computer
+       keyboard. Not a playing key (TYPED_KEYS), so it works with them open;
+       nothing in the plugin, where there are none (setScreenKeys). */
+    case "m": case "M": event.preventDefault(); setScreenKeys(!screenKeys.open); break;
     case "s": case "S": event.preventDefault(); setMode("single"); break;
     case "a": case "A": event.preventDefault(); el.autoset.click(); break;
     case "c": case "C":
@@ -25750,6 +26166,8 @@ document.addEventListener("keydown", (event) => {
 const watchSize = new ResizeObserver(() => { /* the next frame refits */ });
 [el.trace, el.goni, el.spectrum].forEach((c) => watchSize.observe(c.parentElement));
 
+// The on-screen keys are the site's: the plugin's host has its own (setScreenKeys).
+if (IN_PLUGIN) el.keysOpenRow.hidden = true;
 registerLaneDests(state.channels.length);
 buildSourceDetail();
 fillIntervals();

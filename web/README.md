@@ -6967,3 +6967,31 @@ timestamps cannot help, since the keyboard cannot deal a note it has not yet bee
 The plugin is not affected (a host places each note at its sample) and does not report the
 10 ms to the host as latency, since a host would then play every note in every mode early
 (`PluginProcessor.h`).
+
+**The Keyboard as a band over Play's columns, and four things it found (17 Nov,
+`docs/play-redesign.md`).** The Keyboard is a section marked `data-band`, which
+`layoutBenchBody` puts in a row of its own over the columns (`.bench-band`, the body
+wrapping) and does not deal; the columns get the body's height less the band's. Four
+things worth knowing before the next section that spans the Bench:
+First, a section's title has to stay its direct child (`:scope > .menu-title` finds it
+for the dots, the folds and the search), so the band's grid places a direct-child title
+rather than nesting it, and the Two hands pill sits inside the title, which is named by
+its first text node. Its rows have to be `.menu-row`s with a `.menu-label` too, or the
+search does not see them: the strip's box is a row with a name only the search reads.
+Second, the strip repainted on every note, and reading its size laid the page out each
+time, so three notes sent in one turn reached the face's own gather more than the Chord
+window apart and the face dealt a chord the instrument dealt as one (layertest's G3 E3 C3);
+the drawing waits for the next frame now, once for any number of notes. Third, the dealer
+read the body's height while every section was stacked in the first column to be
+measured, and that is not always the height it has once they are dealt (587 against 572 px
+at 1100x860); and building the tab cards deals again by itself, through the rack's fold
+(`fitRack`), so a check of the body's height round `buildBenchRail` saw no change while the
+deal inside it had used the wrong one. So a tab with the band is checked once dealt and
+dealt again into the height the body really has, and `setBenchTab` compares with the last
+deal's height (`benchDealtIn`), wherever that deal came from. Fourth, the room for a
+column has to count the last section's own bottom margin, which the body scrolls to show:
+counting only the margins between sections put Play 12 px over. At the short windows
+(680 tall, and the plugin's 960x600) the four sections cannot stay as drawn under the
+band, so they are shared as at two columns, Expression alone in the first while that
+fits; the knob cells there go down to 48 px, four to a compact column, where at 56 the
+Amp envelope's Release and the Voice filter's Envelope wrapped to a second row.

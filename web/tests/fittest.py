@@ -114,12 +114,13 @@ SWEEP = """async ([bands]) => {
        beside its menu in Learn's place, the wider of its two ways. */
     el.midiSplitBy.value = 'notes'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     measure('tone+keys+photo+layers+planeB+bynotes');
-    /* And the row itself (16 Nov): the pairing menu, the end and the count
-       on one line inside it, each as wide as it is on its own so its value
-       reads whole - the menus are flex items, and a row too narrow squeezes
-       them rather than breaking the line, which would still fit the tab. The
-       null puts the Chord window's menu back beside the count, where it was
-       first built and did not fit (it lives in Settings for now). */
+    /* And the Keyboard band's Outline (17 Nov): its two menus on one line in
+       the band's left, each as wide as it is on its own so its value reads
+       whole - the menus are flex items, and a row too narrow squeezes them
+       rather than breaking the line, which would still fit the tab (in the
+       first mockup "bass and melody" read "bass and me" at 960x600). The null
+       puts the pairing menu in the same row as a third, which must not read
+       whole. Until 17 Nov this held the split row's pairing, end and count. */
     setBenchTab('play'); await wait(80);
     const natural = (m) => {
       const c = m.cloneNode(true); c.removeAttribute('id'); c.hidden = false;
@@ -127,19 +128,19 @@ SWEEP = """async ([bands]) => {
       m.parentNode.appendChild(c); const w = c.getBoundingClientRect().width; c.remove(); return w;
     };
     const lineOf = (menus) => {
-      const row = el.midiLayerRow.getBoundingClientRect(), boxes = menus.map((m) => m.getBoundingClientRect());
+      const row = el.midiDrawRow.getBoundingClientRect(), boxes = menus.map((m) => m.getBoundingClientRect());
       return { shown: menus.every((m) => !m.hidden && m.offsetParent),
                oneLine: Math.max(...boxes.map((b) => b.top)) - Math.min(...boxes.map((b) => b.top)) <= 2,
                inside: boxes.every((b) => b.left >= row.left - 1 && b.right <= row.right + 1),
                whole: menus.every((m, i) => boxes[i].width >= natural(m) - 1),
                widths: boxes.map((b, i) => Math.round(b.width) + '/' + Math.round(natural(menus[i]))) };
     };
-    const three = [el.midiLayerPair, el.midiSplitEnd, el.midiSplitCount];
-    splitRow = lineOf(three);
-    const home = el.midiSplitWindow.parentNode, grow = el.midiSplitCount.parentNode;
-    grow.appendChild(el.midiSplitWindow); await wait(60);
-    splitRow.widened = lineOf(three.concat([el.midiSplitWindow]));
-    home.appendChild(el.midiSplitWindow);
+    const two = [el.midiDrawCount, el.midiDrawWhich];
+    splitRow = lineOf(two);
+    const home = el.midiLayerPair.parentNode, after = el.midiLayerPair.nextSibling;
+    el.midiDrawRow.appendChild(el.midiLayerPair); await wait(60);
+    splitRow.widened = lineOf(two.concat([el.midiLayerPair]));
+    home.insertBefore(el.midiLayerPair, after);
     el.midiSplitBy.value = 'key'; el.midiSplitBy.dispatchEvent(new Event('change')); await wait(120);
     /* And the rack (F5) at its tallest: every effect on, so no module is
        folded to its line, and each one opened in turn with its rest showing,
@@ -287,13 +288,11 @@ with sync_playwright() as pw:
                   "Editing and every section's link showing, each the hand's own (%dx%d)" % (w, h),
                   r["planeRows"] == [False, False, False, False, 0], str(r["planeRows"]))
             sr = r["splitRow"] or {}
-            check("split by notes, the pairing, the end and the count are on one line inside the row, each read whole (%dx%d)" % (w, h),
+            check("the Keyboard band's Outline, its two menus, on one line inside its row, each read whole (%dx%d)" % (w, h),
                   sr.get("shown") and sr.get("oneLine") and sr.get("inside") and sr.get("whole"), str(sr))
             wid = sr.get("widened") or {}
-            # Not at 1100x860, whose column is wide enough for four: the rows at the other four sizes are what put it in Settings.
-            if (w, h) != (1100, 860):
-                check("null: the Chord window's menu beside the count, a fourth, does not read whole (%dx%d)" % (w, h),
-                      not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
+            check("null: the pairing menu beside them, a third, does not read whole (%dx%d)" % (w, h),
+                  not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
                   r["rackOpened"] == ["plane", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 

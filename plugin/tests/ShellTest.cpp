@@ -3815,7 +3815,7 @@ int main() {
        in the plugin's own web view, under xvfb-run -a. The null is the old
        path, live: the same face with the instrument never told Learn is
        armed (hostSendLearn taken out), which learns nothing anywhere. */
-    struct Learnt { bool face = false; std::string shown; bool kept = false; };
+    struct Learnt { bool face = false; std::string shown; bool kept = false; std::string keys; };
     const auto learnRun = [&](bool told) {
       Learnt out;
       ScopeProcessor learner;
@@ -3851,14 +3851,23 @@ int main() {
         ready = ask("String(typeof midiNoteOn === 'function' && typeof hostSync !== 'undefined' && hostSync.on"
                     " && !!document.getElementById('midiSplitLearn'))", 200);
       if (ready != "true") { out.shown = "face not ready: " + ready.toStdString(); return out; }
+      /* The on-screen keys are the site's (17 Nov): in the plugin their row
+         in Settings is hidden and M opens nothing, since a host has its own
+         keys and musical typing; the Keyboard's strip stays. M sent as the
+         page hears a key, on the document; the null is the site, in
+         striptest.py, where the same M opens them. */
+      out.keys = ask("(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', code: 'KeyM', bubbles: true }));"
+                     " return JSON.stringify({ row: el.keysOpenRow.hidden, open: screenKeys.open,"
+                     " strip: !!el.midiStrip && el.midiStrip.closest('[data-band]') === el.midiGroup }); })()", 2000).toStdString();
       ask(juce::String("(() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();")
           + (told ? "" : " window.hostSendLearn = () => {};")
           + " el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));"
             " el.midiSplitLearn.click(); return el.midiSplitLearn.textContent; })()", 2000);
       play(20, -1);
       play(80, 55);  // G3, from the host
+      // The key's name is the strip's line since 17 Nov; Learn's own words only say it is waiting.
       const juce::String shown = ask("JSON.stringify({ point: midi.layers.point, learning: midi.layers.learning,"
-                                     " text: el.midiSplitLearn.textContent })", 2000);
+                                     " text: el.midiStripLine.textContent })", 2000);
       out.shown = shown.toStdString();
       juce::MemoryBlock saved;
       learner.getStateInformation(saved);
@@ -3878,8 +3887,10 @@ int main() {
     } else {
       check("Split point armed on the face and a host's G3 with no key on the screen: the split is G3, shown on the face and kept in the project",
             told.kept && told.shown.find("\"point\":55") != std::string::npos && told.shown.find("\"learning\":false") != std::string::npos
-              && told.shown.find("at G3") != std::string::npos,
+              && told.shown.find("G3 and up") != std::string::npos,
             told.shown + (told.kept ? "; kept" : "; not kept"));
+      check("in the plugin the on-screen keys' row is hidden and M opens nothing, and the Keyboard's strip is on Play",
+            told.keys == "{\"row\":true,\"open\":false,\"strip\":true}", told.keys);
       check("null: the instrument never told Learn is armed learns nothing from the host's note, and the face still waits for a key",
             !untold.kept && untold.shown.find("\"point\":60") != std::string::npos && untold.shown.find("\"learning\":true") != std::string::npos,
             untold.shown + (untold.kept ? "; kept" : "; not kept"));

@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-327 controls: 327 lines, none marked as removed by a later stage, 78 wanting a paragraph
+337 controls: 337 lines, none marked as removed by a later stage, 84 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -19,7 +19,10 @@ of *How the picture responds*; and on 12 Nov, with the constellation's prototype
 its place, its hands and Reseed; and again on 12 Nov, the Width beside the Output; and on
 14 Nov, which took those four away again with the prototype, in stage 5's step 4; and on
 16 Nov, which added the split by notes' three and its Chord window, and took the Quarter
-turn away when every note came to be heard in both ears).
+turn away when every note came to be heard in both ears; and on 17 Nov, with the Keyboard's
+band: Two hands, Key, Notes and Layer, the strip and its two octave buttons, low and high,
+Learn's new words and the way to the Chord window, which went to Settings' MIDI with the
+on-screen keys).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -89,21 +92,31 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 ### Keyboard
 
+The band across the top of Play (17 Nov, `play-redesign.md`): how the notes sound and are drawn on its left, the strip on its right. The menus that hold the split's values (Layers, Split by, Counted, How many) are out of sight there, and keep their words for the plugin's panel and the search.
+
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| keysOpen | On screen | Puts two octaves of keys along the foot of the window, played by pointer or computer keyboard. Nothing sounds until a note, keys or none. | 137 | yes: the computer keyboard plays as music software lays it out (A is C, W C sharp, S D, along two rows), Z and X for octaves, Space a held pedal; letters play notes rather than shortcuts while open; Tap to hold for a mouse |
-| midiDyad | Dyad | Two held notes are the two channels, the lower on X, so the interval you play is the figure: a fifth stands still, a third walks. | 129 | yes: the two most recent notes, ordered by pitch whichever landed first; a third note replaces the older; one note alone is a unison unless Hold is ticked |
+| midiTwoHands | Two hands | In Poly, a second sound: Key, Notes or Layer on the strip then says how the hands share the notes. Off, every note plays the one sound. | 135 | yes: on the generator only; kept but not applied while your input is drawn, and the note under the strip says so; off and on again comes back as the split it was |
+| midiDyad | Dyad | Two held notes are the two channels, the lower on X, so the interval you play is the figure: a fifth stands still, a third walks. | 129 | yes: the two most recent notes, ordered by pitch whichever landed first; a third note replaces the older; one note alone is a unison unless Hold is ticked; the strip marks them X and Y |
 | midiMono | Mono | The newest note sets the pitch and the Interval menu puts the second channel above it, so one finger plays the whole figure. | 124 | - |
-| midiPoly | Poly | Every held note sounds, up to eight, each with its own envelope. Draw chooses which of them make the figure's outline. | 118 | yes: outline notes lean to their side and still sound in both ears, the rest drawn along the diagonal; Glide, Phase and Interval do nothing to a chord; the voice budget |
-| midiLayers | Layers | Whether a second sound plays: one, a split with low notes one sound and high another, at a key or by the notes held, or layered, every note both. | 145 | yes: Poly only; kept but not applied while your input is drawn, and the note under it says so |
-| midiSplitLearn | Split point | The key the upper layer starts from. Press it, then play that key on your keyboard or the screen's. | 99 | - |
-| midiSplitBy | Split by | How a split gives each note its hand: at a key, low notes one sound and high another, or by the notes held, counted from one end. | 129 | yes: by notes every note waits the Chord window (10 ms by default), so a chord's notes landing a few milliseconds apart are dealt together by pitch before any sounds; a note's hand is set as it starts, by its rank among the notes held, and kept until it is let go; a key the pedal holds still counts; a key struck again is ranked again; Learn is the key split's only |
-| midiSplitEnd | Counted | By notes, which end is counted: the lowest notes held for the lower hand, or the highest for the upper. The rest go to the other hand. | 134 | - |
-| midiSplitCount | How many | By notes, how many the counted hand takes, one to six. With fewer held than that, every note is its own. | 104 | - |
-| midiSplitWindow | Chord window | Split by notes, every note waits this many ms so a chord struck at once is dealt by pitch. 0 plays at once. Here until Play is laid out again. | 142 | yes: 0 to 15 ms, 10 by default; the release and the pedal wait alike, so each note keeps its length and a roll its gaps; at 0 each note is dealt by its rank as it arrives |; in Settings' MIDI section for now, by the owner's word, until Play's Poly and split rows are redesigned
-| midiLayerPair | How the two layers are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y. Every note is heard in both ears. | 133 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B draws A on X only and B on Y only, and each note is heard in both ears at the Width all the same |
-| midiDrawCount | Draw | How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal, heard in both ears. | 132 | - |
-| midiDrawWhich | Draw | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
+| midiPoly | Poly | Every held note sounds, up to eight, each with its own envelope. Outline chooses which of them make the figure's outline. | 121 | yes: outline notes lean to their side, the rest drawn along the diagonal, and every note is heard in both ears at the Width; Glide, Phase and Interval do nothing to a chord; the voice budget |
+| midiKindKey | Key | Splits at a key: under it the lower hand, from it up the upper. Press a key on the strip to split there. | 104 | yes: or learn from a key and play it, which in the plugin is a key your host plays; the strip's line names the key |
+| midiKindNotes | Notes | Splits by the notes held: the lowest (or highest) few are one hand, the rest the other, wherever you play them. | 111 | yes: by notes every note waits the Chord window (10 ms by default, in Settings' MIDI), so a chord's notes landing a few milliseconds apart are dealt together by pitch before any sounds; a note's hand is set as it starts, by its rank among the notes held, and kept until it is let go; a key the pedal holds still counts; a key struck again is ranked again |
+| midiKindLayer | Layer | Every note plays in both hands, A and B, so each is two voices at once. | 71 | - |
+| midiStrip | The strip | The keys held, each in the hand it plays in. Splitting at a key, press one to split there; by notes, press a place for how many. | 128 | yes: three octaves at a time, with the octave buttons beside it; a gold dot on a button is a note held out of view that way; by notes the places are counted from the end low or high chooses, one to six |
+| midiStripDown | Down an octave | Moves the strip's view down an octave, to see or split at a lower key. It changes what is shown, never the sound. | 113 | - |
+| midiStripUp | Up an octave | Moves the strip's view up an octave, to see or split at a higher key. It changes what is shown, never the sound. | 112 | - |
+| midiEndLow | Low | By notes, counts from the bottom: the lowest notes held are the lower hand, the rest the upper. | 95 | - |
+| midiEndHigh | High | By notes, counts from the top: the highest notes held are the upper hand, the rest the lower. | 93 | - |
+| midiSplitLearn | Learn from a key | Splitting at a key, takes the split point from the next key played, on your keyboard or, in the plugin, your host's. | 116 | - |
+| midiWindowGo | Chord window | Goes to the Chord window, in Settings' MIDI: how long every note waits, split by notes, so a chord is dealt by pitch. | 117 | - |
+| midiLayers | Layers | Whether a second sound plays: one, a split at a key or by the notes held, or layered. The strip's Two hands and Key, Notes, Layer set it. | 137 | yes: Poly only; out of sight on the face, kept for the plugin, presets and codes |
+| midiSplitBy | Split by | How a split gives each note its hand: at a key, or by the notes held, counted from one end. The strip's Key and Notes set it. | 125 | - |
+| midiSplitEnd | Counted | By notes, which end is counted: the lowest notes held for the lower hand, or the highest for the upper. The strip's low and high set it. | 136 | - |
+| midiSplitCount | How many | By notes, how many the counted hand takes, one to six. A press on the strip's places sets it. With fewer held, every note is its own. | 133 | - |
+| midiLayerPair | How the two hands are drawn | A figure each, overlaid in their own inks, or A against B: one figure, A's notes on X and B's on Y. Every note is heard in both ears. | 133 | yes: with a figure each, each figure is a picture of its own that moves a sound (Pictures, in the Picture section's Advanced); A against B draws A on X only and B on Y only, and each note is heard in both ears at the Width all the same |
+| midiDrawCount | Outline | How many held notes make the figure's outline, for the hand being edited. The rest are drawn along the diagonal. | 112 | - |
+| midiDrawWhich | Outline | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
 | midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
 | midiHold | Hold the interval | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
 
@@ -497,6 +510,8 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | midiConnect | MIDI in | Asks the browser for MIDI, then listens to every keyboard connected. Needs a secure page; Safari has no Web MIDI. | 113 | yes — a page in an iframe needs the embedding page to allow MIDI, so the published artifact cannot, and the GitHub Pages copy can; setting up a Nord Electro |
 | midiOut | MIDI out | A port to send the score’s and the arpeggiator’s notes to. With a synth on Local Off, the picture plays it. | 107 | yes — at most forty notes a second; every note is ended when the scope stops, the page is hidden or the port changes; the readout says sending |
 | midiOutCh | MIDI out channel | The MIDI channel those notes go out on, one to sixteen. Changing it ends every note already sent. | 97 | - |
+| midiSplitWindow | Chord window | Split by notes, every note waits this many ms so a chord struck at once is dealt by pitch. 0 plays at once. | 107 | yes: 0 to 15 ms, 10 by default; the release and the pedal wait alike, so each note keeps its length and a roll its gaps; at 0 each note is dealt by its rank as it arrives; Play's strip says it and comes here |
+| keysOpen | On-screen keys | Two octaves of keys along the foot of the window, played by pointer or computer keyboard. M opens and shuts them from anywhere. Not in the plugin. | 146 | yes: the computer keyboard plays as music software lays it out (A is C, W C sharp, S D, along two rows), Z and X for octaves, Space a held pedal; letters play notes rather than shortcuts while open; Tap to hold for a mouse; in the plugin the host has its own keys and musical typing, so the row is hidden there and M does nothing |
 
 ### A modulation card’s editor › The Photocell
 

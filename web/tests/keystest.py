@@ -358,6 +358,9 @@ with sync_playwright() as pw:
     # P5 cut the rack.
 
     print("\n--- a note let go while a menu is open, and the keys after a menu (15 Nov) ---")
+    # The menu is Expression's Pitch bend, always on Play: until 17 Nov it was
+    # Layers, which the Keyboard's band keeps out of sight. (2 by default, so
+    # one step down is 3.)
     # The owner's list, items 5 and 6. A menu opened with the pointer is the
     # browser's own window: headless Chromium, like the desktop browsers,
     # hands it the key let go while it is open, and the page never hears the
@@ -370,7 +373,7 @@ with sync_playwright() as pw:
         q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
         q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(900)
         if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
-        q.evaluate("() => { setScreenKeys(true); showControl('midiLayers'); }"); q.wait_for_timeout(300)
+        q.evaluate("() => { setScreenKeys(true); showControl('midiBendRange'); }"); q.wait_for_timeout(300)
         if nobble: q.evaluate(nobble)
         out = hands(q)
         q.close()
@@ -379,23 +382,23 @@ with sync_playwright() as pw:
     def typed_through_menu(q):
         q.keyboard.down("a"); q.wait_for_timeout(150)
         before = held(q)
-        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.click("#midiBendRange"); q.wait_for_timeout(200)
         q.keyboard.up("a"); q.wait_for_timeout(200)
         q.keyboard.press("ArrowDown"); q.keyboard.press("Enter"); q.wait_for_timeout(1200)
-        return {"before": before, "after": held(q), "split": q.evaluate("() => el.midiLayers.value"),
+        return {"before": before, "after": held(q), "split": q.evaluate("() => el.midiBendRange.value"),
                 "focus": q.evaluate("() => document.activeElement.id")}
     NO_RECHECK = "() => { screenRecheck = () => {}; }"
     typed = menu_run(typed_through_menu)
     typed_old = menu_run(typed_through_menu, NO_RECHECK)
     check("a typed note let go while a menu is open ends once it closes", typed["before"] == [48] and typed["after"] == []
-          and typed["split"] == "split", str(typed))
+          and typed["split"] == "3", str(typed))
     null("without the recheck, as the page was, the note sounds on", typed_old["after"] == [48], str(typed_old))
     # The same while the menu is shut with Escape and the next key chooses in
     # it: the note still ends, from that key, which only a closed menu lets
     # the page hear.
     def typed_then_escape(q):
         q.keyboard.down("a"); q.wait_for_timeout(150)
-        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.click("#midiBendRange"); q.wait_for_timeout(200)
         q.keyboard.up("a"); q.wait_for_timeout(200)
         q.keyboard.press("Escape"); q.wait_for_timeout(100)
         q.keyboard.press("Tab"); q.wait_for_timeout(1100)
@@ -407,7 +410,7 @@ with sync_playwright() as pw:
     # sends no auto-repeat, so the repeat is sent as a keyboard sends it.
     def held_through_menu(q):
         q.keyboard.down("a"); q.wait_for_timeout(150)
-        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.click("#midiBendRange"); q.wait_for_timeout(200)
         q.keyboard.press("ArrowDown"); q.keyboard.press("Enter"); q.wait_for_timeout(300)
         for _ in range(12):
             q.evaluate("() => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', key: 'a', repeat: true, bubbles: true }))")
@@ -427,8 +430,8 @@ with sync_playwright() as pw:
           return [r.x + r.width / 2, r.y + r.height * 0.8]; }""")
         q.mouse.move(*k); q.mouse.down(); q.wait_for_timeout(150)
         before = held(q)
-        q.evaluate("""() => { el.midiLayers.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 9, pointerType: 'touch', bubbles: true }));
-          el.midiLayers.focus(); el.midiLayers.value = 'layer'; el.midiLayers.dispatchEvent(new Event('change', { bubbles: true })); }""")
+        q.evaluate("""() => { el.midiBendRange.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 9, pointerType: 'touch', bubbles: true }));
+          el.midiBendRange.focus(); el.midiBendRange.value = '5'; el.midiBendRange.dispatchEvent(new Event('change', { bubbles: true })); }""")
         q.wait_for_timeout(1100)
         out = held(q)
         q.mouse.up()
@@ -452,25 +455,25 @@ with sync_playwright() as pw:
     # Item 6: after a choice made with the pointer, the letters play again;
     # a menu reached with Tab and worked by its keys stays a menu.
     def play_after_choice(q):
-        q.click("#midiLayers"); q.wait_for_timeout(200)
+        q.click("#midiBendRange"); q.wait_for_timeout(200)
         q.keyboard.press("ArrowDown"); q.keyboard.press("Enter"); q.wait_for_timeout(200)
         q.keyboard.down("s"); q.wait_for_timeout(150)
-        out = {"focus": q.evaluate("() => document.activeElement.id"), "held": held(q), "split": q.evaluate("() => el.midiLayers.value")}
+        out = {"focus": q.evaluate("() => document.activeElement.id"), "held": held(q), "split": q.evaluate("() => el.midiBendRange.value")}
         q.keyboard.up("s")
         return out
     after = menu_run(play_after_choice)
     after_old = menu_run(play_after_choice, "() => { HTMLSelectElement.prototype.blur = function () {}; }")
-    check("after a menu choice made with the pointer the letters play again", after["held"] == [50] and after["focus"] != "midiLayers"
-          and after["split"] == "split", str(after))
+    check("after a menu choice made with the pointer the letters play again", after["held"] == [50] and after["focus"] != "midiBendRange"
+          and after["split"] == "3", str(after))
     null("with the focus left on the menu, as the page left it, they play nothing", after_old["held"] == [], str(after_old))
     def tab_to_menu(q):
-        q.evaluate("() => { el.midiLayers.previousElementSibling ? el.midiLayers.previousElementSibling.focus() : null; el.midiLayers.focus(); }")
+        q.evaluate("() => { el.midiBendRange.focus(); }")
         q.keyboard.press("ArrowDown"); q.wait_for_timeout(100)
         q.keyboard.press("s"); q.wait_for_timeout(150)
-        return {"focus": q.evaluate("() => document.activeElement.id"), "held": held(q), "split": q.evaluate("() => el.midiLayers.value")}
+        return {"focus": q.evaluate("() => document.activeElement.id"), "held": held(q), "split": q.evaluate("() => el.midiBendRange.value")}
     tabbed = menu_run(tab_to_menu)
     check("a menu reached by the keyboard keeps the focus and its keys choose in it: Down moves it, and S plays nothing",
-          tabbed["focus"] == "midiLayers" and tabbed["split"] != "off" and tabbed["held"] == [], str(tabbed))
+          tabbed["focus"] == "midiBendRange" and tabbed["split"] != "2" and tabbed["held"] == [], str(tabbed))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

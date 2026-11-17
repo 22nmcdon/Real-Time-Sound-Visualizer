@@ -230,12 +230,13 @@ with sync_playwright() as pw:
           str(top) + " " + str(search("persistence")[:2]))
 
     stale = p.evaluate("""() => { setMidiMode('dyad'); return null; }""")
-    dyad = search("draw")
+    # The row was Draw until the Keyboard's band named it Outline (17 Nov).
+    dyad = search("outline")
     p.evaluate("() => { setScreenKeys(true); setMidiMode('poly'); }")
-    poly = search("draw")
+    poly = search("outline")
     p.evaluate("() => { setMidiMode('dyad'); setScreenKeys(false); }")
-    check("the index is read when the search runs: poly's Draw row is found once it exists",
-          not any(r[0] == "Draw" for r in dyad) and any(r[0] == "Draw" for r in poly), str((dyad, poly)))
+    check("the index is read when the search runs: poly's Outline row is found once it exists",
+          not any(r[0] == "Outline" for r in dyad) and any(r[0] == "Outline" for r in poly), str((dyad, poly)))
     # The photocell's source, which came and went with its switch and was
     # found while it was there ("a source is found only while it exists").
     # Since F4 only the cards' sources are searched, and the cards' are found

@@ -364,7 +364,7 @@ with sync_playwright() as pw:
                        edit: el.toneRows.dataset.layerEdit };
       el.midiDyad.click(); await wait(400);
       const dyad = { channels: state.source.channels, lanes: state.source.getLatestWindow(256).length,
-                     layout: state.source.layout, edit: el.toneRows.dataset.layerEdit, rowHidden: el.midiLayerRow.hidden };
+                     layout: state.source.layout, edit: el.toneRows.dataset.layerEdit, rowHidden: el.midiKindsRow.hidden && el.midiTwoHands.hidden };
       el.midiPoly.click(); await wait(200);
       return { before, dyad };
     }""")
@@ -414,7 +414,7 @@ with sync_playwright() as pw:
       const asking = el.midiSplitLearn.textContent;
       midiNoteOn(55, 100);
       const out = { asking, point: midi.layers.point, learning: midi.layers.learning,
-                    said: el.midiSplitLearn.textContent,
+                    said: el.midiStripLine.textContent,
                     played: midi.notes.map((n) => n.note), kind: state.source.kind };
       midiNoteOff(55);
       await wait(400);
@@ -438,8 +438,8 @@ with sync_playwright() as pw:
     print("    learned %s" % {k: learn[k] for k in ("asking", "point", "said", "played", "a", "b")})
     print("    the point's send cut %s; both cut %s" % ({k: alone[k] for k in ("point", "a", "b")}, {k: null[k] for k in ("point", "a", "b")}))
     check("the split point is learned from the next key, which still plays",
-          learn["asking"] == "play a key" and learn["point"] == 55 and not learn["learning"]
-          and learn["said"] == "at G3" and learn["played"] == [55] and learn["kind"] == "host", str(learn))
+          learn["asking"] == "now play a key" and learn["point"] == 55 and not learn["learning"]
+          and learn["said"].startswith("G3 and up: the upper hand.") and learn["played"] == [55] and learn["kind"] == "host", str(learn))
     check("the instrument splits at the learned point: A3 over a learned G3 is in B's lanes",
           learn["b"] > 10 * learn["a"] and learn["b"] > 1e-3, "A %.5f B %.5f" % (learn["a"], learn["b"]))
     check("... and the instrument keeps it, a hand its state carries for a project reopened",
@@ -466,13 +466,15 @@ with sync_playwright() as pw:
       setScreenKeys(true); el.midiPoly.click();
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(150);
-      const row = { split: !el.midiSplitBy.hidden, learnByKey: !el.midiSplitLearn.hidden, endByKey: !el.midiSplitEnd.hidden };
+      // The strip's (17 Nov): Key, Notes and Layer on its edge, Learn on its line by key, the end and the Chord window by notes.
+      const row = { split: !el.midiKindsRow.hidden && el.midiKindKey.getAttribute('aria-checked') === 'true',
+                    learnByKey: !el.midiSplitLearn.hidden, endByKey: !el.midiEndLowSide.hidden };
       if (cut) hostSync.on = false;
       const pick = (id, v) => { el[id].value = v; el[id].dispatchEvent(new Event('change', { bubbles: true })); };
       if (args.point) { midi.layers.point = args.point; hostSendSplit(); }
       else { pick('midiSplitBy', 'notes'); pick('midiSplitEnd', 'lower'); pick('midiSplitCount', '1'); }
       if (cut) hostSync.on = true;
-      row.learnByNotes = !el.midiSplitLearn.hidden; row.endByNotes = !el.midiSplitEnd.hidden && !el.midiSplitCount.hidden;
+      row.learnByNotes = !el.midiSplitLearn.hidden; row.endByNotes = !el.midiEndLowSide.hidden && !el.midiWindowNote.hidden;
       // Longer before a reading made soon after the notes, so the split has surely reached the instrument.
       await wait(args.soon ? 400 : 150);
       // 60 ms apart, so each is a note of its own: within 10 ms of the first they are one struck chord (the gather).
@@ -521,7 +523,7 @@ with sync_playwright() as pw:
     print("    the face's sends cut: A %s, B %s" % (cut["a"], cut["b"]))
     in_hands = lambda r, low, high: all(r["a"][i] > 10 * r["b"][i] and r["a"][i] > 1e-3 for i in low) \
         and all(r["b"][i] > 10 * r["a"][i] and r["b"][i] > 1e-3 for i in high)
-    check("by key or by notes shows beside Layers with a split, and under it Learn by key, the end and the count by notes",
+    check("a split shows Key lit on the strip's edge, Learn on its line by key, and by notes the counted end and the Chord window's note",
           told["row"] == {"split": True, "learnByKey": True, "endByKey": False, "learnByNotes": False, "endByNotes": True},
           str(told["row"]))
     check("the face deals Lower: 1 by rank: A2 and C3 the lower hand, E3 and G3 the upper",
