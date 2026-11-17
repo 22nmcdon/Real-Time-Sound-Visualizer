@@ -324,7 +324,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 </head>
 <body>
 <div class="page">
-  <p class="eyebrow">Mockup · Space &amp; Memory · 17 Nov</p>
+  <p class="eyebrow">Mockup · Space &amp; Memory · 17 Nov · the owner chose A</p>
   <h1>The EQ, drawn</h1>
   <p class="lede">Its response as the face of it: a small curve on the rack's line where the three gain knobs were, and a large one to drag, opened over the tabs with the screen still in view.</p>
   <p class="small">Everything here is live. The curve is worked out with the core's own formulas (the Audio EQ Cookbook, shelves at slope one, the mid's Q from its width by the analog relation, at 48 kHz), so what you drag is what the instrument would play. The screen's figure is a fifth, A3 against E4, through this EQ. Nothing in <code>scope.html</code> or the core has changed.</p>
@@ -334,11 +334,6 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
       <div class="pg-switch" id="pgSize">
         <button type="button" data-v="big" aria-pressed="true">1400 × 900</button>
         <button type="button" data-v="small" aria-pressed="false">960 × 600 at 90%</button>
-      </div></div>
-    <div class="grp"><span class="lbl">Editor</span>
-      <div class="pg-switch" id="pgLayout">
-        <button type="button" data-v="over" aria-pressed="true">A · over the tabs</button>
-        <button type="button" data-v="rack" aria-pressed="false">B · in the rack</button>
       </div></div>
     <div class="grp"><span class="lbl">Hands</span>
       <div class="pg-switch" id="pgHands">
@@ -432,25 +427,28 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
     <dt>On the line</dt>
     <dd>The curve, 150 by 34, in place of the three gain knobs, with the three points as dots. It is a button: pressing it opens the editor. It stays on the folded line too (96 by 22), because it is the line's reading rather than a control, and a folded EQ that showed nothing would say nothing. The words beside it (<i>low +3.0 dB at 160 Hz · …</i>) stay; they are what a screen reader and a narrow window keep.</dd>
     <dt>The editor</dt>
-    <dd>Over the tabs, where the modulation editor opens, so the screen stays in view while you listen and watch. A log-frequency grid from 20 Hz to 20 kHz, ±12 dB, the sum of the bands in charcoal and each band's own in faint grey under it. The chosen point is in the accent, the others charcoal on paper; each sits at its corner frequency and its full gain, so a shelf's curve passes half-way through it, as the info line says.</dd>
+    <dd>Over the tabs, where the modulation editor opens, so the screen stays in view while you listen and watch. A log-frequency grid from 20 Hz to 20 kHz, ±12 dB, the sum of the bands in charcoal and each band's own in faint grey under it. The chosen point is in the accent, the others charcoal on paper; each sits on the drawn curve, at its band's frequency (a shelf's corner, the mid's centre) and at the height of the whole response there, so a shelf's point shows where the curve is at its corner - half the shelf's gain, plus whatever another band adds there. Dragging up and down still moves that band's own gain, from where it was, and the readout and the menu give the band's own gain, not the curve's height.</dd>
     <dt>The knobs stay</dt>
     <dd>All seven, under the curve, as the values: a setup, a host knob, undo, the morph and modulation read and write them exactly as now, and the points write the knobs. The knobs a point moves are washed while it is chosen. Modulation stays on the knobs (their right-click), not on the points, because a point is two or three controls at once.</dd>
+    <dt>Both hands on the line</dt>
+    <dd>When the hands differ, the small curve on the line draws both: the edited hand's solid, the other's dashed in its ink, as the large one does. One glance at the rack says the hands' EQs are not the same.</dd>
     <dt>The hands</dt>
     <dd>With two hands the link sits in the editor's head, after the name: <i>Same in both</i>, or the edited hand's own in its ink. Unlinked, the other hand's curve is drawn faint and dashed in its ink behind, so the two can be compared without switching. The rack's line keeps its short pill (<i>Both</i>, <i>Lower</i>, <i>Upper</i>) before the arrow, as now.</dd>
     <dt>The spectrum</dt>
-    <dd>Optional, faint, behind the curve, on a scale of its own (60 dB from the top of the plot to its foot). Here it is <b>an illustration, not live</b>: the fifth on the screen, eight harmonics a note falling 4.5 dB per harmonic, as the EQ leaves it. Live it would be the sound's own, as the Spect view reads it.</dd>
+    <dd>Optional, faint, behind the curve, on a scale of its own (60 dB from the top of the plot to its foot). In this mockup it is <b>an illustration, not live</b>: the fifth on the screen, eight harmonics a note falling 4.5 dB per harmonic, as the EQ leaves it. <b>In the build it is live</b>, from the analysis the Spect view already uses (the page's own 2048-point FFT of the frame the screen reads, which is after the EQ). Its cost: that FFT runs every frame while the editor is open, whatever the screen is showing, where today it runs only on Spect - small in time (well under a millisecond a frame), but a second consumer of the frame to keep in step; it wants smoothing over a few frames, or the bars flicker under the points; and at 48 kHz its bins are 23 Hz apart, so below about 100 Hz, where the low shelf turns, it is coarse - a bin a third of an octave or wider.</dd>
   </dl>
 
   <h2>The one alternative</h2>
   <dl class="verdict">
     <dt>A · Over the tabs</dt>
-    <dd>Recommended. The largest curve the column allows - its plot 752 by 452 of the page's pixels at 1400 × 900, and 654 by 343 at 960 × 600 - and the same place and the same Close as the modulation editor, so it is one thing to learn. Its cost: while it is open the other modules and the tab cards are covered, so switching the delay on means closing it first.</dd>
+    <dd><b>Chosen</b> (the owner, 17 Nov), and what this page shows. The largest curve the column allows - its plot 752 by 452 of the page's pixels at 1400 × 900, and 654 by 343 at 960 × 600 - and the same place and the same Close as the modulation editor, so it is one thing to learn. Its cost: while it is open the other modules and the tab cards are covered, so switching the delay on means closing it first.</dd>
     <dt>B · In the rack</dt>
-    <dd>The EQ's arrow opens the curve in the module's rest, the others folding to their lines above and below it. The rack and its order stay in view and every switch is still a press away. Its cost: the curve gets what height is left after five folded lines - a plot 185 px tall at 1400 × 900 and 99 at 960 × 600 (under half A's height, and under a third), which is little room for ±12 dB over ten octaves - and the tab's fit becomes the EQ's problem: any line added to the rack comes out of the curve.</dd>
+    <dd><b>Not chosen.</b> The EQ's arrow would have opened the curve in the module's rest, the others folding to their lines above and below it (it was drawn and measured in the first version of this page). The rack and its order stay in view and every switch is still a press away. Its cost: the curve gets what height is left after five folded lines - a plot 185 px tall at 1400 × 900 and 99 at 960 × 600 (under half A's height, and under a third), which is little room for ±12 dB over ten octaves - and the tab's fit becomes the EQ's problem: any line added to the rack comes out of the curve.</dd>
   </dl>
 
   <h2 id="checked">How the curve was checked</h2>
   <p>The page's response (the function <code>eqResponseDb</code> in this page) was compared with the core's: a small C++ program that includes <code>core/include/scope/plane.h</code>, takes each band's coefficients from <code>PlaneEngine::eqBand</code> (the core's own, public for its tests) and evaluates the cascade at the same frequencies. Six settings, 241 frequencies each from 20 Hz to 20 kHz, at 48 kHz and 44.1 kHz; the null is the page given the mid's width as Q unconverted, which must miss. The core's numbers were printed to nine decimals, so a difference of 5 × 10<sup>−10</sup> dB is that printing's rounding: the two agree to the last digit printed, far inside the 0.01 dB asked. The null misses by 0.67 dB or more wherever the mid is in, so the check can fail. (A setting with the mid at nought has no width to get wrong, so its null is a dash.)</p>
+  <p>Each point sits on the drawn curve, and that is checked too: for six settings (among them a shelf overlapping the mid, and a narrow mid on a high shelf), at both windows, in the editor and on the line's small curve, the point's centre is no more than 0.20 px from the drawn path's height at the point's x - the path's own rounding - against a limit of half a pixel. The null is the first version's placement, at the band's own full gain: it misses on every shelf, by 1.4 px to 245 px, and with it put back the check fails. Both checks are beside the page, in <code>checks/</code>.</p>
   <div class="table-wrap"><table class="check-table" id="checkTable">
     <thead><tr><th>Setting</th><th>Rate</th><th>Page against core</th><th>Null: width as Q</th></tr></thead>
     <tbody>
@@ -471,9 +469,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 
   <h2>Not decided here</h2>
   <ul>
-    <li>Whether the curve on the line should draw each hand's when the hands differ. Here it draws the edited hand's only.</li>
     <li>Whether a point's drag is a step in undo on release (it would be, as a knob's drag is: the knobs are what undo records).</li>
-    <li>The live spectrum's cost: the Spect view already has an analyser, but on the editor it would run with the Bench open, at the editor's size.</li>
   </ul>
 </div>
 
@@ -680,6 +676,11 @@ function el(tag, attrs, parent) {
   return n;
 }
 const FREQS = Array.from({ length: 360 }, (_, i) => FMIN * Math.pow(FMAX / FMIN, i / 359));
+// The sum's frequencies with each band's own put in, so a point lies on a vertex of the drawn curve rather than between two.
+const withBands = (freqs, h) => freqs.concat([0, 1, 2].map((k) => eqHz(k, h.pos[k]))).sort((a, b) => a - b);
+// Where a point sits: at its band's frequency, at the height of the whole response there (17 Nov, the owner's call:
+// on the line drawn, not at the band's own gain, which a shelf's curve only reaches far past its corner).
+const pointDb = (h, k) => eqResponseDb(eqOf(h), [eqHz(k, h.pos[k])])[0];
 function curvePath(g, e, freqs, clip) {
   const db = eqResponseDb(e, freqs);
   return freqs.map((f, i) => (i ? "L" : "M") + g.x(f).toFixed(1) + " " + g.y(clip ? clamp(db[i], -DBR - 2, DBR + 2) : db[i]).toFixed(1)).join("");
@@ -724,7 +725,7 @@ function drawPlot(svg) {
       el("line", { x1: g.x(p.f), x2: g.x(p.f), y1: g.T + g.H, y2: Math.max(g.T, top), stroke: "var(--unresolved)", "stroke-width": 3, opacity: 0.32 }, inner);
     });
     if (g.H > 110) el("text", { x: g.L + g.W - 6, y: g.T + 13, "text-anchor": "end", "font-size": compact ? 9.5 : 10.5, fill: "var(--unresolved)", "font-family": "var(--sans)" }, svg)
-      .textContent = "behind: the fifth’s harmonics after the EQ — an illustration, not live";
+      .textContent = "behind: the fifth’s harmonics after the EQ — an illustration here, live in the build";
   }
   // Each band's own, faint; the other hand's, dashed in its ink; then the sum.
   for (let k = 0; k < 3; k++) if (h.g[k] !== 0)
@@ -732,17 +733,17 @@ function drawPlot(svg) {
   if (S.hands === 2 && !S.linked) {
     el("path", { d: curvePath(g, eqOf(other()), FREQS, true), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1.5, "stroke-dasharray": "5 4", opacity: 0.7 }, inner);
   }
-  const sumPath = curvePath(g, e, FREQS, true);
+  const sumPath = curvePath(g, e, withBands(FREQS, h), true);
   el("path", { d: sumPath + "L" + (g.L + g.W) + " " + g.y(0) + "L" + g.L + " " + g.y(0) + "Z", fill: "var(--wash)", stroke: "none" }, inner);
-  el("path", { d: sumPath, fill: "none", stroke: S.hands === 2 && !S.linked ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--charcoal)", "stroke-width": 2 }, inner);
+  el("path", { id: "sumPath", d: sumPath, fill: "none", stroke: S.hands === 2 && !S.linked ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--charcoal)", "stroke-width": 2 }, inner);
   // The mid's width, as a bracket under its point while it is chosen.
   if (S.sel === 1) {
-    const lo = e.midHz / Math.pow(2, e.width / 2), hi = e.midHz * Math.pow(2, e.width / 2), yb = g.y(0) + (h.g[1] >= 0 ? 12 : -12);
+    const lo = e.midHz / Math.pow(2, e.width / 2), hi = e.midHz * Math.pow(2, e.width / 2), yb = g.y(clamp(pointDb(h, 1), -DBR, DBR)) + (h.g[1] >= 0 ? 16 : -16);
     el("path", { d: "M" + g.x(lo) + " " + (yb - 4) + "V" + yb + "H" + g.x(hi) + "V" + (yb - 4), fill: "none", stroke: "var(--blush-deep)", "stroke-width": 1 }, inner);
   }
   // The points, each at its corner and its full gain.
   for (let k = 0; k < 3; k++) {
-    const hz = eqHz(k, h.pos[k]), db = h.g[k] / 10, chosen = k === S.sel;
+    const hz = eqHz(k, h.pos[k]), db = clamp(pointDb(h, k), -DBR - 2, DBR + 2), chosen = k === S.sel;
     const pt = el("g", { class: "pt", tabindex: 0, role: "button", "data-band": k, "aria-label": pointLabel(k) }, svg);
     el("circle", { cx: g.x(hz), cy: g.y(db), r: 16, fill: "transparent" }, pt);
     el("circle", { class: "ring", cx: g.x(hz), cy: g.y(db), r: compact ? 7 : 8, fill: chosen ? "var(--blush-deep)" : "var(--paper)", stroke: chosen ? "var(--blush-deep)" : "var(--charcoal)", "stroke-width": 1.5 }, pt);
@@ -768,9 +769,9 @@ function paintThumb() {
   el("line", { x1: 2, x2: w - 2, y1: ht / 2, y2: ht / 2, stroke: "var(--line)" }, svg);
   if (S.hands === 2 && !S.linked)
     el("path", { d: curvePath(g, eqOf(other()), TFREQS, false), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1, "stroke-dasharray": "3 2", opacity: 0.7 }, svg);
-  el("path", { d: curvePath(g, eqOf(h), TFREQS, false), fill: "none", stroke: on ? "var(--charcoal)" : "var(--unresolved)", "stroke-width": 1.5 }, svg);
+  el("path", { d: curvePath(g, eqOf(h), withBands(TFREQS, h), false), fill: "none", stroke: on ? "var(--charcoal)" : "var(--unresolved)", "stroke-width": 1.5 }, svg);
   if (on) for (let k = 0; k < 3; k++)
-    el("circle", { cx: g.x(eqHz(k, h.pos[k])), cy: g.y(h.g[k] / 10), r: 2.2, fill: k === S.sel && S.editorOpen ? "var(--blush-deep)" : "var(--charcoal)" }, svg);
+    el("circle", { cx: g.x(eqHz(k, h.pos[k])), cy: g.y(pointDb(h, k)), r: 2.2, fill: k === S.sel && S.editorOpen ? "var(--blush-deep)" : "var(--charcoal)" }, svg);
 }
 
 /* ===== the editor's body: plot and knobs ===== */
@@ -968,7 +969,7 @@ function showReadout(k) {
   const h = cur();
   r.textContent = BAND[k] + "  " + gainReading(h.g[k] / 10) + " at " + hzReading(eqHz(k, h.pos[k])) + (k === 1 ? " · " + (h.w / 10).toFixed(1) + " oct" : "");
   r.hidden = false; clearTimeout(readoutTimer);
-  const x = geo.x(eqHz(k, h.pos[k])), y = geo.y(h.g[k] / 10);
+  const x = geo.x(eqHz(k, h.pos[k])), y = geo.y(clamp(pointDb(h, k), -DBR, DBR));
   r.style.left = clamp(x - 70, geo.L, geo.w - 210) + "px";
   r.style.top = (y > geo.h / 2 ? y - 34 : y + 16) + "px";
 }
@@ -1128,7 +1129,6 @@ function pgSwitch(id, key, conv) {
   }));
 }
 pgSwitch("pgSize", "size");
-pgSwitch("pgLayout", "layout");
 pgSwitch("pgHands", "hands", Number);
 document.getElementById("pgSpec").addEventListener("click", (ev) => { S.spectrum = !S.spectrum; ev.currentTarget.setAttribute("aria-pressed", S.spectrum); paint(); });
 document.getElementById("pgAll").addEventListener("click", (ev) => {
@@ -1138,7 +1138,8 @@ document.getElementById("pgAll").addEventListener("click", (ev) => {
 });
 document.querySelectorAll("#editSwitch button").forEach((b) => b.addEventListener("click", () => { S.editing = +b.dataset.h; render(); }));
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape" && document.getElementById("ctx").hidden && S.editorOpen && S.layout === "over") { S.editorOpen = false; render(); }
+  // Esc closes the innermost thing open: the menu's own Esc is that menu's, not the editor's too.
+  if (ev.key === "Escape" && !ev.target.closest("#ctx") && document.getElementById("ctx").hidden && S.editorOpen && S.layout === "over") { S.editorOpen = false; render(); }
 });
 // The Picture section's knobs, for context: the six of it as the face has them.
 document.getElementById("picKnobs").innerHTML = [["0%", "Amount", 0], ["off", "Scan", 0], ["50%", "Strike", 0.5], ["3.0 cells", "Softness", 0.4], ["32 ms", "Persistence", 0.3], ["0 dB", "Output", 0.75]]
