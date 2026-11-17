@@ -7106,3 +7106,29 @@ folded line put it 24 px over, and the Plane open with one hand (which `fittest.
 open until now) 44. While one module is open and the tab is short of room, the folded lines
 are now 28 px tall with 3 px between (`fitRack`'s `data-tight`), which gives back 45 px over
 five lines; at rest the rack is as drawn. `fittest.py` opens the EQ with the rest.
+
+## Before main: the rack's words, two presets, the budget, and checks on every push (17 Nov)
+
+**A switch can say "Off" over a sound you can hear.** The Picture amount's fixed pushes
+(Motion onto the delay's mix, Memory onto the phaser's and the Plane's twist) are added on
+top of a knob a switch has taken to nought, so a switched-off delay comes back in from the
+picture - the owner keeps that (`web/docs/listening/off-means-off/`). The words now say it:
+while a hand's Amount is above nought and the push onto that module's control is at least
+`FX_BRINGS_IN` (0.02 of the range, two points of the knob), its line reads *Off – the
+Picture brings it in*, held for `FX_BRINGS_HOLD` after the push last passed the mark so the
+line does not flicker with the reads. The pushes are read where the rows are lit
+(`paintStage` writes `stagePushed`, per hand), and `paintRack` reads them as it reads the
+values. Declare a map like that near its first reader's module, not beside its writer: a
+`const` below the first call of the function that reads it is a TDZ error at load, and
+`paintRack` can run before `paintStage` is reached. `racktest.py` holds it with a chord at
+Amount 100 and, as its null, the same chord at nought.
+
+**A compiled core can be stale without a compiler to say so.** `core/wasm/build.py --check`
+builds the module and compares bytes, which needs clang's wasm32 target; the publishing
+workflow's runner has none. So the build records a sha256 of what it was built from (every
+file under `core/include`, the bridge, the flags) as `/* WASM_CORE_SOURCES ... */` beside
+the module, and `--sources` compares that with the tree in Python alone. `--check` holds
+the record too, so a page built by hand without it fails where the toolchain is. The
+`checks` job in `.github/workflows/pages.yml` runs it with the syntax check, the schema's
+and the words' `--check` and `designtest.py`, in well under a minute, and the site is not
+published unless they pass. Each was seen red on a copy broken on purpose.

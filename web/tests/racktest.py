@@ -456,6 +456,56 @@ with sync_playwright() as pw:
     check("the order is heard: the delay first and the phaser first are two sounds, the same order twice is one",
           codes["apart"] > 0.01 and codes["same"] == 0, "%.4f, %.4g" % (codes["apart"], codes["same"]))
 
+    print("\n--- a module off that the Picture is pushing in says so ---")
+    # The owner's call (17 Nov): a switched-off delay, phaser or Plane is still
+    # pushed in by the Picture amount, and its line says so while it is,
+    # rather than "Off" over a delay that can be heard. The figure has to move
+    # for Motion to push the delay, so a chord is held on the instrument as
+    # played. Read for six seconds at Amount 100, then the same at nought,
+    # which is the null: there the push is nothing and the line must be "Off"
+    # throughout. The chorus, which no push reaches, is "Off" at 100 as well.
+    p.locator("#trace").click(position={"x": 5, "y": 5}); p.wait_for_timeout(600)
+    brings = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const sum = (fx) => document.querySelector('[data-fx-sum="' + fx + '"]').textContent;
+      const pill = (fx) => document.querySelector('.fx-on[data-fx-on="' + fx + '"]').textContent;
+      const run = async (amount) => {
+        restore({}); await wait(300);
+        el.pictureAmount.value = String(amount);
+        el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
+        await wait(200);
+        for (const n of [48, 55, 64, 71]) midiBytes(new Uint8Array([0x90, n, 100]));
+        const seen = { delay: new Set(), phaser: new Set(), chorus: new Set(), pills: new Set() };
+        let most = 0, mix = 0;
+        const start = performance.now();
+        while (performance.now() - start < 6000) {
+          await wait(250);
+          for (const fx of ['delay', 'phaser', 'chorus']) seen[fx].add(sum(fx));
+          seen.pills.add(pill('delay'));
+          most = Math.max(most, (stagePushed.get('gen.echo') || [0])[0]);
+          mix = Math.max(mix, Number(el.delayMix.value));
+        }
+        for (const n of [48, 55, 64, 71]) midiBytes(new Uint8Array([0x80, n, 0]));
+        await wait(300);
+        const out = Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v].sort()]));
+        return Object.assign(out, { most, mix });
+      };
+      const full = await run(100), none = await run(0);
+      restore({}); await wait(300);
+      return { full, none, after: sum('delay') };
+    }""")
+    print("    %s" % brings)
+    said = "Off \u2013 the Picture brings it in"
+    check("at Amount 100 on a moving figure the switched-off delay's line says the Picture brings it in",
+          said in brings["full"]["delay"] and brings["full"]["most"] >= 0.02, str(brings["full"]))
+    check("and its switch still says Off, with its Mix still at nought: only the words changed",
+          brings["full"]["pills"] == ["Off"] and brings["full"]["mix"] == 0, str(brings["full"]))
+    check("the chorus, which no push reaches, says Off at Amount 100", brings["full"]["chorus"] == ["Off"],
+          str(brings["full"]["chorus"]))
+    check("null: at Amount nought the same chord leaves every off module's line at Off",
+          brings["none"]["delay"] == ["Off"] and brings["none"]["phaser"] == ["Off"] and brings["none"]["most"] == 0,
+          str(brings["none"]))
+
     p.evaluate("() => { setBenchTab('space'); openFx('plane', true); }"); p.wait_for_timeout(200)
     os.makedirs(os.path.join(HERE, "shots"), exist_ok=True)
     p.screenshot(path=os.path.join(HERE, "shots", "rack-plane.png"))

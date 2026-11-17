@@ -77,7 +77,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | key | what | line | chars |
 |---|---|---|---|
-| fx-switch | A rack module's switch | Takes the module's Mix to nought and keeps it; on puts it back, or its start. The Plane rests its shaping and Turn, the EQ its three gains. | 139 |
+| fx-switch | A rack module's switch | Takes the Mix to nought and keeps it; on puts it back, or its start. Off, the Picture can still push in the delay, phaser and Plane; the line says so. | 150 |
 | fx-arrow | A rack module's arrow | Opens the rest of this module under it, one module at a time. | 61 |
 | fx-handle | A rack module's handle | Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last. | 128 |
 | mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on. | 125 |

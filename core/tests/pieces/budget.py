@@ -27,11 +27,14 @@ says (0.35 to 0.42 of the median), everything else 0.6 to 1.5. Both are on the
 safe side - a feature costed dearer than it is gives up a copy early, one
 costed cheaper is a glitch - so the check below holds the side that matters
 (nothing cheaper in the model than on the machine, past 1.6 of the median)
-and names the two it no longer holds on the other. Nothing was refitted: a
-refit changes what the instrument gives up under load, which is the owner's
-to hear (web/docs/budget-on-the-core.md). The site runs the core as
-WebAssembly, whose relative costs were not measured; native is the nearest
-the pieces can time.
+and names the two it no longer holds on the other. Nothing was refitted then:
+a refit changes what the instrument gives up under load, which is the owner's
+to hear (web/docs/budget-on-the-core.md). On 17 Nov the owner heard it
+(web/docs/listening/, "B") and four terms were refitted to the core as
+WebAssembly, timed outside the pieces in node: the drawbars dearer, pink noise
+and the filter cheaper. The pieces still time natively, the nearest they can;
+the terms are held below by what the governor reads, and the cost of the
+refit, a drawbar chord keeping fewer copies, by a chord.
 
 The timing checks are the only ones in the pieces that read a clock. Each
 case is the best of five seconds (the worst case of three), and the bounds are
@@ -185,6 +188,36 @@ def run(kit):
     check("no feature is costed cheaper than the core spends on it, past 1.6 times the median", cheap == {}, str(cheap))
     wrong = model["morph"]["ms"] / model["saw"]["units"] / mid
     null("the same rule goes red on a model that costs the morph as a saw", wrong > 1.6, "%.2f of the median" % wrong)
+
+    # --- the four terms refitted to the core as WebAssembly (17 Nov) ---
+    # The owner's call from the listening page (web/docs/budget-on-the-core.md):
+    # one drawbar copy 5.5 to 9.8, each of seven 5.3 to 7.8, pink noise 3 to
+    # 1.9 and the voice filter 4 to 1.4, read here off the governor's own
+    # units for the cases above (a voice's units, the base of 2.5 with them),
+    # so a term moved back, or moved again without this, fails by name. Each
+    # null is the term the model had before, which the same reading refuses.
+    unit = lambda k: model[k]["units"] / (2 * model[k]["per"])
+    terms = {"drawbars, one copy": unit("drawbars") - 2.5, "drawbars, each of seven": (unit("drawbars x7") - 2.5 - 2.3) / 7,
+             "pink noise": unit("pink") - 2.5, "the voice filter": unit("filter") - unit("saw")}
+    fitted = {"drawbars, one copy": 9.8, "drawbars, each of seven": 7.8, "pink noise": 1.9, "the voice filter": 1.4}
+    before = {"drawbars, one copy": 5.5, "drawbars, each of seven": 5.3, "pink noise": 3, "the voice filter": 4}
+    near = lambda a, b: abs(a - b) < 1e-6
+    print("    the refitted terms, read off the governor: %s" % {k: round(v, 3) for k, v in terms.items()})
+    check("the governor costs the four refitted terms as fitted to the core in WebAssembly",
+          all(near(terms[k], fitted[k]) for k in fitted), str(terms))
+    null("the same reading refuses the terms as they were fitted to the page's JavaScript",
+         not any(near(terms[k], before[k]) for k in before), str(before))
+    # What it costs, as the owner heard it: a drawbar chord with seven copies,
+    # four notes a hand, keeps four or five copies a hand where it kept seven.
+    keys = lambda ns: "+".join("%d/%r/1/%s" % (n, 440 * 2 ** ((n - 69) / 12), "x" if i == 0 else "y" if i == len(ns) - 1 else "u")
+                               for i, n in enumerate(ns))
+    organ = go(["gen 44100"] + setall({"shape": "drawbars", "unison": 7}) + ["voices 0 " + keys([48, 52, 55, 59]),
+               "voices 1 " + keys([64, 67, 71, 74]), "run 128", "budget"]).budgets[0]
+    print("    a drawbar chord of four a hand with seven copies: %s" % organ)
+    check("a drawbar chord of four a hand at seven copies keeps four or five a hand, and no note goes",
+          all(4 <= u <= 5 for u in organ["unison"]) and organ["silenced"] == 0, str(organ))
+    null("under the model as it was it kept all seven, which the same bound refuses",
+         not all(4 <= u <= 5 for u in [7, 7]))
 
     # --- what is given up, and in what order ---
     order = []

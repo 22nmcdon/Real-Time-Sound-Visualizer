@@ -78,3 +78,28 @@ Three things follow:
   `env.note>gen.fm` makes both hands' five copies four under sixteen notes -
   on the page's brain as on the core's. The bank gives nothing up either way.
   The check is kept as it was, with a second for the bank with its routings.
+
+## Refitted, 17 November
+
+The owner listened to the refit (web/docs/listening/ on
+`claude/listening-bass-budget`, "B") and took it, accepting that a drawbar
+chord keeps fewer copies. The terms were measured again rather than copied,
+since the core had moved since the listening page's runs: budget.py's twenty
+cases timed in a WASI build of `budget_cpp` in node, in blocks of 128, four
+runs on 17 November (a unit was 0.41 to 0.44 ms of work a second; on the
+15th 0.35). Each fitted term moves its case to the median; the filter's is
+the filtered saw less the saw.
+
+| term | was | listening page (15 Nov) | four runs today | set to |
+|---|---|---|---|---|
+| drawbars, one copy | 5.5 | 10.7 | 9.2 to 9.9 | 9.8 |
+| drawbars, each of seven copies | 5.3 | 8.2 | 7.3 to 7.8 | 7.8 |
+| pink noise | 3 | 0.9 | 1.4 to 2.5 | 1.9 |
+| the voice filter | 4 | 1.7 | 0.6 to 1.4 (one run 4.9, under load) | 1.4 |
+
+Each is set at the dear end of the runs, since a term costed cheaper than the
+core spends is the side that glitches. What it costs: a drawbar chord of four
+notes a hand at seven copies keeps four and five copies (it kept seven), and
+three under a melody of four more over it (it kept four). budget.py holds the
+four terms by what the governor reads, and the chord, each with the old
+model as its null.

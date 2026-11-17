@@ -23,7 +23,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The quick checks (17 Nov, the owner's): what can be got wrong in a commit
+  # and found in seconds, with no browser and no wasm32 toolchain, run on the
+  # commit pushed; the site is not published unless they pass. They are not
+  # the suites - those take an hour and a browser, and are run before a push
+  # (CLAUDE.md) - but each catches a mistake that has shipped or nearly has:
+  # a syntax error in the one-file page, which is found by a blank page; the
+  # setup's schema or the info line's words edited on one side only; a colour
+  # token outside DESIGN.md's tables; and the core changed and not built
+  # again into the page (build.py --sources reads a hash the build records,
+  # so it needs no compiler). A push to either branch publishes both, and
+  # this checks the branch pushed: the other passed when it was pushed.
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: The page's script parses
+        run: python3 web/extract.py && node --check web/tests/check.js
+      - name: The core's schema is the page's SETUP_FIELDS
+        run: python3 core/tests/tools/write_schema.py --check
+      - name: The info line's words are the doc's
+        run: python3 web/tools/write_words.py --check
+      - name: Every colour is in DESIGN.md's tables
+        run: python3 web/tests/designtest.py
+      - name: The page's compiled core was built from core/ as it is
+        run: python3 core/wasm/build.py --sources
+
   build:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

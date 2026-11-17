@@ -1163,21 +1163,32 @@ class Generator {
 
   // --- S10: the governor ------------------------------------------------------
 
+  /* The model was fitted to the page's JavaScript in milliseconds; four of
+     its terms were fitted again to the core as WebAssembly, as the site and
+     its worklet run it (17 Nov, the owner's call from the listening page,
+     web/docs/budget-on-the-core.md): the drawbars dearer, one copy 5.5 to
+     9.8 and each of seven 5.3 to 7.8, pink noise 3 to 1.9 and the voice
+     filter 4 to 1.4. Each is budget.py's case timed in four runs in node, in
+     blocks of 128, and set at the dear end of what the runs gave, since a
+     term costed cheaper than it is is the side that glitches. What it costs:
+     a drawbar chord of eight in two hands keeps four or five copies rather
+     than seven. The other sixteen terms read 0.7 to 1.25 of the median and
+     are left as fitted. */
   double voiceCost(const LayerSettings& t, int n, int factor, bool fmRouted, bool syncRouted, bool shapeRouted) const {
     double c = 2.5;
-    if (t.noise) c += 3;
+    if (t.noise) c += 1.9;
     else {
       const bool fm = t.fmIndex > 0 || t.warp != 0 || fmRouted, sync = t.syncRatio != 1 || syncRouted;
       const bool ring = t.ringMix > 0, sub = t.subLevel > 0;
       const std::string& s = t.shapeName;
       if (fm || sync || ring || sub || n > 1) {
-        const double copy = s == "morph" ? 6.8 : s == "drawbars" ? 5.3 : s == "pulse" ? 2.8 : s == "wavetable" ? 2.2 : 2;
+        const double copy = s == "morph" ? 6.8 : s == "drawbars" ? 7.8 : s == "pulse" ? 2.8 : s == "wavetable" ? 2.2 : 2;
         c += 2.3 + n * (copy + (fm ? 1.9 : 0) + (sync ? 1.6 : 0) + (ring ? 1.3 : 0)) + (sub ? 2.5 : 0);
-      } else c += s == "morph" ? 7 : s == "drawbars" ? 5.5 : s == "pulse" ? 2.4 : s == "wavetable" ? 2.5 : 2;
+      } else c += s == "morph" ? 7 : s == "drawbars" ? 9.8 : s == "pulse" ? 2.4 : s == "wavetable" ? 2.5 : 2;
     }
     if (t.drive > 0 || t.fold > 0 || shapeRouted) c += factor == 4 ? 30 : factor == 2 ? 17 : NAN;
     if (t.crushBits > 0 || t.crushHz > 0) c += 2;
-    if (t.vcfType > 0) c += 4;
+    if (t.vcfType > 0) c += 1.4;
     return c;
   }
 
