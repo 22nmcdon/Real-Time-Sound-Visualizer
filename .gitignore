@@ -7,3 +7,8 @@ core/build/
 plugin/build/
 # The plugin built as CLAUDE.md builds it, from the root: cmake -B build plugin.
 /build/
+# Regenerated, not kept: the reach audit's every reading (43,000 lines, read
+# only by its own --write) and the off-means-off page's media (render.py).
+web/docs/what-reaches-the-sound.json
+web/docs/listening/off-means-off/wav/
+web/docs/listening/off-means-off/fig/
