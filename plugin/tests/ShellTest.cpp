@@ -1595,6 +1595,37 @@ int main() {
     if (wstripped) wwithout.append(wstripped->data(), wstripped->size());
     const double wAtFull = intoW(unity), wAtStripped = intoW(wwithout);
     check("a project saved at a hundred opens at a hundred in a plugin narrowed", wAtFull == 100, num(wAtFull));
+    /* What the Width applies to, and the sound's own Width (16 Nov): the
+       setup's, so kept in the project as the setup is - the switch pressed on
+       the page and the sound's Width moved there, saved, and a fresh plugin
+       reopened on that state is Drawn too at 40. The host's Width is still
+       the player's: moved to 60 there, it moves the listening Width and not
+       the sound's. The null: the same plugin saved on Heard reopens on Heard. */
+    const auto drawnState = [&](bool drawn) {
+      ScopeProcessor da;
+      da.prepareToPlay(rate, block);
+      if (drawn) da.pageClick("widthDrawn");
+      da.pageSlider("soundWidth", u"40");
+      da.processBlock(buf, none);
+      return stateOf(da);
+    };
+    const auto reopen = [&](const juce::MemoryBlock& state) {
+      auto d = std::make_unique<ScopeProcessor>();
+      d->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+      d->prepareToPlay(rate, block);
+      d->processBlock(buf, none);
+      return d;
+    };
+    const auto dOn = reopen(drawnState(true)), dOff = reopen(drawnState(false));
+    check("the switch on Drawn too and the sound's Width are kept with the project: reopened Drawn too at 40",
+          dOn->tone().widthDrawn && dOn->tone().drawnWidth == 0.4 && dOn->slider("soundWidth") == 40,
+          std::string(dOn->tone().widthDrawn ? "drawn" : "heard") + " at " + num(dOn->slider("soundWidth")));
+    check("null: saved on Heard it reopens on Heard", !dOff->tone().widthDrawn, dOff->tone().widthDrawn ? "drawn" : "heard");
+    dOn->knob("width")->setValueNotifyingHost(dOn->knob("width")->convertTo0to1(60));
+    dOn->processBlock(buf, none);
+    check("and the host's Width is still the player's there: it moves the listening Width to 60 and leaves the sound's at 40",
+          dOn->tone().stereoWidth == 0.6 && dOn->tone().drawnWidth == 0.4 && dOn->slider("stereoWidth") == 60,
+          num(dOn->tone().stereoWidth) + ", " + num(dOn->tone().drawnWidth));
     check("null: the same state without the Width leaves it narrowed", wAtStripped == 20, num(wAtStripped));
   }
   {

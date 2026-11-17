@@ -343,6 +343,73 @@ with sync_playwright() as pw:
     check("no page errors", not errors, "; ".join(errors[:3]))
     p.close()
 
+    print("\n--- what the Width applies to, and the sound's own Width (16 Nov) ---")
+    p, errors = opened(b)
+    sw = p.evaluate("""() => {
+      const out = {};
+      el.stereoWidth.value = '70'; el.stereoWidth.dispatchEvent(new Event('input'));
+      out.start = [el.stereoWidthRow.hidden, el.soundWidthRow.hidden, genSettings().widthDrawn, snapshot().widthDrawn];
+      el.widthDrawn.click();
+      el.soundWidth.value = '30'; el.soundWidth.dispatchEvent(new Event('input'));
+      const snap = snapshot();
+      out.drawn = [el.stereoWidthRow.hidden, el.soundWidthRow.hidden, genSettings().widthDrawn, genSettings().drawnWidth,
+                   snap.widthDrawn, snap.soundWidth, el.stereoWidth.value, genSettings().stereoWidth];
+      const code = encodeSetup(snap);
+      out.decoded = (({ widthDrawn, soundWidth }) => ({ widthDrawn, soundWidth }))(decodeSetup(code));
+      out.ring = getComputedStyle(el.soundWidthRow.querySelector('.menu-label'), '::before').borderTopWidth;
+      el.presetNew.click();
+      out.afterNew = [genSettings().widthDrawn, el.soundWidth.value, el.stereoWidth.value, el.soundWidthRow.hidden];
+      loadCode(code);
+      out.loaded = [genSettings().widthDrawn, genSettings().drawnWidth, el.soundWidth.value, el.soundWidthRow.hidden, el.stereoWidth.value];
+      out.morph = MORPH_IDS.includes('soundWidth');
+      return out;
+    }""")
+    print("    %s" % sw)
+    check("the switch on Drawn too puts the sound's Width in the Width's place, with the sound's ring, and the generator draws the heard mix at it",
+          sw["start"] == [False, True, False, False] and sw["drawn"][:4] == [True, False, True, 0.3] and sw["ring"] == "1px", str(sw))
+    check("and the setup names both: the switch and the sound's Width, in the snapshot and in its code",
+          sw["drawn"][4:6] == [True, 30] and sw["decoded"] == {"widthDrawn": True, "soundWidth": 30}, str(sw["decoded"]))
+    check("a code made Drawn too loads Drawn too at its own Width; New goes back to Heard and a hundred",
+          sw["loaded"][:4] == [True, 0.3, "30", False] and sw["afterNew"][:2] == [False, "100"], str((sw["loaded"], sw["afterNew"])))
+    check("and the morph walks the sound's Width, which is the setup's", sw["morph"], str(sw["morph"]))
+    check("null: the player's Width is none of it - 70 through the switch, the code, New and the load",
+          sw["drawn"][6:] == ["70", 0.7] and sw["afterNew"][2] == "70" and sw["loaded"][4] == "70", str(sw))
+    p.evaluate("() => { el.presetNew.click(); setBenchTab('play'); undoHistory.undo.length = 0; undoHistory.redo.length = 0; }")
+    p.wait_for_timeout(600)
+    before = p.evaluate("() => undoHistory.undo.length")
+    p.click("#widthDrawn"); p.wait_for_timeout(900)
+    stepped = p.evaluate("() => [undoHistory.undo.length, genSettings().widthDrawn]")
+    p.keyboard.press("Control+z"); p.wait_for_timeout(500)
+    undone = p.evaluate("() => [genSettings().widthDrawn, el.soundWidthRow.hidden]")
+    check("undo steps the switch, as a part of the sound: one step, and undone it is back on Heard",
+          stepped == [before + 1, True] and undone == [False, True], "%s, %s" % (stepped, undone))
+    check("no page errors", not errors, "; ".join(errors[:3]))
+    p.close()
+    # The compiled instrument the page carries, given a code made Drawn too: what it hears is what it draws.
+    p, errors = opened(b, "?picture=0")
+    inst = p.evaluate("""() => {
+      const run = (fields) => {
+        const code = encodeSetup(Object.assign({}, snapshot(), BASE_SETUP, fields));
+        const x = makeWasmBrain(wasmModule(), 48000, 128, code);
+        x.control('limiter', '0');
+        x.midi([0x90, 57, 100]); x.midi([0x90, 64, 100]);
+        let worst = 0, size = 0;
+        for (let k = 0; k < 60; k++) {
+          const hl = new Float32Array(128), hr = new Float32Array(128);
+          const pics = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128));
+          x.block(128, hl, hr, pics, null);
+          for (let i = 0; i < 128; i++) { worst = Math.max(worst, Math.abs(hl[i] - pics[0][i]), Math.abs(hr[i] - pics[1][i])); size = Math.max(size, Math.abs(pics[0][i])); }
+        }
+        return [worst, size];
+      };
+      return { drawn: run({ widthDrawn: true, soundWidth: 40 }), heard: run({ widthDrawn: false }) };
+    }""")
+    check("the compiled instrument given a code made Drawn too hears what it draws, to the bit, a chord of two",
+          inst["drawn"][0] == 0 and inst["drawn"][1] > 0.05, str(inst))
+    check("null: the same code on Heard hears apart from what it draws", inst["heard"][0] > 0.01, str(inst))
+    check("no page errors", not errors, "; ".join(errors[:3]))
+    p.close()
+
     print("\n--- the site's instrument ---")
     p, errors = opened(b, init="localStorage.setItem('scope.width', '30');", settle=3000)
     site = p.evaluate("""async () => {
