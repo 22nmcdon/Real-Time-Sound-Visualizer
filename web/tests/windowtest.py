@@ -19,9 +19,9 @@ What would go wrong, and what is checked for it:
 - the verdict left in a band across the window on the face, or not put back
   after Enlarge: its parent and neighbours are read on the face, enlarged, and
   after going round twice (the Scope view's round trip until G4 took it);
-- the rack folding always, as F5 did, or never: at 1400x900 with every effect
-  on and the Plane open the others keep their knobs; at 1200x680 they fold and
-  the tab does not scroll, and the null is the same rack with the fold taken
+- the rack folding always, as F5 did, or never: with every effect on and the
+  Plane open the others fold and the tab does not scroll (at 1400x900 too
+  since the EQ's line, 17 Nov; it kept their knobs until then), and the null is the same rack with the fold taken
   off, which must scroll - otherwise the fold is not what fits it. Since G5a
   put the modulation row across the window, 1400x900 with two layers folds
   too, by 41 px, with the same null. A module
@@ -212,7 +212,7 @@ with sync_playwright() as pw:
          as one: the modules' links shown and each the upper hand's own (G6;
          the Plane's and the Delay's Layers rows until then). */
       const links = [...document.querySelectorAll('.fx-head .hand-link')];
-      const layered = links.length === 5 && links.every((link) => !link.hidden && link.getAttribute('aria-pressed') === 'false');
+      const layered = links.length === 6 && links.every((link) => !link.hidden && link.getAttribute('aria-pressed') === 'false');
       for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 40);
       await wait(600);
       openFx('plane', true); await wait(200);
@@ -236,8 +236,9 @@ with sync_playwright() as pw:
       for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 40);
       await wait(700);
       const valued = read();
+      const valuedOn = ['phaser', 'chorus', 'delay'].map((fx) => document.querySelector('.fx-module[data-fx="' + fx + '"]').dataset.on);
       openFx(null);
-      return { layered, open, unfolded, closed, offOpen, valued };
+      return { layered, open, unfolded, closed, offOpen, valued, valuedOn };
     }"""
     ctx = b.new_context()
     for w, h, layers in [(1400, 900, False), (1400, 900, True), (1200, 680, False), (1200, 680, True)]:
@@ -253,17 +254,20 @@ with sync_playwright() as pw:
         # with its Layers rows was 41 over unfolded. G6 took those rows for
         # each module's link on its line, and two layers keep their knobs
         # there again, as one layer does, as drawn.
-        if w == 1400:
-            check("at %s, every effect on and the Plane open, the others keep their knobs" % tag,
-                  not r["open"]["tight"] and all(r["open"]["knobs"]) and r["open"]["over"] <= 0, str(r["open"]))
-        else:
-            check("at %s, every effect on and the Plane open, the others fold to their lines and the tab does not scroll" % tag,
-                  r["open"]["tight"] and not any(r["open"]["knobs"]) and r["open"]["over"] <= 0, str(r["open"]))
-            check("null: unfolded, the same rack at %s scrolls, so the fold is what fits it" % tag, r["unfolded"] > 0,
-                  "%d px over" % r["unfolded"])
-            check("at %s, switched on by their mixes with the Plane open, the others fold within the rack's repaint" % tag,
-                  not r["offOpen"]["tight"] and r["valued"]["tight"] and r["valued"]["over"] <= 0,
-                  "%s -> %s" % (r["offOpen"], r["valued"]))
+        # Since the EQ (17 Nov) 1400x900 folds as well: its line is 52 px,
+        # and the rack with the Plane open and the others' knobs showing had
+        # 15 to spare, so it is 37 over unfolded. The rule is the room, not
+        # the window, and the null below still sees that the fold is what fits.
+        check("at %s, every effect on and the Plane open, the others fold to their lines and the tab does not scroll" % tag,
+              r["open"]["tight"] and not any(r["open"]["knobs"]) and r["open"]["over"] <= 0, str(r["open"]))
+        check("null: unfolded, the same rack at %s scrolls, so the fold is what fits it" % tag, r["unfolded"] > 0,
+              "%d px over" % r["unfolded"])
+        # Off, the others are already lines (and since the EQ's sixth line,
+        # tight ones), so what is held is that the mixes switching them on
+        # grow no knobs and leave the tab unscrolled within the repaint.
+        check("at %s, switched on by their mixes with the Plane open, the others fold within the rack's repaint" % tag,
+              r["offOpen"]["over"] <= 0 and r["valued"]["tight"] and not any(r["valued"]["knobs"]) and r["valued"]["over"] <= 0
+              and r["valuedOn"] == ["1", "1", "1"], "%s -> %s %s" % (r["offOpen"], r["valued"], r["valuedOn"]))
         check("at %s, with nothing open, the rack is not folded and its modules show their knobs" % tag,
               not r["closed"]["tight"] and all(r["closed"]["knobs"]), str(r["closed"]))
         p.close()

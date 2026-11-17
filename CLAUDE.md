@@ -347,9 +347,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Nov; a dashed slot until then) - each a line of icon, name, switch, what it is doing and its
   main knobs, Mix first. Its arrow opens the rest under it, one module at a
   time, and while one is open the others fold to their lines only if the
-  tab would scroll with their knobs showing (`fitRack`, F8): at 1400x900 they
-  keep them, as drawn, with one layer (two fold since G5a's row), and on the
-  compact face they fold. Decided by room,
+  tab would scroll with their knobs showing (`fitRack`, F8): with every
+  effect on they fold at 1400x900 too since the EQ's line (17 Nov; they kept
+  their knobs there until then), and folded so their lines are tighter. Decided by room,
   not by window size, so it is right at sizes nobody measured.
   The switch is a view over values, not a field: off takes the Mix (the
   Plane's shaping and turn, the EQ's three gains) to rest and keeps what it

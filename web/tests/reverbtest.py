@@ -252,11 +252,11 @@ with sync_playwright() as pw:
       last: Array.from(document.querySelectorAll('#rackGroup > .fx-module[data-fx]')).pop().dataset.fx })""")
     check("Mix, Size and Tone take a source; Pre-delay and Spread do not; Mix alone is a host parameter; it is last in the rack",
           offered == {"dests": [True] * 3, "rows": [True] * 3, "not": [], "host": [True, False], "last": "reverb"}, str(offered))
-    # Last even when the three before it are reordered.
+    # Last even when the three before it are reordered (the Plane and, since 17 Nov, the EQ before them).
     moved = p.evaluate("""async () => { setFxOrder('dcp'); await new Promise((r) => setTimeout(r, 100));
       const order = Array.from(document.querySelectorAll('#rackGroup > .fx-module[data-fx]')).map((m) => m.dataset.fx);
       setFxOrder('pcd'); return order; }""")
-    check("and stays last when the others are put in another order", moved[-1] == "reverb" and moved[1:4] == ["delay", "chorus", "phaser"],
+    check("and stays last when the others are put in another order", moved[-1] == "reverb" and moved[2:5] == ["delay", "chorus", "phaser"],
           str(moved))
 
     print("\n--- codes ---")
