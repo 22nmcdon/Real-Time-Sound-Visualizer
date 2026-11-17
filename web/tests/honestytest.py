@@ -63,17 +63,17 @@ is the claim. And the limiter: no preset may hold it past six decibels on a
 four-note chord, two notes a hand in a split, which is where the meter's own
 "running away" begins (STRAINED).
 
-The reverb (P9) is judged twice. Switched on, at the 0.15 its switch gives,
-every preset keeps its heading and fails the others. At its fullest - Mix,
-Spread and Size at the top - a Settled preset may breathe, as one at the
-Delay's full Mix may, but no more than 0.10 late; and that run is the null of
-the first, since the same test of a heading kept goes red there.
-
-The Plane's switch (17 Nov) is judged as the reverb's is: pressed on every
-preset that has the Plane off, its start (Twist 15) keeps each under its
-heading. The start was chosen against two others by the same measure, run
-offline at five key landings (web/docs/listening/plane-start/render.py), so
-this is the choice held, not made.
+A preset is held to its heading as shipped, and to nothing else (17 Nov, the
+owner's rule): a change it does not contain - the reverb's switch pressed,
+the Plane's, the EQ's - may take it under another heading, and that is not a
+fault ("reverb causing a preset to turn breathing when turned on is totally
+acceptable because reverb was not present in the preset"). Until then this
+suite pressed the reverb's switch and the Plane's on every preset and
+required each to keep its heading; both passes went, and with them the Tine
+piano's reverb run that had failed for days. What stays of the reverb is a
+bound on the reverb, not on a heading: at its fullest - Mix, Spread and Size
+at the top - a held Settled note may breathe, as one at the Delay's full Mix
+may, but no more than 0.10 late, which is churn rather than breath.
 
 Serial: everything here is measured over real seconds.
 """
@@ -284,14 +284,11 @@ with sync_playwright() as pw:
     grid = {h: [g for g, rule in RULES.items() if rule(m)] for h, m in made.items()}
     check("each rule passes a reading made to be its heading's and only that one", all(v == [h] for h, v in grid.items()),
           str(grid))
-    # P9, the reverb, as the owner decided it (9 Nov). Settled promises that
-    # a preset as shipped comes to rest, not that it does whatever is added
-    # to it: a loud reverb in the loop keeps a held chord moving, as the
-    # Delay at full Mix already did to two of the five Settled probes. So two
-    # passes. Switched on, as most players will only ever do, it must leave
-    # every preset under its heading - the base too - and out of the others;
-    # at a quarter, the Mix it was built with, the Tine piano read 0.013 to
-    # 0.019 against Settled's 0.015, which is why the switch gives 0.15.
+    # P9, the reverb (9 Nov), and the owner's rule of 17 Nov: Settled
+    # promises that a preset as shipped comes to rest, not that it does
+    # whatever is added to it, so the reverb is measured here only for how
+    # far it can push a held note, never for whether a preset keeps its
+    # heading under it.
     def wet_pass(label, wet, headings):
         print("\n--- %s ---" % label)
         out = []
@@ -310,25 +307,7 @@ with sync_playwright() as pw:
                           % (heading, name, notes, m["early"], m["late"], m["most"], m["afterRms"], run["reverb"],
                              ",".join(h for h, v in verdicts.items() if v) or "none"))
         return out
-    kept = lambda r: r[4][r[0]] and not any(v for h, v in r[4].items() if h != r[0])
-    on = wet_pass("every preset with the reverb's switch pressed", {"switch": True}, [h for h, _ in bank])
-    presets_on = [r for r in on if r[0] != "Still"]
-    check("switched on, the reverb leaves every preset under its heading and out of the others",
-          presets_on and all(kept(r) for r in presets_on),
-          "; ".join("%s %s" % (r[1], r[2]) for r in presets_on if not kept(r)) or "%d probes" % len(presets_on))
-    # The base is not a preset, and Still is a stricter promise than either
-    # heading: nothing moves after the first half second. A reverb cannot
-    # keep that - the key's own onset is still ringing in a 1.2-second tail
-    # at half a second, and read 0.006 at its most against Still's 0.005 -
-    # without the loop being in it at all, since the base has neither Scan
-    # nor Picture. What the base must not become is a moving sound.
-    base_on = [r for r in on if r[0] == "Still"]
-    check("and the base, switched on, is neither Settled nor Breathing: only its own onset's tail moves",
-          base_on and all(not r[4]["Settled"] and not r[4]["Breathing"] and r[3]["late"] < 0.005 for r in base_on),
-          "; ".join("most %.3f late %.3f" % (r[3]["most"], r[3]["late"]) for r in base_on))
-    check("and the switch really put it on, at 0.15 with the rest at their defaults",
-          on and all(r[5] == {"mix": 0.15, "spread": 0, "size": 0.4} for r in on), str([r[5] for r in on][:2]))
-    # The other pass is the cost, kept from growing: every Settled preset at
+    # The cost, kept from growing: every Settled preset at
     # the reverb's fullest. looptest.py holds the safety at that setting (no
     # runaway, every bound); this holds how far a held note goes on moving,
     # measured at 0.001 to 0.060 late over four runs when it was built (the
@@ -343,27 +322,8 @@ with sync_playwright() as pw:
     check("at full Mix, Spread and Size a held Settled note may go on moving, but no more than %.2f late" % LATE_BOUND,
           full and all(within(r[3]["late"]) for r in full), ", ".join("%s %.3f" % (r[1][2:], r[3]["late"]) for r in full))
     null("the bound fails what a chorus at full does to the same notes (0.4 to 0.6 late)", not within(0.4))
-    # And the null of the switch's check: the same test of a heading kept,
-    # on the same presets, fails at the fullest setting - so it can see a
-    # reverb that moved a sound, and the switch's pass is not passing blind.
-    null("the heading check goes red at the fullest setting, on at least one Settled preset",
-         full and any(not kept(r) for r in full), "%d of %d moved" % (sum(not kept(r) for r in full), len(full)))
     check("and each of those runs really had it at full", full and all(r[5] == {"mix": 1, "spread": 1, "size": 1} for r in full),
           str([r[5] for r in full][:2]))
-    # The Plane's switch (17 Nov): pressed with nothing kept it gives Twist
-    # 15, chosen by measuring three starts offline over the bank
-    # (web/docs/listening/plane-start/), and it has to keep every preset it
-    # is pressed on under its heading, as the reverb's does. Tines at the
-    # radius has its Plane on already, so its switch is not pressed.
-    planed = wet_pass("every preset with the Plane's switch pressed", {"switch": "plane"}, ["Settled", "Breathing"])
-    pressed = [r for r in planed if r[6]["pressed"]]
-    check("switched on, the Plane's start leaves every preset it is pressed on under its heading and out of the others",
-          pressed and all(kept(r) for r in pressed),
-          "; ".join("%s %s" % (r[1], r[2]) for r in pressed if not kept(r)) or "%d probes" % len(pressed))
-    check("and the switch really gave Twist 15 and nothing else, on every preset it was pressed on",
-          pressed and all(r[6]["plane"] == {"planeTwist": "15"} for r in pressed), str([r[6]["plane"] for r in pressed][:2]))
-    check("null: a preset with the Plane on already was left alone, so the pass is not judging it switched off",
-          any(not r[6]["pressed"] and r[6]["plane"] for r in planed), str([(r[1], r[6]["pressed"]) for r in planed]))
     strained = [(r[1], round(r[5], 1)) for r in results if r[5] < -6]
     check("no preset holds the limiter past six decibels on a four-note chord", not strained, str(strained))
     check("no page errors", not errors, "; ".join(errors[:3]))

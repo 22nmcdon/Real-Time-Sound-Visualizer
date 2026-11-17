@@ -359,8 +359,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   module's start: its Mix (`FX_MIX`), the Plane's Twist of 15
   (`PLANE_START`, chosen by measuring three,
   `web/docs/listening/plane-start/`) or the EQ's low and high shelves up
-  3 dB (`EQ_START`), each held to keep every Settled preset Settled
-  (`core/tests/pieces/starts.py`, `honestytest.py`). Lines and switches are read off the values a
+  3 dB (`EQ_START`), each chosen by measuring it over the bank but held
+  to no heading (17 Nov; the presets, below); `core/tests/pieces/starts.py`
+  holds what they are. Lines and switches are read off the values a
   few times a second (`paintRack`). It replaced the Display, Plane and
   "Delay, chorus and phaser" sections; the Numbers read switch went to
   Scope & measure's Measure. Since F5b the order of the phaser, chorus and
@@ -375,9 +376,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
   network (the owner's call over a Width that mixes the channels). A loud reverb keeps a
   Settled sound moving, as the Delay at full does, and that is accepted
   rather than defended (9 Nov, the owner's call: a defence would make Scan's
-  knob lie): its switch gives a Mix of 0.15, which `honestytest.py` requires
-  to leave every preset under its heading, its line says *keeps a held chord
-  moving* past a fifth, and the full setting is bounded, not forbidden. A handle drags a module
+  knob lie): its switch gives a Mix of 0.15, chosen (9 Nov) because it left
+  the Settled presets settled, though since 17 Nov nothing requires that; its
+  line says *keeps a held chord moving* past a fifth, which is information,
+  not a rule; and the full setting is bounded, not forbidden (`honestytest.py`,
+  no more than 0.10 late). A handle drags a module
   or the arrow keys move it, through the hidden `#fxOrder` menu, so the
   plugin's core hears it as any menu; the modules themselves move, which the
   morph survives only because `MORPH_IDS` is read once from the markup, so
@@ -421,8 +424,13 @@ Do not re-litigate these without a reason; each replaced something that failed.
   headings, of which Wandering rested on a latch (cut: arpeggiated chords
   defeat any rule for when a latched chord gives way, and the pedal is told)
   and Open was the base dressed as a preset. `honestytest.py` measures every
-  preset's sound against its heading and requires it to fail the other, and
-  the base to be still; `presettest.py` requires every field a preset names
+  preset's sound, as shipped, against its heading and requires it to fail the
+  other, and the base to be still. A preset answers to its heading as shipped
+  and to nothing else (17 Nov, the owner's rule): a change it does not
+  contain - a reverb, a Plane or an EQ switched on - may take it under the
+  other heading, which is not a fault, so no check holds a preset to its
+  heading under a change, and no setting elsewhere is chosen to fit a preset
+  it is not on; `presettest.py` requires every field a preset names
   to come back out of the setup it makes, the bank's shape (a split under
   each heading, Settled at Picture nought, Breathing with the loop at work)
   and every preset to name the Picture amount. Add a preset under the

@@ -7132,3 +7132,13 @@ the record too, so a page built by hand without it fails where the toolchain is.
 `checks` job in `.github/workflows/pages.yml` runs it with the syntax check, the schema's
 and the words' `--check` and `designtest.py`, in well under a minute, and the site is not
 published unless they pass. Each was seen red on a copy broken on purpose.
+
+**A preset answers to its heading as shipped, and to nothing else** (17 Nov, the owner's
+rule). honestytest pressed the reverb's switch and the Plane's on every preset and required
+each to keep its heading, and `starts.py` required the Plane's and the EQ's starts to keep
+the Settled presets Settled; the Tine piano's reverb run had failed that for days, and the
+fix on the table was to darken a reverb the preset does not have. A change a preset does not
+contain may take it under the other heading, and that is not a fault, so those passes went,
+and the reverbTone that existed only for them was not shipped. What stays: every preset
+under its own heading as shipped, the base still, and the reverb at its fullest bounded at
+0.10 late as a bound on the reverb, not on a heading.

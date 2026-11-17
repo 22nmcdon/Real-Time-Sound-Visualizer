@@ -224,7 +224,9 @@ with sync_playwright() as pw:
     }""")
     print("    %s" % ui)
     # 0.15, not the quarter it was built with: at a quarter a Settled preset
-    # sat on the edge of breathing (honestytest.py has the readings).
+    # sat on the edge of breathing (9 Nov), which chose the number. Since 17
+    # Nov a preset is not held to its heading under a reverb it lacks; this
+    # holds only what the switch gives.
     check("its switch turns it on at a mix of 0.15, its line saying so and that it keeps the figure",
           ui["off"]["on"] == "0" and ui["off"]["line"] == "Off" and ui["on"]["on"] == "1"
           and abs(ui["on"]["mix"] - 0.15) < 1e-9 and ui["on"]["line"] == "1.2 s · keeps the figure", str(ui["on"]))
