@@ -20914,11 +20914,12 @@ async function listDevices() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const inputs = devices.filter((d) => d.kind === "audioinput");
-    el.device.innerHTML = inputs
-      .map((d, i) => '<option value="' + d.deviceId + '">'
-        + (d.label || "Input " + (i + 1)) + "</option>").join("");
+    /* As options, never as markup: a device's name is the maker's and the
+       system's to choose, and as HTML one with a tag in it made an element
+       (and ran its handler) until the review (17 Nov). */
+    el.device.replaceChildren(...inputs.map((d, i) => new Option(d.label || "Input " + (i + 1), d.deviceId)));
   } catch (error) {
-    el.device.innerHTML = '<option>unavailable</option>';
+    el.device.replaceChildren(new Option("unavailable", ""));
   }
 }
 
