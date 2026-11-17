@@ -474,10 +474,14 @@ inline bool migrateSetup(Json& setup) {
       if (!g && a) g = setup.get(a);
       return g && g->type == Json::Type::Number && std::isfinite(g->n) && jsMathRound(g->n) != 0;
     };
-    if (!setup.get("eqOn"))
-      setup.set("eqOn", Json::boolean(gainOff("eqLow", nullptr) || gainOff("eqMid", nullptr) || gainOff("eqHigh", nullptr)));
-    if (!setup.get("bEqOn") && (setup.get("bEqLow") || setup.get("bEqMid") || setup.get("bEqHigh")))
-      setup.set("bEqOn", Json::boolean(gainOff("bEqLow", "eqLow") || gainOff("bEqMid", "eqMid") || gainOff("bEqHigh", "eqHigh")));
+    // Written only where it is not what a code without it already reads (off, and the upper's the lower's),
+    // so an old code with no EQ comes up to date as it was written.
+    const bool a = gainOff("eqLow", nullptr) || gainOff("eqMid", nullptr) || gainOff("eqHigh", nullptr);
+    if (!setup.get("eqOn") && a) setup.set("eqOn", Json::boolean(true));
+    if (!setup.get("bEqOn") && (setup.get("bEqLow") || setup.get("bEqMid") || setup.get("bEqHigh"))) {
+      const bool b = gainOff("bEqLow", "eqLow") || gainOff("bEqMid", "eqMid") || gainOff("bEqHigh", "eqHigh");
+      if (b != a) setup.set("bEqOn", Json::boolean(b));
+    }
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));
   return true;

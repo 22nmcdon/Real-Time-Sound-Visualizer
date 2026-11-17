@@ -45,7 +45,8 @@ def run(kit):
     def render(fields, mode, held=1.2):
         f = dict(BASE, **fields)
         f["midiMode"] = mode
-        kit.render([["make", RATE, setup_code(f)], ["to", 0.2], ["record", "heard", path],
+        # At a hundred, where a lone note's right is a quarter turn on; fifty is the default since 17 Nov.
+        kit.render([["make", RATE, setup_code(f)], ["slider", "stereoWidth", "100"], ["to", 0.2], ["record", "heard", path],
                     ["midi", 0x90, NOTE, 100], ["to", 0.2 + held], ["record", "heard"]], raw=True)
         d = open(path, "rb").read()
         v = struct.unpack("<%df" % (len(d) // 4), d)

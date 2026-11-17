@@ -209,10 +209,11 @@ def run(kit):
     null("today's core, which brought the bass back at whatever angle the release caught", not in_step(TODAY_SWEEP),
          " ".join("%.2f" % c for c in TODAY_SWEEP))
 
-    # A lone note in Dyad at a hundred is heard as drawn, to the bit.
-    lone = [(0.2, 0x90, 48, 100), (1.0, 0x80, 48, 0)]
+    # A lone note in Dyad at a hundred is heard as drawn, to the bit. Struck half a second in:
+    # the Width opens at fifty since 17 Nov, and the glide to a hundred lands (to the bit) by then.
+    lone = [(0.5, 0x90, 48, 100), (1.3, 0x80, 48, 0)]
     for width in (100, 50):
-        r = render(HT, lone, 1.5, width, full=True)
+        r = render(HT, lone, 1.8, width, full=True)
         n = min(len(r["L"]), len(r["X"]))
         same = np.array_equal(r["L"][:n], r["X"][:n]) and np.array_equal(r["R"][:n], r["Y"][:n])
         if width == 100:

@@ -132,9 +132,9 @@ with sync_playwright() as pw:
     check("the page and the core are at version 12", old["version"] == 12 and old["v12gain"]["v"] == 12, str(old["version"]))
     check("a version-11 code with a gain off nought loads on, and the mid's counts too",
           old["v11gain"]["eqOn"] is True and old["v11mid"]["eqOn"] is True, str(old))
-    check("a version-11 code with every gain at nought loads off, a frequency moved or not", old["v11none"]["eqOn"] is False, str(old["v11none"]))
+    check("a version-11 code with every gain at nought loads off, a frequency moved or not, and gains no field", old["v11none"]["eqOn"] is None, str(old["v11none"]))
     check("the upper hand's by its own gains, a gain it lacks the lower's",
-          old["v11b"]["bEqOn"] is True and old["v11b"]["eqOn"] is False and old["v11bflat"]["bEqOn"] is False and old["v11bflat"]["eqOn"] is True,
+          old["v11b"]["bEqOn"] is True and old["v11b"]["eqOn"] is None and old["v11bflat"]["bEqOn"] is False and old["v11bflat"]["eqOn"] is True,
           str([old["v11b"], old["v11bflat"]]))
     null("a version-12 code with a gain and no eqOn is off, which the rule read without the version would turn on",
          old["v12gain"]["eqOn"] in (False, None) and old["v12on"]["eqOn"] is True, str([old["v12gain"], old["v12on"]]))

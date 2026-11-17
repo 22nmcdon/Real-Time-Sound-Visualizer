@@ -5468,7 +5468,8 @@ wpg, wpt = rboth([_json.dumps(o) for o in WIDTH_OPS], "width_ops.txt")
 wb_ = rbad(wpg, wpt)
 wseen = [(_json.loads(l)["a"]["stereoWidth"], _json.loads(l)["ranges"]["stereoWidth"]) for l in wpg]
 check("the Width by hand is the same on the page and in the core, and no preset or code puts it back",
-      not wb_ and wseen == [(1, 100), (0.3, 30), (0.3, 30), (0.3, 30), (0, 0), (0, 0), (0.71, 71)],
+      # It opens at fifty, the owner's default since 17 Nov.
+      not wb_ and wseen == [(0.5, 50), (0.3, 30), (0.3, 30), (0.3, 30), (0, 0), (0, 0), (0.71, 71)],
       (wb_[0] if wb_ else "") + " %r" % wseen)
 wnull, _ = rboth([_json.dumps(o) for o in WIDTH_OPS[:1] + [{"op": "slider", "id": "stereoWidth", "value": 40}]], "width_null.txt")
 check("null: the page told 40 where the core was told 30 disagrees with it",
@@ -7287,7 +7288,8 @@ for lname, lmode in (("the reverb at full", "reverb"), ("a crossed split at Scan
     lines = _loop.script("full", lmode, 100 if lmode == "cross" else 0, seconds=6)
     pre, heard = os.path.join(BUILD, "limiter-%s-pre.f32" % lmode), os.path.join(BUILD, "limiter-%s-heard.f32" % lmode)
     lines = [l for l in lines if l[0] != "every"]
-    lines[1:1] = [["record", "prelimit", pre], ["record", "heard", heard], ["every", LEVERY / 48000, "limiter"]]
+    # At the Width these were measured at, a hundred (the default is fifty since 17 Nov).
+    lines[1:1] = [["slider", "stereoWidth", "100"], ["record", "prelimit", pre], ["record", "heard", heard], ["every", LEVERY / 48000, "limiter"]]
     reds = [float(r["limiter"][0]) for r in _lkit.render(lines)]
     lruns[lname] = (_np.fromfile(pre, dtype=_np.float32), _np.fromfile(heard, dtype=_np.float32), reds, pre, heard)
 for lname, (pre, heard, reds, prepath, heardpath) in lruns.items():

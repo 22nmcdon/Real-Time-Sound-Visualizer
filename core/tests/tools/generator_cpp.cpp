@@ -60,6 +60,10 @@ void run(const std::vector<std::string>& head, const Events& events) {
   }
   std::vector<std::unique_ptr<scope::CycleTables>> scans;  // outlives the core, which reads them by pointer
   scope::Generator core(rate, static_cast<int>(num(p["slots"])), lfos, static_cast<std::uint32_t>(num(p["seed"])));
+  /* At the Width these runs were recorded at, one, the page's default then: the
+     instrument opens at a half since 17 Nov (the owner's), which ears.py,
+     widthtest.py and the shell test hold; a run that wants another sets it. */
+  core.set("stereoWidth", 1); core.set("drawnWidth", 1);
   std::vector<double> out;
   std::vector<std::vector<float>> bufs(6, std::vector<float>(N, 0.0f));
   std::vector<float> input(N);
