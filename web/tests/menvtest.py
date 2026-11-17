@@ -6,11 +6,12 @@ What would go wrong, and what is checked for it:
   moved into the Envelope's editor while it is open; LFO 1's editor opened
   after it must not have them, there must be one of each id after going
   round, and the Envelope's again must;
-- a switch that paints and does not send: Its own pressed with the mouse
-  (a box ticked until G5a put the two buttons along the editor's top over
-  it), the generator's own field must turn, the card must read "its own",
-  the knobs come alive and the buttons say which; a knob moved by hand must
-  reach the generator in its units;
+- an edit that paints and does not send: following, the knobs are live and
+  show the amp's (17 Nov; a switch made it its own until then, and the
+  knobs were greyed); a knob turned with the mouse must turn the generator's
+  own field, the card must read "its own" and Follow come back; a knob moved
+  by hand must reach the generator in its units (the copying and the undo
+  step are dragenvtest.py's);
 - the source reading the wrong envelope: with a slow attack of its own and
   Play's quick one, a held note's Envelope must still be low after a tenth
   of a second, where Play's has long since arrived - and the null is the
@@ -58,15 +59,17 @@ with sync_playwright() as pw:
 
     print("\n--- the switch and the knobs, by hand ---")
     STATE = """() => ({ own: genSettings().menvOwn, reading: cardReading(MOD_SOURCES.get('env.note')), dis: el.menvAtk.disabled,
-      pressed: [el.menvFollow.getAttribute('aria-checked'), el.menvItsOwn.getAttribute('aria-checked')] })"""
+      follow: !el.menvFollow.hidden, following: !el.menvFollowing.hidden })"""
     before = p.evaluate(STATE)
-    # Its own, pressed with the mouse: the checkbox under it is out of sight since G5a.
-    p.locator("#menvItsOwn").click(); p.wait_for_timeout(150)
+    # Turned with the mouse, as a hand does: the knob's face, a few pixels up.
+    face = p.locator('#menvAtk').locator('xpath=..').locator('.knob-face').bounding_box()
+    fx, fy = face["x"] + face["width"] / 2, face["y"] + face["height"] / 2
+    p.mouse.move(fx, fy); p.mouse.down(); p.mouse.move(fx, fy - 12, steps=4); p.mouse.up(); p.wait_for_timeout(150)
     after = p.evaluate(STATE)
-    check("following Play: the generator's field off, the card says so, the knobs asleep, Follows Play pressed",
-          before == {"own": False, "reading": "follows the amp envelope", "dis": True, "pressed": ["true", "false"]}, str(before))
-    check("Its own pressed with the mouse: the generator's field turns, the card reads its own, the knobs wake, Its own pressed",
-          after == {"own": True, "reading": "its own", "dis": False, "pressed": ["false", "true"]}, str(after))
+    check("following Play: the generator's field off, the card says so, the knobs live, Following said and no Follow",
+          before == {"own": False, "reading": "follows the amp envelope", "dis": False, "follow": False, "following": True}, str(before))
+    check("a knob turned with the mouse: the generator's field turns, the card reads its own, Follow offered",
+          after == {"own": True, "reading": "its own", "dis": False, "follow": True, "following": False}, str(after))
     knobs = p.evaluate("""() => {
       for (const [id, v] of [['menvAtk', 700], ['menvDec', 900], ['menvSus', 25], ['menvRel', 1200]]) setControl(id, v);
       const t = genSettings();

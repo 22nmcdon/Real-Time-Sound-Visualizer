@@ -2539,22 +2539,6 @@
 }
 },
 {
-"id": "menvItsOwn",
-"class": "sound by design",
-"host": false,
-"figures": [
-"settled-xy",
-"settled-yt"
-],
-"most": {
-"figure": "settled-yt",
-"value": "on",
-"diffDb": -4.550829316851507,
-"spectral": 0.3718394979015045,
-"levelDb": -0.01674446066075264
-}
-},
-{
 "id": "menvOwn",
 "class": "sound by design",
 "host": false,
@@ -3723,6 +3707,13 @@
 },
 {
 "id": "menuClose",
+"class": "look-only",
+"host": false,
+"figures": [],
+"most": null
+},
+{
+"id": "vcfEnvOpen",
 "class": "look-only",
 "host": false,
 "figures": [],

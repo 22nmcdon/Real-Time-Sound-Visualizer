@@ -312,9 +312,14 @@ Do not re-litigate these without a reason; each replaced something that failed.
   rather than renumbered (`GEN_SLOTS`).
   Velocity's FM is Expression's menu on Play, reading and writing the one
   routing it stands for rather than a field. The Envelope follows Play's amp
-  envelope unless its editor's switch gives it its own four times (8 Nov),
-  once a phrase or again on every note (`noteDown`, page and core):
-  those controls are written once in the page, outside the editor, and moved
+  envelope until it is edited (17 Nov; its own four times since 8 Nov, once
+  a phrase or again on every note, `noteDown`, page and core): following,
+  its knobs and drawing show the amp's four and take a hand, and the first
+  edit copies them into its own and sets `menvOwn`, one step of undo
+  (`menvAdopt`); Reset on any of them, or *Follow*, follows again. No switch,
+  and nothing stored changed: the knobs hold the stored four, the amp's only
+  shown on them (`knobShows`). Its controls
+  are written once in the page, outside the editor, and moved
   into it while it is open, so their ids resolve from the start for the
   plugin's panel and the morph. Envelope's ink is sage since G5b, as drawn: on
   slate it was LFO 2's, and a ring and a tick in one ink cannot be told apart.
@@ -340,6 +345,15 @@ Do not re-litigate these without a reason; each replaced something that failed.
   a text box, so Paste still works there. `ringtest.py` holds it, and the
   plugin's shell test right-clicks a knob in the real face under
   `xvfb-run -a`.
+- **An envelope is a drawing you take hold of, over its knobs** (17 Nov).
+  The fade's, the amp envelope's on Play, the voice filter's and the
+  Envelope card's are one drawing (`envelopeDrawing`; the knobs' three are
+  `knobEnvelope`): the peak the attack, the corner the decay and the
+  sustain, the end the release, each stretch the square root of its time
+  over its knob's range, written through the knobs as a hand on them is.
+  The knobs stay the values. The voice filter's opens from its *Its
+  envelope* heading rather than sitting in the section, which did not fit
+  Play at 1100x860. `dragenvtest.py` holds it.
 - **Space & Memory is a rack of effect modules** (F5, 7 Nov), one wide
   column top to bottom in the order the engine runs them - Plane (its Turn
   is the screen's rotation), the EQ (17 Nov: three bands, the same on both

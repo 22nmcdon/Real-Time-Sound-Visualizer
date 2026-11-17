@@ -23,7 +23,9 @@ turn away when every note came to be heard in both ears, and added what the Widt
 to, its two halves, and the sound's own Width; and on 17 Nov, with the Keyboard's band: Two
 hands, Key, Notes and Layer, the strip and its two octave buttons, low and high, Learn's new
 words and the way to the Chord window, which went to Settings' MIDI with the on-screen keys;
-and again on 17 Nov, the EQ's seven knobs and its link).
+and again on 17 Nov, the EQ's seven knobs and its link; and again on 17 Nov, the voice filter's
+*Its envelope*, which opens its drawing, and the Envelope's two switches made one *Follow*, since
+it follows until it is edited).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -167,6 +169,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | vcfRes | Resonance | How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure. | 130 | - |
 | vcfTrack | Key track | How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller. | 140 | - |
 | vcfEnvAmt | Envelope | How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. | 94 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch |
+| vcfEnvOpen | Its envelope | Opens the filter envelope's drawing over the section: drag its peak, corner and end, which turn the four knobs below. | 117 | - |
 | vcfAtk | Attack | How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought. | 118 | - |
 | vcfDec | Decay | How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah. | 104 | - |
 | vcfSus | Sustain | Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again. | 122 | - |
@@ -434,15 +437,14 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| menvOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope. | 108 | yes — its own ignores how hard you play; Play’s, in poly, is the loudest note’s; it moves only while a keyboard plays the generator |
-| menvFollow | Follows the amp envelope | The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play. | 99 | - |
-| menvItsOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs. | 93 | - |
-| menvPhrase | Each phrase | Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope. | 114 | - |
-| menvEvery | Every note | Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope. | 124 | - |
-| menvAtk | Attack | How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows the amp envelope. | 112 | - |
-| menvDec | Decay | How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows the amp envelope. | 112 | - |
-| menvSus | Sustain | Where it rests while notes are held, from nought to the top. Greyed while it follows the amp envelope. | 102 | - |
-| menvRel | Release | How long it takes to fall to nought after the last key lifts, up to four seconds. Greyed while it follows the amp envelope. | 123 | - |
+| menvOwn | Its own | Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope. | 108 | yes — it follows until any of its four is edited, which makes it its own; its own ignores how hard you play; Play’s, in poly, is the loudest note’s; it moves only while a keyboard plays the generator |
+| menvFollow | Follow the amp envelope | Puts the Envelope back to following Play’s amp envelope. Its own four are kept, for the next time it is edited. | 111 | - |
+| menvPhrase | Each phrase | Starts when you play after silence; notes played while it is open join the same swell. Choosing it makes the envelope its own. | 126 | - |
+| menvEvery | Every note | Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Choosing it makes it its own. | 126 | - |
+| menvAtk | Attack | How long the Envelope takes to rise when it starts, up to two seconds. Following, it shows Play’s; turning it makes it its own. | 127 | - |
+| menvDec | Decay | How long it takes to fall from the top to Sustain, up to four seconds. Following, it shows Play’s; turning it makes it its own. | 127 | - |
+| menvSus | Sustain | Where it rests while notes are held, from nought to the top. Following, it shows Play’s; turning it makes it its own. | 117 | - |
+| menvRel | Release | How long it takes to fall to nought after the last key lifts, up to four seconds. Turning it while following makes it its own. | 126 | - |
 
 ### The on-screen keyboard
 
