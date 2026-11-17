@@ -456,55 +456,46 @@ with sync_playwright() as pw:
     check("the order is heard: the delay first and the phaser first are two sounds, the same order twice is one",
           codes["apart"] > 0.01 and codes["same"] == 0, "%.4f, %.4g" % (codes["apart"], codes["same"]))
 
-    print("\n--- a module off that the Picture is pushing in says so ---")
-    # The owner's call (17 Nov): a switched-off delay, phaser or Plane is still
-    # pushed in by the Picture amount, and its line says so while it is,
-    # rather than "Off" over a delay that can be heard. The figure has to move
-    # for Motion to push the delay, so a chord is held on the instrument as
-    # played. Read for six seconds at Amount 100, then the same at nought,
-    # which is the null: there the push is nothing and the line must be "Off"
-    # throughout. The chorus, which no push reaches, is "Off" at 100 as well.
+    print("\n--- what reaches each module from the Picture ---")
+    # The owner's call (17 Nov): a tag by each module's switch names the
+    # Picture's reads routed onto it - Memory on the Phaser and the Plane,
+    # Motion on the Delay - while the Amount is above nought, whether the
+    # module is on or off, and steady rather than following the push. The
+    # null is Amount nought, where no module has one; and the chorus, the EQ
+    # and the reverb, which no read reaches, have none at 100. A chord is
+    # held so the reads are moving, and each tag read four times over two
+    # seconds, so a tag that came and went with the push would be seen.
     p.locator("#trace").click(position={"x": 5, "y": 5}); p.wait_for_timeout(600)
-    brings = p.evaluate("""async () => {
+    tags = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const sum = (fx) => document.querySelector('[data-fx-sum="' + fx + '"]').textContent;
-      const pill = (fx) => document.querySelector('.fx-on[data-fx-on="' + fx + '"]').textContent;
-      const run = async (amount) => {
-        restore({}); await wait(300);
+      const fxs = ['plane', 'eq', 'phaser', 'chorus', 'delay', 'reverb'];
+      const tag = (fx) => { const t = document.querySelector('[data-fx-picture="' + fx + '"]');
+                            return t && !t.hidden && t.offsetWidth > 0 ? t.textContent : ''; };
+      const run = async (amount, setup) => {
+        restore(setup); await wait(300);
         el.pictureAmount.value = String(amount);
         el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
-        await wait(200);
         for (const n of [48, 55, 64, 71]) midiBytes(new Uint8Array([0x90, n, 100]));
-        const seen = { delay: new Set(), phaser: new Set(), chorus: new Set(), pills: new Set() };
-        let most = 0, mix = 0;
-        const start = performance.now();
-        while (performance.now() - start < 6000) {
-          await wait(250);
-          for (const fx of ['delay', 'phaser', 'chorus']) seen[fx].add(sum(fx));
-          seen.pills.add(pill('delay'));
-          most = Math.max(most, (stagePushed.get('gen.echo') || [0])[0]);
-          mix = Math.max(mix, Number(el.delayMix.value));
-        }
+        const seen = Object.fromEntries(fxs.map((fx) => [fx, new Set()]));
+        for (let k = 0; k < 4; k++) { await wait(500); for (const fx of fxs) seen[fx].add(tag(fx)); }
         for (const n of [48, 55, 64, 71]) midiBytes(new Uint8Array([0x80, n, 0]));
-        await wait(300);
-        const out = Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, [...v].sort()]));
-        return Object.assign(out, { most, mix });
+        await wait(200);
+        return Object.fromEntries(fxs.map((fx) => [fx, [...seen[fx]].join(' | ')]));
       };
-      const full = await run(100), none = await run(0);
+      const off = await run(100, {}), on = await run(100, { delayMix: 40, phaserMix: 30 }), none = await run(0, {});
+      const line = document.querySelector('[data-fx-sum="delay"]').textContent;
       restore({}); await wait(300);
-      return { full, none, after: sum('delay') };
+      return { off, on, none, line };
     }""")
-    print("    %s" % brings)
-    said = "Off \u2013 the Picture brings it in"
-    check("at Amount 100 on a moving figure the switched-off delay's line says the Picture brings it in",
-          said in brings["full"]["delay"] and brings["full"]["most"] >= 0.02, str(brings["full"]))
-    check("and its switch still says Off, with its Mix still at nought: only the words changed",
-          brings["full"]["pills"] == ["Off"] and brings["full"]["mix"] == 0, str(brings["full"]))
-    check("the chorus, which no push reaches, says Off at Amount 100", brings["full"]["chorus"] == ["Off"],
-          str(brings["full"]["chorus"]))
-    check("null: at Amount nought the same chord leaves every off module's line at Off",
-          brings["none"]["delay"] == ["Off"] and brings["none"]["phaser"] == ["Off"] and brings["none"]["most"] == 0,
-          str(brings["none"]))
+    print("    %s" % tags)
+    want = {"plane": "Picture · Memory", "eq": "", "phaser": "Picture · Memory", "chorus": "", "delay": "Picture · Motion", "reverb": ""}
+    check("at Amount 100, every module switched off: Memory by the Phaser and the Plane, Motion by the Delay, none elsewhere",
+          tags["off"] == want, str(tags["off"]))
+    check("and the same with the Delay and the Phaser switched on: the tag is the connection, on or off",
+          tags["on"] == want, str(tags["on"]))
+    check("null: at Amount nought no module has a tag", all(v == "" for v in tags["none"].values()), str(tags["none"]))
+    check("and the line beside it still says what the module does: Off for a delay switched off", tags["line"] == "Off",
+          tags["line"])
 
     p.evaluate("() => { setBenchTab('space'); openFx('plane', true); }"); p.wait_for_timeout(200)
     os.makedirs(os.path.join(HERE, "shots"), exist_ok=True)

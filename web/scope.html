@@ -1374,6 +1374,9 @@ span.fx-handle { visibility: hidden; }
   padding: 3px 11px; font-size: 10px; letter-spacing: 0.14em; color: var(--text-soft); cursor: pointer;
 }
 .fx-on[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: var(--paper); }
+/* What reaches the module from the Picture: the picture's ink, as a lit row's label. */
+.fx-picture { flex: 0 0 auto; font-size: 9px; letter-spacing: 0.1em; color: var(--blush-deep); white-space: nowrap; }
+.fx-picture[hidden] { display: none; }
 .fx-sum {
   flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--text-soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -2950,6 +2953,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5 16.5 6.25v7.5L10 17.5 3.5 13.75v-7.5Z"/><path d="M10 2.5v15M3.5 10h13" stroke-dasharray="1.6 1.6"/></svg></span>
                 <span class="fx-name" id="planeTitle">Plane</span>
                 <button type="button" class="fx-on caps" data-fx-on="plane" aria-pressed="false">Off</button>
+                <span class="fx-picture caps" data-fx-picture="plane" hidden></span>
                 <span class="fx-sum" data-fx-sum="plane"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.twist" data-mod-control="planeTwist">
@@ -3115,6 +3119,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13c2.5 0 3-3 5.5-3s2 4.5 4 4.5S14 7 18 7"/><path d="M5 4v12M10 4v12M15 4v12" opacity="0.45"/></svg></span>
                 <span class="fx-name">EQ</span>
                 <button type="button" class="fx-on caps" data-fx-on="eq" aria-pressed="false">Off</button>
+                <span class="fx-picture caps" data-fx-picture="eq" hidden></span>
                 <span class="fx-sum" data-fx-sum="eq"></span>
                 <div class="fx-main">
                   <div class="menu-row">
@@ -3188,6 +3193,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h3.5l1.5-3.5 1.5 3.5h3l1.5-3.5 1.5 3.5h3.5"/></svg></span>
                 <span class="fx-name">Phaser</span>
                 <button type="button" class="fx-on caps" data-fx-on="phaser" aria-pressed="false">Off</button>
+                <span class="fx-picture caps" data-fx-picture="phaser" hidden></span>
                 <span class="fx-sum" data-fx-sum="phaser"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.phaser" data-mod-control="phaserMix">
@@ -3237,6 +3243,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11c2-4.5 4-4.5 6 0s4 4.5 6 0 3-3 4-2"/><path d="M2 8.5c2-4.5 4-4.5 6 0s4 4.5 6 0 3-3 4-2" opacity="0.55"/></svg></span>
                 <span class="fx-name">Chorus</span>
                 <button type="button" class="fx-on caps" data-fx-on="chorus" aria-pressed="false">Off</button>
+                <span class="fx-picture caps" data-fx-picture="chorus" hidden></span>
                 <span class="fx-sum" data-fx-sum="chorus"></span>
                 <div class="fx-main">
                   <div class="menu-row">
@@ -3292,6 +3299,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5v11M8 7v8.5M12 9.5v6M16 12v3.5M2.5 15.5h15"/></svg></span>
                 <span class="fx-name" id="timeTitle">Delay</span>
                 <button type="button" class="fx-on caps" data-fx-on="delay" aria-pressed="false">Off</button>
+                <span class="fx-picture caps" data-fx-picture="delay" hidden></span>
                 <span class="fx-sum" data-fx-sum="delay"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.echo" data-mod-control="delayMix">
@@ -3389,6 +3397,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="fx-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="10" r="1"/><path d="M8 7a4.2 4.2 0 0 1 0 6M11 5a7 7 0 0 1 0 10M14 3a9.8 9.8 0 0 1 0 14"/></svg></span>
                 <span class="fx-name" id="reverbTitle">Reverb</span>
                 <button type="button" class="fx-on caps" data-fx-on="reverb" aria-pressed="false">Off</button>
+                <span class="fx-picture caps" data-fx-picture="reverb" hidden></span>
                 <span class="fx-sum" data-fx-sum="reverb"></span>
                 <div class="fx-main">
                   <div class="menu-row" data-mod-dest="gen.reverb" data-mod-control="reverbMix">
@@ -5394,8 +5403,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         switched off in: load another, and a module that one has off comes back on at its
         default - for the Plane a Twist of 15, for the EQ the low and high shelves each up 3 dB.
         Off is the knob at nought, not the module taken out: the <i>Picture</i> amount still
-        pushes the Delay, the Phaser and the Plane's twist in from nought, and while it is
-        doing so the module's line says <i>Off &ndash; the Picture brings it in</i>.
+        pushes the Delay, the Phaser and the Plane's twist in from nought. While the amount is
+        above nought a tag by each of those switches names what reaches it, <i>Picture &middot;
+        Motion</i> on the Delay and <i>Picture &middot; Memory</i> on the other two, on or off.
         The <i>EQ</i> is three bands, a low shelf, a mid band and a high shelf, their gains on
         its line and where each acts under its arrow; the same on both channels, so a line
         stays a line. It sits after the Plane and before the three the handles move. A module switched on starts from silence, not from what it held when it went
@@ -13628,12 +13638,6 @@ const STAGE_BUNDLES = [
   ["stage.memory", "gen.phase", 0.3],
   ["stage.memory", "gen.phaser", 0.3],
 ];
-/* What the stage pushes onto each control it moves, by hand, written once a
-   frame by paintStage as it lights the rows: [lower, upper], each the routes
-   onto it summed and held to the loop's total, as the matrix does, in the
-   control's own range (0.02 is two points of a Mix). The rack's lines read it
-   (fxBroughtIn), a few times a second as they read the values. */
-const stagePushed = new Map();
 const STAGE_DEFAULT = 60;      // the amount, in percent, when a setup does not say
 const makeStageState = () => ({ glow: 0, motion: 0, memory: 0, familiar: 0, hold: 1, level: 0, change: 0, base: 0,
                                 smooth: 0, motionSmooth: 0, lastCover: 0, phase: 0, seen: false });
@@ -23111,37 +23115,29 @@ const fxOn = (fx) => (fx === "plane"
   ? PLANE_SHAPING.some(([id, rest]) => el[id].value !== rest && (id !== "planeTurn" || planeB.own))
   : fx === "eq" ? EQ_GAINS.some((id) => Number(el[id].value) !== 0)
   : Number(el[FX_MIX[fx][0]].value) > 0);
-/* A module switched off is still pushed in by the Picture amount (17 Nov, the
-   owner's call over making off mean off, web/docs/listening/off-means-off/):
-   Motion onto the delay's mix, Memory onto the phaser's and the Plane's
-   twist. The behaviour stays; the line says so while it is happening, rather
-   than "Off" over a delay that can be heard. While, not ever: at an Amount of
-   nought, or with the push under FX_BRINGS_IN, the line is "Off".
-
-   FX_BRINGS_IN is 0.02 of the control's range, two points of the knob: a
-   delay at Mix 2 is a repeat some 34 dB under the note, at the edge of
-   hearing on a held chord, and the Plane's twist at 0.02 is 7 degrees, the
-   least turn the eye takes for a turn. Lower, and the line would follow the
-   reads' own noise on a still sound. The reads are not steady - Motion falls
-   as soon as the figure stops - so once said it is held for FX_BRINGS_HOLD
-   after the push last passed the mark, and a line flickering between the two
-   at a few times a second is not what a player reads. The chorus, the EQ and
-   the reverb are no push's, and say "Off". */
-const FX_PUSHED = { delay: "gen.echo", phaser: "gen.phaser", plane: "gen.twist" };
-const FX_BRINGS_IN = 0.02, FX_BRINGS_HOLD = 1500;
-const fxBroughtAt = {};
-function fxBroughtIn(fx) {
-  const destId = FX_PUSHED[fx];
-  if (!destId) return false;
-  const hand = fxHand(fx), now = performance.now();
-  const pushed = (stagePushed.get(destId) || [0, 0])[hand];
-  if (pictureHands[hand].amount > 0 && pushed >= FX_BRINGS_IN) fxBroughtAt[fx + hand] = now;
-  else if (!(pictureHands[hand].amount > 0)) delete fxBroughtAt[fx + hand];
-  const at = fxBroughtAt[fx + hand];
-  return at !== undefined && now - at < FX_BRINGS_HOLD;
+/* What reaches each module from the Picture (17 Nov, the owner's): a tag by
+   its switch, "Picture · Memory", naming the reads the stage routes onto
+   the module's controls (STAGE_BUNDLES), shown while the hand being edited
+   has a Picture amount above nought, on or off. It states a connection, not
+   a warning: a module the picture reaches is moved whatever its switch says
+   (web/docs/listening/off-means-off/), and a later picture matrix will
+   decide which modules a read reaches, so the tag is read from the bundles
+   rather than written beside each module. Steady, not by the size of the
+   push, which changes a few times a second. The chorus, the EQ and the
+   reverb are no read's, and have none. */
+const FX_CONTROLS_PICTURED = { delay: ["gen.echo"], phaser: ["gen.phaser"], plane: ["gen.twist"] };
+function fxPictureReads(fx) {
+  const dests = FX_CONTROLS_PICTURED[fx] || [];
+  const reads = STAGE_SOURCES.filter((source) =>
+    STAGE_BUNDLES.some(([sourceId, destId]) => sourceId === source.id && dests.includes(destId)));
+  return reads.map((source) => source.label);
+}
+function fxPictureTag(fx) {
+  const reads = fxPictureReads(fx);
+  return reads.length && pictureHands[fxHand(fx)].amount > 0 ? "Picture \u00b7 " + reads.join(", ") : "";
 }
 function fxSummary(fx) {
-  if (!fxOn(fx)) return fxBroughtIn(fx) ? "Off \u2013 the Picture brings it in" : "Off";
+  if (!fxOn(fx)) return "Off";
   const n = (id) => Number(el[id].value);
   if (fx === "plane") {
     const out = [];
@@ -23245,6 +23241,8 @@ function paintRack() {
     }
     const sum = module.querySelector(".fx-sum"), said = fxSummary(fx);
     if (sum.textContent !== said) sum.textContent = said;
+    const tag = module.querySelector(".fx-picture"), named = fxPictureTag(fx);
+    if (tag && tag.textContent !== named) { tag.textContent = named; tag.hidden = !named; }
   }
 }
 document.querySelectorAll(".fx-on[data-fx-on]").forEach((pill) => pill.addEventListener("click", () => switchFx(pill.dataset.fxOn)));
@@ -24581,7 +24579,7 @@ function openGroupDetail(group, anchor) {
 const CONTROL_WORDS = {
   /* Written by web/tools/write_words.py from web/docs/what-each-control-says.md:
      edit the doc and run it, not this. */
-  "fx-switch": ["A rack module's switch", "Takes the Mix to nought and keeps it; on puts it back, or its start. Off, the Picture can still push in the delay, phaser and Plane; the line says so."],
+  "fx-switch": ["A rack module's switch", "Takes the Mix to nought and keeps it; on puts it back, or its start. Its tag, Picture · Memory or Motion, is what the Picture moves, on or off."],
   "fx-arrow": ["A rack module's arrow", "Opens the rest of this module under it, one module at a time."],
   "fx-handle": ["A rack module's handle", "Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last."],
   "mod-card": ["A modulation card", "Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on."],
@@ -26684,16 +26682,11 @@ function paintStage() {
      routes onto it summed and held to the loop's total, as the matrix does,
      over that total. The rows are found each frame rather than kept, since
      layer B's panel and the detail overlays move them about. */
-  const pushes = new Map(), pushesB = new Map();
+  const pushes = new Map();
   for (const routing of stageRoutings()) {
     const source = MOD_SOURCES.get(routing.sourceId);
     if (!source) continue;
-    const read = source.value(), depthB = routing.amountB !== undefined ? routing.amountB : routing.amount;
-    pushes.set(routing.destId, (pushes.get(routing.destId) || 0) + read * routingAmount(source, routing.amount));
-    pushesB.set(routing.destId, (pushesB.get(routing.destId) || 0) + read * routingAmount(source, depthB));
-  }
-  for (const [, destId] of STAGE_BUNDLES) {
-    stagePushed.set(destId, [Math.abs(clampLoop(pushes.get(destId) || 0)), Math.abs(clampLoop(pushesB.get(destId) || 0))]);
+    pushes.set(routing.destId, (pushes.get(routing.destId) || 0) + source.value() * routingAmount(source, routing.amount));
   }
   for (const [, destId] of STAGE_BUNDLES) {
     const lit = Math.abs(clampLoop(pushes.get(destId) || 0)) / LOOP_TOTAL;

@@ -7112,16 +7112,14 @@ five lines; at rest the rack is as drawn. `fittest.py` opens the EQ with the res
 **A switch can say "Off" over a sound you can hear.** The Picture amount's fixed pushes
 (Motion onto the delay's mix, Memory onto the phaser's and the Plane's twist) are added on
 top of a knob a switch has taken to nought, so a switched-off delay comes back in from the
-picture - the owner keeps that (`web/docs/listening/off-means-off/`). The words now say it:
-while a hand's Amount is above nought and the push onto that module's control is at least
-`FX_BRINGS_IN` (0.02 of the range, two points of the knob), its line reads *Off – the
-Picture brings it in*, held for `FX_BRINGS_HOLD` after the push last passed the mark so the
-line does not flicker with the reads. The pushes are read where the rows are lit
-(`paintStage` writes `stagePushed`, per hand), and `paintRack` reads them as it reads the
-values. Declare a map like that near its first reader's module, not beside its writer: a
-`const` below the first call of the function that reads it is a TDZ error at load, and
-`paintRack` can run before `paintStage` is reached. `racktest.py` holds it with a chord at
-Amount 100 and, as its null, the same chord at nought.
+picture - the owner keeps that (`web/docs/listening/off-means-off/`). A tag by each switch
+now names the connection: *Picture · Memory* on the Phaser and the Plane, *Picture · Motion*
+on the Delay, while the hand's Amount is above nought, on or off. It is read from
+`STAGE_BUNDLES` (`fxPictureReads`), since a later picture matrix will decide which modules a
+read reaches, and it is steady: a first build said *Off – the Picture brings it in* while the
+push passed 0.02 of the range, held 1.5 s to stop it flickering with the reads, and the owner
+chose the connection over the warning before it shipped. `racktest.py` holds the tag at
+Amount 100 with every module off and with two on, and at nought, its null, none.
 
 **A compiled core can be stale without a compiler to say so.** `core/wasm/build.py --check`
 builds the module and compares bytes, which needs clang's wasm32 target; the publishing
