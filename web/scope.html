@@ -9560,7 +9560,12 @@ function midiFollowTimebase() {
   if (best === state.timebase) return;
   state.timebase = best;
   el.timebase.value = String(best);
+  /* A note wrote it, so it is playing, not an edit: no undo step and no
+     Custom in the header (asPlayed, the owner's rule for the Frequency). */
+  handsPlayed.timebase = best;
   syncLabels();
+  // And the instrument's, which Scan reads: until the reach audit (17 Nov) only the page's moved.
+  hostSendAsHand(["timebase"]);
 }
 
 /* --- what rate this machine actually runs at --------------------------------
@@ -17571,7 +17576,8 @@ el.autoset.addEventListener("click", () => {
      each lane to itself is what makes six lanes readable at once, and it is
      what a bench scope's autoset does per channel. */
   all.forEach((buffer, i) => {
-    if (i >= laneCount() || !buffer) return;
+    // Not past the lanes the instrument scales (HOST_LANES): the screen would part from what Scan reads.
+    if (i >= laneCount() || i >= HOST_LANES || !buffer) return;
 
     let level = 0, offset = 0;
     for (let k = 0; k < buffer.length; k++) offset += buffer[k];
@@ -17607,6 +17613,12 @@ el.autoset.addEventListener("click", () => {
   setMode("auto");
   setRunning(true);
   syncLabels();
+  /* Each to the instrument as a hand on it would send it (the reach audit,
+     17 Nov): Scan reads the instrument's picture, and until then the screen
+     was drawn at Autoset's timebase and scales while Scan read the old ones.
+     The lanes past the second only as far as the instrument has them. */
+  hostSendAsHand(["timebase", "level"].concat(all.map((_, i) => "ch" + (i + 1) + "Scale")
+    .filter((id, i) => i < laneCount() && i < HOST_LANES && el[id])));
 });
 
 
@@ -20895,6 +20907,14 @@ function hostRoutings() {
   scopeHost.call("scopeRoutings", text);
 }
 
+/* What the page's own tools move - Follow's timebase, Autoset's - sent as a
+   hand on each control would send it (hostSlider), since nothing fires an
+   input event for them. Not while a load is quiet, which sends the whole. */
+function hostSendAsHand(ids) {
+  if (!hostSync.on || hostSync.applying) return;
+  for (const id of ids) if (el[id]) scopeHost.call("scopeSlider", id, el[id].value);
+}
+
 function hostSlider(event) {
   const slider = event.target;
   if (!hostSync.on || hostSync.applying || !slider || slider.type !== "range" || !slider.id) return;
@@ -22445,13 +22465,26 @@ el.phase.addEventListener("input", () => {
 
 function laneIdBase(index) { return "ch" + (index + 1); }
 
+/* How many lanes the instrument takes a full scale and an offset for: the
+   first two, which a setup carries (c0s, c1s). Past them - a split's two
+   figures, the band split's four - the page offered both until the reach
+   audit (17 Nov) found the instrument refusing them ("no such slider"), so
+   the screen drew lane 3 at one scale and Scan, which reads the
+   instrument's picture, read it at another. Taking them in the instrument
+   would be new setup fields and the core's restore; the page stops
+   offering them instead, and draws those lanes as the instrument does, at
+   full scale and centred. What it costs: a band split's quiet top band
+   cannot be opened up on the screen. Show and AC there are still the
+   page's alone (the audit's same list), and are left for now. */
+const HOST_LANES = 2;
+
 function buildLaneRows() {
   const n = laneCount();
   fitChannels(n);
 
   el.laneRows.innerHTML = state.channels.slice(0, n).map((ch, i) => {
     const id = laneIdBase(i);
-    return '<div class="menu-row">'
+    const head = '<div class="menu-row">'
       + '<span class="menu-label" style="color:var(--ch' + (i + 1) + ')">'
       + escapeText(laneName(i)) + "</span>"
       + '<div class="grow">'
@@ -22459,7 +22492,11 @@ function buildLaneRows() {
       + (ch.on ? " checked" : "") + "> Show</label>"
       + '<label class="check"><input type="checkbox" id="' + id + 'Ac"'
       + (ch.ac ? " checked" : "") + "> AC</label>"
-      + "</div></div>"
+      + "</div></div>";
+    if (i >= HOST_LANES) {
+      return head + '<p class="menu-note" data-lane-note>At full scale and centred, as the instrument draws it for Scan.</p>';
+    }
+    return head
       + '<div class="menu-row">'
       + '<label class="menu-label" for="' + id + 'Scale">Full scale</label>'
       + '<div class="grow">'
@@ -22484,6 +22521,11 @@ function buildLaneRows() {
     }
     el[id + "On"].addEventListener("change", (e) => { state.channels[i].on = e.target.checked; });
     el[id + "Ac"].addEventListener("change", (e) => { state.channels[i].ac = e.target.checked; });
+    if (i >= HOST_LANES) {
+      // Whatever an earlier lane of this number was set to, it is the instrument's now.
+      state.channels[i].fsDb = 0; state.channels[i].offset = 0;
+      continue;
+    }
     el[id + "Scale"].addEventListener("input", (e) => {
       // The detent's own decibels, so the nine positions are the nine numbers
       // the table has always held and a hand-set lane is bit for bit what it

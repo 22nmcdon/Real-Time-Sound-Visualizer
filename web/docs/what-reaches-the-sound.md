@@ -487,6 +487,14 @@ setup is sent; and a split's third and fourth lanes' full scale and offset (`ch3
 the rest) are refused by the instrument, which has no such sliders. Nothing here changes
 them; they are for the owner.
 
+*Since, the same day* (claude/page-review-fixes): Follow and Autoset send the instrument
+each control they move, as a hand on it would (`hostSendAsHand`; Autoset is one undo step,
+Follow's timebase is a note's and none), and the page no longer offers a full scale or an
+offset for a lane past the second, which it draws at full scale and centred as the
+instrument does (`HOST_LANES`). Taking them in the instrument would have been new setup
+fields and the core's restore. `followtest.py` holds all three. The table above is as
+measured before; a fresh `reach_audit.py` run will show the four lanes' rows gone.
+
 ## Info lines that are wrong
 
 <!-- wrong: written by hand from the table -->
@@ -511,6 +519,6 @@ Not fixed, because the fix is a decision rather than words:
   not play; the help sheet's "The generator is always heard" makes the same claim. This is the
   help's open question 2, now measured.
 - `midiFollow` and `autoset` say what they do to the screen truly, and the instrument is not
-  told (above).
+  told (above). Since fixed: it is told.
 - `ch3Scale`, `ch3Offset`, `ch4Scale`, `ch4Offset`: the page sends them and the instrument
-  refuses them.
+  refuses them. Since fixed: the page no longer offers them.

@@ -365,7 +365,8 @@ VIEW = {
     "loopButton", "panesButton", "panesClose", "sizeAuto", "size90", "size100", "size125", "infoLineOn",
     # The Plane's Turn is the screen's rotation.
     "rotate",
-    # A split's third and fourth lanes, which the page has and the instrument does not.
+    # A split's third and fourth lanes, which the page had and the instrument does not: since 17 Nov
+    # the page offers only their Show and AC (HOST_LANES), so the scale and offset rows find nothing.
     "ch3On", "ch3Ac", "ch3Scale", "ch3Offset", "ch4On", "ch4Ac", "ch4Scale", "ch4Offset",
 }
 # Why a row reads nought where nought is not the whole story.
@@ -373,6 +374,7 @@ NOTES = {
     "ch3Scale": "refused: the instrument has no such slider, so the page's lane 3 and Scan's part ways",
     "ch3Offset": "refused: the instrument has no such slider", "ch4Scale": "refused: the instrument has no such slider",
     "ch4Offset": "refused: the instrument has no such slider",
+    # Both measured so on 17 Nov, and fixed the same day (hostSendAsHand, followtest.py): a fresh run should find these notes stale.
     "midiFollow": "sends nothing when a note moves the page's timebase (measured with a note held): the instrument's stays",
     "autoset": "sends only Run; the timebase, full scales and level it picks stay the page's (measured with a note held)",
     "hearWet": "measured with the trace filter on: the generator's sound is the same to the bit; a live input was not played",
