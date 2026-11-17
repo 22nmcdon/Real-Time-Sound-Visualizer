@@ -51,7 +51,7 @@ each is the slider by its id, so its row is its measure.
 
 <!-- table: written by web/tools/reach_audit.py -->
 
-350 controls. REACHES THE SOUND THROUGH THE PICTURE 45; sound by design 99; idle here 76; look-only 73; face only 9; not moved 48. The null: each figure's base rendered twice, the same to the bit on all six.
+354 controls. REACHES THE SOUND THROUGH THE PICTURE 45; sound by design 102; idle here 81; look-only 69; face only 9; not moved 48. The null: each figure's base rendered twice, the same to the bit on all six.
 
 | id | control | home | class | measured change (most, held part) | figures | info line now | right? |
 |---|---|---|---|---|---|---|---|
@@ -115,6 +115,9 @@ each is the slider by its id, so its row is its measure.
 | `envAttack` | Attack | bench/bench | sound by design | 0.154 spectrum, &minus;9 dB difference (breathing-xy at 50) | breathing xy, breathing yt, settled xy, settled yt, split xy, split yt | How long a note takes to reach full level once its key goes down, and the figure grows with it. Between notes the generator is silent. | - |
 | `envDecay` | Decay | bench/bench | sound by design | 0.131 spectrum, &minus;10 dB difference (breathing-xy at 251) | breathing xy, breathing yt, settled xy, settled yt, split xy, split yt | How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck. | - |
 | `envSustain` | Sustain | bench/bench | sound by design | 0.711 spectrum, 2 dB difference (split-yt at 25) | breathing xy, breathing yt, settled xy, settled yt, split xy, split yt | The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own. | - |
+| `eqHigh` | High | bench/eq | sound by design | 0.132 spectrum, &minus;11 dB difference (breathing-xy at 72) | breathing xy, breathing yt, settled xy, settled yt, split xy, split yt | Lifts or cuts everything above the high shelf’s corner, up to 12 dB either way: air over the sound, or a darker one with softer corners. |  |
+| `eqLow` | Low | bench/eq | sound by design | 0.415 spectrum, &minus;0 dB difference (breathing-yt at 72) | breathing xy, breathing yt, settled xy, settled yt, split xy, split yt | Lifts or cuts everything below the low shelf’s corner, up to 12 dB either way: weight under the sound, the figure longer at its lowest notes. |  |
+| `eqMid` | Mid | bench/eq | sound by design | 0.440 spectrum, &minus;4 dB difference (settled-yt at 72) | breathing xy, breathing yt, settled xy, settled yt, split xy, split yt | Lifts or cuts a band around Mid at, as wide as Width, up to 12 dB either way: a boost brings that part forward, a cut hollows it out. |  |
 | `glide` | Glide | bench/bench | sound by design | 0.512 spectrum, &minus;1 dB difference (settled-xy at 125) | breathing xy, breathing yt, settled xy, settled yt, split xy, split yt | How long each new note slides from the last note's pitch rather than stepping; off at nought. In Poly every note of a chord slides from there. | - |
 | `linkAmpEnv` | Amp envelope’s link | bench/bench | sound by design | 0.128 spectrum, &minus;13 dB difference (split-yt at pressed) | split xy, split yt | Whether the amp envelope is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | - |
 | `linkDelay` | Delay’s link | bench/delay | sound by design | 0.068 spectrum, &minus;18 dB difference (split-yt at pressed) | split xy, split yt | Whether the delay is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | - |
@@ -213,10 +216,15 @@ each is the slider by its id, so its row is its measure.
 | `chorusRate` | Rate | bench/chorus | idle here | nought (the same to the bit) | - | How fast the copy’s lateness swings, one channel on a sine and the other on its cosine: the pace the figure breathes and turns at. | - |
 | `chorusTime` | Centre | bench/chorus | idle here | nought (the same to the bit) | - | How late the copy sits, from 1 to 30 ms. Short, with Feedback up, it rings as a flanger; longer is a looser doubling. | - |
 | `envRelease` | Release | bench/bench | idle here | nought (the same to the bit) | - | How long a note takes to fade once you let go of its key. The figure shrinks with it. | - |
+| `eqHighFreq` | High at | bench/eq | idle here | nought (the same to the bit) | - | Where the high shelf turns, 1 to 16 kHz, four octaves on the knob: its middle is 4 kHz. The gain is half its full amount there. |  |
+| `eqLowFreq` | Low at | bench/eq | idle here | nought (the same to the bit) | - | Where the low shelf turns, 40 to 640 Hz, four octaves on the knob: its middle is 160 Hz. The gain is half its full amount there. |  |
+| `eqMidFreq` | Mid at | bench/eq | idle here | nought (the same to the bit) | - | The middle of the mid band, 125 Hz to 8 kHz, six octaves on the knob: its middle is 1 kHz. |  |
+| `eqMidWidth` | Width | bench/eq | idle here | nought (the same to the bit) | - | How wide the mid band is, from a fifth of an octave, a narrow notch or peak, to four octaves, a broad tilt of the middle. |  |
 | `freq` | Frequency | bench/bench | idle here | nought (the same to the bit) | - | The pitch: a note in Dyad or Mono sets it, and a turn moves the note held. On Y–T, higher puts more cycles on the screen. | - |
-| `fxOrder` | Rack order | bench/bench | idle here | nought (the same to the bit) | - | Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane stays first, the Reverb last. | - |
+| `fxOrder` | Rack order | bench/bench | idle here | nought (the same to the bit) | - | Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane and EQ stay first, the Reverb last. | - |
 | `interval` | Interval | bench/bench | idle here | nought (the same to the bit) | - | The second channel against the first, in Mono; in Dyad the notes you play set it. Small whole-number ratios close the figure: a fifth is a still 2:3. | - |
 | `linkChorus` | Chorus’s link | bench/chorus | idle here | nought (the same to the bit) | - | Whether the chorus is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | - |
+| `linkEq` | EQ’s link | bench/eq | idle here | nought (the same to the bit) | - | Whether the EQ is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. |  |
 | `linkOsc` | Oscillator’s link | bench/bench | idle here | nought (the same to the bit) | - | Whether the oscillator is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | - |
 | `linkReverb` | Reverb’s link | bench/reverb | idle here | nought (the same to the bit) | - | Whether the reverb is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | - |
 | `linkShp` | Shaping’s link | bench/bench | idle here | nought (the same to the bit) | - | Whether the shaping is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | - |
@@ -279,13 +287,9 @@ each is the slider by its id, so its row is its measure.
 | `midiStripUp` | Up an octave | bench/bench | look-only | nought (the same to the bit) | - | Moves the strip's view up an octave, to see or split at a higher key. It changes what is shown, never the sound. | yes |
 | `midiWindowGo` | Chord window | bench/bench | look-only | nought (the same to the bit) | - | Goes to the Chord window, in Settings' MIDI: how long every note waits, split by notes, so a chord is dealt by pitch. | yes |
 | `ch3Ac` |  | measure/bench | look-only | nought (the same to the bit) | - |  | yes |
-| `ch3Offset` |  | measure/bench | look-only | nought (the same to the bit); refused: the instrument has no such slider | - |  | half: the screen's lane moves, the instrument refuses it (see below) |
 | `ch3On` |  | measure/bench | look-only | nought (the same to the bit) | - |  | yes |
-| `ch3Scale` |  | measure/bench | look-only | nought (the same to the bit); refused: the instrument has no such slider, so the page's lane 3 and Scan's part ways | - |  | half: the screen's lane moves, the instrument refuses it (see below) |
 | `ch4Ac` |  | measure/bench | look-only | nought (the same to the bit) | - |  | yes |
-| `ch4Offset` |  | measure/bench | look-only | nought (the same to the bit); refused: the instrument has no such slider | - |  | half: the screen's lane moves, the instrument refuses it (see below) |
 | `ch4On` |  | measure/bench | look-only | nought (the same to the bit) | - |  | yes |
-| `ch4Scale` |  | measure/bench | look-only | nought (the same to the bit); refused: the instrument has no such slider | - |  | half: the screen's lane moves, the instrument refuses it (see below) |
 | `cursorsOn` | Cursors | measure/bench | look-only | nought (the same to the bit) | - | Two time and two level cursors to drag on the Y–T screen; the readout gives each pair’s difference, and Δt as a frequency. | yes |
 | `hearDry` | Speakers get | measure/bench | look-only | nought (the same to the bit); on in every figure, so measured as the change back from hearWet | - | The speakers get the signal as it came in: the filter, the AC coupling and the turn change the picture, and the sound only through Scan. | yes, since 17 Nov: before it did not say the sound moves |
 | `hearWet` | Speakers get | measure/bench | look-only | nought (the same to the bit); measured with the trace filter on: the generator's sound is the same to the bit; a live input was not played | - | The speakers get the trace after the filter, the AC coupling and the turn, all after the instrument's limiter, so a resonant trace can be loud. | no: measured nought on the generator with the filter on (see below) |

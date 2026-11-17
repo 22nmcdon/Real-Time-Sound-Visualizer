@@ -1153,6 +1153,66 @@
 }
 },
 {
+"id": "eqHigh",
+"class": "sound by design",
+"host": false,
+"figures": [
+"breathing-xy",
+"breathing-yt",
+"settled-xy",
+"settled-yt",
+"split-xy",
+"split-yt"
+],
+"most": {
+"figure": "breathing-xy",
+"value": "72",
+"diffDb": -11.336677254916427,
+"spectral": 0.13204421049014112,
+"levelDb": -0.043591704931076974
+}
+},
+{
+"id": "eqLow",
+"class": "sound by design",
+"host": false,
+"figures": [
+"breathing-xy",
+"breathing-yt",
+"settled-xy",
+"settled-yt",
+"split-xy",
+"split-yt"
+],
+"most": {
+"figure": "breathing-yt",
+"value": "72",
+"diffDb": -0.016049807453175115,
+"spectral": 0.4151216154667774,
+"levelDb": 1.1163267640662702
+}
+},
+{
+"id": "eqMid",
+"class": "sound by design",
+"host": false,
+"figures": [
+"breathing-xy",
+"breathing-yt",
+"settled-xy",
+"settled-yt",
+"split-xy",
+"split-yt"
+],
+"most": {
+"figure": "settled-yt",
+"value": "72",
+"diffDb": -4.061360194145886,
+"spectral": 0.4401236947007238,
+"levelDb": 1.7101246749387151
+}
+},
+{
 "id": "glide",
 "class": "sound by design",
 "host": false,
@@ -2829,6 +2889,34 @@
 "most": null
 },
 {
+"id": "eqHighFreq",
+"class": "idle here",
+"host": false,
+"figures": [],
+"most": null
+},
+{
+"id": "eqLowFreq",
+"class": "idle here",
+"host": false,
+"figures": [],
+"most": null
+},
+{
+"id": "eqMidFreq",
+"class": "idle here",
+"host": false,
+"figures": [],
+"most": null
+},
+{
+"id": "eqMidWidth",
+"class": "idle here",
+"host": false,
+"figures": [],
+"most": null
+},
+{
 "id": "freq",
 "class": "idle here",
 "host": false,
@@ -2851,6 +2939,13 @@
 },
 {
 "id": "linkChorus",
+"class": "idle here",
+"host": false,
+"figures": [],
+"most": null
+},
+{
+"id": "linkEq",
 "class": "idle here",
 "host": false,
 "figures": [],
@@ -3291,21 +3386,7 @@
 "most": null
 },
 {
-"id": "ch3Offset",
-"class": "look-only",
-"host": false,
-"figures": [],
-"most": null
-},
-{
 "id": "ch3On",
-"class": "look-only",
-"host": false,
-"figures": [],
-"most": null
-},
-{
-"id": "ch3Scale",
 "class": "look-only",
 "host": false,
 "figures": [],
@@ -3319,21 +3400,7 @@
 "most": null
 },
 {
-"id": "ch4Offset",
-"class": "look-only",
-"host": false,
-"figures": [],
-"most": null
-},
-{
 "id": "ch4On",
-"class": "look-only",
-"host": false,
-"figures": [],
-"most": null
-},
-{
-"id": "ch4Scale",
 "class": "look-only",
 "host": false,
 "figures": [],
