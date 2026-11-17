@@ -28,6 +28,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "output", 0, 100, 1, 100 },
   // The master Width (12 Nov): beside the Output, never a setup's either.
   { "stereoWidth", 0, 100, 1, 100 },
+  // The sound's own Width (16 Nov), in the setup: the Width while it applies to what is drawn too.
+  { "soundWidth", 0, 100, 1, 100 },
   { "morph", 0, 300, 1, 150 },
   { "width", 5, 95, 1, 25 },
   { "table", 0, 300, 1, 150 },
