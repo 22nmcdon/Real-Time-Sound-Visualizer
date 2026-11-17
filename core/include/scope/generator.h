@@ -121,14 +121,14 @@ struct Tone : LayerSettings, PlaneTone {
   /* The master Width (12 Nov), on what is heard alone: since 16 Nov each
      note's own, nought every note the same in both ears and one each its own
      quarter turn (`sound` and the Dyad's heard voices say how). */
-  double stereoWidth = 1;
+  double stereoWidth = 0.5;  // half, the owner's default (17 Nov)
   /* What the Width applies to (16 Nov, the owner's): what you hear alone, as
      above, or what is drawn too - then the screen draws the heard mix, the
      speakers are the screen again, the effects run once, and the Width the
      mix is made at is the sound's own, `drawnWidth`, stored with the setup
      (soundWidth), where `stereoWidth` is the player's and is no setup's. */
   bool widthDrawn = false;
-  double drawnWidth = 1;
+  double drawnWidth = 0.5;
   // How long a stage switched in or out mid-sound crossfades, in ms (the page's tone says why).
   double switchMs = kSwitchMs;
   // How many samples a held route's change is walked over (the page's tone's heldRamp, which says why).
@@ -966,6 +966,7 @@ class Generator {
     else if (field == "eqMidWidth") p.eqMidWidth = v;
     else if (field == "eqHigh") p.eqHigh = v;
     else if (field == "eqHighHz") p.eqHighHz = v;
+    else if (field == "eqOn") p.eqOn = v != 0;
     else return false;
     return true;
   }

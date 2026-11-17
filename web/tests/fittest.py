@@ -59,6 +59,16 @@ SWEEP = """async ([bands]) => {
   let splitRow = null;
   let planeRows = null;
   const rackOpened = [];
+  /* The EQ's editor (17 Nov), over the tabs: its body must not scroll, it
+     must be inside the window, and its plot must keep a usable size. */
+  const eqFit = [];
+  const eqFitNow = (label) => {
+    const body = document.getElementById('eqBody'), box = el.eqEditor.getBoundingClientRect();
+    return { label, open: eqEd.open, over: body.scrollHeight - body.clientHeight, editorOver: el.eqEditor.scrollHeight - el.eqEditor.clientHeight,
+             inside: box.bottom <= window.innerHeight + 1 && box.right <= window.innerWidth + 1 && box.top >= 0,
+             plot: [Math.round(el.eqPlot.clientWidth), Math.round(el.eqPlot.clientHeight)],
+             knobs: el.eqEdKnobs.querySelectorAll('input[type=range]').length };
+  };
   const measure = (label) => {
     const views = [];
     for (const [tab] of BENCH_TABS) views.push([tab, null]);
@@ -100,12 +110,16 @@ SWEEP = """async ([bands]) => {
      where two hands have the upper's, stood 44 px over at 960x600 once the
      EQ's line was in, with nothing here to see it. */
   for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 40);
+  setEqOn(true);
   for (const fx of ['plane', 'eq', 'phaser', 'chorus', 'delay']) {
     openFx(fx, true); await wait(80);
+    // The EQ's arrow opens its editor over the tabs (17 Nov): that is what is measured for it.
+    if (fx === 'eq') { eqFit.push(eqFitNow((bands ? 'bands' : 'tone') + '+keys+photo+effects')); closeEqEditor(); await wait(40); continue; }
     measure((bands ? 'bands' : 'tone') + '+keys+photo+effects+' + fx);
   }
   openFx(null);
   for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 0);
+  setEqOn(false);
   /* Two hands, the upper edited and every section its own (G6): the
      header's Editing and a link on every section's title, the Plane's Turn
      the upper's own in the screen's rotation's place, and the clip at the
@@ -160,14 +174,23 @@ SWEEP = """async ([bands]) => {
        from the page, so a sweep that never opened one cannot pass. */
     // The EQ (17 Nov) among them: on by its gains, and opened with its four knobs under the arrow.
     for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 40);
+    setEqOn(true);
     for (const fx of ['plane', 'eq', 'phaser', 'chorus', 'delay']) {
       openFx(fx, true); await wait(80);
+      if (fx === 'eq') {
+        // Its editor, with the two hands' link in its head and the other hand's curve behind.
+        if (eqEd.open) rackOpened.push(fx);
+        eqFit.push(eqFitNow('tone+keys+photo+layers+planeB+effects'));
+        closeEqEditor(); await wait(40);
+        continue;
+      }
       const rest = document.querySelector('.fx-module[data-fx="' + fx + '"] .fx-rest');
       if (!rest.hidden) rackOpened.push(fx);
       measure('tone+keys+photo+layers+planeB+effects+' + fx);
     }
     openFx(null);
     for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 0);
+    setEqOn(false);
     document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
     document.getElementById('editHandA').click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
@@ -197,7 +220,13 @@ SWEEP = """async ([bands]) => {
     row.cardsOver = el.benchBody.scrollHeight - el.benchBody.clientHeight;
     document.body.dataset.chips = ''; await wait(80);
   }
-  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row, splitRow };
+  /* The null for the EQ's editor: its plot asked for more height than the
+     window has must put its body over, or the check above could not fail. */
+  setEqOn(true); openEqEditor(); await wait(80);
+  el.eqPlotWrap.style.flex = '0 0 ' + (window.innerHeight) + 'px'; await wait(60);
+  const eqNull = eqFitNow('null');
+  el.eqPlotWrap.style.flex = ''; closeEqEditor(); setEqOn(false); await wait(40);
+  return { over, cases: cases.length, mismeasured, editor, planeRows, lanes, rackOpened, row, splitRow, eqFit, eqNull };
 }"""
 
 # The Picture's Advanced (11 Nov): with a split, so what Scan reads and the
@@ -306,6 +335,12 @@ with sync_playwright() as pw:
             wid = sr.get("widened") or {}
             check("null: the pairing menu beside them, a third, does not read whole (%dx%d)" % (w, h),
                   not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
+            ef = r["eqFit"]
+            check("the EQ's editor opened from its arrow, with one hand and two, its seven knobs in it, does not scroll, is "
+                  "inside the window and keeps a plot at least 400 by 200 (%dx%d)" % (w, h),
+                  len(ef) == 2 and all(e["open"] and e["over"] <= 0 and e["editorOver"] <= 0 and e["inside"] and e["knobs"] == 7
+                                       and e["plot"][0] >= 400 and e["plot"][1] >= 200 for e in ef), str(ef))
+            check("null: its plot asked for the window's height puts its body over (%dx%d)" % (w, h), r["eqNull"]["over"] > 0, str(r["eqNull"]))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
                   r["rackOpened"] == ["plane", "eq", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 

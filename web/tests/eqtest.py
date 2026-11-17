@@ -6,13 +6,17 @@ What would go wrong, and what is checked for it:
 - the EQ out of its place: it is second, after the Plane, under every one of
   the six orders, and has no handle to move it by. The null is the order the
   rack had before it (no EQ);
-- a switch that changes its pill and not the sound: with nothing kept it
-  gives its start (the low and high shelves up 3 dB, the mid alone) in the
-  knobs, in what the page sends the engine and in the module's line; off
-  takes the three gains to nought and keeps them, frequencies and width
-  left where they were; on puts back what it kept - set first to something
-  that is not the start, so a switch that forgot and gave the start again
-  would fail - and after a load forgets it and gives the start again;
+- a switch that changes its pill and not the sound. Since 17 Nov (the
+  owner's) the EQ's switch is a field, eqOn, the one rack module's that is:
+  on from fresh is flat - no starting smile - and opens the editor, and the
+  engine is told it is in; off keeps the curve in the knobs and tells the
+  engine it is out; on again is the same curve. The null is the old switch,
+  which took the gains to nought: off here must leave them where they were;
+- a code from before the field (version 11) losing its EQ, or a code made
+  since turning one on: an old code is on where any gain was off nought,
+  the upper hand's by its own gains, and a version-12 code with a gain and no
+  eqOn is off (an off switch is the default, and left out of a code). The
+  null is the rule read without the version, which would turn the new code on;
 - the readings and the line lying about the octave laws: each knob's middle
   is 160 Hz, 1 kHz and 4 kHz, the ends 40 Hz and 16 kHz, held against the
   generator's own fields (eqLowHz and the rest), not against the page's
@@ -71,49 +75,69 @@ with sync_playwright() as pw:
     handle = p.evaluate("() => !!document.querySelector('#eqModule [data-fx-move]')")
     check("and it has no handle to move it by, as the Plane has none", handle is False)
 
-    print("\n--- its switch ---")
+    print("\n--- its switch, a field (17 Nov) ---")
     sw = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const pill = document.querySelector('.fx-on[data-fx-on="eq"]');
       const sum = () => document.querySelector('[data-fx-sum="eq"]').textContent;
       const knobs = () => ['eqLow', 'eqMid', 'eqHigh', 'eqLowFreq', 'eqMidFreq', 'eqMidWidth', 'eqHighFreq'].map((id) => el[id].value);
-      const sent = () => { const g = genSettings(0); return [g.eqLow, g.eqMid, g.eqHigh]; };
+      const sent = () => { const g = genSettings(0); return [g.eqOn, g.eqLow, g.eqMid, g.eqHigh]; };
       restore({}); await wait(30); paintRack();
       const fresh = { on: fxOn('eq'), pill: pill.getAttribute('aria-pressed'), sum: sum(), sent: sent() };
       pill.click(); await wait(30);
-      const start = { knobs: knobs(), echo: [echo.eqLow, echo.eqMid, echo.eqHigh], sent: sent(), on: fxOn('eq'), sum: sum(),
-                      pill: pill.getAttribute('aria-pressed') };
-      // Away from the start, with a frequency and the width moved too.
+      const start = { knobs: knobs(), echo: [echo.eqOn, echo.eqLow, echo.eqMid, echo.eqHigh], sent: sent(), on: fxOn('eq'), sum: sum(),
+                      pill: pill.getAttribute('aria-pressed'), editor: eqEd.open };
+      closeEqEditor();
       for (const [id, v] of [['eqLow', -45], ['eqMid', 20], ['eqHigh', 70], ['eqMidFreq', 30], ['eqMidWidth', 25]]) setControl(id, v);
       const set = { knobs: knobs(), sent: sent() };
       pill.click(); await wait(30);
-      const off = { knobs: knobs(), sent: sent(), on: fxOn('eq'), sum: sum(), pill: pill.getAttribute('aria-pressed') };
+      const off = { knobs: knobs(), sent: sent(), on: fxOn('eq'), sum: sum(), pill: pill.getAttribute('aria-pressed'), code: decodeSetup(encodeSetup(snapshot())) };
+      // Moved from code while off - a setup, the morph, a host - it stays off: only a hand switches it on.
+      setControl('eqLow', -40);
+      const byCode = { on: el.eqOn.checked, sent: sent() };
+      setControl('eqLow', -45);
       pill.click(); await wait(30);
-      const back = { knobs: knobs(), sent: sent(), on: fxOn('eq') };
-      // Off, another sound loaded, on: the start again, not what this sound kept.
-      pill.click(); await wait(30);
-      restore({}); paintRack();
-      pill.click(); await wait(30);
-      const loaded = { knobs: knobs() };
-      pill.click(); await wait(30);
-      return { fresh, start, set, off, back, loaded };
+      const back = { knobs: knobs(), sent: sent(), on: fxOn('eq'), editor: eqEd.open };
+      closeEqEditor(); restore({});
+      return { fresh, start, set, off, byCode, back };
     }""")
-    print("    %s" % sw)
-    check("fresh, it is off, says so, and sends nought", sw["fresh"] == {"on": False, "pill": "false", "sum": "Off", "sent": [0, 0, 0]},
+    print("    %s" % {k: v for k, v in sw.items()})
+    check("fresh, it is off, says so, and the engine is told it is out", sw["fresh"] == {"on": False, "pill": "false", "sum": "Off", "sent": [False, 0, 0, 0]},
           str(sw["fresh"]))
-    check("with nothing kept, on is the start: low and high +3 dB, the mid alone, in the knobs, the page's state and what the engine is sent",
-          sw["start"]["knobs"][:3] == ["30", "0", "30"] and sw["start"]["echo"] == [3, 0, 3] and sw["start"]["sent"] == [3, 0, 3]
+    check("on from fresh is flat - no starting smile - in the knobs, the page's state and what the engine is sent, and it is in",
+          sw["start"]["knobs"][:3] == ["0", "0", "0"] and sw["start"]["echo"] == [True, 0, 0, 0] and sw["start"]["sent"] == [True, 0, 0, 0]
           and sw["start"]["on"] and sw["start"]["pill"] == "true", str(sw["start"]))
-    check("and its line says so, each band where it acts", sw["start"]["sum"] == "low +3.0 dB at 160 Hz · high +3.0 dB at 4.0 kHz",
-          sw["start"]["sum"])
-    check("off takes the three gains to nought, in the knobs and the engine, and leaves where they act",
-          sw["off"]["knobs"] == ["0", "0", "0"] + sw["set"]["knobs"][3:] and sw["off"]["sent"] == [0, 0, 0]
-          and not sw["off"]["on"] and sw["off"]["sum"] == "Off", str(sw["off"]))
-    check("on puts back what it kept, not the start", sw["back"]["knobs"] == sw["set"]["knobs"]
-          and sw["back"]["sent"] == [-4.5, 2, 7] and sw["back"]["on"], str(sw["back"]))
-    null("what it kept is not the start", sw["set"]["knobs"][:3] != ["30", "0", "30"])
-    check("off, another sound loaded and on again is the start, not what the first sound kept",
-          sw["loaded"]["knobs"][:3] == ["30", "0", "30"], str(sw["loaded"]))
+    check("and its line says flat, and the editor opens", sw["start"]["sum"] == "flat" and sw["start"]["editor"], str(sw["start"]))
+    check("off keeps the curve in the knobs and tells the engine it is out", sw["off"]["knobs"] == sw["set"]["knobs"]
+          and sw["off"]["sent"] == [False, -4.5, 2, 7] and not sw["off"]["on"] and sw["off"]["sum"] == "Off", str(sw["off"]))
+    null("the old switch took the gains to nought; these are not", sw["off"]["knobs"][:3] != ["0", "0", "0"])
+    check("and a code made off says so by leaving eqOn out, with the curve in it", "eqOn" not in sw["off"]["code"] or sw["off"]["code"]["eqOn"] is False,
+          str({k: v for k, v in sw["off"]["code"].items() if k.startswith("eq")}))
+    check("a gain moved from code while off leaves it off", sw["byCode"] == {"on": False, "sent": [False, -4.0, 2, 7]}, str(sw["byCode"]))
+    check("on again is the same curve, in", sw["back"]["knobs"] == sw["set"]["knobs"] and sw["back"]["sent"] == [True, -4.5, 2, 7]
+          and sw["back"]["on"], str(sw["back"]))
+
+    print("\n--- a code from before the field ---")
+    old = p.evaluate("""() => {
+      const code = (o) => btoa(JSON.stringify(o)).replace(/=+$/, '');
+      const read = (o) => { const s = decodeSetup(code(o)); return { eqOn: s.eqOn, bEqOn: s.bEqOn, v: s.v }; };
+      return {
+        v11gain: read({ v: 11, eqLow: 30 }), v11mid: read({ v: 11, eqMid: -5 }), v11none: read({ v: 11, eqLowFreq: 20 }),
+        v11b: read({ v: 11, bEqHigh: 20 }), v11bflat: read({ v: 11, eqLow: 30, bEqLow: 0, bEqLowFreq: 10 }),
+        v12gain: read({ v: 12, eqLow: 30 }), v12on: read({ v: 12, eqOn: true }),
+        version: SETUP_VERSION,
+      };
+    }""")
+    print("    %s" % old)
+    check("the page and the core are at version 12", old["version"] == 12 and old["v12gain"]["v"] == 12, str(old["version"]))
+    check("a version-11 code with a gain off nought loads on, and the mid's counts too",
+          old["v11gain"]["eqOn"] is True and old["v11mid"]["eqOn"] is True, str(old))
+    check("a version-11 code with every gain at nought loads off, a frequency moved or not", old["v11none"]["eqOn"] is False, str(old["v11none"]))
+    check("the upper hand's by its own gains, a gain it lacks the lower's",
+          old["v11b"]["bEqOn"] is True and old["v11b"]["eqOn"] is False and old["v11bflat"]["bEqOn"] is False and old["v11bflat"]["eqOn"] is True,
+          str([old["v11b"], old["v11bflat"]]))
+    null("a version-12 code with a gain and no eqOn is off, which the rule read without the version would turn on",
+         old["v12gain"]["eqOn"] in (False, None) and old["v12on"]["eqOn"] is True, str([old["v12gain"], old["v12on"]]))
 
     print("\n--- its readings, against the engine's own fields ---")
     rd = p.evaluate("""async () => {
@@ -144,8 +168,9 @@ with sync_playwright() as pw:
       const plain = encodeSetup(snapshot()), plainFields = Object.keys(decodeSetup(plain)).filter((k) => /^b?[eE]q/.test(k));
       const set = { eqLow: -60, eqLowFreq: 20, eqMid: 45, eqMidFreq: 70, eqMidWidth: 33, eqHigh: 95, eqHighFreq: 85 };
       for (const [id, v] of Object.entries(set)) setControl(id, v);
+      setEqOn(true);
       const code = encodeSetup(snapshot());
-      const engine = () => { const g = genSettings(0); return [g.eqLow, g.eqLowHz, g.eqMid, g.eqMidHz, g.eqMidWidth, g.eqHigh, g.eqHighHz]; };
+      const engine = () => { const g = genSettings(0); return [g.eqLow, g.eqLowHz, g.eqMid, g.eqMidHz, g.eqMidWidth, g.eqHigh, g.eqHighHz, g.eqOn]; };
       const before = engine();
       restore({}); await wait(30);
       const cleared = engine();
@@ -161,10 +186,11 @@ with sync_playwright() as pw:
     check("a default EQ writes no field into a code", rt["plainFields"] == [], str(rt["plainFields"]))
     check("every field set away from its default comes back, in the knobs and in the engine",
           rt["back"]["knobs"] == rt["set"] and rt["back"]["engine"] == rt["before"] and all(rt["coded"][k] == v for k, v in
-          zip(["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq"], rt["set"])), str(rt["back"]))
+          zip(["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq"], rt["set"]))
+          and rt["coded"].get("eqOn") is True and rt["back"]["engine"][7] is True, str(rt["back"]))
     null("the restore between really cleared it", rt["cleared"] != rt["before"] and rt["cleared"][0] == 0)
-    check("a code with no EQ, loaded over one that is on, is an EQ at nought", rt["old"][0] == 0 and rt["old"][2] == 0
-          and rt["old"][5] == 0, str(rt["old"]))
+    check("a code with no EQ, loaded over one that is on, is an EQ at nought, and off", rt["old"][0] == 0 and rt["old"][2] == 0
+          and rt["old"][5] == 0 and rt["old"][7] is False, str(rt["old"]))
 
     print("\n--- the hands ---")
     hd = p.evaluate("""async () => {
@@ -208,7 +234,7 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       restore({}); await wait(30);
       const dry = TAB_LINES.space();
-      setControl('eqMid', -30); setControl('delayMix', 20);
+      setEqOn(true); setControl('eqMid', -30); setControl('delayMix', 20);
       const on = TAB_LINES.space();
       restore({});
       return { dry, on };

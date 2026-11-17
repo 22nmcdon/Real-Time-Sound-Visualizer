@@ -62,6 +62,11 @@ struct PlaneTimeTone {
   // The EQ (17 Nov): each band's gain in dB, nought for none, and where it
   // acts in hertz; the mid's width in octaves.
   double eqLow = 0, eqLowHz = 160, eqMid = 0, eqMidHz = 1000, eqMidWidth = 1, eqHigh = 0, eqHighHz = 4000;
+  /* Whether the EQ is in at all (17 Nov, the owner's): its switch is a field,
+     the one rack module whose is, so an EQ switched off keeps its curve and a
+     flat one switched on is ready to shape. Off, no band runs, whatever the
+     gains: the same to the bit as no EQ. */
+  bool eqOn = false;
 };
 
 /* The orders the phaser (p), the chorus (c) and the delay (d) can run in, as
@@ -338,6 +343,7 @@ class Plane {
   void eqSet(Time& T, const PlaneTimeTone& t) const {
     const double gains[3] = { t.eqLow, t.eqMid, t.eqHigh }, freqs[3] = { t.eqLowHz, t.eqMidHz, t.eqHighHz };
     T.eqBands = 0;
+    if (!t.eqOn) return;
     for (int k = 0; k < 3; k++) {
       const double g = std::isfinite(gains[k]) ? std::fmax(-24.0, std::fmin(24.0, gains[k])) : 0;
       if (g == 0) continue;

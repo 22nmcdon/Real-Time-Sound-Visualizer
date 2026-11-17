@@ -38,7 +38,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 11;  // SETUP_VERSION
+constexpr int kSetupVersion = 12;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 // The table (schema.h, SETUP_FIELDS on the page), parsed once.
@@ -458,6 +458,26 @@ inline bool migrateSetup(Json& setup) {
       const Json* amount = field(key);
       if (amount && amount->type == Json::Type::Number) setup.set(key, Json::number(jsMin(100, amount->n * (0.8 / 0.5))));
     }
+  }
+  /* 11 -> 12 (17 Nov): the EQ's switch became a field, `eqOn`, where it had
+     been a view over the three gains - on while any was off nought. A code
+     from before says nothing of it, so it is on where the gains said it was.
+     A pass rather than a default read two ways: a code made since leaves
+     eqOn out when it is off (encodeSetup writes what differs from the
+     defaults), and an EQ switched off keeps its curve, so "no eqOn and a
+     gain off nought" means on only in a code older than the field. The
+     upper hand's the same, where the code gave it any gain of its own; a
+     gain it lacks is the lower's, as restore reads it. */
+  if (!(v >= 12) && setup.type == Json::Type::Object) {
+    const auto gainOff = [&](const char* own, const char* a) {
+      const Json* g = setup.get(own);
+      if (!g && a) g = setup.get(a);
+      return g && g->type == Json::Type::Number && std::isfinite(g->n) && jsMathRound(g->n) != 0;
+    };
+    if (!setup.get("eqOn"))
+      setup.set("eqOn", Json::boolean(gainOff("eqLow", nullptr) || gainOff("eqMid", nullptr) || gainOff("eqHigh", nullptr)));
+    if (!setup.get("bEqOn") && (setup.get("bEqLow") || setup.get("bEqMid") || setup.get("bEqHigh")))
+      setup.set("bEqOn", Json::boolean(gainOff("bEqLow", "eqLow") || gainOff("bEqMid", "eqMid") || gainOff("bEqHigh", "eqHigh")));
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));
   return true;

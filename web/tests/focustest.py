@@ -13,7 +13,8 @@ What would go wrong, and what is checked for it:
   focused against its unfocused neighbour;
 - an overlay a screen reader cannot name, or that Tab walks out of: each of
   Settings, Scope & measure, Perform, the Picture's Advanced, the Panes, the
-  modulation card's editor, Routings, the preset browser, the help, the
+  modulation card's editor, the EQ's editor and a point's menu in it (17 Nov),
+  Routings, the preset browser, the help, the
   right-click menu, a control's modulation editor and the info card is
   opened, its role and name read, and Tab and Shift+Tab pressed more times
   than it has stops: the focus must be inside after every press. The null is
@@ -135,6 +136,8 @@ with sync_playwright() as pw:
         ("the Picture's Advanced", opener("() => el.pictureMore.click()"), "#picturePanel"),
         ("the Panes", opener("() => { el.pictureMore.click(); el.panesButton.click(); }"), "#panesPanel"),
         ("a card's editor", opener("() => pressModCard('lfo1')"), "#modEditor"),
+        ("the EQ's editor", opener("() => { setBenchTab('space'); openEqEditor(); }"), "#eqEditor"),
+        ("an EQ point's menu", opener("() => { setBenchTab('space'); openEqEditor(); openEqPointMenu(1); }"), ".over.ctx"),
         ("Routings", opener("() => el.routingsButton.click()"), "#routingsPanel"),
         ("the preset browser", opener("() => openPresets()"), "#presetDialog"),
         ("the help", opener("() => openHelp()"), "#helpDialog"),
@@ -145,7 +148,7 @@ with sync_playwright() as pw:
     def close_all():
         for _ in range(3): p.keyboard.press("Escape")
         ev("""() => { closeOverlay(); setMenuOpen(false); setMeasureOpen(false); setPerformOpen(false); setPictureOpen(false);
-                      setPanesOpen(false); if (typeof closeModCard === 'function') closeModCard(); setRoutingsOpen(false);
+                      setPanesOpen(false); if (typeof closeModCard === 'function') closeModCard(); setRoutingsOpen(false); closeEqEditor();
                       if (el.presetDialog.open) el.presetDialog.close(); if (el.helpDialog.open) el.helpDialog.close(); }""")
         p.wait_for_timeout(100)
     def walk(sel, presses):

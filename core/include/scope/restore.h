@@ -348,6 +348,7 @@ struct Brain {
     double rvMix = 0, rvSize = 0.4, rvTone = 0.6, rvPre = 10, rvSpread = 0;  // P9
     // The EQ (17 Nov): each gain in dB, each frequency as its knob's place (0 to 100, eqHz), the mid's width in octaves.
     double eqLow = 0, eqLowPos = 50, eqMid = 0, eqMidPos = 50, eqWidth = 1, eqHigh = 0, eqHighPos = 50;
+    bool eqOn = false;  // its switch, a field (17 Nov)
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
   // Layer B's own echo and chorus (the page's `echoB`), under the plane's
@@ -561,8 +562,8 @@ inline const std::array<HandSectionSpec, kHandSections>& handSections() {
       { "bReverbMix", "bReverbSize", "bReverbTone", "bReverbPre", "bReverbSpread" },
       { "gen.reverb", "gen.reverbSize", "gen.reverbTone" }, 8 },
     // The EQ (17 Nov), last so every section before it keeps its place.
-    { "eq", "linkEq", { "eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq" },
-      { "bEqLow", "bEqLowFreq", "bEqMid", "bEqMidFreq", "bEqMidWidth", "bEqHigh", "bEqHighFreq" }, {}, 16 },
+    { "eq", "linkEq", { "eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq", "eqOn" },
+      { "bEqLow", "bEqLowFreq", "bEqMid", "bEqMidFreq", "bEqMidWidth", "bEqHigh", "bEqHighFreq", "bEqOn" }, {}, 16 },
   } };
   return specs;
 }
@@ -951,6 +952,7 @@ inline void eqSend(Generator& gen, const Brain::EchoState& e, int layer) {
   gen.set("eqMid", e.eqMid, layer); gen.set("eqMidHz", eqHz(1, e.eqMidPos), layer);
   gen.set("eqMidWidth", e.eqWidth, layer);
   gen.set("eqHigh", e.eqHigh, layer); gen.set("eqHighHz", eqHz(2, e.eqHighPos), layer);
+  gen.set("eqOn", e.eqOn ? 1 : 0, layer);
 }
 
 // syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
@@ -997,7 +999,7 @@ inline void syncEchoB(Brain& b, Generator& gen) {
   }
   if (handLinked(b, kHandEq)) {
     f.eqLow = a.eqLow; f.eqLowPos = a.eqLowPos; f.eqMid = a.eqMid; f.eqMidPos = a.eqMidPos; f.eqWidth = a.eqWidth;
-    f.eqHigh = a.eqHigh; f.eqHighPos = a.eqHighPos;
+    f.eqHigh = a.eqHigh; f.eqHighPos = a.eqHighPos; f.eqOn = a.eqOn;
   }
   gen.set("timeOwn", timeOwnMask(b), 1);
   const Brain::EchoState& e = b.echoB;
@@ -1655,6 +1657,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     e.eqLow = fieldNum("eqLow") / 10; e.eqLowPos = fieldNum("eqLowFreq");
     e.eqMid = fieldNum("eqMid") / 10; e.eqMidPos = fieldNum("eqMidFreq"); e.eqWidth = fieldNum("eqMidWidth") / 10;
     e.eqHigh = fieldNum("eqHigh") / 10; e.eqHighPos = fieldNum("eqHighFreq");
+    e.eqOn = fieldFlag("eqOn");
     setA("delayMix", e.mix);
     setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
@@ -1718,6 +1721,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
         f.eqWidth = slide("bEqMidWidth", 10, e.eqWidth);
         f.eqHigh = slide("bEqHigh", 10, e.eqHigh);
         f.eqHighPos = slide("bEqHighFreq", 1, e.eqHighPos);
+        const auto on = own("bEqOn");
+        f.eqOn = on ? on->b : e.eqOn;
       }
     }
     syncEchoB(brain, gen);
@@ -2100,6 +2105,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     syncEcho(b, gen);
   }
   else if (id == "delayPingPong") { echoTarget(b, keys, kHandDelay).pingPong = checked; syncEcho(b, gen); }
+  // The EQ's switch, a field (17 Nov), as the ping-pong is: the module's own target.
+  else if (id == "eqOn") { echoTarget(b, keys, kHandEq).eqOn = checked; syncEcho(b, gen); }
   // The key and the quantiser.
   else if (id == "keyRoot") { b.keyRoot = number; syncQuantiser(b, gen); }
   else if (id == "keyScale") { b.keyScale = text; syncQuantiser(b, gen); }
@@ -2239,7 +2246,7 @@ inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to) {
       t.phaser = f.phaser; t.phRate = f.phRate; t.phDepth = f.phDepth; t.phFeedback = f.phFeedback;
     } else if (sec == kHandEq) {
       t.eqLow = f.eqLow; t.eqLowPos = f.eqLowPos; t.eqMid = f.eqMid; t.eqMidPos = f.eqMidPos; t.eqWidth = f.eqWidth;
-      t.eqHigh = f.eqHigh; t.eqHighPos = f.eqHighPos;
+      t.eqHigh = f.eqHigh; t.eqHighPos = f.eqHighPos; t.eqOn = f.eqOn;
     } else {
       t.rvMix = f.rvMix; t.rvSize = f.rvSize; t.rvTone = f.rvTone; t.rvPre = f.rvPre; t.rvSpread = f.rvSpread;
     }
@@ -2284,7 +2291,7 @@ inline bool handsEqual(const Brain& b, const Generator& gen, int sec) {
     return f.rvMix == e.rvMix && f.rvSize == e.rvSize && f.rvTone == e.rvTone && f.rvPre == e.rvPre && f.rvSpread == e.rvSpread;
   if (sec == kHandEq)
     return f.eqLow == e.eqLow && f.eqLowPos == e.eqLowPos && f.eqMid == e.eqMid && f.eqMidPos == e.eqMidPos
-        && f.eqWidth == e.eqWidth && f.eqHigh == e.eqHigh && f.eqHighPos == e.eqHighPos;
+        && f.eqWidth == e.eqWidth && f.eqHigh == e.eqHigh && f.eqHighPos == e.eqHighPos && f.eqOn == e.eqOn;
   if (sec == kHandPicture) {
     const Brain::PictureHand &p = b.pictureHands[0], &q = b.pictureHands[1];
     if (p.amount != q.amount || p.strike != q.strike || p.responds != q.responds || p.feel != q.feel || p.rise != q.rise
