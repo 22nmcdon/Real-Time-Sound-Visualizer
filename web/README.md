@@ -7150,3 +7150,62 @@ contain may take it under the other heading, and that is not a fault, so those p
 and the reverbTone that existed only for them was not shipped. What stays: every preset
 under its own heading as shipped, the base still, and the reverb at its fullest bounded at
 0.10 late as a bound on the reverb, not on a heading.
+
+## The EQ drawn, its switch a field, and four traps on the way (17 Nov)
+
+The owner's mockup (`web/docs/mockups/eq/`, chosen layout A) is built: the EQ's line draws its
+curve with three points in place of its gain knobs, and the curve, its arrow or its switch
+opens an editor over the tabs where a card's editor opens. The seven knobs are still the
+values. They live in `#eqStore` inside the module, in the markup's order (which is the
+morph's and the core's `kMorphIds`), and are moved into the editor by band while it is open
+and back after; a point writes them with `setControl`, the path a hand on a knob takes, so
+undo makes one step on release, the host and the core hear a knob, and nothing new is stored.
+Each point sits on the drawn total curve at its band's frequency, and the sum is drawn
+through each band's frequency (`eqWithBands`) so a point is on a vertex of the path and not
+between two: `eqeditortest.py` holds every point within half a pixel of the path at both
+windows, and the page's curve to the core's own (`core/tests/tools/eq_response_cpp.cpp`,
+`Plane::eqBand`) to 0.01 dB.
+
+**The EQ's switch is a field, the rack's only one** (`eqOn`, `bEqOn`; the owner's): a flat
+EQ that is on is ready to shape, and one switched off keeps its curve, and a view over three
+gains can say neither. So `EQ_START`'s smile went, and a code from before the field is read
+by a version-12 pass in `migrateSetup` - on where a gain was off nought - rather than by a
+default read two ways. That would have been wrong: `encodeSetup` writes only what differs
+from the defaults, so a code made since with its EQ off and its curve kept has no `eqOn` at
+all, and "no eqOn, a gain off nought" means on only in an old code.
+
+**A hand moving the EQ switches it on; code moving it does not.** The rule is the page's
+(`eqHand`), and it took two tries. A capture listener that set a flag from `event.isTrusted`
+on every input event cleared it on the knob's own synthetic `input`, which is dispatched
+inside the trusted pointermove and reaches the capture listener before the handler that
+asks: so only a trusted event may set or clear it, from its capture to its bubble on the
+document, and only one whose target is the EQ's line, its editor or a menu over them - a
+crossfader dragged by a hand writes the EQ's knobs too, and that is not moving them. The
+core does not apply the rule: the page sends the switch as its own change, so the face and
+the core agree control for control.
+
+**`syncEchoPanel` paints the EQ, and can run before the editor's code has.** A `const`
+read in its temporal dead zone throws even under `typeof`; `eqEd` is a `var` so the first
+paint finds nothing and draws nothing.
+
+**An edit script's "already done" test must look for the new text, not the old's absence.**
+The helper used for this work skipped a replacement when the old text was gone; an insertion
+keeps the old text (it is the anchor), so a re-run after a failed assertion inserted the
+EQ's checkbox twice - two elements with one id, the thing CLAUDE.md warns of - and an id
+twice in the `el` list. It is caught here by `grep -c 'id="eqOn"'`; the helper now asks
+whether the new text is there.
+
+**An undo check that runs after code has moved the setup** must rebase undo first
+(`undoRebase(); undoHanded = false`): a trusted click earlier in the run (closing the help)
+leaves `undoHanded` set, so the code's own change became a step the moment the test's mouse
+went down, and a drag that moved nothing looked like one step.
+
+The live spectrum behind the curve is the Spect view's `computeSpectrum`, asked every frame
+while the editor is open (and only then), smoothed over about four frames; measured with a
+note held at 1400x900, the transform and the drawing cost 0.18 ms a frame on average and
+0.5 ms at most, against the frame's 16.7.
+
+Also in this batch, the owner's: the Width (the player's and the sound's own) defaults to
+fifty, in the page's markup, `SETUP_FIELDS`, the core's generator and panel, and so the
+plugin's parameter; and *Speakers get* and the lag's *Heard*, which measure nought on the
+generator, are shown only while a live input plays (`speakerstest.py`).

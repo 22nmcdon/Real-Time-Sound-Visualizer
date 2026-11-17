@@ -352,16 +352,34 @@ Do not re-litigate these without a reason; each replaced something that failed.
   their knobs there until then), and folded so their lines are tighter. Decided by room,
   not by window size, so it is right at sizes nobody measured.
   The switch is a view over values, not a field: off takes the Mix (the
-  Plane's shaping and turn, the EQ's three gains) to rest and keeps what it
+  Plane's shaping and turn) to rest and keeps what it
   had, on puts it back (`switchFx`, `fxKept`), so a setup, a host knob or a
   code that moves a Mix switches the module with it, and a module saved off
   comes back off with nothing to put back. With nothing kept, on is the
-  module's start: its Mix (`FX_MIX`), the Plane's Twist of 15
+  module's start: its Mix (`FX_MIX`) or the Plane's Twist of 15
   (`PLANE_START`, chosen by measuring three,
-  `web/docs/listening/plane-start/`) or the EQ's low and high shelves up
-  3 dB (`EQ_START`), each chosen by measuring it over the bank but held
-  to no heading (17 Nov; the presets, below); `core/tests/pieces/starts.py`
-  holds what they are. Lines and switches are read off the values a
+  `web/docs/listening/plane-start/`, held to no heading: 17 Nov, the
+  presets, below); `core/tests/pieces/starts.py` holds what it is. **The
+  EQ's switch is the exception, a field** (`eqOn`, and `bEqOn` per hand;
+  17 Nov, the owner's): a flat EQ that is on means something - ready to
+  shape - and one switched off keeps its curve, neither of which a view
+  over three gains can say. Off, the core runs no band, the same to the
+  bit as no EQ; on from a curve never shaped is flat (no start; `EQ_START`
+  went) and opens the editor; a point or a gain moved by a hand while off
+  switches it on (`eqHand`, trusted events on the EQ's line, editor or a
+  menu over them - a setup, the morph or a host moving a gain leaves it
+  off). A code from before the field (version 11) is on where any gain was
+  off nought: a version-12 decode pass in the core's `migrateSetup`, not a
+  default read two ways, since a code leaves an off switch out. The EQ is
+  drawn as its response (17 Nov, the owner's mockup, `web/docs/mockups/eq/`):
+  its line has the curve with three points in place of its gain knobs, a
+  button, smaller on a folded line, flat and grey while off, both hands'
+  when they differ; the curve, its arrow or its switch on open its editor
+  over the tabs where a card's editor opens (`openEqEditor`), each point on
+  the drawn total curve at its band's frequency, its seven knobs moved in
+  under it as the values the points write (`setControl`, a knob's path), and
+  the Spect view's analysis faint behind it, smoothed, only while open
+  (`eqSpectrumStep`, about 0.2 ms a frame). `eqeditortest.py` holds it. Lines and switches are read off the values a
   few times a second (`paintRack`). It replaced the Display, Plane and
   "Delay, chorus and phaser" sections; the Numbers read switch went to
   Scope & measure's Measure. Since F5b the order of the phaser, chorus and

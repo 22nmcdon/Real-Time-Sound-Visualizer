@@ -1327,7 +1327,8 @@ int main() {
           && p.knob("phaser")->get() == 0 && p.knob("reverb")->get() == 0
           // The Output at unity, its slider's top, which no setup moves.
           && p.knob("output")->get() == 100 && p.slider("output") == 100
-          && p.knob("width")->get() == 100 && p.slider("stereoWidth") == 100
+          // The Width at fifty, the owner's default since 17 Nov.
+          && p.knob("width")->get() == 50 && p.slider("stereoWidth") == 50
           // F7c's three, each its own slider: strike and softness differ at
           // the page's defaults (50 and 30), so one wired to the other's fails.
           && p.knob("strike")->get() == p.slider("scanStrike") && p.knob("softness")->get() == p.slider("scanSoft")
@@ -1492,7 +1493,7 @@ int main() {
     check("null: the Level automated as far moves the picture too", level.second != still.second && apart(still.first, level.first, 20 * block, end) > 0.01);
     /* The Width (12 Nov) automated to nought: the picture the same to the
        bit and, once its glide has landed, both channels one, to the bit; the
-       null is the same plugin left at a hundred, whose channels differ.
+       null is the same plugin left at its default (fifty since 17 Nov), whose channels differ.
        Since 16 Nov the Width is each note's, before the rack, and the Plane's
        twist, which the picture pushes on the opening sound, turns the pair
        after it: so on the base with the picture off, where nothing turns it. */
@@ -1521,7 +1522,7 @@ int main() {
           mono && wpic == spic && apart(wl, wr, 0, 20 * block) > 0.01,
           "before the move " + num(apart(wl, wr, 0, 20 * block)) + ", after " + num(apart(wl, wr, tail, wl.size()))
           + (wpic == spic ? ", the picture the same" : ", the picture moved"));
-    check("null: left at a hundred the channels differ", apart(sl, sr, 20 * block, end) > 0.01, num(apart(sl, sr, 20 * block, end)));
+    check("null: left at its default, fifty, the channels differ", apart(sl, sr, 20 * block, end) > 0.01, num(apart(sl, sr, 20 * block, end)));
   }
   /* Kept with the project, beside the setup and never in it (G7): saved at
      50, a fresh plugin reopens at 50, its parameter with it; a preset then
