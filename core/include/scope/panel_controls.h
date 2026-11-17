@@ -28,6 +28,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "output", 0, 100, 1, 100 },
   // The master Width (12 Nov): beside the Output, never a setup's either.
   { "stereoWidth", 0, 100, 1, 100 },
+  // The sound's own Width (16 Nov), in the setup: the Width while it applies to what is drawn too.
+  { "soundWidth", 0, 100, 1, 100 },
   { "morph", 0, 300, 1, 150 },
   { "width", 5, 95, 1, 25 },
   { "table", 0, 300, 1, 150 },
@@ -203,7 +205,8 @@ inline constexpr const char* kMorphIds[] = {
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
   "vcfSus", "vcfRel", "inputDepth", "filterCutoff", "filterRes",
-  "oscScan", "scanStrike", "scanSoft", "menvAtk", "menvDec", "menvSus", "menvRel",
+  // The sound's own Width (16 Nov), in the Picture section after Scan's three: the setup's, so walked.
+  "oscScan", "scanStrike", "scanSoft", "soundWidth", "menvAtk", "menvDec", "menvSus", "menvRel",
 };
 
 }  // namespace scope

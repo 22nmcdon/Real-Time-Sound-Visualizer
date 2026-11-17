@@ -1367,6 +1367,12 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("just", truthy ? 1 : 0);
   }
   // The quarter turn (P8g) is always on since 16 Nov: an old code's `polyRound`, either way, is read by nothing.
+  /* What the Width applies to, and the sound's own Width (16 Nov), additive:
+     a code from before them hears its Width on what is heard alone, and keeps
+     a hundred for the sound's, which nothing reads until the switch is on. */
+  setA("widthDrawn", fieldFlag("widthDrawn") ? 1 : 0);
+  panel.setRange("soundWidth", fieldText("soundWidth"));
+  setA("drawnWidth", std::fmax(0.0, std::fmin(1.0, panel.range("soundWidth") / 100)));
   {
     // Expression (6 Nov), as the page's restore reads it: a range on the menu's list, or two.
     const double range = fieldNum("bendRange");
@@ -1850,6 +1856,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "output") gen.set("output", outputGain(v), 0);
   // The master Width (12 Nov), the same: the knob's fraction, a straight line.
   else if (id == "stereoWidth") gen.set("stereoWidth", std::fmax(0.0, std::fmin(1.0, v / 100)), 0);
+  // The sound's own Width (16 Nov), the setup's, read while the Width is on what is drawn too.
+  else if (id == "soundWidth") gen.set("drawnWidth", std::fmax(0.0, std::fmin(1.0, v / 100)), 0);
   else if (id == "morph" || id == "width" || id == "table") layerSet(id, v / 100);
   else if (id == "phase") gen.set("phase", v * kPi / 180);
   else if (id == "envAttack") layerSet("attackMs", v);
@@ -2276,6 +2284,8 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
     return true;
   }
   if (id == "tuneJust" || id == "tuneEqual") gen.set("just", id == "tuneJust" ? 1 : 0, 0);
+  // What the Width applies to (16 Nov): what you hear, or what is drawn too.
+  else if (id == "widthHeard" || id == "widthDrawn") gen.set("widthDrawn", id == "widthDrawn" ? 1 : 0, 0);
   else if (id == "midiDyad") keys.setMode(NoteMode::Dyad);
   else if (id == "midiMono") keys.setMode(NoteMode::Mono);
   else if (id == "midiPoly") keys.setMode(NoteMode::Poly);

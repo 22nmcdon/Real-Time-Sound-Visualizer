@@ -277,3 +277,41 @@ def run(kit):
         steps += [around(r[ear], 2.0, hz(48))[0] for ear in ("L", "R", "X", "Y")]
     check("in Mono, the newest note let go back to the older: no ear or lane steps more than one and a half times the steady sound",
           max(steps) < 1.5, "worst x%.2f" % max(steps))
+
+    # --- the Width on what is drawn too (16 Nov, the owner's switch) ---------
+    # Drawn too, the screen draws the heard mix: what is heard is the drawn
+    # pair, to the bit (one hand, no score, the Output at one, the limiter
+    # off), the owner's phrase and the chord, at the sound's Width of 0, 50 and
+    # 100. The null: the same with the switch on what you hear, which parts them.
+    for label, sound, events, end in (("the owner's phrase", HT, owner(), END), ("the chord", plain, chord, CHORD_END)):
+        for sw in (0, 50, 100):
+            d = render(dict(sound, widthDrawn=True, soundWidth=sw), events, end, 100, full=True)
+            n = min(len(d["L"]), len(d["X"]))
+            same = np.array_equal(d["L"][:n], d["X"][:n]) and np.array_equal(d["R"][:n], d["Y"][:n])
+            check("drawn too, %s at the sound's Width %d: what is heard is what is drawn, to the bit" % (label, sw),
+                  same and np.abs(d["X"]).max() > 0.05, "%d samples" % n)
+        h = render(dict(sound, widthDrawn=False, soundWidth=50), events, end, 100, full=True)
+        n = min(len(h["L"]), len(h["X"]))
+        null("on what you hear, %s is heard apart from what is drawn" % label,
+             not (np.array_equal(h["L"][:n], h["X"][:n]) and np.array_equal(h["R"][:n], h["Y"][:n])))
+
+    # The Width drawn too is the setup's: a code with the sound's Width at 30
+    # and the player's at 100 draws and plays every note at 30 - the chord's
+    # notes each at the coherence of 30, cos(0.3 pi / 2), on the screen and in
+    # the ears. The null: the listening value, the player's Width at 30 and the
+    # sound's at 100, draws them at a hundred's, a quarter turn.
+    want = float(np.cos(0.3 * np.pi / 2))
+    def coherences(fields, listening):
+        r = render(dict(plain, **fields), chord, CHORD_END, listening, full=True)
+        out = []
+        for notes, a, b in chord_spans:
+            for n in notes:
+                out.append(lockin(r["L"], r["R"], hz(n), a, b)[2])
+                out.append(lockin(r["X"], r["Y"], hz(n), a, b)[2])
+        return out
+    stored = coherences({"widthDrawn": True, "soundWidth": 30}, 100)
+    check("drawn too, the sound's Width from its setup (30) is what every note is drawn and heard at, whatever the player's (100)",
+          all(abs(c - want) < 0.05 for c in stored), "want %.2f, %s" % (want, " ".join("%.2f" % c for c in stored[:8])))
+    listening = coherences({"widthDrawn": True, "soundWidth": 100}, 30)
+    null("the player's Width (30) is not what is drawn too: the notes are at the sound's hundred",
+         not all(abs(c - want) < 0.05 for c in listening), " ".join("%.2f" % c for c in listening[:8]))

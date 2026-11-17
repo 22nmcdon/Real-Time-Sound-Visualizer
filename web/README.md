@@ -6995,3 +6995,15 @@ counting only the margins between sections put Play 12 px over. At the short win
 band, so they are shared as at two columns, Expression alone in the first while that
 fits; the knob cells there go down to 48 px, four to a compact column, where at 56 the
 Amp envelope's Release and the Voice filter's Envelope wrapped to a second row.
+
+## A stacked switch, and the boxes that shrink with it (17 Nov)
+
+What the Width applies to is a switch stacked in a column, so it takes no more of the
+Picture section's row than a knob does, and `lagtest.py`'s check that every switch fits its
+buttons (which sums the buttons' widths) failed on it at once: 174 px wanted in 89. Reading
+a column by its widest button instead passed, and still passed with the switch squeezed to
+30 px on purpose. A column stretches its buttons to its own width, so their boxes shrink
+with it and the words overflow inside them; a box's width is no reading of what a stretched
+item needs. The check now reads a stacked switch by each button's `scrollWidth`, the width of
+its words, and goes red at 30 against 51. The same blind spot waits for any check that judges
+a fit from the rectangles of items a flex column or a grid stretches.

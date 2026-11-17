@@ -122,6 +122,13 @@ struct Tone : LayerSettings, PlaneTone {
      note's own, nought every note the same in both ears and one each its own
      quarter turn (`sound` and the Dyad's heard voices say how). */
   double stereoWidth = 1;
+  /* What the Width applies to (16 Nov, the owner's): what you hear alone, as
+     above, or what is drawn too - then the screen draws the heard mix, the
+     speakers are the screen again, the effects run once, and the Width the
+     mix is made at is the sound's own, `drawnWidth`, stored with the setup
+     (soundWidth), where `stereoWidth` is the player's and is no setup's. */
+  bool widthDrawn = false;
+  double drawnWidth = 1;
   // How long a stage switched in or out mid-sound crossfades, in ms (the page's tone says why).
   double switchMs = kSwitchMs;
   // How many samples a held route's change is walked over (the page's tone's heldRamp, which says why).
@@ -218,6 +225,8 @@ class Generator {
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "output") a.output = value;
     else if (field == "stereoWidth") a.stereoWidth = value;
+    else if (field == "widthDrawn") a.widthDrawn = value != 0;
+    else if (field == "drawnWidth") a.drawnWidth = value;
     else if (field == "switchMs") a.switchMs = value;
     else if (field == "heldRamp") a.heldRamp = value;
     else if (field == "planeOS") a.planeOS = value;
@@ -457,13 +466,19 @@ class Generator {
        both ears as they act on the figure, and the picture's plane never sees
        the heard pair. Asked only where the heard pair is. */
     const bool heard = heardL != nullptr;
+    /* With the Width on what is drawn too, the heard mix is made whether or
+       not a heard pair is asked, since it is what is drawn; and it goes
+       through the one plane, so there is no second. */
+    const bool drawnToo = a_.widthDrawn;
+    const bool mixing = heard || drawnToo;
+    const bool twoPlanes = heard && !drawnToo;
     planeH_.setSwitchStep(switchStep, switchPrime);
     planeH_.setup(a_, twistRouted, echoRouted, layered && (b_.planeOwn || timeOwn != 0) ? &b_ : nullptr,
                   b_.planeTurn, turnRouted, phaserRouted, reverbRouted, b_.planeOwn, timeOwn);
     const double dyadBase = intervalRatio(a_.interval, a_.just) * std::pow(2.0, a_.octaves);
     // The upper note counted while the interval has one, not through a crossfade's 30 ms: what
     // the governor asks has to be the same wherever a host's blocks fall.
-    govern(fmRouted, syncRouted, shapeRouted, planeOn, heard, dyadBase != 1);
+    govern(fmRouted, syncRouted, shapeRouted, planeOn, mixing, twoPlanes, dyadBase != 1);
     voiceFxFor(a_, vxA_, fmRouted, syncRouted, shapeRouted);
     const int wantShape = a_.shapeOS == 4 && govFactor_ == 4 ? 4 : 2;
     if (wantShape != ctx_.shapeFactor) {
@@ -569,13 +584,13 @@ class Generator {
       double l, r;
       // The heard pair (16 Nov), apart from the drawn one, and the Width it is made at.
       double hl = 0, hr = 0;
-      if (heard || asDrawnL) outputStep(outGlide);
+      if (mixing || asDrawnL) outputStep(outGlide);
       const double width = widthNow_;
 
       if (poly) {
         // The quarter turn always (polyRound went 16 Nov): a lone note and an inner voice draw a ring.
         sound(voices_, a_, bars, amount, std::pow(2.0, mod(slot::Freq) + pitchOct), 1 - mod(slot::Amp), dt, roleGlide, vxA_, ctx_,
-              true, glide, heard ? width : -1, &tailsA_);
+              true, glide, mixing ? width : -1, &tailsA_);
         l = ctx_.mix[0]; r = ctx_.mix[1];
         hl = ctx_.heard[0]; hr = ctx_.heard[1];
       } else {
@@ -692,7 +707,7 @@ class Generator {
         // The upper place through a handover: the note leaving it (the lower let go) or arriving (one added under).
         const bool upperLeaving = handing && handDown_;
         const double upperGain = handing ? (handDown_ ? 1 - handIn : handIn) : fadeIn;
-        if (heard && !a_.noise) {
+        if (mixing && !a_.noise) {
           const double turn = width * phase;
           if (vxA_.on) {
             hu[0] = oscStep(heardDyad_[0].osc, phaseL_, turn, hz, a_, bars, amount, vxA_, rate_);
@@ -726,7 +741,7 @@ class Generator {
         }
         l = amp * wl;
         r = amp * wr;
-        if (heard) {
+        if (mixing) {
           if (a_.noise) {
             // Noise has two streams and no note to turn: the right drawn from the left's towards its own.
             const double u = 1 - width;
@@ -759,10 +774,12 @@ class Generator {
         l *= g; r *= g; hl *= g; hr *= g;
       }
 
+      // What's drawn too: the screen draws the heard mix, and the plane's one pass is the heard pair's.
+      if (drawnToo) { l = hl; r = hr; }
       if (planeOn) {
-        planeTick(dt, heard);
+        planeTick(dt, twoPlanes);
         plane_.step(Plane::A, l, r); l = plane_.x; r = plane_.y;
-        if (heard) { planeH_.step(Plane::A, hl, hr); hl = planeH_.x; hr = planeH_.y; }
+        if (twoPlanes) { planeH_.step(Plane::A, hl, hr); hl = planeH_.x; hr = planeH_.y; }
       }
       // Nothing clamped: the page's block says why.
       outL[i] = static_cast<float>(l);
@@ -778,12 +795,13 @@ class Generator {
         shapeFade(vxB_, switchStep, switchPrime);
         if (vxB_.shapeRun) setShaping(ctx_.shaping, b_, modBOr0(slot::Drive) * 0.5, modBOr0(slot::Fold) * 0.5);
         sound(voicesB_, b_, barsOfB, amountOfB, std::pow(2.0, modB(slot::Freq) + pitchOct), 1 - modB(slot::Amp), dt, roleGlide,
-              vxB_, ctx_, true, glide, heard ? width : -1, &tailsB_);
+              vxB_, ctx_, true, glide, mixing ? width : -1, &tailsB_);
         bx = ctx_.mix[0]; by = ctx_.mix[1];
         hbx = ctx_.heard[0]; hby = ctx_.heard[1];
+        if (drawnToo) { bx = hbx; by = hby; }
         if (planeOn) {
           plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y;
-          if (heard) { planeH_.step(Plane::B, hbx, hby, true); hbx = planeH_.x; hby = planeH_.y; }
+          if (twoPlanes) { planeH_.step(Plane::B, hbx, hby, true); hbx = planeH_.x; hby = planeH_.y; }
         }
       }
       if (outBL) { outBL[i] = static_cast<float>(bx); outBR[i] = static_cast<float>(by); }
@@ -807,9 +825,13 @@ class Generator {
          note moved the first between the ears, and a dyad at Width nought could
          cancel. The heard pairs are summed in double, the lanes were in float:
          what is heard is not the picture rounded any more. */
-      if (heard) {
+      if (twoPlanes) {
         heardL[i] = static_cast<float>((hl + hbx + scored) * outNow_);
         heardR[i] = static_cast<float>((hr + hby + scored) * outNow_);
+      } else if (heard) {
+        // What's drawn too: what is heard is the lanes, summed, and the score's voice, as before 16 Nov.
+        heardL[i] = static_cast<float>((l + bx + scored) * outNow_);
+        heardR[i] = static_cast<float>((r + by + scored) * outNow_);
       }
       if (asDrawnL) {
         asDrawnL[i] = static_cast<float>((outL[i] + bx + scored) * outNow_);
@@ -823,7 +845,7 @@ class Generator {
         const Voice& voice = (*pool)[v];
         if (!voice.held && (voice.env.stage() == Envelope::Stage::Idle || voice.gone)) {
           // Its ring heard out on the left first, where what is heard is asked (RingTail says why).
-          if (heard) tailRing((*pool)[v], tails, quarterOf((*pool)[v], rate_));
+          if (mixing) tailRing((*pool)[v], tails, quarterOf((*pool)[v], rate_));
           retireVoice((*pool)[v], ctx_);
           pool->erase(pool->begin() + static_cast<long>(v));
         }
@@ -864,7 +886,7 @@ class Generator {
      instrument opening on a project that was turned down, whose first
      samples - an input heard at once, a note held from the start - would
      otherwise come out at unity for the glide's first tenth of a second. */
-  void settleOutput() { outNow_ = a_.output; widthNow_ = a_.stereoWidth; }
+  void settleOutput() { outNow_ = a_.output; widthNow_ = widthTarget(); }
   double widthNow() const { return widthNow_; }
 
  private:
@@ -874,10 +896,12 @@ class Generator {
   void outputStep(double glide) {
     outNow_ += (a_.output - outNow_) * glide;
     if (std::fabs(a_.output - outNow_) < kOutputSnap) outNow_ = a_.output;
-    // The Width on the Output's glide and snap (the page's widthNow says why).
-    widthNow_ += (a_.stereoWidth - widthNow_) * glide;
-    if (std::fabs(a_.stereoWidth - widthNow_) < kOutputSnap) widthNow_ = a_.stereoWidth;
+    // The Width on the Output's glide and snap (the page's widthNow says why): the sound's own, drawn too.
+    const double to = widthTarget();
+    widthNow_ += (to - widthNow_) * glide;
+    if (std::fabs(to - widthNow_) < kOutputSnap) widthNow_ = to;
   }
+  double widthTarget() const { return a_.widthDrawn ? a_.drawnWidth : a_.stereoWidth; }
   // LEVEL_GLIDE_MS, LEVEL_SNAP and CUT_SNAP, and the page's levelsStep, where the page says why.
   static constexpr double kLevelGlideMs = 20, kLevelSnap = 1e-6, kCutSnap = 1e-6;
   static void levelsStep(VoiceFx& vx, const LayerTone& t, double k) {
@@ -1178,7 +1202,7 @@ class Generator {
     return best;
   }
 
-  void govern(bool fmRouted, bool syncRouted, bool shapeRouted, bool planeOn, bool heard, bool dyadUpper) {
+  void govern(bool fmRouted, bool syncRouted, bool shapeRouted, bool planeOn, bool heard, bool twoPlanes, bool dyadUpper) {
     const bool poly = a_.voices.has_value(), layered = b_.voices.has_value();
     Pools pools;
     if (poly) pools.at[pools.n++] = &voices_;
@@ -1191,8 +1215,9 @@ class Generator {
     int countB = layered ? liveIn(voicesB_) : 0;
     const int askedA = unisonAsked(a_), askedB = unisonAsked(b_), askedF = a_.shapeOS == 4 ? 4 : 2;
     // A pass through the plane for each layer's pair, and since 16 Nov again
-    // for what is heard of it, which has a plane of its own (planeH_).
-    const int passes = (1 + (layered ? 1 : 0)) * (heard ? 2 : 1);
+    // for what is heard of it, which has a plane of its own (planeH_) - but
+    // not with the Width on what is drawn too, where the heard mix is drawn.
+    const int passes = (1 + (layered ? 1 : 0)) * (twoPlanes ? 2 : 1);
     const double planeCost = plane_.factor() == 1 ? 3.3 : plane_.factor() == 2 ? 30 : plane_.factor() == 4 ? 60 : 0;
     const double fixed = !planeOn ? 0
       : passes * ((plane_.nonlinearOn() ? planeCost : 0) + (plane_.timeOn() ? 5.3 : 0));

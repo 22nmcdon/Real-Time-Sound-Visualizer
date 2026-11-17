@@ -127,8 +127,12 @@ with sync_playwright() as pw:
       return { amp: home('amp'), output: home('output'), ampTab: el.amp.closest('[data-tab]') && el.amp.closest('[data-tab]').dataset.tab,
                knob: row.classList.contains('knob-row'), host: row.classList.contains('host-param'),
                // The meter after the Output, past the Width since 12 Nov: it reads what is heard after both.
-               dest: row.dataset.modDest || null, meterAfter: row.nextElementSibling === el.stereoWidth.closest('.menu-row')
-                 && el.stereoWidth.closest('.menu-row').nextElementSibling === el.levelMeter,
+               dest: row.dataset.modDest || null, // and since 16 Nov past the sound's own Width and the switch of what the Width applies to,
+               // which are the Width's cells: nothing else may come between.
+               meterAfter: row.nextElementSibling === el.stereoWidth.closest('.menu-row')
+                 && (() => { const ids = []; let n = el.stereoWidth.closest('.menu-row').nextElementSibling;
+                 while (n && n !== el.levelMeter) { ids.push(n.id); n = n.nextElementSibling; }
+                 return n === el.levelMeter && ids.join() === 'soundWidthRow,widthToRow'; })(),
                ampDest: el.amp.closest('.menu-row').dataset.modDest, gen: HAND_SECTIONS.gen.controls.includes('amp'),
                reading: el.outputValue.textContent, picture: HAND_SECTIONS.picture.controls.includes('output') };
     }""")

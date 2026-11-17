@@ -278,8 +278,16 @@ with sync_playwright() as pw:
       const bad = [];
       for (const sw of document.querySelectorAll('.switch')) {
         if (sw.getBoundingClientRect().width === 0) continue;   // in a hidden panel
+        // A switch stacked in a column (what the Width applies to, 16 Nov) needs
+        // its widest button, not the sum: it is laid out the other way. And a
+        // column stretches its buttons to its own width, so their boxes shrink
+        // with it and say nothing: their words' width (scrollWidth) is the need.
+        const column = getComputedStyle(sw).flexDirection === 'column';
         let need = 0;
-        for (const btn of sw.children) need += btn.getBoundingClientRect().width;
+        for (const btn of sw.children) {
+          const w = btn.getBoundingClientRect().width;
+          need = column ? Math.max(need, btn.scrollWidth) : need + w;
+        }
         const have = sw.getBoundingClientRect().width;
         if (need - have > 1) bad.push({
           label: sw.getAttribute('aria-label'),

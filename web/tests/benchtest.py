@@ -640,7 +640,10 @@ with sync_playwright() as pw:
         setView(view);
         const bar = el.pictureBar.getBoundingClientRect();
         // The bar's own, not its Advanced's (the Rise and Fall knobs since 11 Nov).
+        // Those on show: the sound's own Width is in the Width's place only while the
+        // Width applies to what is drawn too (16 Nov), and the two are never both shown.
         const knobs = Array.from(el.pictureBar.querySelectorAll('.knob-row input[type=range]'))
+          .filter((i) => !i.closest('.menu-row').hidden)
           .filter((i) => !i.closest('#picturePanel')).map((i) => i.id);
         setPictureOpen(true);
         const box = el.picturePanel.getBoundingClientRect();
