@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: The page's script parses
         run: python3 web/extract.py && node --check web/tests/check.js
       - name: The core's schema is the page's SETUP_FIELDS
@@ -54,11 +54,11 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
           path: stable
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: testing
           path: testing
@@ -71,7 +71,7 @@ jobs:
           cp -r testing/web site/testing/web
           # The suites are not part of the site.
           rm -rf site/web/tests site/testing/web/tests
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
@@ -83,4 +83,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
