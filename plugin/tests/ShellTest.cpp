@@ -2,6 +2,7 @@
 // generator's sound out, the page served, and the picture the page will draw
 // carrying what was played. It prints PASS and FAIL lines in the house
 // format and exits non-zero on a failure, like the web suite.
+#include <chrono>
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -1062,14 +1063,17 @@ int main() {
           loopFlags && held == "photo.1>gen.ratio@0.500;picture.bored>gen.twist@-0.300", held);
     unsetenv("SCOPE_HOLD_NOTE");
     /* The view's hands as the state keeps them: a display undoes the one
-       before, the photocell's switch keeps every press, and the Clear
-       button, which leaves nothing behind it, is not kept - nor does a view
-       button undo the keyboard's mode, as an unknown set once would have. */
+       before, the photocell's switch keeps every press with a hand between
+       them, and the Clear button, which leaves nothing behind it, is not
+       kept - nor does a view button undo the keyboard's mode, as an unknown
+       set once would have. Two presses of the photocell in a row go together
+       since the outside review (17 Nov), so a display is pressed between
+       them here; edges_cpp holds the pair. */
     std::string viewHands;
     {
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      for (const char* id : { "midiDyad", "photoButton", "photoButton", "dispXY", "dispYT", "clearButton" }) p.pageClick(id);
+      for (const char* id : { "midiDyad", "photoButton", "dispXY", "photoButton", "dispYT", "clearButton" }) p.pageClick(id);
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
       p.processBlock(buf, m);
@@ -2905,20 +2909,121 @@ int main() {
     /* The tail a host is told: the release, and the echo's repeats until
        they are 60 dB down. Half a second whatever the echo did, before; a
        host that stops a silent track's processing cut the echoes off. */
+    /* Since the outside review (17 Nov) the delay is counted at a Mix of
+       nought as well, since the Picture's Motion pushes it in from there and
+       the Picture amount can leave nought with nothing in the setup saying
+       so; and the reverb by its size where it is on. The release alone is
+       the null: what a still sine with the delay's Mix at nought used to
+       report, and what a host then cut the Picture's echoes off at. */
     ScopeProcessor echoing;
     echoing.prepareToPlay(rate, block);
     playBlocks(echoing, 1);
+    const double release = std::fmax(echoing.tone().env.releaseMs, echoing.toneB().env.releaseMs) / 1000;
+    const auto repeatsAt = [](double fb) { return std::log(0.001) / std::log(fb); };
     const double dry = echoing.getTailLengthSeconds();
+    const double wantDry = release + echoing.tone().delayMs / 1000 * (repeatsAt(echoing.tone().delayFeedback) + 1);
+    check("the tail the host is told counts the delay's repeats at a Mix of nought, where the Picture can push it in",
+          echoing.tone().delayMix == 0 && std::fabs(dry - wantDry) < 0.01 && std::fabs(dry - release) > 1,
+          "told " + num(dry) + " s, wanted " + num(wantDry) + "; the release alone " + num(release));
     echoing.pageSlider("delayMix", u"50");
     echoing.pageSlider("delayFeedback", u"60");
     echoing.pageSlider("delayMs", u"375");
     playBlocks(echoing, 2);
     const double wet = echoing.getTailLengthSeconds();
-    const double repeats = std::log(0.001) / std::log(0.6);
-    const double wantWet = dry + 0.375 * (repeats + 1);
-    check("the tail the host is told is the release, and with the echo on, its repeats until 60 dB down",
-          dry > 0 && dry < 2.5 && std::fabs(wet - wantWet) < 0.01, "dry " + num(dry) + " s, with the echo " + num(wet) + " s, wanted " + num(wantWet));
+    const double wantWet = release + 0.375 * (repeatsAt(0.6) + 1);
+    check("and with the echo on, its repeats until 60 dB down",
+          std::fabs(wet - wantWet) < 0.01, "with the echo " + num(wet) + " s, wanted " + num(wantWet));
     check("null: the echo's tail is not the half second it used to be", std::fabs(wet - 0.5) > 1);
+    echoing.pageSlider("reverbMix", u"30");
+    echoing.pageSlider("reverbSize", u"80");
+    playBlocks(echoing, 2);
+    const double verb = echoing.getTailLengthSeconds();
+    const double wantVerb = wantWet + echoing.tone().reverbPreMs / 1000 + 0.3 * std::pow(30.0, 0.8);
+    check("and the reverb's decay on top, by its size: 4.8 s at 80",
+          std::fabs(verb - wantVerb) < 0.01 && verb - wet > 4, "with the reverb " + num(verb) + " s, wanted " + num(wantVerb));
+
+    /* A block of no samples (the outside review, 17 Nov): JUCE's VST3 wrapper
+       calls processBlock with none to hand MIDI over, and a note-off there
+       was dropped, so the note stuck. The null is the same empty block with
+       no note-off, where the note is held. */
+    const auto heldAfter = [&](bool off) {
+      ScopeProcessor z;
+      z.prepareToPlay(rate, block);
+      // The base, a still sine whose note is a voice to count; the test's boot sound draws none.
+      z.pageSetup(*scope::encodeSetup(scope::baseSetup()));
+      playBlocks(z, 1);
+      juce::AudioBuffer<float> b(2, block), none(2, 0);
+      juce::MidiBuffer on, between;
+      on.addEvent(juce::MidiMessage::noteOn(1, 60, 1.0f), 10);
+      z.processBlock(b, on);
+      if (off) between.addEvent(juce::MidiMessage::noteOff(1, 60), 0);
+      z.processBlock(none, between);
+      playBlocks(z, 4);
+      int held = 0;
+      for (const auto* pool : { &z.generator().voices(), &z.generator().voicesB() })
+        for (const auto& v : *pool) held += v.held ? 1 : 0;
+      return held;
+    };
+    const int heldOff = heldAfter(true), heldOn = heldAfter(false);
+    check("a note-off in a block of no samples lets the note go; null: without it the note is held",
+          heldOff == 0 && heldOn == 1, std::to_string(heldOff) + " held after the note-off, " + std::to_string(heldOn) + " without");
+
+    /* Flicking between the hands (the outside review, 17 Nov): each press was
+       a hand the state kept for ever, and the state was encoded on the audio
+       thread every block that changed anything - 3.5 ms a block after 2,000
+       presses. The hands are compacted and the encoding is the reader's, so
+       the blocks after 2,000 presses cost what the first did and the state is
+       the size it was. Timed over a hundred blocks each end, the slower of two
+       tries, against three times the first plus 100 us; before, the end was
+       seventy times the start. */
+    ScopeProcessor flicking;
+    flicking.prepareToPlay(rate, block);
+    flicking.pageSetup(*scope::encodeSetup(scope::findPreset("Bass under the pad")->setup));
+    playBlocks(flicking, 4);
+    juce::MemoryBlock flickedFrom;
+    flicking.getStateInformation(flickedFrom);
+    std::vector<double> took;
+    for (int k = 0; k < 2001; ++k) {
+      flicking.pageClick(k % 2 == 0 ? "editHandB" : "editHandA");
+      const auto t0 = std::chrono::steady_clock::now();
+      playBlocks(flicking, 1);
+      took.push_back(std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count());
+    }
+    const auto meanOf = [&](std::size_t from) { double sum = 0; for (std::size_t i = from; i < from + 100; ++i) sum += took[i]; return sum / 100; };
+    const double first = meanOf(0), last = meanOf(1900);
+    juce::MemoryBlock flickedTo;
+    flicking.getStateInformation(flickedTo);
+    check("2,001 flicks between the hands leave a block as cheap and the state as small as before them",
+          last < 3 * first + 100 && flickedTo.getSize() <= flickedFrom.getSize() + 64,
+          "blocks " + num(first) + " us then " + num(last) + " us; state " + std::to_string(flickedFrom.getSize()) + " then "
+          + std::to_string(flickedTo.getSize()) + " bytes");
+    /* And the state encoded off the audio thread is the state: the hand the
+       face edits reopens as left - Upper after an odd number of flicks, where
+       a state that kept none of them, or dropped the last, reopens on the
+       Lower every instance starts on. */
+    ScopeProcessor flickReopened;
+    flickReopened.setStateInformation(flickedTo.getData(), static_cast<int>(flickedTo.getSize()));
+    flickReopened.prepareToPlay(rate, block);
+    check("and it reopens on the hand last chosen, Upper after an odd number of flicks",
+          flickReopened.editHand() == 1 && flicking.editHand() == 1, "edit " + std::to_string(flickReopened.editHand()));
+
+    /* The page's queue while the host is not processing (the outside review,
+       17 Nov): bounded at kQueueMost, the newest refused past it. The null is
+       the same moves under the bound, none refused. */
+    ScopeProcessor stalled;
+    stalled.prepareToPlay(rate, block);
+    const long refusedBefore = stalled.refusedCommands();
+    for (std::size_t k = 0; k < ScopeProcessor::kQueueMost - 10; ++k) stalled.pageSlider("vcfCut", u"500");
+    const long underBound = stalled.refusedCommands() - refusedBefore;
+    for (int k = 0; k < 1000; ++k) stalled.pageSlider("vcfCut", k % 2 ? u"400" : u"300");
+    const long overBound = stalled.refusedCommands() - refusedBefore;
+    playBlocks(stalled, 2);
+    stalled.pageSlider("vcfCut", u"700");
+    playBlocks(stalled, 2);
+    check("a page moving a knob while the host does not process is held to the queue's bound, and heard again once it plays",
+          underBound == 0 && overBound == 990 && stalled.slider("vcfCut") == 700,
+          std::to_string(underBound) + " refused under the bound, " + std::to_string(overBound) + " over it; the cutoff then "
+          + num(stalled.slider("vcfCut")));
 
     /* The bank as the host's programs, the plain sine first; choosing one
        loads it; the one already chosen chosen again changes nothing, which

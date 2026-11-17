@@ -3081,6 +3081,61 @@ redone natively or left out.
   boot tone ever since; that one is written out too, and its check requires
   the pendulums and the routing to be what it plays.
 
+- **The outside review (17 Nov): five things a host can do that nothing
+  here did.** Each is held by a check seen red first (`core_tests.py`'s
+  "the numbers, in a host's locale" and "the instrument at a host's edges",
+  and the shell test).
+
+  *A host's locale.* strtod and printf's `%f`, `%e` and `%g` follow
+  `LC_NUMERIC`, which a host may set: under de_DE the JSON parser read 0.75
+  as 0 and a preset's persistence loaded as nought. Everything the core
+  reads or writes as a number goes through `scope/chars.h` - `std::to_chars`
+  at a precision, which is printf's in the C locale to the character, and
+  strtod_l with a C locale (`from_chars` for doubles is missing from the
+  libc++ the page's core is built with). The check runs under a de_DE it
+  makes with `localedef` when the system has none. Anything new that turns
+  a number into text, or text into one, goes through `readDouble` and
+  `writeDouble`, never snprintf, strtod or a stream; JUCE's own String and
+  JSON are locale-proof already.
+
+  *A block of no samples.* JUCE's VST3 wrapper hands MIDI over in one, and
+  `Instrument::block` played a piece at a time and so nothing of it: a
+  note-off there stuck the note. Its events now reach the keyboard and the
+  clock at the block's first frame; an arpeggiator's wake waits for a block
+  with room.
+
+  *The state on the audio thread.* `publish` encoded the whole state code
+  every block that changed anything, 48 us on a bank preset, and the hands
+  behind it were never trimmed where a press of Editing or the photocell
+  made them: 2,000 flicks between the hands were 48 KB and milliseconds a
+  block. `remember` drops a press of Editing straight after another, and one
+  that chooses the hand already chosen; two presses of the photocell in a
+  row go together. A link's press is not compacted, since linking copies a
+  hand into the other and two presses are not none. The audio thread now
+  hands over the state before it is encoded (`Instrument::stateSetup`, a
+  copy and no encoding) and `pageState`, on the reader's thread, encodes it
+  once per state. What is left on the audio thread is still a copy of the
+  setup when something changed, which allocates; it is bounded by the
+  setup's size now, and counted in `edges_cpp hands`.
+
+  *The tail.* `getTailLengthSeconds` left the reverb out and counted the
+  delay only while its Mix was up, but the Picture's Motion pushes the delay
+  in from a Mix of nought and the expression pedal, the wheel or pressure
+  can raise the Picture amount without the setup changing. The delay is
+  counted always and the reverb by its size where it is on or routed
+  (`Instrument::tailSeconds`). A still sine reports three seconds it will not
+  use, which a host spends processing silence.
+
+  *Smaller.* The picture's lane count is read by the message thread while
+  the audio thread writes it, so it is served from an atomic beside the
+  source's own (`lanesServed_`). `Controls::range` and `select` used
+  `std::map::at`, which threw on an id the panel has not got - on the audio
+  thread, and an abort in the page's core, built without exceptions; they
+  answer NaN and nothing now, and a write to such an id was already refused.
+  The page's command queue is held to `kQueueMost` (4096) while a host is not
+  processing: the newest is refused past it, which keeps what is queued in
+  its order, and the next move once the host plays puts the control right.
+
 ## Building and testing
 
 ```

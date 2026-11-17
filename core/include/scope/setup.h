@@ -101,7 +101,7 @@ inline double jsStringToNumber(const std::u16string& raw) {
     if (exp == 0) return NAN;
   }
   if (i != s.size()) return NAN;
-  return std::strtod(toAscii(s).c_str(), nullptr);
+  return readDouble(toAscii(s));
 }
 
 // ToString, for the values JSON can hold: an array joined with commas (a

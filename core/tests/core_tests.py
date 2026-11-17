@@ -4256,6 +4256,104 @@ check("once made, reading the screen allocates nothing: %s in the making, %s in 
 check("and never writes a table the generator is reading - its latest, or the two it is fading between",
       int(salloc[7]) == 0 and int(salloc[5]) >= 200, "%s clashes" % salloc[7])
 
+golden.section("the numbers, in a host's locale")
+# The outside review (17 Nov): strtod and printf follow LC_NUMERIC, which a
+# host may set, and under de_DE the JSON parser read 0.75 as 0 and a preset's
+# persistence loaded as nought. Every number the core reads or writes as text
+# goes through chars.h now, and locale_cpp runs the readers, the writers, the
+# bank through the codec and into an instrument, its state code and the
+# fade's text with LC_NUMERIC set before anything is parsed: the same, line
+# for line, as in the C locale. The comma-decimal locale is the system's if
+# it has one (a Mac does), else made here with localedef into the build
+# directory and named through LOCPATH; with neither the check fails, saying
+# so, rather than passing unrun. The nulls are two copies of the core, one
+# reading with plain strtod and one writing toFixed with printf, which must
+# differ under the same locale.
+def comma_locale():
+    have = subprocess.run(["locale", "-a"], capture_output=True, text=True).stdout.split() if shutil.which("locale") else []
+    for name in ("de_DE.UTF-8", "de_DE.utf8", "de_DE", "fr_FR.UTF-8", "fr_FR.utf8", "nl_NL.UTF-8", "nl_NL.utf8"):
+        if name in have: return name, dict(os.environ)
+    if shutil.which("localedef"):
+        where = os.path.join(BUILD, "locales")
+        os.makedirs(where, exist_ok=True)
+        if not os.path.isdir(os.path.join(where, "de_DE.UTF-8")):
+            subprocess.run(["localedef", "-i", "de_DE", "-f", "UTF-8", os.path.join(where, "de_DE.UTF-8")], capture_output=True)
+        if os.path.isdir(os.path.join(where, "de_DE.UTF-8")):
+            return "de_DE.UTF-8", dict(os.environ, LOCPATH=where)
+    return None, None
+_lname, _lenv = comma_locale()
+check("a comma-decimal locale to run the core under, the system's or made with localedef", _lname is not None,
+      "none installed and localedef could not make de_DE - install a de_DE locale" if _lname is None else _lname)
+if _lname:
+    lexe = build("locale_cpp")
+    def lrun(exe, name):
+        r = subprocess.run([exe, name], capture_output=True, text=True, env=_lenv)
+        return r.stdout.split("\n")
+    _lc, _lde = lrun(lexe, "C"), lrun(lexe, _lname)
+    _lpoint = _lde[0].endswith("point ,")
+    _ldiff = [(a, b) for a, b in zip(_lc[1:], _lde[1:]) if a != b]
+    check("the core reads and writes every number the same under %s as in the C locale, %d lines" % (_lname, len(_lc) - 1),
+          _lpoint and _lc[0].endswith("point .") and len(_lc) == len(_lde) and len(_lc) > 100 and not _ldiff,
+          "%s; %d differ, first %r" % (_lde[0], len(_ldiff), _ldiff[:1]))
+    _lread = mutant("locale_cpp", "chars.h", "return strtod_l(buf, nullptr, c);", "(void)c; return std::strtod(buf, nullptr);", "strtod")
+    _lwrite = mutant("locale_cpp", "text.h", "writeDouble(b, sizeof b, a, std::chars_format::fixed, 200);",
+                     "std::snprintf(b, sizeof b, \"%.200f\", a);", "printf")
+    for _lm, _what in ((_lread, "reading with the locale's strtod"), (_lwrite, "writing toFixed with the locale's printf")):
+        _mc, _mde = lrun(_lm, "C"), lrun(_lm, _lname)
+        _md = sum(1 for a, b in zip(_mc[1:], _mde[1:]) if a != b)
+        check("and a core %s differs under it, and not in the C locale" % _what,
+              _md > 0 and _mc[1:] == _lc[1:], "%d lines differ" % _md)
+
+golden.section("the instrument at a host's edges")
+# The outside review (17 Nov), edges_cpp. A block of no frames: JUCE's VST3
+# wrapper hands MIDI over in one, and the instrument played nothing of it, so
+# a note-off there stuck the note. The null is the same block without the
+# note-off, where the note must still be held, and a copy of the core with the
+# zero-frame path taken out.
+eexe = build("edges_cpp")
+def edges(exe, *args):
+    return subprocess.run([exe, *map(str, args)], check=True, capture_output=True, text=True).stdout.split()
+_ez, _ekeep, _eone = edges(eexe, "zero", 0, 1), edges(eexe, "zero", 0, 0), edges(eexe, "zero", 1, 1)
+_ezm = edges(mutant("edges_cpp", "instrument.h", "if (frames <= 0) {", "if (false) {", "zeroframes"), "zero", 0, 1)
+check("a note-off and three clock ticks in a block of no frames reach the keyboard and the clock",
+      _ez[2] == "1" and _ez[4] == "0" and _ez[6] == "3" and _eone[4] == "0" and _eone[6] == "3",
+      "struck %s, held after %s, ticks %s (in a block of one: held %s)" % (_ez[2], _ez[4], _ez[6], _eone[4]))
+check("and without the note-off the note is held, and a core that plays nothing of a block of none sticks it",
+      _ekeep[4] == "1" and _ezm[4] == "1" and _ezm[6] == "0", "held %s; the copy held %s, ticks %s" % (_ekeep[4], _ezm[4], _ezm[6]))
+# The hands the state keeps (remember): flicks of Editing and the photocell
+# were never compacted, so 2,000 flicks were 48 KB of code made on the audio
+# thread every block that changed anything. Counted by the list's length, the
+# code's and the allocations of the publish's audio-thread half (stateSetup),
+# after none and after 2,000; the null is a copy that does not compact.
+_eh0, _eh = edges(eexe, "hands", 0), edges(eexe, "hands", 2000)
+_ehm = edges(mutant("edges_cpp", "instrument.h", "if (const int chosen = editChoice(hand); chosen >= 0) {",
+                    "if (const int chosen = editChoice(hand); chosen >= 99) {", "nocompact"), "hands", 2000)
+check("2,000 flicks between the hands leave the state's hands, its code and its publish as after none",
+      int(_eh[1]) <= int(_eh0[1]) + 1 and int(_eh[3]) <= int(_eh0[3]) + 64 and int(_eh[5]) <= int(_eh0[5]) + 8
+      and int(_eh[7]) <= int(_eh0[7]) + 1024,
+      "hands %s, code %s, publish %s allocations %s bytes; after none %s, %s, %s, %s" % (_eh[1], _eh[3], _eh[5], _eh[7], _eh0[1], _eh0[3], _eh0[5], _eh0[7]))
+check("and a core that does not compact them grows with every flick",
+      int(_ehm[1]) > 2000 and int(_ehm[3]) > 20000 and int(_ehm[5]) > 10 * int(_eh0[5]),
+      "hands %s, code %s, publish %s allocations" % (_ehm[1], _ehm[3], _ehm[5]))
+# What compaction keeps means what the presses meant: each hand its own
+# level between flicks of Editing and five presses of the photocell, then
+# the code loaded into an instrument made new. The nulls: a copy dropping the
+# press that changes the hand rather than the one that does not, and one
+# dropping one photocell press of a pair.
+_er = edges(eexe, "replay")
+_erm = edges(mutant("edges_cpp", "instrument.h", "if (chosen == before) return;", "if (chosen != before) return;", "dropchoice"), "replay")
+_erp = edges(mutant("edges_cpp", "instrument.h", "hands_.pop_back();\n      return;", "return;", "dropphoto"), "replay")
+check("flicks compacted, the code reopens with each hand's own level, the hand edited and the photocell as played",
+      _er[2:6] == _er[6:10] and float(_er[2]) == 0.7 and abs(float(_er[3]) - 0.35) < 1e-12 and _er[4] == "0" and _er[5] == "1"
+      and int(_er[1]) < 12, "kept %s hands; played %s, reopened %s" % (_er[1], _er[2:6], _er[6:10]))
+check("and compacting the wrong press, or one of a pair, reopens differently",
+      _erm[2:6] != _erm[6:10] and _erp[2:6] != _erp[6:10], "%s / %s; %s / %s" % (_erm[2:6], _erm[6:10], _erp[2:6], _erp[6:10]))
+# The panel asked for an id it has not got: std::map::at threw, on the audio
+# thread, and aborted the page's core, which has no exceptions.
+_ec = subprocess.run([eexe, "controls"], capture_output=True, text=True)
+check("an id the panel has not got reads as NaN and is refused, on every way in, without throwing",
+      _ec.returncode == 0 and _ec.stdout.split() == ["controls", "survived", "nan"], "%d %r" % (_ec.returncode, _ec.stdout + _ec.stderr[-200:]))
+
 golden.section("the hearing, on the audio thread")
 # The plugin steps the hearing once a block on the audio thread, where an
 # allocation can wait on a lock. Made once, it must allocate nothing after:

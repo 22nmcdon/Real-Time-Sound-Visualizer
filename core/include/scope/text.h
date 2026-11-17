@@ -21,6 +21,8 @@
 #include <string>
 #include <string_view>
 
+#include "scope/chars.h"
+
 namespace scope {
 
 inline std::string jsToFixed(double x, int digits) {
@@ -32,12 +34,12 @@ inline std::string jsToFixed(double x, int digits) {
   const double a = std::fabs(x);
   if (a >= 1e21) {  // toFixed hands these to ToString; nothing the page writes is this big
     char b[64];
-    std::snprintf(b, sizeof b, "%.17g", x);
+    writeDouble(b, sizeof b, x, std::chars_format::general, 17);
     return b;
   }
   // The exact decimal expansion, far past any digit a tie can hang on.
   char b[512];
-  std::snprintf(b, sizeof b, "%.200f", a);
+  writeDouble(b, sizeof b, a, std::chars_format::fixed, 200);
   std::string s(b);
   const std::size_t point = s.find('.');
   std::string keep = s.substr(0, point) + s.substr(point + 1, static_cast<std::size_t>(digits));
@@ -68,7 +70,7 @@ inline double jsNumber(std::string_view text) {
     else return std::numeric_limits<double>::quiet_NaN();
   }
   if (points > 1 || digits == 0) return std::numeric_limits<double>::quiet_NaN();
-  return std::strtod(std::string(text).c_str(), nullptr);
+  return readDouble(text);
 }
 
 }  // namespace scope

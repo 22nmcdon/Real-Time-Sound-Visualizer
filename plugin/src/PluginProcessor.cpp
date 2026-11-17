@@ -59,6 +59,17 @@ void ScopeProcessor::readBack(bool unmovedOnly) {
 bool ScopeProcessor::queue(std::optional<scope::Instrument::Command> command) {
   if (!command) return false;
   const juce::SpinLock::ScopedLockType lock(queueLock_);
+  /* Bounded (the outside review, 17 Nov): a host that stops calling
+     processBlock - a track frozen or disabled, a device gone - leaves the
+     page's commands here with nothing taking them, and a page dragging a
+     knob sends dozens a second. Past kQueueMost the newest is refused, as a
+     command the instrument cannot take is: the page's slider then does not
+     move its host parameter either (pageSlider), and the next move once
+     the host plays again puts the control where the hand left it. Refusing
+     the newest rather than dropping the oldest keeps what is queued in the
+     order it was made, which a click that reads a slider queued before it
+     depends on. */
+  if (queue_.size() >= kQueueMost) { refused_.fetch_add(1, std::memory_order_relaxed); return false; }
   queue_.push_back(std::move(*command));
   return true;
 }
@@ -145,9 +156,32 @@ int ScopeProcessor::programOf(std::string_view chosen) {
   return -1;
 }
 
+/* The state as the audio thread last published it, encoded here, on the
+   reader's thread (the outside review, 17 Nov): the audio thread copies the
+   setup and its hands (Instrument::stateSetup) and hands the copy over; the
+   encoding, which was 48 us a block on a bank preset and milliseconds once
+   the hands had grown, is done once per state by whichever reader finds it
+   new, under a lock no audio thread takes. */
 ScopeProcessor::PageState ScopeProcessor::pageState() const {
-  const juce::SpinLock::ScopedLockType lock(publishLock_);
-  return published_;
+  const std::lock_guard<std::mutex> reading(readerLock_);
+  scope::Json setup;
+  bool fresh = false;
+  {
+    const juce::SpinLock::ScopedLockType lock(publishLock_);
+    if (published_.fresh) {
+      std::swap(setup, published_.setup);
+      published_.fresh = false;
+      fresh = true;
+      read_.version = published_.version;
+      read_.loads = published_.loads;
+      read_.moved = published_.moved;
+    }
+  }
+  if (fresh) {
+    const auto code = scope::encodeSetup(setup);
+    read_.code = code ? *code : std::string();
+  }
+  return read_;
 }
 
 void ScopeProcessor::takePage() {
@@ -172,14 +206,23 @@ void ScopeProcessor::reportLatency() {
 
 void ScopeProcessor::publish(bool wait) {
   if (!instrument_.changed()) return;
-  std::string code = instrument_.stateCode();
+  // Made before the lock, so the lock is held for a swap: the encoding is the reader's (pageState).
+  scope::Json setup = instrument_.stateSetup();
+  std::string moved = instrument_.hostMoved();
+  const auto hand = [&] {
+    std::swap(published_.setup, setup);
+    std::swap(published_.moved, moved);
+    published_.version = instrument_.hostVersion();
+    published_.loads = instrument_.hostLoads();
+    published_.fresh = true;
+  };
   if (wait) {
     const juce::SpinLock::ScopedLockType lock(publishLock_);
-    published_ = { instrument_.hostVersion(), instrument_.hostLoads(), instrument_.hostMoved(), std::move(code) };
+    hand();
   } else {
     const juce::SpinLock::ScopedTryLockType lock(publishLock_);
     if (!lock.isLocked()) return;  // the page is reading it; again next block
-    published_ = { instrument_.hostVersion(), instrument_.hostLoads(), instrument_.hostMoved(), std::move(code) };
+    hand();
   }
   instrument_.published();
 }
@@ -244,16 +287,6 @@ const juce::String ScopeProcessor::getProgramName(int index) {
   if (index == 0) return "Plain sine";
   if (index < 0 || index >= getNumPrograms()) return {};
   return juce::String(scope::presets()[static_cast<std::size_t>(index - 1)].name);
-}
-
-double ScopeProcessor::tailFor(const scope::Tone& a, const scope::LayerSettings& b) {
-  double tail = std::fmax(a.env.releaseMs, b.env.releaseMs) / 1000;
-  if (a.delayMix > 0) {
-    const double fb = std::fmax(0.0, std::fmin(0.9, a.delayFeedback));
-    const double repeats = fb > 0 ? std::log(0.001) / std::log(fb) : 1;
-    tail += a.delayMs / 1000 * (repeats + 1);
-  }
-  return std::fmin(60.0, tail);
 }
 
 void ScopeProcessor::setStateInformation(const void* data, int size) {
@@ -330,7 +363,7 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
                         : preset ? preset->setup : scope::baseSetup());
     pending_.reset();
   }
-  tail_.store(tailFor(instrument_.tone(), instrument_.toneB()));
+  tail_.store(instrument_.tailSeconds());
   // Prepared is loaded: its latency is read after its first blocks, and told from the timer.
   latencyIn_ = kLatencyAfter;
   startTimerHz(10);
@@ -421,7 +454,7 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
   midi.clear();
   if (!outgoing_.isEmpty()) midi.addEvents(outgoing_, 0, -1, 0);
   outgoing_.clear();
-  if (instrument_.changed()) tail_.store(tailFor(instrument_.tone(), instrument_.toneB()));
+  if (instrument_.changed()) tail_.store(instrument_.tailSeconds());
   // Once the matrix has made the stages' routes after a load: how late they put the sound.
   if (latencyIn_ >= 0) {
     latencyIn_ -= frames;
