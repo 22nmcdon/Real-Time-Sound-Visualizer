@@ -3861,7 +3861,8 @@ int main() {
                      " strip: !!el.midiStrip && el.midiStrip.closest('[data-band]') === el.midiGroup }); })()", 2000).toStdString();
       ask(juce::String("(() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();")
           + (told ? "" : " window.hostSendLearn = () => {};")
-          + " el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));"
+          // In Poly, where a split is (17 Nov: the strip's line names the point there, and only there).
+          + " el.midiPoly.click(); el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));"
             " el.midiSplitLearn.click(); return el.midiSplitLearn.textContent; })()", 2000);
       play(20, -1);
       play(80, 55);  // G3, from the host
