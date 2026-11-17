@@ -29,7 +29,7 @@ concurrency:
 jobs:
   mac:
     # Apple Silicon, as the owner's Mac is. Xcode is the image's default.
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 75
     env:
       BUILD: plugin/build-mac
