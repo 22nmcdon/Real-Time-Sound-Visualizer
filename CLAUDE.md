@@ -68,9 +68,10 @@ milliseconds or a rate is serial; when in doubt, serial.
 
 `web/scope.html` is one file with the script inline. `extract.py` lifts the
 script out so `node --check` can parse it; do that after every edit, because a
-syntax error in a 350 KB single-file app is otherwise found by a blank page.
+syntax error in a 2.7 MB single-file app (1.2 MB of it the compiled core, as
+base64) is otherwise found by a blank page.
 
-## Editing an 8,000-line single file
+## Editing a 26,000-line single file
 
 Large edits are usually easiest as a small Python script doing exact string
 replacements with an assertion that each anchor appears exactly once.
@@ -95,7 +96,8 @@ Watch for two more:
 
 The rule that matters: **write the test against the failure, not the happy
 path.** A test that passes whatever the code does is worse than no test, because
-it is believed. This repository has shipped eight of them, and each is now
+it is believed. This repository has shipped seven kinds of them (the second
+twice), and each is now
 commented at the site with what it used to assert and why that was not enough:
 
 - Asserting a modulation offset was *set*, while nothing read it.
