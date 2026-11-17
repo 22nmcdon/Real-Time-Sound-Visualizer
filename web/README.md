@@ -7112,9 +7112,12 @@ five lines; at rest the rack is as drawn. `fittest.py` opens the EQ with the res
 **A switch can say "Off" over a sound you can hear.** The Picture amount's fixed pushes
 (Motion onto the delay's mix, Memory onto the phaser's and the Plane's twist) are added on
 top of a knob a switch has taken to nought, so a switched-off delay comes back in from the
-picture - the owner keeps that (`web/docs/listening/off-means-off/`). A tag by each switch
+picture - the owner keeps that (`web/docs/listening/off-means-off/`). A tag by every switch
 now names the connection: *Picture · Memory* on the Phaser and the Plane, *Picture · Motion*
-on the Delay, while the hand's Amount is above nought, on or off. It is read from
+on the Delay, *Picture ·* alone where nothing reaches; faint at an Amount of nought, lit
+above it, on or off. It is on every module, always, and every tag is one width
+(`fxPictureWidth`, the widest any module could carry, measured once in the rack's own font),
+so a line is laid out the same whatever reaches it - the knob rule, for the rack. It is read from
 `STAGE_BUNDLES` (`fxPictureReads`), since a later picture matrix will decide which modules a
 read reaches, and it is steady: a first build said *Off – the Picture brings it in* while the
 push passed 0.02 of the range, held 1.5 s to stop it flickering with the reads, and the owner
@@ -7122,7 +7125,7 @@ chose the connection over the warning before it shipped. Beside the name is a ba
 the Picture section's bars drawn small, filled to the push on the module's control as a
 share of the most that read can push it (`fxPictureShares`: the read held back with the
 loop, at the hand's depth, over the bundle's weight). `racktest.py` holds the tag at Amount
-100 with every module off and with two on, and at nought, its null, none; and each bar to
+100 with every module off and with two on, and at nought on every module, faint; each tag's box the same in size and in its place from the switch, its null the boxes with no width kept; and each bar to
 the read the core serves (`instrumentFace().stage`) at that depth, painted and read in one
 go so both are of the same moment. The core serves the stage's reads to the face but not the
 offset on a generator control such as the delay's mix, so that is what "the push the core

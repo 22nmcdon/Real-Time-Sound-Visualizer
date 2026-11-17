@@ -457,20 +457,20 @@ with sync_playwright() as pw:
           codes["apart"] > 0.01 and codes["same"] == 0, "%.4f, %.4g" % (codes["apart"], codes["same"]))
 
     print("\n--- what reaches each module from the Picture ---")
-    # The owner's call (17 Nov): a tag by each module's switch names the
-    # Picture's reads routed onto it - Memory on the Phaser and the Plane,
-    # Motion on the Delay - while the Amount is above nought, whether the
-    # module is on or off, and steady rather than following the push. The
-    # null is Amount nought, where no module has one; and the chorus, the EQ
-    # and the reverb, which no read reaches, have none at 100. A chord is
-    # held so the reads are moving, and each tag read four times over two
-    # seconds, so a tag that came and went with the push would be seen.
+    # The owner's calls (17 Nov): a tag by every module's switch, always,
+    # naming the Picture's reads routed onto it - Memory on the Phaser and the
+    # Plane, Motion on the Delay, nothing on the rest ("Picture ·") - faint
+    # with an empty bar until a read reaches it with the Amount above nought,
+    # then lit, its bar filled to the push. Steady, on or off. A chord is held
+    # so the reads are moving, and each tag read four times over two seconds,
+    # so a tag that came and went with the push would be seen.
     p.locator("#trace").click(position={"x": 5, "y": 5}); p.wait_for_timeout(600)
     tags = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const fxs = ['plane', 'eq', 'phaser', 'chorus', 'delay', 'reverb'];
-      const tag = (fx) => { const t = document.querySelector('[data-fx-picture="' + fx + '"]');
-                            return t && !t.hidden && t.offsetWidth > 0 ? t.textContent : ''; };
+      const tagOf = (fx) => document.querySelector('[data-fx-picture="' + fx + '"]');
+      const tag = (fx) => { const t = tagOf(fx);
+                            return !t ? 'none' : t.offsetWidth > 0 ? t.textContent + (t.dataset.live ? ' (lit)' : '') : 'unseen'; };
       const run = async (amount, setup) => {
         restore(setup); await wait(300);
         el.pictureAmount.value = String(amount);
@@ -486,39 +486,69 @@ with sync_playwright() as pw:
           paintRack();
           const face = instrumentFace();
           for (const [fx, key] of [['phaser', 'memory'], ['plane', 'memory'], ['delay', 'motion']]) {
-            const tagged = document.querySelector('[data-fx-picture="' + fx + '"]');
-            const i = tagged.querySelector('.picture-reads i');
+            const i = tagOf(fx).querySelector('.picture-reads i');
             bars.push({ fx, key, drawn: i && i.offsetWidth > 0 ? Number(i.style.getPropertyValue('--v')) : null,
                         read: i ? i.dataset.read : null,
                         served: face ? Math.min(1, face.stage[key] * face.stage.hold * amount / 100) : null });
           }
         }
-        const shown = document.querySelectorAll('.fx-picture:not([hidden]) .picture-reads i').length;
+        // Every bar filled, by module, and the boxes: each tag's size and its place from its module's switch.
+        const filled = Object.fromEntries(fxs.map((fx) => [fx, Math.max(0, ...Array.from(tagOf(fx).querySelectorAll('.picture-reads i'))
+          .map((i) => Number(i.style.getPropertyValue('--v')) || 0))]));
+        const boxes = Object.fromEntries(fxs.map((fx) => {
+          const t = tagOf(fx).getBoundingClientRect(), pill = document.querySelector('.fx-on[data-fx-on="' + fx + '"]').getBoundingClientRect();
+          return [fx, [Math.round(t.width * 10) / 10, Math.round(t.height * 10) / 10, Math.round((t.left - pill.right) * 10) / 10]];
+        }));
+        // What the box would be with no width kept: the name and bar as they stand.
+        const natural = Object.fromEntries(fxs.map((fx) => { const t = tagOf(fx), w = t.style.width;
+          t.style.width = 'auto'; const n = Math.round(t.getBoundingClientRect().width * 10) / 10; t.style.width = w; return [fx, n]; }));
         for (const n of [48, 55, 64, 71]) midiBytes(new Uint8Array([0x80, n, 0]));
         await wait(200);
-        return Object.assign(Object.fromEntries(fxs.map((fx) => [fx, [...seen[fx]].join(' | ')])), { bars, shown });
+        const line = document.querySelector('[data-fx-sum="delay"]').textContent;
+        return { tags: Object.fromEntries(fxs.map((fx) => [fx, [...seen[fx]].join(' | ')])), bars, filled, boxes, natural, line };
       };
+      // Every module switched on for the boxes, so each switch is the same width and only the tag can differ.
+      const allOn = { delayMix: 40, phaserMix: 30, chorusMix: 30, reverbMix: 15, eqLow: 30, planeTwist: 15 };
       const off = await run(100, {}), on = await run(100, { delayMix: 40, phaserMix: 30 }), none = await run(0, {});
-      const line = document.querySelector('[data-fx-sum="delay"]').textContent;
+      const level = await run(100, allOn);
       restore({}); await wait(300);
-      return { off, on, none, line };
+      return { off, on, none, level, line: off.line };
     }""")
-    for k in ("off", "on", "none"):
-        tags[k + "Bars"], tags[k + "Shown"] = tags[k].pop("bars"), tags[k].pop("shown")
-    print("    %s" % {k: v for k, v in tags.items() if not k.endswith("Bars")})
-    bars = tags["offBars"]
+    for k in ("off", "on", "none"): print("    %s: %s" % (k, tags[k]["tags"]))
+    bars = tags["off"]["bars"]
     worst = max((abs(b["drawn"] - b["served"]) for b in bars if b["drawn"] is not None and b["served"] is not None), default=None)
     most = max((b["drawn"] or 0) for b in bars)
     print("    meters at 100: most %.3f, furthest from the core's served read at that depth %s" % (most, worst))
-    want = {"plane": "Picture · Memory", "eq": "", "phaser": "Picture · Memory", "chorus": "", "delay": "Picture · Motion", "reverb": ""}
-    check("at Amount 100, every module switched off: Memory by the Phaser and the Plane, Motion by the Delay, none elsewhere",
-          tags["off"] == want, str(tags["off"]))
+    lit = {"plane": "Picture · Memory (lit)", "eq": "Picture ·", "phaser": "Picture · Memory (lit)", "chorus": "Picture ·",
+           "delay": "Picture · Motion (lit)", "reverb": "Picture ·"}
+    faint = {"plane": "Picture · Memory", "eq": "Picture ·", "phaser": "Picture · Memory", "chorus": "Picture ·",
+             "delay": "Picture · Motion", "reverb": "Picture ·"}
+    check("at Amount 100, every module switched off: Memory lit by the Phaser and the Plane, Motion by the Delay, the rest faint and unnamed",
+          tags["off"]["tags"] == lit, str(tags["off"]["tags"]))
     check("and the same with the Delay and the Phaser switched on: the tag is the connection, on or off",
-          tags["on"] == want, str(tags["on"]))
-    check("null: at Amount nought no module has a tag", all(v == "" for v in tags["none"].values()), str(tags["none"]))
+          tags["on"]["tags"] == lit, str(tags["on"]["tags"]))
+    check("at Amount nought every module's line carries the tag, the reads named and none lit",
+          tags["none"]["tags"] == faint, str(tags["none"]["tags"]))
+    check("null: a module without its tag is told apart: the same rule fails a line with the chorus's tag taken out",
+         dict(faint, chorus="none") != faint)
+    check("and at nought no bar is filled", all(v == 0 for v in tags["none"]["filled"].values()), str(tags["none"]["filled"]))
+    check("the chorus, the EQ and the reverb, which no read reaches, have their bar empty at 100",
+          all(tags["off"]["filled"][fx] == 0 for fx in ("chorus", "eq", "reverb")), str(tags["off"]["filled"]))
     check("and the line beside it still says what the module does: Off for a delay switched off", tags["line"] == "Off",
           tags["line"])
-    check("each tag carries a bar for its read, Memory on the Phaser and the Plane and Motion on the Delay",
+    # The knob rule's style: the tag's box, in size and in its place from the
+    # switch, is the same on a module reached and one not, every module on so
+    # the switches are alike. Its null is the box each would have with no
+    # width kept, which differs between "Picture ·" and "Picture · Memory".
+    boxes, natural = tags["level"]["boxes"], tags["level"]["natural"]
+    print("    boxes %s; with no width kept %s" % (boxes, natural))
+    check("every module's tag is one box, the same size and the same distance from its switch, reached or not",
+          len(set(map(tuple, boxes.values()))) == 1, str(boxes))
+    check("null: with no width kept the reached and unreached tags differ, so the rule can see a shift",
+          natural["phaser"] != natural["chorus"], "%s against %s" % (natural["phaser"], natural["chorus"]))
+    check("and the box kept is as wide as the widest it holds", all(boxes["phaser"][0] >= v for v in natural.values()),
+          "%s against %s" % (boxes["phaser"][0], max(natural.values())))
+    check("each lit tag carries a bar for its read, Memory on the Phaser and the Plane and Motion on the Delay",
           all(b["drawn"] is not None and b["read"] == b["key"] for b in bars), str(bars[:3]))
     check("on a moving figure at Amount 100 a bar reads above nought", most > 0.05, "%.3f" % most)
     check("and each bar is the push the core serves for its read at the hand's depth, within 0.05",
@@ -526,10 +556,8 @@ with sync_playwright() as pw:
     # The null of the last: the same bars against the push at half the depth,
     # an Amount of 50, are told apart wherever the read is up at all.
     halved = [abs(b["drawn"] - b["served"] / 2) for b in bars if b["served"] and b["served"] > 0.12]
-    null_ok = bool(halved) and max(halved) >= 0.05
-    check("null: against the push at half the depth the same comparison goes red", null_ok, str(halved[:4]))
-    check("null: at Amount nought there is no tag and no bar", tags["noneShown"] == 0 and tags["offShown"] == 3,
-          "%d at nought, %d at 100" % (tags["noneShown"], tags["offShown"]))
+    check("null: against the push at half the depth the same comparison goes red", bool(halved) and max(halved) >= 0.05,
+          str(halved[:4]))
 
     p.evaluate("() => { setBenchTab('space'); openFx('plane', true); }"); p.wait_for_timeout(200)
     os.makedirs(os.path.join(HERE, "shots"), exist_ok=True)
