@@ -1063,14 +1063,17 @@ int main() {
           loopFlags && held == "photo.1>gen.ratio@0.500;picture.bored>gen.twist@-0.300", held);
     unsetenv("SCOPE_HOLD_NOTE");
     /* The view's hands as the state keeps them: a display undoes the one
-       before, the photocell's switch keeps every press, and the Clear
-       button, which leaves nothing behind it, is not kept - nor does a view
-       button undo the keyboard's mode, as an unknown set once would have. */
+       before, the photocell's switch keeps every press with a hand between
+       them, and the Clear button, which leaves nothing behind it, is not
+       kept - nor does a view button undo the keyboard's mode, as an unknown
+       set once would have. Two presses of the photocell in a row go together
+       since the outside review (17 Nov), so a display is pressed between
+       them here; edges_cpp holds the pair. */
     std::string viewHands;
     {
       ScopeProcessor p;
       p.prepareToPlay(rate, block);
-      for (const char* id : { "midiDyad", "photoButton", "photoButton", "dispXY", "dispYT", "clearButton" }) p.pageClick(id);
+      for (const char* id : { "midiDyad", "photoButton", "dispXY", "photoButton", "dispYT", "clearButton" }) p.pageClick(id);
       juce::AudioBuffer<float> buf(2, block);
       juce::MidiBuffer m;
       p.processBlock(buf, m);
@@ -2946,6 +2949,9 @@ int main() {
     const auto heldAfter = [&](bool off) {
       ScopeProcessor z;
       z.prepareToPlay(rate, block);
+      // The base, a still sine whose note is a voice to count; the test's boot sound draws none.
+      z.pageSetup(*scope::encodeSetup(scope::baseSetup()));
+      playBlocks(z, 1);
       juce::AudioBuffer<float> b(2, block), none(2, 0);
       juce::MidiBuffer on, between;
       on.addEvent(juce::MidiMessage::noteOn(1, 60, 1.0f), 10);
@@ -2974,8 +2980,8 @@ int main() {
     flicking.prepareToPlay(rate, block);
     flicking.pageSetup(*scope::encodeSetup(scope::findPreset("Bass under the pad")->setup));
     playBlocks(flicking, 4);
-    juce::MemoryBlock before;
-    flicking.getStateInformation(before);
+    juce::MemoryBlock flickedFrom;
+    flicking.getStateInformation(flickedFrom);
     std::vector<double> took;
     for (int k = 0; k < 2001; ++k) {
       flicking.pageClick(k % 2 == 0 ? "editHandB" : "editHandA");
@@ -2985,21 +2991,21 @@ int main() {
     }
     const auto meanOf = [&](std::size_t from) { double sum = 0; for (std::size_t i = from; i < from + 100; ++i) sum += took[i]; return sum / 100; };
     const double first = meanOf(0), last = meanOf(1900);
-    juce::MemoryBlock after;
-    flicking.getStateInformation(after);
+    juce::MemoryBlock flickedTo;
+    flicking.getStateInformation(flickedTo);
     check("2,001 flicks between the hands leave a block as cheap and the state as small as before them",
-          last < 3 * first + 100 && after.getSize() <= before.getSize() + 64,
-          "blocks " + num(first) + " us then " + num(last) + " us; state " + std::to_string(before.getSize()) + " then "
-          + std::to_string(after.getSize()) + " bytes");
+          last < 3 * first + 100 && flickedTo.getSize() <= flickedFrom.getSize() + 64,
+          "blocks " + num(first) + " us then " + num(last) + " us; state " + std::to_string(flickedFrom.getSize()) + " then "
+          + std::to_string(flickedTo.getSize()) + " bytes");
     /* And the state encoded off the audio thread is the state: the hand the
        face edits reopens as left - Upper after an odd number of flicks, where
        a state that kept none of them, or dropped the last, reopens on the
        Lower every instance starts on. */
-    ScopeProcessor reopened;
-    reopened.setStateInformation(after.getData(), static_cast<int>(after.getSize()));
-    reopened.prepareToPlay(rate, block);
+    ScopeProcessor flickReopened;
+    flickReopened.setStateInformation(flickedTo.getData(), static_cast<int>(flickedTo.getSize()));
+    flickReopened.prepareToPlay(rate, block);
     check("and it reopens on the hand last chosen, Upper after an odd number of flicks",
-          reopened.editHand() == 1 && flicking.editHand() == 1, "edit " + std::to_string(reopened.editHand()));
+          flickReopened.editHand() == 1 && flicking.editHand() == 1, "edit " + std::to_string(flickReopened.editHand()));
 
     /* The page's queue while the host is not processing (the outside review,
        17 Nov): bounded at kQueueMost, the newest refused past it. The null is
