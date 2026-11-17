@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The EQ, drawn</title>
+<meta name="description" content="A mockup of the oscilloscope's EQ module drawn as its response: a small curve on the rack's line, and a large one with three points to drag, opened over the tabs.">
+<!-- Not render-blocking, as the brand asks of every webfont: printed first,
+     promoted once loaded, so a reader offline gets the fallback faces. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+/* Two sets of tokens, as the Play mockups had them. The instrument's are
+   DESIGN.md's, hex for hex, and never move: the instrument has one light, so
+   the mockup of the face stays in it whatever the reader's system says. The
+   page's own (--pg-*) are the paper around the mockup, and follow the reader.
+   No new colour is drawn on the face: the hands' inks are the header's own
+   defaults, the accent for the lower and the olive lane for the upper. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d;
+  --text: #3a332f; --text-soft: #6b615a; --line: #e4d9cc;
+  --blush: #d9a6a0; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --unresolved: #b6afa4;
+  --wash: rgba(217, 166, 160, 0.16); --wash-strong: rgba(217, 166, 160, 0.26);
+  --ch1: #241f1d; --ch2: #5c6488; --ch3: #4c4921; --ch4: #6f9169; --ch5: #72245e; --ch6: #a6552d;
+  --hand-a: var(--blush-deep); --hand-b: var(--ch3);
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Georgia, serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --pg-bg: #faf6f0; --pg-sheet: #fffcf7; --pg-under: #f2ebe1; --pg-ink: #241f1d;
+  --pg-text: #3a332f; --pg-soft: #6b615a; --pg-line: #e4d9cc; --pg-accent: #c07f79;
+  --pg-accent-soft: #d9a6a0; --pg-good: #6f7f63; --pg-bad: #a4553f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+    --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+    --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+  --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+  --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--pg-bg); color: var(--pg-text);
+  font-family: var(--sans); font-weight: 300; font-size: 16px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px; }
+
+/* ---- the page around the mockup ---- */
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+@media (min-width: 760px) { .page { padding-inline: 24px; } }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--pg-accent); font-weight: 500; margin: 0; }
+h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 34px; line-height: 1.15; margin: 6px 0 8px; }
+h2 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 22px; line-height: 1.25; margin: 34px 0 8px; }
+.lede { font-family: var(--script); font-style: italic; font-size: 20px; line-height: 1.45; max-width: 62ch; margin: 0 0 6px; }
+.page p, .page li { max-width: 72ch; }
+.small { font-size: 13.5px; color: var(--pg-soft); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 12px; }
+.bar .grp { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.bar .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-soft); font-weight: 500; }
+.pg-switch { display: inline-flex; border: 1px solid var(--pg-line); border-radius: 30px; overflow: hidden; flex-wrap: wrap; }
+.pg-switch button { background: none; border: 0; padding: 6px 13px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; color: var(--pg-soft); }
+.pg-switch button:hover { color: var(--pg-accent); }
+.pg-switch button[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); }
+.pg-btn {
+  background: none; border: 1px solid var(--pg-line); border-radius: 30px; padding: 5px 13px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; color: var(--pg-soft);
+}
+.pg-btn:hover { color: var(--pg-accent); border-color: var(--pg-accent-soft); }
+.pg-btn[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); border-color: var(--pg-ink); }
+.stage-wrap { width: 100%; overflow: hidden; position: relative; }
+.stage { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+.fit-line { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; margin: 8px 0 0; color: var(--pg-soft); font-variant-numeric: tabular-nums; }
+.fit-line .ok { color: var(--pg-good); }
+.fit-line .over { color: var(--pg-bad); font-weight: 500; }
+.verdict { display: grid; grid-template-columns: 10em 1fr; gap: 6px 16px; margin: 14px 0 0; max-width: 940px; font-size: 15px; }
+.verdict dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-accent); font-weight: 500; padding-top: 4px; }
+.verdict dd { margin: 0; }
+@media (max-width: 560px) { .verdict { grid-template-columns: 1fr; } .verdict dd { margin-bottom: 8px; } }
+.check-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 940px; font-variant-numeric: tabular-nums; }
+.check-table th, .check-table td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--pg-line); vertical-align: top; }
+.check-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--pg-soft); font-weight: 500; }
+.check-table .ok { color: var(--pg-good); }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+code { font-family: var(--mono); font-size: 0.86em; }
+kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-line); border-bottom-width: 2px; padding: 0 4px; border-radius: 1px; }
+
+/* ---- the window: the instrument at its own size, in its one light ---- */
+.win {
+  --hdr: 71px; --scrcol: 515px; --modrow: 87px; --picrow: 90px; --knob: 36px;
+  width: 1400px; height: 900px; position: relative; overflow: hidden;
+  background: var(--cream); color: var(--text); border: 1px solid var(--line);
+  font-family: var(--sans); font-weight: 300; font-size: 14px; line-height: 1.4;
+  display: grid; grid-template-rows: var(--hdr) minmax(0, 1fr) var(--modrow) var(--picrow);
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06);
+}
+/* The plugin's 960x600 at Auto's 90 per cent: 1067 by 667 of the page's own
+   pixels, which is under 1100 by 860, so the face is compact. */
+.win.compact { --hdr: 44px; --scrcol: 303px; --modrow: 31px; --picrow: 80px; --knob: 30px; width: 1067px; height: 667px; font-size: 13px; }
+.win * { box-sizing: border-box; }
+.win button { color: inherit; }
+.win .caps { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; }
+.win .link-btn { background: none; border: 0; border-bottom: 1px solid var(--blush); padding: 0 0 2px; color: var(--charcoal); }
+
+.hdr { display: flex; align-items: center; gap: 22px; padding: 0 24px 0 134px; border-bottom: 1px solid var(--line); background: var(--cream); }
+.hdr .title { font-family: var(--serif); font-size: 21px; letter-spacing: 0.08em; color: var(--charcoal); font-weight: 600; line-height: 1.1; }
+.hdr .title small { display: block; font-family: var(--script); font-style: italic; font-size: 13px; letter-spacing: 0; color: var(--text-soft); font-weight: 500; }
+.hdr .arrow { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--charcoal); }
+.hdr .preset { line-height: 1.15; }
+.hdr .preset .caps { font-size: 9.5px; color: var(--text-soft); letter-spacing: 0.2em; }
+.hdr .preset b { display: block; font-family: var(--serif); font-weight: 500; font-size: 18px; color: var(--charcoal); }
+.hdr .spacer { flex: 1 1 auto; }
+.hdr .run { border: 1px solid var(--gold); color: var(--gold); border-radius: 30px; padding: 6px 15px; }
+.hdr .edit-hands { display: inline-flex; align-items: center; gap: 8px; }
+.hdr .edit-hands[hidden] { display: none; }
+.hdr .edit-hands .eyebrow-s { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); }
+.win .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; }
+.win .switch button { background: none; border: 0; padding: 4px 11px; color: var(--text-soft); display: inline-flex; align-items: center; gap: 5px; }
+.win .switch button[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); }
+.hand-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hand, var(--text-soft)); flex: 0 0 auto; }
+.win.compact .hdr { padding-left: 22px; gap: 14px; }
+.win.compact .hdr .title { font-size: 17px; }
+.win.compact .hdr .title small, .win.compact .hdr .hide-compact { display: none; }
+.win.compact .hdr .preset b { font-size: 15px; }
+.win.compact .hdr .run { border: 0; padding: 0; }
+
+.main { display: grid; grid-template-columns: var(--scrcol) minmax(0, 1fr); min-height: 0; }
+.scr { border-right: 1px solid var(--line); padding: 14px 22px 10px 24px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.scr .tools { display: flex; align-items: center; gap: 14px; }
+.scr .tools .gap { flex: 1 1 auto; }
+.scr .sheet { background: var(--paper); box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06); border: 1px solid var(--line); padding: 16px 16px 18px; }
+.scr canvas { display: block; width: 100%; aspect-ratio: 1; }
+.scr .verdict-line { font-family: var(--script); font-size: 19px; color: var(--sage); }
+.scr .verdict-line span { font-family: var(--sans); font-size: 12.5px; color: var(--text-soft); margin-left: 8px; }
+.scr .fig-note { font-size: 11px; color: var(--text-soft); line-height: 1.35; margin: 0; }
+.win.compact .scr { padding: 10px 14px 6px 20px; gap: 6px; }
+.win.compact .scr .sheet { padding: 8px 10px 10px; }
+.win.compact .scr .verdict-line { font-size: 16px; }
+
+.bench { position: relative; padding: 15px 24px 8px 23px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.win.compact .bench { padding: 10px 20px 6px 18px; }
+.tabs { display: flex; gap: 8px; flex: 0 0 auto; }
+.tab { flex: 1 1 0; border: 1px solid var(--line); background: var(--cream-2); padding: 8px 12px 9px; min-width: 0; }
+.tab b { display: block; font-family: var(--serif); font-weight: 500; font-size: 19px; color: var(--charcoal); line-height: 1.3; }
+.tab span { display: block; font-size: 11.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab.on { background: var(--paper); box-shadow: inset 0 3px 0 var(--blush-deep); }
+.tab.find { flex: 0 0 170px; background: var(--paper); color: var(--unresolved); font-size: 13px; padding-top: 9px; }
+.win.compact .tab { padding: 5px 10px; }
+.win.compact .tab b { font-size: 15px; }
+.win.compact .tab span { display: none; }
+.win.compact .tab.find { flex-basis: 150px; font-size: 12px; }
+.rack-title { display: flex; align-items: baseline; margin: 16px 0 4px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); }
+.rack-title .q { text-transform: none; letter-spacing: 0.02em; color: var(--text-soft); margin-left: 6px; font-size: 11px; }
+.rack-title .where { margin-left: auto; text-transform: none; letter-spacing: 0; color: var(--text-soft); font-size: 11.5px; }
+.win.compact .rack-title { margin-top: 10px; }
+.rack { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+/* The rack's modules, as the face draws them (scope.html, F5). */
+.fx { background: var(--paper); border: 1px solid var(--line); border-radius: 1px; margin-top: 6px; }
+.fx-head { display: flex; align-items: center; gap: 12px; padding: 5px 12px; min-height: 44px; }
+.fx-handle { flex: 0 0 12px; height: 26px; margin: 0 -6px 0 -4px; color: var(--text-soft); font-size: 14px; line-height: 26px; letter-spacing: -0.28em; }
+.fx-handle.none { visibility: hidden; }
+.fx-icon { flex: 0 0 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--charcoal); }
+.fx-icon svg { width: 18px; height: 18px; }
+.fx-name { flex: 0 0 auto; min-width: 92px; font-family: var(--serif); font-size: 18px; color: var(--charcoal); }
+.fx-on { flex: 0 0 auto; background: none; border: 1px solid var(--line); border-radius: 30px; padding: 3px 11px; font-size: 10px; letter-spacing: 0.14em; color: var(--text-soft); text-transform: uppercase; font-weight: 500; }
+.fx-on[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: var(--paper) !important; }
+.fx-pic { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.fx-pic .nm { font-size: 9px; letter-spacing: 0.1em; color: var(--text-soft); opacity: 0.7; text-transform: uppercase; font-weight: 500; }
+.fx-pic i { display: inline-block; width: 4px; height: 10px; background: var(--line); opacity: 0.6; }
+.fx-sum { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-main { flex: 0 0 auto; display: flex; align-items: flex-start; column-gap: 6px; }
+.fx-open { flex: 0 0 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--charcoal); padding: 0; font-size: 12px; line-height: 1; }
+.fx[data-on="0"] .fx-icon, .fx[data-on="0"] .fx-name { opacity: 0.55; }
+.fx[data-on="0"]:not([data-open]) .fx-main, .fx[data-on="0"]:not([data-open]) .fx-open.hide-off { display: none; }
+.fx-rest { border-top: 1px dashed var(--line); padding: 4px 14px 8px 66px; display: flex; gap: 6px; }
+.fx-rest[hidden] { display: none; }
+.rack[data-tight] .fx:not([data-open]) { margin-top: 3px; }
+.rack[data-tight] .fx:not([data-open]) .fx-head { min-height: 28px; padding-block: 1px; }
+.rack[data-tight] .fx:not([data-open]) .fx-icon { flex-basis: 24px; height: 24px; }
+.rack[data-tight] .fx:not([data-open]) .fx-icon svg { width: 15px; height: 15px; }
+.rack[data-tight] .fx:not([data-open]) .fx-name { font-size: 16px; }
+.rack[data-tight] .fx:not([data-open]):not(.eq) .fx-main { display: none; }
+.win.compact .fx-name { min-width: 70px; }
+.win.compact .fx-head { gap: 9px; }
+
+/* The EQ's line: its curve in place of its three gain knobs. A button, so
+   it takes the press and the keyboard; drawn by paintThumb. It stays on the
+   folded line, smaller, because it is the line's own reading rather than a
+   control. */
+.eq-thumb { flex: 0 0 auto; padding: 0; border: 1px solid var(--line); background: var(--paper); border-radius: 1px; display: block; position: relative; }
+.eq-thumb:hover { border-color: var(--blush); }
+.eq-thumb svg { display: block; width: 150px; height: 34px; }
+.win.compact .eq-thumb svg { width: 118px; height: 30px; }
+.rack[data-tight] .fx.eq:not([data-open]) .eq-thumb svg { width: 96px; height: 22px; }
+
+.knobs { display: flex; align-items: flex-start; column-gap: 6px; }
+.kcell { display: grid; justify-items: center; width: 56px; row-gap: 1px; border-radius: 1px; padding: 2px 0; }
+.kcell .val { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kcell .nm { font-size: 10px; color: var(--text-soft); white-space: nowrap; }
+.kcell.lit { background: var(--wash); }
+.kcell.flash .val { color: var(--blush-deep); }
+.win.compact .kcell { width: 50px; }
+.win.compact .kcell .val { font-size: 10.5px; }
+
+/* The knob, as scope.html draws it (P8c): a ring through 270 degrees from
+   the bottom left, eleven marks, and a paper cap with its pointer. */
+.knob-face {
+  --angle: 0deg; --lo: 0deg; --hi: 0deg;
+  position: relative; width: var(--knob); height: var(--knob); margin: 1px 0;
+  display: grid; place-items: center; touch-action: none; cursor: grab; outline-offset: 1px; border-radius: 50%;
+}
+.knob-face::before {
+  content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: conic-gradient(from 225deg,
+    var(--line) 0 var(--lo), var(--knob-arc, var(--blush-deep)) var(--lo) var(--hi),
+    var(--line) var(--hi) 270deg, transparent 270deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+}
+.knob-face:hover, .knob-face.held { --knob-arc: var(--charcoal); }
+.knob-cap {
+  position: relative; width: 52%; height: 52%; border-radius: 50%; background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(36, 31, 29, 0.14);
+  transform: rotate(calc(var(--angle) - 135deg));
+}
+.knob-cap::after { content: ""; position: absolute; left: 50%; top: 9%; width: 2px; height: 40%; margin-left: -1px; border-radius: 1px; background: var(--charcoal); }
+.knob-face:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+
+.hand-link {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border: 1px solid var(--line);
+  border-radius: 30px; background: var(--paper); color: var(--text-soft);
+  font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; line-height: 13px; white-space: nowrap; font-weight: 500;
+}
+.hand-link svg { width: 13px; height: 9px; }
+.hand-link[aria-pressed="false"] { color: var(--hand); border-color: var(--hand); }
+.hand-link[hidden] { display: none; }
+
+/* ---- the EQ's editor: over the tabs, as the modulation editor is (G5a) ---- */
+.eq-ed {
+  position: absolute; inset: 15px 24px 8px 23px; z-index: 20; background: var(--paper);
+  display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 1px; padding: 14px 18px 12px;
+  box-shadow: 0 6px 24px rgba(36, 31, 29, 0.10); overflow: hidden;
+}
+.win.compact .eq-ed { inset: 10px 20px 6px 18px; padding: 8px 14px 8px; }
+.eq-ed[hidden] { display: none; }
+/* Layout B: the same body in the module's rest, the rack column's width. */
+.fx-rest.eq-rest { display: block; padding: 6px 12px 8px 12px; }
+.ed-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; min-width: 0; }
+.ed-head .nm { font-family: var(--serif); font-size: 21px; color: var(--charcoal); }
+.ed-head .desc { font-size: 12px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.ed-head .close { margin-left: auto; }
+.win.compact .ed-head { margin-bottom: 4px; }
+.win.compact .ed-head .nm { font-size: 17px; }
+.ed-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.plot-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.eq-rest .plot-wrap { flex: 0 0 auto; height: var(--plot-h, 170px); }
+.plot { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; overflow: visible; }
+.plot .pt { cursor: grab; outline: none; }
+.plot .pt:focus-visible .ring { stroke: var(--blush-deep); stroke-width: 2.5; }
+.ed-foot { display: flex; align-items: flex-end; gap: 18px; flex-wrap: nowrap; }
+.ed-foot .knobs { flex: 0 0 auto; }
+.ed-foot .note { font-size: 11.5px; color: var(--text-soft); line-height: 1.4; margin: 0; flex: 1 1 auto; min-width: 0; }
+.ed-foot .note b { font-weight: 500; color: var(--text); }
+.win.compact .ed-foot .note { font-size: 10.5px; }
+.knobs .sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
+.readout {
+  position: absolute; pointer-events: none; background: var(--paper); border: 1px solid var(--line); padding: 2px 7px;
+  font-size: 11.5px; color: var(--charcoal); white-space: nowrap; font-variant-numeric: tabular-nums; border-radius: 1px;
+  box-shadow: 0 2px 8px rgba(36, 31, 29, 0.08);
+}
+.readout[hidden] { display: none; }
+
+/* The right-click menu, as a knob's (G5b), without the modulation. */
+.ctx {
+  position: absolute; z-index: 40; background: var(--paper); border: 1px solid var(--line); border-radius: 1px; min-width: 220px; max-width: 300px;
+  box-shadow: 0 8px 26px rgba(36, 31, 29, 0.14); padding: 6px 0; font-size: 13px; color: var(--text);
+}
+.ctx[hidden] { display: none; }
+.ctx .h { padding: 2px 14px 6px; font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); font-weight: 500; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.ctx button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 5px 14px; color: var(--text); }
+.ctx button:hover, .ctx button:focus-visible { background: var(--wash); outline: none; }
+.ctx .muted { padding: 4px 14px; font-size: 11.5px; color: var(--text-soft); line-height: 1.35; border-top: 1px solid var(--line); margin-top: 4px; }
+.ctx .type { padding: 4px 14px 6px; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; font-size: 12px; }
+.ctx .type input { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 1px; padding: 2px 5px; font-size: 12.5px; color: var(--charcoal); }
+.ctx .info { padding: 4px 14px 6px; font-size: 12px; line-height: 1.45; color: var(--text); }
+.ctx .info b { font-family: var(--serif); font-weight: 500; font-size: 14px; display: block; color: var(--charcoal); }
+
+/* ---- the modulation row and the Picture section: context, not played ---- */
+.modrow { display: flex; align-items: center; gap: 10px; padding: 8px 24px; background: var(--cream-2); border-top: 1px solid var(--line); }
+.modrow .lead { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); width: 96px; line-height: 1.3; }
+.modrow .lead small { display: block; text-transform: none; letter-spacing: 0; color: var(--text-soft); font-size: 10.5px; margin-top: 4px; }
+.mcard { flex: 0 0 240px; height: 70px; background: var(--paper); border: 1px solid var(--line); padding: 6px 10px; font-size: 12px; position: relative; }
+.mcard .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+.mcard svg { position: absolute; left: 10px; right: 10px; bottom: 6px; width: calc(100% - 20px); height: 36px; }
+.modrow .rt { margin-left: auto; text-align: right; }
+.win.compact .modrow { padding: 2px 20px; gap: 6px; }
+.win.compact .modrow .lead { width: auto; }
+.win.compact .modrow .lead small { display: none; }
+.win.compact .mcard { flex: 0 0 auto; height: auto; border-radius: 20px; padding: 1px 10px; font-size: 11px; }
+.win.compact .mcard svg { display: none; }
+.pic { display: flex; align-items: center; gap: 24px; padding: 4px 24px 6px 134px; background: var(--cream-2); border-top: 1px solid var(--line); }
+.pic .t { font-family: var(--serif); font-size: 22px; color: var(--charcoal); }
+.pic .knobs { column-gap: 8px; }
+.pic .kcell .nm::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); margin-right: 5px; vertical-align: middle; }
+.win.compact .pic { padding-left: 22px; gap: 14px; }
+.win.compact .pic .t { font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Mockup · Space &amp; Memory · 17 Nov</p>
+  <h1>The EQ, drawn</h1>
+  <p class="lede">Its response as the face of it: a small curve on the rack's line where the three gain knobs were, and a large one to drag, opened over the tabs with the screen still in view.</p>
+  <p class="small">Everything here is live. The curve is worked out with the core's own formulas (the Audio EQ Cookbook, shelves at slope one, the mid's Q from its width by the analog relation, at 48 kHz), so what you drag is what the instrument would play. The screen's figure is a fifth, A3 against E4, through this EQ. Nothing in <code>scope.html</code> or the core has changed.</p>
+
+  <div class="bar" role="toolbar" aria-label="What the mockup shows">
+    <div class="grp"><span class="lbl">Window</span>
+      <div class="pg-switch" id="pgSize">
+        <button type="button" data-v="big" aria-pressed="true">1400 × 900</button>
+        <button type="button" data-v="small" aria-pressed="false">960 × 600 at 90%</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Editor</span>
+      <div class="pg-switch" id="pgLayout">
+        <button type="button" data-v="over" aria-pressed="true">A · over the tabs</button>
+        <button type="button" data-v="rack" aria-pressed="false">B · in the rack</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Hands</span>
+      <div class="pg-switch" id="pgHands">
+        <button type="button" data-v="1" aria-pressed="true">One</button>
+        <button type="button" data-v="2" aria-pressed="false">Two</button>
+      </div></div>
+    <div class="grp">
+      <button type="button" class="pg-btn" id="pgSpec" aria-pressed="true">Spectrum behind</button>
+      <button type="button" class="pg-btn" id="pgAll" aria-pressed="false">Every effect on</button>
+    </div>
+  </div>
+
+  <p class="small" style="margin:0 0 10px"><i>Every effect on</i> switches the other five on and opens the Plane, the tightest the rack gets, so the lines fold and the EQ's curve is seen on a folded line. The line under the window measures the fit as drawn.</p>
+  <div class="stage-wrap" id="stageWrap"><div class="stage" id="stage">
+    <div class="win" id="win">
+      <header class="hdr">
+        <div class="title">OSCILLOSCOPE<small>A3 · E4, a fifth</small></div>
+        <span class="arrow">&#8249;</span>
+        <div class="preset"><span class="caps">New · edited</span><b>Plain sine</b></div>
+        <span class="arrow">&#8250;</span>
+        <span class="link-btn caps hide-compact">Browse</span>
+        <span class="link-btn caps">Save</span>
+        <span class="edit-hands" id="editHands" hidden>
+          <span class="eyebrow-s hide-compact">Editing</span>
+          <span class="switch caps" id="editSwitch">
+            <button type="button" data-h="0" aria-pressed="true" style="--hand: var(--hand-a)"><i class="hand-dot"></i>Lower</button>
+            <button type="button" data-h="1" aria-pressed="false" style="--hand: var(--hand-b)"><i class="hand-dot"></i>Upper</button>
+          </span>
+        </span>
+        <span class="spacer"></span>
+        <span class="run caps">Running</span>
+        <span class="link-btn caps">Perform</span>
+        <span class="link-btn caps">Settings</span>
+      </header>
+
+      <div class="main">
+        <section class="scr" aria-label="The screen">
+          <div class="tools">
+            <span class="switch caps"><button type="button" aria-pressed="false">Y–T</button><button type="button" aria-pressed="true">X–Y</button><button type="button" aria-pressed="false">Spect</button></span>
+            <span class="link-btn caps">Clear</span><span class="gap"></span>
+          </div>
+          <div class="sheet"><canvas id="screen" width="440" height="440" aria-label="The figure: a fifth through the EQ"></canvas></div>
+          <div class="verdict-line">Trigger locked.<span>X–Y · a fifth, eight harmonics each, through this EQ</span></div>
+        </section>
+
+        <section class="bench" id="bench" aria-label="The Bench">
+          <div class="tabs">
+            <div class="tab"><b>Play</b><span>Poly · sine · 220 Hz</span></div>
+            <div class="tab"><b>Ink</b><span>Ratio 1:1 · unison · FM off</span></div>
+            <div class="tab on"><b>Space &amp; Memory</b><span id="tabLine">EQ</span></div>
+            <div class="tab find">Find a control&nbsp; /</div>
+          </div>
+          <div class="rack-title">Effects<span class="q">· top to bottom, the order the sound goes through them</span><span class="where">On the generator.</span></div>
+          <div class="rack" id="rack"></div>
+
+          <div class="eq-ed" id="eqEd" role="dialog" aria-label="EQ" hidden></div>
+        </section>
+      </div>
+
+      <div class="modrow">
+        <div class="lead">Modulation<small>Drag onto a knob. Press to open.</small></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch1)"></span>LFO 1<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C27 -6 27 -6 55 18 S82 42 110 18 S137 -6 165 18 S192 42 220 18" fill="none" stroke="var(--ch1)" stroke-width="1.5"/></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch2)"></span>LFO 2<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C18 0 18 0 37 18 S55 36 73 18 S92 0 110 18 S128 36 147 18 S165 0 183 18 S202 36 220 18" fill="none" stroke="var(--ch2)" stroke-width="1.5"/></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch4)"></span>Envelope<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 34 L14 4 L40 10 L190 14 L218 34" fill="none" stroke="var(--unresolved)" stroke-width="1.5"/></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch6)"></span>Photocell<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M30 30 L215 30" fill="none" stroke="var(--ch6)" stroke-width="1.5"/></svg></div>
+        <div class="rt"><span class="link-btn caps">Routings · 0</span></div>
+      </div>
+
+      <div class="pic">
+        <span class="t">Picture</span>
+        <div class="knobs" id="picKnobs"></div>
+      </div>
+
+      <div class="ctx" id="ctx" role="menu" hidden></div>
+    </div>
+  </div></div>
+  <div class="fit-line" id="fitLine" aria-live="polite"></div>
+
+  <h2>What to try</h2>
+  <ul>
+    <li><b>Drag a point.</b> Sideways is where it acts, up and down its gain. The low shelf runs 40–640 Hz, the mid 125 Hz–8 kHz, the high shelf 1–16 kHz, each in the knob's own hundred steps, so a point can only land where the knob can.</li>
+    <li><b>The mid's width:</b> <kbd>Shift</kbd>-drag it up and down, or the wheel over it, from a fifth of an octave to four. Its width is drawn as a bracket under it while it is held or chosen.</li>
+    <li><b>Double-click a point</b> to put it back where it starts. <b>Right-click</b> one (or a long press, or <kbd>Shift</kbd>+<kbd>F10</kbd>) for Type a value, Reset and What is this.</li>
+    <li><b>Keyboard:</b> <kbd>Tab</kbd> to a point, arrows move it (left and right five of the knob's steps, up and down half a decibel), <kbd>Shift</kbd> finer (one step, a tenth of a decibel), <kbd>[</kbd> and <kbd>]</kbd> the mid's width.</li>
+    <li><b>Turn a knob</b> under the curve: the point follows, because the knobs are the values and the points only write them.</li>
+    <li><b>Close the editor</b> and press the little curve on the EQ's line to open it again. Switch the EQ off and its line goes flat and grey; dragging any point off nought switches it back on, as moving a gain does today.</li>
+  </ul>
+
+  <h2>The choices made</h2>
+  <dl class="verdict">
+    <dt>On the line</dt>
+    <dd>The curve, 150 by 34, in place of the three gain knobs, with the three points as dots. It is a button: pressing it opens the editor. It stays on the folded line too (96 by 22), because it is the line's reading rather than a control, and a folded EQ that showed nothing would say nothing. The words beside it (<i>low +3.0 dB at 160 Hz · …</i>) stay; they are what a screen reader and a narrow window keep.</dd>
+    <dt>The editor</dt>
+    <dd>Over the tabs, where the modulation editor opens, so the screen stays in view while you listen and watch. A log-frequency grid from 20 Hz to 20 kHz, ±12 dB, the sum of the bands in charcoal and each band's own in faint grey under it. The chosen point is in the accent, the others charcoal on paper; each sits at its corner frequency and its full gain, so a shelf's curve passes half-way through it, as the info line says.</dd>
+    <dt>The knobs stay</dt>
+    <dd>All seven, under the curve, as the values: a setup, a host knob, undo, the morph and modulation read and write them exactly as now, and the points write the knobs. The knobs a point moves are washed while it is chosen. Modulation stays on the knobs (their right-click), not on the points, because a point is two or three controls at once.</dd>
+    <dt>The hands</dt>
+    <dd>With two hands the link sits in the editor's head, after the name: <i>Same in both</i>, or the edited hand's own in its ink. Unlinked, the other hand's curve is drawn faint and dashed in its ink behind, so the two can be compared without switching. The rack's line keeps its short pill (<i>Both</i>, <i>Lower</i>, <i>Upper</i>) before the arrow, as now.</dd>
+    <dt>The spectrum</dt>
+    <dd>Optional, faint, behind the curve, on a scale of its own (60 dB from the top of the plot to its foot). Here it is <b>an illustration, not live</b>: the fifth on the screen, eight harmonics a note falling 4.5 dB per harmonic, as the EQ leaves it. Live it would be the sound's own, as the Spect view reads it.</dd>
+  </dl>
+
+  <h2>The one alternative</h2>
+  <dl class="verdict">
+    <dt>A · Over the tabs</dt>
+    <dd>Recommended. The largest curve the column allows - its plot 752 by 452 of the page's pixels at 1400 × 900, and 654 by 343 at 960 × 600 - and the same place and the same Close as the modulation editor, so it is one thing to learn. Its cost: while it is open the other modules and the tab cards are covered, so switching the delay on means closing it first.</dd>
+    <dt>B · In the rack</dt>
+    <dd>The EQ's arrow opens the curve in the module's rest, the others folding to their lines above and below it. The rack and its order stay in view and every switch is still a press away. Its cost: the curve gets what height is left after five folded lines - a plot 185 px tall at 1400 × 900 and 99 at 960 × 600 (under half A's height, and under a third), which is little room for ±12 dB over ten octaves - and the tab's fit becomes the EQ's problem: any line added to the rack comes out of the curve.</dd>
+  </dl>
+
+  <h2 id="checked">How the curve was checked</h2>
+  <p>The page's response (the function <code>eqResponseDb</code> in this page) was compared with the core's: a small C++ program that includes <code>core/include/scope/plane.h</code>, takes each band's coefficients from <code>PlaneEngine::eqBand</code> (the core's own, public for its tests) and evaluates the cascade at the same frequencies. Six settings, 241 frequencies each from 20 Hz to 20 kHz, at 48 kHz and 44.1 kHz; the null is the page given the mid's width as Q unconverted, which must miss. The core's numbers were printed to nine decimals, so a difference of 5 × 10<sup>−10</sup> dB is that printing's rounding: the two agree to the last digit printed, far inside the 0.01 dB asked. The null misses by 0.67 dB or more wherever the mid is in, so the check can fail. (A setting with the mid at nought has no width to get wrong, so its null is a dash.)</p>
+  <div class="table-wrap"><table class="check-table" id="checkTable">
+    <thead><tr><th>Setting</th><th>Rate</th><th>Page against core</th><th>Null: width as Q</th></tr></thead>
+    <tbody>
+<tr><td rowspan="2">The switch's start: low and high +3.0 dB, at 160 Hz and 4.0 kHz</td><td>48 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>—</td></tr>
+<tr><td>44.1 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>—</td></tr>
+<tr><td rowspan="2">The mockup's opening: low +3.0, mid −4.0 dB at 688 Hz 1.4 oct, high +3.0</td><td>48 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>0.67 dB</td></tr>
+<tr><td>44.1 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>0.67 dB</td></tr>
+<tr><td rowspan="2">Every band at an end: low +12 at 40 Hz, mid +12 at 8 kHz 0.2 oct, high −12 at 16 kHz</td><td>48 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>11.15 dB</td></tr>
+<tr><td>44.1 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>11.15 dB</td></tr>
+<tr><td rowspan="2">The other ends: low −12 at 640 Hz, mid −12 at 125 Hz 4.0 oct, high +12 at 1 kHz</td><td>48 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>10.10 dB</td></tr>
+<tr><td>44.1 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>10.10 dB</td></tr>
+<tr><td rowspan="2">The mid alone, +6.5 dB at 1.0 kHz, 1.0 oct</td><td>48 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>1.07 dB</td></tr>
+<tr><td>44.1 kHz</td><td class="ok">5.0 × 10<sup>-10</sup> dB</td><td>1.07 dB</td></tr>
+<tr><td rowspan="2">Off: every gain at nought</td><td>48 kHz</td><td class="ok">0 (both flat)</td><td>—</td></tr>
+<tr><td>44.1 kHz</td><td class="ok">0 (both flat)</td><td>—</td></tr>
+</tbody>
+  </table></div>
+
+  <h2>Not decided here</h2>
+  <ul>
+    <li>Whether the curve on the line should draw each hand's when the hands differ. Here it draws the edited hand's only.</li>
+    <li>Whether a point's drag is a step in undo on release (it would be, as a knob's drag is: the knobs are what undo records).</li>
+    <li>The live spectrum's cost: the Spect view already has an analyser, but on the editor it would run with the Bench open, at the editor's size.</li>
+  </ul>
+</div>
+
+<script>
+"use strict";
+/* ===== the EQ, as the core has it (core/include/scope/plane.h) ===== */
+const TWO_PI = 2 * Math.PI;
+const RATE = 48000;
+// Where each band acts, as scope.html's EQ_BANDS: its lowest hertz and its octaves on the knob.
+const EQ_BANDS = [[40, 4], [125, 6], [1000, 4]];
+const eqHz = (band, pos) => EQ_BANDS[band][0] * Math.pow(2, EQ_BANDS[band][1] * Math.max(0, Math.min(100, pos)) / 100);
+const eqPos = (band, hz) => Math.max(0, Math.min(100, Math.round(100 * Math.log2(hz / EQ_BANDS[band][0]) / EQ_BANDS[band][1])));
+function eqWidthQ(widthOct) {
+  const w = Math.max(0.05, widthOct), p = Math.pow(2, w);
+  return Math.sqrt(p) / (p - 1);
+}
+// One band's b0 b1 b2 a1 a2, as PlaneEngine::eqCoefficients, line for line.
+function eqCoefficients(band, db, hz, widthOct, rate, rawQ) {
+  const f = Math.min(hz, 0.45 * rate);
+  const w0 = TWO_PI * f / rate, c = Math.cos(w0), sn = Math.sin(w0);
+  const A = Math.pow(10, db / 40);
+  let b0, b1, b2, a0, a1, a2;
+  if (band === 1) {
+    const q = rawQ ? widthOct : eqWidthQ(widthOct), alpha = sn / (2 * q);
+    b0 = 1 + alpha * A; b1 = -2 * c; b2 = 1 - alpha * A;
+    a0 = 1 + alpha / A; a1 = -2 * c; a2 = 1 - alpha / A;
+  } else {
+    const alpha = sn / 2 * Math.sqrt(2), k = 2 * Math.sqrt(A) * alpha;
+    if (band === 0) {
+      b0 = A * ((A + 1) - (A - 1) * c + k); b1 = 2 * A * ((A - 1) - (A + 1) * c); b2 = A * ((A + 1) - (A - 1) * c - k);
+      a0 = (A + 1) + (A - 1) * c + k; a1 = -2 * ((A - 1) + (A + 1) * c); a2 = (A + 1) + (A - 1) * c - k;
+    } else {
+      b0 = A * ((A + 1) + (A - 1) * c + k); b1 = -2 * A * ((A - 1) + (A + 1) * c); b2 = A * ((A + 1) + (A - 1) * c - k);
+      a0 = (A + 1) - (A - 1) * c + k; a1 = 2 * ((A - 1) - (A + 1) * c); a2 = (A + 1) - (A - 1) * c - k;
+    }
+  }
+  return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0];
+}
+// A band's complex response at f: (b0 + b1 z^-1 + b2 z^-2) / (1 + a1 z^-1 + a2 z^-2), z = e^(jw).
+function bandH(co, f, rate) {
+  const w = TWO_PI * f / rate, c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+  const nr = co[0] + co[1] * c1 + co[2] * c2, ni = -(co[1] * s1 + co[2] * s2);
+  const dr = 1 + co[3] * c1 + co[4] * c2, di = -(co[3] * s1 + co[4] * s2);
+  const dd = dr * dr + di * di;
+  return [(nr * dr + ni * di) / dd, (ni * dr - nr * di) / dd];
+}
+// The bands that are in, as eqSet: a gain clamped to +-24 dB, and nought left out.
+function eqCascade(e, rate, rawQ) {
+  const gains = [e.low, e.mid, e.high], freqs = [e.lowHz, e.midHz, e.highHz], out = [];
+  for (let k = 0; k < 3; k++) {
+    const g = Math.max(-24, Math.min(24, gains[k]));
+    if (g === 0) continue;
+    out.push(eqCoefficients(k, g, Math.max(10, freqs[k]), e.width, rate, rawQ));
+  }
+  return out;
+}
+function cascadeH(cas, f, rate) {
+  let re = 1, im = 0;
+  for (const co of cas) { const [r, i] = bandH(co, f, rate); const nr = re * r - im * i; im = re * i + im * r; re = nr; }
+  return [re, im];
+}
+// The page's answer, in dB, for the check against the core (see "How the curve was checked").
+function eqResponseDb(e, freqs, rate, rawQ) {
+  const cas = eqCascade(e, rate || RATE, rawQ);
+  return freqs.map((f) => { const [r, i] = cascadeH(cas, f, rate || RATE); return 10 * Math.log10(r * r + i * i); });
+}
+window.eqResponseDb = eqResponseDb;
+
+/* ===== the mockup's state ===== */
+// A hand's EQ as the knobs hold it: gains in tenths of a dB, places 0-100, width in tenths of an octave.
+const START = { g: [0, 0, 0], pos: [50, 50, 50], w: 10 };
+const EQ_START = [30, 0, 30];   // the switch's start with nothing kept, scope.html's EQ_START
+const S = {
+  size: "big", layout: "over", hands: 1, spectrum: true, all: false,
+  editorOpen: true, sel: 1, editing: 0, linked: true, kept: null,
+  hand: [{ g: [30, -40, 30], pos: [50, 41, 50], w: 14 }, { g: [30, -40, 30], pos: [50, 41, 50], w: 14 }],
+};
+const cur = () => S.hand[S.hands === 2 ? S.editing : 0];
+const other = () => S.hand[1 - S.editing];
+const eqOf = (h) => ({ low: h.g[0] / 10, lowHz: eqHz(0, h.pos[0]), mid: h.g[1] / 10, midHz: eqHz(1, h.pos[1]),
+                       width: h.w / 10, high: h.g[2] / 10, highHz: eqHz(2, h.pos[2]) });
+const isOn = (h) => h.g.some((v) => v !== 0);
+// Every write goes through here: linked, both hands; else the edited one.
+function write(fn) {
+  if (S.hands === 2 && S.linked) { fn(S.hand[0]); fn(S.hand[1]); } else fn(cur());
+  paint();
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const hzReading = (hz) => (hz >= 1000 ? (hz / 1000).toFixed(1) + " kHz" : Math.round(hz) + " Hz");
+const gainReading = (db) => (db > 0 ? "+" : db < 0 ? "−" : "") + Math.abs(db).toFixed(1) + " dB";
+const BAND = ["Low shelf", "Mid band", "High shelf"];
+const WORD = ["low", "mid", "high"];
+const INFO = [
+  ["Low", "Lifts or cuts everything below the low shelf’s corner, up to 12 dB either way: weight under the sound, the figure longer at its lowest notes. Its corner is 40 to 640 Hz; the gain is half its full amount there."],
+  ["Mid", "Lifts or cuts a band around its middle, 125 Hz to 8 kHz, as wide as Width, a fifth of an octave to four: a boost brings that part forward, a cut hollows it out."],
+  ["High", "Lifts or cuts everything above the high shelf’s corner, 1 to 16 kHz, up to 12 dB either way: air over the sound, or a darker one with softer corners."],
+];
+
+/* ===== the rack ===== */
+const ICONS = {
+  plane: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M10 3l6 3.5v7L10 17l-6-3.5v-7z"/><path d="M4 6.5l6 3.5 6-3.5M10 10v7" opacity="0.5"/></svg>',
+  eq: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13c2.5 0 3-3 5.5-3s2 4.5 4 4.5S14 7 18 7"/><path d="M5 4v12M10 4v12M15 4v12" opacity="0.45"/></svg>',
+  phaser: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 11c2 0 2-3 4-3s2 3 4 3 2-3 4-3 2 3 4 3"/></svg>',
+  chorus: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 10c2-5 4-5 6 0s4 5 6 0 3-4 4-2"/></svg>',
+  delay: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M3 16h14M5 16V6M9 16V9M13 16v-4M16 16v-2"/></svg>',
+  reverb: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M8 10h.1M11 7a4 4 0 010 6M13.5 4.5a7.5 7.5 0 010 11"/></svg>',
+};
+const OTHERS = {
+  plane: { name: "Plane", tag: "Picture · Memory", sum: "twist 15 · turned 0°", knobs: [["15", "Twist"], ["0°", "Turn"]], handle: false },
+  phaser: { name: "Phaser", tag: "Picture · Memory", sum: "sweep 0.30 Hz", knobs: [["35%", "Mix"]], handle: true },
+  chorus: { name: "Chorus", tag: "Picture ·", sum: "0.80 Hz", knobs: [["30%", "Mix"]], handle: true },
+  delay: { name: "Delay", tag: "Picture · Motion", sum: "250 ms", knobs: [["25%", "Mix"], ["250 ms", "Time"]], handle: true },
+  reverb: { name: "Reverb", tag: "Picture ·", sum: "medium room · keeps the figure", knobs: [["15%", "Mix"]], handle: false },
+};
+const othersOn = { plane: false, phaser: false, chorus: false, delay: false, reverb: false };
+
+function knobHTML(frac, bipolar, extra) {
+  const a = frac * 270, lo = bipolar ? Math.min(135, a) : 0, hi = bipolar ? Math.max(135, a) : a;
+  return '<span class="knob-face"' + (extra || "") + ' style="--angle:' + a + 'deg;--lo:' + lo + 'deg;--hi:' + hi + 'deg"><span class="knob-cap"></span></span>';
+}
+function staticCell(val, nm, frac) {
+  return '<div class="kcell"><span class="val">' + val + '</span>' + knobHTML(frac == null ? 0.35 : frac, false) + '<span class="nm">' + nm + '</span></div>';
+}
+// Every effect on opens the Plane too, the tightest case; one module opens at a time, so not while the EQ is open in the rack.
+const planeOpen = () => S.all && !(S.layout === "rack" && S.editorOpen);
+function lineHTML(id, o) {
+  const on = othersOn[id];
+  return '<div class="fx" data-fx="' + id + '" data-on="' + (on ? 1 : 0) + '"><div class="fx-head">'
+    + '<span class="fx-handle' + (o.handle ? "" : " none") + '">⋮⋮</span>'
+    + '<span class="fx-icon">' + ICONS[id] + '</span><span class="fx-name">' + o.name + '</span>'
+    + '<button type="button" class="fx-on" data-other="' + id + '" aria-pressed="' + on + '">' + (on ? "On" : "Off") + '</button>'
+    + '<span class="fx-pic"><span class="nm">' + o.tag + '</span><i></i></span>'
+    + '<span class="fx-sum">' + (on ? o.sum : "Off") + '</span>'
+    + '<div class="fx-main">' + o.knobs.map(([v, n]) => staticCell(v, n)).join("") + '</div>'
+    + '<button type="button" class="fx-open hide-off" tabindex="-1" aria-hidden="true">' + (id === "plane" && planeOpen() ? "⌃" : "⌄") + '</button>'
+    + '</div>' + (id === "plane" && planeOpen() ? '<div class="fx-rest">' + staticCell("100%", "Scale X") + staticCell("100%", "Scale Y") + staticCell("0", "Shear") + staticCell("off", "Snap") + '</div>' : "") + '</div>';
+}
+function buildRack() {
+  const rack = document.getElementById("rack");
+  const eqOpenInRack = S.layout === "rack" && S.editorOpen;
+  const twoHands = S.hands === 2;
+  let html = lineHTML("plane", OTHERS.plane);
+  html += '<div class="fx eq" data-fx="eq" id="eqLine"' + (eqOpenInRack ? " data-open" : "") + '><div class="fx-head">'
+    + '<span class="fx-handle none">⋮⋮</span>'
+    + '<span class="fx-icon">' + ICONS.eq + '</span><span class="fx-name">EQ</span>'
+    + '<button type="button" class="fx-on" id="eqOn" aria-pressed="false">Off</button>'
+    + '<span class="fx-pic"><span class="nm">Picture ·</span><i></i></span>'
+    + '<span class="fx-sum" id="eqSum"></span>'
+    + '<div class="fx-main"><button type="button" class="eq-thumb" id="eqThumb" aria-label="The EQ’s curve: open its editor"><svg id="thumbSvg" aria-hidden="true"></svg></button></div>'
+    + '<button type="button" class="hand-link" id="eqLinkShort" ' + (twoHands ? "" : "hidden") + '></button>'
+    + '<button type="button" class="fx-open" id="eqArrow" aria-expanded="' + eqOpenInRack + '" aria-label="The EQ’s editor">' + (eqOpenInRack ? "⌃" : "⌄") + '</button>'
+    + '</div>' + (eqOpenInRack ? '<div class="fx-rest eq-rest" id="eqRest"></div>' : "") + '</div>';
+  for (const id of ["phaser", "chorus", "delay", "reverb"]) html += lineHTML(id, OTHERS[id]);
+  rack.innerHTML = html;
+  rack.querySelectorAll("[data-other]").forEach((b) => b.addEventListener("click", () => {
+    othersOn[b.dataset.other] = !othersOn[b.dataset.other]; render();
+  }));
+  document.getElementById("eqThumb").addEventListener("click", () => { S.editorOpen = true; render(); focusPoint(); });
+  document.getElementById("eqArrow").addEventListener("click", () => { S.editorOpen = !(S.editorOpen && S.layout === "rack") || S.layout === "over"; if (S.layout === "over") S.editorOpen = true; render(); });
+  document.getElementById("eqOn").addEventListener("click", switchEq);
+  document.getElementById("eqLinkShort").addEventListener("click", toggleLink);
+}
+// The switch is a view over the values, as switchFx: off keeps the gains and takes them to nought; on puts them back.
+function switchEq() {
+  const h = cur();
+  if (isOn(h)) { const kept = h.g.slice(); write((x) => { x.g = [0, 0, 0]; }); S.kept = kept; }
+  else { const back = S.kept || EQ_START; S.kept = null; write((x) => { x.g = back.slice(); }); }
+}
+function toggleLink() {
+  if (S.linked) { S.linked = false; const src = cur(); const dst = other(); copyHand(src, dst); }
+  else { S.linked = true; copyHand(cur(), other()); }
+  paint();
+}
+function copyHand(src, dst) { dst.g = src.g.slice(); dst.pos = src.pos.slice(); dst.w = src.w; }
+
+// Whether the rack would scroll with every line's knobs out: then, while one is open, fold the others (fitRack).
+function fitRack() {
+  const rack = document.getElementById("rack");
+  rack.removeAttribute("data-tight");
+  const anyOpen = !!rack.querySelector(".fx[data-open]") || S.all;
+  if (anyOpen && rack.scrollHeight > rack.clientHeight + 1) rack.setAttribute("data-tight", "");
+}
+
+/* ===== the plot ===== */
+const NS = "http://www.w3.org/2000/svg";
+const FMIN = 20, FMAX = 20000, DBR = 12;
+const GRID_F = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+const MINOR_F = [30, 40, 60, 70, 80, 90, 300, 400, 600, 700, 800, 900, 3000, 4000, 6000, 7000, 8000, 9000];
+let geo = null;   // the plot's geometry, in its own pixels
+function plotGeo(svg) {
+  const w = svg.clientWidth, h = svg.clientHeight, compact = S.size === "small";
+  const L = compact ? 30 : 36, R = 10, T = 8, B = compact ? 16 : 20;
+  return { w, h, L, R, T, B, W: w - L - R, H: h - T - B,
+           x: (f) => L + Math.log10(f / FMIN) / Math.log10(FMAX / FMIN) * (w - L - R),
+           f: (x) => FMIN * Math.pow(FMAX / FMIN, (x - L) / (w - L - R)),
+           y: (db) => T + (DBR - db) / (2 * DBR) * (h - T - B),
+           db: (y) => DBR - (y - T) / (h - T - B) * 2 * DBR };
+}
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const FREQS = Array.from({ length: 360 }, (_, i) => FMIN * Math.pow(FMAX / FMIN, i / 359));
+function curvePath(g, e, freqs, clip) {
+  const db = eqResponseDb(e, freqs);
+  return freqs.map((f, i) => (i ? "L" : "M") + g.x(f).toFixed(1) + " " + g.y(clip ? clamp(db[i], -DBR - 2, DBR + 2) : db[i]).toFixed(1)).join("");
+}
+function bandOnly(e, k) {
+  const z = { ...e, low: 0, mid: 0, high: 0 };
+  z[WORD[k]] = e[WORD[k]];
+  return z;
+}
+// The illustration behind: the fifth's partials, as the EQ leaves them.
+const NOTES = [220, 330];
+const PARTIALS = [];
+for (const f0 of NOTES) for (let n = 1; n <= 8; n++) PARTIALS.push({ f: f0 * n, db: -4.5 * (n - 1) });
+
+function drawPlot(svg) {
+  const g = geo = plotGeo(svg);
+  if (g.W <= 0 || g.H <= 0) return;
+  svg.setAttribute("viewBox", "0 0 " + g.w + " " + g.h);
+  svg.textContent = "";
+  const h = cur(), e = eqOf(h), compact = S.size === "small";
+  el("rect", { x: g.L, y: g.T, width: g.W, height: g.H, fill: "var(--cream)", stroke: "var(--line)" }, svg);
+  for (const f of MINOR_F) el("line", { x1: g.x(f), x2: g.x(f), y1: g.T, y2: g.T + g.H, stroke: "var(--line)", "stroke-width": 0.5, opacity: 0.7 }, svg);
+  for (const f of GRID_F) {
+    el("line", { x1: g.x(f), x2: g.x(f), y1: g.T, y2: g.T + g.H, stroke: "var(--line)", "stroke-width": 1 }, svg);
+    const t = el("text", { x: g.x(f), y: g.h - 4, "text-anchor": f === FMIN ? "start" : f === FMAX ? "end" : "middle", "font-size": compact ? 9.5 : 10.5, fill: "var(--text-soft)", "font-family": "var(--sans)" }, svg);
+    t.textContent = f >= 1000 ? f / 1000 + "k" : String(f);
+  }
+  for (const d of [-12, -6, 0, 6, 12]) {
+    el("line", { x1: g.L, x2: g.L + g.W, y1: g.y(d), y2: g.y(d), stroke: d === 0 ? "var(--unresolved)" : "var(--line)", "stroke-width": d === 0 ? 1 : 1 }, svg);
+    const t = el("text", { x: g.L - 5, y: g.y(d) + 3.5, "text-anchor": "end", "font-size": compact ? 9.5 : 10.5, fill: "var(--text-soft)", "font-family": "var(--sans)" }, svg);
+    t.textContent = (d > 0 ? "+" : d < 0 ? "−" : "") + Math.abs(d);
+  }
+  const clipId = "clip" + svg.id;
+  const cp = el("clipPath", { id: clipId }, el("defs", {}, svg));
+  el("rect", { x: g.L, y: g.T, width: g.W, height: g.H }, cp);
+  const inner = el("g", { "clip-path": "url(#" + clipId + ")" }, svg);
+  // The spectrum: an illustration, on a scale of its own - 60 dB from the plot's top to its foot.
+  if (S.spectrum) {
+    const after = eqResponseDb(e, PARTIALS.map((p) => p.f));
+    PARTIALS.forEach((p, i) => {
+      const lvl = p.db + after[i], top = g.T + (-lvl / 60) * g.H;
+      el("line", { x1: g.x(p.f), x2: g.x(p.f), y1: g.T + g.H, y2: Math.max(g.T, top), stroke: "var(--unresolved)", "stroke-width": 3, opacity: 0.32 }, inner);
+    });
+    if (g.H > 110) el("text", { x: g.L + g.W - 6, y: g.T + 13, "text-anchor": "end", "font-size": compact ? 9.5 : 10.5, fill: "var(--unresolved)", "font-family": "var(--sans)" }, svg)
+      .textContent = "behind: the fifth’s harmonics after the EQ — an illustration, not live";
+  }
+  // Each band's own, faint; the other hand's, dashed in its ink; then the sum.
+  for (let k = 0; k < 3; k++) if (h.g[k] !== 0)
+    el("path", { d: curvePath(g, bandOnly(e, k), FREQS, true), fill: "none", stroke: "var(--unresolved)", "stroke-width": 1, opacity: k === S.sel ? 0.9 : 0.55 }, inner);
+  if (S.hands === 2 && !S.linked) {
+    el("path", { d: curvePath(g, eqOf(other()), FREQS, true), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1.5, "stroke-dasharray": "5 4", opacity: 0.7 }, inner);
+  }
+  const sumPath = curvePath(g, e, FREQS, true);
+  el("path", { d: sumPath + "L" + (g.L + g.W) + " " + g.y(0) + "L" + g.L + " " + g.y(0) + "Z", fill: "var(--wash)", stroke: "none" }, inner);
+  el("path", { d: sumPath, fill: "none", stroke: S.hands === 2 && !S.linked ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--charcoal)", "stroke-width": 2 }, inner);
+  // The mid's width, as a bracket under its point while it is chosen.
+  if (S.sel === 1) {
+    const lo = e.midHz / Math.pow(2, e.width / 2), hi = e.midHz * Math.pow(2, e.width / 2), yb = g.y(0) + (h.g[1] >= 0 ? 12 : -12);
+    el("path", { d: "M" + g.x(lo) + " " + (yb - 4) + "V" + yb + "H" + g.x(hi) + "V" + (yb - 4), fill: "none", stroke: "var(--blush-deep)", "stroke-width": 1 }, inner);
+  }
+  // The points, each at its corner and its full gain.
+  for (let k = 0; k < 3; k++) {
+    const hz = eqHz(k, h.pos[k]), db = h.g[k] / 10, chosen = k === S.sel;
+    const pt = el("g", { class: "pt", tabindex: 0, role: "button", "data-band": k, "aria-label": pointLabel(k) }, svg);
+    el("circle", { cx: g.x(hz), cy: g.y(db), r: 16, fill: "transparent" }, pt);
+    el("circle", { class: "ring", cx: g.x(hz), cy: g.y(db), r: compact ? 7 : 8, fill: chosen ? "var(--blush-deep)" : "var(--paper)", stroke: chosen ? "var(--blush-deep)" : "var(--charcoal)", "stroke-width": 1.5 }, pt);
+    const t = el("text", { x: g.x(hz), y: g.y(db) + 3.3, "text-anchor": "middle", "font-size": compact ? 8.5 : 9, "font-weight": 500, fill: chosen ? "var(--paper)" : "var(--charcoal)", "font-family": "var(--sans)", "pointer-events": "none" }, pt);
+    t.textContent = ["L", "M", "H"][k];
+  }
+}
+function pointLabel(k) {
+  const h = cur();
+  return BAND[k] + ": " + gainReading(h.g[k] / 10) + " at " + hzReading(eqHz(k, h.pos[k])) + (k === 1 ? ", " + (h.w / 10).toFixed(1) + " octave wide" : "")
+    + ". Arrows move it, Shift finer" + (k === 1 ? ", [ and ] its width" : "") + "; double-click resets.";
+}
+
+/* ===== the thumbnail on the line ===== */
+const TFREQS = Array.from({ length: 80 }, (_, i) => FMIN * Math.pow(FMAX / FMIN, i / 79));
+function paintThumb() {
+  const svg = document.getElementById("thumbSvg");
+  if (!svg) return;
+  const w = svg.clientWidth || 150, ht = svg.clientHeight || 34, h = cur(), on = isOn(h);
+  const g = { x: (f) => 3 + Math.log10(f / FMIN) / 3 * (w - 6), y: (db) => ht / 2 - db / 13 * (ht / 2 - 3) };
+  svg.setAttribute("viewBox", "0 0 " + w + " " + ht);
+  svg.textContent = "";
+  el("line", { x1: 2, x2: w - 2, y1: ht / 2, y2: ht / 2, stroke: "var(--line)" }, svg);
+  if (S.hands === 2 && !S.linked)
+    el("path", { d: curvePath(g, eqOf(other()), TFREQS, false), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1, "stroke-dasharray": "3 2", opacity: 0.7 }, svg);
+  el("path", { d: curvePath(g, eqOf(h), TFREQS, false), fill: "none", stroke: on ? "var(--charcoal)" : "var(--unresolved)", "stroke-width": 1.5 }, svg);
+  if (on) for (let k = 0; k < 3; k++)
+    el("circle", { cx: g.x(eqHz(k, h.pos[k])), cy: g.y(h.g[k] / 10), r: 2.2, fill: k === S.sel && S.editorOpen ? "var(--blush-deep)" : "var(--charcoal)" }, svg);
+}
+
+/* ===== the editor's body: plot and knobs ===== */
+const KNOBS = [
+  { id: "low", nm: "Low", band: 0, get: (h) => h.g[0], set: (h, v) => { h.g[0] = v; }, min: -120, max: 120, bip: true, read: (v) => gainReading(v / 10), start: 0 },
+  { id: "lowAt", nm: "Low at", band: 0, get: (h) => h.pos[0], set: (h, v) => { h.pos[0] = v; }, min: 0, max: 100, read: (v) => hzReading(eqHz(0, v)), start: 50 },
+  { sep: true },
+  { id: "mid", nm: "Mid", band: 1, get: (h) => h.g[1], set: (h, v) => { h.g[1] = v; }, min: -120, max: 120, bip: true, read: (v) => gainReading(v / 10), start: 0 },
+  { id: "midAt", nm: "Mid at", band: 1, get: (h) => h.pos[1], set: (h, v) => { h.pos[1] = v; }, min: 0, max: 100, read: (v) => hzReading(eqHz(1, v)), start: 50 },
+  { id: "width", nm: "Width", band: 1, get: (h) => h.w, set: (h, v) => { h.w = v; }, min: 2, max: 40, read: (v) => (v / 10).toFixed(1) + " oct", start: 10 },
+  { sep: true },
+  { id: "high", nm: "High", band: 2, get: (h) => h.g[2], set: (h, v) => { h.g[2] = v; }, min: -120, max: 120, bip: true, read: (v) => gainReading(v / 10), start: 0 },
+  { id: "highAt", nm: "High at", band: 2, get: (h) => h.pos[2], set: (h, v) => { h.pos[2] = v; }, min: 0, max: 100, read: (v) => hzReading(eqHz(2, v)), start: 50 },
+];
+function bodyHTML(inRack) {
+  const desc = "Three bands on the pair, the same on both channels, so a line stays a line.";
+  const head = inRack ? "" : '<div class="ed-head"><span class="fx-icon">' + ICONS.eq + '</span><span class="nm">EQ</span>'
+    + '<button type="button" class="fx-on" id="edOn" aria-pressed="false">Off</button>'
+    + '<button type="button" class="hand-link" id="edLink"' + (S.hands === 2 ? "" : " hidden") + '></button>'
+    + '<span class="desc">' + desc + '</span>'
+    + '<button type="button" class="link-btn caps close" id="edClose">Close</button></div>';
+  const note = inRack
+    ? '<p class="note">The points write the knobs; the knobs are the values.</p>'
+    : '<p class="note"><b>The points write these knobs</b>, and the knobs are the values: a setup, a host, undo, the morph and modulation see them as before. Modulation is on a knob’s right-click.</p>';
+  return head + '<div class="ed-body"><div class="plot-wrap"><svg class="plot" id="plot" aria-label="The EQ’s response, 20 Hz to 20 kHz, plus and minus 12 dB"></svg><div class="readout" id="readout" hidden></div></div>'
+    + '<div class="ed-foot"><div class="knobs" id="edKnobs">' + KNOBS.map((k) => k.sep ? '<span class="sep"></span>'
+      : '<div class="kcell" data-k="' + k.id + '"><span class="val"></span>' + knobHTML(0, k.bip, ' tabindex="0" role="slider" aria-label="' + k.nm + '" data-knob="' + k.id + '"') + '<span class="nm">' + k.nm + '</span></div>').join("")
+    + '</div>' + note + '</div></div>';
+}
+function buildEditor() {
+  const ed = document.getElementById("eqEd");
+  const over = S.layout === "over" && S.editorOpen;
+  ed.hidden = !over;
+  ed.innerHTML = "";
+  const rest = document.getElementById("eqRest");
+  const host = over ? ed : rest;
+  if (!host) return;
+  host.innerHTML = bodyHTML(!over);
+  if (over) {
+    document.getElementById("edClose").addEventListener("click", () => { S.editorOpen = false; render(); document.getElementById("eqThumb").focus(); });
+    document.getElementById("edOn").addEventListener("click", switchEq);
+    document.getElementById("edLink").addEventListener("click", toggleLink);
+  }
+  wirePlot(document.getElementById("plot"));
+  wireKnobs(host);
+}
+function setRestHeight() {
+  const rest = document.getElementById("eqRest");
+  if (!rest) return;
+  // Layout B: the curve takes what is left of the rack once every line is drawn.
+  const rack = document.getElementById("rack"), wrap = rest.querySelector(".plot-wrap");
+  // scrollHeight is never under clientHeight, so the room left is measured from the last line's foot.
+  wrap.style.setProperty("--plot-h", "60px");
+  const last = rack.lastElementChild, sc = stageScale();
+  const used = (last.getBoundingClientRect().bottom - rack.getBoundingClientRect().top) / sc;
+  const spare = Math.floor(rack.clientHeight - used);
+  wrap.style.setProperty("--plot-h", Math.max(60, 60 + spare - 2) + "px");
+}
+
+function paintKnobs() {
+  const h = cur();
+  for (const k of KNOBS) {
+    if (k.sep) continue;
+    document.querySelectorAll('[data-k="' + k.id + '"]').forEach((cell) => {
+      const v = k.get(h), frac = (v - k.min) / (k.max - k.min), a = frac * 270;
+      const face = cell.querySelector(".knob-face");
+      face.style.setProperty("--angle", a + "deg");
+      face.style.setProperty("--lo", (k.bip ? Math.min(135, a) : 0) + "deg");
+      face.style.setProperty("--hi", (k.bip ? Math.max(135, a) : a) + "deg");
+      face.setAttribute("aria-valuenow", v); face.setAttribute("aria-valuetext", k.read(v));
+      cell.querySelector(".val").textContent = k.read(v);
+      cell.classList.toggle("lit", k.band === S.sel);
+    });
+  }
+}
+function flash(ids) {
+  for (const id of ids) document.querySelectorAll('[data-k="' + id + '"]').forEach((c) => {
+    c.classList.add("flash"); clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove("flash"), 450);
+  });
+}
+function wireKnobs(host) {
+  host.querySelectorAll("[data-knob]").forEach((face) => {
+    const k = KNOBS.find((x) => x.id === face.dataset.knob);
+    face.setAttribute("aria-valuemin", k.min); face.setAttribute("aria-valuemax", k.max);
+    let start = null;
+    face.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault(); face.setPointerCapture(ev.pointerId); face.classList.add("held");
+      S.sel = k.band; start = { y: ev.clientY, v: k.get(cur()) }; paint();
+    });
+    face.addEventListener("pointermove", (ev) => {
+      if (!start) return;
+      const sc = stageScale(), v = clamp(Math.round(start.v - (ev.clientY - start.y) / sc / 150 * (k.max - k.min)), k.min, k.max);
+      write((h) => k.set(h, v));
+    });
+    const end = () => { start = null; face.classList.remove("held"); };
+    face.addEventListener("pointerup", end); face.addEventListener("pointercancel", end);
+    face.addEventListener("dblclick", () => write((h) => k.set(h, k.start)));
+    face.addEventListener("keydown", (ev) => {
+      const step = ev.shiftKey ? 1 : Math.max(1, Math.round((k.max - k.min) / 48));
+      const d = { ArrowUp: step, ArrowRight: step, ArrowDown: -step, ArrowLeft: -step }[ev.key];
+      if (d == null) return;
+      ev.preventDefault(); S.sel = k.band; write((h) => k.set(h, clamp(k.get(h) + d, k.min, k.max)));
+    });
+  });
+}
+
+/* ===== dragging the points ===== */
+function stageScale() { return parseFloat(document.getElementById("stage").dataset.scale || "1"); }
+function toPlot(svg, ev) {
+  const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+let drag = null, longPress = null, lastDown = null;
+function wirePlot(svg) {
+  svg.addEventListener("pointerdown", (ev) => {
+    const pt = ev.target.closest(".pt");
+    hideMenu();
+    if (!pt || ev.button !== 0) return;
+    const k = +pt.dataset.band, h = cur(), at = toPlot(svg, ev);
+    ev.preventDefault();
+    svg.setPointerCapture(ev.pointerId);
+    const now = performance.now();
+    if (lastDown && lastDown.k === k && now - lastDown.t < 380) { lastDown = null; resetBand(k); focusPoint(); return; }
+    lastDown = { k, t: now };
+    S.sel = k;
+    drag = { k, x: at.x, y: at.y, pos: h.pos[k], g: h.g[k], w: h.w, shift: ev.shiftKey, id: ev.pointerId, moved: false };
+    if (ev.pointerType !== "mouse") longPress = setTimeout(() => { if (drag && !drag.moved) { const k2 = drag.k; drag = null; showMenu(k2, ev.clientX, ev.clientY); } }, 550);
+    paint(); showReadout(k);
+    svg.querySelector('.pt[data-band="' + k + '"]').focus({ preventScroll: true });
+  });
+  svg.addEventListener("pointermove", (ev) => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const at = toPlot(svg, ev), g = geo, k = drag.k;
+    if (Math.abs(at.x - drag.x) + Math.abs(at.y - drag.y) > 3) { drag.moved = true; clearTimeout(longPress); }
+    if (k === 1 && (ev.shiftKey || drag.shift)) {
+      // The mid's width: up wider, a fifth of the plot's height for its whole range.
+      const dw = Math.round((drag.y - at.y) / (g.H / 1.2) * 38);
+      write((h) => { h.w = clamp(drag.w + dw, 2, 40); });
+    } else {
+      const f0 = eqHz(k, drag.pos), f = f0 * Math.pow(FMAX / FMIN, (at.x - drag.x) / g.W);
+      const pos = eqPos(k, f), gain = clamp(Math.round(drag.g + (drag.y - at.y) / g.H * 240), -120, 120);
+      write((h) => { h.pos[k] = pos; h.g[k] = gain; });
+    }
+    showReadout(k);
+  });
+  const end = (ev) => { if (drag && ev.pointerId === drag.id) { drag = null; clearTimeout(longPress); hideReadoutSoon(); } };
+  svg.addEventListener("pointerup", end); svg.addEventListener("pointercancel", end);
+  svg.addEventListener("wheel", (ev) => {
+    const pt = ev.target.closest(".pt");
+    if (!pt || +pt.dataset.band !== 1) return;
+    ev.preventDefault(); S.sel = 1;
+    write((h) => { h.w = clamp(h.w + (ev.deltaY < 0 ? 1 : -1), 2, 40); });
+    showReadout(1); hideReadoutSoon();
+  }, { passive: false });
+  svg.addEventListener("contextmenu", (ev) => {
+    const pt = ev.target.closest(".pt");
+    ev.preventDefault();
+    if (!pt) return;
+    S.sel = +pt.dataset.band; paint();
+    showMenu(S.sel, ev.clientX, ev.clientY);
+  });
+  svg.addEventListener("focusin", (ev) => {
+    const pt = ev.target.closest(".pt");
+    if (pt && +pt.dataset.band !== S.sel) { S.sel = +pt.dataset.band; paint(); }
+  });
+  svg.addEventListener("keydown", (ev) => {
+    const pt = ev.target.closest(".pt"); if (!pt) return;
+    const k = +pt.dataset.band, fine = ev.shiftKey;
+    if ((ev.key === "F10" && ev.shiftKey) || ev.key === "ContextMenu") { ev.preventDefault(); const r = pt.getBoundingClientRect(); showMenu(k, r.right, r.bottom); return; }
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); const r = pt.getBoundingClientRect(); showMenu(k, r.right, r.bottom); return; }
+    if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); resetBand(k); return; }
+    if (k === 1 && (ev.key === "[" || ev.key === "]")) { ev.preventDefault(); write((h) => { h.w = clamp(h.w + (ev.key === "]" ? 1 : -1), 2, 40); }); showReadout(1); hideReadoutSoon(); return; }
+    const dx = { ArrowLeft: -1, ArrowRight: 1 }[ev.key], dy = { ArrowDown: -1, ArrowUp: 1 }[ev.key];
+    if (dx == null && dy == null) return;
+    ev.preventDefault();
+    write((h) => {
+      if (dx) h.pos[k] = clamp(h.pos[k] + dx * (fine ? 1 : 5), 0, 100);
+      if (dy) h.g[k] = clamp(h.g[k] + dy * (fine ? 1 : 5), -120, 120);
+    });
+    flash(dx ? [["lowAt", "midAt", "highAt"][k]] : [["low", "mid", "high"][k]]);
+    showReadout(k); hideReadoutSoon();
+  });
+}
+function resetBand(k) {
+  S.sel = k;
+  write((h) => { h.g[k] = 0; h.pos[k] = 50; if (k === 1) h.w = 10; });
+}
+function focusPoint() {
+  const pt = document.querySelector('#plot .pt[data-band="' + S.sel + '"]');
+  if (pt) pt.focus({ preventScroll: true });
+}
+let readoutTimer = 0;
+function showReadout(k) {
+  const r = document.getElementById("readout"); if (!r || !geo) return;
+  const h = cur();
+  r.textContent = BAND[k] + "  " + gainReading(h.g[k] / 10) + " at " + hzReading(eqHz(k, h.pos[k])) + (k === 1 ? " · " + (h.w / 10).toFixed(1) + " oct" : "");
+  r.hidden = false; clearTimeout(readoutTimer);
+  const x = geo.x(eqHz(k, h.pos[k])), y = geo.y(h.g[k] / 10);
+  r.style.left = clamp(x - 70, geo.L, geo.w - 210) + "px";
+  r.style.top = (y > geo.h / 2 ? y - 34 : y + 16) + "px";
+}
+function hideReadoutSoon() { clearTimeout(readoutTimer); readoutTimer = setTimeout(() => { const r = document.getElementById("readout"); if (r) r.hidden = true; }, 900); }
+
+/* ===== the right-click menu ===== */
+function showMenu(k, cx, cy) {
+  const m = document.getElementById("ctx"), win = document.getElementById("win"), wr = win.getBoundingClientRect(), sc = stageScale();
+  const h = cur(), startW = k === 1 ? ", 1.0 oct" : "";
+  m.innerHTML = '<div class="h">' + BAND[k] + '</div>'
+    + '<button type="button" role="menuitem" data-a="type">Type a value…</button>'
+    + '<button type="button" role="menuitem" data-a="reset">Reset — 0.0 dB at ' + hzReading(eqHz(k, 50)) + startW + '</button>'
+    + (S.hands === 2 && !S.linked ? '<button type="button" role="menuitem" data-a="copy">Copy to the other hand</button>' : "")
+    + '<button type="button" role="menuitem" data-a="info">What is this?</button>'
+    + '<div class="muted">Its modulation is on its knobs, under the curve: a point is ' + (k === 1 ? "three" : "two") + ' controls.</div>';
+  m.hidden = false;
+  const x = (cx - wr.left) / sc, y = (cy - wr.top) / sc;
+  m.style.left = Math.min(x, win.clientWidth - 310) + "px";
+  m.style.top = Math.min(y, win.clientHeight - 200) + "px";
+  m.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => menuAct(k, b.dataset.a)));
+  m.querySelector("button").focus();
+  m.onkeydown = (ev) => {
+    if (ev.key === "Escape") { hideMenu(); focusPoint(); }
+    const items = Array.from(m.querySelectorAll("button")), i = items.indexOf(document.activeElement);
+    if (ev.key === "ArrowDown") { ev.preventDefault(); items[(i + 1) % items.length].focus(); }
+    if (ev.key === "ArrowUp") { ev.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  };
+}
+function hideMenu() { const m = document.getElementById("ctx"); if (m) m.hidden = true; }
+// "1.2k", "1200", "1.2 kHz" are all 1200 Hz; a gain may carry its sign and "dB".
+function parseHz(s) { const m = /^\s*([\d.]+)\s*(k)?/i.exec(s); return m ? parseFloat(m[1]) * (m[2] ? 1000 : 1) : NaN; }
+function menuAct(k, a) {
+  const m = document.getElementById("ctx"), h = cur();
+  if (a === "reset") { hideMenu(); resetBand(k); focusPoint(); return; }
+  if (a === "copy") { hideMenu(); const o = other(); o.g[k] = h.g[k]; o.pos[k] = h.pos[k]; if (k === 1) o.w = h.w; paint(); focusPoint(); return; }
+  if (a === "info") {
+    m.innerHTML = '<div class="info"><b>' + INFO[k][0] + '</b>' + INFO[k][1] + '</div>';
+    m.tabIndex = -1; m.focus(); return;
+  }
+  m.innerHTML = '<div class="h">' + BAND[k] + ' · type a value</div><form class="type" id="typeForm">'
+    + '<label for="tG">Gain</label><input id="tG" value="' + (h.g[k] / 10).toFixed(1) + '">'
+    + '<label for="tF">At</label><input id="tF" value="' + hzReading(eqHz(k, h.pos[k])) + '">'
+    + (k === 1 ? '<label for="tW">Width</label><input id="tW" value="' + (h.w / 10).toFixed(1) + ' oct">' : "")
+    + '<span></span><button type="submit" class="link-btn caps" style="width:auto;justify-self:start;padding:0 0 2px">Set</button></form>';
+  const f = document.getElementById("typeForm");
+  document.getElementById("tG").select();
+  f.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const g = parseFloat(document.getElementById("tG").value.replace("−", "-")), hz = parseHz(document.getElementById("tF").value);
+    const w = k === 1 ? parseFloat(document.getElementById("tW").value) : NaN;
+    write((x) => {
+      if (isFinite(g)) x.g[k] = clamp(Math.round(g * 10), -120, 120);
+      if (isFinite(hz) && hz > 0) x.pos[k] = eqPos(k, hz);
+      if (isFinite(w)) x.w = clamp(Math.round(w * 10), 2, 40);
+    });
+    hideMenu(); focusPoint();
+  });
+}
+document.addEventListener("pointerdown", (ev) => { if (!ev.target.closest("#ctx") && !ev.target.closest(".pt")) hideMenu(); });
+
+/* ===== the screen: the fifth through the EQ, steady state ===== */
+function paintScreen() {
+  const c = document.getElementById("screen"), x = c.getContext("2d"), n = c.width;
+  x.clearRect(0, 0, n, n);
+  x.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--line"); x.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) { const p = Math.round(i * (n - 1) / 10) + 0.5; x.beginPath(); x.moveTo(p, 0); x.lineTo(p, n); x.stroke(); x.beginPath(); x.moveTo(0, p); x.lineTo(n, p); x.stroke(); }
+  x.strokeStyle = "#241f1d"; x.strokeRect(0.5, 0.5, n - 1, n - 1);
+  const cas = eqCascade(eqOf(cur()), RATE);
+  const parts = NOTES.map((f0) => Array.from({ length: 8 }, (_, i) => {
+    const f = f0 * (i + 1), [re, im] = cascadeH(cas, f, RATE);
+    return { f, a: Math.pow(10, (-4.5 * i) / 20) * Math.hypot(re, im), ph: Math.atan2(im, re) };
+  }));
+  const N = 1400, T = 1 / 110, s = n * 0.2;
+  x.beginPath(); x.strokeStyle = "#241f1d"; x.lineWidth = 1.5; x.lineJoin = "round";
+  for (let i = 0; i <= N; i++) {
+    const t = i / N * T;
+    const v = parts.map((p) => p.reduce((acc, q) => acc + q.a * Math.sin(TWO_PI * q.f * t + q.ph), 0));
+    const px = n / 2 + v[0] * s, py = n / 2 - v[1] * s;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.stroke();
+}
+
+/* ===== painting ===== */
+function paint() {
+  const h = cur(), on = isOn(h);
+  const eqLine = document.getElementById("eqLine");
+  if (eqLine) eqLine.dataset.on = on ? 1 : 0;
+  for (const id of ["eqOn", "edOn"]) { const b = document.getElementById(id); if (b) { b.setAttribute("aria-pressed", on); b.textContent = on ? "On" : "Off"; } }
+  const sum = [0, 1, 2].filter((k) => h.g[k] !== 0).map((k) => WORD[k] + " " + gainReading(h.g[k] / 10) + " at " + hzReading(eqHz(k, h.pos[k]))).join(" · ");
+  const sumEl = document.getElementById("eqSum"); if (sumEl) sumEl.textContent = sum || "Off";
+  document.getElementById("tabLine").textContent = on ? "EQ" + (Object.values(othersOn).some(Boolean) ? " · " + Object.keys(othersOn).filter((k) => othersOn[k]).map((k) => OTHERS[k].name).join(" · ") : "") : (Object.keys(othersOn).filter((k) => othersOn[k]).map((k) => OTHERS[k].name).join(" · ") || "Nothing on");
+  const handName = S.editing ? "Upper" : "Lower", ink = S.editing ? "var(--hand-b)" : "var(--hand-a)";
+  const linkSvg = '<svg viewBox="0 0 13 9" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="0.6" y="2" width="6" height="5" rx="2.5"/><rect x="6.4" y="2" width="6" height="5" rx="2.5"/></svg>';
+  const short = document.getElementById("eqLinkShort");
+  if (short) { short.innerHTML = linkSvg + (S.linked ? "Both" : handName); short.setAttribute("aria-pressed", S.linked); short.style.setProperty("--hand", ink); short.hidden = S.hands !== 2; }
+  const long = document.getElementById("edLink");
+  if (long) { long.innerHTML = linkSvg + (S.linked ? "Same in both" : handName + "’s own"); long.setAttribute("aria-pressed", S.linked); long.style.setProperty("--hand", ink); long.hidden = S.hands !== 2; }
+  const plot = document.getElementById("plot");
+  if (!plot) geo = null;
+  if (plot) {
+    const focused = document.activeElement && document.activeElement.closest && document.activeElement.closest(".pt");
+    drawPlot(plot);
+    if (focused) focusPoint();
+  }
+  paintKnobs(); paintThumb(); paintScreen(); measure();
+}
+
+function render() {
+  const win = document.getElementById("win");
+  win.classList.toggle("compact", S.size === "small");
+  document.getElementById("editHands").hidden = S.hands !== 2;
+  document.querySelectorAll("#editSwitch button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.h === S.editing));
+  for (const k in othersOn) othersOn[k] = S.all ? true : othersOn[k];
+  buildRack();
+  buildEditor();
+  fitStage();
+  paintKnobs();   // the readings above the knobs are part of the height measured next
+  fitRack();
+  setRestHeight();
+  paint();
+}
+
+/* The fit, measured rather than claimed: the rack's and the editor's overflow. */
+function measure() {
+  const out = [], rack = document.getElementById("rack"), ed = document.getElementById("eqEd");
+  const over = rack.scrollHeight - rack.clientHeight;
+  out.push('<span class="' + (over > 1 ? "over" : "ok") + '">Rack: ' + (over > 1 ? over + " px over" : "fits") + (rack.hasAttribute("data-tight") ? ", the other lines folded" : "") + '</span>');
+  if (!ed.hidden) {
+    const body = ed.querySelector(".ed-body"), o = body ? body.scrollHeight - body.clientHeight : 0;
+    out.push('<span class="' + (o > 1 ? "over" : "ok") + '">Editor: ' + (o > 1 ? o + " px over" : "fits") + '</span>');
+  }
+  if (geo) out.push("<span>Curve " + Math.round(geo.W) + " × " + Math.round(geo.H) + " px of the page’s own</span>");
+  document.getElementById("fitLine").innerHTML = out.join("");
+}
+
+function fitStage() {
+  const wrap = document.getElementById("stageWrap"), stage = document.getElementById("stage"), win = document.getElementById("win");
+  // 960x600 at Auto's 90 per cent: the page's 1067x667 drawn at nine tenths.
+  const zoom = S.size === "small" ? 0.9 : 1;
+  const nat = win.offsetWidth * zoom;
+  const sc = Math.min(1, wrap.clientWidth / nat) * zoom;
+  stage.style.transform = "scale(" + sc + ")";
+  stage.style.left = Math.max(0, (wrap.clientWidth - win.offsetWidth * sc) / 2) + "px";
+  stage.dataset.scale = sc;
+  wrap.style.height = Math.ceil(win.offsetHeight * sc) + "px";
+}
+
+/* ===== the page's own switches ===== */
+function pgSwitch(id, key, conv) {
+  document.querySelectorAll("#" + id + " button").forEach((b) => b.addEventListener("click", () => {
+    S[key] = conv ? conv(b.dataset.v) : b.dataset.v;
+    document.querySelectorAll("#" + id + " button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    if (key === "layout") S.editorOpen = true;
+    if (key === "hands" && S.hands === 1) { S.editing = 0; S.linked = true; }
+    render();
+  }));
+}
+pgSwitch("pgSize", "size");
+pgSwitch("pgLayout", "layout");
+pgSwitch("pgHands", "hands", Number);
+document.getElementById("pgSpec").addEventListener("click", (ev) => { S.spectrum = !S.spectrum; ev.currentTarget.setAttribute("aria-pressed", S.spectrum); paint(); });
+document.getElementById("pgAll").addEventListener("click", (ev) => {
+  S.all = !S.all; ev.currentTarget.setAttribute("aria-pressed", S.all);
+  if (!S.all) for (const k in othersOn) othersOn[k] = false;
+  render();
+});
+document.querySelectorAll("#editSwitch button").forEach((b) => b.addEventListener("click", () => { S.editing = +b.dataset.h; render(); }));
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && document.getElementById("ctx").hidden && S.editorOpen && S.layout === "over") { S.editorOpen = false; render(); }
+});
+// The Picture section's knobs, for context: the six of it as the face has them.
+document.getElementById("picKnobs").innerHTML = [["0%", "Amount", 0], ["off", "Scan", 0], ["50%", "Strike", 0.5], ["3.0 cells", "Softness", 0.4], ["32 ms", "Persistence", 0.3], ["0 dB", "Output", 0.75]]
+  .map(([v, n, f]) => staticCell(v, n, f)).join("");
+window.addEventListener("resize", fitStage);
+render();
+</script>
+</body>
+</html>
