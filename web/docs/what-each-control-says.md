@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-348 controls: 348 lines, none marked as removed by a later stage, 87 wanting a paragraph
+353 controls: 353 lines, none marked as removed by a later stage, 87 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -25,7 +25,8 @@ hands, Key, Notes and Layer, the strip and its two octave buttons, low and high,
 words and the way to the Chord window, which went to Settings' MIDI with the on-screen keys;
 and again on 17 Nov, the EQ's seven knobs and its link; and again on 17 Nov, the voice filter's
 *Its envelope*, which opens its drawing, and the Envelope's two switches made one *Follow*, since
-it follows until it is edited).
+it follows until it is edited); and again on 17 Nov, the EQ drawn: its switch made a field,
+its curve on the line, its editor's switch and Close, and a point on its curve).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
