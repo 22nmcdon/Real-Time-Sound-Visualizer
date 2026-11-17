@@ -5,9 +5,34 @@
 #   cmake --build build
 #
 # JUCE is fetched at the tag below when no checkout is given. On Linux the
-# web view needs WebKitGTK 4.1 and GTK 3 (and ALSA for the standalone).
+# web view needs WebKitGTK 4.1 and GTK 3 (and ALSA for the standalone); on
+# macOS it is WKWebView, in the system, and the build wants Xcode's tools and
+# nothing else (MAC.md, the weekend's checklist).
 cmake_minimum_required(VERSION 3.22)
-project(ScopeInstrument VERSION 0.1.0 LANGUAGES C CXX)
+
+# macOS only, and read only there: these have to be set before project(), and
+# are cache defaults so a command line wins (-DCMAKE_OSX_ARCHITECTURES=arm64
+# halves a local build's time on the owner's Mac).
+#
+# Both architectures, so Logic on an Intel Mac, or under Rosetta, finds it too,
+# and an Apple Silicon Logic never has to host it out of process.
+#
+# 13.3, not the 11.0 a universal binary could go down to: the core writes
+# every number through std::to_chars with a precision (core/include/scope/
+# chars.h, locale-proof since the outside review), and Apple's libc++ marks
+# the floating-point to_chars unavailable before macOS 13.3, so a lower
+# target does not compile. The cost is Monterey and earlier, and with them
+# Logic 10.7 and 10.8 there; Logic 11 needs Sonoma (14.4) anyway.
+# Rewriting the core's writer to reach further back was the alternative and
+# was turned down: it is the one place every recording's numbers go through.
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS: the architectures built")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE STRING "macOS: the oldest system the plugin loads on")
+
+# The plugin's version, which every release raises (PLAN.md, "Releasing"):
+# Logic caches what an AU said of itself by its version, so a build that
+# changes the parameters, the buses or the name under an unchanged version can
+# be shown to Logic as the old one until its cache is reset.
+project(ScopeInstrument VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,16 +59,39 @@ add_subdirectory(../core core)
 juce_add_plugin(ScopeInstrument
   PRODUCT_NAME "Scope"
   COMPANY_NAME "Real-Time Sound Visualizer"
+  # The two codes are the plugin's identity to every host - an AU is found as
+  # `aumu Scop Rtsv`, a VST3's id is made from them - and a project saved with
+  # the plugin in it finds it again by them. Never change either; the bundle id
+  # likewise. JUCE wants the manufacturer code to have a capital (Apple keeps
+  # all-lower-case for itself).
   PLUGIN_MANUFACTURER_CODE Rtsv
   PLUGIN_CODE Scop
+  BUNDLE_ID com.realtimesoundvisualizer.scope
+  # An instrument: AU type 'aumu' (kAudioUnitType_MusicDevice, which IS_SYNTH
+  # makes the default; said here so nobody wonders), on an instrument track in
+  # Logic. Its stereo input is off by default and reaches Logic as the
+  # instrument's side chain, which is how the host's input gets to the picture
+  # there. The MIDI it sends (the arpeggio, the score) an aumu cannot hand on
+  # in Logic, which takes MIDI out only from a MIDI FX ('aumi'); other hosts
+  # take it from the VST3.
+  AU_MAIN_TYPE kAudioUnitType_MusicDevice
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT TRUE
   IS_MIDI_EFFECT FALSE
   EDITOR_WANTS_KEYBOARD_FOCUS TRUE
-  # The page is the UI: WebKitGTK on Linux, WebView2 linked statically on Windows.
+  # The page is the UI: WebKitGTK on Linux, WKWebView on macOS (the page served
+  # from the binary through a juce:// scheme handler there, as through
+  # WebKitGTK's custom scheme here), WebView2 linked statically on Windows.
   NEEDS_WEB_BROWSER TRUE
   NEEDS_WEBVIEW2 TRUE
+  # Only the standalone opens an input itself, so only its plist's sentence is
+  # ever shown. A plugin cannot ask: macOS asks once for the app that holds the
+  # microphone - Logic, with Logic's own words - and a plugin inside it gets the
+  # host's input through its buses or nothing. JUCE writes the key into every
+  # format's plist, where in a .component or .vst3 it is read by no one.
+  MICROPHONE_PERMISSION_ENABLED TRUE
+  MICROPHONE_PERMISSION_TEXT "Scope draws what it hears: your microphone or instrument, on its screen."
   FORMATS VST3 AU Standalone)
 
 # The page, built into the binary, so the plugin serves its own UI and never

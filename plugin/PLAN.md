@@ -2637,6 +2637,39 @@ Left for the owner:
 WebView2 linked statically; state saved into the host's project; recording
 redone natively or left out.
 
+Begun for macOS (17 Nov, before the owner's first weekend with it in Logic):
+the CMake file builds AU and VST3 universal (arm64 and x86_64) for macOS
+13.3 and later - the floor is the core's locale-proof number writer, whose
+floating-point `std::to_chars` Apple's libc++ has only from 13.3 - with the
+AU an instrument (`aumu Scop Rtsv`), a fixed bundle id and the version 0.2.0.
+The page reaches WKWebView as it reaches WebKitGTK, from the binary through
+JUCE's resource provider (a `juce://` scheme handler there), so nothing is
+bundled beside it and no file URL is involved. `.github/workflows/mac.yml`,
+run by hand, builds it on a GitHub macOS runner, validates the AU with
+`auval`, uploads both bundles unsigned and then runs the shell test. Not yet
+signed with a Developer ID or notarised: a copy built on the Mac it plays on
+needs neither, and a downloaded one has its quarantine taken off by hand.
+What only a Mac can answer, and how to build and install it there, is
+`MAC.md`.
+
+### Releasing: raise the version every time
+
+**Every build handed to anyone - the owner included - that differs from the
+last in what a host can see raises `project(ScopeInstrument VERSION ...)` in
+`CMakeLists.txt`.** Logic (through macOS's AudioComponentRegistrar) caches
+what each AU said of itself - its name, its parameters, its buses, whether
+it passed validation - keyed by its version. A build that adds a parameter,
+renames one, changes a bus or fixes a validation failure under the same
+version can be shown to Logic as the old one: parameters missing, a failure
+remembered, until the cache is reset by hand (`MAC.md`). Raising the version
+is what tells Logic to look again. The minor number for a change a host can
+see (a parameter, a bus, a program), the patch number for a fix that
+changes nothing it can see; the major stays 0 until the first release to
+anyone but the owner. VST3 hosts cache less, but the same number is the
+version they show, so one rule serves both. The parameters' own version
+hints (`juce::ParameterID`'s second argument, "Found on the way" below) are a
+different number and move only when a parameter arrives.
+
 ## Found on the way
 
 - **A comparison that skipped NaN called NaN and a number the same.**
@@ -3166,6 +3199,11 @@ too, to check the page's copy and run it.
 On Linux the web view needs WebKitGTK 4.1 and GTK 3, and the standalone ALSA:
 `libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev`, with the X11 and
 freetype headers JUCE asks for.
+
+On macOS the web view is the system's WKWebView and the build needs Xcode's
+command-line tools and CMake, nothing else; `MAC.md` has the commands, and
+`.github/workflows/mac.yml` builds and validates it on a runner. The shell
+test needs no xvfb there: it opens its window on the logged-in desktop.
 
 **An editor's size is read before its limits are set.** `setResizeLimits` in
 JUCE ends with `setBoundsConstrained(getBounds())`, so called on an editor
