@@ -88,8 +88,8 @@ struct LayerSettings : LayerTone {
 
 // Layer B's: the voice, and a plane of its own in force only while
 // `planeOwn` is on, `planeTurn` its turn in radians, B's alone; and a phaser,
-// chorus, delay and reverb of its own, each in force while its bit is set in
-// `timeOwn` (G6, the page's TIME_OWN: 1, 2, 4, 8) - one switch with the
+// chorus, delay, reverb and EQ of its own, each in force while its bit is set in
+// `timeOwn` (G6, the page's TIME_OWN: 1, 2, 4, 8, and 16 the EQ) - one switch with the
 // plane's until each module had its own link.
 struct LayerBSettings : LayerSettings, PlaneLayerTone {
   bool planeOwn = false;
@@ -454,7 +454,7 @@ class Generator {
       if (r.slot == slot::Sync) syncRouted = true;
       if (r.slot == slot::Drive || r.slot == slot::Fold) shapeRouted = true;
     }
-    const int timeOwn = b_.timeOwn & 15;
+    const int timeOwn = b_.timeOwn & 31;
     // A sample's walk of a stage's crossfade, the page's `switchStep`.
     const double switchStep = 1000 / (a_.switchMs * rate_);
     const int switchPrime = a_.switchMs > 0 ? kSwitchPrime : 0;
@@ -958,6 +958,14 @@ class Generator {
     else if (field == "reverbTone") p.reverbTone = v;
     else if (field == "reverbPreMs") p.reverbPreMs = v;
     else if (field == "reverbSpread") p.reverbSpread = v;
+    // The EQ (17 Nov): gains in dB, frequencies in hertz, the mid's width in octaves.
+    else if (field == "eqLow") p.eqLow = v;
+    else if (field == "eqLowHz") p.eqLowHz = v;
+    else if (field == "eqMid") p.eqMid = v;
+    else if (field == "eqMidHz") p.eqMidHz = v;
+    else if (field == "eqMidWidth") p.eqMidWidth = v;
+    else if (field == "eqHigh") p.eqHigh = v;
+    else if (field == "eqHighHz") p.eqHighHz = v;
     else return false;
     return true;
   }

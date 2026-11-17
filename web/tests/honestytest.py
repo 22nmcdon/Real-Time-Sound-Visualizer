@@ -69,6 +69,12 @@ Spread and Size at the top - a Settled preset may breathe, as one at the
 Delay's full Mix may, but no more than 0.10 late; and that run is the null of
 the first, since the same test of a heading kept goes red there.
 
+The Plane's switch (17 Nov) is judged as the reverb's is: pressed on every
+preset that has the Plane off, its start (Twist 15) keeps each under its
+heading. The start was chosen against two others by the same measure, run
+offline at five key landings (web/docs/listening/plane-start/render.py), so
+this is the choice held, not made.
+
 Serial: everything here is measured over real seconds.
 """
 import os, sys
@@ -100,10 +106,18 @@ RUN = r"""async ([value, notes, hold, after, wet]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   setScreenKeys(true);
   applyPreset(value);
+  let pressed = false;
   // The reverb over the preset as a player would: its switch pressed, or
   // its knobs turned, one by one.
   for (const [id, v] of Object.entries(wet || {})) {
-    if (id === 'switch') { document.querySelector('[data-fx-on="reverb"]').click(); continue; }
+    // A switch by its module's name, the reverb's for true; the Plane's only
+    // where the preset has it off, since on a preset shaped already it would
+    // switch the shaping off rather than give its start.
+    if (id === 'switch') {
+      const fx = v === true ? 'reverb' : v;
+      if (fx !== 'plane' || !fxOn('plane')) { document.querySelector('[data-fx-on="' + fx + '"]').click(); pressed = true; }
+      continue;
+    }
     // How the picture responds (11 Nov), a menu: HONESTY_RESPONDS below.
     if (id === 'pictureResponds') { el[id].value = v; el[id].dispatchEvent(new Event('change')); continue; }
     el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
@@ -166,7 +180,8 @@ RUN = r"""async ([value, notes, hold, after, wet]) => {
   const t1 = performance.now();
   while (performance.now() - t1 < after * 1000) { await wait(250); read(hold + (performance.now() - t1) / 1000, 'after'); }
   midiPanic();
-  return { out, latch: midi.latch, amount: Number(el.pictureAmount.value),
+  return { out, latch: midi.latch, amount: Number(el.pictureAmount.value), pressed,
+           plane: Object.fromEntries(PLANE_SHAPING.filter(([id, rest]) => el[id].value !== rest).map(([id]) => [id, el[id].value])),
            reverb: { mix: genSettings().reverbMix, spread: genSettings().reverbSpread, size: genSettings().reverbSize } };
 }"""
 
@@ -290,7 +305,7 @@ with sync_playwright() as pw:
                     errors.extend(bad)
                     m = summary(run["out"])
                     verdicts = {h: rule(m) for h, rule in RULES.items()}
-                    out.append((heading, name, notes, m, verdicts, run["reverb"]))
+                    out.append((heading, name, notes, m, verdicts, run["reverb"], run))
                     print("    %-10s %-28s %-9s early %.3f late %.3f most %.3f | after rms %.3f | reverb %s | %s"
                           % (heading, name, notes, m["early"], m["late"], m["most"], m["afterRms"], run["reverb"],
                              ",".join(h for h, v in verdicts.items() if v) or "none"))
@@ -335,6 +350,20 @@ with sync_playwright() as pw:
          full and any(not kept(r) for r in full), "%d of %d moved" % (sum(not kept(r) for r in full), len(full)))
     check("and each of those runs really had it at full", full and all(r[5] == {"mix": 1, "spread": 1, "size": 1} for r in full),
           str([r[5] for r in full][:2]))
+    # The Plane's switch (17 Nov): pressed with nothing kept it gives Twist
+    # 15, chosen by measuring three starts offline over the bank
+    # (web/docs/listening/plane-start/), and it has to keep every preset it
+    # is pressed on under its heading, as the reverb's does. Tines at the
+    # radius has its Plane on already, so its switch is not pressed.
+    planed = wet_pass("every preset with the Plane's switch pressed", {"switch": "plane"}, ["Settled", "Breathing"])
+    pressed = [r for r in planed if r[6]["pressed"]]
+    check("switched on, the Plane's start leaves every preset it is pressed on under its heading and out of the others",
+          pressed and all(kept(r) for r in pressed),
+          "; ".join("%s %s" % (r[1], r[2]) for r in pressed if not kept(r)) or "%d probes" % len(pressed))
+    check("and the switch really gave Twist 15 and nothing else, on every preset it was pressed on",
+          pressed and all(r[6]["plane"] == {"planeTwist": "15"} for r in pressed), str([r[6]["plane"] for r in pressed][:2]))
+    check("null: a preset with the Plane on already was left alone, so the pass is not judging it switched off",
+          any(not r[6]["pressed"] and r[6]["plane"] for r in planed), str([(r[1], r[6]["pressed"]) for r in planed]))
     strained = [(r[1], round(r[5], 1)) for r in results if r[5] < -6]
     check("no preset holds the limiter past six decibels on a four-note chord", not strained, str(strained))
     check("no page errors", not errors, "; ".join(errors[:3]))

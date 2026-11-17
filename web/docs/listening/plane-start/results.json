@@ -1,0 +1,1036 @@
+{
+ "candidates": {
+  "twist": {
+   "fields": {
+    "planeTwist": 15
+   },
+   "why": "Twist 15: the loud parts swirl and the quiet middle stays still; heard as a stereo-linked bend, and the knob it moves is on the module's line."
+  },
+  "clip": {
+   "fields": {
+    "planeLimit": 1,
+    "planeRadius": 30
+   },
+   "why": "Radial clip at 0.30: a soft clipper that keeps the stereo image, the figure rounded towards a circle; its knobs are under the arrow, so the line shows nothing moved."
+  },
+  "turn": {
+   "fields": {
+    "rotate": 7
+   },
+   "why": "Turn 25 degrees: the figure turned whole, exact and linear; heard only as balance and image, never as a harmonic."
+  }
+ },
+ "presets": [
+  {
+   "heading": "Settled",
+   "name": "Tine piano",
+   "probes": [
+    {
+     "notes": [
+      60
+     ],
+     "runs": {
+      "off": {
+       "early": [
+        0.0973,
+        0.1024,
+        0.1368,
+        0.1182,
+        0.138
+       ],
+       "late": [
+        0.0025,
+        0.0043,
+        0.003,
+        0.0031,
+        0.0039
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true
+      },
+      "twist": {
+       "early": [
+        0.0843,
+        0.0858,
+        0.0801,
+        0.1067,
+        0.0803
+       ],
+       "late": [
+        0.0029,
+        0.0026,
+        0.002,
+        0.0023,
+        0.0025
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0356,
+       "spectrumR": 0.0296,
+       "levelDbL": 0.0114,
+       "levelDbR": -0.0933,
+       "figure": 0.0573,
+       "lag": 31
+      },
+      "clip": {
+       "early": [
+        0.1529,
+        0.1307,
+        0.0844,
+        0.1127,
+        0.137
+       ],
+       "late": [
+        0.0029,
+        0.0024,
+        0.004,
+        0.0024,
+        0.0022
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0061,
+       "spectrumR": 0.0053,
+       "levelDbL": -0.1212,
+       "levelDbR": -0.1213,
+       "figure": 0.0218,
+       "lag": 31
+      },
+      "turn": {
+       "early": [
+        0.1181,
+        0.1261,
+        0.1084,
+        0.1065,
+        0.1004
+       ],
+       "late": [
+        0.0163,
+        0.0024,
+        0.0021,
+        0.0042,
+        0.0018
+       ],
+       "verdicts": [
+        [],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": false,
+       "spectrumL": 0.0403,
+       "spectrumR": 0.0402,
+       "levelDbL": -0.3407,
+       "levelDbR": -0.3395,
+       "figure": 0.1076,
+       "lag": 0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "heading": "Settled",
+   "name": "Drawbar organ",
+   "probes": [
+    {
+     "notes": [
+      60
+     ],
+     "runs": {
+      "off": {
+       "early": [
+        0.0615,
+        0.0621,
+        0.0605,
+        0.0635,
+        0.064
+       ],
+       "late": [
+        0.0024,
+        0.0021,
+        0.0019,
+        0.0019,
+        0.0014
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true
+      },
+      "twist": {
+       "early": [
+        0.0541,
+        0.0504,
+        0.0687,
+        0.0485,
+        0.0968
+       ],
+       "late": [
+        0.0052,
+        0.0036,
+        0.0044,
+        0.0051,
+        0.0037
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.1436,
+       "spectrumR": 0.1511,
+       "levelDbL": 0.1644,
+       "levelDbR": 0.0883,
+       "figure": 0.2028,
+       "lag": 36
+      },
+      "clip": {
+       "early": [
+        0.0661,
+        0.0531,
+        0.0688,
+        0.0719,
+        0.0549
+       ],
+       "late": [
+        0.0069,
+        0.006,
+        0.0112,
+        0.0054,
+        0.008
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0902,
+       "spectrumR": 0.0943,
+       "levelDbL": -1.9389,
+       "levelDbR": -1.9361,
+       "figure": 0.2218,
+       "lag": 31
+      },
+      "turn": {
+       "early": [
+        0.0519,
+        0.0442,
+        0.033,
+        0.0442,
+        0.0638
+       ],
+       "late": [
+        0.0055,
+        0.0064,
+        0.0065,
+        0.0051,
+        0.0048
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0348,
+       "spectrumR": 0.0348,
+       "levelDbL": 0.1532,
+       "levelDbR": 0.1533,
+       "figure": 0.0723,
+       "lag": 0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "heading": "Settled",
+   "name": "Bass under the tine piano",
+   "probes": [
+    {
+     "notes": [
+      36
+     ],
+     "runs": {
+      "off": {
+       "early": [
+        0.0465,
+        0.0554,
+        0.0582,
+        0.0534,
+        0.0551
+       ],
+       "late": [
+        0.0057,
+        0.006,
+        0.0066,
+        0.0057,
+        0.0046
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true
+      },
+      "twist": {
+       "early": [
+        0.0391,
+        0.0404,
+        0.0408,
+        0.0384,
+        0.0403
+       ],
+       "late": [
+        0.0077,
+        0.0059,
+        0.0061,
+        0.0056,
+        0.0065
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0938,
+       "spectrumR": 0.1555,
+       "levelDbL": 0.8704,
+       "levelDbR": -1.2522,
+       "figure": 0.2062,
+       "lag": 28
+      },
+      "clip": {
+       "early": [
+        0.0457,
+        0.0511,
+        0.05,
+        0.05,
+        0.0501
+       ],
+       "late": [
+        0.0055,
+        0.005,
+        0.0056,
+        0.0047,
+        0.0053
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0544,
+       "spectrumR": 0.0557,
+       "levelDbL": -1.3933,
+       "levelDbR": -1.3958,
+       "figure": 0.1616,
+       "lag": 31
+      },
+      "turn": {
+       "early": [
+        0.0448,
+        0.0481,
+        0.0462,
+        0.0458,
+        0.047
+       ],
+       "late": [
+        0.0051,
+        0.0057,
+        0.0049,
+        0.0058,
+        0.0052
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0118,
+       "spectrumR": 0.0117,
+       "levelDbL": -0.074,
+       "levelDbR": -0.0744,
+       "figure": 0.0685,
+       "lag": 0
+      }
+     }
+    },
+    {
+     "notes": [
+      67
+     ],
+     "runs": {
+      "off": {
+       "early": [
+        0.1147,
+        0.1133,
+        0.1092,
+        0.1237,
+        0.1146
+       ],
+       "late": [
+        0.0008,
+        0.0008,
+        0.0008,
+        0.0008,
+        0.0008
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true
+      },
+      "twist": {
+       "early": [
+        0.1053,
+        0.1021,
+        0.1074,
+        0.1028,
+        0.1071
+       ],
+       "late": [
+        0.0005,
+        0.0005,
+        0.0005,
+        0.0004,
+        0.0005
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0353,
+       "spectrumR": 0.0303,
+       "levelDbL": 0.1368,
+       "levelDbR": -0.118,
+       "figure": 0.0584,
+       "lag": 31
+      },
+      "clip": {
+       "early": [
+        0.0923,
+        0.1002,
+        0.1004,
+        0.0963,
+        0.1025
+       ],
+       "late": [
+        0.002,
+        0.002,
+        0.002,
+        0.002,
+        0.002
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0045,
+       "spectrumR": 0.0035,
+       "levelDbL": -0.1137,
+       "levelDbR": -0.1136,
+       "figure": 0.0183,
+       "lag": 31
+      },
+      "turn": {
+       "early": [
+        0.0879,
+        0.0948,
+        0.0871,
+        0.0899,
+        0.0958
+       ],
+       "late": [
+        0.0094,
+        0.0097,
+        0.0113,
+        0.0094,
+        0.0103
+       ],
+       "verdicts": [
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ],
+        [
+         "Settled"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0255,
+       "spectrumR": 0.0255,
+       "levelDbL": -0.1859,
+       "levelDbR": -0.1857,
+       "figure": 0.0589,
+       "lag": 0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "heading": "Breathing",
+   "name": "Slow pad",
+   "probes": [
+    {
+     "notes": [
+      60
+     ],
+     "runs": {
+      "off": {
+       "early": [
+        0.0756,
+        0.0974,
+        0.2869,
+        0.1249,
+        0.1799
+       ],
+       "late": [
+        0.021,
+        0.0249,
+        0.0183,
+        0.0188,
+        0.0241
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [],
+        [],
+        [
+         "Breathing"
+        ]
+       ],
+       "keeps": false
+      },
+      "twist": {
+       "early": [
+        0.2765,
+        0.1758,
+        0.1769,
+        0.2315,
+        0.2777
+       ],
+       "late": [
+        0.0373,
+        0.0398,
+        0.0358,
+        0.0282,
+        0.0371
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0673,
+       "spectrumR": 0.0945,
+       "levelDbL": -0.0613,
+       "levelDbR": -0.0803,
+       "figure": 0.1618,
+       "lag": 0
+      },
+      "clip": {
+       "early": [
+        0.3936,
+        0.2012,
+        0.2202,
+        0.1958,
+        0.1203
+       ],
+       "late": [
+        0.0218,
+        0.0213,
+        0.0206,
+        0.0198,
+        0.0174
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [],
+        []
+       ],
+       "keeps": false,
+       "spectrumL": 0.0463,
+       "spectrumR": 0.0567,
+       "levelDbL": -0.642,
+       "levelDbR": -0.6524,
+       "figure": 0.1405,
+       "lag": 0
+      },
+      "turn": {
+       "early": [
+        0.386,
+        0.3624,
+        0.3624,
+        0.3042,
+        0.3308
+       ],
+       "late": [
+        0.0495,
+        0.0448,
+        0.0311,
+        0.0344,
+        0.0431
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.1292,
+       "spectrumR": 0.1228,
+       "levelDbL": -0.283,
+       "levelDbR": -0.2247,
+       "figure": 0.1986,
+       "lag": 0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "heading": "Breathing",
+   "name": "Turning fifths",
+   "probes": [
+    {
+     "notes": [
+      48,
+      55
+     ],
+     "runs": {
+      "off": {
+       "early": [
+        0.0639,
+        0.0632,
+        0.0707,
+        0.0827,
+        0.0698
+       ],
+       "late": [
+        0.1177,
+        0.0973,
+        0.1143,
+        0.1281,
+        0.1141
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ]
+       ],
+       "keeps": true
+      },
+      "twist": {
+       "early": [
+        0.0883,
+        0.1003,
+        0.126,
+        0.13,
+        0.1158
+       ],
+       "late": [
+        0.1182,
+        0.1094,
+        0.1216,
+        0.1132,
+        0.1037
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0748,
+       "spectrumR": 0.0881,
+       "levelDbL": 1.0485,
+       "levelDbR": 0.8702,
+       "figure": 0.2563,
+       "lag": 4
+      },
+      "clip": {
+       "early": [
+        0.0952,
+        0.0693,
+        0.0767,
+        0.0872,
+        0.0792
+       ],
+       "late": [
+        0.099,
+        0.0912,
+        0.1317,
+        0.0989,
+        0.0832
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0563,
+       "spectrumR": 0.0628,
+       "levelDbL": -1.719,
+       "levelDbR": -1.6921,
+       "figure": 0.2198,
+       "lag": 0
+      },
+      "turn": {
+       "early": [
+        0.0904,
+        0.0826,
+        0.0932,
+        0.0764,
+        0.0737
+       ],
+       "late": [
+        0.0886,
+        0.0861,
+        0.0877,
+        0.0801,
+        0.0854
+       ],
+       "verdicts": [
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ],
+        [
+         "Breathing"
+        ]
+       ],
+       "keeps": true,
+       "spectrumL": 0.0822,
+       "spectrumR": 0.0764,
+       "levelDbL": 2.0144,
+       "levelDbR": 2.0155,
+       "figure": 0.4252,
+       "lag": 0
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "scores": {
+  "twist": {
+   "keepsEveryHeading": true,
+   "keepsSettled": true,
+   "heard": 0.0833,
+   "levelDb": 0.4,
+   "seen": 0.1571
+  },
+  "clip": {
+   "keepsEveryHeading": false,
+   "keepsSettled": true,
+   "heard": 0.0447,
+   "levelDb": 0.99,
+   "seen": 0.1306
+  },
+  "turn": {
+   "keepsEveryHeading": false,
+   "keepsSettled": false,
+   "heard": 0.0529,
+   "levelDb": 0.5,
+   "seen": 0.1552
+  }
+ },
+ "offKeeps": false
+}

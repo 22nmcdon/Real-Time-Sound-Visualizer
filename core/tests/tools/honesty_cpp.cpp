@@ -8,7 +8,12 @@
 // the suite's RUN reads the page's ring: the movement between a window and
 // the one a quarter second before it, and the newer window's RMS.
 //
-//   honesty_cpp CODE RATE NOTES PRE HOLD AFTER     NOTES as 48,67
+//   honesty_cpp CODE RATE NOTES PRE HOLD AFTER [HEARD]     NOTES as 48,67
+//
+// HEARD, if given, is a file the heard pair is written to from the key on,
+// float32 left and right interleaved: the listening pages render what they
+// measure (web/docs/listening/plane-start/render.py), so the sound a choice
+// was made on is the sound the owner hears.
 //
 // Out, a line a reading: `read T PHASE MOVE RMS`, T in seconds from the key,
 // PHASE held or after, MOVE nought on the first reading, which has no last.
@@ -23,6 +28,7 @@
 #include <cmath>
 #include <complex>
 #include <cstdio>
+#include <cstdint>
 #include <cstdlib>
 #include <sstream>
 #include <string>
@@ -93,6 +99,8 @@ int main(int argc, char** argv) {
      ring is 8192 frames, shorter than a reading's two windows a quarter
      second apart, which the page's ring holds. */
   std::vector<float> lane;
+  std::vector<float> heard;
+  const bool keepHeard = argc > 7;
 
   const long keyAt = static_cast<long>(std::lround(pre * rate));
   const long upAt = keyAt + static_cast<long>(std::lround(hold * rate));
@@ -116,6 +124,9 @@ int main(int argc, char** argv) {
       events.push_back({ static_cast<int>((i < downs ? keyAt : upAt) - at), bytes.data() + i, 3 });
     instrument.block(left.data(), right.data(), kStep, events.data(), events.size(), nullptr, nullptr, 0, nullptr);
     const long done = at + kStep;
+    if (keepHeard)
+      for (int k = 0; k < kStep; k++)
+        if (at + k >= keyAt) { heard.push_back(left[static_cast<std::size_t>(k)]); heard.push_back(right[static_cast<std::size_t>(k)]); }
     /* A read falls on a whole quarter second from the key, and is taken at
        the end of the step that holds that sample, as the page's ring can
        only be read between blocks: at most 127 samples late, and by the
@@ -140,6 +151,12 @@ int main(int argc, char** argv) {
       std::printf("read %.6f %s %.9f %.9f\n", t, nextRead <= upAt ? "held" : "after", move, std::sqrt(e / kWindow));
       nextRead += quarter;
     }
+  }
+  if (keepHeard) {
+    std::FILE* f = std::fopen(argv[7], "wb");
+    if (!f) { std::fprintf(stderr, "cannot write %s\n", argv[7]); return 2; }
+    std::fwrite(heard.data(), sizeof(float), heard.size(), f);
+    std::fclose(f);
   }
   return 0;
 }

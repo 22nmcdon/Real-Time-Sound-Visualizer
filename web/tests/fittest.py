@@ -94,6 +94,18 @@ SWEEP = """async ([bands]) => {
       measure([bands ? 'bands' : 'tone', keys ? 'keys' : '', photoOn ? 'photo' : '', 'wave'].filter(Boolean).join('+'));
     }
   }
+  /* The rack open with one hand too (17 Nov): every effect on and each
+     module opened in turn. Until then only the two hands' case opened them,
+     and the Plane open with one hand, which has its Turn and Radial rows
+     where two hands have the upper's, stood 44 px over at 960x600 once the
+     EQ's line was in, with nothing here to see it. */
+  for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 40);
+  for (const fx of ['plane', 'eq', 'phaser', 'chorus', 'delay']) {
+    openFx(fx, true); await wait(80);
+    measure((bands ? 'bands' : 'tone') + '+keys+photo+effects+' + fx);
+  }
+  openFx(null);
+  for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 0);
   /* Two hands, the upper edited and every section its own (G6): the
      header's Editing and a link on every section's title, the Plane's Turn
      the upper's own in the screen's rotation's place, and the clip at the
@@ -146,15 +158,16 @@ SWEEP = """async ([bands]) => {
        folded to its line, and each one opened in turn with its rest showing,
        on top of the layered rows above. Which module was open is read back
        from the page, so a sweep that never opened one cannot pass. */
-    for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 40);
-    for (const fx of ['plane', 'phaser', 'chorus', 'delay']) {
+    // The EQ (17 Nov) among them: on by its gains, and opened with its four knobs under the arrow.
+    for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 40);
+    for (const fx of ['plane', 'eq', 'phaser', 'chorus', 'delay']) {
       openFx(fx, true); await wait(80);
       const rest = document.querySelector('.fx-module[data-fx="' + fx + '"] .fx-rest');
       if (!rest.hidden) rackOpened.push(fx);
       measure('tone+keys+photo+layers+planeB+effects+' + fx);
     }
     openFx(null);
-    for (const id of ['delayMix', 'chorusMix', 'phaserMix']) setControl(id, 0);
+    for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 0);
     document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
     document.getElementById('editHandA').click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
@@ -294,7 +307,7 @@ with sync_playwright() as pw:
             check("null: the pairing menu beside them, a third, does not read whole (%dx%d)" % (w, h),
                   not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
-                  r["rackOpened"] == ["plane", "phaser", "chorus", "delay"], str(r["rackOpened"]))
+                  r["rackOpened"] == ["plane", "eq", "phaser", "chorus", "delay"], str(r["rackOpened"]))
 
     check("Size chose the zoom it should at each window", all(got == want for got, want in zooms.values()), str(zooms))
     check("no page errors", not bad, "; ".join(bad[:3]))

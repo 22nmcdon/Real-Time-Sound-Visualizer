@@ -7007,3 +7007,39 @@ with it and the words overflow inside them; a box's width is no reading of what 
 item needs. The check now reads a stacked switch by each button's `scrollWidth`, the width of
 its words, and goes red at 30 against 51. The same blind spot waits for any check that judges
 a fit from the rectangles of items a flex column or a grid stretches.
+
+## The EQ, the Plane's start, and three traps on the way (17 Nov)
+
+The rack has an EQ after the Plane: three of Web Audio's own bands (a low shelf, a peaking
+mid and a high shelf), the same on both channels, its gains on its line and where each acts
+under its arrow; its switch is a view over the three gains, as the Plane's is over its
+shaping. The Plane's switch, with nothing kept, now gives a Twist of 15 rather than opening
+the module, chosen by measuring three starts offline over the bank
+(`web/docs/listening/plane-start/`). Three things found on the way:
+
+**A test harness that names no field reads nought, and nought can be a silencer.** The EQ's
+piece (`core/tests/pieces/eq.py`) drove `planeRun` with only the fields it cared about,
+and `planeRun` reads every field it knows, so `planeScaleX` and `planeScaleY` came in at
+nought and the plane silenced both channels. Every check of the EQ passed - nought against
+nought is equal to the bit - and every null beside them failed, which is the only reason it
+was seen. The piece now names every field at the plane's defaults, as `core_tests.py`'s
+`PLANE_DEFAULTS` does. A check written without its null would have shipped green.
+
+**A recording whose page is gone is worth more than a tidy diff.** The EQ's seven sliders
+joined the panel, and `restore_cpp` prints every slider and every field of the generator,
+so all 48 restore runs recorded from the page's old JavaScript differed from the core by
+the new keys alone, and the random-hand scenarios that draw from the slider list became
+new scenarios with no recording at all. `--write-golden` would have passed by rewriting
+them from the core - handing the core its own answers where the page's had been. Instead
+`restore_cpp` prints the EQ only with `--eq`, the scenarios draw from the list without the
+EQ's sliders, and the old recordings hold as they did. What holds the EQ's restore is a
+section of `core_tests.py` that runs the same hands on the page as it is now, in a browser,
+and through `restore_cpp --eq`, and compares the two. Only the setup recordings were
+rewritten, since the page's defaults and schema really did grow.
+
+**The tallest Space & Memory had 10 px to spare, and a sixth line is 40.** With two hands,
+every effect on and the Plane open, the tab fitted at 960x600 with nothing over; the EQ's
+folded line put it 24 px over, and the Plane open with one hand (which `fittest.py` did not
+open until now) 44. While one module is open and the tab is short of room, the folded lines
+are now 28 px tall with 3 px between (`fitRack`'s `data-tight`), which gives back 45 px over
+five lines; at rest the rack is as drawn. `fittest.py` opens the EQ with the rest.

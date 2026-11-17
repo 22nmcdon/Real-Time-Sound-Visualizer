@@ -47,6 +47,14 @@ Json layerJson(const scope::LayerSettings& t) {
   return o;
 }
 
+/* The EQ (17 Nov) is printed only with --eq, a third argument: its fields
+   and its sliders in every line would have made every restore run recorded
+   from the page's JavaScript, before the EQ, differ from the core's by keys
+   alone, and rewriting them would have handed the core its own answers in
+   their place. core_tests.py's EQ section asks for them, and holds them to
+   the page as it is now. */
+bool gEq = false;
+
 // Layer B's, with its own plane, echo and chorus.
 Json layerBJson(const scope::LayerBSettings& t) {
   Json o = layerJson(t);
@@ -60,6 +68,12 @@ Json layerBJson(const scope::LayerBSettings& t) {
   o.set("phaserFeedback", num(t.phaserFeedback)); o.set("fxOrder", num(t.fxOrder));
   o.set("reverbMix", num(t.reverbMix)); o.set("reverbSize", num(t.reverbSize)); o.set("reverbTone", num(t.reverbTone));
   o.set("reverbPreMs", num(t.reverbPreMs)); o.set("reverbSpread", num(t.reverbSpread));
+  // The EQ (17 Nov), in the generator's units, with --eq (gEq has why).
+  if (gEq) {
+    o.set("eqLow", num(t.eqLow)); o.set("eqLowHz", num(t.eqLowHz)); o.set("eqMid", num(t.eqMid));
+    o.set("eqMidHz", num(t.eqMidHz)); o.set("eqMidWidth", num(t.eqMidWidth)); o.set("eqHigh", num(t.eqHigh));
+    o.set("eqHighHz", num(t.eqHighHz));
+  }
   o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn)); o.set("timeOwn", num(t.timeOwn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
   o.set("planeScaleX", num(t.planeScaleX)); o.set("planeScaleY", num(t.planeScaleY)); o.set("planeShear", num(t.planeShear));
@@ -97,6 +111,12 @@ Json toneJson(const scope::Tone& t) {
   o.set("phaserFeedback", num(t.phaserFeedback)); o.set("fxOrder", num(t.fxOrder));
   o.set("reverbMix", num(t.reverbMix)); o.set("reverbSize", num(t.reverbSize)); o.set("reverbTone", num(t.reverbTone));
   o.set("reverbPreMs", num(t.reverbPreMs)); o.set("reverbSpread", num(t.reverbSpread));
+  // The EQ (17 Nov), in the generator's units, with --eq (gEq has why).
+  if (gEq) {
+    o.set("eqLow", num(t.eqLow)); o.set("eqLowHz", num(t.eqLowHz)); o.set("eqMid", num(t.eqMid));
+    o.set("eqMidHz", num(t.eqMidHz)); o.set("eqMidWidth", num(t.eqMidWidth)); o.set("eqHigh", num(t.eqHigh));
+    o.set("eqHighHz", num(t.eqHighHz));
+  }
   o.set("menvOwn", flag(t.menvOwn)); o.set("menvEvery", flag(t.menvEvery)); o.set("menvAttackMs", num(t.menv.attackMs)); o.set("menvDecayMs", num(t.menv.decayMs));
   o.set("menvSustain", num(t.menv.sustain)); o.set("menvReleaseMs", num(t.menv.releaseMs));
   return o;
@@ -162,7 +182,8 @@ int main(int argc, char** argv) {
     std::printf("%s\n", scope::utf16To8(scope::jsonStringify(out)).c_str());
     return 0;
   }
-  if (argc < 3) { std::fprintf(stderr, "usage: restore_cpp <setups> <sources.json>\n"); return 2; }
+  if (argc < 3) { std::fprintf(stderr, "usage: restore_cpp <setups> <sources.json> [--eq]\n"); return 2; }
+  gEq = argc > 3 && std::string(argv[3]) == "--eq";
   std::vector<scope::Lfo> lfos(2);
   lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
   lfos[0].phase = lfos[1].phase = 1;  // as restore_page.py leaves the page's
@@ -386,7 +407,9 @@ int main(int argc, char** argv) {
     }
     Json ranges = Json::object();
     for (const auto& r : scope::kRanges) {
-      if (std::string_view(r.id) != "lfoRate0") ranges.set(std::string_view(r.id), num(brain.panel.range(r.id)));
+      if (std::string_view(r.id) == "lfoRate0") continue;
+      if (!gEq && std::string_view(r.id).substr(0, 2) == "eq") continue;
+      ranges.set(std::string_view(r.id), num(brain.panel.range(r.id)));
     }
     out.set("ranges", ranges);
     {
@@ -441,6 +464,12 @@ int main(int argc, char** argv) {
       echo.set("depthMs", num(e.depthMs)); echo.set("centreMs", num(e.centreMs)); echo.set("chorusFeedback", num(e.chorusFeedback));
       echo.set("phaser", num(e.phaser)); echo.set("phRate", num(e.phRate)); echo.set("phDepth", num(e.phDepth));
       echo.set("phFeedback", num(e.phFeedback));
+      // The EQ's (17 Nov), as the page's echo holds it, with --eq.
+      if (gEq) {
+        echo.set("eqLow", num(e.eqLow)); echo.set("eqLowPos", num(e.eqLowPos)); echo.set("eqMid", num(e.eqMid));
+        echo.set("eqMidPos", num(e.eqMidPos)); echo.set("eqWidth", num(e.eqWidth)); echo.set("eqHigh", num(e.eqHigh));
+        echo.set("eqHighPos", num(e.eqHighPos));
+      }
       return echo;
     };
     out.set("echo", echoJson(brain.echo));

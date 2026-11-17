@@ -5377,7 +5377,10 @@ golden.section("the morph", "restore")
 # an operation rather than a setup, and both runners put a frame (the matrix
 # letting go of the fader, then the morph's step) before every line, since the
 # page's own frames run between one batch of lines and the next.
-ctl_ids = list(pctl["ranges"])
+# Without the EQ's sliders (17 Nov): drawn over them, every run here and in
+# the sections after it would have been new to the recordings, whose page is
+# gone; the EQ's own section holds them to the page as it is now.
+ctl_ids = [k for k in pctl["ranges"] if not k.startswith("eq")]
 def mvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     c = rrng.random()
@@ -6136,6 +6139,122 @@ vpath = os.path.join(BUILD, "view_wrong.txt")
 with open(vpath, "w", encoding="utf-8") as f: f.write("\n".join(vwrong) + "\n")
 vwport = subprocess.run([rexe, vpath, rsources], check=True, capture_output=True, text=True).stdout.strip().split("\n")
 check("and the comparison fails against a zoom a step further", bool(rbad(vpg, vwport)))
+
+golden.section("the EQ, the face against the core (17 Nov)")
+# The EQ came after the page's own restore was retired, so nothing recorded
+# holds the core's restore of it: here the page as it is now does, in a
+# browser. The same hands - its knobs in and out of range, its link, each
+# hand edited, the layers, setups with its fields and the upper hand's - run
+# on the page through its own controls and restore, and through restore_cpp
+# with --eq, and after each the two must hold the same EQ: each hand's state,
+# the knobs as the panel shows them, which hand owns it, and what each layer
+# of the generator is told (in hertz, so the octave laws are held too).
+from playwright.sync_api import sync_playwright as _sync_playwright
+EQ_IDS = ["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq"]
+EQ_KEYS = ["eqLow", "eqLowPos", "eqMid", "eqMidPos", "eqWidth", "eqHigh", "eqHighPos"]
+EQ_GEN = ["eqLow", "eqLowHz", "eqMid", "eqMidHz", "eqMidWidth", "eqHigh", "eqHighHz"]
+EQ_PAGE = """async (lines) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const out = [];
+  for (const line of lines) {
+    const o = JSON.parse(line);
+    if (o.op === 'slider') { const s = el[o.id]; s.value = String(o.value); s.dispatchEvent(new Event('input', { bubbles: true })); }
+    else if (o.op === 'click') document.getElementById(o.id).click();
+    else if (o.op === 'change') { const c = el[o.id]; c.value = String(o.value); c.dispatchEvent(new Event('change', { bubbles: true })); }
+    else restore(o);
+    await wait(0);
+    const g = genSettings(0), gb = genSettings(1);
+    out.push({ a: %s.map((k) => echo[k]), b: %s.map((k) => echoB[k]), panel: %s.map((id) => Number(el[id].value)),
+               own: !linked('eq'), gen: %s.map((k) => g[k]), genB: %s.map((k) => gb[k]), timeOwn: gb.timeOwn & 16 });
+  }
+  return out;
+}""" % (_json.dumps(EQ_KEYS), _json.dumps(EQ_KEYS), _json.dumps(EQ_IDS), _json.dumps(EQ_GEN), _json.dumps(EQ_GEN))
+def eq_core(lines):
+    path = os.path.join(BUILD, "eq_ops.txt")
+    with open(path, "w", encoding="utf-8") as f: f.write("\n".join(lines) + "\n")
+    rows = subprocess.run([rexe, path, rsources, "--eq"], check=True, capture_output=True, text=True).stdout.strip().split("\n")
+    out = []
+    for r in map(_json.loads, rows):
+        out.append({"a": [r["echo"][k] for k in EQ_KEYS], "b": [r["echoB"][k] for k in EQ_KEYS],
+                    "panel": [r["ranges"][k] for k in EQ_IDS], "own": "eq" in r["hands"]["own"],
+                    "gen": [r["a"][k] for k in EQ_GEN], "genB": [r["b"][k] for k in EQ_GEN], "timeOwn": int(r["b"]["timeOwn"]) & 16})
+    return out
+def eq_page(lines):
+    with _sync_playwright() as pw:
+        b = pw.chromium.launch(executable_path=os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"))
+        p = b.new_page(viewport={"width": 1400, "height": 900})
+        errors = []
+        p.on("pageerror", lambda e: errors.append(str(e)))
+        p.goto("file://" + os.path.abspath(os.path.join(CORE, "..", "web", "scope.html"))); p.wait_for_timeout(800)
+        out = p.evaluate(EQ_PAGE, lines)
+        b.close()
+    return out, errors
+erng = random.Random(1117)
+def evalue(id):
+    lo, hi = (-120, 120) if id in ("eqLow", "eqMid", "eqHigh") else (2, 40) if id == "eqMidWidth" else (0, 100)
+    return erng.choice([erng.randint(lo, hi), round(erng.uniform(lo, hi), 1), lo - 7, hi + 7, "abc", "7.5"])
+def eop():
+    c = erng.random()
+    if c < 0.5: id = erng.choice(EQ_IDS); return {"op": "slider", "id": id, "value": evalue(id)}
+    if c < 0.68: return {"op": "click", "id": erng.choice(["linkEq", "linkEq", "linkDelay"])}
+    if c < 0.8: return {"op": "click", "id": erng.choice(["editHandA", "editHandB"])}
+    if c < 0.85: return {"op": "change", "id": "midiLayers", "value": erng.choice(["off", "split", "layer", "layer"])}
+    if c < 0.93:
+        st = {k: evalue(i) for k, i in zip(["eqLow", "eqMidFreq", "bEqLow", "bEqHighFreq", "bEqMidWidth"],
+                                             ["eqLow", "eqMidFreq", "eqLow", "eqHighFreq", "eqMidWidth"]) if erng.random() < 0.6}
+        st.update(bPlane=erng.choice([True, True, False]), layers=erng.choice(["split", "layer"]), midiMode="poly")
+        return st
+    return _json.loads(erng.choice(presets))
+# Made to be read: the start, the layers, the lower's low lifted and the
+# mid moved; the upper chosen and the EQ unlinked; the upper's own; the
+# lower's high; the upper again and linked from it; a setup of the upper's
+# own; out of range and not a number; a setup clamped; the layers off.
+EMADE = [{}, {"op": "click", "id": "midiPoly"}, {"op": "change", "id": "midiLayers", "value": "layer"},          # 0-2
+         {"op": "slider", "id": "eqLow", "value": 40}, {"op": "slider", "id": "eqMidFreq", "value": 70},         # 3, 4
+         {"op": "click", "id": "editHandB"}, {"op": "click", "id": "linkEq"},                                     # 5, 6
+         {"op": "slider", "id": "eqLow", "value": -90}, {"op": "slider", "id": "eqHighFreq", "value": 85},       # 7, 8
+         {"op": "slider", "id": "eqMidWidth", "value": 33}, {"op": "click", "id": "editHandA"},                  # 9, 10
+         {"op": "slider", "id": "eqHigh", "value": 55}, {"op": "click", "id": "editHandB"},                      # 11, 12
+         {"op": "click", "id": "linkEq"},                                                                         # 13
+         {"bPlane": True, "bEqLow": -30, "bEqMidFreq": 20, "eqLow": 25, "layers": "layer", "midiMode": "poly"},  # 14
+         {"op": "click", "id": "editHandB"}, {"op": "slider", "id": "eqLow", "value": 150},                      # 15, 16
+         {"op": "slider", "id": "eqMid", "value": "abc"},                                                         # 17
+         {"eqLow": 999, "eqMidWidth": 1, "eqHighFreq": -4, "eqMid": "12"},                                        # 18
+         {"op": "change", "id": "midiLayers", "value": "off"}]                                                    # 19
+def erun():
+    start = [_json.loads(erng.choice(presets)) if erng.random() < 0.5 else {}, {"op": "click", "id": "midiPoly"},
+             {"op": "change", "id": "midiLayers", "value": erng.choice(["split", "layer"])},
+             {"op": "click", "id": erng.choice(["editHandA", "editHandB"])}, {"op": "click", "id": "linkEq"}]
+    return start + [eop() for _ in range(erng.randint(6, 16))]
+elines = [_json.dumps(o) for o in EMADE] + [_json.dumps(o) for _ in range(40) for o in erun()]
+epage, eerr = eq_page(elines)
+ecore = eq_core(elines)
+def eclose(x, y):
+    if isinstance(x, list): return len(x) == len(y) and all(eclose(u, v) for u, v in zip(x, y))
+    if isinstance(x, dict): return set(x) == set(y) and all(eclose(x[k], y[k]) for k in x)
+    if isinstance(x, (bool, str)) or x is None: return x == y
+    return abs(x - y) <= TOL * max(1.0, abs(x))
+ebad = [(i, elines[i][:60], epage[i], ecore[i]) for i in range(min(len(epage), len(ecore))) if not eclose(epage[i], ecore[i])]
+check("%d hands on the EQ, on the page and in the core, leave the same EQ: each hand's, the knobs, its link and what the "
+      "generator is told" % len(elines), len(epage) == len(ecore) == len(elines) and not ebad and len(elines) > 400,
+      repr(ebad[0])[:400] if ebad else "")
+check("and the page said nothing wrong doing them", not eerr, "; ".join(eerr[:2]))
+ep = epage
+check("unlinked from the upper, B's own starts as a copy, B's knobs write B's and A's stay A's, and the generator is told",
+      ep[6]["own"] and ep[6]["timeOwn"] == 16 and ep[7]["b"][0] == -9 and ep[7]["a"][0] == 4 and ep[7]["genB"][0] == -9
+      and ep[7]["gen"][0] == 4 and ep[9]["b"][4] == 3.3 and ep[10]["panel"][0] == 40, repr(ep[7]))
+check("linked again from the upper, the upper's is copied over the lower's", not ep[13]["own"] and ep[13]["a"] == ep[12]["b"]
+      and ep[13]["gen"] == ep[13]["genB"], repr(ep[13]["a"]))
+check("a setup with the upper's own loads it, unlinked, a field it lacks the lower's", ep[14]["own"] and ep[14]["b"][0] == -3
+      and ep[14]["b"][3] == 20 and ep[14]["a"][0] == 2.5 and ep[14]["b"][6] == ep[14]["a"][6], repr(ep[14]))
+check("out of range is held to the knob's ends, and a code's too", ep[16]["b"][0] == 12 and ep[18]["a"][0] == 12
+      and ep[18]["a"][4] == 0.2 and ep[18]["a"][6] == 0 and abs(ep[18]["gen"][6] - 1000) < 1e-9, repr(ep[18]))
+ewrote = sum(1 for i in range(1, len(ep)) if ep[i]["b"] != ep[i - 1]["b"] and ep[i]["own"])
+check("the runs write the upper hand's own EQ %d times" % ewrote, ewrote > 30)
+check("null: and the comparison fails against the page's hands one out of step",
+      any(not eclose(x, y) for x, y in zip(epage[1:], ecore[:-1])))
+eflip = [dict(r, gen=r["genB"], genB=r["gen"]) for r in ecore]
+check("null: and against the two layers' generators swapped", any(not eclose(x, y) for x, y in zip(epage, eflip)))
 
 golden.section("the generator in WebAssembly")
 # The core's generator compiled for the browser, the module the page carries,

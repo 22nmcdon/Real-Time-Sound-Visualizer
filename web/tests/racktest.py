@@ -12,11 +12,12 @@ What would go wrong, and what is checked for it:
   turn among them, is set away from rest, switched off and read back at
   rest, and switched on and read back as it was. B's own turn counts only
   while B has a plane of its own, and both halves of that are read;
-- the Plane with nothing to put back turning itself on at something it
-  chose: it opens its rest instead and moves nothing;
+- the Plane with nothing to put back doing nothing you can hear, as it did
+  until 17 Nov, when it only opened its rest: it gives its start, a Twist
+  of 15 (web/docs/listening/plane-start/ has why), and stays shut;
 - a switch putting back what it kept for an earlier sound (11 Nov): the
   delay switched off, another setup loaded, and on again is the module's
-  default, not the first sound's Mix; the Plane after a load opens its rest
+  default, not the first sound's Mix; the Plane after a load gives its start
   again; with two hands, what the upper hand's own delay kept is not the
   lower's; and an undo step put back puts back what its switches had kept.
   The null each time is the same switch with nothing loaded between, which
@@ -75,8 +76,9 @@ with sync_playwright() as pw:
     # the phaser, so the chorus and the delay copy the phased pair. The first
     # build of the rack put them Delay, Chorus, Phaser under a title saying it
     # was the sound's order; the null is that order.
-    engine = ["plane", "phaser", "chorus", "delay", "reverb"]
-    check("Plane, Phaser, Chorus, Delay, then the Reverb, top to bottom, as the engine runs them",
+    # The EQ (17 Nov) after the Plane and before the three: eqtest.py holds it under every order.
+    engine = ["plane", "eq", "phaser", "chorus", "delay", "reverb"]
+    check("Plane, EQ, Phaser, Chorus, Delay, then the Reverb, top to bottom, as the engine runs them",
           order == engine, str(order))
     check("null: the first build's order is not what is there", order != ["plane", "delay", "chorus", "phaser", "reverb"])
     src = open(os.path.join(ROOT, "core", "include", "scope", "plane.h")).read()
@@ -139,10 +141,14 @@ with sync_playwright() as pw:
                             plane.shear, state.rotate];
       const away = { planeMirror: '1', planeLimit: '1', planeTwist: '20', planeSnap: '6',
                      planeScaleX: '80', planeScaleY: '120', planeShear: '30', rotate: '10', planeTurn: '0' };
-      // Nothing kept yet: on opens the rest and moves nothing.
+      // Nothing kept yet: on is the Plane's start, Twist 15 (17 Nov), with the module left shut.
       delete fxKept[0].plane; openFx(null);
       const rest0 = read(); pill.click(); await wait(50);
-      const opened = { open: document.getElementById('rackGroup').dataset.open || null, same: JSON.stringify(read()) === JSON.stringify(rest0) };
+      const moved = Object.keys(rest0).filter((id) => read()[id] !== rest0[id]);
+      const opened = { open: document.getElementById('rackGroup').dataset.open || null, moved,
+                       twist: el.planeTwist.value, engine: plane.twist, on: fxOn('plane') };
+      pill.click(); await wait(50);
+      const startOff = { values: read(), on: fxOn('plane') };
       openFx(null);
       for (const [id, v] of Object.entries(away)) setControl(id, v);
       const set = { values: read(), engine: engine(), on: fxOn('plane') };
@@ -157,11 +163,18 @@ with sync_playwright() as pw:
       planeB.own = true;
       const own = fxOn('plane');
       planeB.own = false; setControl('planeTurn', '0'); paintRack();
-      return { opened, away, set, off, back, rest: Object.fromEntries(PLANE_SHAPING), shared, own };
+      return { opened, startOff, away, set, off, back, rest: Object.fromEntries(PLANE_SHAPING), shared, own };
     }""")
     print("    %s" % plane)
-    check("the Plane with nothing to put back opens its rest and moves nothing",
-          plane["opened"] == {"open": "plane", "same": True}, str(plane["opened"]))
+    # Until 17 Nov this was "opens its rest and moves nothing", which is how
+    # the owner pressed the switch and heard nothing.
+    want_start = {"open": None, "moved": ["planeTwist"], "twist": "15", "engine": 0.15, "on": True}
+    check("the Plane with nothing to put back starts at Twist 15, in the control and the engine, and stays shut",
+          plane["opened"] == want_start, str(plane["opened"]))
+    check("null: the old behaviour, opened with nothing moved, is not what happened",
+          plane["opened"] != {"open": "plane", "moved": [], "twist": "0", "engine": 0, "on": False})
+    check("and off again from the start is at rest", not plane["startOff"]["on"]
+          and plane["startOff"]["values"] == plane["rest"], str(plane["startOff"]))
     check("every shaping set away from rest reads on", plane["set"]["on"] and plane["set"]["values"] == plane["away"],
           str(plane["set"]))
     check("off puts every one at rest, the turn too, in the controls and the engine",
@@ -187,14 +200,14 @@ with sync_playwright() as pw:
       restore({ delayMix: 0, chorusMix: 10 }); paintRack();
       pill('delay').click(); await wait(30);
       const loaded = { mix: el.delayMix.value, engine: echo.mix };
-      // The Plane, shaped and switched off, then a load: on opens its rest again.
+      // The Plane, shaped and switched off, then a load: on is its start again, not the shaping kept.
       restore({}); openFx(null);
       setControl('planeMirror', '1'); setControl('planeTwist', '20'); paintRack();
       pill('plane').click(); await wait(30);
       restore({}); openFx(null);
-      const rest = shaping();
       pill('plane').click(); await wait(30);
-      const plane = { open: document.getElementById('rackGroup').dataset.open || null, same: shaping() === rest };
+      const plane = { mirror: el.planeMirror.value, twist: el.planeTwist.value };
+      pill('plane').click(); await wait(30);
       openFx(null);
       // An undo step put back: its switches' kept values with it.
       restore({ delayMix: 55 }); paintRack();
@@ -214,8 +227,8 @@ with sync_playwright() as pw:
     check("the delay switched off, another sound loaded, and on again: its default 35, not the first sound's 55",
           kept["loaded"] == {"mix": "35", "engine": 0.35}, str(kept["loaded"]))
     check("null: with nothing loaded between, on puts back the 55", kept["same"] == "55", kept["same"])
-    check("the Plane switched off, a sound loaded, and on again opens its rest and moves nothing",
-          kept["plane"] == {"open": "plane", "same": True}, str(kept["plane"]))
+    check("the Plane switched off, a sound loaded, and on again is its start (Twist 15), not the mirror and 20 kept",
+          kept["plane"] == {"mirror": "0", "twist": "15"}, str(kept["plane"]))
     check("an undo step put back puts back what its switch kept: on again is the 55",
           kept["undone"] == "55", kept["undone"])
     check("null: the same step without what was kept comes back on at the default", kept["undoneBare"] == "35",
@@ -349,9 +362,9 @@ with sync_playwright() as pw:
     }""")
     print("    %s" % keys)
     check("at rest the order is the phaser, the chorus, the delay",
-          keys["before"] == {"order": "pcd", "shown": "plane,phaser,chorus,delay,reverb"}, str(keys["before"]))
+          keys["before"] == {"order": "pcd", "shown": "plane,eq,phaser,chorus,delay,reverb"}, str(keys["before"]))
     check("the phaser down twice: the menu, the setup, the modules and both layers' engines say chorus, delay, phaser",
-          keys["after"] == {"order": "cdp", "menu": "cdp", "field": "cdp", "shown": "plane,chorus,delay,phaser,reverb",
+          keys["after"] == {"order": "cdp", "menu": "cdp", "field": "cdp", "shown": "plane,eq,chorus,delay,phaser,reverb",
                             "engines": [3, 3], "focus": True}, str(keys["after"]))
     check("null: that is not the order it started in", keys["after"]["order"] != keys["before"]["order"])
     check("past the bottom it stays there, and up once is one place", keys["held"] == "cdp" and keys["up"] == "cpd",
@@ -381,11 +394,11 @@ with sync_playwright() as pw:
     escaped = {"order": p.evaluate("() => fxOrder"), "shown": p.evaluate(shown)}
     print("    mid-drag %s %s, dropped %s, escaping %s, escaped %s" % (mid, mid_shown, dropped, escaping, escaped))
     check("mid-drag the modules follow the pointer and the sound has not moved",
-          mid_shown == "plane,delay,phaser,chorus,reverb" and mid == {"order": "pcd", "engine": 0}, str((mid, mid_shown)))
+          mid_shown == "plane,eq,delay,phaser,chorus,reverb" and mid == {"order": "pcd", "engine": 0}, str((mid, mid_shown)))
     check("let go, the order is the delay, the phaser, the chorus, in the engine too",
           dropped == {"order": "dpc", "engine": 4}, str(dropped))
     check("and Escape mid-drag puts the modules back and leaves the order",
-          escaping == "plane,delay,chorus,phaser,reverb" and escaped == {"order": "dpc", "shown": "plane,delay,phaser,chorus,reverb"},
+          escaping == "plane,eq,delay,chorus,phaser,reverb" and escaped == {"order": "dpc", "shown": "plane,eq,delay,phaser,chorus,reverb"},
           str((escaping, escaped)))
 
     # Setups: the order goes into a code and comes back; a code that does not

@@ -340,7 +340,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   `xvfb-run -a`.
 - **Space & Memory is a rack of effect modules** (F5, 7 Nov), one wide
   column top to bottom in the order the engine runs them - Plane (its Turn
-  is the screen's rotation), Phaser, Chorus, Delay, then the Reverb (9
+  is the screen's rotation), the EQ (17 Nov: three bands, the same on both
+  channels, its place fixed), Phaser, Chorus, Delay, then the Reverb (9
   Nov; a dashed slot until then) - each a line of icon, name, switch, what it is doing and its
   main knobs, Mix first. Its arrow opens the rest under it, one module at a
   time, and while one is open the others fold to their lines only if the
@@ -349,17 +350,22 @@ Do not re-litigate these without a reason; each replaced something that failed.
   compact face they fold. Decided by room,
   not by window size, so it is right at sizes nobody measured.
   The switch is a view over values, not a field: off takes the Mix (the
-  Plane's shaping and turn) to rest and keeps what it had, on puts it back
-  (`switchFx`, `fxKept`), so a setup, a host knob or a code that moves a
-  Mix switches the module with it, and a module saved off comes back off
-  with nothing to put back. Lines and switches are read off the values a
+  Plane's shaping and turn, the EQ's three gains) to rest and keeps what it
+  had, on puts it back (`switchFx`, `fxKept`), so a setup, a host knob or a
+  code that moves a Mix switches the module with it, and a module saved off
+  comes back off with nothing to put back. With nothing kept, on is the
+  module's start: its Mix (`FX_MIX`), the Plane's Twist of 15
+  (`PLANE_START`, chosen by measuring three,
+  `web/docs/listening/plane-start/`) or the EQ's low and high shelves up
+  3 dB (`EQ_START`), each held to keep every Settled preset Settled
+  (`core/tests/pieces/starts.py`, `honestytest.py`). Lines and switches are read off the values a
   few times a second (`paintRack`). It replaced the Display, Plane and
   "Delay, chorus and phaser" sections; the Numbers read switch went to
   Scope & measure's Measure. Since F5b the order of the phaser, chorus and
   delay is the setup's `fxOrder` (one of six, by letters; the engines get an
   index into one table, `FX_ORDER_STAGES` and `kFxOrders`, never stored),
-  one order for both layers, the Plane always first and the Reverb always
-  last: a tail smeared over seconds is the end of the chain, and a delay or
+  one order for both layers, the Plane always first, the EQ always after
+  it and the Reverb always last: a tail smeared over seconds is the end of the chain, and a delay or
   chorus after it would repeat the cloud rather than the figure. The Reverb
   is two identical networks, one per channel with nothing crossing, so at
   Spread nought the channels are the same to the bit and the figure survives

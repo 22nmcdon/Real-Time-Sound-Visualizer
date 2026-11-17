@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Plane's starting setting</title>
+<!-- What the Plane's switch gives when it has nothing to put back (17 Nov):
+     three candidates, rendered offline by the core on four presets, with
+     why each was in the running and what the measure said. The WAVs sit
+     beside this page once published; render.py makes them and results.json. -->
+<style>
+  :root { --cream: #faf6f0; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
+          --line: #e4d9cc; --blush-deep: #c07f79; --gold: #b08d57; --sage: #6f7f63; --rust: #a4553f; }
+  body { background: var(--cream); color: var(--text); font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { color: var(--charcoal); font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { color: var(--charcoal); font-size: 1.15rem; margin: 28px 0 8px; }
+  p { margin: 8px 0; }
+  .soft { color: var(--text-soft); }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .cand { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .cand h3 { margin: 0 0 4px; font-size: 1rem; color: var(--charcoal); }
+  .chosen { border-color: var(--gold); }
+  .tag { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); }
+  .out { color: var(--rust); }
+  .keeps { color: var(--sage); }
+  table { border-collapse: collapse; width: 100%; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  th { font-weight: 600; color: var(--charcoal); font-size: 0.9rem; }
+  audio { width: 100%; min-width: 150px; height: 32px; }
+  .scroll { overflow-x: auto; }
+  code { font-size: 0.9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The Plane's starting setting</h1>
+  <p class="soft">17 Nov. Until now the Plane's switch, with nothing kept, only opened the module, so pressing it
+    did nothing you could hear. The delay starts at a Mix of 35, the chorus and phaser at 30, the reverb at 15;
+    the Plane has no Mix, so its start is one of its shapings. Three were rendered offline by the core and
+    measured; the switch now gives <b>Twist 15</b>. Overrule it by ear if you hear otherwise.</p>
+
+  <h2>The three</h2>
+  <div class="cands">
+    <div class="cand chosen"><span class="tag">Chosen</span>
+      <h3>Twist 15 (54&deg; at full scale)</h3>
+      <p>The loud parts swirl and the quiet middle stays still: a stereo-linked bend, heard at once, and the knob it
+        moves is on the module's own line, so you see what the switch did.</p>
+      <p class="keeps">Every Settled probe stayed Settled on all five key landings, and every Breathing one Breathing.
+        Heard and seen the most of the three that kept Settled.</p></div>
+    <div class="cand"><h3>Radial clip at 0.30</h3>
+      <p>A soft clipper that keeps the stereo image, the figure rounded towards a circle. Its knobs are under the
+        arrow, so the line would show nothing moved.</p>
+      <p>Kept every Settled probe, but barely touches the quiet sine presets (Tine piano: a spectrum change of 0.006,
+        against the twist's 0.033): on the presets that most need the switch to be heard, it is the faintest.</p></div>
+    <div class="cand"><h3>Turn 25&deg;</h3>
+      <p>The figure and the pair turned whole, exact and linear: heard only as balance and image, never as a
+        harmonic.</p>
+      <p class="out">Took the Tine piano out of Settled on one landing of five (late 0.016 against the ceiling's
+        0.015), through the loop reading a turned picture. Out.</p></div>
+  </div>
+
+  <h2>Listen</h2>
+  <p class="soft">Each 3.5 s held and 1.5 s after, the preset's own probe note (Turning fifths a fifth), at one gain
+    for all sixteen so loudness compares. 22.05 kHz, 16-bit, rendered by <code>render.py</code> beside this page.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Preset</th><th>As it is</th><th>Twist 15</th><th>Radial clip 0.30</th><th>Turn 25&deg;</th></tr></thead>
+    <tbody>
+      <tr><th>Tine piano <span class="soft">(Settled)</span></th>
+        <td><audio controls preload="none" src="tine-piano-off.wav"></audio></td>
+        <td><audio controls preload="none" src="tine-piano-twist.wav"></audio></td>
+        <td><audio controls preload="none" src="tine-piano-clip.wav"></audio></td>
+        <td><audio controls preload="none" src="tine-piano-turn.wav"></audio></td></tr>
+      <tr><th>Drawbar organ <span class="soft">(Settled)</span></th>
+        <td><audio controls preload="none" src="drawbar-organ-off.wav"></audio></td>
+        <td><audio controls preload="none" src="drawbar-organ-twist.wav"></audio></td>
+        <td><audio controls preload="none" src="drawbar-organ-clip.wav"></audio></td>
+        <td><audio controls preload="none" src="drawbar-organ-turn.wav"></audio></td></tr>
+      <tr><th>Slow pad <span class="soft">(Breathing)</span></th>
+        <td><audio controls preload="none" src="slow-pad-off.wav"></audio></td>
+        <td><audio controls preload="none" src="slow-pad-twist.wav"></audio></td>
+        <td><audio controls preload="none" src="slow-pad-clip.wav"></audio></td>
+        <td><audio controls preload="none" src="slow-pad-turn.wav"></audio></td></tr>
+      <tr><th>Turning fifths <span class="soft">(Breathing)</span></th>
+        <td><audio controls preload="none" src="turning-fifths-off.wav"></audio></td>
+        <td><audio controls preload="none" src="turning-fifths-twist.wav"></audio></td>
+        <td><audio controls preload="none" src="turning-fifths-clip.wav"></audio></td>
+        <td><audio controls preload="none" src="turning-fifths-turn.wav"></audio></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>What was measured</h2>
+  <p>The heading as <code>web/tests/honestytest.py</code> measures it, at five key landings across half a second,
+    on every Settled preset with the Plane off (Tines at the radius already has it on) and two Breathing ones:
+    a candidate that took any Settled probe out of Settled on any landing was out. Then, held and settled, how far
+    each candidate moved the spectrum from the preset's own (honestytest's forty-eight bands) and how far it moved
+    the figure (the difference between the two pairs as points, over the preset's own).</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th></th><th>Settled kept</th><th>Spectrum moved</th><th>Level change</th><th>Figure moved</th></tr></thead>
+    <tbody>
+      <tr><th>Twist 15</th><td class="keeps">all, every landing</td><td>0.083</td><td>0.4 dB</td><td>16%</td></tr>
+      <tr><th>Radial clip 0.30</th><td class="keeps">all, every landing</td><td>0.045</td><td>1.0 dB</td><td>13%</td></tr>
+      <tr><th>Turn 25&deg;</th><td class="out">Tine piano out on one landing</td><td>0.053</td><td>0.5 dB</td><td>16%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="soft">Means over the six probes. The Slow pad sits on Breathing's floor as it stands (late 0.018 to 0.025
+    across the landings, a known edge); the twist lifted it clear (0.028 to 0.040), the clip left it there. Every
+    number is in <code>results.json</code>.</p>
+</main>
+</body>
+</html>

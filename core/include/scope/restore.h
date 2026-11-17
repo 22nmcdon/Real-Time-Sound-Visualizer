@@ -291,7 +291,7 @@ struct Brain {
      HandSection (the page's handLinks, false there where true here), and the
      Picture section's Amount and Strike on each hand in the sliders' units
      (pictureHands), which the sliders show one of. */
-  std::array<bool, 11> handOwn {};
+  std::array<bool, 12> handOwn {};
   /* How each hand's picture responds (11 Nov, the-picture-amount.md): what it
      responds to (0 Change, 1 Level, 2 Both), its rise and fall in
      milliseconds, and whether it swells by itself. */
@@ -346,6 +346,8 @@ struct Brain {
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
     double phaser = 0, phRate = 0.3, phDepth = 0.7, phFeedback = 0.3;  // P8e
     double rvMix = 0, rvSize = 0.4, rvTone = 0.6, rvPre = 10, rvSpread = 0;  // P9
+    // The EQ (17 Nov): each gain in dB, each frequency as its knob's place (0 to 100, eqHz), the mid's width in octaves.
+    double eqLow = 0, eqLowPos = 50, eqMid = 0, eqMidPos = 50, eqWidth = 1, eqHigh = 0, eqHighPos = 50;
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
   // Layer B's own echo and chorus (the page's `echoB`), under the plane's
@@ -518,7 +520,7 @@ inline bool isVoiceControl(std::string_view id) {
    rather than stored. */
 enum HandSection : int {
   kHandGen, kHandAmpEnv, kHandVcf, kHandOsc, kHandShp, kHandPicture, kHandPlane, kHandPhaser, kHandChorus, kHandDelay,
-  kHandReverb, kHandSections
+  kHandReverb, kHandEq, kHandSections
 };
 struct HandSectionSpec {
   const char* name; const char* link; std::vector<std::string_view> controls, fields, dests; int bit;
@@ -558,6 +560,9 @@ inline const std::array<HandSectionSpec, kHandSections>& handSections() {
     { "reverb", "linkReverb", { "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread" },
       { "bReverbMix", "bReverbSize", "bReverbTone", "bReverbPre", "bReverbSpread" },
       { "gen.reverb", "gen.reverbSize", "gen.reverbTone" }, 8 },
+    // The EQ (17 Nov), last so every section before it keeps its place.
+    { "eq", "linkEq", { "eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq" },
+      { "bEqLow", "bEqLowFreq", "bEqMid", "bEqMidFreq", "bEqMidWidth", "bEqHigh", "bEqHighFreq" }, {}, 16 },
   } };
   return specs;
 }
@@ -673,7 +678,7 @@ inline void showLayerOnPanel(Brain& b, const Generator& gen, int layer) {
   b.keptA = layer == 1;
   b.panelLayer = layer;
 }
-static_assert(kHandSections == 11, "Brain::handOwn has a place for each section");
+static_assert(kHandSections == 12, "Brain::handOwn has a place for each section");
 inline bool handLinked(const Brain& b, int sec) { return handLinked(b.handOwn, sec); }
 
 /* handSet: a control on a section with a link, written - both layers while
@@ -747,7 +752,7 @@ inline void pictureAmountTo(Brain& b, const Keyboard& keys, double v) {
 // B's own time modules, the generator's `timeOwn` (timeOwnMask).
 inline int timeOwnMask(const Brain& b) {
   int mask = 0;
-  for (const int sec : { kHandPhaser, kHandChorus, kHandDelay, kHandReverb })
+  for (const int sec : { kHandPhaser, kHandChorus, kHandDelay, kHandReverb, kHandEq })
     if (!handLinked(b, sec)) mask |= handSections()[static_cast<std::size_t>(sec)].bit;
   return mask;
 }
@@ -842,14 +847,14 @@ inline std::string rackSide(const Brain& b, const Keyboard& keys, int sec) {
   return !keys.layersOn() ? "one" : handLinked(b, sec) ? "both" : !b.panelHeldOnA && keys.editLayer() == 1 ? "b" : "a";
 }
 inline std::string planeSide(const Brain& b, const Keyboard& keys) { return rackSide(b, keys, kHandPlane); }
-/* The four modules' sides, the phaser's, the chorus's, the delay's and the
-   reverb's, joined by commas, written into `text`. Into a buffer rather than
+/* The five modules' sides, the phaser's, the chorus's, the delay's, the
+   reverb's and the EQ's, joined by commas, written into `text`. Into a buffer rather than
    made as a string: it is asked every step on the audio thread, and four
    sides joined are past what a string holds without allocating, where each
    side alone is not (G8). */
 inline std::string_view echoSides(const Brain& b, const Keyboard& keys, char (&text)[32]) {
   std::size_t n = 0;
-  for (const int sec : { kHandPhaser, kHandChorus, kHandDelay, kHandReverb }) {
+  for (const int sec : { kHandPhaser, kHandChorus, kHandDelay, kHandReverb, kHandEq }) {
     const std::string side = rackSide(b, keys, sec);
     if (n > 0) text[n++] = ',';
     for (const char c : side) if (n < sizeof text) text[n++] = c;
@@ -924,6 +929,28 @@ inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
   b.panel.setRangeNumber("reverbTone", jsMathRound(er.rvTone * 100));
   b.panel.setRangeNumber("reverbPre", jsMathRound(er.rvPre));
   b.panel.setRangeNumber("reverbSpread", jsMathRound(er.rvSpread * 100));
+  const Brain::EchoState& eq = echoTarget(b, keys, kHandEq);
+  b.panel.setRangeNumber("eqLow", jsMathRound(eq.eqLow * 10));
+  b.panel.setRangeNumber("eqLowFreq", eq.eqLowPos);
+  b.panel.setRangeNumber("eqMid", jsMathRound(eq.eqMid * 10));
+  b.panel.setRangeNumber("eqMidFreq", eq.eqMidPos);
+  b.panel.setRangeNumber("eqMidWidth", jsMathRound(eq.eqWidth * 10));
+  b.panel.setRangeNumber("eqHigh", jsMathRound(eq.eqHigh * 10));
+  b.panel.setRangeNumber("eqHighFreq", eq.eqHighPos);
+}
+/* The EQ's frequencies from their knobs' places (17 Nov), the page's EQ_BANDS:
+   four octaves from 40 Hz for the low shelf, six from 125 Hz for the mid, four
+   from 1 kHz for the high shelf, so the middle of each knob is 160 Hz, 1 kHz
+   and 4 kHz. In octaves, so a knob turned is a musical distance wherever it is. */
+inline double eqHz(int band, double pos) {
+  const double p = std::fmax(0.0, std::fmin(100.0, pos)) / 100;
+  return band == 0 ? 40 * std::pow(2.0, 4 * p) : band == 1 ? 125 * std::pow(2.0, 6 * p) : 1000 * std::pow(2.0, 4 * p);
+}
+inline void eqSend(Generator& gen, const Brain::EchoState& e, int layer) {
+  gen.set("eqLow", e.eqLow, layer); gen.set("eqLowHz", eqHz(0, e.eqLowPos), layer);
+  gen.set("eqMid", e.eqMid, layer); gen.set("eqMidHz", eqHz(1, e.eqMidPos), layer);
+  gen.set("eqMidWidth", e.eqWidth, layer);
+  gen.set("eqHigh", e.eqHigh, layer); gen.set("eqHighHz", eqHz(2, e.eqHighPos), layer);
 }
 
 // syncPlane, syncEcho, syncCrossings, syncQuantiser: the state written to the
@@ -968,6 +995,10 @@ inline void syncEchoB(Brain& b, Generator& gen) {
   if (handLinked(b, kHandReverb)) {
     f.rvMix = a.rvMix; f.rvSize = a.rvSize; f.rvTone = a.rvTone; f.rvPre = a.rvPre; f.rvSpread = a.rvSpread;
   }
+  if (handLinked(b, kHandEq)) {
+    f.eqLow = a.eqLow; f.eqLowPos = a.eqLowPos; f.eqMid = a.eqMid; f.eqMidPos = a.eqMidPos; f.eqWidth = a.eqWidth;
+    f.eqHigh = a.eqHigh; f.eqHighPos = a.eqHighPos;
+  }
   gen.set("timeOwn", timeOwnMask(b), 1);
   const Brain::EchoState& e = b.echoB;
   gen.set("delayMix", e.mix, 1); gen.set("delayMs", delayTimeMs(b, e), 1); gen.set("delayFeedback", e.feedback, 1);
@@ -979,6 +1010,7 @@ inline void syncEchoB(Brain& b, Generator& gen) {
   gen.set("phaserFeedback", e.phFeedback, 1);
   gen.set("reverbMix", e.rvMix, 1); gen.set("reverbSize", e.rvSize, 1); gen.set("reverbTone", e.rvTone, 1);
   gen.set("reverbPreMs", e.rvPre, 1); gen.set("reverbSpread", e.rvSpread, 1);
+  eqSend(gen, e, 1);
   gen.set("fxOrder", fxOrderIndex(b), 1);
 }
 inline void syncEcho(Brain& b, Generator& gen) {
@@ -992,6 +1024,7 @@ inline void syncEcho(Brain& b, Generator& gen) {
   gen.set("phaserFeedback", e.phFeedback);
   gen.set("reverbMix", e.rvMix); gen.set("reverbSize", e.rvSize); gen.set("reverbTone", e.rvTone);
   gen.set("reverbPreMs", e.rvPre); gen.set("reverbSpread", e.rvSpread);
+  eqSend(gen, e, 0);
   gen.set("fxOrder", fxOrderIndex(b));
 }
 inline void syncQuantiser(const Brain& b, Generator& gen) {
@@ -1619,6 +1652,9 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     e.rvTone = fieldNum("reverbTone") / 100;
     e.rvPre = fieldNum("reverbPre");
     e.rvSpread = fieldNum("reverbSpread") / 100;
+    e.eqLow = fieldNum("eqLow") / 10; e.eqLowPos = fieldNum("eqLowFreq");
+    e.eqMid = fieldNum("eqMid") / 10; e.eqMidPos = fieldNum("eqMidFreq"); e.eqWidth = fieldNum("eqMidWidth") / 10;
+    e.eqHigh = fieldNum("eqHigh") / 10; e.eqHighPos = fieldNum("eqHighFreq");
     setA("delayMix", e.mix);
     setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
@@ -1630,6 +1666,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     setA("phaserFeedback", e.phFeedback);
     setA("reverbMix", e.rvMix); setA("reverbSize", e.rvSize); setA("reverbTone", e.rvTone);
     setA("reverbPreMs", e.rvPre); setA("reverbSpread", e.rvSpread);
+    eqSend(gen, e, 0);
     /* Layer B's own echo and chorus, with its plane (bPlane): a field the
        setup lacks is A's, as B's plane's are. */
     echoBFollow(brain);
@@ -1672,6 +1709,15 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
         f.rvTone = slide("bReverbTone", 100, e.rvTone);
         f.rvPre = slide("bReverbPre", 1, e.rvPre);
         f.rvSpread = slide("bReverbSpread", 100, e.rvSpread);
+      }
+      if (!handLinked(brain, kHandEq)) {
+        f.eqLow = slide("bEqLow", 10, e.eqLow);
+        f.eqLowPos = slide("bEqLowFreq", 1, e.eqLowPos);
+        f.eqMid = slide("bEqMid", 10, e.eqMid);
+        f.eqMidPos = slide("bEqMidFreq", 1, e.eqMidPos);
+        f.eqWidth = slide("bEqMidWidth", 10, e.eqWidth);
+        f.eqHigh = slide("bEqHigh", 10, e.eqHigh);
+        f.eqHighPos = slide("bEqHighFreq", 1, e.eqHighPos);
       }
     }
     syncEchoB(brain, gen);
@@ -1925,7 +1971,9 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
            || id == "delayWidth" || id == "delayWow" || id == "chorusMix" || id == "chorusRate"
            || id == "chorusDepth" || id == "chorusTime" || id == "chorusFeedback" || id == "phaserMix"
            || id == "phaserRate" || id == "phaserDepth" || id == "phaserFeedback" || id == "reverbMix"
-           || id == "reverbSize" || id == "reverbTone" || id == "reverbPre" || id == "reverbSpread") {
+           || id == "reverbSize" || id == "reverbTone" || id == "reverbPre" || id == "reverbSpread"
+           || id == "eqLow" || id == "eqLowFreq" || id == "eqMid" || id == "eqMidFreq" || id == "eqMidWidth"
+           || id == "eqHigh" || id == "eqHighFreq") {
     // Each module's own target (G6).
     const int sec = handSectionOfControl(id);
     Brain::EchoState& e = echoTarget(b, keys, sec);
@@ -1949,7 +1997,14 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     else if (id == "reverbSize") e.rvSize = v / 100;
     else if (id == "reverbTone") e.rvTone = v / 100;
     else if (id == "reverbPre") e.rvPre = v;
-    else e.rvSpread = v / 100;
+    else if (id == "reverbSpread") e.rvSpread = v / 100;
+    else if (id == "eqLow") e.eqLow = v / 10;
+    else if (id == "eqLowFreq") e.eqLowPos = v;
+    else if (id == "eqMid") e.eqMid = v / 10;
+    else if (id == "eqMidFreq") e.eqMidPos = v;
+    else if (id == "eqMidWidth") e.eqWidth = v / 10;
+    else if (id == "eqHigh") e.eqHigh = v / 10;
+    else e.eqHighPos = v;
     syncEchoPanel(b, keys);
     syncEcho(b, gen);
   }
@@ -2182,6 +2237,9 @@ inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to) {
       t.chorus = f.chorus; t.rate = f.rate; t.depthMs = f.depthMs; t.centreMs = f.centreMs; t.chorusFeedback = f.chorusFeedback;
     } else if (sec == kHandPhaser) {
       t.phaser = f.phaser; t.phRate = f.phRate; t.phDepth = f.phDepth; t.phFeedback = f.phFeedback;
+    } else if (sec == kHandEq) {
+      t.eqLow = f.eqLow; t.eqLowPos = f.eqLowPos; t.eqMid = f.eqMid; t.eqMidPos = f.eqMidPos; t.eqWidth = f.eqWidth;
+      t.eqHigh = f.eqHigh; t.eqHighPos = f.eqHighPos;
     } else {
       t.rvMix = f.rvMix; t.rvSize = f.rvSize; t.rvTone = f.rvTone; t.rvPre = f.rvPre; t.rvSpread = f.rvSpread;
     }
@@ -2224,6 +2282,9 @@ inline bool handsEqual(const Brain& b, const Generator& gen, int sec) {
   if (sec == kHandPhaser) return f.phaser == e.phaser && f.phRate == e.phRate && f.phDepth == e.phDepth && f.phFeedback == e.phFeedback;
   if (sec == kHandReverb)
     return f.rvMix == e.rvMix && f.rvSize == e.rvSize && f.rvTone == e.rvTone && f.rvPre == e.rvPre && f.rvSpread == e.rvSpread;
+  if (sec == kHandEq)
+    return f.eqLow == e.eqLow && f.eqLowPos == e.eqLowPos && f.eqMid == e.eqMid && f.eqMidPos == e.eqMidPos
+        && f.eqWidth == e.eqWidth && f.eqHigh == e.eqHigh && f.eqHighPos == e.eqHighPos;
   if (sec == kHandPicture) {
     const Brain::PictureHand &p = b.pictureHands[0], &q = b.pictureHands[1];
     if (p.amount != q.amount || p.strike != q.strike || p.responds != q.responds || p.feel != q.feel || p.rise != q.rise

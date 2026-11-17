@@ -268,6 +268,11 @@ int main(int argc, char** argv) {
         { "reverbMix", [&](double v) { t.reverbMix = v; } }, { "reverbSize", [&](double v) { t.reverbSize = v; } },
         { "reverbTone", [&](double v) { t.reverbTone = v; } }, { "reverbPreMs", [&](double v) { t.reverbPreMs = v; } },
         { "reverbSpread", [&](double v) { t.reverbSpread = v; } },
+        // The EQ (17 Nov): a gain of nought, as a run that names none has, leaves a band out.
+        { "eqLow", [&](double v) { t.eqLow = v; } }, { "eqLowHz", [&](double v) { t.eqLowHz = v; } },
+        { "eqMid", [&](double v) { t.eqMid = v; } }, { "eqMidHz", [&](double v) { t.eqMidHz = v; } },
+        { "eqMidWidth", [&](double v) { t.eqMidWidth = v; } }, { "eqHigh", [&](double v) { t.eqHigh = v; } },
+        { "eqHighHz", [&](double v) { t.eqHighHz = v; } },
       };
       for (const auto& [k, set] : fields) set(d(k));
       // Layer B's own shape, as the page's run holds it.
@@ -297,6 +302,10 @@ int main(int argc, char** argv) {
         { "bReverbMix", [&](double v) { b.reverbMix = v; } }, { "bReverbSize", [&](double v) { b.reverbSize = v; } },
         { "bReverbTone", [&](double v) { b.reverbTone = v; } }, { "bReverbPreMs", [&](double v) { b.reverbPreMs = v; } },
         { "bReverbSpread", [&](double v) { b.reverbSpread = v; } },
+        { "bEqLow", [&](double v) { b.eqLow = v; } }, { "bEqLowHz", [&](double v) { b.eqLowHz = v; } },
+        { "bEqMid", [&](double v) { b.eqMid = v; } }, { "bEqMidHz", [&](double v) { b.eqMidHz = v; } },
+        { "bEqMidWidth", [&](double v) { b.eqMidWidth = v; } }, { "bEqHigh", [&](double v) { b.eqHigh = v; } },
+        { "bEqHighHz", [&](double v) { b.eqHighHz = v; } },
       };
       for (const auto& [k, set] : bfields) set(d(k));
       std::map<long, std::vector<std::pair<std::string, double>>> events;
@@ -309,6 +318,7 @@ int main(int argc, char** argv) {
       std::vector<double> out;
       bool on = false;
       const double tw = scope::kTwoPi;
+      std::array<std::array<std::array<double, 2>, 3>, 4> eqz {};  // eqat's bands' states, each pair's two channels
       for (long i = 0; i < static_cast<long>(d("samples")); i++) {
         const auto ev = events.find(i);
         if (ev != events.end()) {
@@ -317,8 +327,12 @@ int main(int argc, char** argv) {
           }
         }
         if (i % 128 == 0 || ev != events.end()) {
-          on = plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1, d("phr") == 1,
-                           d("rvr") == 1);
+          // `town`, B's own time modules (timeOwn), where a run names it; all of them otherwise, as before.
+          on = p.count("town")
+            ? plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1, d("phr") == 1,
+                          d("rvr") == 1, true, static_cast<int>(d("town")))
+            : plane.setup(t, d("twr") == 1, d("ecr") == 1, bown ? &b : nullptr, bturn, d("btr") == 1, d("phr") == 1,
+                          d("rvr") == 1);
         }
         const double di = static_cast<double>(i);
         const double rp = static_cast<float>(d("rpush") * std::sin(di * 0.0031));
@@ -349,12 +363,46 @@ int main(int argc, char** argv) {
           const double ph = std::fmod(di * 220 / rate, 1.0);
           x = y = i < 2400 ? 0.6 * (2 * ph - 1) + 0.2 * std::sin(2 * tw * 220 * di / rate + 0.3) : 0;
         }
-        if (!on) { out.insert(out.end(), { x, y, y, x }); continue; }
+        /* `eqat=pre` or `eqat=post` (17 Nov): the EQ's three bands, made from the
+           run's own eq fields by Plane::eqBand, put on each pair outside the
+           plane - before it, or after it - with the plane's own EQ left at
+           nought (the run names none), so a check can say where in the plane
+           the EQ sits by which of the two the plane's own answer is. */
+        const std::string eqat = p.count("eqat") ? p["eqat"] : "";
+        const auto outside = [&](double& u, double& v, int pair) {
+          auto& z = eqz;
+          const double g[3] = { d("xLow"), d("xMid"), d("xHigh") }, f[3] = { d("xLowHz"), d("xMidHz"), d("xHighHz") };
+          for (int k = 0; k < 3; k++) {
+            if (g[k] == 0) continue;
+            const auto c = scope::Plane::eqBand(k, g[k], f[k], d("xMidWidth"), rate);
+            for (int ch = 0; ch < 2; ch++) {
+              auto& st = z[static_cast<std::size_t>(2 * pair + ch)][static_cast<std::size_t>(k)];
+              double& s = ch == 0 ? u : v;
+              const double o = c[0] * s + st[0];
+              st[0] = c[1] * s - c[3] * o + st[1]; st[1] = c[2] * s - c[4] * o;
+              if (std::fabs(st[0]) < 1e-30) st[0] = 0;
+              if (std::fabs(st[1]) < 1e-30) st[1] = 0;
+              s = o;
+            }
+          }
+        };
+        double bx = 0.8 * y, by = 1.1 * x;
+        if (eqat == "pre") { outside(x, y, 0); outside(bx, by, 1); }
+        // Off, the pair as it came, and B's as it always was here (y, x), so no recorded run moves.
+        if (!on && eqat.empty()) { out.insert(out.end(), { x, y, y, x }); continue; }
+        if (!on) {
+          if (eqat == "post") { outside(x, y, 0); outside(bx, by, 1); }
+          out.insert(out.end(), { x, y, bx, by }); continue;
+        }
         plane.tick(t, { rp, tp, ep, etp, 0, pp, dtp, rvp, rvsp, rvtp }, 1 / rate, &b,
                    { brp, btp, bep, betp, bup, bpp, bdtp, brvp, brvsp, brvtp });
-        plane.step(scope::Plane::A, x, y); out.insert(out.end(), { plane.x, plane.y });
+        plane.step(scope::Plane::A, x, y);
+        double ax = plane.x, ay = plane.y;
         // Each layer's pair once: since P4 there is no heard pair of its own.
-        plane.step(scope::Plane::B, 0.8 * y, 1.1 * x, true); out.insert(out.end(), { plane.x, plane.y });
+        plane.step(scope::Plane::B, bx, by, true);
+        double qx = plane.x, qy = plane.y;
+        if (eqat == "post") { outside(ax, ay, 0); outside(qx, qy, 1); }
+        out.insert(out.end(), { ax, ay, qx, qy });
       }
       show(out);
       continue;
@@ -454,6 +502,13 @@ int main(int argc, char** argv) {
       const auto c = scope::biquadCoefficients(w[1], num(w[2]), num(w[3]), num(w[4]));
       show({ c.b0, c.b1, c.b2, c.a1, c.a2 });
     }
+    // The EQ's band (17 Nov): `eqBand band db hz widthOct rate`, band 0 the low shelf, 1 the mid, 2 the high shelf.
+    else if (name == "eqBand") {
+      const auto c = scope::Plane::eqBand(static_cast<int>(num(w[1])), num(w[2]), num(w[3]), num(w[4]), num(w[5]));
+      show({ c[0], c[1], c[2], c[3], c[4] });
+    }
+    // And the mid's Q for a width in octaves, as the node is given it.
+    else if (name == "eqQ") show({ scope::Plane::eqWidthQ(num(w[1])) });
     else if (name == "svfRun") {
       scope::SvfState s;
       std::vector<double> out;

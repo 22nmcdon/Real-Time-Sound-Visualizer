@@ -107,6 +107,10 @@ inline constexpr RangeSpec kRanges[] = {
   { "phaserFeedback", 0, 75, 1, 30 },
   { "reverbMix", 0, 100, 1, 0 }, { "reverbSize", 0, 100, 1, 40 }, { "reverbTone", 0, 100, 1, 60 },
   { "reverbPre", 0, 100, 1, 10 }, { "reverbSpread", 0, 100, 1, 0 },
+  // The EQ (17 Nov): gains in tenths of a dB, each frequency its knob's place, the mid's width in tenths of an octave.
+  { "eqLow", -120, 120, 1, 0 }, { "eqMid", -120, 120, 1, 0 }, { "eqHigh", -120, 120, 1, 0 },
+  { "eqLowFreq", 0, 100, 1, 50 }, { "eqMidFreq", 0, 100, 1, 50 }, { "eqMidWidth", 2, 40, 1, 10 },
+  { "eqHighFreq", 0, 100, 1, 50 },
   { "inputDepth", 0, 100, 1, 50 },
   { "oscScan", 0, 100, 1, 0 },
   { "scanStrike", 0, 100, 1, 50 },
@@ -199,7 +203,7 @@ inline constexpr const char* kMorphIds[] = {
   // Level in the Generator since G7, after Glide, where the page lays it out.
   "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "quantiseGlide", "tempo",
   "lag", "lagMix", "acCorner", "planeTwist", "rotate", "planeTurn", "planeRadius", "planeScaleX", "planeScaleY",
-  "planeShear", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth",
+  "planeShear", "eqLow", "eqMid", "eqHigh", "eqLowFreq", "eqMidFreq", "eqMidWidth", "eqHighFreq", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth",
   "chorusTime", "chorusFeedback", "delayMix", "delayMs", "delayFeedback", "delayTone", "delayLowCut", "delayWidth",
   "delayWow", "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread", "bar0", "bar1", "bar2", "bar3",
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",

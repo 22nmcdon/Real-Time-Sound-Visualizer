@@ -59,6 +59,9 @@ struct PlaneTimeTone {
   // P9, the reverb: its mix, size (0 to 1 of a log law of decay times), tone
   // (one open), pre-delay in milliseconds and spread (nought keeps the figure).
   double reverbMix = 0, reverbSize = 0.4, reverbTone = 0.6, reverbPreMs = 10, reverbSpread = 0;
+  // The EQ (17 Nov): each band's gain in dB, nought for none, and where it
+  // acts in hertz; the mid's width in octaves.
+  double eqLow = 0, eqLowHz = 160, eqMid = 0, eqMidHz = 1000, eqMidWidth = 1, eqHigh = 0, eqHighHz = 4000;
 };
 
 /* The orders the phaser (p), the chorus (c) and the delay (d) can run in, as
@@ -114,6 +117,14 @@ class Plane {
     std::array<double, 8> revG {};
     double revIn = 0, revDampA = 0, revC = 1, revS = 0;
     int revPre = 0;
+    /* The EQ (17 Nov): which bands are in (1 the low shelf, 2 the mid, 4 the
+       high shelf; a band at nought dB is left out, so it is exact), and each
+       band's coefficients, b0 b1 b2 a1 a2 over a0, worked out only when what
+       they are made from moves. */
+    int eqBands = 0;
+    std::array<std::array<double, 5>, 3> eqC {};
+    std::array<std::array<double, 2>, 3> eqAt { { { NAN, NAN }, { NAN, NAN }, { NAN, NAN } } };
+    double eqWidthAt = NAN;
   };
 
   explicit Plane(double rate)
@@ -145,11 +156,11 @@ class Plane {
   // B's tone when it has anything of its own in force (the page's `withB`),
   // `shapeOwn` whether that is its plane (`planeOwn`), with `turnB` its turn
   // in radians, and `timeOwn` which of its time modules (G6: 1 the phaser, 2
-  // the chorus, 4 the delay, 8 the reverb). A `b` alone is all of them, as it
-  // was while B's own effects were one switch.
+  // the chorus, 4 the delay, 8 the reverb; 16 the EQ since 17 Nov). A `b`
+  // alone is all of them, as it was while B's own effects were one switch.
   bool setup(const PlaneTone& t, bool twistRouted, bool echoRouted, const PlaneLayerTone* b = nullptr,
              double turnB = 0, bool turnRouted = false, bool phaserRouted = false, bool reverbRouted = false,
-             bool shapeOwn = true, int timeOwn = 15) {
+             bool shapeOwn = true, int timeOwn = 31) {
     phaserRouted_ = phaserRouted;
     reverbRouted_ = reverbRouted;
     const int want = t.planeOS == 4 ? 4 : t.planeOS == 1 ? 1 : 2;
@@ -159,7 +170,7 @@ class Plane {
     }
     shapeSet(shapeA_, t, twistRouted, 0);
     shapeOwnB_ = b != nullptr && shapeOwn;
-    timeOwnB_ = b != nullptr ? timeOwn & 15 : 0;
+    timeOwnB_ = b != nullptr ? timeOwn & 31 : 0;
     ownB_ = shapeOwnB_ || timeOwnB_ != 0;
     if (shapeOwnB_) shapeSet(shapeB_, *b, twistRouted, turnB);
     turnRoutedB_ = turnRouted;  // read only where B has its own
@@ -282,7 +293,63 @@ class Plane {
                                                          jsRound(std::fmax(0.0, t.reverbPreMs) * rate_ / 1000))));
     const double spread = std::fmax(0.0, std::fmin(1.0, t.reverbSpread)) * kPi / 2;
     T.revC = std::cos(spread); T.revS = std::sin(spread);
-    T.on = T.delayOn || t.chorusMix > 0 || T.phOn || T.revOn;
+    eqSet(T, t);
+    T.on = T.delayOn || t.chorusMix > 0 || T.phOn || T.revOn || T.eqBands != 0;
+  }
+  /* The EQ's three bands as Web Audio's BiquadFilterNode makes them (the
+     Audio EQ Cookbook, with the shelves' slope at one, as the node has
+     them), so the node's getFrequencyResponse is the reference the core's
+     response is held to (core/tests/pieces/eq.py). Each frequency is held
+     under 0.45 of the rate, where the phaser's sweep is, so a high shelf
+     set at 16 kHz on a 22 kHz render is a shelf and not a fold. The mid's
+     width is in octaves, turned into the node's Q by the analog relation. */
+  static std::array<double, 5> eqCoefficients(int band, double db, double hz, double widthOct, double rate) {
+    const double f = std::fmin(hz, 0.45 * rate);
+    const double w0 = kTwoPi * f / rate, c = std::cos(w0), sn = std::sin(w0);
+    const double A = std::pow(10.0, db / 40);
+    double b0, b1, b2, a0, a1, a2;
+    if (band == 1) {
+      const double q = eqWidthQ(widthOct), alpha = sn / (2 * q);
+      b0 = 1 + alpha * A; b1 = -2 * c; b2 = 1 - alpha * A;
+      a0 = 1 + alpha / A; a1 = -2 * c; a2 = 1 - alpha / A;
+    } else {
+      const double alpha = sn / 2 * std::sqrt(2.0), k = 2 * std::sqrt(A) * alpha;
+      if (band == 0) {
+        b0 = A * ((A + 1) - (A - 1) * c + k); b1 = 2 * A * ((A - 1) - (A + 1) * c); b2 = A * ((A + 1) - (A - 1) * c - k);
+        a0 = (A + 1) + (A - 1) * c + k; a1 = -2 * ((A - 1) + (A + 1) * c); a2 = (A + 1) + (A - 1) * c - k;
+      } else {
+        b0 = A * ((A + 1) + (A - 1) * c + k); b1 = -2 * A * ((A - 1) + (A + 1) * c); b2 = A * ((A + 1) + (A - 1) * c - k);
+        a0 = (A + 1) - (A - 1) * c + k; a1 = 2 * ((A - 1) - (A + 1) * c); a2 = (A + 1) - (A - 1) * c - k;
+      }
+    }
+    return { b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0 };
+  }
+ public:
+  // The mid's Q for a width in octaves; public so the tests can ask the node for the same filter.
+  static double eqWidthQ(double widthOct) {
+    const double w = std::fmax(0.05, widthOct), p = std::pow(2.0, w);
+    return std::sqrt(p) / (p - 1);
+  }
+  // A band's coefficients, b0 b1 b2 a1 a2 (a0 one): the tests' way to the filter itself.
+  static std::array<double, 5> eqBand(int band, double db, double hz, double widthOct, double rate) {
+    return eqCoefficients(band, db, hz, widthOct, rate);
+  }
+ private:
+  void eqSet(Time& T, const PlaneTimeTone& t) const {
+    const double gains[3] = { t.eqLow, t.eqMid, t.eqHigh }, freqs[3] = { t.eqLowHz, t.eqMidHz, t.eqHighHz };
+    T.eqBands = 0;
+    for (int k = 0; k < 3; k++) {
+      const double g = std::isfinite(gains[k]) ? std::fmax(-24.0, std::fmin(24.0, gains[k])) : 0;
+      if (g == 0) continue;
+      T.eqBands |= 1 << k;
+      const double f = std::isfinite(freqs[k]) ? std::fmax(10.0, freqs[k]) : 1000;
+      auto& at = T.eqAt[static_cast<std::size_t>(k)];
+      const bool widthMoved = k == 1 && !(t.eqMidWidth == T.eqWidthAt);
+      if (at[0] == g && at[1] == f && !widthMoved) continue;
+      at = { g, f };
+      if (k == 1) T.eqWidthAt = t.eqMidWidth;
+      T.eqC[static_cast<std::size_t>(k)] = eqCoefficients(k, g, f, t.eqMidWidth, rate_);
+    }
   }
   /* A module the hands share while another is B's own (G6) is layer A's to
      the sample, as the page's timeShare: its sweep, its level under A's
@@ -296,6 +363,7 @@ class Plane {
       T.rev = A.rev; T.revIn = A.revIn; T.revDampA = A.revDampA; T.revSizeAt = A.revSizeAt; T.revToneAt = A.revToneAt;
       T.revG = A.revG;
     }
+    if (!(own & 16)) { T.eqBands = A.eqBands; T.eqC = A.eqC; T.eqAt = A.eqAt; T.eqWidthAt = A.eqWidthAt; }
   }
   void timeTick(Time& T, const PlanePushes& p, double dt) {
     const PlaneTimeTone& t = *T.t;
@@ -477,6 +545,9 @@ class Plane {
     double pl = 0, pr = 0;                        // and what each channel's chain last gave, fed back
     double tl = 0, tr = 0, hl = 0, hr = 0, wph = 0;  // F5c: the tone's and cut's memories, the wow's phase
     int ran = 0, was = 0;  // the modules that ran this block and the last, by timeOwn's bits
+    // The EQ's: each band's two states a channel (transposed direct form II), and the bands it last ran.
+    std::array<std::array<double, 2>, 3> eqL {}, eqR {};
+    int eqWas = 0;
   };
 
   /* A module switched on starts from silence (11 Nov), as the page's
@@ -485,6 +556,7 @@ class Plane {
      was rejected. Filled in place, so nothing is allocated here: the delay's
      two lines are the most of it, about 0.7 MB at 48 kHz, once a switch-on. */
   static void timeFresh(TimeFx& fx, int bit) {
+    if (bit == 16) { for (auto& st : fx.eqL) st.fill(0); for (auto& st : fx.eqR) st.fill(0); fx.eqWas = 0; return; }
     if (bit == 1) { fx.ps.fill(0); fx.pl = 0; fx.pr = 0; }
     else if (bit == 2) { std::fill(fx.cl.begin(), fx.cl.end(), 0.0f); std::fill(fx.cr.begin(), fx.cr.end(), 0.0f); }
     else if (bit == 4) {
@@ -554,8 +626,39 @@ class Plane {
     }
   }
 
+  // One band of the EQ, a channel, in transposed direct form II.
+  static double eqBiquad(const std::array<double, 5>& c, std::array<double, 2>& z, double v) {
+    const double out = c[0] * v + z[0];
+    double z0 = c[1] * v - c[3] * out + z[1], z1 = c[2] * v - c[4] * out;
+    if (std::fabs(z0) < 1e-30) z0 = 0;
+    if (std::fabs(z1) < 1e-30) z1 = 0;
+    z[0] = z0; z[1] = z1;
+    return out;
+  }
+
   void timeStep(TimeFx& fx, const Time& T, double x, double y) {
     const PlaneTimeTone& t = *T.t;
+    /* The EQ (17 Nov) first, straight after the plane and before the three
+       the setup orders, so the chorus and the delay repeat the equalised
+       pair; its place is fixed, as the Plane's and the Reverb's are. The
+       same three bands on both channels, so a line stays a line: an EQ alike
+       on X and Y changes the figure's size along its length with frequency
+       and never opens it. A band at nought is skipped, so an EQ switched off
+       is not in the sum at all; a band coming back in starts from silence,
+       as a module switched on does. */
+    if (T.eqBands != 0) {
+      timeRuns(fx, 16);
+      if (const int fresh = T.eqBands & ~fx.eqWas) {
+        for (std::size_t k = 0; k < 3; k++)
+          if (fresh & (1 << k)) { fx.eqL[k].fill(0); fx.eqR[k].fill(0); }
+      }
+      fx.eqWas = T.eqBands;
+      for (std::size_t k = 0; k < 3; k++) {
+        if (!(T.eqBands & (1 << k))) continue;
+        x = eqBiquad(T.eqC[k], fx.eqL[k], x);
+        y = eqBiquad(T.eqC[k], fx.eqR[k], y);
+      }
+    }
     /* In the setup's order (F5b): by default the phaser first, so the chorus and
        the echoes are of the phased pair. Each stage's arithmetic is as it was,
        so the default order is the old sum to the bit. */

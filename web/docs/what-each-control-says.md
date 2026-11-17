@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-340 controls: 340 lines, none marked as removed by a later stage, 86 wanting a paragraph
+348 controls: 348 lines, none marked as removed by a later stage, 87 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -22,7 +22,8 @@ its place, its hands and Reseed; and again on 12 Nov, the Width beside the Outpu
 turn away when every note came to be heard in both ears, and added what the Width applies
 to, its two halves, and the sound's own Width; and on 17 Nov, with the Keyboard's band: Two
 hands, Key, Notes and Layer, the strip and its two octave buttons, low and high, Learn's new
-words and the way to the Chord window, which went to Settings' MIDI with the on-screen keys).
+words and the way to the Chord window, which went to Settings' MIDI with the on-screen keys;
+and again on 17 Nov, the EQ's seven knobs and its link).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -76,14 +77,14 @@ them; G3b gives each a `data-say` with the key in the first column:
 
 | key | what | line | chars |
 |---|---|---|---|
-| fx-switch | A rack module's switch | Takes the module's Mix to nought and keeps it for this sound; on puts it back, from silence. The Plane's switch rests its shaping and its Turn. | 143 |
+| fx-switch | A rack module's switch | Takes the module's Mix to nought and keeps it; on puts it back, or its start. The Plane rests its shaping and Turn, the EQ its three gains. | 139 |
 | fx-arrow | A rack module's arrow | Opens the rest of this module under it, one module at a time. | 61 |
 | fx-handle | A rack module's handle | Drag to move the module up or down the rack, or give it the keyboard and use the arrows. The Plane stays first, the Reverb last. | 128 |
 | mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on. | 125 |
 | route-switch | A source’s switch in Routings | Off silences every routing from this source and keeps them; on puts them back as they were. A silence is kept with the sound. | 125 |
 | tab-play | The Play tab | What you play: the keyboard and its expression, the generator and its envelope, the voice filter. | 97 |
 | tab-ink | The Ink tab | What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle. | 86 |
-| tab-space | The Space & Memory tab | What happens to the drawing after it is made: the Plane, the phaser, chorus and delay, and the reverb, in that order. | 117 |
+| tab-space | The Space & Memory tab | What happens to the drawing after it is made: the Plane, the EQ, the phaser, chorus and delay, and the reverb, in that order. | 125 |
 | mod-depth | A source’s depth | How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same. | 142 |
 | mod-depth-typed | A depth, typed | The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further. | 135 |
 | mod-remove | Take it off | Takes this source off this control. The source goes on moving everything else it is on. | 87 |
@@ -230,7 +231,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| fxOrder | Rack order | Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane stays first, the Reverb last. | 138 | yes — what the order changes (phaser before the delay keeps each repeat’s sweep; after, the repeats are swept with what you play now); one order for both hands; the sound changes on letting go |
+| fxOrder | Rack order | Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane and EQ stay first, the Reverb last. | 144 | yes — what the order changes (phaser before the delay keeps each repeat’s sweep; after, the repeats are swept with what you play now); one order for both hands; the sound changes on letting go |
 
 ### Plane
 
@@ -250,6 +251,19 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | planeScaleX | Scale X | The left channel’s level, and the figure’s width. At nought the figure is an upright line and the left is silent; at two, double. | 129 | - |
 | planeScaleY | Scale Y | The right channel’s level, and the figure’s height. At nought the figure lies flat and the right is silent; at two, double. | 123 | - |
 | planeShear | Shear | Leans the figure by feeding some of the right channel into the left; below nought it leans the other way. Exact, and adds no delay. | 131 | - |
+
+### EQ
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| linkEq | EQ’s link | Whether the EQ is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 136 | - |
+| eqLow | Low | Lifts or cuts everything below the low shelf’s corner, up to 12 dB either way: weight under the sound, the figure longer at its lowest notes. | 141 | yes — a shelf, the Web Audio node’s, on both channels alike; where it acts is Low at, under the arrow |
+| eqMid | Mid | Lifts or cuts a band around Mid at, as wide as Width, up to 12 dB either way: a boost brings that part forward, a cut hollows it out. | 133 | - |
+| eqHigh | High | Lifts or cuts everything above the high shelf’s corner, up to 12 dB either way: air over the sound, or a darker one with softer corners. | 136 | - |
+| eqLowFreq | Low at | Where the low shelf turns, 40 to 640 Hz, four octaves on the knob: its middle is 160 Hz. The gain is half its full amount there. | 128 | - |
+| eqMidFreq | Mid at | The middle of the mid band, 125 Hz to 8 kHz, six octaves on the knob: its middle is 1 kHz. | 90 | - |
+| eqMidWidth | Width | How wide the mid band is, from a fifth of an octave, a narrow notch or peak, to four octaves, a broad tilt of the middle. | 121 | - |
+| eqHighFreq | High at | Where the high shelf turns, 1 to 16 kHz, four octaves on the knob: its middle is 4 kHz. The gain is half its full amount there. | 127 | - |
 
 ### Phaser
 
