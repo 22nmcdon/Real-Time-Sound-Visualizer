@@ -7007,3 +7007,23 @@ with it and the words overflow inside them; a box's width is no reading of what 
 item needs. The check now reads a stacked switch by each button's `scrollWidth`, the width of
 its words, and goes red at 30 against 51. The same blind spot waits for any check that judges
 a fit from the rectangles of items a flex column or a grid stretches.
+
+## The view reaches the sound, and a control's words must say so (17 Nov)
+
+Scan and the three reads take in the grid the screen deposits, so a control that only
+decides how the figure is drawn decides what Scan reads. The owner heard it in the Zoom;
+`web/tools/reach_audit.py` measured it for every control on the face (the table is
+`web/docs/what-reaches-the-sound.md`): forty-five view and look controls reach the sound,
+the display and the run by up to 0.9 of the spectrum, the zoom and full scale 0.6, the turn
+and the timebase 0.36, the beam 0.22. Thirty-eight of their info lines said nothing of it, or
+the opposite (the Turn's said the sound turned only on *Shaped*), and `reachtest.py` holds
+the words to the table now. Three things learned on the way. A control's handler can be
+measured whole without a browser for the sound: catch what the page posts to the instrument
+(`MessagePort.prototype.postMessage`) and replay it into `render_cpp`, which the plugin's
+editor would have sent too. A view control behind its own switch (the trace filter's cutoff,
+the lag's delay, the AC corner) reads nought with the switch off, which is a fact about the
+switch: measure it with the switch on. And a radio button already on in every figure was
+never moved, so it reads nought unless it is given its group's reading. Follow and Autoset
+move the page's timebase, full scale and level and tell the instrument nothing, which the
+audit found by playing a note in the browser and watching the messages; they are listed for
+the owner, not changed.
