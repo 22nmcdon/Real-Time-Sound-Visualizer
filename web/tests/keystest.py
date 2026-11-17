@@ -465,7 +465,13 @@ with sync_playwright() as pw:
     after_old = menu_run(play_after_choice, "() => { HTMLSelectElement.prototype.blur = function () {}; }")
     check("after a menu choice made with the pointer the letters play again", after["held"] == [50] and after["focus"] != "midiBendRange"
           and after["split"] == "3", str(after))
-    null("with the focus left on the menu, as the page left it, they play nothing", after_old["held"] == [], str(after_old))
+    # Until the review (17 Nov) this null held that a menu left with the
+    # focus swallowed the letters. Since then the keys take the note letters
+    # over a focused menu whatever (takesText, shortcuttest.py), so the blur
+    # after a pointer's choice no longer decides whether they play: both
+    # play, and the menu keeps the choice the pointer made.
+    check("and with the focus left on the menu they play as well, the menu keeping its choice",
+          after_old["held"] == [50] and after_old["split"] == "3", str(after_old))
     def tab_to_menu(q):
         q.evaluate("() => { el.midiBendRange.focus(); }")
         q.keyboard.press("ArrowDown"); q.wait_for_timeout(100)

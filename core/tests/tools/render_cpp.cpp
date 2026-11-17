@@ -27,6 +27,9 @@
 //                                    a hand, as instrument_cpp's: what the page sends
 //   ["midi", b0, b1?, b2?]           a message, at the sample the render has reached
 //   ["to", seconds]                  render on to that moment (rounded to a sample)
+//   ["offmeansoff", on]              a render's question only, after `make`: the Picture's push
+//                                    onto a rack module switched off is ignored, and a module
+//                                    off in both hands is not run (Instrument::setOffMeansOff)
 //   ["input", "none"]                no input from now on
 //   ["input", "file", path, ch]      from now on, the samples of a file of float32 (little-
 //                                    endian), mono or two channels interleaved, read once
@@ -269,6 +272,7 @@ class Render {
     } else if (cmd == "control") {
       inst_.apply(scope::Instrument::control(text(at(a, 1)), at(a, 2).type == scope::Json::Type::Bool ? at(a, 2) : scope::Json::string(at(a, 2).s)));
     } else if (cmd == "click") inst_.apply(scope::Instrument::click(text(at(a, 1))));
+    else if (cmd == "offmeansoff") inst_.setOffMeansOff(at(a, 1).type == scope::Json::Type::Bool ? at(a, 1).b : at(a, 1).n != 0);
     else if (cmd == "routings") inst_.apply(scope::Instrument::routings(text(at(a, 1))));
     else if (cmd == "fade") {
       const auto c = scope::Instrument::fade(text(at(a, 1)));

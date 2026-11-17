@@ -535,6 +535,7 @@ class Matrix {
         stage_[i].amount = amount * weight;
         if (amountB != amount) stage_[i].amountB = amountB * weight; else stage_[i].amountB.reset();
       }
+      if (stageGate_) { dirty_ = true; return; }  // the gate's zeros are made where the routes are compiled
       if (dirty_) return;  // compiled from these at the next block anyway
       for (auto& c : compiled_) {
         if (c.parts.empty()) continue;
@@ -563,6 +564,28 @@ class Matrix {
     dirty_ = true;
   }
   void setStageAmount(double amount) { setStageAmount(amount, amount); }
+
+  /* Off means off - a render's question, not the instrument's (the picture
+     reach audit, web/docs/listening/off-means-off/). `gate` answers, for a
+     destination the Picture amount pushes, which hands' modules are switched
+     off: 1 the lower's, 2 the upper's, 3 both. While one is given, the
+     stage's push onto a hand whose module is off is ignored, and onto a
+     module off in both hands is not routed at all, so the stage does not
+     run. Nothing in the instrument sets it: core/tests/tools/render_cpp.cpp's
+     `offmeansoff` does, and with none given every route is what it was.
+     `regate` asks it again, once a block, and compiles again only when an
+     answer changed. */
+  void setStageGate(std::function<int(const std::string&)> gate) {
+    stageGate_ = std::move(gate);
+    gateSeen_.clear();
+    dirty_ = true;
+  }
+  void regate() {
+    if (!stageGate_) return;
+    std::vector<int> now;
+    for (const auto& b : kStageBundles) now.push_back(stageGate_(b.dest));
+    if (now != gateSeen_) { gateSeen_ = std::move(now); dirty_ = true; }
+  }
   const std::vector<Routing>& stage() const { return stage_; }
   // How many times the routings have been touched, for a harness to read.
   int touches() const { return touches_; }
@@ -896,10 +919,17 @@ class Matrix {
       if (d->kind != DestKind::Audio) continue;
       if (!routingAllowed(s, d)) continue;
       if (s->picture()) {
+        const int stage = at >= stageFrom && at < stageFrom + stage_.size() ? static_cast<int>(at - stageFrom) : -1;
+        double partA = routingAmount(s, r.amount), partB = routingAmount(s, r.depthB());
+        if (stage >= 0 && stageGate_) {
+          const int off = stageGate_(r.destId);
+          if ((off & 3) == 3) continue;
+          if (off & 1) partA = 0;
+          if (off & 2) partB = 0;
+        }
         auto slotAt = std::find_if(loopBySlot.begin(), loopBySlot.end(), [&](const auto& e) { return e.first == d->slot; });
         if (slotAt == loopBySlot.end()) { loopBySlot.push_back({ d->slot, {} }); slotAt = loopBySlot.end() - 1; }
-        const int stage = at >= stageFrom && at < stageFrom + stage_.size() ? static_cast<int>(at - stageFrom) : -1;
-        slotAt->second.push_back({ s, r.key(), routingAmount(s, r.amount), d->unipolar, routingAmount(s, r.depthB()), stage });
+        slotAt->second.push_back({ s, r.key(), partA, d->unipolar, partB, stage });
         continue;
       }
       const double amount = routingAmount(s, r.amount);
@@ -954,6 +984,8 @@ class Matrix {
   mutable std::vector<Routing> heard_;
   std::vector<Routing> stage_;
   double stageAt_ = -1, stageAtB_ = -1;  // no amount yet, so the first is made
+  std::function<int(const std::string&)> stageGate_;  // a render's off means off; none in the instrument
+  std::vector<int> gateSeen_;
   std::array<int, 2> strikes_ { 0, 0 };
   bool layered_ = false;
   bool pictured_ = false;

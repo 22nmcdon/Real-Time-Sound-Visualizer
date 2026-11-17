@@ -239,7 +239,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 |---|---|---|---|---|
 | linkPlane | Plane’s link | Whether the Plane is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 139 | - |
 | planeTwist | Twist | Turns each point by more the further it is from the middle, so loud parts swirl and the quiet centre stays still: a stereo turn that follows level. | 147 | yes — the reading is the turn at full scale; a source swirls it half a turn at most; with Picture above nought, Memory pushes it when the figure stops moving |
-| rotate | Turn | Turns the figure on the screen. The sound turns with it only while Speakers get, in Scope & measure, is on Shaped. | 114 | yes — worth most with a source on it; on a band split or the lag lane it turns the figure only; Numbers read decides whether the readings follow it |
+| rotate | Turn | Turns the figure on the screen, and Scan reads it turned, so the sound changes with it whatever Speakers get is set to. | 119 | yes — worth most with a source on it; on a band split or the lag lane it turns the figure only; Numbers read decides whether the readings follow it |
 | planeTurn | Turn (upper) | The upper hand’s own turn, in the Turn’s place while the Plane is that hand’s own: it turns the upper figure, and the lower’s stays. | 132 | - |
 | planeMirror | Mirror | Folds the figure onto one half of itself; to the ear, the octave-up pedal, every harmonic even. The folded wave sits above zero. | 128 | yes — which half each choice folds; the offset reaches the speakers unless AC coupling, under Vertical, takes it off |
 | planeLimit | Radial | What happens where the figure meets a circle of the Radius. Clip rounds loud parts off without bending the stereo image; Fold reflects them back in. | 148 | - |
@@ -411,7 +411,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | traceWidth | Thickness | How thick the trace is drawn. Only the look: Scan reads where the beam went, not how wide it was drawn. | 103 | - |
 | graticuleOn | Graticule | Rules the screen’s divisions over the paper, or leaves it bare. Only the look: Scan never reads the grid. | 105 | - |
 | beamXY | X–Y | Lets Intensity dim the X–Y figure where it moves fast. Unticked, the whole figure is full ink, and Scan reads it that way. | 122 | - |
-| beamYT | Y–T waveform | Lets Intensity dim the waveform where it moves fast. Off to start, since dimming a square wave’s steep edge hides what Y–T shows. | 129 | - |
+| beamYT | Y–T waveform | Lets Intensity dim the waveform where it moves fast, and Scan reads the dimming. Off to start: dimming a square’s steep edge hides what Y–T shows. | 146 | - |
 | beamGoni | Goniometer | Lets Intensity dim the goniometer’s trace where it moves fast, as on the main screen. Only the look. | 100 | - |
 
 ### A modulation card’s editor
@@ -598,73 +598,73 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | run | Stop | Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent. | 144 | - |
-| modeAuto | Auto | Draws whatever arrives, triggered or not, so the trace never stops. A grey trace is free-running, not a fault. | 110 | - |
-| modeNormal | Normal | Holds the last triggered picture while nothing crosses the level, rather than drawing an untriggered one. | 105 | - |
-| modeSingle | Single | Waits for one edge, draws it and stops: how to catch a transient. Run arms it again. | 84 | - |
+| modeAuto | Auto | Draws whatever arrives, triggered or not, so the trace never stops and Scan reads it all. A grey trace is free-running, not a fault. | 132 | - |
+| modeNormal | Normal | Holds the last triggered picture while nothing crosses the level, rather than drawing an untriggered one. Scan reads the held picture. | 134 | - |
+| modeSingle | Single | Waits for one edge, draws it and stops: how to catch a transient. Scan reads the stopped picture, so the tone stands. Run arms it again. | 136 | - |
 | autoset | Autoset | Reads the signal and picks a timebase, a full scale for each lane and a trigger level to fit it, then runs in Auto. | 115 | - |
 
 ### Scope & measure › Trigger
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| edgeRising | Rising | Starts the trace where the signal crosses the level going up. | 61 | - |
-| edgeFalling | Falling | Starts the trace where the signal crosses the level going down. | 63 | - |
-| level | Trigger level | How high the signal must cross to start the trace, as a share of full scale: the dashed rose line on the screen. | 112 | - |
-| trigSource0 | Source | Takes the trigger from the first lane. Every lane is cut at that lane’s edge, so they stay in step. | 99 | - |
-| trigSource1 | Source | Takes the trigger from the second lane. Every lane is cut at that lane’s edge, so they stay in step. | 100 | - |
-| position | Position | How much of the screen shows what came before the trigger. At 10%, a tenth; the marker at the top is the moment itself. | 119 | - |
-| holdoff | Holdoff | Ignores an edge with another close behind it, up to 5 ms, which settles a wave that crosses the level twice a cycle. | 116 | - |
+| edgeRising | Rising | Starts the trace where the signal crosses the level going up. Scan reads the trace from there, so the edge changes the sound too. | 129 | - |
+| edgeFalling | Falling | Starts the trace where the signal crosses the level going down. Scan reads the trace from there, so the edge changes the sound too. | 131 | - |
+| level | Trigger level | How high the signal must cross to start the trace, as a share of full scale: the dashed rose line. Scan reads the trace from there, so the sound too. | 149 | - |
+| trigSource0 | Source | Takes the trigger from the first lane. Every lane is cut at that lane’s edge, so they stay in step, and Scan reads them cut there. | 130 | - |
+| trigSource1 | Source | Takes the trigger from the second lane. Every lane is cut at that lane’s edge, so they stay in step, and Scan reads them cut there. | 131 | - |
+| position | Position | How much of the screen shows what came before the trigger. At 10%, a tenth. Scan reads the window it frames, so the sound changes too. | 134 | - |
+| holdoff | Holdoff | Ignores an edge with another close behind it, up to 5 ms, which settles a wave that crosses the level twice a cycle. Scan reads the trace it settles. | 149 | - |
 
 ### Scope & measure › Time
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| timebase | Timebase | How much time the screen holds, from a millisecond to half a second across. In Y–T, longer shows more cycles of the wave. | 121 | yes — the longest settings depend on the converter’s rate (743 ms at 44.1 kHz, 341 at 96); past it the reading says past the buffer |
-| zoom | Zoom | Magnifies: in Y–T a slice around the trigger, in X–Y the figure, on the spectrogram the band. The numbers still read it all. | 124 | - |
+| timebase | Timebase | How much time the screen holds, from a millisecond to half a second across. Scan reads what it holds, in X–Y as in Y–T, so the sound changes too. | 145 | yes — the longest settings depend on the converter’s rate (743 ms at 44.1 kHz, 341 at 96); past it the reading says past the buffer |
+| zoom | Zoom | Magnifies: in Y–T a slice around the trigger, in X–Y the figure, on the spectrogram the band. Scan reads it as drawn, so the sound changes too. | 143 | - |
 
 ### Scope & measure › Lanes
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| layStack | Layout | In Y–T, each lane in its own strip with its name: what each part is doing. | 74 | - |
-| layOver | Layout | In Y–T, every lane on one graticule: how the lanes line up against each other. | 78 | - |
-| xyX | X–Y pair | Which lane is drawn across, the figure’s X. The goniometer follows the same pair. | 81 | - |
-| xyY | X–Y pair | Which lane is drawn upward, the figure’s Y. One lane against itself draws a diagonal line. | 90 | - |
+| layStack | Layout | In Y–T, each lane in its own strip with its name: what each part is doing. Scan reads the strips as drawn, so the sound changes too. | 132 | - |
+| layOver | Layout | In Y–T, every lane on one graticule: how the lanes line up against each other. Scan reads them as drawn, so the sound changes too. | 130 | - |
+| xyX | X–Y pair | Which lane is drawn across, the figure’s X, and so what Scan reads. The goniometer follows the same pair. | 105 | - |
+| xyY | X–Y pair | Which lane is drawn upward, the figure’s Y, and so what Scan reads. One lane against itself draws a diagonal line. | 114 | - |
 
 ### Scope & measure › Filter
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | filterOn | Filter the trace | Filters the trace, and so what Scan reads from it: a low pass rounds a square towards a sine. Heard directly only on Shaped. | 124 | yes — it runs on the samples, not the audio graph; the screen’s and the speakers’ switches are separate, and straddle the filter, the AC coupling and the turn |
-| filterType | Type | Which part the trace filter keeps: low pass the bottom, high pass the top, band pass a band; a notch carves one out. | 116 | - |
-| filterCutoff | Cutoff | Where the trace filter acts, 20 Hz to 20 kHz. Lower on a low pass rounds the trace’s corners; a source on it sweeps. | 116 | - |
-| filterRes | Resonance | A peak at the cutoff: nought is gentle, a hundred rings. High, it can push the trace past full scale and the readout says Clipping. | 131 | yes — nothing turns it down, since a compressor on the screen would lie about the level; lower Full scale or the amplitude |
-| seeDry | Screen reads | The screen draws the signal as it came in, before the filter, the AC coupling and the turn. The readout says so. | 112 | - |
-| seeWet | Screen reads | The screen draws the signal after the filter, the AC coupling and the turn. | 75 | - |
-| hearDry | Speakers get | The speakers get the signal as it came in: the filter, the AC coupling and the turn change only the picture. | 108 | yes — the four combinations of the two switches and what each is for; the instrument's limiter comes before the shaping, so on Shaped a resonant trace is held under full scale by a backstop, not compressed |
+| filterType | Type | Which part the trace filter keeps, and so what Scan reads: low pass the bottom, high pass the top, band pass a band; a notch carves one out. | 140 | - |
+| filterCutoff | Cutoff | Where the trace filter acts, 20 Hz to 20 kHz. Lower on a low pass rounds the trace’s corners and what Scan reads; a source on it sweeps. | 136 | - |
+| filterRes | Resonance | A peak at the cutoff, in what Scan reads too: nought is gentle, a hundred rings. High, it can push the trace past full scale: Clipping. | 135 | yes — nothing turns it down, since a compressor on the screen would lie about the level; lower Full scale or the amplitude |
+| seeDry | Screen reads | The screen, and so Scan, reads the signal as it came in, before the filter, the AC coupling and the turn. The readout says so. | 126 | - |
+| seeWet | Screen reads | The screen, and so Scan, reads the signal after the filter, the AC coupling and the turn. | 89 | - |
+| hearDry | Speakers get | The speakers get the signal as it came in: the filter, the AC coupling and the turn change the picture, and the sound only through Scan. | 136 | yes — the four combinations of the two switches and what each is for; the instrument's limiter comes before the shaping, so on Shaped a resonant trace is held under full scale by a backstop, not compressed |
 | hearWet | Speakers get | The speakers get the trace after the filter, the AC coupling and the turn, all after the instrument's limiter, so a resonant trace can be loud. | 143 | - |
 
 ### Scope & measure › Vertical
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| ch1On | Show | Draws this lane in Y–T and gives it a row in the readouts. | 58 | - |
-| ch1Ac | AC | Blocks what is not moving, so a DC offset cannot push this lane off the screen. The speakers get it too on Shaped. | 114 | yes — a one-pole high pass at AC corner; the readouts are about the coupled signal and name the corner |
-| ch1Scale | Full scale | The level that reaches the top of the screen, 0 to −50 dBFS. Lower it to open up a quiet signal; the numbers stay the same. | 123 | - |
-| ch1Offset | Offset | Moves this lane’s trace up or down the screen, and in X–Y the figure along its axis. | 84 | - |
-| ch2On | Show | Draws this lane in Y–T and gives it a row in the readouts. | 58 | - |
-| ch2Ac | AC | Blocks what is not moving, so a DC offset cannot push this lane off the screen. The speakers get it too on Shaped. | 114 | yes — as ch1Ac |
-| ch2Scale | Full scale | The level that reaches the top of the screen, 0 to −50 dBFS. Lower it to open up a quiet signal; the numbers stay the same. | 123 | - |
-| ch2Offset | Offset | Moves this lane’s trace up or down the screen, and in X–Y the figure along its axis. | 84 | - |
-| midSide | Mid / side | Draws the sum and the difference of a stereo pair in place of left and right: the figure turned 45°. Turns Lag X–Y off. | 119 | - |
-| lagOn | Lag X–Y | Plots the signal against itself a moment later, so one input draws a loop shaped by its harmonics rather than a diagonal line. | 126 | yes — a phase portrait, not a Lissajous figure; Auto locks slowly so vibrato turns the loop; not offered on a band split |
-| lagAuto | Delay | Sets the delay to a quarter of the note’s period, locked slowly, so a pure tone draws a circle and vibrato turns the loop. | 122 | - |
-| lagManual | Delay | Holds the delay where its knob puts it, whatever the note. | 58 | - |
-| lag | Delay | How far behind the delayed copy is, 0.1 to 40 ms. Only on Set; on Auto it shows what the lock found. | 100 | - |
+| ch1On | Show | Draws this lane in Y–T and gives it a row in the readouts. In Y–T Scan reads only the lanes drawn, so the sound changes too. | 124 | - |
+| ch1Ac | AC | Blocks what is not moving, so a DC offset cannot push this lane off the screen. Scan reads the lane coupled, so the sound changes too. | 134 | yes — a one-pole high pass at AC corner; the readouts are about the coupled signal and name the corner |
+| ch1Scale | Full scale | The level that reaches the top of the screen, 0 to −50 dBFS. Lower opens up a quiet signal; Scan reads the larger figure, so the sound changes. | 143 | - |
+| ch1Offset | Offset | Moves this lane’s trace up or down the screen, and in X–Y the figure along its axis. Scan reads it where it is drawn, so the sound moves too. | 141 | - |
+| ch2On | Show | Draws this lane in Y–T and gives it a row in the readouts. In Y–T Scan reads only the lanes drawn, so the sound changes too. | 124 | - |
+| ch2Ac | AC | Blocks what is not moving, so a DC offset cannot push this lane off the screen. Scan reads the lane coupled, so the sound changes too. | 134 | yes — as ch1Ac |
+| ch2Scale | Full scale | The level that reaches the top of the screen, 0 to −50 dBFS. Lower opens up a quiet signal; Scan reads the larger figure, so the sound changes. | 143 | - |
+| ch2Offset | Offset | Moves this lane’s trace up or down the screen, and in X–Y the figure along its axis. Scan reads it where it is drawn, so the sound moves too. | 141 | - |
+| midSide | Mid / side | Draws the sum and the difference of a stereo pair in place of left and right: the figure turned 45°, as Scan reads it. Turns Lag X–Y off. | 137 | - |
+| lagOn | Lag X–Y | Plots the signal against itself a moment later: one input draws a loop shaped by its harmonics, and Scan reads that loop, so the sound changes. | 143 | yes — a phase portrait, not a Lissajous figure; Auto locks slowly so vibrato turns the loop; not offered on a band split |
+| lagAuto | Delay | Sets the delay to a quarter of the note’s period, locked slowly: a pure tone draws a circle, vibrato turns it, and Scan reads it so. | 132 | - |
+| lagManual | Delay | Holds the delay where its knob puts it, whatever the note. Scan reads the loop it draws, so the sound changes too. | 114 | - |
+| lag | Delay | How far behind the delayed copy is, 0.1 to 40 ms; Scan reads the loop it draws. Only on Set; on Auto it shows what the lock found. | 130 | - |
 | lagMix | Heard | How much of the delayed copy reaches the right speaker when the speakers get Shaped: a comb that follows the pitch. Up to 50%. | 126 | yes — 20% is mostly width; in headphones the top of the knob takes some harmonics out of the right ear entirely, on purpose |
 | midiTruth | Lag and tuner from the note | Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound. | 112 | - |
 | midiFollow | … and the timebase | Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play. | 121 | - |
-| acCorner | AC corner | Where AC coupling starts taking things away, 0.5 to 20 Hz. Ten removes a drift; twenty thins the bottom of a bass note too. | 123 | yes — at one hertz an asymmetric signal can read a third higher, which is AC coupling, not a fault; the corner reaches the speakers on Shaped |
+| acCorner | AC corner | Where AC coupling starts taking things away, 0.5 to 20 Hz, in what Scan reads too. Ten removes a drift; twenty thins a bass note’s bottom. | 138 | yes — at one hertz an asymmetric signal can read a third higher, which is AC coupling, not a fault; the corner reaches the speakers on Shaped |
 
 ### Scope & measure › Measure
 

@@ -266,7 +266,12 @@ with sync_playwright() as pw:
     }""")
     check("no AudioParam is assigned during a sweep", zipper["assigned"] == 0,
           "%d direct writes" % zipper["assigned"])
-    check("they are all glided, while the sweep moves the cutoff", zipper["glided"] >= 30 and zipper["moved"] > 100,
+    # Until the review (17 Nov) this wanted thirty calls: syncMonitor scheduled
+    # all thirteen of the chain's targets every frame, moved or not. It
+    # schedules a target only when it moves now (workletcosttest.py counts a
+    # still second at none), so a sweep of the cutoff is about one call a
+    # frame - eight to ten over these ten.
+    check("they are all glided, while the sweep moves the cutoff", zipper["glided"] >= 7 and zipper["moved"] > 100,
           "%d setTargetAtTime calls over 10 frames, the cutoff moved %.0f steps" % (zipper["glided"], zipper["moved"]))
 
     print("\n--- the limiter, rendered ---")

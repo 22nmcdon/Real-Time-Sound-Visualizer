@@ -525,6 +525,7 @@ class Instrument {
     }
     // And as the draw left it, for the routes: the page's routes read it after its frame's draw.
     matrix_->setLayerPictures(pictureRun_->layers().live());
+    matrix_->regate();
     core_->setRoutes(matrix_->routes(nowMs_));
     stepStartMs_ = nowMs_;
     lastBlockMs_ = 1000.0 * kStepFrames / rate_;
@@ -906,6 +907,42 @@ class Instrument {
   Keyboard& keyboard() { return *keyboard_; }
   const Keyboard& keyboard() const { return *keyboard_; }
   Matrix& matrix() { return *matrix_; }
+  /* Off means off, for a render only (Matrix::setStageGate says what it
+     does): no setup field and nothing on the face sets it. A module is off
+     as its switch leaves it - the page's fxOn read backwards: the delay and
+     the phaser at a Mix of nought, the Plane with every one of its shaping
+     controls at rest and the screen unturned (and the upper hand's own turn
+     at nought, while it has a plane of its own). What that costs: a Mix
+     turned to nought by hand, a host knob or a routing's base is "off" too,
+     since the switch keeps no state of its own to tell them apart. The upper
+     hand's module is its own only where its link says (timeOwn, planeOwn),
+     else the lower's. */
+  void setOffMeansOff(bool on) {
+    if (!on) { matrix_->setStageGate(nullptr); return; }
+    matrix_->setStageGate([this](const std::string& dest) {
+      const Tone& a = core_->tone();
+      const LayerBSettings& b = core_->toneB();
+      const auto shapeAtRest = [](const PlaneShapeTone& t) {
+        return t.planeMirror == 0 && t.planeLimit == 0 && t.planeTwist == 0 && t.planeSnap == 0
+            && t.planeScaleX == 1 && t.planeScaleY == 1 && t.planeShear == 0;
+      };
+      const bool unturned = brain_->view.capture.rotate == 0;
+      bool offA = false, offB = false;
+      if (dest == "gen.echo") {
+        offA = !(a.delayMix > 0);
+        offB = (b.timeOwn & 4) ? !(b.delayMix > 0) : offA;
+      } else if (dest == "gen.phaser") {
+        offA = !(a.phaserMix > 0);
+        offB = (b.timeOwn & 1) ? !(b.phaserMix > 0) : offA;
+      } else if (dest == "gen.twist") {
+        offA = shapeAtRest(a) && unturned;
+        offB = b.planeOwn ? shapeAtRest(b) && b.planeTurn == 0 && unturned : offA;
+      } else {
+        return 0;  // the fold and the phase are no rack module's: the Picture pushes them as ever
+      }
+      return (offA ? 1 : 0) | (offB ? 2 : 0);
+    });
+  }
   const Hearing& hearing() const { return hearing_->hearing(); }
   const Clock& clock() const { return brain_->clock; }
   const ScoreState& score() const { return brain_->score; }
