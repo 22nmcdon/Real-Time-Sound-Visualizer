@@ -1,0 +1,152 @@
+# Builds the plugin for macOS (17 Nov, for the owner's Mac): AU and VST3,
+# universal (arm64 and x86_64), Release, then validates the AU with Apple's
+# own auval and uploads both bundles, unsigned. Run by hand only (Actions >
+# Build the plugin for macOS > Run workflow): it is not a check on every push,
+# and a macOS runner's minutes are the dearest. The repository is public, so
+# the standard runners cost nothing.
+#
+# What it cannot tell you is whether the face works in Logic: auval loads the
+# AU and plays it, but never opens its window. plugin/MAC.md is the list of
+# what only the Mac can answer.
+name: Build the plugin for macOS
+
+# workflow_dispatch only runs a workflow the default branch carries, and main
+# moves only on the owner's word; so a push to the branch claude/mac-build
+# runs it too, from whatever that branch holds - the way to try a Mac change
+# before it reaches main.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/mac-build]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mac:
+    # Apple Silicon, as the owner's Mac is. Xcode is the image's default.
+    runs-on: macos-15
+    timeout-minutes: 75
+    env:
+      BUILD: plugin/build-mac
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tag is read from the CMake file, as the cloud setup script reads it,
+      # so moving JUCE is one edit and the cache follows it.
+      - name: Read the pinned JUCE tag
+        id: juce
+        run: |
+          tag=$(sed -nE 's/.*GIT_TAG ([0-9][0-9.]*).*/\1/p' plugin/CMakeLists.txt)
+          test -n "$tag" || { echo "no GIT_TAG in plugin/CMakeLists.txt"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "dir=$RUNNER_TEMP/juce-$tag" >> "$GITHUB_OUTPUT"
+          echo "JUCE_DIR=$RUNNER_TEMP/juce-$tag" >> "$GITHUB_ENV"
+          echo "JUCE $tag"
+          xcodebuild -version
+          sw_vers
+
+      - name: Cache JUCE
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.juce.outputs.dir }}
+          key: juce-${{ steps.juce.outputs.tag }}-macos
+
+      - name: Fetch JUCE
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: git clone --depth 1 --branch "${{ steps.juce.outputs.tag }}" https://github.com/juce-framework/JUCE.git "$JUCE_DIR"
+
+      # Universal and the deployment target are the CMake file's defaults; said
+      # again here so the artifact is universal whatever those become.
+      - name: Configure
+        run: >
+          cmake -S plugin -B "$BUILD"
+          -DCMAKE_BUILD_TYPE=Release
+          -DSCOPE_JUCE_DIR="$JUCE_DIR"
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build the AU, the VST3 and the shell test
+        run: cmake --build "$BUILD" --config Release --target ScopeInstrument_AU ScopeInstrument_VST3 ScopeShellTest -j "$(sysctl -n hw.ncpu)"
+
+      # Both slices, and the system they say they need, read off the binaries
+      # themselves rather than trusted from the flags.
+      - name: Check both architectures and the deployment target
+        run: |
+          art="$BUILD/ScopeInstrument_artefacts/Release"
+          for bin in "$art/AU/Scope.component/Contents/MacOS/Scope" "$art/VST3/Scope.vst3/Contents/MacOS/Scope"; do
+            archs=$(lipo -archs "$bin")
+            echo "$bin: $archs"
+            case " $archs " in *" arm64 "*) ;; *) echo "no arm64 slice"; exit 1;; esac
+            case " $archs " in *" x86_64 "*) ;; *) echo "no x86_64 slice"; exit 1;; esac
+            vtool -arch arm64 -show-build "$bin" | grep -E 'minos|sdk'
+          done
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$art/AU/Scope.component/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :AudioComponents:0' "$art/AU/Scope.component/Contents/Info.plist"
+
+      # The linker signs each slice ad hoc already (JUCE asks it to); this seals
+      # the bundle's plist and resources too, which is what a host's loader
+      # checks. Not a Developer ID signature: see plugin/MAC.md on quarantine.
+      - name: Sign ad hoc
+        run: |
+          art="$BUILD/ScopeInstrument_artefacts/Release"
+          codesign --force --sign - "$art/AU/Scope.component"
+          codesign --force --sign - "$art/VST3/Scope.vst3"
+          codesign --verify --verbose "$art/AU/Scope.component"
+
+      # auval finds an AU only where the system looks, so it is installed the
+      # way the owner will install it, and the registrar is told to look again.
+      - name: Validate the AU (auval)
+        run: |
+          art="$BUILD/ScopeInstrument_artefacts/Release"
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          rm -rf ~/Library/Audio/Plug-Ins/Components/Scope.component
+          cp -R "$art/AU/Scope.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          for i in 1 2 3 4 5 6; do
+            auval -a 2>/dev/null | grep -q 'aumu Scop Rtsv' && break
+            sleep 5
+          done
+          auval -a | grep 'Rtsv' || { echo "the system does not list aumu Scop Rtsv"; exit 1; }
+          set -o pipefail
+          auval -v aumu Scop Rtsv | tee auval.log
+          grep -q 'AU VALIDATION SUCCEEDED' auval.log
+
+      # A zip made by ditto, uploaded as it is: the artifact's own zipping keeps
+      # no Unix permissions, and a bundle whose binary has lost its execute bit
+      # does not load.
+      - name: Pack the bundles
+        run: |
+          art="$BUILD/ScopeInstrument_artefacts/Release"
+          ver=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$art/AU/Scope.component/Contents/Info.plist")
+          mkdir -p out
+          ditto -c -k --keepParent "$art/AU/Scope.component" "out/Scope-$ver-AU.zip"
+          ditto -c -k --keepParent "$art/VST3/Scope.vst3" "out/Scope-$ver-VST3.zip"
+          cp auval.log out/
+          ls -l out
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: scope-macos-${{ github.sha }}
+          path: out/
+          retention-days: 30
+
+      # The shell test, last, so the bundles are uploaded whatever it says.
+      # Its processor checks need nothing; its face checks open a WKWebView in
+      # a window, which a GitHub macOS runner can, having a logged-in desktop
+      # session (where Linux needs xvfb-run). If the face's checks fail here
+      # and pass on the owner's Mac, the runner is the suspect, not the code.
+      - name: Shell test
+        timeout-minutes: 20
+        run: |
+          status=0
+          "$BUILD/ScopeShellTest_artefacts/Release/ScopeShellTest" > shell.log 2>&1 || status=$?
+          cat shell.log
+          echo "passed $(grep -c '  PASS  ' shell.log || true), failed $(grep -c '  FAIL  ' shell.log || true)"
+          grep '  FAIL  ' shell.log || true
+          exit "$status"

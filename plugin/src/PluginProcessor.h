@@ -311,8 +311,17 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   std::array<std::atomic<float>, kKnobs.size()> pageSet_;
   std::array<bool, kKnobs.size()> gesture_ {};  // a change gesture open on each, message thread only
   int panelLayer_ = 0;                          // the layer the panel showed at the last block
+  /* Which parameters a load leaves as the host set them (readBack): none;
+     those moved since they were last applied (a prepare with nothing
+     waiting, the panel's layer turned); or those moved since a state or
+     program was handed over (that state loaded). */
+  enum class Keep { none, sinceApplied, sinceHandOver };
+  Keep keep_ = Keep::none;
+  std::array<float, kKnobs.size()> handedOver_ {};   // the parameters as pending_ was handed over, under stateLock_
+  std::array<float, kKnobs.size()> handedTaken_ {};  // the same, taken with pending_ by the thread that loads it
+  void handOver();
   // The parameters not moved by the host, read back from their sliders: a setup loaded, or the panel's layer changed.
-  void readBack(bool unmovedOnly);
+  void readBack(Keep keep);
   void followKnob(const std::string& id, double value);
   std::vector<scope::Instrument::HostSlider> moved_;  // the parameters moved since the last block
   std::vector<scope::Instrument::Event> events_;      // the host's MIDI this block, with room made in prepare

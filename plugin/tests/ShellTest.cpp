@@ -4254,6 +4254,88 @@ int main() {
     check("null: the same chord with the limiter off passes full scale", bare > 1, "peak " + num(bare));
   }
 
+  {
+    /* auval's "parameters retain value across reset and initialization"
+       (17 Nov, the first Mac build): a host sets each parameter, then
+       initialises the plugin again - prepareToPlay, as a rate or a device
+       changes, and reset - and reads them back. Each came back as the setup's
+       own, the host's value thrown away: prepare loaded the instrument's
+       setup, which had never been given the host's values (no block had run
+       to apply them), and its read-back wrote every parameter from it. In
+       Logic that is a knob moved, or automation set, lost to a sample-rate
+       change. Asked of a plugin prepared and played, and of one set before it
+       was ever prepared, as auval sets them, and - what auval does, and the
+       first fix missed (a4e937e: green here, the Mac's auval still red) - of
+       one handed a program or a state with no block since, as auval's preset
+       and class-info tests leave it: the program waiting won at the next
+       prepare over the parameters set after it. Then one block, and the
+       instrument's sliders must be where the parameters are, so the setup
+       stays in step. The null: a state handed over after the parameters were
+       set still wins, as a project's state must. */
+    const auto aside = [](float v01) { return v01 < 0.5f ? 0.8f : 0.2f; };
+    enum class Before { prepared, nothing, program, state };
+    const auto sequence = [&](Before before) {
+      ScopeProcessor p;
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      if (before != Before::nothing) { p.prepareToPlay(rate, block); buf.clear(); p.processBlock(buf, m); }
+      // Handed over and left waiting: no block runs before the parameters are set.
+      if (before == Before::program) p.setCurrentProgram(p.getNumPrograms() - 1);
+      if (before == Before::state) {
+        juce::MemoryBlock held;
+        p.getStateInformation(held);
+        p.setStateInformation(held.getData(), static_cast<int>(held.getSize()));
+      }
+      std::array<float, ScopeProcessor::kKnobs.size()> want {};
+      for (std::size_t i = 0; i < want.size(); ++i) {
+        auto* k = p.knob(i);
+        k->setValueNotifyingHost(aside(k->convertTo0to1(k->get())));
+        want[i] = k->get();
+      }
+      p.prepareToPlay(rate, block);
+      p.reset();
+      p.releaseResources();
+      p.prepareToPlay(rate, block);
+      std::string kept, lost, unfollowed;
+      for (std::size_t i = 0; i < want.size(); ++i)
+        (p.knob(i)->get() == want[i] ? kept : lost) += std::string(ScopeProcessor::kKnobs[i].id) + "=" + num(p.knob(i)->get())
+                                                      + (p.knob(i)->get() == want[i] ? " " : " (set " + num(want[i]) + ") ");
+      buf.clear(); p.processBlock(buf, m);
+      for (std::size_t i = 0; i < want.size(); ++i) {
+        const double at = p.slider(ScopeProcessor::kKnobs[i].slider);
+        if (std::fabs(at - want[i]) > 1e-4 * (1 + std::fabs(want[i]))) unfollowed += std::string(ScopeProcessor::kKnobs[i].slider) + "=" + num(at) + " ";
+      }
+      return std::make_pair(lost, unfollowed);
+    };
+    for (const auto [before, said] : { std::pair { Before::prepared, "on a prepared plugin" },
+                                       std::pair { Before::nothing, "before the plugin was prepared" },
+                                       std::pair { Before::program, "after a program was chosen, with no block since" },
+                                       std::pair { Before::state, "after a state was handed over, with no block since" } }) {
+      const auto [lost, unfollowed] = sequence(before);
+      check(std::string("every host parameter set ") + said
+                + " keeps its value through prepareToPlay, reset and prepareToPlay again (auval), and its slider follows",
+            lost.empty() && unfollowed.empty(), "lost: " + lost + "; sliders not there: " + unfollowed);
+    }
+    ScopeProcessor saved;
+    saved.prepareToPlay(rate, block);
+    {
+      juce::AudioBuffer<float> buf(2, block);
+      juce::MidiBuffer m;
+      buf.clear(); saved.processBlock(buf, m);
+    }
+    juce::MemoryBlock state;
+    saved.getStateInformation(state);
+    ScopeProcessor loaded;
+    for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i) loaded.knob(i)->setValueNotifyingHost(aside(saved.knob(i)->convertTo0to1(saved.knob(i)->get())));
+    loaded.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    loaded.prepareToPlay(rate, block);
+    std::string differ;
+    for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i)
+      if (loaded.knob(i)->get() != saved.knob(i)->get()) differ += std::string(ScopeProcessor::kKnobs[i].id) + " ";
+    check("null: parameters set and then a state handed over - the state's values win, as a project reopened", differ.empty(),
+          "not the state's: " + differ);
+  }
+
   std::printf("\n--- the Envelope card's dot, on the plugin's face ---\n");
   {
     /* Until 12 Nov the plugin sent its page none of what the Envelope card's
