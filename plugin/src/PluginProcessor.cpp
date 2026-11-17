@@ -24,6 +24,8 @@ ScopeProcessor::ScopeProcessor()
         juce::NormalisableRange<float>(static_cast<float>(spec->min), static_cast<float>(spec->max), static_cast<float>(spec->step)),
         static_cast<float>(spec->value));
     knobs_[i] = knob.get();
+    // Applied as made, so a host's set before the first prepare reads as the host's (prepareToPlay).
+    applied_[i] = knob->get();
     (kKnobs[i].main ? main : setups)->addChild(std::move(knob));
   }
   addParameterGroup(std::move(main));
@@ -39,7 +41,7 @@ ScopeProcessor::ScopeProcessor()
      from this thread on through the audio's own changes, so a gesture's end
      could reach the host before its last value. */
   // A setup loaded: the parameters read back from the panel, so the host shows what it set.
-  instrument_.hooks.loaded = [this] { readBack(false); };
+  instrument_.hooks.loaded = [this] { readBack(keepHostMoves_); };
 }
 
 void ScopeProcessor::readBack(bool unmovedOnly) {
@@ -359,8 +361,19 @@ void ScopeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
       const auto decoded = scope::decodeSetup(instrument_.stateCode());
       if (decoded.kind == scope::DecodedSetup::Kind::Read) current = decoded.setup;
     }
+    /* A parameter the host has set since it was last applied keeps the
+       host's value through the load, and reaches the instrument with the
+       first block, as any host move does (auval, 17 Nov). The setup loaded
+       here has never been given it - no block has run since it was set - so
+       reading every parameter back from it put each one the host had set
+       back to the setup's, and auval failed "parameters retain value across
+       reset and initialization"; in Logic, a knob moved or automation set was
+       lost to a change of rate. A state handed over wins over them all, as a
+       project reopened must, so with one waiting every parameter reads back. */
+    keepHostMoves_ = !pending_;
     instrument_.prepare(sampleRate, samplesPerBlock, pending_ ? *pending_ : current ? *current : written ? *written
                         : preset ? preset->setup : scope::baseSetup());
+    keepHostMoves_ = false;
     pending_.reset();
   }
   tail_.store(instrument_.tailSeconds());

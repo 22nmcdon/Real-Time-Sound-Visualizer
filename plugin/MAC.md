@@ -72,7 +72,7 @@ grep -c '  PASS  ' shell-mac.log; grep '  FAIL  ' shell-mac.log
 No xvfb on a Mac: its face checks open a real window on the desktop for a
 few seconds (leave the Mac unlocked). It ends with "the shell plays, serves
 the page, and hands it the picture" or FAILED. On Linux under `xvfb-run -a`
-at `a0fad51` it was 213 checks passed and none failed; a check that passes
+with the auval fix it was 216 checks passed and none failed; a check that passes
 there and fails here is this weekend's real finding.
 
 ## 4. Install
@@ -182,9 +182,10 @@ not be, and each is a question for the weekend:
   (`core/include/scope/chars.h`). If the compiler still calls it unavailable,
   the target did not reach the compile (check the configure was fresh: the
   architectures and target are cache variables, read once).
-- **auval**: never run on this plugin. An instrument that also says it makes
-  MIDI and has a stereo input off by default is unusual; auval's bus and
-  MIDI-output checks are where to look first.
+- **auval** on the owner's Mac. On the GitHub runner (macOS 15) the first
+  build passed everything but "parameters retain value across reset and
+  initialization", which was a real bug - prepare threw away the host's
+  values - fixed since (`PLAN.md`, "Found on the way").
 - **The face in WKWebView**: that the page loads from the binary through
   JUCE's `juce://` scheme handler, that the native functions answer, and that
   the picture's fetches (one `/picture.bin` and one `/lfos.bin` a frame,
@@ -207,8 +208,10 @@ not be, and each is a question for the weekend:
 ## The GitHub workflow
 
 `.github/workflows/mac.yml`, run by hand: Actions → *Build the plugin for
-macOS* → *Run workflow*, on `claude/mac-prep` or wherever it has gone. On a
-macOS 14 runner (Apple Silicon) it reads the JUCE tag from the CMake file,
+macOS* → *Run workflow* once it is on `main` (GitHub offers the button only
+for a workflow the default branch carries), or a push to `claude/mac-build`
+runs it from that branch. On a macOS 15 runner (Apple Silicon; the macos-14
+jobs were never given a runner) it reads the JUCE tag from the CMake file,
 restores JUCE from the cache or clones it, configures and builds Release AU,
 VST3 and the shell test universal, checks both slices and the deployment
 target off the binaries, signs ad hoc, installs the AU and runs `auval -v

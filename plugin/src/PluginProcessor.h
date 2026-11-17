@@ -311,6 +311,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   std::array<std::atomic<float>, kKnobs.size()> pageSet_;
   std::array<bool, kKnobs.size()> gesture_ {};  // a change gesture open on each, message thread only
   int panelLayer_ = 0;                          // the layer the panel showed at the last block
+  bool keepHostMoves_ = false;                  // a load in prepareToPlay with no state waiting: readBack(true)
   // The parameters not moved by the host, read back from their sliders: a setup loaded, or the panel's layer changed.
   void readBack(bool unmovedOnly);
   void followKnob(const std::string& id, double value);

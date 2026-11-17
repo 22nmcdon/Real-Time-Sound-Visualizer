@@ -2672,6 +2672,24 @@ different number and move only when a parameter arrives.
 
 ## Found on the way
 
+- **A host's parameters thrown away by prepare** (17 Nov, auval on the first
+  Mac build). auval sets every parameter, initialises the AU again and reads
+  them back; every one came back as the setup's. `prepareToPlay` loads the
+  instrument's setup and its `loaded` hook read every parameter back from
+  it, and the setup had never been given the host's values, which reach it
+  only with a block. In Logic that was a knob moved or automation set lost to
+  a change of rate or device. Now a load in `prepareToPlay` with no state
+  waiting reads back only the parameters the host has not moved
+  (`readBack(true)`, `keepHostMoves_`), and the first block applies the rest
+  as any host move; a state or program handed over still wins over all of
+  them. `applied_` starts at each parameter's default, so a parameter set
+  before the first prepare reads as the host's. Linux never showed it: no
+  Linux host or test re-prepared with a parameter set and no block between.
+  The shell test runs auval's sequence on a plugin prepared and played and
+  on one never prepared (both red before, every parameter lost), requires
+  the sliders to follow after one block, and as its null a state handed over
+  after the parameters were set still winning.
+
 - **A comparison that skipped NaN called NaN and a number the same.**
   `worst` in the parity harness took the largest difference with Python's
   `max`, which never takes a NaN after a number. The generator's path fixture
