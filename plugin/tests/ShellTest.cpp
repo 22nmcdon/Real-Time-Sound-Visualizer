@@ -211,6 +211,8 @@ int main() {
     std::vector<scope::Lfo> lfos(2);
     lfos[0].rate = 0.2; lfos[0].depth = 0.5; lfos[1].rate = 0.5; lfos[1].depth = 0.3;
     scope::Generator core(rate, scope::slot::Used, lfos);
+    // At its Output and Width, not gliding to them, as the instrument opens (G7; the Width at fifty since 17 Nov).
+    core.settleOutput();
     core.setGated(true);
     std::vector<float> heardL(static_cast<std::size_t>(total)), heardR(heardL), picL(heardL), picR(heardL);
     int done = 0;
@@ -294,6 +296,8 @@ int main() {
       scope::morphStore(brain, true);
       matrix.add("lfo1", "morph.pos", -1);
     }
+    // At its Output and Width, not gliding to them, as the instrument opens (G7; the Width at fifty since 17 Nov).
+    core.settleOutput();
     keys.frame();
     std::vector<float> l(static_cast<std::size_t>(total)), r(l), pl(l), pr(l);
     int done = 0;
@@ -1091,6 +1095,8 @@ int main() {
     const auto centred = [](ScopeProcessor& p) {
       unstaged(p);
       p.pageControl("photoReticle", scope::Json::string(std::string_view("0.5,0.5")));
+      // At a hundred, where the right channel is a quarter turn on and the light's phase turns it most (fifty since 17 Nov).
+      p.pageSlider("stereoWidth", u"100");
     };
     const Run heard = run(ellipse, true, blocks, centred);
     const Run unheard = run(ellipse, true, blocks, [&](ScopeProcessor& p) { centred(p); p.matrix().remove("photo.1", "gen.phase"); });
@@ -1599,7 +1605,8 @@ int main() {
     juce::MemoryBlock wwithout;
     if (wstripped) wwithout.append(wstripped->data(), wstripped->size());
     const double wAtFull = intoW(unity), wAtStripped = intoW(wwithout);
-    check("a project saved at a hundred opens at a hundred in a plugin narrowed", wAtFull == 100, num(wAtFull));
+    // Saved at its default, fifty since 17 Nov: a project with no pluginWidth opens there, not at the 20 it was narrowed to.
+    check("a project saved at the Width's default opens at it in a plugin narrowed", wAtFull == 50, num(wAtFull));
     /* What the Width applies to, and the sound's own Width (16 Nov): the
        setup's, so kept in the project as the setup is - the switch pressed on
        the page and the sound's Width moved there, saved, and a fresh plugin
