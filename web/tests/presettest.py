@@ -444,7 +444,8 @@ with sync_playwright() as pw:
     check("Paste loads a code put in the field: the organ's drawbars, and Custom, since a code is not a preset",
           code["pasted"] == {"shape": "drawbars", "value": "", "note": "Loaded."}, str(code["pasted"]))
     check("and a code that cannot be read says so and changes nothing",
-          code["bad"] == ["That code could not be read.", "drawbars"], str(code["bad"]))
+          code["bad"][0].startswith("That code could not be read") and code["bad"][1] == "drawbars", str(code["bad"]))
+    # Until the review (17 Nov) the line was exactly "That code could not be read."; it says why now (loadCode, pastetest.py).
 
     print("\n--- where a preset lands ---")
     # A microphone - an oscillator behind getUserMedia - has no generator:
