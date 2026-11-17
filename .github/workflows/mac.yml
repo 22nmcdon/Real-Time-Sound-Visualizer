@@ -10,8 +10,14 @@
 # what only the Mac can answer.
 name: Build the plugin for macOS
 
+# workflow_dispatch only runs a workflow the default branch carries, and main
+# moves only on the owner's word; so a push to the branch claude/mac-build
+# runs it too, from whatever that branch holds - the way to try a Mac change
+# before it reaches main.
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/mac-build]
 
 permissions:
   contents: read
