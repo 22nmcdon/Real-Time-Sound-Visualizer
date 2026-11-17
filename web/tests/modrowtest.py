@@ -260,24 +260,25 @@ with sync_playwright() as pw:
       const canvas = el.menvCurve;
       const attackX = () => { paintModLive(); return canvas._drawn.corners[1][0]; };
       const out = {};
-      el.menvFollow.click(); await wait(50);
+      // Following: the switch went on 17 Nov, Follow is the way back, and setControl writes with no hand.
+      menvFollowAmp(); await wait(50);
       setControl('envAttack', 0); setControl('menvAtk', 0); const a0 = attackX();
       setControl('envAttack', 200); const a1 = attackX();
       setControl('menvAtk', 2000); const a2 = attackX();
       out.follows = { own: canvas._drawn.own, play: a1 - a0, its: a2 - a1, grey: canvas._drawn.ink };
-      el.menvItsOwn.click(); await wait(50);
+      el.menvOwn.checked = true; el.menvOwn.dispatchEvent(new Event('change')); await wait(50);
       setControl('menvAtk', 0); const b0 = attackX();
       setControl('menvAtk', 2000); const b1 = attackX();
       setControl('envAttack', 0); const b2 = attackX();
       out.own = { own: canvas._drawn.own, its: b1 - b0, play: b2 - b1, ink: canvas._drawn.ink, checked: el.menvOwn.checked };
-      el.menvFollow.click(); setControl('envAttack', 8); setControl('menvAtk', 10);
+      menvFollowAmp(); setControl('envAttack', 8); setControl('menvAtk', 10);
       return out;
     }""")
     print("    %s" % curve)
     check("following Play, the Envelope's curve is Play's: Play's attack moves its corner", curve["follows"]["own"] is False
           and curve["follows"]["play"] > 5, str(curve["follows"]))
     null("and its own attack does not", abs(curve["follows"]["its"]) < 0.5, str(curve["follows"]))
-    check("pressed Its own, the curve is its own: its attack moves the corner", curve["own"]["own"] is True and curve["own"]["checked"] is True
+    check("its own, the curve is its own: its attack moves the corner", curve["own"]["own"] is True and curve["own"]["checked"] is True
           and curve["own"]["its"] > 5, str(curve["own"]))
     null("and Play's does not", abs(curve["own"]["play"]) < 0.5, str(curve["own"]))
     check("greyed following Play and in its ink with its own", curve["follows"]["grey"] != curve["own"]["ink"],

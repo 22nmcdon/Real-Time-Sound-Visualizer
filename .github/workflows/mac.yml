@@ -34,7 +34,7 @@ jobs:
     env:
       BUILD: plugin/build-mac
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The tag is read from the CMake file, as the cloud setup script reads it,
       # so moving JUCE is one edit and the cache follows it.
@@ -52,7 +52,7 @@ jobs:
 
       - name: Cache JUCE
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.juce.outputs.dir }}
           key: juce-${{ steps.juce.outputs.tag }}-macos
@@ -130,7 +130,7 @@ jobs:
           ls -l out
 
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scope-macos-${{ github.sha }}
           path: out/

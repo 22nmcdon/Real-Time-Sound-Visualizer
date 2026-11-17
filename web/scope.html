@@ -1240,6 +1240,9 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 .src-own > .menu-row:first-of-type, .src-own > .src-draw + * { margin-top: 10px; }
 .src-env-top { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 10px; }
 .src-env-top .switch button { padding: 5px 11px; }
+.src-env-follow { display: inline-flex; align-items: center; }
+.src-env-note { font-size: 12px; color: var(--text-soft); }
+.src-env-note[hidden] { display: none; }
 .photo-view { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 14px; align-items: start; }
 .photo-view .src-draw { height: 110px; }
 .photo-view .photo-crop { width: 150px; height: 150px; background: var(--paper); }
@@ -1342,9 +1345,28 @@ body[data-layer-edit="b"] #freqRow,
 body[data-layer-edit="b"] #phaseRow { display: none !important; }
 #toneRows:not([data-layer-edit="b"]) #layerBNote { display: none; }
 /* The amplifier's envelope, drawn over its knobs (G3). */
-.env-curve { display: block; width: 100%; height: 40px; margin: 2px 0 6px; }
-.env-curve .env-floor { fill: none; stroke: var(--line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.env-curve .env-line { fill: none; stroke: var(--blush-deep); stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+/* Its place and size since G3; since 17 Nov drawn in its own pixels, so its
+   handles stay round, and taken hold of (envelopeDrawing). */
+.env-curve { display: block; width: 100%; height: 40px; margin: 2px 0 6px; overflow: visible; }
+.env-curve .env-line { stroke: var(--blush-deep); stroke-width: 1.5; }
+/* The voice filter's envelope (17 Nov): its heading opens its drawing, over
+   the section's top, since a drawing in the section did not fit Play at
+   1100x860, where the filter shares a column with the amp envelope. The
+   heading carries a small copy of the curve, so the shape is on show shut. */
+#vcfGroup { position: relative; }
+.env-open { all: unset; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.env-open:focus-visible { outline: 1px solid var(--blush-deep); outline-offset: 2px; }
+.env-open:disabled { cursor: default; }
+.env-thumb { width: 34px; height: 10px; overflow: visible; }
+.env-thumb path { fill: none; stroke: var(--blush-deep); stroke-width: 1.2; stroke-linejoin: round; }
+.env-open[aria-expanded="true"] .env-thumb path { stroke: var(--charcoal); }
+.env-pop {
+  position: absolute; left: -8px; right: -8px; z-index: 30; padding: 8px 8px 6px;
+  background: var(--paper); border: 1px solid var(--line); box-shadow: 0 8px 26px rgba(36, 31, 29, 0.14);
+}
+.env-pop[hidden] { display: none; }
+.env-pop .env-pop-curve { display: block; width: 100%; height: 72px; overflow: visible; }
+.env-pop .env-line { stroke: var(--blush-deep); }
 /* The voice filter while it is off: on show, greyed, its menu still live. */
 #vcfGroup.is-off .vcf-on { opacity: 0.45; }
 /* A heading inside a section, for a second set of controls under the first. */
@@ -1805,25 +1827,37 @@ button.mod-edit-name:hover { color: var(--blush-deep); }
 .mod-hint { margin: 12px 0 0; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-soft); }
 /* The modulation fade's envelope, in Routings. */
 .fade-env { margin-top: 6px; }
-.fade-env svg { display: block; width: 100%; height: auto; touch-action: none; }
+.fade-env svg { display: block; width: 100%; height: auto; }
 .fade-env svg.off { opacity: 0.45; }
-.fade-env .env-base { stroke: var(--line); stroke-width: 1; }
-.fade-env .env-line { fill: none; stroke: var(--charcoal); stroke-width: 1.6; stroke-linejoin: round; }
-.fade-env .env-line.off { stroke: var(--unresolved); stroke-dasharray: 3 3; }
-.fade-env .env-ghost { fill: none; stroke: var(--ch2); stroke-width: 1; opacity: 0.35; }
-.fade-env .env-corner { stroke: var(--blush-deep); cursor: move; }
+/* Every envelope drawn to be taken hold of (envelopeDrawing): the fade's,
+   and since 17 Nov the amp's, the voice filter's and the Envelope card's. */
+.env-draw { touch-action: none; user-select: none; -webkit-user-select: none; }
+.env-draw .env-base { stroke: var(--line); stroke-width: 1; }
+.env-draw .env-line { fill: none; stroke: var(--charcoal); stroke-width: 1.6; stroke-linejoin: round; }
+.env-draw .env-line.off { stroke: var(--unresolved); stroke-dasharray: 3 3; }
+.env-draw .env-ghost { fill: none; stroke: var(--ch2); stroke-width: 1; opacity: 0.35; }
+.env-draw .env-corner { stroke: var(--blush-deep); cursor: move; }
+/* The Envelope's, in its source's ink; following the amp envelope it is the amp's, dashed and grey, and still taken hold of. */
+#menvCurve .env-line { stroke: var(--ch2); stroke-width: 2; }
+#menvCurve.follows .env-line { stroke: var(--unresolved); stroke-dasharray: 5 4; }
+#menvCurve .env-fill { fill: var(--blush); opacity: 0.16; }
+#menvCurve.follows .env-fill { opacity: 0; }
 .fade-opts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
 .fade-opts .check { margin: 0; }
 .fade-layers { display: inline-flex; gap: 2px; }
 .fade-layers[hidden] { display: none; }
 .fade-layers .link-btn[aria-pressed="true"] { color: var(--charcoal); border-bottom: 1px solid var(--blush-deep); }
-.fade-env .env-handle { fill: var(--paper); stroke-width: 1.6; cursor: grab; }
-.fade-env .env-time { stroke: var(--blush-deep); }
-.fade-env .env-bend { stroke: var(--ch2); cursor: ns-resize; }
-.fade-env .env-time { cursor: ew-resize; }
-.fade-env .env-handle:focus-visible { outline: none; stroke-width: 2.6; }
-.fade-env .env-dot { fill: var(--ch4); pointer-events: none; }
-.fade-env .env-label { font-family: var(--mono); font-size: 7px; fill: var(--text-soft); pointer-events: none; }
+.env-draw .env-handle { fill: var(--paper); stroke-width: 1.6; cursor: grab; }
+.env-draw .env-time { stroke: var(--blush-deep); }
+.env-draw .env-bend { stroke: var(--ch2); cursor: ns-resize; }
+.env-draw .env-time { cursor: ew-resize; }
+.env-draw .env-handle:focus-visible { outline: none; stroke-width: 2.6; }
+.env-draw .env-handle.is-held { fill: var(--blush-deep); }
+.env-draw .env-handle[aria-disabled="true"] { cursor: default; stroke: var(--unresolved); }
+.env-draw .env-dot { fill: var(--ch4); pointer-events: none; }
+#menvCurve .env-dot { fill: var(--charcoal); }
+.env-draw .env-label { font-family: var(--mono); font-size: 7px; fill: var(--text-soft); pointer-events: none; }
+.env-draw.env-px .env-label { font-size: 10px; }
 .fade-env .reading { display: block; margin-top: 2px; }
 .src-desc { font-size: 13px; line-height: 1.5; color: var(--charcoal); margin: 0 0 10px; }
 .src-meter {
@@ -2776,8 +2810,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                is edited the whole section stays and says so. -->
           <div class="menu-group" id="ampEnvGroup" data-tab="play" data-home="bench" data-col="2">
             <span class="menu-title" id="ampEnvTitle">Amp envelope<button type="button" class="hand-link" id="linkAmpEnv" data-link="ampEnv" aria-pressed="true" hidden></button></span>
-            <svg class="env-curve" id="ampEnvCurve" viewBox="0 0 200 44" preserveAspectRatio="none"
-                 aria-hidden="true"><path class="env-floor" d="M0 43 H200"></path><path class="env-line" d="M0 43"></path></svg>
+            <!-- Taken hold of since 17 Nov: the peak is the attack, the corner the
+                 decay and the sustain, the end the release, each writing its knob. -->
+            <svg class="env-curve env-draw env-px" id="ampEnvCurve" role="group"
+                 aria-label="The amp envelope: drag the peak for the attack, the corner for the decay and the sustain, the end for the release"></svg>
             <div class="menu-row" data-layer="b">
               <label class="menu-label" for="envAttack">Attack</label>
               <div class="grow">
@@ -3824,7 +3860,15 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             </div>
             <!-- Its envelope named (G3), now that its four sit on show beside the
                  amplifier's four, which have the same names. -->
-            <span class="menu-sub vcf-on vcf-env">Its envelope</span>
+            <!-- The heading opens its drawing (17 Nov), which did not fit in the
+                 section at every window; a small copy of the curve rides beside it. -->
+            <span class="menu-sub vcf-on vcf-env"><button type="button" class="env-open" id="vcfEnvOpen"
+                aria-expanded="false" aria-controls="vcfEnvPop" title="Draw the filter's envelope, to take hold of">Its envelope<svg
+                class="env-thumb" id="vcfEnvThumb" viewBox="0 0 34 10" aria-hidden="true"><path d="M0 10"></path></svg></button></span>
+            <div class="env-pop" id="vcfEnvPop" role="group" aria-label="The voice filter's envelope" hidden>
+              <svg class="env-pop-curve env-draw env-px" id="vcfEnvCurve" role="group"
+                   aria-label="The voice filter's envelope: drag the peak for the attack, the corner for the decay and the sustain, the end for the release"></svg>
+            </div>
             <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfAtk">Attack</label>
               <div class="grow">
@@ -3858,8 +3902,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               is the instrument's filter; the one called <i>Filter</i> is for looking, on the
               whole trace. <i>Key track</i> is how far the cutoff follows the note, all the way
               at a hundred, from middle C. <i>Envelope</i> is how many octaves its own envelope
-              moves the cutoff, up or down; behind the &ctdot; are that envelope's four, which
-              work like the amplifier's and follow the keys the same way. The cutoff can take a
+              moves the cutoff, up or down; under <i>Its envelope</i>, which opens its curve to
+              drag, are that envelope's four, which work like the amplifier's and follow the keys the same way. The cutoff can take a
               source. On the dyad the two channels are filtered alike, each following its own
               pitch.</p>
           </div>
@@ -4714,16 +4758,14 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                Envelope's editor while it is open, and back before the editor is
                built for another source (controls are moved, never copied). -->
           <div class="src-env" id="menvControls" hidden>
-            <!-- Along the top, as the second pass draws it (G5a): whose envelope,
-                 and when it starts. The checkbox stays the value - the setup, the
-                 host and the core's panel read and write menvOwn as a switch - and
-                 is out of sight; the two buttons press it. -->
+            <!-- Along the top, as the second pass draws it (G5a): when it starts,
+                 and whose envelope it is. The checkbox stays the value - the setup,
+                 the host and the core's panel read and write menvOwn as a switch -
+                 and is out of sight. Since 17 Nov there is no switch to press: it
+                 follows the amp envelope until any of its four is edited, which
+                 makes it its own, and Follow puts it back. -->
             <div class="src-env-top">
               <input type="checkbox" id="menvOwn" hidden>
-              <div class="switch" role="radiogroup" aria-label="Whether the Envelope follows Play's amp envelope or has its own">
-                <button type="button" class="caps" id="menvFollow" role="radio" aria-checked="true">Follows the amp envelope</button>
-                <button type="button" class="caps" id="menvItsOwn" role="radio" aria-checked="false">Its own</button>
-              </div>
               <!-- Once a phrase, or again on every note (8 Nov). The bank's two headings
                    want both: Settled is a note moving the sound as it strikes, Breathing
                    one swell while held. One envelope for all the notes, so every note on
@@ -4732,9 +4774,14 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <button type="button" class="caps" id="menvPhrase" role="radio" aria-checked="true">Each phrase</button>
                 <button type="button" class="caps" id="menvEvery" role="radio" aria-checked="false">Every note</button>
               </div>
+              <span class="src-env-follow">
+                <button type="button" class="link-btn caps" id="menvFollow" hidden>Follow the amp envelope</button>
+                <span class="src-env-note" id="menvFollowing">Following the amp envelope</span>
+              </span>
             </div>
-            <!-- Its curve, with a dot where the phrase is: Play's, greyed, while it follows the amp envelope. -->
-            <canvas class="src-draw" id="menvCurve" role="img" aria-label="The Envelope's curve"></canvas>
+            <!-- Its curve, with a dot where the phrase is: the amp envelope's, dashed and grey, while it follows it. -->
+            <svg class="src-draw env-draw env-px" id="menvCurve" role="group"
+                 aria-label="The Envelope's curve: drag the peak for the attack, the corner for the decay and the sustain, the end for the release"></svg>
             <div class="src-knobs">
             <div class="menu-row">
               <label class="menu-label" for="menvAtk">Attack</label>
@@ -5071,7 +5118,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         in each note, after its shaping and before its level. <i>Key track</i> makes the
         cutoff follow the note, so a high note is not duller than a low one. <i>Envelope</i>
         sweeps the cutoff up or down by that many octaves with the filter's own envelope,
-        whose four are behind the &ctdot;: a note that opens bright and closes, or a
+        whose four are under <i>Its envelope</i>, which opens its curve to drag: a note that opens bright and closes, or a
         resonant wah, per note. The cutoff can take a source. The <i>Filter</i> in <i>Scope
         &amp; measure</i> is a different thing: it filters the whole trace, for looking.</span></li>
 
@@ -5559,9 +5606,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <li><b>Modulation</b>
         <span>Four sources, a card each in the row across the window: two oscillators, the
         <i>Envelope</i> and the <i>Photocell</i>. The Envelope follows the amp envelope on
-        <i>Play</i> unless its editor says <i>Its own</i>: then it has an attack, decay, sustain
+        <i>Play</i> until you edit it: its editor shows Play's four, and turning any of its knobs
+        or dragging its curve copies them and makes them its own &mdash; an attack, decay, sustain
         and release of its own, opened by the same notes, so a filter or the picture can swell
-        on other timings than the loudness. It is one envelope for all the notes held: on
+        on other timings than the loudness. <i>Follow the amp envelope</i>, or <i>Reset</i> on
+        any of them, puts it back. It is one envelope for all the notes held: on
         <i>Each phrase</i> a note played while it is open does not start it again, and on
         <i>Every note</i> each new key starts its attack again from where it is, which on a fast
         arpeggio twitches. A card draws its source with a dot where it is now &mdash; an
@@ -5569,9 +5618,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         its rate or reading, and counts the controls it is on; in a small window it is a chip
         with a small drawing. Press it and its editor opens over the tabs, beside the screen so
         the picture stays in view: the source drawn large (an oscillator's wave with the dot
-        at its phase and its shape, sync and rate under it; the Envelope's curve, Play's and
-        greyed while it follows the amp envelope, with its four times, drawn at the height the note it is
-        following was struck, its dot riding up the attack, down the decay, along the hold and
+        at its phase and its shape, sync and rate under it; the Envelope's curve, Play's,
+        dashed, while it follows the amp envelope, with its four times, its dot riding up the attack, down the decay, along the hold and
         down the release, and resting where the release ends; what the Photocell sees around its
         reticle, its last four seconds and its value now, <i>On</i> and <i>Place it on the
         figure</i>), and <i>Where it goes</i> &mdash; every control it is on with its own depth
@@ -5884,6 +5932,12 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         the screen, the computer keyboard or a MIDI keyboard, and the envelope shapes every
         note. With no key down the readout says <i>gated &middot; no note held</i> rather than
         leaving you to wonder.
+        <br><br>
+        Its curve over its four knobs is to be taken hold of: drag the peak sideways for the
+        attack, the corner sideways for the decay and up and down for the sustain, and the end
+        for the release; press a point twice to put it back, right-click it to type its values,
+        or Tab to it and use the arrows, <b>Shift</b> finer. The voice filter's envelope has the
+        same drawing, opened from its <i>Its envelope</i>, and so has the Envelope card's.
         <br><br>
         A second key over a held one changes the pitch without starting the envelope
         again, which is what makes a run of notes a phrase; <i>glide</i> slides between
@@ -6434,7 +6488,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "rotate", "rotateValue", "measurePre", "measurePost", "modStrip", "modEditor", "modEditorClose", "midiVelocityTo", 
                   "modRow", "routingsButton", "routingsCount", "routingsPanel", "routingsClose", "routingsBySource", "routingsByDest",
                   "routingsList", "routingsFade", "routingsAllOff", "routingsClear",
-                  "srcDetailDot", "srcDetailDesc", "menvFollow", "menvItsOwn", "menvCurve", "photoControls", "photoPlace",
+                  "srcDetailDot", "srcDetailDesc", "menvFollow", "menvFollowing", "menvCurve", "photoControls", "photoPlace",
                   "genFault",
                   "envAttack", "envAttackValue", "envDecay", "envDecayValue",
                   "menvControls", "menvOwn", "menvAtk", "menvAtkValue", "menvDec", "menvDecValue",
@@ -6458,7 +6512,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "oscSubOct", "oscSubShape",
                   "shpGroup", "shpDrive", "shpDriveValue", "shpFold", "shpFoldValue", "shpBits", "shpRate", "shpOS",
                   "vcfGroup", "vcfType", "vcfCut", "vcfCutValue", "vcfRes", "vcfResValue", "vcfTrack", "vcfTrackValue",
-                  "vcfEnvAmt", "vcfEnvAmtValue", "vcfAtk", "vcfAtkValue", "vcfDec", "vcfDecValue", "vcfSus",
+                  "vcfEnvAmt", "vcfEnvAmtValue", "vcfEnvOpen", "vcfEnvThumb", "vcfEnvPop", "vcfEnvCurve", "vcfAtk", "vcfAtkValue", "vcfDec", "vcfDecValue", "vcfSus",
                   "vcfSusValue", "vcfRel", "vcfRelValue",
                   "planeWhere", "timeWhere",
                   "timeGroup", "delayMix", "delayMixValue", "delayMs", "delayMsValue", "delaySync",
@@ -8353,39 +8407,55 @@ function fadeLand() {
    hold of, and the other is drawn faint behind it. Two drawings one above
    the other were the first thought and cost the Sources tab its fit: with a
    rack of six the families' column is already most of the Bench's height,
-   and no tab may scroll. */
+   and no tab may scroll.
+
+   Since 17 Nov the drawing and its handling are one piece, envelopeDrawing,
+   which the amp envelope, the voice filter's envelope and the Envelope
+   card's use as well (knobEnvelope, by the knobs): those had a picture each
+   and no hold, and a third copy of the dragging was the alternative. A
+   frame says where it is drawn - this one's viewBox, or a knob envelope's
+   own pixels, so its handles stay round at any width - and a spec what it
+   draws and writes. */
 const ENV = { x0: 6, wait: 24, seg: 60, hold: 20, top: 8, rest: 54, samples: 24, view: 240 };
-const envWidth = (seconds, longest, width) => width * Math.sqrt(seconds / longest);
+const ENV_FRAME = Object.assign({ w: ENV.view, h: 70, labelY: 64, r: 4.2 }, ENV);
+const envWidth = (seconds, longest, width) => width * Math.sqrt(Math.max(0, seconds) / longest);
 const envSeconds = (w, longest, width) => longest * Math.pow(Math.max(0, Math.min(1, w / width)), 2);
-const envY = (v) => ENV.rest - (ENV.rest - ENV.top) * v;
-const envLevel = (y) => (ENV.rest - y) / (ENV.rest - ENV.top);
-function envGeometry(env) {
-  const waitEnd = ENV.x0 + envWidth(env.delay, FADE_LIMITS.delayMax, ENV.wait);
-  const peak = waitEnd + envWidth(env.attack, FADE_LIMITS.max, ENV.seg);
-  const corner = peak + envWidth(env.decay, FADE_LIMITS.max, ENV.seg);
-  const held = corner + ENV.hold;
-  return { waitEnd, peak, corner, held, end: held + envWidth(env.release, FADE_LIMITS.max, ENV.seg) };
+const envY = (v, f = ENV) => f.rest - (f.rest - f.top) * v;
+const envLevel = (y, f = ENV) => (f.rest - y) / (f.rest - f.top);
+const FADE_LONGEST = { delay: FADE_LIMITS.delayMax, attack: FADE_LIMITS.max, decay: FADE_LIMITS.max, release: FADE_LIMITS.max };
+/* Where each stretch ends. A frame with `holdAt` starts the release at one
+   place whatever the attack and the decay, and the hold takes what they
+   leave: a held note has no length of its own, and the release's handle
+   then stays put while the corner is dragged. The fade's hold is a fixed
+   stretch after its corner, as it was drawn before. */
+function envGeometryIn(env, f, longest) {
+  const waitEnd = f.x0 + (f.wait ? envWidth(env.delay || 0, longest.delay, f.wait) : 0);
+  const peak = waitEnd + envWidth(env.attack, longest.attack, f.seg);
+  const corner = peak + envWidth(env.decay, longest.decay, f.seg);
+  const held = f.holdAt !== undefined ? f.holdAt : corner + f.hold;
+  return { waitEnd, peak, corner, held, end: held + envWidth(env.release, longest.release, f.seg) };
 }
-// The whole envelope as one path, for the other layer's ghost.
-function envPath(env) {
-  const g = envGeometry(env), points = [[ENV.x0, 0], [g.waitEnd, 0]];
-  for (let i = 1; i <= ENV.samples; i++) {
-    const t = i / ENV.samples;
+const envGeometry = (env) => envGeometryIn(env, ENV, FADE_LONGEST);
+// The whole envelope as one path, for the other layer's ghost and a small copy.
+function envPathIn(env, f, longest) {
+  const g = envGeometryIn(env, f, longest), points = [[f.x0, 0], [g.waitEnd, 0]];
+  const n = f.samples || ENV.samples;
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
     points.push([g.waitEnd + t * (g.peak - g.waitEnd), fadeTravel(t, env.attackMid)]);
   }
-  for (let i = 1; i <= ENV.samples; i++) {
-    const t = i / ENV.samples;
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
     points.push([g.peak + t * (g.corner - g.peak), 1 + (env.sustain - 1) * fadeTravel(t, env.decayMid)]);
   }
   points.push([g.held, env.sustain]);
-  for (let i = 1; i <= ENV.samples; i++) {
-    const t = i / ENV.samples;
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
     points.push([g.held + t * (g.end - g.held), env.sustain * (1 - fadeTravel(t, env.releaseMid))]);
   }
-  return "M" + points.map(([x, v]) => x.toFixed(2) + "," + envY(v).toFixed(2)).join("L");
+  return "M" + points.map(([x, v]) => x.toFixed(2) + "," + envY(v, f).toFixed(2)).join("L");
 }
 const SVG_NS = "http://www.w3.org/2000/svg";
-const envParts = {};
 const ENV_HANDLES = [
   ["wait", "Delay before the fade in", "time"],
   ["attackMid", "Attack shape", "bend"],
@@ -8395,82 +8465,220 @@ const ENV_HANDLES = [
   ["corner", "Decay time and sustain level", "corner"],
   ["end", "Release time", "time"],
 ];
-function buildFadeEnvelope() {
-  const svg = el.fadeEnv;
+/* The drawing and its handles. spec: frame() (null while it has no size),
+   longest(), env() in the frame's units, handles, labels, and for each
+   handle text(), now(), hidden(); move() for a drag to a point, key() for
+   an arrow (false when it does nothing there), end() as a drag lets go,
+   reset() for two presses (none, none), menu() for its right-click, and
+   redraw() where more than the drawing is painted after a change. */
+function envelopeDrawing(svg, spec) {
+  const parts = {};
   const make = (tag, attrs) => {
     const node = document.createElementNS(SVG_NS, tag);
     for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
     svg.appendChild(node);
     return node;
   };
-  envParts.base = make("line", { class: "env-base", y1: ENV.rest, y2: ENV.rest, x1: 2, x2: ENV.view - 2 });
-  envParts.ghost = make("path", { class: "env-ghost" });
-  for (const name of ["waitLine", "attack", "decay", "holdLine", "release"]) envParts[name] = make("path", { class: "env-line" });
-  for (const name of ["delay", "in", "decay", "held", "out"]) {
-    envParts["label-" + name] = make("text", { class: "env-label", y: 64, "text-anchor": "middle" });
-    envParts["label-" + name].textContent = name;
+  const drawing = { svg, parts, spec, frame: null, geo: null };
+  if (spec.fill) parts.fill = make("path", { class: "env-fill" });
+  parts.base = make("line", { class: "env-base" });
+  parts.ghost = make("path", { class: "env-ghost" });
+  for (const name of ["waitLine", "attack", "decay", "holdLine", "release"]) parts[name] = make("path", { class: "env-line" });
+  for (const [key, text] of spec.labels || []) {
+    parts["label-" + key] = make("text", { class: "env-label", "text-anchor": "middle" });
+    parts["label-" + key].textContent = text;
   }
-  envParts.dot = make("circle", { class: "env-dot", r: 3.2, visibility: "hidden" });
-  for (const [name, label, kind] of ENV_HANDLES) {
-    envParts[name] = make("circle", { class: "env-handle env-" + kind, r: 4.2, tabindex: 0, role: "slider",
-                                      "aria-label": label, "data-handle": name });
+  parts.dot = make("circle", { class: "env-dot", r: 3.2, visibility: "hidden" });
+  for (const [name, label, kind] of spec.handles) {
+    parts[name] = make("circle", { class: "env-handle env-" + kind, r: 4.2, tabindex: 0, role: "slider",
+                                   "aria-label": label, "data-handle": name });
+    parts[name].envDrawing = drawing;
   }
-  svg.addEventListener("pointerdown", envPointerDown);
-  svg.addEventListener("keydown", envKey);
+  const redraw = () => (spec.redraw ? spec.redraw() : draw());
+  function draw() {
+    const f = spec.frame();
+    if (!f) return false;
+    if (f.px) svg.setAttribute("viewBox", "0 0 " + f.w + " " + f.h);
+    const env = spec.env(), g = envGeometryIn(env, f, spec.longest());
+    drawing.frame = f; drawing.geo = g;
+    const Y = (v) => envY(v, f);
+    const curve = (x0, x1, value) => {
+      const points = [], n = f.samples || ENV.samples;
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        points.push((x0 + t * (x1 - x0)).toFixed(2) + "," + Y(value(t)).toFixed(2));
+      }
+      return "M" + points.join("L");
+    };
+    for (const [k, v] of [["x1", 2], ["x2", f.w - 2], ["y1", f.rest], ["y2", f.rest]]) parts.base.setAttribute(k, v);
+    parts.waitLine.setAttribute("d", f.wait ? "M" + f.x0 + "," + f.rest + "H" + g.waitEnd.toFixed(2) : "");
+    parts.attack.setAttribute("d", curve(g.waitEnd, g.peak, (t) => fadeTravel(t, env.attackMid)));
+    parts.decay.setAttribute("d", curve(g.peak, g.corner, (t) => 1 + (env.sustain - 1) * fadeTravel(t, env.decayMid)));
+    parts.holdLine.setAttribute("d", "M" + g.corner.toFixed(2) + "," + Y(env.sustain).toFixed(2) + "H" + g.held.toFixed(2));
+    parts.release.setAttribute("d", curve(g.held, g.end, (t) => env.sustain * (1 - fadeTravel(t, env.releaseMid))));
+    if (parts.fill) parts.fill.setAttribute("d", envPathIn(env, f, spec.longest()) + "L" + g.end.toFixed(2) + "," + f.rest + "Z");
+    const ghost = spec.ghost ? spec.ghost() : null;
+    parts.ghost.setAttribute("d", ghost ? envPathIn(ghost, f, spec.longest()) : "");
+    const at = {
+      wait: [g.waitEnd, f.rest], peak: [g.peak, f.top], corner: [g.corner, Y(env.sustain)], end: [g.end, f.rest],
+      attackMid: [(g.waitEnd + g.peak) / 2, Y(env.attackMid)],
+      decayMid: [(g.peak + g.corner) / 2, Y(1 + (env.sustain - 1) * env.decayMid)],
+      releaseMid: [(g.held + g.end) / 2, Y(env.sustain * (1 - env.releaseMid))],
+    };
+    for (const [name] of spec.handles) {
+      const node = parts[name], [x, y] = at[name];
+      node.setAttribute("cx", x.toFixed(2)); node.setAttribute("cy", y.toFixed(2));
+      node.setAttribute("r", f.r || 4.2);
+      node.setAttribute("aria-valuetext", spec.text(name, env));
+      node.setAttribute("aria-valuenow", spec.now(name, env));
+      node.setAttribute("visibility", spec.hidden && spec.hidden(name, env) ? "hidden" : "visible");
+    }
+    // Each stretch named under it, where there is room for the word.
+    const spans = { wait: [f.x0, g.waitEnd], attack: [g.waitEnd, g.peak], decay: [g.peak, g.corner],
+                    hold: [g.corner, g.held], release: [g.held, g.end] };
+    for (const [key, text] of spec.labels || []) {
+      const node = parts["label-" + key], [x0, x1] = spans[key];
+      node.setAttribute("x", ((x0 + x1) / 2).toFixed(2));
+      node.setAttribute("y", f.labelY);
+      node.setAttribute("visibility", x1 - x0 >= (f.px ? text.length * 5.6 : 14) ? "visible" : "hidden");
+    }
+    return true;
+  }
+  drawing.draw = draw;
+
+  const toLocal = (e) => {
+    const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+    return [point.x, point.y];
+  };
+  /* Two presses on a handle that did not move it put it back, as two taps
+     on a knob do, counted from the presses rather than from dblclick for the
+     knob's reason: a finger does not reliably send one. */
+  let drag = null, lastDown = { name: null, at: -Infinity };
+  svg.addEventListener("pointerdown", (event) => {
+    const name = event.target.dataset && event.target.dataset.handle;
+    if (!name || !parts[name] || event.button !== 0 || (event.ctrlKey && ALT_KEY === "Option")) return;
+    event.preventDefault();
+    event.target.focus({ preventScroll: true });
+    if (spec.disabled && spec.disabled()) return;
+    if (spec.reset && lastDown.name === name && event.timeStamp - lastDown.at < KNOB_DOUBLE_MS) {
+      lastDown = { name: null, at: -Infinity };
+      spec.reset(name);
+      redraw();
+      return;
+    }
+    lastDown = { name, at: event.timeStamp };
+    svg.setPointerCapture(event.pointerId);
+    drag = { name, id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+    parts[name].classList.add("is-held");
+  });
+  svg.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.id || !drawing.geo) return;
+    // A press that shakes by a pixel is still a press, for the two that reset.
+    if (!drag.moved && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 3) return;
+    drag.moved = true;
+    lastDown.at = -Infinity;
+    spec.move(drag.name, ...toLocal(event), drawing.geo, drawing.frame, event);
+    redraw();
+  });
+  const up = (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const was = drag;
+    drag = null;
+    parts[was.name].classList.remove("is-held");
+    if (spec.end) spec.end(was.name, was.moved);
+  };
+  svg.addEventListener("pointerup", up);
+  svg.addEventListener("pointercancel", up);
+  // A long press that became the menu moves nothing after it.
+  drawing.cancel = () => {
+    if (drag) { parts[drag.name].classList.remove("is-held"); if (spec.end) spec.end(drag.name, drag.moved); }
+    drag = null; lastDown = { name: null, at: -Infinity };
+  };
+  svg.addEventListener("keydown", (event) => {
+    const name = event.target.dataset && event.target.dataset.handle;
+    if (!name || !parts[name] || event.altKey || event.ctrlKey || event.metaKey) return;
+    const dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[event.key];
+    if (!dir || (spec.disabled && spec.disabled())) return;
+    if (spec.key(name, dir[0], dir[1], event.shiftKey) === false) return;
+    event.preventDefault();
+    redraw();
+  });
+  if (spec.menu) drawing.menu = spec.menu;
+  return drawing;
 }
+
 const envSec = (s) => (s === 0 ? "0" : s < 1 ? s.toFixed(2) : s.toFixed(1)) + " s";
 const envBend = (m) => (m > 0.55 ? "quick to start" : m < 0.45 ? "slow to start" : "even");
+/* The handles by keyboard: left and right for a time, a tenth longer or
+   shorter each press, since the scale is not straight; up and down for a
+   shape - towards where its slope is going is quicker - or the sustain,
+   a twentieth each press. */
+function fadeKey(name, dx, dy) {
+  const env = fade.envs[fade.editing], set = (part) => setFadeEnvelope(part, fade.editing);
+  const right = dx > 0, left = dx < 0, up = dy > 0, down = dy < 0;
+  const longer = (s) => (right ? s * 1.1 : s / 1.1);
+  if (name === "wait" && (right || left)) set({ delay: right ? Math.max(0.05, env.delay * 1.1) : env.delay < 0.06 ? 0 : env.delay / 1.1 });
+  else if (name === "peak" && (right || left)) set({ attack: longer(env.attack) });
+  else if (name === "end" && (right || left)) set({ release: longer(env.release) });
+  else if (name === "corner") set(right || left ? { decay: longer(env.decay) } : { sustain: env.sustain + (up ? 0.05 : -0.05) });
+  else if (name === "attackMid" && (up || down)) set({ attackMid: env.attackMid + (up ? 0.05 : -0.05) });
+  else if (name === "decayMid" && (up || down)) set({ decayMid: env.decayMid + (down ? 0.05 : -0.05) });
+  else if (name === "releaseMid" && (up || down)) set({ releaseMid: env.releaseMid + (down ? 0.05 : -0.05) });
+  else return false;
+  saveFade();
+  return true;
+}
+// A handle moved to a point in the drawing's own units.
+function fadeMove(name, x, y, g) {
+  const env = fade.envs[fade.editing], set = (part) => setFadeEnvelope(part, fade.editing);
+  const level = envLevel(y);
+  if (name === "wait") {
+    const delay = envSeconds(x - ENV.x0, FADE_LIMITS.delayMax, ENV.wait);
+    set({ delay: delay < 0.02 ? 0 : delay });
+  } else if (name === "peak") set({ attack: envSeconds(x - g.waitEnd, FADE_LIMITS.max, ENV.seg) });
+  else if (name === "corner") set({ decay: envSeconds(x - g.peak, FADE_LIMITS.max, ENV.seg), sustain: level });
+  else if (name === "end") set({ release: envSeconds(x - g.held, FADE_LIMITS.max, ENV.seg) });
+  else if (name === "attackMid") set({ attackMid: level });
+  else if (name === "decayMid" && env.sustain < 1) set({ decayMid: (1 - level) / (1 - env.sustain) });
+  else if (name === "releaseMid" && env.sustain > 0) set({ releaseMid: 1 - level / env.sustain });
+  saveFade();
+}
+const fadeDrawing = envelopeDrawing(el.fadeEnv, {
+  frame: () => ENV_FRAME,
+  longest: () => FADE_LONGEST,
+  env: () => fade.envs[fade.editing],
+  ghost: () => (fadeLayered() ? fade.envs[1 - fade.editing] : null),
+  handles: ENV_HANDLES,
+  labels: [["wait", "delay"], ["attack", "in"], ["decay", "decay"], ["hold", "held"], ["release", "out"]],
+  text: (name, env) => ({ wait: envSec(env.delay), peak: envSec(env.attack), end: envSec(env.release),
+                          corner: envSec(env.decay) + " to " + Math.round(env.sustain * 100) + "%",
+                          attackMid: envBend(env.attackMid), decayMid: envBend(env.decayMid), releaseMid: envBend(env.releaseMid) })[name],
+  now: (name, env) => ({ wait: env.delay, peak: env.attack, corner: env.decay, end: env.release })[name] ?? env[name],
+  // A decay to full is flat, and a release from nothing is: no shape to take hold of.
+  hidden: (name, env) => (name === "decayMid" && env.sustain > 0.98) || (name === "releaseMid" && env.sustain < 0.02),
+  move: fadeMove,
+  key: fadeKey,
+  redraw: () => drawFadeEnvelope(),
+});
+const envParts = fadeDrawing.parts;
+/* The knobs' envelopes, which knobEnvelope makes much further down, once
+   the knobs are there. Here so the Envelope's own readings, which a setup
+   restores long before, can ask whether they are made yet. */
+const envDrawings = {};
 function drawFadeEnvelope() {
   el.fadeMode.value = fade.mode;
   const layered = fadeLayered();
   if (!layered) fade.editing = 0;
-  const env = fade.envs[fade.editing], g = envGeometry(env);
-  const curve = (x0, x1, value) => {
-    const points = [];
-    for (let i = 0; i <= ENV.samples; i++) {
-      const t = i / ENV.samples;
-      points.push((x0 + t * (x1 - x0)).toFixed(2) + "," + envY(value(t)).toFixed(2));
-    }
-    return "M" + points.join("L");
-  };
-  envParts.waitLine.setAttribute("d", "M" + ENV.x0 + "," + ENV.rest + "H" + g.waitEnd.toFixed(2));
-  envParts.attack.setAttribute("d", curve(g.waitEnd, g.peak, (t) => fadeTravel(t, env.attackMid)));
-  envParts.decay.setAttribute("d", curve(g.peak, g.corner, (t) => 1 + (env.sustain - 1) * fadeTravel(t, env.decayMid)));
-  envParts.holdLine.setAttribute("d", "M" + g.corner.toFixed(2) + "," + envY(env.sustain).toFixed(2) + "H" + g.held.toFixed(2));
-  envParts.release.setAttribute("d", curve(g.held, g.end, (t) => env.sustain * (1 - fadeTravel(t, env.releaseMid))));
+  const env = fade.envs[fade.editing];
+  fadeDrawing.draw();
   // A half that is off is drawn faint, and can still be shaped for later.
   for (const name of ["waitLine", "attack", "decay"]) envParts[name].classList.toggle("off", !fadesIn());
   envParts.release.classList.toggle("off", !fadesOut());
-  envParts.ghost.setAttribute("d", layered ? envPath(fade.envs[1 - fade.editing]) : "");
-  const place = (name, x, y, text, now, hidden) => {
-    const node = envParts[name];
-    node.setAttribute("cx", x.toFixed(2)); node.setAttribute("cy", y.toFixed(2));
-    node.setAttribute("aria-valuetext", text); node.setAttribute("aria-valuenow", now);
-    node.setAttribute("visibility", hidden ? "hidden" : "visible");
-  };
-  place("wait", g.waitEnd, ENV.rest, envSec(env.delay), env.delay);
-  place("peak", g.peak, ENV.top, envSec(env.attack), env.attack);
-  place("corner", g.corner, envY(env.sustain), envSec(env.decay) + " to " + Math.round(env.sustain * 100) + "%", env.decay);
-  place("end", g.end, ENV.rest, envSec(env.release), env.release);
-  place("attackMid", (g.waitEnd + g.peak) / 2, envY(env.attackMid), envBend(env.attackMid), env.attackMid);
-  // A decay to full is flat, and a release from nothing is: no shape to take hold of.
-  place("decayMid", (g.peak + g.corner) / 2, envY(1 + (env.sustain - 1) * env.decayMid), envBend(env.decayMid),
-        env.decayMid, env.sustain > 0.98);
-  place("releaseMid", (g.held + g.end) / 2, envY(env.sustain * (1 - env.releaseMid)), envBend(env.releaseMid),
-        env.releaseMid, env.sustain < 0.02);
-  // Each stretch named under it, where there is room for the word.
-  const label = (name, x0, x1) => {
-    const node = envParts["label-" + name];
-    node.setAttribute("x", ((x0 + x1) / 2).toFixed(2));
-    node.setAttribute("visibility", x1 - x0 >= 14 ? "visible" : "hidden");
-  };
-  label("delay", ENV.x0, g.waitEnd); label("in", g.waitEnd, g.peak); label("decay", g.peak, g.corner);
-  label("held", g.corner, g.held); label("out", g.held, g.end);
   el.fadeEnv.classList.toggle("off", fade.mode === "off");
   // The two times only: the rest is in the drawing, and all of it in the title. A line
   // with the wait and the sustain in it ran off the column.
   el.fadeEnvValue.textContent = (layered ? (fade.editing ? "B: " : "A: ") : "")
-    + "In " + envSec(env.attack) + " \u00b7 Out " + envSec(env.release);
+    + "In " + envSec(env.attack) + " · Out " + envSec(env.release);
   el.fadeEnvValue.title = "Wait " + envSec(env.delay) + "; attack " + envSec(env.attack) + ", " + envBend(env.attackMid)
     + "; decay " + envSec(env.decay) + " to " + Math.round(env.sustain * 100) + "%, " + envBend(env.decayMid)
     + "; release " + envSec(env.release) + ", " + envBend(env.releaseMid) + "."
@@ -8481,7 +8689,7 @@ function drawFadeEnvelope() {
   // Named for the keyboard, as the header's Editing is (G6).
   for (const [button, hand] of [[el.fadeEditA, 0], [el.fadeEditB, 1]]) {
     if (button.textContent !== handName(hand)) button.textContent = handName(hand);
-    button.title = "Draw and shape the " + (midi.layers.mode === "split" ? handName(hand).toLowerCase() + " hand" : "layer " + handName(hand)) + "\u2019s envelope";
+    button.title = "Draw and shape the " + (midi.layers.mode === "split" ? handName(hand).toLowerCase() + " hand" : "layer " + handName(hand)) + "’s envelope";
   }
   el.fadeRestart.checked = env.restart;
   el.fadeLoop.checked = env.loop;
@@ -8503,67 +8711,6 @@ function fadeDotStep() {
   dot.setAttribute("cx", (along[0] + Math.min(1, phase.t) * (along[1] - along[0])).toFixed(2));
   dot.setAttribute("cy", envY(phase.level).toFixed(2));
   dot.setAttribute("visibility", "visible");
-}
-// A handle moved to a point in the drawing's own units.
-function envMoveHandle(name, x, y) {
-  const env = fade.envs[fade.editing], g = envGeometry(env), set = (part) => setFadeEnvelope(part, fade.editing);
-  const level = envLevel(y);
-  if (name === "wait") {
-    const delay = envSeconds(x - ENV.x0, FADE_LIMITS.delayMax, ENV.wait);
-    set({ delay: delay < 0.02 ? 0 : delay });
-  } else if (name === "peak") set({ attack: envSeconds(x - g.waitEnd, FADE_LIMITS.max, ENV.seg) });
-  else if (name === "corner") set({ decay: envSeconds(x - g.peak, FADE_LIMITS.max, ENV.seg), sustain: level });
-  else if (name === "end") set({ release: envSeconds(x - g.held, FADE_LIMITS.max, ENV.seg) });
-  else if (name === "attackMid") set({ attackMid: level });
-  else if (name === "decayMid" && env.sustain < 1) set({ decayMid: (1 - level) / (1 - env.sustain) });
-  else if (name === "releaseMid" && env.sustain > 0) set({ releaseMid: 1 - level / env.sustain });
-  saveFade();
-  drawFadeEnvelope();
-}
-function envPointerDown(event) {
-  const name = event.target.dataset && event.target.dataset.handle;
-  if (!name) return;
-  event.preventDefault();
-  const svg = el.fadeEnv;
-  svg.setPointerCapture(event.pointerId);
-  const toLocal = (e) => {
-    const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
-    return [point.x, point.y];
-  };
-  const move = (e) => envMoveHandle(name, ...toLocal(e));
-  const up = () => {
-    svg.removeEventListener("pointermove", move);
-    svg.removeEventListener("pointerup", up);
-    svg.removeEventListener("pointercancel", up);
-  };
-  svg.addEventListener("pointermove", move);
-  svg.addEventListener("pointerup", up);
-  svg.addEventListener("pointercancel", up);
-  event.target.focus();
-}
-/* The handles by keyboard: left and right for a time, a tenth longer or
-   shorter each press, since the scale is not straight; up and down for a
-   shape - towards where its slope is going is quicker - or the sustain,
-   a twentieth each press. */
-function envKey(event) {
-  const name = event.target.dataset && event.target.dataset.handle;
-  if (!name) return;
-  const env = fade.envs[fade.editing], set = (part) => setFadeEnvelope(part, fade.editing);
-  const key = event.key, right = key === "ArrowRight", left = key === "ArrowLeft";
-  const up = key === "ArrowUp", down = key === "ArrowDown";
-  if (!right && !left && !up && !down) return;
-  const longer = (s) => (right ? s * 1.1 : s / 1.1);
-  if (name === "wait" && (right || left)) set({ delay: right ? Math.max(0.05, env.delay * 1.1) : env.delay < 0.06 ? 0 : env.delay / 1.1 });
-  else if (name === "peak" && (right || left)) set({ attack: longer(env.attack) });
-  else if (name === "end" && (right || left)) set({ release: longer(env.release) });
-  else if (name === "corner") set(right || left ? { decay: longer(env.decay) } : { sustain: env.sustain + (up ? 0.05 : -0.05) });
-  else if (name === "attackMid" && (up || down)) set({ attackMid: env.attackMid + (up ? 0.05 : -0.05) });
-  else if (name === "decayMid" && (up || down)) set({ decayMid: env.decayMid + (down ? 0.05 : -0.05) });
-  else if (name === "releaseMid" && (up || down)) set({ releaseMid: env.releaseMid + (down ? 0.05 : -0.05) });
-  else return;
-  event.preventDefault();
-  saveFade();
-  drawFadeEnvelope();
 }
 
 function syncFadePanel() {
@@ -8589,7 +8736,6 @@ el.fadeRestart.addEventListener("change", () => {
 el.fadeLoop.addEventListener("change", () => {
   setFadeEnvelope({ loop: el.fadeLoop.checked }, fade.editing); saveFade(); drawFadeEnvelope();
 });
-buildFadeEnvelope();
 /* Drawn once the whole script has run, not here: drawing asks whether the
    keyboard is layered, and the keyboard's state is declared further down the
    page, where reading it now would throw. */
@@ -16401,6 +16547,8 @@ function syncVcfRows() {
     row.hidden = !on && row.classList.contains("vcf-env");
     for (const input of row.querySelectorAll("input, select, button")) input.disabled = !on;
   }
+  // Its envelope's drawing goes with its heading (paintAmpEnv).
+  if (!on) { el.vcfEnvPop.hidden = true; el.vcfEnvOpen.setAttribute("aria-expanded", "false"); }
 }
 /* The drive as the gain it gives a quiet signal, which is the number that
    says how hard it is being pushed: tanh(g x) / tanh(g) near nought is
@@ -17271,7 +17419,7 @@ function envTimes() {
 }
 /* Times on a gentle square-root scale, so a 2 ms attack is still seen beside
    a 2 s release, and the hold a fixed share, since a held note has no length
-   of its own. Following Play, the curve is Play's and greyed: it is set there.
+   of its own. Following Play, the curve is Play's and greyed, until its editor makes it its own.
    Its height is the velocity of the note it is following (see envWhere). */
 function drawEnv(canvas, large) {
   const c = canvasFor(canvas);
@@ -17408,7 +17556,7 @@ function paintModLive() {
     const big = document.getElementById("srcDraw");
     if (big) drawLfo(big, lfos[source.index], source.ink, true);
   } else if (source.id === "env.note") {
-    drawEnv(el.menvCurve, true);
+    paintMenvCurve();
   } else if (source.id === "photo.1") {
     const crop = document.getElementById("photoCrop"), graph = document.getElementById("photoGraph");
     if (crop) drawPhotoCrop(crop, source.ink);
@@ -17420,18 +17568,49 @@ function paintModLive() {
   }
 }
 
-/* The Envelope's own (8 Nov): into the generator, and its readings. The
-   knobs are greyed while it follows the amp envelope, not hidden, so the editor does not
-   jump when it is switched. Since G5a the switch is two buttons along the top,
-   Follows Play and Its own, over the checkbox that is its value. */
+/* The Envelope's own (8 Nov): into the generator, and its readings.
+
+   It follows the amp envelope until it is edited (17 Nov, the owner's
+   call). Following, its knobs, readings and drawing show the amp's four and
+   take a hand like any knob: the first edit copies the amp's four into its
+   own, makes the edit and makes them its own (menvAdopt), all one step of
+   undo, so it starts from what it was doing rather than from four numbers
+   nobody had seen. Reset on any of them, two presses on one, or Follow puts
+   it back to following (menvFollowAmp); its own four are kept, as they were
+   by the switch. Until 17 Nov a switch along the top, Follows and Its own,
+   said which, and following greyed the knobs, which made the knobs the one
+   thing on the editor that could not be touched while they were showing
+   what the Envelope did. Nothing stored changed: menvOwn is still the flag,
+   and the knobs still hold the stored four, the amp's being only shown on
+   them (knobShows) until an edit writes them. */
+const MENV_IDS = ["menvAtk", "menvDec", "menvSus", "menvRel"];
+const MENV_FOLLOWS = ["envAttack", "envDecay", "envSustain", "envRelease"];
+const menvShown = () => (el.menvOwn.checked ? MENV_IDS : MENV_FOLLOWS).map((id) => el[id]);
+function menvAdopt() {
+  if (el.menvOwn.checked) return;
+  MENV_IDS.forEach((id, i) => {
+    el[id].value = el[MENV_FOLLOWS[i]].value;
+    el[id].dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  el.menvOwn.checked = true;
+  el.menvOwn.dispatchEvent(new Event("change", { bubbles: true }));
+}
+function menvFollowAmp() {
+  if (!el.menvOwn.checked) return;
+  el.menvOwn.checked = false;
+  el.menvOwn.dispatchEvent(new Event("change", { bubbles: true }));
+}
 function paintMenv() {
-  el.menvAtkValue.textContent = el.menvAtk.value + " ms";
-  el.menvDecValue.textContent = el.menvDec.value + " ms";
-  el.menvSusValue.textContent = (Number(el.menvSus.value) / 100).toFixed(2);
-  el.menvRelValue.textContent = el.menvRel.value + " ms";
-  for (const id of ["menvAtk", "menvDec", "menvSus", "menvRel", "menvPhrase", "menvEvery"]) el[id].disabled = !el.menvOwn.checked;
-  el.menvItsOwn.setAttribute("aria-checked", String(el.menvOwn.checked));
-  el.menvFollow.setAttribute("aria-checked", String(!el.menvOwn.checked));
+  const [a, d, s, r] = menvShown();
+  el.menvAtkValue.textContent = Math.round(Number(a.value)) + " ms";
+  el.menvDecValue.textContent = Math.round(Number(d.value)) + " ms";
+  el.menvSusValue.textContent = (Number(s.value) / 100).toFixed(2);
+  el.menvRelValue.textContent = Math.round(Number(r.value)) + " ms";
+  // The faces, which show the amp's while following; not before the knobs are made.
+  if (envDrawings.knobs) for (const id of MENV_IDS) paintKnob(el[id]);
+  el.menvFollow.hidden = !el.menvOwn.checked;
+  el.menvFollowing.hidden = el.menvOwn.checked;
+  if (envDrawings.menv) envDrawings.menv.paint();
 }
 // A declaration, not a const: the generator's first settings read it before this line has run.
 function menvEvery() { return el.menvEvery.getAttribute("aria-checked") === "true"; }
@@ -17589,7 +17768,7 @@ function buildSourceDetail() {
     el.menvControls.hidden = false;
     dressKnobs(el.menvControls);
     paintMenv();
-    ownColumn.insertAdjacentHTML("beforeend", '<p class="bench-hint">Following Play, the curve is Play\u2019s amp envelope, greyed, and set there.</p>');
+    ownColumn.insertAdjacentHTML("beforeend", '<p class="bench-hint">Following, it shows Play\u2019s amp envelope, dashed. Drag a point or turn a knob and it is its own.</p>');
   }
   if (photocell) {
     ownColumn.appendChild(el.photoControls);
@@ -17738,15 +17917,6 @@ el.routingsClear.addEventListener("click", () => {
   buildRoutings();
 });
 
-/* The Envelope's two switches along the top press the checkbox that is its value. */
-el.menvFollow.addEventListener("click", () => {
-  if (!el.menvOwn.checked) return;
-  el.menvOwn.checked = false; el.menvOwn.dispatchEvent(new Event("change", { bubbles: true }));
-});
-el.menvItsOwn.addEventListener("click", () => {
-  if (el.menvOwn.checked) return;
-  el.menvOwn.checked = true; el.menvOwn.dispatchEvent(new Event("change", { bubbles: true }));
-});
 
 function syncPanes() {
   el.goniPane.hidden = !state.panes.goni;
@@ -22371,9 +22541,23 @@ syncPlanePanel();
 syncEchoPanel();
 // The Envelope's own: a hand on any of it goes to the generator at once.
 el.menvOwn.addEventListener("change", syncMenv);
-el.menvPhrase.addEventListener("click", () => { setMenvEvery(false); syncMenv(); });
-el.menvEvery.addEventListener("click", () => { setMenvEvery(true); syncMenv(); });
-for (const id of ["menvAtk", "menvDec", "menvSus", "menvRel"]) el[id].addEventListener("input", syncMenv);
+/* Each phrase and Every note mean something only to its own envelope (the
+   core's Generator: following, it is the amp's, which starts on every
+   note), so changing one while following is an edit, and makes it its own. */
+el.menvPhrase.addEventListener("click", () => { if (menvEvery()) menvAdopt(); setMenvEvery(false); syncMenv(); });
+el.menvEvery.addEventListener("click", () => { if (!menvEvery()) menvAdopt(); setMenvEvery(true); syncMenv(); });
+for (const id of MENV_IDS) el[id].addEventListener("input", syncMenv);
+MENV_IDS.forEach((id, i) => {
+  const input = el[id];
+  // Read by the knob's face (dressKnob) and the right-click menu: what it shows, what an edit does first, what Reset does.
+  input.knobShows = () => (el.menvOwn.checked ? null : Number(el[MENV_FOLLOWS[i]].value));
+  input.beforeTurn = menvAdopt;
+  input.knobReset = menvFollowAmp;
+  input.knobResetText = "follows the amp envelope";
+  // An arrow on the knob steps from what it shows: the amp's, made its own first.
+  input.addEventListener("keydown", (event) => { if (GESTURE_KEYS.has(event.key)) menvAdopt(); });
+});
+el.menvFollow.addEventListener("click", menvFollowAmp);
 paintMenv();
 
 /* The key and tempo section. */
@@ -24138,34 +24322,248 @@ document.addEventListener("keydown", (event) => {
   fxDragEnd(false);
 }, true);
 
-/* The amplifier's envelope as a curve over its four knobs: up in the attack,
-   down to the sustain, held, and away in the release. Each stretch's width
-   goes as the square root of its time over the knob's range, so an 8 ms
-   attack is still a visible slope beside a two-second release, and the hold
-   is a fixed quarter, since a held note has no length of its own. Read off
-   the inputs, which a preset, the host and the layer switch all write, and
-   painted again with the tab's lines a few times a second - only when a
-   number has moved. */
-let ampEnvSaid = "";
+/* --- the knobs' envelopes, taken hold of (17 Nov) ------------------------------
+   The amp envelope's curve over its four knobs (G3), the voice filter's
+   (opened from its heading) and the Envelope card's in its editor, drawn by
+   the fade's envelopeDrawing and held by three handles each: the peak is the
+   attack, sideways; the corner the decay sideways and the sustain up and
+   down; the end the release. Each stretch's width is the square root of its
+   time over its knob's range, as the fade's are, so an 8 ms attack is still
+   a visible slope beside a two-second release and a handle moves as far for
+   the first tenth of a second as the knob's own scale gives it; the knobs are
+   straight in milliseconds, and the drawing is the one place the scale is
+   bent. The release starts at one place whatever the attack and the decay,
+   with the hold taking what they leave, so dragging the corner leaves the
+   release's handle where it was. Until 17 Nov the amp's curve was stretched
+   to fill its width, which put every corner somewhere else whenever one
+   time changed - fine to look at, and no good to hold.
+
+   A handle writes its knobs as a hand on the knob does: the value set and
+   an input event as it moves, a change event as it lets go, so the host,
+   the plugin, the morph, a hand's link and undo hear what they always heard
+   (undo makes one step of a drag, since it waits for the pointer to lift).
+   Two presses put a handle's knobs back, and its right-click is the knobs'
+   menu for both of them at once. Painted again with the tab's lines a few
+   times a second and on every input, only when a number or the size has
+   moved. */
+const KNOB_ENV_HANDLES = [["peak", "Attack", "time"], ["corner", "Decay and sustain", "corner"], ["end", "Release", "time"]];
+const KNOB_ENV_CONTROLS = { peak: [0], corner: [1, 2], end: [3] };
+function envPixelFrame(svg, labels) {
+  const w = svg.clientWidth, h = svg.clientHeight;
+  if (!w || !h) return null;
+  const r = 4.5, pad = r + 2, foot = labels ? 15 : pad;
+  const hold = Math.max(16, w * 0.12), seg = (w - 2 * pad - hold) / 3;
+  return { px: true, w, h, r, x0: pad, wait: 0, seg, hold, holdAt: pad + 2 * seg + hold, top: pad, rest: h - foot,
+           labelY: h - 3, samples: 1 };
+}
+const readingOf = (input) => {
+  const reading = input.closest(".menu-row") && input.closest(".menu-row").querySelector(".reading");
+  return reading ? reading.textContent : input.value;
+};
+/* o: ids, the four knobs written; name; shown(), the four read, where they
+   are not the ids (the Envelope following the amp envelope); beforeEdit(),
+   run before anything is written; reset(handle) and resetText, where two
+   presses and Reset do something else than put each knob back; labels;
+   fill. */
+function knobEnvelope(svg, o) {
+  const own = () => o.ids.map((id) => el[id]);
+  const shown = () => (o.shown ? o.shown() : own());
+  const unit = (input) => (Number(input.value) - Number(input.min)) / ((Number(input.max) - Number(input.min)) || 1);
+  const longest = () => { const [a, d, , r] = own(); return { attack: Number(a.max), decay: Number(d.max), release: Number(r.max) }; };
+  const moved = new Set();
+  function put(input, value) {
+    const lo = Number(input.min), hi = Number(input.max), step = Number(input.step) || 1;
+    const v = Math.min(hi, Math.max(lo, value));
+    const text = String(Number((Math.round((v - lo) / step) * step + lo).toFixed(10)));
+    if (text === input.value) return;
+    if (HOST_PARAMS.includes(input.id)) gestureBegin(input.id);
+    input.value = text;
+    moved.add(input);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  function settle() {
+    for (const input of moved) {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      if (HOST_PARAMS.includes(input.id)) gestureEnd(input.id);
+    }
+    moved.clear();
+  }
+  const edit = (write) => { if (o.beforeEdit) o.beforeEdit(); write(own()); };
+  /* An arrow moves a time along the drawing's own scale - a fortieth of its
+     stretch, a two-hundredth with Shift - and at least one of the knob's
+     steps, so the first press off nought moves it; the sustain a twentieth
+     of its range, a hundredth with Shift. */
+  const nudge = (input, dir, fine) => {
+    const max = Number(input.max), now = Number(input.value);
+    const u = Math.max(0, Math.sqrt(Math.max(0, now) / max) + dir * (fine ? 0.005 : 0.025));
+    const step = Number(input.step) || 1;
+    let next = max * u * u;
+    if (Math.abs(next - now) < step) next = now + dir * step;
+    put(input, next);
+  };
+  const drawing = envelopeDrawing(svg, {
+    fill: o.fill,
+    handles: KNOB_ENV_HANDLES.map(([name, label, kind]) => [name, o.name + ": " + label.toLowerCase(), kind]),
+    labels: o.labels ? [["attack", "attack"], ["decay", "decay"], ["hold", "held"], ["release", "release"]] : null,
+    frame: () => envPixelFrame(svg, o.labels),
+    longest,
+    env: () => {
+      const [a, d, s, r] = shown();
+      return { attack: Number(a.value), decay: Number(d.value), sustain: unit(s), release: Number(r.value),
+               attackMid: 0.5, decayMid: 0.5, releaseMid: 0.5 };
+    },
+    text: (name) => {
+      const [a, d, s, r] = shown();
+      return name === "peak" ? readingOf(a) : name === "end" ? readingOf(r) : readingOf(d) + " to " + readingOf(s);
+    },
+    now: (name) => Number(shown()[KNOB_ENV_CONTROLS[name][0]].value),
+    move: (name, x, y, g, f) => edit(([a, d, s, r]) => {
+      if (name === "peak") put(a, envSeconds(x - g.waitEnd, Number(a.max), f.seg));
+      else if (name === "corner") {
+        put(d, envSeconds(x - g.peak, Number(d.max), f.seg));
+        const lo = Number(s.min), hi = Number(s.max);
+        put(s, lo + Math.max(0, Math.min(1, envLevel(y, f))) * (hi - lo));
+      } else if (name === "end") put(r, envSeconds(x - g.held, Number(r.max), f.seg));
+    }),
+    key: (name, dx, dy, fine) => {
+      if ((name === "peak" || name === "end") && !dx) return false;
+      edit(([a, d, s, r]) => {
+        if (name === "peak") nudge(a, dx, fine);
+        else if (name === "end") nudge(r, dx, fine);
+        else if (dx) nudge(d, dx, fine);
+        else put(s, Number(s.value) + dy * (fine ? 0.01 : 0.05) * (Number(s.max) - Number(s.min)));
+      });
+      settle();
+      return true;
+    },
+    end: () => settle(),
+    reset: (name) => {
+      if (o.reset) { o.reset(name); return; }
+      for (const i of KNOB_ENV_CONTROLS[name]) {
+        const input = own()[i];
+        gestureAround(input, () => writeControl(input, resetTarget(input)));
+      }
+    },
+    menu: (name, handle) => {
+      const controls = KNOB_ENV_CONTROLS[name].map((i) => own()[i]);
+      return openControlMenu(controls[0], {
+        controls, place: handle, opener: handle,
+        title: o.name + ": " + KNOB_ENV_HANDLES.find(([n]) => n === name)[1].toLowerCase(),
+        beforeEdit: o.beforeEdit, reset: o.reset ? () => o.reset(name) : null, resetText: o.resetText,
+      });
+    },
+    redraw: () => paint(true),
+  });
+  let said = "";
+  function paint(force) {
+    const key = shown().map((i) => i.value).join(",") + "|" + svg.clientWidth + "x" + svg.clientHeight
+      + "|" + (o.state ? o.state() : "");
+    if (!force && key === said) return false;
+    if (!drawing.draw()) { said = ""; return false; }
+    said = key;
+    if (o.painted) o.painted(drawing);
+    return true;
+  }
+  drawing.paint = paint;
+  drawing.shown = shown;
+  return drawing;
+}
+
+envDrawings.amp = knobEnvelope(el.ampEnvCurve, { ids: ["envAttack", "envDecay", "envSustain", "envRelease"], name: "Amp envelope" });
+envDrawings.vcf = knobEnvelope(el.vcfEnvCurve, { ids: ["vcfAtk", "vcfDec", "vcfSus", "vcfRel"], name: "Filter envelope", labels: true });
+/* The Envelope card's, in its editor: the amp's four while it follows them,
+   dashed and grey and still taken hold of, the first edit making them its
+   own; two presses or Reset on a handle follow the amp envelope again. */
+envDrawings.menv = knobEnvelope(el.menvCurve, {
+  ids: MENV_IDS, name: "Envelope", labels: true, fill: true, shown: menvShown,
+  beforeEdit: menvAdopt, reset: menvFollowAmp, resetText: "follows the amp envelope",
+  state: () => String(el.menvOwn.checked),
+  painted: () => el.menvCurve.classList.toggle("follows", !el.menvOwn.checked),
+});
+/* Its dot, once a frame while its editor is open: along the stretch the
+   envelope is in, at the level it is at with the velocity taken out, so it
+   sits on the curve, which is drawn at full height to be taken hold of
+   (until 17 Nov the curve was drawn at the struck note's height instead).
+   At rest it waits where the release ends. Kept on the drawing as _drawn,
+   as the canvas it replaced kept it, for the suites. */
+function paintMenvCurve() {
+  const d = envDrawings.menv;
+  d.paint();
+  const f = d.frame, g = d.geo;
+  if (!f || !g) return;
+  const own = el.menvOwn.checked, s = Number(menvShown()[2].value) / 100;
+  const Y = (v) => envY(v, f);
+  const xs = [g.waitEnd, g.peak, g.corner, g.held, g.end], ys = [Y(0), Y(1), Y(s), Y(s), Y(0)];
+  const vel = envWhere.velocity, st = envWhere.stage;
+  const u = Math.max(0, Math.min(1, Math.max(0, envWhere.level) / vel));
+  const along = (i, t) => xs[i] + (xs[i + 1] - xs[i]) * Math.max(0, Math.min(1, t));
+  const from = Math.max(s, envWhere.from);
+  const dx = st === "attack" ? along(0, u)
+           : st === "decay" ? along(1, (1 - u) / Math.max(1e-6, 1 - s))
+           : st === "sustain" ? (xs[2] + xs[3]) / 2
+           : st === "release" ? along(3, from > 1e-6 ? 1 - u / from : 1)
+           : xs[4];
+  const dy = Y(u);
+  const dot = d.parts.dot;
+  dot.setAttribute("cx", dx.toFixed(2)); dot.setAttribute("cy", dy.toFixed(2)); dot.setAttribute("r", 4);
+  dot.setAttribute("visibility", "visible");
+  el.menvCurve._drawn = { dot: [dx, dy], stage: st, own, velocity: vel, corners: xs.map((x, i) => [x, ys[i]]),
+                          ink: own ? "ch2" : "unresolved", w: f.w, h: f.h };
+}
+
+/* The voice filter's: a small copy of the curve on its heading, and the
+   drawing opened from it over the section's top, above the heading so the
+   four knobs stay in sight, or under them where there is not the room.
+   Not an overlay: the right-click menu on one of its handles is an
+   overlay, and opening one shuts the last. Shut by Esc, the heading again,
+   or a press anywhere but on it, its knobs or a menu. */
+const VCF_THUMB = { w: 34, h: 10, x0: 0, wait: 0, seg: 9.33, hold: 6, holdAt: 24.67, top: 1, rest: 10, samples: 1 };
+function paintVcfThumb() {
+  const env = { attack: Number(el.vcfAtk.value), decay: Number(el.vcfDec.value), sustain: Number(el.vcfSus.value) / 100,
+                release: Number(el.vcfRel.value), attackMid: 0.5, decayMid: 0.5, releaseMid: 0.5 };
+  const path = envPathIn(env, VCF_THUMB, { attack: Number(el.vcfAtk.max), decay: Number(el.vcfDec.max), release: Number(el.vcfRel.max) });
+  const node = el.vcfEnvThumb.firstElementChild;
+  if (node.getAttribute("d") !== path) node.setAttribute("d", path);
+}
+function setVcfEnvOpen(open) {
+  el.vcfEnvPop.hidden = !open;
+  el.vcfEnvOpen.setAttribute("aria-expanded", String(open));
+  if (!open) return;
+  const head = el.vcfEnvOpen.parentElement;
+  el.vcfEnvPop.style.top = "0px";
+  const above = head.offsetTop - el.vcfEnvPop.offsetHeight - 4;
+  el.vcfEnvPop.style.top = (above >= 0 ? above : head.offsetTop + head.offsetHeight + 4) + "px";
+  envDrawings.vcf.paint(true);
+}
+el.vcfEnvOpen.addEventListener("click", () => setVcfEnvOpen(el.vcfEnvPop.hidden));
+document.addEventListener("pointerdown", (event) => {
+  if (el.vcfEnvPop.hidden) return;
+  const t = event.target;
+  if (t instanceof Element && t.closest("#vcfEnvPop, #vcfEnvOpen, .over, .over-back, #vcfGroup .vcf-env")) return;
+  setVcfEnvOpen(false);
+}, true);
+document.addEventListener("keydown", (event) => {
+  // A menu open over it is shut first, by its own Esc.
+  if (event.key !== "Escape" || el.vcfEnvPop.hidden || event.defaultPrevented || overlay) return;
+  event.preventDefault();
+  const inside = el.vcfEnvPop.contains(document.activeElement);
+  setVcfEnvOpen(false);
+  if (inside) el.vcfEnvOpen.focus();
+});
+
 function paintAmpEnv() {
   if (!el.ampEnvCurve) return;
-  const a = Number(el.envAttack.value), d = Number(el.envDecay.value);
-  const sus = Number(el.envSustain.value) / 100, r = Number(el.envRelease.value);
-  const key = a + "," + d + "," + sus + "," + r;
-  if (key === ampEnvSaid) return;
-  ampEnvSaid = key;
-  const W = 200, H = 44, top = 3, floor = 43, hold = 0.25 * W;
-  const share = (v, max) => Math.sqrt(Math.max(0, v) / max);
-  const wa = share(a, 200), wd = share(d, 1000), wr = share(r, 2000);
-  const scale = (W - hold) / Math.max(1e-6, wa + wd + wr);
-  const x1 = wa * scale, x2 = x1 + wd * scale, x3 = x2 + hold, x4 = x3 + wr * scale;
-  const y = (v) => (floor - (floor - top) * v).toFixed(1);
-  const f = (v) => v.toFixed(1);
-  el.ampEnvCurve.querySelector(".env-line").setAttribute("d",
-    "M0 " + floor + " L" + f(x1) + " " + top + " L" + f(x2) + " " + y(sus)
-    + " L" + f(x3) + " " + y(sus) + " L" + f(x4) + " " + floor);
+  const amp = envDrawings.amp.paint();
+  paintVcfThumb();
+  if (!el.vcfEnvPop.hidden) {
+    // Its heading gone - another tab, the filter off - takes it with it.
+    if (!el.vcfEnvOpen.getClientRects().length || el.vcfEnvOpen.disabled) setVcfEnvOpen(false);
+    else envDrawings.vcf.paint();
+  }
+  // The Envelope following the amp envelope shows the amp's numbers.
+  if (amp && !el.menvOwn.checked) paintMenv();
 }
-for (const id of ["envAttack", "envDecay", "envSustain", "envRelease"]) {
+for (const id of ["envAttack", "envDecay", "envSustain", "envRelease", "vcfAtk", "vcfDec", "vcfSus", "vcfRel"]) {
   el[id].addEventListener("input", paintAmpEnv);
 }
 
@@ -25429,6 +25827,7 @@ const CONTROL_WORDS = {
   "vcfRes": ["Resonance", "How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure."],
   "vcfTrack": ["Key track", "How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller."],
   "vcfEnvAmt": ["Envelope", "How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts."],
+  "vcfEnvOpen": ["Its envelope", "Opens the filter envelope's drawing over the section: drag its peak, corner and end, which turn the four knobs below."],
   "vcfAtk": ["Attack", "How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought."],
   "vcfDec": ["Decay", "How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah."],
   "vcfSus": ["Sustain", "Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again."],
@@ -25580,14 +25979,13 @@ const CONTROL_WORDS = {
   "lfoRate0": ["Rate", "How fast the LFO sweeps, from 0.01 to 8 cycles a second. Greyed while Sync locks it to the tempo."],
   "srcDetail-add": ["Add a destination", "Puts this source on another control, from every one it can reach. Dragging its card onto a knob does the same."],
   "menvOwn": ["Its own", "Gives the Envelope four times of its own, one swell for the notes held. Off, it follows Play’s amp envelope."],
-  "menvFollow": ["Follows the amp envelope", "The Envelope rises and falls with Play’s amp envelope, whose curve it draws greyed: set it on Play."],
-  "menvItsOwn": ["Its own", "Gives the Envelope four times of its own, one swell for the notes held, drawn over its knobs."],
-  "menvPhrase": ["Each phrase", "Starts when you play after silence; notes played while it is open join the same swell. Only with its own envelope."],
-  "menvEvery": ["Every note", "Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Only with its own envelope."],
-  "menvAtk": ["Attack", "How long the Envelope takes to rise when it starts, up to two seconds. Greyed while it follows the amp envelope."],
-  "menvDec": ["Decay", "How long it takes to fall from the top to Sustain, up to four seconds. Greyed while it follows the amp envelope."],
-  "menvSus": ["Sustain", "Where it rests while notes are held, from nought to the top. Greyed while it follows the amp envelope."],
-  "menvRel": ["Release", "How long it takes to fall to nought after the last key lifts, up to four seconds. Greyed while it follows the amp envelope."],
+  "menvFollow": ["Follow the amp envelope", "Puts the Envelope back to following Play’s amp envelope. Its own four are kept, for the next time it is edited."],
+  "menvPhrase": ["Each phrase", "Starts when you play after silence; notes played while it is open join the same swell. Choosing it makes the envelope its own."],
+  "menvEvery": ["Every note", "Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Choosing it makes it its own."],
+  "menvAtk": ["Attack", "How long the Envelope takes to rise when it starts, up to two seconds. Following, it shows Play’s; turning it makes it its own."],
+  "menvDec": ["Decay", "How long it takes to fall from the top to Sustain, up to four seconds. Following, it shows Play’s; turning it makes it its own."],
+  "menvSus": ["Sustain", "Where it rests while notes are held, from nought to the top. Following, it shows Play’s; turning it makes it its own."],
+  "menvRel": ["Release", "How long it takes to fall to nought after the last key lifts, up to four seconds. Turning it while following makes it its own."],
   "keysDown": ["Down an octave", "Moves the on-screen keys down an octave; Z does the same from the computer keyboard."],
   "keysUp": ["Up an octave", "Moves the on-screen keys up an octave; X does the same from the computer keyboard."],
   "keysLatch": ["Tap to hold", "Each tap holds its note until you tap it again, so a mouse can hold a chord. Unticking lets go of every note it held."],
@@ -26359,15 +26757,24 @@ function typeValue(control, text) {
 }
 
 let menuOpenedAt = -Infinity;
-function openControlMenu(control) {
+/* `more`, for a point on a drawing that is more than one control (an
+   envelope's handle, 17 Nov): its controls, all typed, reset and copied
+   together; where it is, its name, and what an edit does first and what
+   Reset does where those are not the control's own. No modulation part:
+   that is on the knobs, under the drawing. */
+function openControlMenu(control, more) {
   if (!control || !control.isConnected) return null;
-  const at = control.closest("[data-mod-dest]");
+  const m = more || {};
+  const controls = m.controls || [control];
+  const at = m.controls ? null : control.closest("[data-mod-dest]");
   const destId = at && at.querySelector('input[type="range"]') === control ? at.dataset.modDest : null;
   const dest = destId ? MOD_DESTS.get(destId) : null;
-  const name = controlName(control);
-  const place = knobFaces.get(control) || control.closest(".menu-row") || control;
+  const name = m.title || controlName(control);
+  const place = m.place || knobFaces.get(control) || control.closest(".menu-row") || control;
+  const beforeEdit = m.beforeEdit || control.beforeTurn;
+  const reset = m.reset || control.knobReset;
   menuOpenedAt = performance.now();
-  const node = openOverlay(place, name, infoValueOf(control), (body) => {
+  const node = openOverlay(place, name, controls.map(infoValueOf).join(" \u00b7 "), (body) => {
     const item = (label, act, extra) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "ctx-item"; b.setAttribute("role", "menuitem");
@@ -26408,26 +26815,39 @@ function openControlMenu(control) {
       }
     }
     const v = part("");
-    if (control.type === "range") {
+    if (controls.every((c) => c.type === "range")) {
+      /* A box for each control, named when there is more than one; Enter in
+         any types every box whose words were changed. */
       v.appendChild(item("Type a value…", () => {
-        v.innerHTML = '<div class="ctx-type"><input type="text" class="ctx-typed" spellcheck="false" autocomplete="off"></div>';
-        const box = v.querySelector("input");
-        box.value = infoValueOf(control);
-        box.setAttribute("aria-label", "Type a value for " + name);
-        box.addEventListener("keydown", (event) => {
-          if (event.key !== "Enter") return;
-          event.preventDefault();
-          if (typeValue(control, box.value)) closeOverlay(); else box.select();
+        v.innerHTML = controls.map(() => '<div class="ctx-type"><input type="text" class="ctx-typed" spellcheck="false" autocomplete="off"></div>').join("");
+        const boxes = Array.from(v.querySelectorAll("input"));
+        boxes.forEach((box, i) => {
+          box.value = infoValueOf(controls[i]);
+          box.defaultValue = box.value;
+          box.setAttribute("aria-label", "Type a value for " + (controls.length > 1 ? controlName(controls[i]) : name));
+          if (controls.length > 1) box.placeholder = controlName(controls[i]);
+          box.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            const typed = boxes.map((b, k) => [b, controls[k]]).filter(([b], k) => k === i || b.value !== b.defaultValue);
+            if (typed.some(([b]) => !Number.isFinite(readingNumber(b.value)))) { box.select(); return; }
+            if (beforeEdit) beforeEdit();
+            for (const [b, c] of typed) typeValue(c, b.value);
+            closeOverlay();
+          });
         });
-        box.focus(); box.select();
+        boxes[0].focus(); boxes[0].select();
       }, { key: "type" }));
     }
-    v.appendChild(item("Reset", () => { closeOverlay(); gestureAround(control, () => writeControl(control, resetTarget(control))); },
-                       { side: resetText(control), key: "reset" }));
-    if (copiesToOtherHand(control)) {
+    v.appendChild(item("Reset", () => {
+      closeOverlay();
+      if (reset) { reset(); return; }
+      for (const c of controls) gestureAround(c, () => writeControl(c, resetTarget(c)));
+    }, { side: reset ? m.resetText || control.knobResetText || "" : controls.map(resetText).join(" \u00b7 "), key: "reset" }));
+    if (controls.every(copiesToOtherHand)) {
       const other = handName(editLayer() === 1 ? 0 : 1);
       v.appendChild(item(midi.layers.mode === "split" ? "Copy to the " + other + " hand" : "Copy to " + other,
-                         () => { closeOverlay(); copyToOtherHand(control); },
+                         () => { closeOverlay(); for (const c of controls) copyToOtherHand(c); },
                          { key: "copy" }));
     }
     if (wordsKey(control)) part("").appendChild(item("What is this?", () => { closeOverlay(); openInfoCard(control); }, { key: "what" }));
@@ -26442,17 +26862,31 @@ function openControlMenu(control) {
       items[(go + items.length) % items.length].focus();
     });
     return null;
-  }, { where: "beside", cls: "ctx", role: "menu", opener: control });
+  }, { where: "beside", cls: "ctx", role: "menu", opener: m.opener || control });
   const first = node.querySelector(".ctx-item");
   if (first) first.focus();
   return node;
 }
 
+// An envelope's handle with a menu of its own (envelopeDrawing; the fade's has none).
+function envHandleAt(node) {
+  const handle = node instanceof Element ? node.closest(".env-handle") : null;
+  return handle && handle.envDrawing && handle.envDrawing.menu ? handle : null;
+}
+function openEnvHandleMenu(handle) {
+  menuOpenedAt = performance.now();
+  return handle.envDrawing.menu(handle.dataset.handle, handle);
+}
 document.addEventListener("contextmenu", (event) => {
   const t = event.target;
   // A text box keeps the browser's own, for Paste.
   if (takesText(t)) return;
   event.preventDefault();
+  const handle = envHandleAt(t);
+  if (handle) {
+    if (!(performance.now() - menuOpenedAt < 700 && overlay && overlay.opener === handle)) openEnvHandleMenu(handle);
+    return;
+  }
   const control = menuControl(t);
   // The long press or the key already opened it; the event that follows is the same press.
   if (!control || (performance.now() - menuOpenedAt < 700 && overlay && overlay.opener === control)) return;
@@ -26460,6 +26894,8 @@ document.addEventListener("contextmenu", (event) => {
 });
 document.addEventListener("keydown", (event) => {
   if (!(event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey))) return;
+  const handle = envHandleAt(document.activeElement);
+  if (handle) { event.preventDefault(); openEnvHandleMenu(handle); return; }
   const control = menuControl(document.activeElement);
   if (!control) return;
   event.preventDefault();
@@ -26471,6 +26907,16 @@ document.addEventListener("pointerdown", (event) => {
   clearTimeout(longPress.timer);
   longPress.at = null;
   if (event.pointerType !== "touch") return;
+  const handle = envHandleAt(event.target);
+  if (handle) {
+    longPress.at = [event.clientX, event.clientY];
+    longPress.timer = setTimeout(() => {
+      longPress.at = null;
+      handle.envDrawing.cancel();
+      openEnvHandleMenu(handle);
+    }, LONG_PRESS_MS);
+    return;
+  }
   const control = menuControl(event.target);
   if (!control) return;
   longPress.at = [event.clientX, event.clientY];
@@ -26523,8 +26969,17 @@ const KNOB_FINE = 0.22;
 const KNOB_DOUBLE_MS = 320;
 const RANGE_VALUE = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
 const knobFaces = new WeakMap();
+envDrawings.knobs = true;
 
-function knobFraction(input, value = Number(input.value)) {
+/* What a knob shows: its value, or what a control says it shows instead -
+   the Envelope's four show the amp envelope's while they follow it (17 Nov),
+   and turning one from there turns it from what it showed. */
+function knobValue(input) {
+  const shown = input.knobShows ? input.knobShows() : null;
+  return shown === null || shown === undefined ? Number(input.value) : shown;
+}
+
+function knobFraction(input, value = knobValue(input)) {
   const lo = Number(input.min), hi = Number(input.max);
   if (!(hi > lo)) return 0;
   return Math.min(1, Math.max(0, (value - lo) / (hi - lo)));
@@ -26614,7 +27069,7 @@ function dressKnob(row, input) {
     if (event.button !== 0 || input.disabled || (event.ctrlKey && ALT_KEY === "Option")) return;
     const min = Number(input.min), max = Number(input.max);
     if (!(max > min)) return;
-    from = { y: event.clientY, value: Number(input.value), min, max, moved: false };
+    from = { y: event.clientY, value: knobValue(input), min, max, moved: false };
     if (event.altKey) {
       const routing = knobRouting(input);
       if (routing) { from.depth = routing; from.start = depthOf(routing); showDepth(input, routing); }
@@ -26646,7 +27101,9 @@ function dressKnob(row, input) {
     const step = Number(input.step) || 1;
     // Held to ten places, so a step of 0.01 writes "0.3" and not 0.30000000000000004.
     const value = String(Number((Math.round((next - from.min) / step) * step + from.min).toFixed(10)));
-    if (value === input.value) return;
+    if (value === String(knobValue(input))) return;
+    // What an edit does first, where a control has something to do (the Envelope following the amp's).
+    if (input.beforeTurn) input.beforeTurn();
     input.value = value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
@@ -26668,6 +27125,7 @@ function dressKnob(row, input) {
     const now = event.timeStamp;
     if (now - lastTap < KNOB_DOUBLE_MS) {
       lastTap = 0;
+      if (input.knobReset) { input.knobReset(); return; }
       input.value = input.dataset.knobMark !== undefined ? input.dataset.knobMark : input.defaultValue;
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.dispatchEvent(new Event("change", { bubbles: true }));

@@ -7209,3 +7209,48 @@ Also in this batch, the owner's: the Width (the player's and the sound's own) de
 fifty, in the page's markup, `SETUP_FIELDS`, the core's generator and panel, and so the
 plugin's parameter; and *Speakers get* and the lag's *Heard*, which measure nought on the
 generator, are shown only while a live input plays (`speakerstest.py`).
+
+## Envelopes taken hold of, and the Envelope following until edited (17 Nov)
+
+**One drawing for every envelope.** The fade's envelope in Routings was the one drawing
+with handles; the amp envelope's curve on Play and the Envelope card's in its editor were
+pictures, one an SVG stretched to fill its width and one a canvas. Since 17 Nov all of them
+are `envelopeDrawing`, the fade's code made general: a frame (where it is drawn) and a spec
+(what it reads, what a handle writes). The knobs' three are `knobEnvelope` over it, writing
+their knobs as a hand on the knob does - the value, an input event as it moves, a change
+event as it lets go - so the host, the morph, a hand's link and undo hear nothing new, and
+undo makes one step of a drag because it waits for the pointer to lift. `dragenvtest.py`.
+
+Three things that were wrong on the way, each worth knowing:
+
+- **A drawing stretched to fill its width cannot be held.** The amp's curve scaled its
+  stretches by their sum, so dragging the attack moved every other corner, and a handle ran
+  away from the pointer. The knobs' drawings use the fade's rule - each stretch the square
+  root of its time over its knob's range - and start the release at one place whatever the
+  attack and decay, the hold taking the slack (`holdAt`), so the release's handle stays put
+  while the corner moves. The cost is a curve that sits to the left at short times.
+- **`preserveAspectRatio="none"` makes handles ovals.** The knobs' drawings set their
+  viewBox to their own size in pixels on every paint (`envPixelFrame`), which keeps a circle
+  a circle at any column width, and repaint when the size changes, not only the values.
+- **Two document Escape listeners run in the order they were added.** The voice filter's
+  drawing is not an overlay (a handle's right-click menu is one, and opening an overlay
+  shuts the last), so it has its own Esc; added earlier in the script than the overlay's,
+  it ran first and shut itself with the menu still open over it. It now stands aside while
+  an overlay is open.
+
+**The voice filter's drawing opens from its heading.** A drawing in the section did not fit
+Play at every window: at 1100x860 the filter shares a column with the amp envelope, with 27
+px to spare, and the drawing is 40. So *Its envelope* is a button with a small copy of the
+curve, opening the drawing over the section's top, above the heading so the four knobs stay
+in sight.
+
+**Following is shown, not stored.** The Envelope follows the amp envelope until it is
+edited. Following, its knobs hold the stored four (a setup's `menvAtk`..`menvRel`, which a
+code carries whether it follows or not) and show the amp's through `knobShows`, which
+`knobValue` reads for the face and the drag's start. Writing the amp's into them instead
+would have changed every code saved while following, and a preset's round trip. The first
+edit - the knob turned (`beforeTurn` in `dressKnob`), an arrow on it, a value typed, a
+handle - copies the amp's four in, applies the edit, and sets `menvOwn` (`menvAdopt`);
+Reset, two presses, and *Follow* set it back (`menvFollowAmp`, `knobReset`). `setControl`,
+which suites use, is no hand and adopts nothing: a suite that wants it its own sets the
+checkbox.

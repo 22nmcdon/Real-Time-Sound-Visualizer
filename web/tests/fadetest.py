@@ -228,7 +228,7 @@ with sync_playwright() as pw:
                   el.fadeEnv.scrollIntoView({ block: 'nearest' }); }""")
     p.wait_for_timeout(200)
     def drag(name, dx, dy):
-        box = p.locator('[data-handle="%s"]' % name).bounding_box()
+        box = p.locator('#fadeEnv [data-handle="%s"]' % name).bounding_box()
         x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
         p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x + dx / 2, y + dy / 2); p.mouse.move(x + dx, y + dy); p.mouse.up()
     E = "() => { const e = fade.envs[0]; return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, typeof v === 'number' ? +v.toFixed(3) : v])); }"
@@ -237,7 +237,7 @@ with sync_playwright() as pw:
           [unmoved[k] for k in ("delay", "attack", "decay", "sustain", "attackMid", "releaseMid")] == [0, 1, 1, 0.6, 0.5, 0.5],
           str(unmoved))
     drag("wait", 20, 0); drag("peak", 25, 0); drag("corner", 15, -15); drag("attackMid", 0, -12); drag("releaseMid", 0, 8)
-    p.locator('[data-handle="end"]').focus(); p.keyboard.press("ArrowRight")
+    p.locator('#fadeEnv [data-handle="end"]').focus(); p.keyboard.press("ArrowRight")
     moved = p.evaluate(E)
     print("    after dragging and a key: %s" % moved)
     check("dragging moves each stretch: the wait longer, the attack longer, the corner later and higher, the shapes quicker",
