@@ -2862,31 +2862,33 @@ check("codes with integer keys keep V8's order", any(l.startswith('read {"1":5,"
 # Version 5, read off the page's own line: a version-4 code loses the cut
 # features' fields and their routes and keeps everything else as written.
 v4_read = sjs[scmds.index("decode " + code_of(V4_CODE))]
+# The version a code comes up to (12 since the EQ's switch became a field, 17 Nov), read from the core.
+_setup_v = int(re.search(r"kSetupVersion = (\d+)", open(os.path.join(CORE, "include", "scope", "setup.h")).read()).group(1))
 check("a version-4 code comes up to date without the crossings', threshold's and pluck's fields or routes, the rest as written",
-      v4_read.startswith("read ") and '"v":11' in v4_read and '"freq":330' in v4_read
+      v4_read.startswith("read ") and '"v":%d' % _setup_v in v4_read and '"freq":330' in v4_read
       and '"mod":" lfo1>gen.amp@0.400"' in v4_read and not any('"%s"' % k in v4_read for k in GONE_V5), v4_read)
 # Version 6 likewise: a version-5 code loses the macros' fields and every
 # route from a macro, and keeps the rest as written, spaces and all.
 v5_read = sjs[scmds.index("decode " + code_of(V5_CODE))]
 check("a version-5 code comes up to date without the macros' values, names or routes, the rest as written",
-      v5_read.startswith("read ") and '"v":11' in v5_read and '"freq":330' in v5_read
+      v5_read.startswith("read ") and '"v":%d' % _setup_v in v5_read and '"freq":330' in v5_read
       and '"mod":" lfo1>gen.amp@0.400"' in v5_read and not any('"%s"' % k in v5_read for k in GONE_V6), v5_read)
 # Version 7 likewise: a version-6 code saved with the latch on loses it.
 v6_read = sjs[scmds.index("decode " + code_of(V6_CODE))]
 check("a version-6 code comes up to date without the latch, the rest as written",
-      v6_read.startswith("read ") and '"v":11' in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
+      v6_read.startswith("read ") and '"v":%d' % _setup_v in v6_read and '"freq":330' in v6_read and '"midiMode":"poly"' in v6_read
       and '"midiLatch"' not in v6_read, v6_read)
 v7_read = sjs[scmds.index("decode " + code_of(V7_CODE))]
 check("a version-7 code comes up to date without the kaleidoscope, its snap of three bits at five and of six as it was",
-      v7_read.startswith("read ") and '"v":11' in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
+      v7_read.startswith("read ") and '"v":%d' % _setup_v in v7_read and '"freq":330' in v7_read and "Kaleido" not in v7_read
       and '"planeSnap":5' in v7_read and '"bSnap":6' in v7_read, v7_read)
 v8_read = sjs[scmds.index("decode " + code_of(V8_CODE))]
 check("a version-8 code comes up to date without the cut sources' routes or the controllers' names, the near misses, Key and hearing kept",
-      v8_read.startswith("read ") and '"v":11' in v8_read and '"freq":330' in v8_read and '"cc"' not in v8_read
+      v8_read.startswith("read ") and '"v":%d' % _setup_v in v8_read and '"freq":330' in v8_read and '"cc"' not in v8_read
       and '"mod":" lfo1>gen.amp@0.400;midi.key>gen.fm@0.300;cc.x>gen.amp@1;notes.counts>gen.amp@1;hear.bright>gen.freq@0.1"' in v8_read,
       v8_read)
 def v10_done(line):
-    return (line.startswith("read ") and '"v":11' in line and '"gen":"wave"' in line and '"freq":330' in line
+    return (line.startswith("read ") and '"v":%d' % _setup_v in line and '"gen":"wave"' in line and '"freq":330' in line
             and '"inputMode":1' in line and '"inputDepth":40' in line and '"mod":' + V9_KEPT in line
             and not any('"%s"' % k in line for k in GONE_V10))
 v9_read = sjs[scmds.index("decode " + code_of(V9_CODE))]
@@ -2903,8 +2905,8 @@ check("and one that named no kind is the waveform too", v9_bare.startswith("read
 check("and the random codes reach the drawings' pass both ways: routes it drops, near misses it keeps, fields and kinds it takes out",
       sum(1 for l in sjs if '"mod":"draw.swing>gen.freq@0.500;' in l) >= 1
       and sum(1 for l in sjs if '"mod":"draw.swings>gen.amp@1;xdraw.pendulum>gen.amp@1;lfo1>gen.detailx@1;lfo1>gen.depthy@0.2;lfo2>gen.turn@0.5"' in l) >= 2
-      and sum(1 for l in sjs if l.startswith("read ") and '"v":11' in l and '"gen":"harmonograph"' in l) >= 1
-      and sum(1 for l in sjs if l.startswith("read ") and '"gen":"wave"' in l and '"v":11' in l) >= 20)
+      and sum(1 for l in sjs if l.startswith("read ") and '"v":%d' % _setup_v in l and '"gen":"harmonograph"' in l) >= 1
+      and sum(1 for l in sjs if l.startswith("read ") and '"gen":"wave"' in l and '"v":%d' % _setup_v in l) >= 20)
 check("and the random codes reach the macros' pass both ways: routes it drops, near misses it keeps, fields it takes out",
       sum(1 for l in sjs if '"mod":"macro.5>gen.vcf@0.5;macro>gen.amp@1;lfo1>macro.1@1"' in l) >= 1
       and sum(1 for l in sjs if '"mod":"macro.1>gen.vcf@0.700;' in l) >= 1

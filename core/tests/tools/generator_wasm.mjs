@@ -62,6 +62,8 @@ function run(head, events) {
     return { shape, rate: Number(hz), depth: 0.5, phase: 0, held: 0, value: 0, epoch: 0 };
   });
   const core = build(Number(p.seed))(rate, Number(p.slots), lfos);
+  // At the Width the runs were recorded at, one, as generator_cpp sets it (the default is a half since 17 Nov).
+  core.set("stereoWidth", 1); core.set("drawnWidth", 1);
   const out = [];
   const bufs = Array.from({ length: 6 }, () => new Float32Array(N));
   let input = null, inHz = 0, inAmp = 0, inDc = 0, fx = false, gated = false;
