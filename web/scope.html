@@ -10184,8 +10184,21 @@ function brainProcessor() {
       this.chunk = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(CHUNK));
       this.picture = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(128));
       this.lanes = 2;
+      /* A chunk's lanes go to the page by transfer, and the page sends their
+         buffers back once it has copied them into its ring: a lane is taken
+         from these before one is made. Until the review (17 Nov) every chunk
+         made a new lane each, about ninety times a second, for the collector
+         to stop this thread over. One message and one list, refilled. */
+      this.spare = [];
+      this.message = { lanes: [], readings: null };
+      this.transfer = [];
       try {
-        this.brain = makeWasmBrain(new WebAssembly.Module(o.wasm), sampleRate, 128, o.code);
+        /* The module compiled once, on the page, and handed over (the review):
+           until then the bytes were copied and compiled again here, on the
+           audio thread. The bytes still work, for a browser that will not
+           pass a module to a worklet (makeBrainHost falls back to them). */
+        const module = o.wasm instanceof WebAssembly.Module ? o.wasm : new WebAssembly.Module(o.wasm);
+        this.brain = makeWasmBrain(module, sampleRate, 128, o.code);
         /* The state at once, before a block: a context the browser has not
            let start yet runs no blocks, and the page shows what the
            instrument is from the moment it is made. */
@@ -10196,6 +10209,10 @@ function brainProcessor() {
       this.port.onmessage = (event) => this.hand(event.data);
     }
     hand(m) {
+      if (m && m.recycle) {
+        for (const buffer of m.recycle) if (buffer.byteLength === CHUNK * 4 && this.spare.length < 24) this.spare.push(new Float32Array(buffer));
+        return;
+      }
       const b = this.brain;
       if (!b || !m) return;
       try { b.hand(m); } catch (error) { this.fail(error); }
@@ -10220,9 +10237,13 @@ function brainProcessor() {
         for (let k = 0; k < n; k++) {
           for (let c = 0; c < lanes; c++) this.chunk[c][this.filled] = this.picture[c][k];
           if (++this.filled === CHUNK) {
-            const sentLanes = this.chunk.slice(0, lanes), readings = b.readings();
-            this.port.postMessage({ lanes: sentLanes, readings }, sentLanes.map((lane) => lane.buffer).concat([readings.grid.buffer]));
-            for (let c = 0; c < lanes; c++) this.chunk[c] = new Float32Array(CHUNK);
+            // The readings are the brain's, filled in place, and copied by the post; the lanes go by transfer.
+            const m = this.message;
+            m.lanes.length = 0; this.transfer.length = 0;
+            for (let c = 0; c < lanes; c++) { m.lanes.push(this.chunk[c]); this.transfer.push(this.chunk[c].buffer); }
+            m.readings = b.readings();
+            this.port.postMessage(m, this.transfer);
+            for (let c = 0; c < lanes; c++) this.chunk[c] = this.spare.length ? this.spare.pop() : new Float32Array(CHUNK);
             this.filled = 0;
           }
         }
@@ -10252,6 +10273,10 @@ function generatorModuleSource() {
   return [
     bind("servedReadings", String(servedReadings)),
     bind("SERVED_LENGTH", SERVED_LENGTH),
+    bind("SERVED_CLOCKS", JSON.stringify(SERVED_CLOCKS)),
+    bind("SERVED_VERDICTS", JSON.stringify(SERVED_VERDICTS)),
+    bind("SERVED_STAGES", JSON.stringify(SERVED_STAGES)),
+    bind("SERVED_MOVES", JSON.stringify(SERVED_MOVES)),
     bind("fadeGainsRead", String(fadeGainsRead)),
     bind("makeWasmBrain", String(makeWasmBrain)),
     "(" + String(brainProcessor) + ")();",
@@ -10659,23 +10684,34 @@ function syncMonitor() {
   for (const chain of monitorChains) {
     const at = chain.ctx.currentTime;
     tuneMonitorAC(chain);
+    /* Only a target that has moved is scheduled (the review, 17 Nov): this
+       runs every frame, and thirteen setTargetAtTime calls a frame for
+       targets that had not changed filled each parameter's timeline with
+       events for the audio thread to walk. A glide already under way goes
+       on towards the target it was given. */
+    const aim = chain.aimed || (chain.aimed = new Map());
+    const glide = (param, value, tau) => {
+      if (aim.get(param) === value) return;
+      aim.set(param, value);
+      param.setTargetAtTime(value, at, tau);
+    };
     /* The delay only follows tau while the lag is on. Gliding a delay time is
        a pitch bend, and one swooping up from nothing every time the lag was
        switched back on would be a noise nobody asked for. */
-    if (lagOn) chain.lagDelay.delayTime.setTargetAtTime(lagTau, at, MONITOR_GLIDE);
-    chain.lagWet.gain.setTargetAtTime(lagMix, at, MONITOR_GLIDE);
-    chain.lagDry.gain.setTargetAtTime(1 - lagMix, at, MONITOR_GLIDE);
-    chain.acWet.gain.setTargetAtTime(ac, at, MONITOR_GLIDE);
-    chain.acDry.gain.setTargetAtTime(1 - ac, at, MONITOR_GLIDE);
+    if (lagOn) glide(chain.lagDelay.delayTime, lagTau, MONITOR_GLIDE);
+    glide(chain.lagWet.gain, lagMix, MONITOR_GLIDE);
+    glide(chain.lagDry.gain, 1 - lagMix, MONITOR_GLIDE);
+    glide(chain.acWet.gain, ac, MONITOR_GLIDE);
+    glide(chain.acDry.gain, 1 - ac, MONITOR_GLIDE);
     if (chain.filter.type !== now.type) chain.filter.type = now.type;
-    chain.filter.frequency.setTargetAtTime(now.hz, at, MONITOR_GLIDE);
-    chain.filter.Q.setTargetAtTime(q, at, MONITOR_GLIDE);
-    chain.wet.gain.setTargetAtTime(wet, at, 0.01);
-    chain.dry.gain.setTargetAtTime(1 - wet, at, 0.01);
-    chain.rot[0].gain.setTargetAtTime(cos, at, MONITOR_GLIDE);
-    chain.rot[1].gain.setTargetAtTime(-sin, at, MONITOR_GLIDE);
-    chain.rot[2].gain.setTargetAtTime(sin, at, MONITOR_GLIDE);
-    chain.rot[3].gain.setTargetAtTime(cos, at, MONITOR_GLIDE);
+    glide(chain.filter.frequency, now.hz, MONITOR_GLIDE);
+    glide(chain.filter.Q, q, MONITOR_GLIDE);
+    glide(chain.wet.gain, wet, 0.01);
+    glide(chain.dry.gain, 1 - wet, 0.01);
+    glide(chain.rot[0].gain, cos, MONITOR_GLIDE);
+    glide(chain.rot[1].gain, -sin, MONITOR_GLIDE);
+    glide(chain.rot[2].gain, sin, MONITOR_GLIDE);
+    glide(chain.rot[3].gain, cos, MONITOR_GLIDE);
   }
 }
 
@@ -10822,6 +10858,22 @@ function makeBrainHost() {
     if (stand) { try { stand.hand(message); } catch (error) { stand = null; source.standIn(null); } }
   };
 
+  /* What the worklet compiles its instrument from: the module this page
+     compiled already (wasmModule), where the browser will pass one to a
+     worklet, and the bytes where it will not. Asked once, by posting the
+     module to a channel of its own, since a refusal there is the same
+     refusal the node's options would meet. */
+  function workletWasm() {
+    try {
+      const module = wasmModule(), channel = new MessageChannel();
+      channel.port1.postMessage(module);
+      channel.port1.close(); channel.port2.close();
+      return module;
+    } catch (error) {
+      return wasmCore().slice().buffer;
+    }
+  }
+
   async function start() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     noteDeviceRate(ctx.sampleRate);
@@ -10840,7 +10892,7 @@ function makeBrainHost() {
         numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
         channelCount: 2, channelCountMode: "explicit", channelInterpretation: "speakers",
         // The setup the page opened on, as the plugin opens on its boot preset.
-        processorOptions: { wasm: wasmCore().slice().buffer, code },
+        processorOptions: { wasm: workletWasm(), code },
       });
       node.port.onmessage = (event) => {
         const m = event.data;
@@ -10851,6 +10903,9 @@ function makeBrainHost() {
         if (m.lanes) {
           if (stand) { stand = null; source.standIn(null); }
           source.absorb(m.lanes, m.readings);
+          // Copied into the ring by now: the buffers go back, for the worklet's next chunk.
+          const back = m.lanes.map((lane) => lane.buffer);
+          node.port.postMessage({ recycle: back }, back);
         }
         if (m.out) for (const bytes of m.out) midiOutFromCore(bytes);
       };
@@ -11138,39 +11193,77 @@ function makeBrainSource() {
    for both, so the plugin's face and the site's read the same numbers the
    same way. Stringified into the worklet's module with makeWasmBrain, so it
    reaches for nothing on this side. */
-function servedReadings(r, at) {
-  const c = at, f = at + 12;
-  const verdicts = ["listening", "settled", "cycling", "wandering", "running away"];
-  return {
-    clock: { rates: [r[c], r[c + 1]], bpm: r[c + 2], set: r[c + 3], from: ["internal", "midi", "host"][r[c + 4]] || "internal",
-             running: r[c + 5] === 1, beat: r[c + 6], score: { on: r[c + 7] === 1, col: r[c + 8], steps: r[c + 9] } },
-    limiter: { reduction: r[c + 10], limiting: r[c + 11] },
-    meter: { verdict: verdicts[r[f]] || "listening", change: r[f + 1], seen: r[f + 2] },
+function servedReadings(r, at, into) {
+  /* Filled in place when given what it filled last (the worklet's readings,
+     about ninety times a second): the review (17 Nov) found the audio thread
+     making some thirty objects a reading, every 512 frames, for the collector
+     to stop it over. Made fresh when not (the plugin's fetches). */
+  const o = into || {
+    clock: { rates: [0, 0], bpm: 0, set: 0, from: "internal", running: false, beat: 0, score: { on: false, col: 0, steps: 0 } },
+    limiter: { reduction: 0, limiting: 0 },
+    meter: { verdict: "listening", change: 0, seen: 0 },
     face: {
-      photo: r[f + 3], photoRaw: r[f + 4],
-      stage: { glow: r[f + 5], motion: r[f + 6], memory: r[f + 7], hold: r[f + 8] },
-      picture: { round: r[f + 9], cover: r[f + 10], change: r[f + 11], novelty: r[f + 12], signed: r[f + 13], bored: r[f + 14] },
-      offsets: { "view.rotate": r[f + 15], "view.lag": r[f + 16], "filter.cutoff": r[f + 17], "filter.res": r[f + 18],
-                 "view.zoom": r[f + 19], "trig.position": r[f + 20], "view.scale1": r[f + 21], "view.scale2": r[f + 22],
-                 // Since 5b's second half the rest of the lanes' full scale and the morph's fader, so no visual destination is the page's to sum.
-                 "view.scale3": r[f + 24], "view.scale4": r[f + 25], "view.scale5": r[f + 26], "view.scale6": r[f + 27],
-                 "morph.pos": r[f + 28] },
-      figures: r[f + 23],
-      // The arpeggio's notes sounding, the instrument's, which the face shows in place of a walk of its own.
-      arp: [r[f + 29], r[f + 30]].filter((n) => n >= 0),
-      // The instrument's hearing (Instrument::faceServed), for the hearing's sources as the face shows them.
-      hearing: { pitch: r[f + 31], bright: r[f + 32], width: r[f + 33], flux: r[f + 34],
-                 bands: [r[f + 35], r[f + 36], r[f + 37], r[f + 38]], onsets: r[f + 39], idle: r[f + 40] === 1, runs: r[f + 53] },
-      // Where the fade drawing's dot is on each layer (Matrix::dot), or null.
-      dots: [0, 1].map((l) => {
-        const at = f + 41 + 3 * l, stage = ["delay", "attack", "peak", "decay", "sustain", "release", "rest"][r[at]];
-        return stage ? { stage, t: r[at + 1], level: r[at + 2] } : null;
-      }),
-      // The outline of each layer's voices and of both (outlineOf), for the harmony line.
-      outlines: [[r[f + 47], r[f + 48]], [r[f + 49], r[f + 50]], [r[f + 51], r[f + 52]]].map((p) => (p[0] > 0 && p[1] > 0 ? p : null)),
+      photo: 0, photoRaw: 0,
+      stage: { glow: 0, motion: 0, memory: 0, hold: 0 },
+      picture: { round: 0, cover: 0, change: 0, novelty: 0, signed: 0, bored: 0 },
+      offsets: { "view.rotate": 0, "view.lag": 0, "filter.cutoff": 0, "filter.res": 0, "view.zoom": 0, "trig.position": 0,
+                 "view.scale1": 0, "view.scale2": 0, "view.scale3": 0, "view.scale4": 0, "view.scale5": 0, "view.scale6": 0,
+                 "morph.pos": 0 },
+      figures: 0, arp: [],
+      hearing: { pitch: 0, bright: 0, width: 0, flux: 0, bands: [0, 0, 0, 0], onsets: 0, idle: false, runs: 0 },
+      dots: [null, null], outlines: [null, null, null],
     },
   };
+  // What a dot or an outline is when it is one, kept out of sight of a clone and a comparison.
+  if (!into) {
+    Object.defineProperty(o.face, "dotsKept", { value: [{ stage: "rest", t: 0, level: 0 }, { stage: "rest", t: 0, level: 0 }] });
+    Object.defineProperty(o.face, "outlinesKept", { value: [[0, 0], [0, 0], [0, 0]] });
+  }
+  const c = at, f = at + 12, clock = o.clock, face = o.face;
+  clock.rates[0] = r[c]; clock.rates[1] = r[c + 1]; clock.bpm = r[c + 2]; clock.set = r[c + 3];
+  clock.from = SERVED_CLOCKS[r[c + 4]] || "internal";
+  clock.running = r[c + 5] === 1; clock.beat = r[c + 6];
+  clock.score.on = r[c + 7] === 1; clock.score.col = r[c + 8]; clock.score.steps = r[c + 9];
+  o.limiter.reduction = r[c + 10]; o.limiter.limiting = r[c + 11];
+  o.meter.verdict = SERVED_VERDICTS[r[f]] || "listening"; o.meter.change = r[f + 1]; o.meter.seen = r[f + 2];
+  face.photo = r[f + 3]; face.photoRaw = r[f + 4];
+  const stage = face.stage, picture = face.picture, offsets = face.offsets, hearing = face.hearing;
+  stage.glow = r[f + 5]; stage.motion = r[f + 6]; stage.memory = r[f + 7]; stage.hold = r[f + 8];
+  picture.round = r[f + 9]; picture.cover = r[f + 10]; picture.change = r[f + 11];
+  picture.novelty = r[f + 12]; picture.signed = r[f + 13]; picture.bored = r[f + 14];
+  offsets["view.rotate"] = r[f + 15]; offsets["view.lag"] = r[f + 16]; offsets["filter.cutoff"] = r[f + 17];
+  offsets["filter.res"] = r[f + 18]; offsets["view.zoom"] = r[f + 19]; offsets["trig.position"] = r[f + 20];
+  offsets["view.scale1"] = r[f + 21]; offsets["view.scale2"] = r[f + 22];
+  // Since 5b's second half the rest of the lanes' full scale and the morph's fader, so no visual destination is the page's to sum.
+  offsets["view.scale3"] = r[f + 24]; offsets["view.scale4"] = r[f + 25]; offsets["view.scale5"] = r[f + 26];
+  offsets["view.scale6"] = r[f + 27]; offsets["morph.pos"] = r[f + 28];
+  face.figures = r[f + 23];
+  // The arpeggio's notes sounding, the instrument's, which the face shows in place of a walk of its own.
+  face.arp.length = 0;
+  if (r[f + 29] >= 0) face.arp.push(r[f + 29]);
+  if (r[f + 30] >= 0) face.arp.push(r[f + 30]);
+  // The instrument's hearing (Instrument::faceServed), for the hearing's sources as the face shows them.
+  hearing.pitch = r[f + 31]; hearing.bright = r[f + 32]; hearing.width = r[f + 33]; hearing.flux = r[f + 34];
+  for (let k = 0; k < 4; k++) hearing.bands[k] = r[f + 35 + k];
+  hearing.onsets = r[f + 39]; hearing.idle = r[f + 40] === 1; hearing.runs = r[f + 53];
+  // Where the fade drawing's dot is on each layer (Matrix::dot), or null.
+  for (let l = 0; l < 2; l++) {
+    const at3 = f + 41 + 3 * l, named = SERVED_STAGES[r[at3]], dot = face.dotsKept[l];
+    if (named) { dot.stage = named; dot.t = r[at3 + 1]; dot.level = r[at3 + 2]; }
+    face.dots[l] = named ? dot : null;
+  }
+  // The outline of each layer's voices and of both (outlineOf), for the harmony line.
+  for (let k = 0; k < 3; k++) {
+    const lo = r[f + 47 + 2 * k], hi = r[f + 48 + 2 * k], pair = face.outlinesKept[k];
+    pair[0] = lo; pair[1] = hi;
+    face.outlines[k] = lo > 0 && hi > 0 ? pair : null;
+  }
+  return o;
 }
+const SERVED_CLOCKS = ["internal", "midi", "host"];
+const SERVED_MOVES = ["A", "B", "both"];
+const SERVED_VERDICTS = ["listening", "settled", "cycling", "wandering", "running away"];
+const SERVED_STAGES = ["delay", "attack", "peak", "decay", "sustain", "release", "rest"];
 const SERVED_LENGTH = 12 + 54;
 
 /* The fade's gains as the instrument serves them (Instrument::fadeServed, 5b's
@@ -11217,18 +11310,58 @@ function makeWasmBrain(module, rate, block, code) {
      not changed since the last reading. Here, inside the brain, because the
      brain is what travels into the worklet. */
   const scanStamps = [-1, -1];
-  const scanView = (r) => {
-    const path = (at) => (r[at] === 1 ? { cx: r[at + 1], cy: r[at + 2], r: r[at + 3] } : null);
-    const view = { paths: [path(38), path(42)], reads: [r[46], r[48]], heads: [r[47], r[49]],
-                   tables: [undefined, undefined] };
-    const stamps = [r[50], r[51]];
+  /* Filled in place, as the readings are (below): the paths are kept and
+     handed out or not, and a table is made only when its stamp moves. */
+  const pathsKept = [{ cx: 0, cy: 0, r: 0 }, { cx: 0, cy: 0, r: 0 }];
+  const scanView = (r, view) => {
     for (let l = 0; l < 2; l++) {
-      if (stamps[l] === scanStamps[l]) continue;
-      scanStamps[l] = stamps[l];
+      const at = 38 + 4 * l, kept = pathsKept[l];
+      if (r[at] === 1) { kept.cx = r[at + 1]; kept.cy = r[at + 2]; kept.r = r[at + 3]; }
+      view.paths[l] = r[at] === 1 ? kept : null;
+      view.reads[l] = r[46 + 2 * l]; view.heads[l] = r[47 + 2 * l];
+      view.tables[l] = undefined;
+      const stamp = r[50 + l];
+      if (stamp === scanStamps[l]) continue;
+      scanStamps[l] = stamp;
       view.tables[l] = Array.from(new Float64Array(x.memory.buffer, x.brain_scan_table(l), 128));
     }
     return view;
   };
+  /* The views into the module's memory, made once and again only when the
+     memory has grown (which leaves a view made before it looking at nothing):
+     until the review (17 Nov) a block made a dozen views and subarrays, and
+     a reading a fresh grid, every 128 frames on the audio thread. Each is
+     keyed by where the core says it is, too, so a pointer that moves is
+     followed. */
+  const slot = () => ({ memory: null, at: -1, length: -1, view: null });
+  const view = (kept, Kind, at, length) => {
+    const memory = x.memory.buffer;
+    if (kept.memory !== memory || kept.at !== at || kept.length !== length) {
+      kept.memory = memory; kept.at = at; kept.length = length; kept.view = new Kind(memory, at, length);
+      kept.lanes = null;
+    }
+    return kept.view;
+  };
+  const inputKept = slot(), lanesKept = slot(), readingsAt = slot(), gridKept = slot();
+  // The lanes' eight views into the one block, made with it.
+  const lanesOf = (n) => {
+    const all = view(lanesKept, Float32Array, x.brain_lanes(n), 8 * n);
+    if (!lanesKept.lanes) lanesKept.lanes = [0, 1, 2, 3, 4, 5, 6, 7].map((c) => all.subarray(c * n, (c + 1) * n));
+    return lanesKept.lanes;
+  };
+  // The readings, made once and filled in place: the worklet posts them, and a post is a copy.
+  const layerKept = () => ({ raw: { cover: 0, change: 0 }, glow: 0, motion: 0, memory: 0, hold: 0 });
+  const readingsKept = {
+    envelope: 0, gated: false, envelopeStage: 0, envelopeVelocity: 0,
+    budget: { units: 0, asked: [0, 0], unison: [0, 0], askedFactor: 0, factor: 0, silenced: 0, most: 0 },
+    lfos: [[0, 0, 0], [0, 0, 0]],
+    layers: { live: false, stages: [layerKept(), layerKept()], moves: ["A", "A"] },
+    scan: { paths: [null, null], reads: [0, 0], heads: [0, 0], tables: [undefined, undefined] },
+    grid: new Float32Array(4096), fade: [],
+  };
+  let servedKept = null;
+  // The fade's lines are read again only when their bytes change.
+  let fadeBytes = new Uint8Array(0), fadeLength = -1;
   return {
     read,
     slider(id, value) { id = String(id); put(id + String(value)); return x.brain_slider(id.length) === 1; },
@@ -11256,14 +11389,14 @@ function makeWasmBrain(module, rate, block, code) {
     block(n, heardL, heardR, pictures, inputs) {
       const given = inputs ? Math.min(6, inputs.length) : 0;
       if (given) {
-        const into = new Float32Array(x.memory.buffer, x.brain_input(n), 6 * n);
-        for (let c = 0; c < given; c++) into.set(inputs[c].subarray(0, n), c * n);
+        const into = view(inputKept, Float32Array, x.brain_input(n), 6 * n);
+        for (let c = 0; c < given; c++) into.set(inputs[c].length === n ? inputs[c] : inputs[c].subarray(0, n), c * n);
       }
       const sent = x.brain_block(n, given);
-      const lanes = new Float32Array(x.memory.buffer, x.brain_lanes(n), 8 * n);
-      heardL.set(lanes.subarray(0, n));
-      if (heardR) heardR.set(lanes.subarray(n, 2 * n));
-      for (let c = 0; c < pictures.length && c < 6; c++) pictures[c].set(lanes.subarray((2 + c) * n, (3 + c) * n));
+      const lanes = lanesOf(n);
+      heardL.set(lanes[0]);
+      if (heardR) heardR.set(lanes[1]);
+      for (let c = 0; c < pictures.length && c < 6; c++) pictures[c].set(lanes[2 + c]);
       if (!sent) return null;
       const bytes = new Uint8Array(x.memory.buffer, x.brain_midi_out(), sent);
       const out = [];
@@ -11280,24 +11413,46 @@ function makeWasmBrain(module, rate, block, code) {
        11 Nov 11 and 12 are the envelope's stage and velocity, for the
        Envelope card's dot. */
     readings() {
-      const r = new Float64Array(x.memory.buffer, x.brain_readings(), 52 + SERVED_LENGTH);
+      const r = view(readingsAt, Float64Array, x.brain_readings(), 52 + SERVED_LENGTH), o = readingsKept;
       // Each layer's picture, the instrument's own (P6): read by nothing on
       // the page but a test, since what it moves is moved in the core.
-      const layer = (at) => ({ raw: { cover: r[at], change: r[at + 1] }, glow: r[at + 2], motion: r[at + 3],
-                               memory: r[at + 4], hold: r[at + 5] });
-      return { envelope: r[0], gated: r[1] === 1, envelopeStage: r[11], envelopeVelocity: r[12],
-               budget: { units: r[2], asked: [r[3], r[4]], unison: [r[5], r[6]], askedFactor: r[7], factor: r[8],
-                         silenced: r[9], most: r[10] },
-               lfos: [[r[17], r[18], r[19]], [r[20], r[21], r[22]]],
-               layers: { live: r[23] === 1, stages: [layer(24), layer(30)], moves: [r[36], r[37]].map((m) => ["A", "B", "both"][m]) },
-               scan: scanView(r),
-               // The clock, the limiter, the meter and the face's picture (5a, 5b), as the plugin serves them too.
-               ...servedReadings(r, 52),
-               /* And (5b's second half) the picture's grid, a copy of its
-                  64 by 64 cells, and the fade's gains, as the plugin serves
-                  them in grid.bin and fade.txt (fadeGainsRead). */
-               grid: new Float32Array(new Float32Array(x.memory.buffer, x.brain_grid(), 4096)),
-               fade: fadeGainsRead(this.fadeText()) };
+      const layer = (at, into) => {
+        into.raw.cover = r[at]; into.raw.change = r[at + 1]; into.glow = r[at + 2]; into.motion = r[at + 3];
+        into.memory = r[at + 4]; into.hold = r[at + 5];
+      };
+      o.envelope = r[0]; o.gated = r[1] === 1; o.envelopeStage = r[11]; o.envelopeVelocity = r[12];
+      const budget = o.budget;
+      budget.units = r[2]; budget.asked[0] = r[3]; budget.asked[1] = r[4]; budget.unison[0] = r[5]; budget.unison[1] = r[6];
+      budget.askedFactor = r[7]; budget.factor = r[8]; budget.silenced = r[9]; budget.most = r[10];
+      for (let k = 0; k < 3; k++) { o.lfos[0][k] = r[17 + k]; o.lfos[1][k] = r[20 + k]; }
+      o.layers.live = r[23] === 1;
+      layer(24, o.layers.stages[0]); layer(30, o.layers.stages[1]);
+      o.layers.moves[0] = SERVED_MOVES[r[36]]; o.layers.moves[1] = SERVED_MOVES[r[37]];
+      scanView(r, o.scan);
+      // The clock, the limiter, the meter and the face's picture (5a, 5b), as the plugin serves them too.
+      servedKept = servedReadings(r, 52, servedKept);
+      o.clock = servedKept.clock; o.limiter = servedKept.limiter; o.meter = servedKept.meter; o.face = servedKept.face;
+      /* And (5b's second half) the picture's grid, a copy of its 64 by 64
+         cells, and the fade's gains, as the plugin serves them in grid.bin
+         and fade.txt (fadeGainsRead). */
+      o.grid.set(view(gridKept, Float32Array, x.brain_grid(), 4096));
+      o.fade = this.fadeLines(o.fade);
+      return o;
+    },
+    // The fade's lines, read again only when their bytes have changed since the last.
+    fadeLines(last) {
+      const n = x.brain_fade_gains();
+      if (n <= 0) { fadeLength = 0; return last.length ? [] : last; }
+      const bytes = new Uint8Array(x.memory.buffer, x.brain_fade_gains_out(), n);
+      if (n === fadeLength) {
+        let same = true;
+        for (let i = 0; i < n && same; i++) same = bytes[i] === fadeBytes[i];
+        if (same) return last;
+      }
+      if (fadeBytes.length < n) fadeBytes = new Uint8Array(n * 2);
+      fadeBytes.set(bytes);
+      fadeLength = n;
+      return fadeGainsRead(this.fadeText());
     },
     // The fade's lines (Instrument::fadeServed), as text: empty while the fade is off.
     fadeText() {

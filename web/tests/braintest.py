@@ -564,11 +564,16 @@ with sync_playwright() as pw:
     check("and the comparison fails against the bands one place along", wa["along"] > 0.01, str(wa["along"]))
 
     # A module that will not make: no instrument, and the page stays what it was.
+    # Since the review (17 Nov) the worklet is handed the module this page
+    # compiled (wasmModule) and the bytes only where a browser will not pass
+    # one, so both are broken here: bytes alone left the cached good module
+    # to be handed over, and the instrument made.
     refused = p.evaluate("""async () => {
-      const keep = window.wasmCore;
+      const keep = window.wasmCore, keepModule = window.wasmModule;
       window.wasmCore = () => new Uint8Array([0, 97, 115, 109, 9, 9, 9, 9]);
+      window.wasmModule = () => new WebAssembly.Module(window.wasmCore());
       try { const h = makeBrainHost(); return await h.call('scopeHost'); }
-      finally { window.wasmCore = keep; }
+      finally { window.wasmCore = keep; window.wasmModule = keepModule; }
     }""")
     check("a module that will not make is no instrument, and the page is told so", refused is None, str(refused))
     check("no page errors", not errors, "; ".join(errors[:3]))
