@@ -1,0 +1,1998 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Envelope popover</title>
+<meta name="description" content="Round three of the oscilloscope's drawn envelopes: the popover, with a plainer small block and two takes on a quieter panel.">
+<!-- Not render-blocking, as the brand asks of every webfont: printed first,
+     promoted once loaded, so a reader offline gets the fallback faces. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+/* Two sets of tokens, as the EQ and Play mockups had them. The instrument's
+   are DESIGN.md's, hex for hex, and never move: the instrument has one light,
+   so the mockup of the face stays in it whatever the reader's system says.
+   The page's own (--pg-*) are the paper around the mockup, and follow the
+   reader. No new colour is drawn on the face: the hands' inks are the
+   header's own, the Envelope's is --ch4 as its card has it since G5b. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d;
+  --text: #3a332f; --text-soft: #6b615a; --line: #e4d9cc;
+  --blush: #d9a6a0; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --unresolved: #b6afa4;
+  --wash: rgba(217, 166, 160, 0.16); --wash-strong: rgba(217, 166, 160, 0.26);
+  --ch1: #241f1d; --ch2: #5c6488; --ch3: #4c4921; --ch4: #6f9169; --ch5: #72245e; --ch6: #a6552d;
+  --hand-a: var(--blush-deep); --hand-b: var(--ch3);
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Georgia, serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --pg-bg: #faf6f0; --pg-sheet: #fffcf7; --pg-under: #f2ebe1; --pg-ink: #241f1d;
+  --pg-text: #3a332f; --pg-soft: #6b615a; --pg-line: #e4d9cc; --pg-accent: #c07f79;
+  --pg-accent-soft: #d9a6a0; --pg-good: #6f7f63; --pg-bad: #a4553f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+    --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+    --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+  --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+  --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--pg-bg); color: var(--pg-text);
+  font-family: var(--sans); font-weight: 300; font-size: 16px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px; }
+
+/* ---- the page around the mockup ---- */
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+@media (min-width: 760px) { .page { padding-inline: 24px; } }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--pg-accent); font-weight: 500; margin: 0; }
+h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 34px; line-height: 1.15; margin: 6px 0 8px; }
+h2 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 22px; line-height: 1.25; margin: 34px 0 8px; }
+.lede { font-family: var(--script); font-style: italic; font-size: 20px; line-height: 1.45; max-width: 62ch; margin: 0 0 6px; }
+.page p, .page li { max-width: 72ch; }
+.small { font-size: 13.5px; color: var(--pg-soft); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 12px; }
+.bar .grp { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.bar .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-soft); font-weight: 500; }
+.pg-switch { display: inline-flex; border: 1px solid var(--pg-line); border-radius: 30px; overflow: hidden; flex-wrap: wrap; }
+.pg-switch button { background: none; border: 0; padding: 6px 13px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; color: var(--pg-soft); }
+.pg-switch button:hover { color: var(--pg-accent); }
+.pg-switch button[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); }
+.pg-btn {
+  background: none; border: 1px solid var(--pg-line); border-radius: 30px; padding: 5px 13px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; color: var(--pg-soft);
+}
+.pg-btn:hover { color: var(--pg-accent); border-color: var(--pg-accent-soft); }
+.pg-btn[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); border-color: var(--pg-ink); }
+.stage-wrap { width: 100%; overflow: hidden; position: relative; }
+.stage { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+.fit-line { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; margin: 8px 0 0; color: var(--pg-soft); font-variant-numeric: tabular-nums; }
+.fit-line .ok { color: var(--pg-good); }
+.fit-line .over { color: var(--pg-bad); font-weight: 500; }
+.verdict { display: grid; grid-template-columns: 10em 1fr; gap: 6px 16px; margin: 14px 0 0; max-width: 940px; font-size: 15px; }
+.verdict dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-accent); font-weight: 500; padding-top: 4px; }
+.verdict dd { margin: 0; }
+@media (max-width: 560px) { .verdict { grid-template-columns: 1fr; } .verdict dd { margin-bottom: 8px; } }
+.check-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 940px; font-variant-numeric: tabular-nums; }
+.check-table th, .check-table td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--pg-line); vertical-align: top; }
+.check-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--pg-soft); font-weight: 500; }
+.check-table .ok { color: var(--pg-good); }
+.check-table .bad { color: var(--pg-bad); }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+code { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhere; }
+kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-line); border-bottom-width: 2px; padding: 0 4px; border-radius: 1px; }
+
+/* ---- the window: the instrument at its own size, in its one light ---- */
+.win {
+  --hdr: 71px; --scrcol: 515px; --modrow: 87px; --picrow: 90px; --knob: 36px;
+  width: 1400px; height: 900px; position: relative; overflow: hidden;
+  background: var(--cream); color: var(--text); border: 1px solid var(--line);
+  font-family: var(--sans); font-weight: 300; font-size: 14px; line-height: 1.4;
+  display: grid; grid-template-rows: var(--hdr) minmax(0, 1fr) var(--modrow) var(--picrow);
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06);
+}
+/* The plugin's 960x600 at Auto's 90 per cent: 1067 by 667 of the page's own
+   pixels, which is under 1100 by 860, so the face is compact. */
+.win.compact { --hdr: 44px; --scrcol: 303px; --modrow: 31px; --picrow: 80px; --knob: 30px; width: 1067px; height: 667px; font-size: 13px; }
+.win * { box-sizing: border-box; }
+.win button { color: inherit; }
+.win .caps { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; }
+.win .link-btn { background: none; border: 0; border-bottom: 1px solid var(--blush); padding: 0 0 2px; color: var(--charcoal); }
+.win select { border: 1px solid var(--line); background: var(--paper); border-radius: 1px; padding: 3px 6px; font-size: 13px; color: var(--charcoal); min-width: 0; }
+.win.compact select { font-size: 12px; padding: 2px 4px; }
+
+.hdr { display: flex; align-items: center; gap: 22px; padding: 0 24px 0 134px; border-bottom: 1px solid var(--line); background: var(--cream); }
+.hdr .title { font-family: var(--serif); font-size: 21px; letter-spacing: 0.08em; color: var(--charcoal); font-weight: 600; line-height: 1.1; }
+.hdr .title small { display: block; font-family: var(--script); font-style: italic; font-size: 13px; letter-spacing: 0; color: var(--text-soft); font-weight: 500; }
+.hdr .arrow { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--charcoal); }
+.hdr .preset { line-height: 1.15; }
+.hdr .preset .caps { font-size: 9.5px; color: var(--text-soft); letter-spacing: 0.2em; }
+.hdr .preset b { display: block; font-family: var(--serif); font-weight: 500; font-size: 18px; color: var(--charcoal); }
+.hdr .spacer { flex: 1 1 auto; }
+.hdr .run { border: 1px solid var(--gold); color: var(--gold); border-radius: 30px; padding: 6px 15px; }
+.hdr .edit-hands { display: inline-flex; align-items: center; gap: 8px; }
+.hdr .edit-hands[hidden] { display: none; }
+.hdr .edit-hands .eyebrow-s { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); }
+.win .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; background: var(--paper); }
+.win .switch button { background: none; border: 0; padding: 4px 11px; color: var(--text-soft); display: inline-flex; align-items: center; gap: 5px; }
+.win .switch button[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); }
+.hand-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hand, var(--text-soft)); flex: 0 0 auto; }
+.win.compact .hdr { padding-left: 22px; gap: 14px; }
+.win.compact .hdr .title { font-size: 17px; }
+.win.compact .hdr .title small, .win.compact .hdr .hide-compact { display: none; }
+.win.compact .hdr .preset b { font-size: 15px; }
+.win.compact .hdr .run { border: 0; padding: 0; }
+
+.main { display: grid; grid-template-columns: var(--scrcol) minmax(0, 1fr); min-height: 0; }
+.scr { border-right: 1px solid var(--line); padding: 14px 22px 10px 24px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.scr .tools { display: flex; align-items: center; gap: 14px; }
+.scr .tools .gap { flex: 1 1 auto; }
+.scr .sheet { background: var(--paper); box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06); border: 1px solid var(--line); padding: 16px 16px 18px; }
+.scr canvas { display: block; width: 100%; aspect-ratio: 1; }
+.scr .verdict-line { font-family: var(--script); font-size: 19px; color: var(--sage); }
+.scr .verdict-line span { font-family: var(--sans); font-size: 12.5px; color: var(--text-soft); margin-left: 8px; }
+.win.compact .scr { padding: 10px 14px 6px 20px; gap: 6px; }
+.win.compact .scr .sheet { padding: 8px 10px 10px; }
+.win.compact .scr .verdict-line { font-size: 16px; }
+
+.bench { position: relative; padding: 15px 24px 8px 23px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.win.compact .bench { padding: 10px 20px 6px 18px; }
+.tabs { display: flex; gap: 8px; flex: 0 0 auto; }
+.tab { flex: 1 1 0; border: 1px solid var(--line); background: var(--cream-2); padding: 8px 12px 9px; min-width: 0; }
+.tab b { display: block; font-family: var(--serif); font-weight: 500; font-size: 19px; color: var(--charcoal); line-height: 1.3; }
+.tab span { display: block; font-size: 11.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab.on { background: var(--paper); box-shadow: inset 0 3px 0 var(--blush-deep); }
+.tab.find { flex: 0 0 170px; background: var(--paper); color: var(--unresolved); font-size: 13px; padding-top: 9px; }
+.win.compact .tab { padding: 5px 10px; }
+.win.compact .tab b { font-size: 15px; }
+.win.compact .tab span { display: none; }
+.win.compact .tab.find { flex-basis: 150px; font-size: 12px; }
+
+/* ---- Play, as built since 17 Nov (the keyboard band over three columns) ---- */
+.playbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; margin-top: 10px; }
+.win.compact .playbody { margin-top: 6px; }
+.band { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 18px; padding-bottom: 10px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+.win.compact .band { grid-template-columns: 196px minmax(0, 1fr); gap: 12px; padding-bottom: 6px; }
+.band .left { display: flex; flex-direction: column; gap: 7px; }
+.win.compact .band .left { gap: 4px; }
+.sec-title { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); font-weight: 500; min-height: 20px; }
+.sec-title .dots { margin-left: auto; color: var(--text-soft); letter-spacing: 0.1em; }
+.pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 30px; padding: 1px 8px; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--charcoal); background: var(--paper); }
+.row { display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 26px; }
+.row label, .row .lab { color: var(--text-soft); flex: 0 0 auto; }
+.win.compact .row { min-height: 22px; font-size: 12px; }
+.strip { border: 1px solid var(--line); background: var(--paper); padding: 6px 8px 4px; position: relative; margin-top: 10px; }
+.strip svg { display: block; width: 100%; height: 66px; }
+.win.compact .strip svg { height: 44px; }
+.strip .kswitch { position: absolute; left: 50%; top: -1px; transform: translate(-50%, -50%); }
+.band .hint { font-size: 11.5px; color: var(--text-soft); margin: 4px 0 0; }
+.win.compact .band .hint { font-size: 10.5px; margin-top: 2px; }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 26px; flex: 1 1 auto; min-height: 0; padding-top: 10px; }
+.win.compact .cols { gap: 0 16px; padding-top: 6px; }
+.col { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; }
+.col .sect { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+.col .sect:last-child { border-bottom: 0; }
+.col .sect .row select { flex: 1 1 auto; }
+.col .row .lab { width: 92px; }
+.win.compact .col .row .lab { width: 64px; }
+.free { flex: 1 1 auto; border: 1px dashed var(--line); display: grid; place-items: center; font-size: 11px; color: var(--unresolved); min-height: 0; }
+.mini-knob { display: inline-flex; align-items: center; gap: 8px; }
+
+/* The preview blocks: a drawing that is a button, and the readings under it. */
+.prev { display: block; width: 100%; padding: 0; border: 1px solid var(--line); background: var(--paper); border-radius: 1px; position: relative; text-align: left; }
+.prev:hover { border-color: var(--blush); }
+.prev:hover .open-hint { opacity: 1; }
+.prev svg { display: block; width: 100%; }
+.prev .open-hint { position: absolute; right: 6px; top: 4px; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blush-deep); opacity: 0.0; transition: opacity 0.12s; font-weight: 500; }
+.reads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; margin-top: 3px; }
+.reads.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.reads span { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
+.reads small { display: block; font-size: 9.5px; color: var(--text-soft); }
+.win.compact .reads span { font-size: 10px; }
+.win.compact .reads small { font-size: 9px; }
+.env-line-small { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-soft); margin-top: 3px; }
+.env-line-small .prev { width: 96px; flex: 0 0 auto; }
+.env-line-small .prev svg { height: 26px; }
+.env-line-small b { font-weight: 500; color: var(--charcoal); }
+.env-line-small .dead { color: var(--unresolved); }
+
+/* The knob, as scope.html draws it (P8c): a ring through 270 degrees from
+   the bottom left, eleven marks, and a paper cap with its pointer. */
+.knobs { display: flex; align-items: flex-start; column-gap: 6px; }
+.kcell { display: grid; justify-items: center; width: 56px; row-gap: 1px; border-radius: 1px; padding: 2px 0; }
+.kcell .val { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kcell .nm { font-size: 10px; color: var(--text-soft); white-space: nowrap; }
+.kcell.lit { background: var(--wash); }
+.kcell.flash .val { color: var(--blush-deep); }
+.kcell.host .nm::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); margin-right: 4px; vertical-align: middle; }
+.win.compact .kcell { width: 50px; }
+.win.compact .kcell .val { font-size: 10.5px; }
+.knob-face {
+  --angle: 0deg; --lo: 0deg; --hi: 0deg;
+  position: relative; width: var(--knob); height: var(--knob); margin: 1px 0;
+  display: grid; place-items: center; touch-action: none; cursor: grab; outline-offset: 1px; border-radius: 50%;
+}
+.knob-face::before {
+  content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: conic-gradient(from 225deg,
+    var(--line) 0 var(--lo), var(--knob-arc, var(--blush-deep)) var(--lo) var(--hi),
+    var(--line) var(--hi) 270deg, transparent 270deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+}
+.knob-face:hover, .knob-face.held { --knob-arc: var(--charcoal); }
+.knob-cap {
+  position: relative; width: 52%; height: 52%; border-radius: 50%; background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(36, 31, 29, 0.14);
+  transform: rotate(calc(var(--angle) - 135deg));
+}
+.knob-cap::after { content: ""; position: absolute; left: 50%; top: 9%; width: 2px; height: 40%; margin-left: -1px; border-radius: 1px; background: var(--charcoal); }
+.knob-face:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+.kcell.dim { opacity: 0.45; }
+
+.hand-link {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border: 1px solid var(--line);
+  border-radius: 30px; background: var(--paper); color: var(--text-soft);
+  font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; line-height: 13px; white-space: nowrap; font-weight: 500;
+}
+.hand-link[aria-pressed="false"] { color: var(--hand); border-color: var(--hand); }
+.hand-link[hidden] { display: none; }
+
+/* ---- the editors: over the tabs, as the modulation and EQ editors are ---- */
+.ed {
+  position: absolute; inset: 15px 24px 8px 23px; z-index: 20; background: var(--paper);
+  display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 1px; padding: 12px 18px 10px;
+  box-shadow: 0 6px 24px rgba(36, 31, 29, 0.10); overflow: hidden;
+}
+.win.compact .ed { inset: 10px 20px 6px 18px; padding: 7px 12px 6px; }
+.ed[hidden] { display: none; }
+.ed-head { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 0 0 auto; }
+.ed-head .nm { font-family: var(--serif); font-size: 21px; color: var(--charcoal); white-space: nowrap; }
+.ed-head .desc { font-size: 12px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.ed-head .close { margin-left: auto; }
+.win.compact .ed-head .nm { font-size: 17px; }
+.win.compact .ed-head .desc { font-size: 11px; }
+.ed-tools { display: flex; align-items: center; gap: 8px 12px; margin: 6px 0 4px; flex-wrap: nowrap; min-width: 0; flex: 0 0 auto; }
+.ed-tools .switch button { padding: 2px 8px; font-size: 9.5px; }
+.ed-tools .t-lbl { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); font-weight: 500; }
+.ed-tools .gap { flex: 1 1 auto; }
+.tbtn { background: var(--paper); border: 1px solid var(--line); border-radius: 30px; padding: 2px 9px; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; color: var(--text-soft); white-space: nowrap; }
+.tbtn:hover { border-color: var(--blush); color: var(--charcoal); }
+.tbtn[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: var(--cream); }
+.tbtn.play { border-color: var(--gold); color: var(--gold); }
+.tbtn.play[aria-pressed="true"] { background: var(--gold); color: var(--paper); }
+.win.compact .ed-tools { gap: 6px 8px; margin: 4px 0 2px; }
+.win.compact .ed-tools .switch button, .win.compact .tbtn { padding: 1px 6px; font-size: 9px; letter-spacing: 0.1em; }
+.ed-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.ed-split { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 18px; }
+.ed-split.mod { grid-template-columns: minmax(0, 1fr) 190px; }
+.win.compact .ed-split { gap: 0 12px; }
+.win.compact .ed-split.mod { grid-template-columns: minmax(0, 1fr) 150px; }
+.ed-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 4px; }
+.ed-pane + .ed-pane { border-left: 1px solid var(--line); padding-left: 18px; }
+.win.compact .ed-pane + .ed-pane { padding-left: 12px; }
+.pane-title { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); font-weight: 500; display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.pane-title .q { text-transform: none; letter-spacing: 0; color: var(--text-soft); font-weight: 300; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plot-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.plot { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; overflow: visible; }
+.plot .pt, .plot .bh, .plot .tabm, .plot .loopm { cursor: grab; outline: none; }
+.plot .pt:focus-visible .ring, .plot .bh:focus-visible .ring { stroke: var(--gold); stroke-width: 2.5; }
+.plot .hit { cursor: copy; }
+.ed-foot { display: flex; align-items: flex-end; gap: 14px; flex-wrap: nowrap; flex: 0 0 auto; }
+.ed-foot .knobs { flex: 0 0 auto; }
+.ed-foot .note { font-size: 11px; color: var(--text-soft); line-height: 1.4; margin: 0; flex: 1 1 auto; min-width: 0; }
+.ed-foot .note b { font-weight: 500; color: var(--text); }
+.win.compact .ed-foot .note { font-size: 10px; }
+.win.compact .ed-pane .ed-foot .note { display: none; }
+.knobs .sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
+.routes { font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+.routes .r { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 3px 0; }
+.routes .r b { font-weight: 500; color: var(--charcoal); }
+.routes .r span { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.routes .add { color: var(--text-soft); font-size: 11px; border: 1px dashed var(--line); padding: 3px 6px; text-align: center; }
+.follow-note { font-size: 11.5px; color: var(--text-soft); line-height: 1.4; }
+.follow-note b { color: var(--charcoal); font-weight: 500; }
+.readout {
+  position: absolute; pointer-events: none; background: var(--paper); border: 1px solid var(--line); padding: 2px 7px;
+  font-size: 11.5px; color: var(--charcoal); white-space: nowrap; font-variant-numeric: tabular-nums; border-radius: 1px;
+  box-shadow: 0 2px 8px rgba(36, 31, 29, 0.08); z-index: 30;
+}
+.readout[hidden] { display: none; }
+
+/* The right-click menu, as a knob's (G5b), without the modulation. */
+.ctx {
+  position: absolute; z-index: 40; background: var(--paper); border: 1px solid var(--line); border-radius: 1px; min-width: 220px; max-width: 300px;
+  box-shadow: 0 8px 26px rgba(36, 31, 29, 0.14); padding: 6px 0; font-size: 13px; color: var(--text);
+}
+.ctx[hidden] { display: none; }
+.ctx .h { padding: 2px 14px 6px; font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); font-weight: 500; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.ctx button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 5px 14px; color: var(--text); }
+.ctx button:hover, .ctx button:focus-visible { background: var(--wash); outline: none; }
+.ctx button[disabled] { color: var(--unresolved); cursor: default; background: none; }
+.ctx .type { padding: 4px 14px 6px; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; font-size: 12px; }
+.ctx .type input { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 1px; padding: 2px 5px; font-size: 12.5px; color: var(--charcoal); }
+.ctx .info { padding: 4px 14px 6px; font-size: 12px; line-height: 1.45; color: var(--text); border-top: 1px solid var(--line); margin-top: 4px; }
+.ctx .info b { font-family: var(--serif); font-weight: 500; font-size: 14px; display: block; color: var(--charcoal); }
+
+/* ---- the modulation row and the Picture section: context, not played ---- */
+.modrow { display: flex; align-items: center; gap: 10px; padding: 8px 24px; background: var(--cream-2); border-top: 1px solid var(--line); }
+.modrow .lead { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); width: 96px; line-height: 1.3; }
+.modrow .lead small { display: block; text-transform: none; letter-spacing: 0; color: var(--text-soft); font-size: 10.5px; margin-top: 4px; }
+.mcard { flex: 0 0 240px; height: 70px; background: var(--paper); border: 1px solid var(--line); padding: 6px 10px; font-size: 12px; position: relative; text-align: left; }
+.mcard.on { box-shadow: inset 0 0 0 1px var(--ch4); }
+.mcard .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+.mcard svg { position: absolute; left: 10px; right: 10px; bottom: 6px; width: calc(100% - 20px); height: 36px; }
+.modrow .rt { margin-left: auto; text-align: right; }
+.win.compact .modrow { padding: 2px 20px; gap: 6px; }
+.win.compact .modrow .lead { width: auto; }
+.win.compact .modrow .lead small { display: none; }
+.win.compact .mcard { flex: 0 0 auto; height: auto; border-radius: 20px; padding: 1px 10px; font-size: 11px; }
+.win.compact .mcard svg { display: none; }
+.pic { display: flex; align-items: center; gap: 24px; padding: 4px 24px 6px 134px; background: var(--cream-2); border-top: 1px solid var(--line); }
+.pic .t { font-family: var(--serif); font-size: 22px; color: var(--charcoal); }
+.pic .knobs { column-gap: 8px; }
+.win.compact .pic { padding-left: 22px; gap: 14px; }
+.win.compact .pic .t { font-size: 18px; }
+/* ---- round 3 ---- */
+.alt-note { margin: 0 0 10px; }
+.sect.on { box-shadow: inset 3px 0 0 var(--blush-deep); padding-left: 9px; }
+.sec-title.on-edit { color: var(--charcoal); }
+.prev { position: relative; }
+.prev svg { display: block; width: 100%; }
+.hover-reads { position: absolute; left: 1px; right: 1px; bottom: 1px; padding: 2px 6px; background: rgba(255, 252, 247, 0.92); font-size: 10.5px; color: var(--charcoal);
+  text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transition: opacity 0.12s; pointer-events: none; }
+.prev:hover .hover-reads, .prev:focus-visible .hover-reads, .prev.show-reads .hover-reads { opacity: 1; }
+.env-words-only { font-size: 11.5px; color: var(--text-soft); margin-top: 2px; }
+.fenv-words { text-transform: none; letter-spacing: 0; color: var(--text-soft); font-weight: 300; font-size: 11px; }
+.fenv-words b { font-weight: 500; color: var(--charcoal); }
+.fenv-words .dead, .env-line-small .dead { color: var(--unresolved); }
+.env-line-small .prev { width: 82px; }
+.popover { position: absolute; z-index: 20; background: var(--paper); border: 1px solid var(--line); border-radius: 2px; padding: 10px 14px 8px;
+  box-shadow: 0 10px 30px rgba(36, 31, 29, 0.13); display: flex; flex-direction: column; gap: 4px; --arrow-at: 40px; }
+.popover[hidden] { display: none; }
+.popover::after { content: ""; position: absolute; width: 12px; height: 12px; background: var(--paper); border: 1px solid var(--line); }
+.popover[data-arrow="right"]::after { right: -7px; top: var(--arrow-at); border-left: 0; border-bottom: 0; transform: translateY(-50%) rotate(45deg); }
+.popover[data-arrow="down"]::after { bottom: -7px; left: var(--arrow-at); border-left: 0; border-top: 0; transform: translateX(-50%) rotate(45deg); }
+.win.compact .popover { padding: 7px 10px 5px; }
+.popover .ed-head { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: nowrap; }
+.popover .ed-head .nm { font-family: var(--serif); font-size: 17px; color: var(--charcoal); white-space: nowrap; margin-right: 4px; }
+.win.compact .popover .ed-head .nm { font-size: 15px; }
+.popover .close { margin-left: auto; }
+.popover .mini-tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; row-gap: 3px; }
+.popover .ftype button { padding: 2px 6px; font-size: 9px; letter-spacing: 0.08em; }
+.win .shape-sel { font-size: 11px; padding: 1px 3px; max-width: 92px; }
+.popover .plot-wrap { flex: 1 1 0; min-height: 40px; position: relative; }
+.ed-split { display: flex; gap: 12px; flex: 1 1 auto; min-height: 0; }
+.ed-col { display: flex; flex-direction: column; gap: 3px; flex: 1 1 0; min-width: 0; min-height: 0; }
+.vsep { width: 1px; background: var(--line); flex: 0 0 1px; }
+.sub-title { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--blush-deep); display: flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; min-height: 18px; }
+.sub-title .gap { flex: 1 1 auto; }
+.quiet-reads { font-size: 11px; color: var(--text-soft); text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.knobs.tiny { --knob: 22px; flex-wrap: nowrap; justify-content: center; column-gap: 0; flex: 0 0 auto; }
+.knobs.tiny .kcell { width: 40px; padding: 0; }
+.knobs.tiny .kcell .val { font-size: 9.5px; }
+.knobs.tiny .kcell .nm { font-size: 8.5px; }
+.win.compact .knobs.tiny .kcell { width: 37px; }
+.plot .dh { opacity: 0; transition: opacity 0.12s; }
+.plot:hover .dh, .plot .dh.shown, .plot .dh:focus-visible { opacity: 1; }
+.plot .pt, .plot .bh, .plot .tabm, .plot .loopm { cursor: grab; outline: none; }
+.plot .pt:focus-visible .ring, .plot .bh:focus-visible .ring, .plot .tabm:focus-visible .ring { stroke: var(--gold); stroke-width: 2.5; }
+.popover .ed-split .sub-title .fenv-words { display: none; }
+.knobs.tiny.f4 .kcell, .win.compact .knobs.tiny.f4 .kcell { width: 48px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Mockup · Play · 18 Nov · round 3: the popover</p>
+  <h1>Envelopes, drawn: the popover</h1>
+  <p class="lede">The owner chose the popover. Here it is with a small block that shows much less, and a panel that tries not to look like a box: two takes on where it sits, and a choice of how loudness is drawn.</p>
+  <p class="small">Live, with the same curve law, gestures and stored shape as <a href="index.html">the first mockup</a> and <a href="alternatives.html">the alternatives</a>, which are left as they were. Press a block on Play to open its panel; <kbd>Esc</kbd>, <i>Close</i> or a press outside closes it. Nothing in <code>scope.html</code> or the core has changed.</p>
+  <div class="bar" role="toolbar" aria-label="What the mockup shows">
+    <div class="grp"><span class="lbl">Panel</span>
+      <div class="pg-switch" id="pgTake">
+        <button type="button" data-v="wide" aria-pressed="true">1 · Wide and short</button>
+        <button type="button" data-v="beside" aria-pressed="false">2 · Beside, knobs hidden</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Loudness drawn</span>
+      <div class="pg-switch" id="pgLevel">
+        <button type="button" data-v="lin" aria-pressed="true">Straight amplitude</button>
+        <button type="button" data-v="db" aria-pressed="false">Decibels</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Editing</span>
+      <div class="pg-switch" id="pgEdit">
+        <button type="button" data-v="" aria-pressed="false">Nothing</button>
+        <button type="button" data-v="amp" aria-pressed="true">Amp envelope</button>
+        <button type="button" data-v="filter" aria-pressed="false">Voice filter</button>
+      </div></div>
+  </div>
+  <div class="bar" role="toolbar" aria-label="Small blocks and window" style="margin-top:0">
+    <div class="grp"><span class="lbl">Small block</span>
+      <div class="pg-switch" id="pgBlock">
+        <button type="button" data-v="a" aria-pressed="true">a · Readings under it</button>
+        <button type="button" data-v="b" aria-pressed="false">b · Readings on hover</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Filter block</span>
+      <div class="pg-switch" id="pgFblock">
+        <button type="button" data-v="words" aria-pressed="true">Words only</button>
+        <button type="button" data-v="box" aria-pressed="false">With its envelope</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Window</span>
+      <div class="pg-switch" id="pgSize">
+        <button type="button" data-v="big" aria-pressed="true">1400 × 900</button>
+        <button type="button" data-v="small" aria-pressed="false">960 × 600 at 90%</button>
+      </div></div>
+    <div class="grp"><button type="button" class="pg-btn" id="pgNote" aria-pressed="false">Hold a note</button></div>
+  </div>
+  <p class="small alt-note" id="takeNote"></p>
+  <div class="stage-wrap" id="stageWrap"><div class="stage" id="stage">
+    <div class="win" id="win">
+      <header class="hdr">
+        <div class="title">OSCILLOSCOPE<small>A3 · E4, a fifth</small></div>
+        <span class="arrow">&#8249;</span>
+        <div class="preset"><span class="caps">New · edited</span><b>Plain sine</b></div>
+        <span class="arrow">&#8250;</span>
+        <span class="link-btn caps hide-compact">Browse</span>
+        <span class="link-btn caps">Save</span>
+        <span class="spacer"></span>
+        <span class="run caps">Running</span>
+        <span class="link-btn caps">Perform</span>
+        <span class="link-btn caps">Settings</span>
+      </header>
+      <div class="main">
+        <section class="scr" aria-label="The screen">
+          <div class="tools">
+            <span class="switch caps"><button type="button" aria-pressed="false">Y–T</button><button type="button" aria-pressed="true">X–Y</button><button type="button" aria-pressed="false">Spect</button></span>
+            <span class="link-btn caps">Clear</span><span class="gap"></span>
+          </div>
+          <div class="sheet"><canvas id="screen" width="440" height="440" aria-label="The figure: a fifth, its size following the amp envelope while a note is held"></canvas></div>
+          <div class="verdict-line">Trigger locked.<span>X–Y · a fifth · an illustration</span></div>
+        </section>
+        <section class="bench" id="bench" aria-label="The Bench">
+          <div class="tabs">
+            <div class="tab on"><b>Play</b><span>Poly · sine · 220 Hz · low pass</span></div>
+            <div class="tab"><b>Ink</b><span>Ratio 1:1 · unison · FM off</span></div>
+            <div class="tab"><b>Space &amp; Memory</b><span>Dry</span></div>
+            <div class="tab find">Find a control&nbsp; /</div>
+          </div>
+          <div class="playbody" id="playBody">
+            <div class="band">
+              <div class="left">
+                <div class="sec-title">Keyboard <span class="pill">● Two hands</span><span class="dots">···</span></div>
+                <span class="switch caps" style="align-self:flex-start"><button type="button" aria-pressed="false">Dyad</button><button type="button" aria-pressed="false">Mono</button><button type="button" aria-pressed="true">Poly</button></span>
+                <div class="row"><span class="lab">Outline</span><select aria-label="Outline"><option>2</option></select><select aria-label="Outline shape"><option>bass and melody</option></select></div>
+                <div class="row"><input type="checkbox" aria-label="Tune a chord"> <span class="lab">Tune a chord</span></div>
+              </div>
+              <div>
+                <div class="strip"><span class="switch caps kswitch"><button type="button" aria-pressed="true">Key</button><button type="button" aria-pressed="false">Notes</button><button type="button" aria-pressed="false">Layer</button></span><svg id="keys" viewBox="0 0 588 66" preserveAspectRatio="none" aria-label="Three octaves of keys"></svg></div>
+                <p class="hint">Notes under C4 play the lower sound; C4 and up the upper. Press a key to split there; ‹ › for other octaves. <i>C2–C6</i></p>
+              </div>
+            </div>
+            <div class="cols" id="cols"></div>
+          </div>
+          <div class="popover" id="pop" role="dialog" aria-label="Editor" hidden></div>
+        </section>
+      </div>
+      <div class="modrow">
+        <div class="lead">Modulation<small>Drag onto a knob. Press to open.</small></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch1)"></span>LFO 1<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C27 -6 27 -6 55 18 S82 42 110 18 S137 -6 165 18 S192 42 220 18" fill="none" stroke="var(--ch1)" stroke-width="1.5"/></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch2)"></span>LFO 2<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C18 0 18 0 37 18 S55 36 73 18 S92 0 110 18 S128 36 147 18 S165 0 183 18 S202 36 220 18" fill="none" stroke="var(--ch2)" stroke-width="1.5"/></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch4)"></span>Envelope<svg id="menvCardSvg" viewBox="0 0 220 36" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch6)"></span>Photocell<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M30 30 L215 30" fill="none" stroke="var(--ch6)" stroke-width="1.5"/></svg></div>
+        <div class="rt"><span class="link-btn caps">Routings · 2</span></div>
+      </div>
+      <div class="pic"><span class="t">Picture</span><div class="knobs" id="picKnobs"></div></div>
+      <div class="ctx" id="ctx" role="menu" hidden></div>
+      <div class="readout" id="readout" hidden></div>
+    </div>
+  </div></div>
+  <div class="fit-line" id="fitLine" aria-live="polite"></div>
+
+  <h2>The small block</h2>
+  <p>Just the shape: one line with a faint fill under it, the time on the square-root scale so a short attack has a slope, and the level in <b>straight amplitude</b>, so a sustain of −3 dB sits at seven tenths and the shape reads as the ADSR anyone knows. No grid, no letters, no values on it, no dots, no band for the held part (it is a short plateau), no axis words. A gold dot rides it while a note sounds.</p>
+  <dl class="verdict">
+    <dt>a · Readings under it</dt>
+    <dd>The four readings in a row under the drawing, as round 2 had them. Nothing is hidden, at the cost of a line of height.</dd>
+    <dt>b · Readings on hover</dt>
+    <dd>The drawing alone, a little taller; pointing at it or focusing it with the keyboard lays its readings across its foot. Quieter, but a glance no longer tells you the numbers, and a touch screen has no hover (a press opens the panel, which has them).</dd>
+    <dt>The filter's block</dt>
+    <dd><i>Words only</i> takes the little envelope box away and keeps <i>Its envelope · sweeps +1.5 oct</i> (or <i>amount 0, does nothing</i>); the envelope is drawn only in the panel. <i>With its envelope</i> keeps the box, in the same plain style. The response keeps its shaded band, without the dashed edge or the point.</dd>
+  </dl>
+
+  <h2>The panel</h2>
+  <p>Every one of round 3's guesses about what read as blocky was tried, and these held up when looked at side by side with <code>alt-b1</code>:</p>
+  <ul>
+    <li><b>Square-root time</b> (each stretch as wide as the root of its time, straight inside it, as the small drawings and the page's own envelope drawings do): the 8 ms attack is a slope rather than a wall. The cost is that equal distances are not equal times, so there is no millisecond ruler; the readings and the readout beside the pointer say the times.</li>
+    <li><b>No frame and no HELD band.</b> The sustain runs on, dotted, to a small tick on the foot marked <i>key up</i>. That tick and the dotted run were the biggest single change in how boxy it looked.</li>
+    <li><b>Three level lines</b> (0, −6 and −∞ in straight amplitude, read as dB; 0, −24 and −48 in decibels; 100, 50 and 0 per cent for the filter's envelope), labelled quietly at the left.</li>
+    <li><b>Round handles</b> for the points and the bends, and a <b>soft fill</b>.</li>
+    <li><b>Delay and Hold</b> are gold rings on the curve (Delay where the silence ends, Hold where the peak ends, just right of the peak while it is nought), shown while the pointer is over the drawing, while one is held or focused, or when its time is not nought. No tab labels, so nothing collides at the top left.</li>
+    <li><b>One row of small knobs</b> (40 px cells) under the drawing in take 1; behind <i>Knobs</i> in take 2, with a quiet line of readings in their place and the value of what is dragged beside the pointer.</li>
+  </ul>
+  <dl class="verdict">
+    <dt>1 · Wide and short</dt>
+    <dd>For the amp envelope, the panel sits <b>above</b> its block, over Expression and the Generator, two columns wide and as tall as the space over the block, with its arrow pointing down. That is the only place a wider panel fits without covering its own block. For the filter, whose block is at the top of its column, the panel is to its left over the two columns, as tall as it needs, with the response and its envelope side by side. Its cost: the amp envelope's panel is short (see the table), and it covers the Generator, which is the next thing you might want while shaping a note.</dd>
+    <dt>2 · Beside, knobs hidden</dt>
+    <dd>Where round 2 put it, over the neighbouring column at the columns' full height, but the drawing has the panel to itself. Its cost: it is narrow, so a long release and a short attack share 260 px, and the knobs are one press further away.</dd>
+    <dt>Loudness drawn</dt>
+    <dd><b>I would pick straight amplitude for the panel</b>, with the Sustain knob, the readings and the readout beside the pointer staying in decibels. Measured on the default shape at 1400 × 900: in decibels the −3.1 dB sustain sits 6 per cent of the way down a 48 dB axis, so the decay is a 6 px fall and the shape is a box; the release runs flat and then drops its last 20 dB in its last eighth of time, the cliff. In straight amplitude the sustain sits 30 per cent of the way down, the decay is a visible curve and the release a smooth fall, the shape Serum 2 and every hardware manual draw. What it costs: quiet levels are crushed to the foot (−30 dB is 3 per cent of the height), so a shape that lives below −20 dB is hard to draw finely, which is where the decibel view is still better, and why it stays a choice rather than going.</dd>
+  </dl>
+
+  <h2 id="survey">Measured: both takes at both windows</h2>
+  <p class="small">Filled in by the page as it loads. <i>Knob rows</i> is the number of rows each row of knobs actually takes (1 is the aim).</p>
+  <div class="table-wrap"><table class="check-table">
+    <thead><tr><th>Take</th><th>Window</th><th>Editing</th><th>Panel (% of tab)</th><th>Fit</th><th>Drawings</th><th>Knob rows</th></tr></thead>
+    <tbody id="surveyRows"></tbody>
+  </table></div>
+
+  <h2>What I changed my mind on</h2>
+  <ul>
+    <li><b>Decibels in the drawing.</b> Rounds 1 and 2 drew the amp envelope's level in decibels on the reasoning that the sustain knob should be a loudness scale. The knob should; the drawing should not, because a drawing in decibels of an envelope that ends at silence always ends in a cliff. The knob keeps its decibel law and the drawing goes straight by default.</li>
+    <li><b>A visible held band.</b> I drew the time the key is held as a shaded band so it could not be mistaken for a stretch of time; it read as a box inside the box. A dotted run and a tick say the same thing.</li>
+    <li><b>Delay and Hold as tabs.</b> Labelled tabs under and over the axis were findable but collided at the start of every shape; rings on the curve that show on hover are as findable once you point at the drawing, and silent otherwise.</li>
+    <li><b>Millisecond gridlines in the panel.</b> With square-root time there is no honest uniform ruler, and the panel reads better without one; the times are in the readings and beside the pointer.</li>
+  </ul>
+</div>
+
+<script>
+"use strict";
+
+/* ===================== the core's maths ===================== */
+const RATE = 48000;
+const FLOOR_DB = -60;
+// The old envelope's aim: kReach in envelope.h.
+const REACH = 0.2;
+// A stretch's bend: {m} a drawn midpoint (the level reached half-way, as a share of the fall),
+// {p} an aim past the end as a share of the drawn fall (the old decay's, and attack's),
+// {a} an aim past the end in full scale (the old release's), or {l} straight.
+const kOfM = (m) => 2 * Math.log(m / (1 - m));
+const rhoOfM = (m) => { const k = kOfM(m); return Math.abs(k) < 1e-9 ? Infinity : 1 / (Math.exp(k) - 1); };
+// The aim of a stretch drawn from a to b; null when it is straight.
+function aimOf(a, b, bend) {
+  if (bend.l) return null;
+  // The old release's aim is in full scale, so it holds even for a stretch drawn flat at silence (a
+  // sustain of nought), which the old envelope still travels down from wherever the key let it go.
+  if (bend.a != null) return b + bend.a * (b > a ? 1 : b < a || b <= 0 ? -1 : 1);
+  if (a === b) return b;
+  const rho = bend.p != null ? bend.p : rhoOfM(bend.m);
+  if (!isFinite(rho)) return null;
+  return b + rho * (b - a);
+}
+// Where a stretch drawn from a to b has got at share x of its time, entered from v (its own start, a,
+// unless it was entered from elsewhere): it keeps its time and its aim, as envelope.h's enterStage does.
+function travel(a, b, bend, x, v) {
+  if (v == null) v = a;
+  if (x <= 0) return v;
+  if (x >= 1) return b;
+  const T = aimOf(a, b, bend);
+  if (T === null) return v + (b - v) * x;
+  if (v === b) return b;
+  const r = (b - T) / (v - T);
+  if (!(r > 0)) return v + (b - v) * x;
+  // Already at or past the end, travelling towards an aim beyond it: the old rule jumps to the end.
+  if (Math.abs(a - T) > Math.abs(b - T) && Math.abs(v - T) <= Math.abs(b - T)) return b;
+  return T + (v - T) * Math.pow(r, x);
+}
+const midOf = (a, b, bend) => (a === b ? 0.5 : (travel(a, b, bend, 0.5) - a) / (b - a));
+
+/* ===================== envelopes ===================== */
+const STRETCH = ["delay", "attack", "hold", "decay"];
+const NAMES = { delay: "Delay", attack: "Attack", hold: "Hold", decay: "Decay", release: "Release", sus: "Sustain" };
+const legacyBends = () => ({ delay: { l: 1 }, attack: { p: REACH }, hold: { l: 1 }, decay: { p: REACH }, release: { a: REACH } });
+function makeEnv(m, bends, inner, loop) {
+  return { m: Object.assign({ delay: 0, attack: 8, hold: 0, decay: 120, sus: 0.7, release: 180 }, m),
+           b: Object.assign(legacyBends(), bends || {}),
+           inner: Object.assign({ delay: [], attack: [], hold: [], decay: [], release: [] }, inner || {}),
+           loop: loop == null ? null : loop };
+}
+const clone = (e) => JSON.parse(JSON.stringify(e));
+const endLevel = (e, s) => (s === "delay" ? 0 : s === "attack" || s === "hold" ? 1 : s === "decay" ? e.m.sus : 0);
+// The shape as points: before the sustain point (pre) and after the key comes up (rel).
+function flatten(e) {
+  const pre = [{ t: 0, lvl: 0, role: "start", s: null }];
+  let t = 0;
+  for (const s of STRETCH) {
+    const T = e.m[s];
+    for (let k = 0; k < e.inner[s].length; k++) { const p = e.inner[s][k]; pre.push({ t: t + p.u * T, lvl: p.lvl, bend: p.b, role: "inner", s, k }); }
+    pre.push({ t: t + T, lvl: endLevel(e, s), bend: e.b[s], role: s, s });
+    t += T;
+  }
+  const rel = [{ t: 0, lvl: e.m.sus, role: "held", s: null }];
+  for (let k = 0; k < e.inner.release.length; k++) { const p = e.inner.release[k]; rel.push({ t: p.u * e.m.release, lvl: p.lvl, bend: p.b, role: "inner", s: "release", k }); }
+  rel.push({ t: e.m.release, lvl: 0, bend: e.b.release, role: "release", s: "release" });
+  return { pre, rel, Tpre: t, Trel: e.m.release };
+}
+// One run of points from time t; its first stretch of any length entered from v (a level), if given.
+function runAt(pts, t, v) {
+  let first = true;
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i - 1], q = pts[i], dur = q.t - p.t;
+    if (dur <= 0) continue;
+    if (t <= q.t || i === pts.length - 1) return travel(p.lvl, q.lvl, q.bend, Math.min(1, (t - p.t) / dur), first ? v : null);
+    first = false;
+  }
+  return pts[pts.length - 1].lvl;
+}
+// The level while held, t ms after the note: with a loop, round from its marker to the sustain point,
+// the stretch after the marker travelling from where the loop is, with its own time and aim.
+function heldAt(e, f, t) {
+  if (t <= f.Tpre) return runAt(f.pre, t);
+  if (e.loop == null) return e.m.sus;
+  const L = Math.min(e.loop, f.pre.length - 2), t0 = f.pre[L].t, period = f.Tpre - t0;
+  if (period <= 0) return e.m.sus;
+  return runAt(f.pre.slice(L), t0 + (t - f.Tpre) % period, f.pre[f.pre.length - 1].lvl);
+}
+// The level t ms after the note, the key let go at up (or still down).
+function levelAt(e, t, up) {
+  const f = flatten(e);
+  if (up == null || t < up) return heldAt(e, f, t);
+  const v = heldAt(e, f, up);
+  return runAt(f.rel, t - up, v);
+}
+window.levelAt = levelAt; window.makeEnv = makeEnv; window.flatten = flatten;
+
+/* ===================== the filter, as the core has it ===================== */
+const cutoffHz = (step) => 20 * Math.pow(1000, step / 1000);
+const cutoffStep = (hz) => Math.round(1000 * Math.log(hz / 20) / Math.log(1000));
+const resonanceQ = (v) => Math.SQRT1_2 * Math.pow(20 / Math.SQRT1_2, v / 100);
+const resStep = (q) => Math.round(100 * Math.log(q / Math.SQRT1_2) / Math.log(20 / Math.SQRT1_2));
+// The state-variable filter of wave.h is the analogue one under the bilinear transform, warped at
+// its cutoff: so its response at f is the analogue one at w = tan(pi f / rate) / g.
+function svfDb(type, fc, Q, f, rate) {
+  rate = rate || RATE;
+  const g = Math.tan(Math.PI * Math.min(fc, 0.49 * rate) / rate), k = 1 / Math.max(0.1, Q);
+  const w = Math.tan(Math.PI * Math.min(f, 0.4999 * rate) / rate) / g;
+  const dr = 1 - w * w, di = k * w, den = dr * dr + di * di;
+  const num = type === 1 ? 1 : type === 2 ? k * k * w * w : type === 3 ? w * w * w * w : type === 4 ? dr * dr : den;
+  return 10 * Math.log10(Math.max(1e-30, num / den));
+}
+window.svfDb = svfDb;
+// vcfHz: the cutoff swept by the envelope and pushed by key tracking, clamped as the core clamps it.
+const vcfHz = (cut, envOct, lvl, track, noteHz) => {
+  let fc = cut * Math.pow(2, envOct * lvl);
+  if (track > 0 && noteHz > 0) fc *= Math.pow(noteHz / 261.63, track);
+  return Math.max(10, Math.min(0.45 * RATE, fc));
+};
+
+/* ===================== the mockup's state ===================== */
+const SHAPES = {
+  ADSR: () => makeEnv({ delay: 0, attack: 8, hold: 0, decay: 120, sus: 0.7, release: 180 }),
+  AHDSR: () => makeEnv({ delay: 0, attack: 10, hold: 120, decay: 400, sus: 0.5, release: 300 }, { attack: { m: 0.62 }, decay: { m: 0.75 }, release: { m: 0.75 } }),
+  Pluck: () => makeEnv({ delay: 0, attack: 2, hold: 0, decay: 700, sus: 0, release: 250 }, { decay: { m: 0.86 }, release: { m: 0.8 } }),
+  Swell: () => makeEnv({ delay: 0, attack: 1400, hold: 0, decay: 0, sus: 1, release: 1600 }, { attack: { m: 0.22 }, release: { m: 0.6 } }),
+  Gate: () => makeEnv({ delay: 0, attack: 3, hold: 0, decay: 0, sus: 1, release: 12 }, { attack: { l: 1 }, release: { l: 1 } }),
+  Pulse: () => makeEnv({ delay: 0, attack: 4, hold: 60, decay: 250, sus: 0.25, release: 300 }, { decay: { m: 0.8 }, release: { m: 0.75 } },
+    { decay: [{ u: 0.4, lvl: 0.45, b: { m: 0.7 } }, { u: 0.55, lvl: 0.9, b: { m: 0.3 } }] }, 2),
+};
+const FILTER_ENV = () => makeEnv({ delay: 0, attack: 5, hold: 0, decay: 300, sus: 0.3, release: 300 });
+const MENV = () => makeEnv({ delay: 0, attack: 10, hold: 0, decay: 300, sus: 0.5, release: 400 });
+const S = {
+  size: "big", view: "play", hands: 1, editing: 0,
+  linked: { gen: true, amp: true, filter: true },
+  amp: [SHAPES.ADSR(), SHAPES.ADSR()],
+  fenv: [FILTER_ENV(), FILTER_ENV()],
+  filt: [{ type: 1, cut: 630, res: 32, track: 0, amt: 15 }, { type: 1, cut: 630, res: 32, track: 0, amt: 15 }],
+  menv: { own: false, env: MENV() },
+  ui: { amp: {}, fenv: {}, menv: {} },
+  sync: { amp: false, fenv: false, menv: false }, grid: 16, bpm: 120,
+  note: null,     // {t0, up} while a note sounds, in ms of performance.now()
+};
+const hi = () => (S.hands === 2 ? S.editing : 0);
+const ampEnv = () => S.amp[hi()];
+const fenvEnv = () => S.fenv[hi()];
+const filt = () => S.filt[hi()];
+const menvShown = () => (S.menv.own ? S.menv.env : ampEnv());
+const clamp = (v, lo, hi_) => Math.max(lo, Math.min(hi_, v));
+// Every write goes through here: linked, both hands; else the edited one.
+function writeHand(section, fn) {
+  const list = section === "amp" ? S.amp : section === "fenv" ? S.fenv : S.filt;
+  if (S.hands === 2 && S.linked[section === "fenv" ? "filter" : section]) { fn(list[0]); fn(list[1]); }
+  else fn(list[hi()]);
+}
+function writeEnv(kind, fn) {
+  if (kind === "menv") {
+    // The first edit while following copies the amp envelope's shape into its own (menvAdopt).
+    if (!S.menv.own) { S.menv.env = clone(ampEnv()); S.menv.own = true; }
+    fn(S.menv.env);
+  } else writeHand(kind, fn);
+  paint();
+}
+const envOf = (kind) => (kind === "amp" ? ampEnv() : kind === "fenv" ? fenvEnv() : menvShown());
+const otherEnv = (kind) => {
+  if (S.hands !== 2 || kind === "menv") return null;
+  const sec = kind === "amp" ? "amp" : "filter";
+  if (S.linked[sec]) return null;
+  return (kind === "amp" ? S.amp : S.fenv)[1 - S.editing];
+};
+
+/* ===================== readings ===================== */
+const msReading = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(ms >= 10000 ? 1 : 2) + " s" : ms >= 10 ? Math.round(ms) + " ms" : (Math.round(ms * 10) / 10) + " ms");
+const lvlDb = (l) => (l <= 0 ? -Infinity : 20 * Math.log10(l));
+const dbReading = (l) => { const d = lvlDb(l); return d === -Infinity || d < FLOOR_DB - 0.05 ? "−∞ dB" : (d > -0.05 ? "0.0" : "−" + Math.abs(d).toFixed(1)) + " dB"; };
+const pctReading = (l) => Math.round(l * 100) + "%";
+function noteValue(ms) {
+  const beat = 60000 / S.bpm, n32 = Math.round(ms / (beat / 8));
+  // A time off the grid (set before Sync, or short) reads in milliseconds: a note value would lie.
+  if (n32 === 0 || Math.abs(n32 * beat / 8 - ms) > 0.5) return msReading(ms);
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a), g = gcd(n32, 32);
+  const num = n32 / g, den = 32 / g;
+  return den === 1 ? num + (num === 1 ? " bar" : " bars") : num + "/" + den;
+}
+const timeReading = (kind, ms) => (S.sync[kind] ? noteValue(ms) : msReading(ms));
+const levelReading = (kind, l) => (kind === "amp" ? dbReading(l) : pctReading(l));
+const octReading = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v / 10).toFixed(1) + " oct";
+const hzReading = (hz) => (hz >= 1000 ? (hz / 1000).toFixed(hz >= 10000 ? 1 : 1) + " kHz" : Math.round(hz) + " Hz");
+
+/* ===================== knobs ===================== */
+// Times on the drawing's own square-root scale, as knobEnvelope's arrows move them.
+const TMAX = { delay: 5000, attack: 20000, hold: 5000, decay: 20000, release: 20000 };
+function envKnobs(kind) {
+  const ks = [];
+  for (const s of ["delay", "attack", "hold", "decay"]) ks.push({ id: kind + "-" + s, nm: NAMES[s], s,
+    frac: (e) => Math.sqrt(e.m[s] / TMAX[s]), set: (e, f) => { e.m[s] = snapMs(kind, TMAX[s] * f * f); }, read: (e) => timeReading(kind, e.m[s]),
+    start: (e) => (kind === "amp" ? SHAPES.ADSR() : kind === "fenv" ? FILTER_ENV() : MENV()).m[s] });
+  // The sustain: in decibels for the amp, its bottom silence; a straight share for the others.
+  ks.push({ id: kind + "-sus", nm: "Sustain", s: "sus",
+    frac: (e) => (kind === "amp" ? (e.m.sus <= 0 ? 0 : clamp((lvlDb(e.m.sus) - FLOOR_DB) / -FLOOR_DB, 0, 1)) : e.m.sus),
+    set: (e, f) => { e.m.sus = kind === "amp" ? (f <= 0.0005 ? 0 : Math.pow(10, Math.round((FLOOR_DB + f * -FLOOR_DB) * 10) / 200)) : Math.round(f * 100) / 100; },
+    read: (e) => levelReading(kind, e.m.sus), start: (e) => (kind === "amp" ? 0.7 : kind === "fenv" ? 0.3 : 0.5) });
+  ks.push({ id: kind + "-release", nm: "Release", s: "release",
+    frac: (e) => Math.sqrt(e.m.release / TMAX.release), set: (e, f) => { e.m.release = Math.max(1, snapMs(kind, TMAX.release * f * f)); },
+    read: (e) => timeReading(kind, e.m.release), start: () => (kind === "amp" ? 180 : kind === "fenv" ? 300 : 400) });
+  return ks;
+}
+const FILTER_KNOBS = [
+  { id: "f-cut", nm: "Cutoff", host: true, min: 0, max: 1000, get: (f) => f.cut, set: (f, v) => { f.cut = v; }, read: (f) => hzReading(cutoffHz(f.cut)), start: 667 },
+  { id: "f-res", nm: "Resonance", min: 0, max: 100, get: (f) => f.res, set: (f, v) => { f.res = v; }, read: (f) => "Q " + resonanceQ(f.res).toFixed(2), start: 0 },
+  { id: "f-track", nm: "Key track", min: 0, max: 100, get: (f) => f.track, set: (f, v) => { f.track = v; }, read: (f) => f.track + "%", start: 0 },
+  { id: "f-amt", nm: "Amount", min: -40, max: 40, bip: true, get: (f) => f.amt, set: (f, v) => { f.amt = v; }, read: (f) => octReading(f.amt), start: 0 },
+];
+function snapMs(kind, ms) {
+  if (!S.sync[kind]) return ms < 10 ? Math.round(ms * 10) / 10 : Math.round(ms);
+  const step = 60000 / S.bpm * 4 / S.grid;
+  return Math.round(ms / step) * step;
+}
+function knobHTML(frac, bipolar, attrs) {
+  const a = frac * 270, lo = bipolar ? Math.min(135, a) : 0, hi_ = bipolar ? Math.max(135, a) : a;
+  return '<span class="knob-face" tabindex="0" role="slider"' + (attrs || "") + ' style="--angle:' + a + 'deg;--lo:' + lo + 'deg;--hi:' + hi_ + 'deg"><span class="knob-cap"></span></span>';
+}
+const cellHTML = (id, nm, host) => '<div class="kcell' + (host ? " host" : "") + '" data-k="' + id + '"><span class="val"></span>' + knobHTML(0, false, ' data-knob="' + id + '" aria-label="' + nm + '"') + '<span class="nm">' + nm + '</span></div>';
+const staticCell = (val, nm, frac, host) => '<div class="kcell' + (host ? " host" : "") + '"><span class="val">' + val + '</span>' + knobHTML(frac, false) + '<span class="nm">' + nm + '</span></div>';
+function setFace(face, frac, bip) {
+  const a = clamp(frac, 0, 1) * 270;
+  face.style.setProperty("--angle", a + "deg");
+  face.style.setProperty("--lo", (bip ? Math.min(135, a) : 0) + "deg");
+  face.style.setProperty("--hi", (bip ? Math.max(135, a) : a) + "deg");
+}
+// One knob's definition by its id: an envelope's six or the filter's four.
+function knobDef(id) {
+  if (id.startsWith("f-")) {
+    const k = FILTER_KNOBS.find((x) => x.id === id);
+    return { k, frac: () => (k.get(filt()) - k.min) / (k.max - k.min), read: () => k.read(filt()), bip: k.bip,
+      set: (fr) => { writeHand("filter", (f) => k.set(f, clamp(Math.round(k.min + fr * (k.max - k.min)), k.min, k.max))); paint(); },
+      reset: () => { writeHand("filter", (f) => k.set(f, k.start)); paint(); }, dim: () => filt().type === 0 };
+  }
+  const kind = id.split("-")[0], k = envKnobs(kind).find((x) => x.id === id);
+  return { k, frac: () => k.frac(envOf(kind)), read: () => k.read(envOf(kind)),
+    set: (fr) => writeEnv(kind, (e) => k.set(e, clamp(fr, 0, 1))),
+    reset: () => writeEnv(kind, (e) => { const v = k.start(e); if (k.s === "sus") e.m.sus = v; else e.m[k.s] = v; }),
+    dim: () => kind === "fenv" && (filt().amt === 0 || filt().type === 0) };
+}
+function paintKnobs() {
+  document.querySelectorAll("#win [data-k]").forEach((cell) => {
+    const d = knobDef(cell.dataset.k), fr = d.frac();
+    const face = cell.querySelector(".knob-face");
+    setFace(face, fr, d.bip);
+    face.setAttribute("aria-valuetext", d.read());
+    cell.querySelector(".val").textContent = d.read();
+    cell.classList.toggle("dim", !!d.dim());
+    const sel = selected();
+    cell.classList.toggle("lit", !!sel && sel.knob && sel.knob.includes(cell.dataset.k));
+  });
+}
+function wireKnobs(host) {
+  host.querySelectorAll("[data-knob]").forEach((face) => {
+    const id = face.dataset.knob;
+    let start = null, last = 0;
+    face.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== 0) return;
+      ev.preventDefault(); face.focus({ preventScroll: true });
+      const now = performance.now();
+      if (now - last < 380) { knobDef(id).reset(); last = 0; return; }
+      last = now;
+      face.setPointerCapture(ev.pointerId); face.classList.add("held");
+      start = { y: ev.clientY, f: knobDef(id).frac() };
+    });
+    face.addEventListener("pointermove", (ev) => {
+      if (!start) return;
+      knobDef(id).set(clamp(start.f - (ev.clientY - start.y) / stageScale() / (ev.shiftKey ? 600 : 150), 0, 1));
+    });
+    const end = () => { start = null; face.classList.remove("held"); };
+    face.addEventListener("pointerup", end); face.addEventListener("pointercancel", end);
+    face.addEventListener("keydown", (ev) => {
+      const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[ev.key];
+      if (d == null) return;
+      ev.preventDefault();
+      knobDef(id).set(clamp(knobDef(id).frac() + d * (ev.shiftKey ? 0.005 : 0.025), 0, 1));
+    });
+  });
+}
+
+/* ===================== the drawing of an envelope ===================== */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const GAP = 46;   // the held gap, in the page's pixels: it lasts as long as the key, so it has no time
+// The level axis: decibels for the amp, a straight share otherwise.
+// A run of points as a path, sampled finely enough that a bend reads as a curve on the dB axis too.
+function runPath(g, pts, xOf, from) {
+  let d = "";
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i - 1], q = pts[i], dur = q.t - p.t;
+    if (dur <= 0) continue;
+    const x0 = xOf(p.t), x1 = xOf(q.t), n = Math.max(2, Math.min(160, Math.ceil(Math.abs(x1 - x0) / 2)));
+    for (let j = 0; j <= n; j++) {
+      const x = j / n, v = travel(p.lvl, q.lvl, q.bend, x, i === 1 && from != null ? from : null);
+      d += (d ? "L" : "M") + (x0 + x * (x1 - x0)).toFixed(2) + " " + g.ax.y(v).toFixed(2);
+    }
+  }
+  return d;
+}
+function shapePath(g, e) {
+  const f = flatten(e);
+  const xPre = (t) => g.xPre(t), gapX = g.xPre(f.Tpre), xRel = (t) => gapX + GAP + t * g.ppm;
+  let d = runPath(g, f.pre, xPre);
+  const ys = g.ax.y(e.m.sus).toFixed(2);
+  d += "L" + gapX.toFixed(2) + " " + ys + "L" + (gapX + GAP).toFixed(2) + " " + ys;
+  const r = runPath(g, f.rel, xRel);
+  return d + "L" + r.slice(1);
+}
+function gridFor(kind, g, svg) {
+  const grid = el("g", { "aria-hidden": "true" }, svg);
+  // Levels.
+  const levels = g.ax.db ? [0, -6, -12, -18, -24, -30, -36, -42, -48, -54, -60].map((d) => [Math.pow(10, d / 20), d]) : [1, 0.75, 0.5, 0.25, 0].map((l) => [l, null]);
+  for (const [l, d] of levels) {
+    const y = g.ax.y(l), major = g.ax.db ? d % 12 === 0 || d === -6 : true;
+    el("line", { x1: g.L, x2: g.W - g.R, y1: y, y2: y, stroke: major ? "var(--line)" : "var(--cream-2)", "stroke-width": 1, "data-db": d == null ? "" : d }, grid);
+    if (major && (g.ax.db || true)) {
+      const t = el("text", { x: g.L - 6, y: y + 3.5, "text-anchor": "end", "font-size": 10, fill: "var(--text-soft)", "data-dblabel": d == null ? "" : d }, grid);
+      t.textContent = g.ax.db ? (d === 0 ? "0 dB" : "−" + Math.abs(d)) : Math.round(l * 100) + "%";
+    }
+  }
+  if (g.ax.db) {
+    // The band under the floor is silence.
+    el("rect", { x: g.L, y: g.ax.yF + 4, width: g.W - g.R - g.L, height: g.ax.yS - g.ax.yF - 4, fill: "var(--cream-2)" }, grid);
+    el("line", { x1: g.L, x2: g.W - g.R, y1: g.ax.yS, y2: g.ax.yS, stroke: "var(--text-soft)", "stroke-width": 1, "data-silence": 1 }, grid);
+    const t = el("text", { x: g.L - 6, y: g.ax.yS + 3.5, "text-anchor": "end", "font-size": 10, fill: "var(--text-soft)" }, grid);
+    t.textContent = "−∞";
+  } else el("line", { x1: g.L, x2: g.W - g.R, y1: g.B, y2: g.B, stroke: "var(--text-soft)", "stroke-width": 1 }, grid);
+  // Time: ms, or beats with the grid when synced.
+  const f = g.f, ticks = [];
+  const xEnd = g.W - g.R;
+  if (S.sync[kind]) {
+    const step = 60000 / S.bpm * 4 / S.grid, beat = 60000 / S.bpm;
+    for (let t = 0; g.xPre(t) <= g.gapX + 0.5; t += step) ticks.push([g.xPre(t), Math.abs(t / beat - Math.round(t / beat)) < 1e-6, t, "pre"]);
+    for (let t = 0; g.xRel(t) <= xEnd; t += step) ticks.push([g.xRel(t), Math.abs(t / beat - Math.round(t / beat)) < 1e-6, t, "rel"]);
+  } else {
+    const nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+    const step = nice.find((s) => s * g.ppm >= 56) || 10000;
+    for (let t = 0; g.xPre(t) <= g.gapX + 0.5; t += step) ticks.push([g.xPre(t), true, t, "pre"]);
+    for (let t = 0; g.xRel(t) <= xEnd; t += step) ticks.push([g.xRel(t), true, t, "rel"]);
+  }
+  let lastLabel = -1e9;
+  for (const [x, major, t, side] of ticks) {
+    if (x < g.L - 0.5 || x > xEnd + 0.5) continue;
+    el("line", { x1: x, x2: x, y1: g.T, y2: g.B, stroke: major ? "var(--line)" : "var(--cream-2)", "stroke-width": 1 }, grid);
+    if ((major || S.sync[kind]) && x - lastLabel > 40) {
+      const lab = el("text", { x, y: g.B + 13, "text-anchor": "middle", "font-size": 10, fill: "var(--text-soft)" }, grid);
+      const beat = 60000 / S.bpm;
+      lab.textContent = S.sync[kind] ? (side === "rel" ? "+" : "") + (t === 0 ? "0" : noteValue(t)) : (side === "rel" ? "+" : "") + (t >= 1000 ? (t / 1000) + " s" : t + (t === 0 && side === "pre" ? " ms" : ""));
+      lastLabel = x;
+    }
+  }
+  // The held gap.
+  if (g.gapX > g.L - 1 && g.gapX < xEnd) {
+    el("rect", { x: g.gapX, y: g.T, width: GAP, height: g.B - g.T, fill: "var(--cream)", opacity: 0.9 }, grid);
+    el("line", { x1: g.gapX, x2: g.gapX, y1: g.T, y2: g.B, stroke: "var(--blush-deep)", "stroke-dasharray": "4 3", "stroke-width": 1 }, grid);
+    const h = el("text", { x: g.gapX + GAP / 2, y: (g.T + g.B) / 2, "text-anchor": "middle", "font-size": 9.5, fill: "var(--blush-deep)", "letter-spacing": "0.1em" }, grid);
+    h.textContent = "HELD";
+    const k = el("text", { x: g.gapX + GAP + 4, y: g.B + 26, "font-size": 9.5, fill: "var(--text-soft)" }, grid);
+    k.textContent = "key up";
+  }
+  return grid;
+}
+// Anything selected in an editor: {kind, id, knob: [...]}.
+let SEL = null;
+const selected = () => SEL;
+function pointKnobs(kind, p) {
+  if (p.role === "attack" || p.role === "release" || p.role === "delay" || p.role === "hold") return [kind + "-" + p.role];
+  if (p.role === "decay") return [kind + "-decay", kind + "-sus"];
+  return [];
+}
+function drawMseg(kind, svg, opts) {
+  opts = opts || {};
+  svg.innerHTML = "";
+  if (!svg.clientWidth || !svg.clientHeight) return null;
+  const g = msegGeo(kind, svg, opts.small);
+  svg.setAttribute("viewBox", "0 0 " + g.W + " " + g.H);
+  const e = envOf(kind), f = g.f;
+  const following = kind === "menv" && !S.menv.own;
+  const ink = kind === "menv" ? (following ? "var(--unresolved)" : "var(--ch4)") : S.hands === 2 && !S.linked[kind === "amp" ? "amp" : "filter"] ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--charcoal)";
+  el("rect", { x: 0, y: 0, width: g.W, height: g.H, fill: "var(--paper)", class: "bg", "data-bg": 1 }, svg);
+  const clipId = "clip-" + kind + (opts.small ? "s" : "");
+  const defs = el("defs", {}, svg), cp = el("clipPath", { id: clipId }, defs);
+  el("rect", { x: g.L, y: g.T - 8, width: g.W - g.R - g.L, height: g.B - g.T + 16 }, cp);
+  gridFor(kind, g, svg);
+  const body = el("g", { "clip-path": "url(#" + clipId + ")" }, svg);
+  // The loop's region.
+  if (e.loop != null) {
+    const L = Math.min(e.loop, f.pre.length - 2), x0 = g.xPre(f.pre[L].t);
+    el("rect", { x: x0, y: g.T, width: Math.max(0, g.gapX - x0), height: g.B - g.T, fill: "var(--wash)" }, body);
+  }
+  // The other hand's, dashed in its ink.
+  const oth = otherEnv(kind);
+  if (oth) el("path", { d: shapePath(g, oth), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1.5, "stroke-dasharray": "5 4", opacity: 0.8, "data-ghost": 1 }, body);
+  const d = shapePath(g, e);
+  el("path", { d: d + "L" + (g.xRel(f.Trel)).toFixed(2) + " " + g.ax.yS + "L" + g.xPre(0).toFixed(2) + " " + g.ax.yS + "Z", fill: following ? "none" : "var(--blush)", opacity: 0.13 }, body);
+  el("path", { d, fill: "none", stroke: ink, "stroke-width": 2, "stroke-linejoin": "round", "stroke-dasharray": following ? "6 4" : "none", "data-curve": 1 }, body);
+  el("path", { d, fill: "none", stroke: "transparent", "stroke-width": 14, class: "hit", "data-hit": 1 }, body);
+  // Bend diamonds, at the middle of each stretch in time, on the curve.
+  const bends = [];
+  const addBends = (pts, xOf, side) => {
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      if (q.t - p.t <= 0 || p.lvl === q.lvl) continue;
+      const x = (xOf(p.t) + xOf(q.t)) / 2, y = g.ax.y(travel(p.lvl, q.lvl, q.bend, 0.5));
+      if (Math.abs(xOf(q.t) - xOf(p.t)) < 18) continue;
+      bends.push({ side, i, x, y });
+    }
+  };
+  addBends(f.pre, g.xPre, "pre"); addBends(f.rel, g.xRel, "rel");
+  for (const b of bends) {
+    const id = "b" + b.side + b.i, on = SEL && SEL.kind === kind && SEL.id === id;
+    const grp = el("g", { class: "bh", tabindex: following && !opts.small ? 0 : 0, role: "slider", "data-bend": id, "aria-label": "Bend" }, svg);
+    el("rect", { x: b.x - 4, y: b.y - 4, width: 8, height: 8, transform: "rotate(45 " + b.x + " " + b.y + ")", fill: on ? "var(--gold)" : "var(--paper)", stroke: following ? "var(--unresolved)" : "var(--text-soft)", "stroke-width": 1.2, class: "ring" }, grp);
+    el("rect", { x: b.x - 9, y: b.y - 9, width: 18, height: 18, fill: "transparent" }, grp);
+  }
+  // Points.
+  const pts = [];
+  f.pre.forEach((p, i) => { if (p.role === "start") return; if ((p.role === "delay" && e.m.delay === 0) || (p.role === "hold" && e.m.hold === 0)) return; pts.push({ p, id: "pre" + i, x: g.xPre(p.t), y: g.ax.y(p.lvl) }); });
+  f.rel.forEach((p, i) => { if (p.role === "held") return; pts.push({ p, id: "rel" + i, x: g.xRel(p.t), y: g.ax.y(p.lvl) }); });
+  for (const q of pts) {
+    if (q.x < g.L - 2 || q.x > g.W - g.R + 2) continue;
+    const anchor = q.p.role !== "inner", on = SEL && SEL.kind === kind && SEL.id === q.id;
+    const grp = el("g", { class: "pt", tabindex: 0, role: "slider", "data-pt": q.id, "aria-label": anchor ? NAMES[q.p.role === "decay" ? "sus" : q.p.role] + " point" : "A point you added",
+                          "aria-valuetext": timeReading(kind, q.p.t) + ", " + levelReading(kind, q.p.lvl) }, svg);
+    el("circle", { cx: q.x, cy: q.y, r: 12, fill: "transparent" }, grp);
+    el("circle", { cx: q.x, cy: q.y, r: anchor ? 5.5 : 4.2, fill: on ? (kind === "menv" ? "var(--ch4)" : "var(--blush-deep)") : anchor ? "var(--paper)" : following ? "var(--unresolved)" : ink, stroke: following ? "var(--unresolved)" : on ? "var(--blush-deep)" : "var(--charcoal)", "stroke-width": anchor ? 1.5 : 1, class: "ring", "data-cx": q.x, "data-cy": q.y }, grp);
+  }
+  // The sustain point's mark.
+  const susX = g.gapX;
+  if (susX >= g.L - 1 && susX <= g.W - g.R) {
+    const t = el("text", { x: susX - 4, y: g.T + 12, "text-anchor": "end", "font-size": 9.5, fill: "var(--blush-deep)", "letter-spacing": "0.1em" }, svg);
+    t.textContent = opts.small ? "SUSTAIN" : "SUSTAIN " + levelReading(kind, e.m.sus);
+  }
+  // The loop's marker.
+  if (e.loop != null) {
+    const L = Math.min(e.loop, f.pre.length - 2), x0 = g.xPre(f.pre[L].t);
+    const m = el("g", { class: "loopm", tabindex: 0, role: "slider", "aria-label": "Where the loop starts", "data-loop": 1 }, svg);
+    el("line", { x1: x0, x2: x0, y1: g.T, y2: g.B, stroke: "var(--gold)", "stroke-width": 1.5 }, m);
+    el("path", { d: "M" + x0 + " " + g.T + "l8 0l-8 8z", fill: "var(--gold)" }, m);
+    el("rect", { x: x0 - 6, y: g.T, width: 12, height: g.B - g.T, fill: "transparent" }, m);
+    const lt = el("text", { x: x0 + 10, y: g.T + 30, "font-size": 9.5, fill: "var(--gold)", "letter-spacing": "0.1em" }, svg);
+    lt.textContent = "LOOP";
+  }
+  // Delay and Hold, as tabs under the time axis.
+  if (!opts.small) {
+    for (const s of ["delay", "hold"]) {
+      const idx = f.pre.findIndex((p) => p.role === s);
+      const x = g.xPre(f.pre[idx].t), y = s === "delay" ? g.B + 26 : g.T + 8;
+      if (x < g.L - 4 || x > g.W - g.R) continue;
+      const m = el("g", { class: "tabm", tabindex: 0, role: "slider", "data-tab": s, "aria-label": NAMES[s] + ": " + timeReading(kind, e.m[s]) }, svg);
+      el("path", { d: "M" + x + " " + (y - 6) + "l5 6h" + (s === "delay" ? 30 : 26) + "v9h-" + (s === "delay" ? 40 : 36) + "v-9z", fill: e.m[s] > 0 ? "var(--charcoal)" : "var(--paper)", stroke: "var(--text-soft)", "stroke-width": 1, transform: "translate(" + (-5) + " 0)" }, m);
+      const tx = el("text", { x: x + (s === "delay" ? 15 : 13) - 5, y: y + 7, "text-anchor": "middle", "font-size": 8, "letter-spacing": "0.08em", fill: e.m[s] > 0 ? "var(--cream)" : "var(--text-soft)" }, m);
+      tx.textContent = s === "delay" ? "DELAY" : "HOLD";
+    }
+  }
+  // The note, while one sounds.
+  if (S.note) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    let x;
+    if (up == null || now < up) x = now <= f.Tpre ? g.xPre(now) : e.loop != null ? g.xPre((() => { const L = Math.min(e.loop, f.pre.length - 2), t0 = f.pre[L].t, per = f.Tpre - t0; return per > 0 ? t0 + (now - f.Tpre) % per : f.Tpre; })()) : g.gapX + GAP / 2;
+    else x = g.xRel(now - up);
+    const v = levelAt(e, now, up);
+    if (x <= g.W - g.R && (up == null || now - up <= f.Trel + 40)) {
+      el("line", { x1: x, x2: x, y1: g.T, y2: g.B, stroke: "var(--gold)", "stroke-width": 1, opacity: 0.7 }, svg);
+      el("circle", { cx: x, cy: g.ax.y(v), r: 4, fill: "var(--gold)", "data-now": 1 }, svg);
+    }
+  }
+  svg._g = g; svg._kind = kind;
+  return g;
+}
+
+/* ===================== small drawings for the blocks ===================== */
+function prevEnv(kind, svg, w, h, e, otherE, dead) {
+  svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+  svg.setAttribute("height", h);
+  svg.innerHTML = "";
+  const L = 4, R = 4, T = 5, B = h - 4;
+  const ax = levelAxis(kind, T, B);
+  if (kind === "amp") { ax.yF = B - 6; ax.y = (l) => (l <= 0 ? B : T + (clamp(lvlDb(l), FLOOR_DB, 0) / FLOOR_DB) * (ax.yF - T)); }
+  const f = flatten(e), gap = Math.min(30, w * 0.12), total = Math.max(1, f.Tpre + f.Trel);
+  const ppm = (w - L - R - gap) / total;
+  const g = { ax, xPre: (t) => L + t * ppm, ppm, f };
+  g.gapX = g.xPre(f.Tpre); g.xRel = (t) => g.gapX + gap + t * ppm;
+  const path = (env) => {
+    const ff = flatten(env), gx = L + ff.Tpre * ppm, xr = (t) => gx + gap + t * ppm;
+    const ys = ax.y(env.m.sus).toFixed(2);
+    return runPath(g, ff.pre, g.xPre) + "L" + gx.toFixed(2) + " " + ys + "L" + (gx + gap).toFixed(2) + " " + ys + "L" + runPath(g, ff.rel, xr).slice(1);
+  };
+  if (kind === "amp") for (const d of [-12, -24, -36, -48]) el("line", { x1: L, x2: w - R, y1: ax.y(Math.pow(10, d / 20)), y2: ax.y(Math.pow(10, d / 20)), stroke: "var(--cream-2)" }, svg);
+  el("line", { x1: L, x2: w - R, y1: B, y2: B, stroke: "var(--line)" }, svg);
+  el("line", { x1: g.gapX, x2: g.gapX, y1: T, y2: B, stroke: dead ? "var(--line)" : "var(--blush)", "stroke-dasharray": "3 3" }, svg);
+  if (otherE) el("path", { d: path(otherE), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1.3, "stroke-dasharray": "4 3" }, svg);
+  const d = path(e);
+  const ink = dead ? "var(--unresolved)" : kind === "menv" ? (S.menv.own ? "var(--ch4)" : "var(--unresolved)") : S.hands === 2 && !S.linked[kind === "amp" ? "amp" : "filter"] ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--blush-deep)";
+  if (!dead) el("path", { d: d + "L" + g.xRel(f.Trel) + " " + B + "L" + L + " " + B + "Z", fill: "var(--blush)", opacity: 0.12 }, svg);
+  el("path", { d, fill: "none", stroke: ink, "stroke-width": 1.6, "stroke-dasharray": dead || (kind === "menv" && !S.menv.own) ? "4 3" : "none" }, svg);
+  if (S.note && !dead) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    if (up == null || now - up <= f.Trel) {
+      let x;
+      if (up == null || now < up) x = now <= f.Tpre ? g.xPre(now) : g.gapX + gap / 2; else x = g.xRel(now - up);
+      el("circle", { cx: x, cy: ax.y(levelAt(e, now, up)), r: 3, fill: "var(--gold)" }, svg);
+    }
+  }
+}
+// The filter's response as the block draws it, with the band its envelope sweeps.
+const FMIN = 20, FMAX = 20000;
+function filterPlot(svg, w, h, opts) {
+  svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+  if (!opts.big) svg.setAttribute("height", h);
+  svg.innerHTML = "";
+  const F = filt(), L = opts.L || 4, R = opts.R || 4, T = opts.T || 4, B = h - (opts.Bm || 4);
+  const DBT = opts.dbTop || 24, DBB = opts.dbBot || -36;
+  const xOf = (f) => L + Math.log(f / FMIN) / Math.log(FMAX / FMIN) * (w - L - R);
+  const fOf = (x) => FMIN * Math.pow(FMAX / FMIN, (x - L) / (w - L - R));
+  const yOf = (db) => T + (DBT - clamp(db, DBB, DBT)) / (DBT - DBB) * (B - T);
+  const g = { xOf, fOf, yOf, L, R, T, B, w, h, DBT, DBB };
+  if (opts.quiet) {
+    // The panel's response: two level lines and three frequencies, as quiet as the envelope beside it.
+    for (const db of [0, -24]) {
+      el("line", { x1: L, x2: w - R, y1: yOf(db), y2: yOf(db), stroke: "var(--line)", "stroke-width": 1, opacity: db ? 0.7 : 1 }, svg);
+      const t = el("text", { x: L - 5, y: yOf(db) + 3, "text-anchor": "end", "font-size": 9, fill: "var(--text-soft)" }, svg); t.textContent = db ? "−24" : "0 dB";
+    }
+    for (const f of [100, 1000, 10000]) { const t = el("text", { x: xOf(f), y: B + 12, "text-anchor": "middle", "font-size": 9, fill: "var(--text-soft)" }, svg); t.textContent = f >= 1000 ? f / 1000 + "k" : f; }
+  } else if (opts.big) {
+    for (const f of [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]) {
+      el("line", { x1: xOf(f), x2: xOf(f), y1: T, y2: B, stroke: "var(--line)" }, svg);
+      const t = el("text", { x: xOf(f), y: B + 13, "text-anchor": "middle", "font-size": 10, fill: "var(--text-soft)" }, svg);
+      t.textContent = f >= 1000 ? f / 1000 + "k" : f;
+    }
+    for (let db = DBT; db >= DBB; db -= 12) {
+      el("line", { x1: L, x2: w - R, y1: yOf(db), y2: yOf(db), stroke: db === 0 ? "var(--text-soft)" : "var(--line)", "stroke-width": db === 0 ? 0.8 : 1 }, svg);
+      const t = el("text", { x: L - 6, y: yOf(db) + 3.5, "text-anchor": "end", "font-size": 10, fill: "var(--text-soft)" }, svg);
+      t.textContent = db > 0 ? "+" + db : db === 0 ? "0 dB" : "−" + Math.abs(db);
+    }
+  } else el("line", { x1: L, x2: w - R, y1: yOf(0), y2: yOf(0), stroke: "var(--line)" }, svg);
+  const cut = cutoffHz(F.cut), Q = resonanceQ(F.res);
+  if (F.type === 0) {
+    el("path", { d: "M" + L + " " + yOf(0) + "H" + (w - R), stroke: "var(--unresolved)", "stroke-width": 1.6, fill: "none" }, svg);
+    if (opts.big) { const t = el("text", { x: w / 2, y: yOf(0) - 10, "text-anchor": "middle", "font-size": 12, fill: "var(--text-soft)" }, svg); t.textContent = "Off: the sound passes untouched"; }
+    svg._g = g; return g;
+  }
+  // The envelope's sweep: from where the cutoff rests to where its envelope's peak takes it.
+  const sweep = F.amt / 10, live = sweep !== 0;
+  if (live) {
+    const fTop = vcfHz(cut, sweep, 1, 0, 0), x0 = xOf(Math.min(cut, fTop)), x1 = xOf(Math.max(cut, fTop));
+    el("rect", { x: x0, y: T, width: Math.max(1, x1 - x0), height: B - T, fill: "var(--wash-strong)", "data-sweep": 1 }, svg);
+    if (!opts.plain) el("line", { x1: xOf(fTop), x2: xOf(fTop), y1: T, y2: B, stroke: "var(--blush)", "stroke-dasharray": "3 3" }, svg);
+    if (opts.big) {
+      const t = el("text", { x: (x0 + x1) / 2, y: T + 11, "text-anchor": "middle", "font-size": opts.quiet ? 9.5 : 10.5, fill: "var(--blush-deep)" }, svg);
+      t.textContent = (opts.quiet ? "sweeps " : "its envelope sweeps ") + octReading(F.amt);
+    }
+  }
+  // Key tracking: where the cutoff lands for the strip's lowest and highest keys.
+  if (opts.big && F.track > 0) {
+    for (const [hz, nm] of [[65.41, "C2"], [1046.5, "C6"]]) {
+      const x = xOf(vcfHz(cut, 0, 0, F.track / 100, hz));
+      el("line", { x1: x, x2: x, y1: B - 10, y2: B, stroke: "var(--gold)", "stroke-width": 1.5 }, svg);
+      const t = el("text", { x, y: B - 13, "text-anchor": "middle", "font-size": 9.5, fill: "var(--gold)" }, svg);
+      t.textContent = nm;
+    }
+  }
+  const curve = (fc) => {
+    let d = "";
+    const n = opts.big ? 300 : 90;
+    for (let i = 0; i <= n; i++) { const f = FMIN * Math.pow(FMAX / FMIN, i / n); d += (i ? "L" : "M") + xOf(f).toFixed(2) + " " + yOf(svfDb(F.type, fc, Q, f)).toFixed(2); }
+    return d;
+  };
+  // While a note sounds, the curve where the envelope has the cutoff now, and the rest faint.
+  let fc = cut;
+  if (S.note && live) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    fc = vcfHz(cut, sweep, levelAt(fenvEnv(), now, up), 0, 0);
+    el("path", { d: curve(cut), fill: "none", stroke: "var(--unresolved)", "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
+  }
+  const d = curve(fc);
+  el("path", { d: d + "L" + (w - R) + " " + B + "L" + L + " " + B + "Z", fill: "var(--blush)", opacity: 0.1 }, svg);
+  el("path", { d, fill: "none", stroke: S.hands === 2 && !S.linked.filter ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : opts.big || opts.plain ? "var(--charcoal)" : "var(--blush-deep)", "stroke-width": opts.big ? 1.8 : 1.5, "data-resp": 1 }, svg);
+  // The point: on the curve at the cutoff (its resting place).
+  const py = yOf(svfDb(F.type, cut, Q, cut)), px = xOf(cut);
+  if (opts.plain) { svg._g = g; return g; }
+  const grp = el("g", { class: "pt", tabindex: opts.big ? 0 : -1, "data-fpt": 1, role: "slider", "aria-label": "Cutoff and resonance", "aria-valuetext": hzReading(cut) + ", Q " + Q.toFixed(2) }, svg);
+  if (opts.big) el("circle", { cx: px, cy: py, r: 13, fill: "transparent" }, grp);
+  el("circle", { cx: px, cy: py, r: opts.big ? 6 : 3.5, fill: opts.big ? "var(--blush-deep)" : "var(--paper)", stroke: opts.big ? "var(--paper)" : "var(--blush-deep)", "stroke-width": 1.5, class: "ring" }, grp);
+  svg._g = g;
+  return g;
+}
+
+const PRESET_NAMES = Object.keys(SHAPES);
+/* The geometry of an envelope's drawing. Straight milliseconds with zoom in the
+   larger editors (B, C, D, as the first mockup); in A's editor in place, the
+   square-root rule the page's own envelope drawings use (each stretch as wide as
+   the square root of its time, straight inside it), because a drawing that small
+   loses an 8 ms attack on a straight axis. k is pixels per root-millisecond, kept
+   in the view like ppm, so dragging an anchor moves only its own stretch's width
+   and the point stays under the pointer: T = ((x - x0) / k)^2. */
+function msegGeo(kind, svg, opts) {
+  opts = opts || {};
+  const compactPlot = !!opts.small;
+  const W = svg.clientWidth, H = svg.clientHeight;
+  const tight = !!opts.warp;
+  const L = opts.soft ? 32 : tight ? 30 : compactPlot ? 36 : 44, R = tight ? 10 : 12, T = tight ? 9 : 10;
+  const B = H - (opts.soft ? 18 : tight ? (opts.style === "i" ? 16 : 6) : compactPlot ? 30 : 42);
+  const ax = levelAxis(opts.lin ? "lin" : kind, T, B, tight);
+  const key = kind + (compactPlot ? "s" : "") + (tight ? "w" : "") + (opts.lin ? "l" : "");
+  const ui = S.ui[key] || (S.ui[key] = {});
+  const e = envOf(kind), f = flatten(e), oth = tight ? null : otherEnv(kind), fo = oth ? flatten(oth) : f;
+  const total = Math.max(1, f.Tpre + f.Trel, fo.Tpre + fo.Trel);
+  if (!tight) {
+    const avail = Math.max(40, W - L - R - GAP);
+    if (!ui.view || ui.fit) ui.view = { ppm: avail / (total * 1.06), ms0: 0 };
+    ui.fit = false;
+    const ppm = ui.view.ppm, ms0 = ui.view.ms0;
+    const xPre = (t) => L + (t - ms0) * ppm;
+    const gapX = xPre(f.Tpre);
+    const xRel = (t) => gapX + GAP + t * ppm;
+    const tOf = (x, side) => (side === "pre" ? (x - L) / ppm + ms0 : (x - gapX - GAP) / ppm);
+    return { W, H, L, R, T, B, ax, f, ppm, ms0, xPre, xRel, gapX, ui, kind, avail, total, tOf, style: opts.style };
+  }
+  const ww = warpGeo(e, L, R, W, ui.view && !ui.fit ? ui.view.k : null);
+  if (!ui.view || ui.fit) ui.view = { k: ww.k };
+  ui.fit = false;
+  return Object.assign(ww, { W, H, L, R, T, B, ax, f, ms0: 0, ui, kind, total, style: opts.style, warp: true });
+}
+// The square-root mapping, for the editor in place and for every preview: each stretch as wide as the
+// root of its time (fitted to the width unless k is given), the held gap a fixed seventh of a tenth.
+function warpGeo(e, L, R, W, k) {
+  const f = flatten(e);
+  const gapW = Math.max(10, Math.round((W - L - R) * 0.07));
+  const avail = Math.max(40, W - L - R - gapW);
+  const roots = STRETCH.map((s) => Math.sqrt(e.m[s])).reduce((a, b) => a + b, 0) + Math.sqrt(e.m.release);
+  const fitK = avail / Math.max(1, roots);
+  if (!k) k = fitK;
+  const spans = {};
+  let x = L, t = 0;
+  for (const s of STRETCH) { const w = k * Math.sqrt(e.m[s]); spans[s] = { x0: x, w, t0: t, T: e.m[s] }; x += w; t += e.m[s]; }
+  const gapX = x;
+  spans.release = { x0: gapX + gapW, w: k * Math.sqrt(e.m.release), t0: 0, T: e.m.release };
+  const within = (sp, tt) => sp.x0 + (sp.T > 0 ? (tt - sp.t0) / sp.T : 0) * sp.w;
+  const xPre = (tt) => { for (const s of STRETCH) { const sp = spans[s]; if (sp.T > 0 && tt <= sp.t0 + sp.T + 1e-9) return within(sp, Math.max(tt, sp.t0)); } return gapX; };
+  const xRel = (tt) => within(spans.release, tt);
+  const tOf = (xx, side, role) => {
+    if (side === "rel") {
+      const sp = spans.release;
+      return role === "release" ? Math.pow(Math.max(0, xx - sp.x0) / k, 2) : sp.T * (xx - sp.x0) / Math.max(1e-9, sp.w);
+    }
+    if (role && spans[role] && role !== "release") return spans[role].t0 + Math.pow(Math.max(0, xx - spans[role].x0) / k, 2);
+    for (const s of STRETCH) { const sp = spans[s]; if (sp.T > 0 && xx <= sp.x0 + sp.w) return sp.t0 + sp.T * (xx - sp.x0) / sp.w; }
+    return f.Tpre;
+  };
+  return { xPre, xRel, gapX, gapW, spans, k, fitK, tOf, avail, ppm: avail / Math.max(1, f.Tpre + f.Trel) };
+}
+function levelAxis(kind, T, B, tight) {
+  if (kind === "amp") {
+    // In the small editor the floor is the foot (-48 dB) with no band for silence under it: the band costs
+    // a fifth of a drawing this short, and the floor-as-foot is what takes the cliff off the release.
+    const floor = tight ? -48 : FLOOR_DB, yF = tight ? B : B - 16;
+    return { db: true, T, yF, yS: B, B, floor,
+      y: (l) => (l <= 0 ? B : T + (clamp(lvlDb(l), floor, 0) / floor) * (yF - T)),
+      lvl: (y) => (y > (tight ? B - 1 : yF + 8) ? 0 : Math.pow(10, clamp(floor * (y - T) / (yF - T), floor, 0) / 20)) };
+  }
+  return { db: false, T, yF: B, yS: B, B, y: (l) => T + (1 - clamp(l, 0, 1)) * (B - T), lvl: (y) => clamp(1 - (y - T) / (B - T), 0, 1) };
+}
+/* ===================== round 3: the quiet drawings ===================== */
+// The level the drawing uses: the amp envelope in decibels or straight amplitude (the page's toggle);
+// the others always straight. The Sustain knob and every readout stay in decibels either way.
+const ampLin = () => S.level === "lin";
+/* The small block: the shape and nothing else. Square-root time, so an 8 ms attack has a slope;
+   straight amplitude, so a sustain of -3 dB sits at seven tenths and reads as the ADSR everyone
+   knows; the held part a short plateau of no time, with no band or rule. */
+function prevPlain(kind, svg, w, h, e, dead) {
+  svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+  svg.setAttribute("height", h);
+  svg.innerHTML = "";
+  const L = 3, R = 3, T = 4, B = h - 2;
+  const ax = levelAxis("lin", T, B, true);
+  const g = Object.assign(warpGeo(e, L, R, w, null), { ax, L, R, T, B, W: w, H: h });
+  const f = flatten(e), ys = ax.y(e.m.sus).toFixed(2);
+  const d = runPath(g, f.pre, g.xPre) + "L" + (g.gapX + g.gapW).toFixed(2) + " " + ys + "L" + runPath(g, f.rel, g.xRel).slice(1);
+  if (!dead) el("path", { d: d + "L" + g.xRel(f.Trel).toFixed(2) + " " + B + "L" + L + " " + B + "Z", fill: "var(--blush)", opacity: 0.16 }, svg);
+  el("path", { d, fill: "none", stroke: dead ? "var(--unresolved)" : "var(--charcoal)", "stroke-width": 1.5, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": dead ? "4 3" : "none", "data-curve": 1 }, svg);
+  if (S.note && !dead) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    if (up == null || now - up <= f.Trel) {
+      const x = up == null || now < up ? (now <= f.Tpre ? g.xPre(now) : g.gapX + g.gapW / 2) : g.xRel(now - up);
+      el("circle", { cx: x, cy: ax.y(levelAt(e, now, up)), r: 3, fill: "var(--gold)", "data-now": 1 }, svg);
+    }
+  }
+  return g;
+}
+/* The large editor, quietly: square-root time, three level lines, no frame and no band for the
+   held part (the sustain runs on dotted to a small tick at key-up), round handles, a soft fill.
+   It keeps every hook the gestures use (.pt, .bh, .tabm, the hit path), so they are the first
+   mockup's own. Delay and Hold are handles on the curve that show while the pointer is over the
+   drawing or one of them is held: Delay at the end of the silence, Hold at the end of the peak
+   (just right of it while it is nought). */
+function drawSoft(kind, svg) {
+  svg.innerHTML = "";
+  if (!svg.clientWidth || !svg.clientHeight) return null;
+  const lin = kind !== "amp" || ampLin();
+  const g = msegGeo(kind, svg, { small: true, warp: true, style: "soft", lin, soft: true });
+  svg.setAttribute("viewBox", "0 0 " + g.W + " " + g.H);
+  const e = envOf(kind), f = g.f;
+  el("rect", { x: 0, y: 0, width: g.W, height: g.H, fill: "transparent", "data-bg": 1 }, svg);
+  // Three level lines and their words: 0, -24, -48 dB, or full, half, nought.
+  const grid = el("g", { "aria-hidden": "true" }, svg);
+  const lines = lin ? [[1, kind === "amp" ? "0 dB" : "100%"], [0.5, kind === "amp" ? "−6" : "50%"], [0, kind === "amp" ? "−∞" : "0"]]
+    : [[1, "0 dB"], [Math.pow(10, -24 / 20), "−24"], [0, "−48"]];
+  for (const [l, t] of lines) {
+    const y = g.ax.y(l);
+    el("line", { x1: g.L, x2: g.W - g.R, y1: y, y2: y, stroke: "var(--line)", "stroke-width": 1, opacity: l === 0 ? 1 : 0.7, "data-gridline": 1 }, grid);
+    const n = el("text", { x: g.L - 5, y: y + 3, "text-anchor": "end", "font-size": 9, fill: "var(--text-soft)" }, grid);
+    n.textContent = t;
+  }
+  // Key-up: a small tick on the foot, and the word under it.
+  const ku = g.gapX + g.gapW;
+  el("line", { x1: ku, x2: ku, y1: g.B - 4, y2: g.B + 4, stroke: "var(--text-soft)", "stroke-width": 1 }, grid);
+  const kt = el("text", { x: ku, y: g.B + 13, "text-anchor": "middle", "font-size": 8.5, fill: "var(--text-soft)" }, grid);
+  kt.textContent = "key up";
+  // The loop, if any: a wash between its marker and the sustain point.
+  if (e.loop != null) {
+    const L = Math.min(e.loop, f.pre.length - 2), x0 = g.xPre(f.pre[L].t);
+    el("rect", { x: x0, y: g.T, width: Math.max(0, g.gapX - x0), height: g.B - g.T, fill: "var(--wash)" }, svg);
+    const m = el("g", { class: "loopm", tabindex: 0, role: "slider", "aria-label": "Where the loop starts", "data-loop": 1 }, svg);
+    el("line", { x1: x0, x2: x0, y1: g.T, y2: g.B, stroke: "var(--gold)", "stroke-width": 1.2, opacity: 0.8 }, m);
+    el("rect", { x: x0 - 6, y: g.T, width: 12, height: g.B - g.T, fill: "transparent" }, m);
+  }
+  const ys = g.ax.y(e.m.sus);
+  const pre = runPath(g, f.pre, g.xPre), rel = runPath(g, f.rel, g.xRel);
+  const whole = pre + "L" + g.gapX.toFixed(2) + " " + ys.toFixed(2) + "L" + ku.toFixed(2) + " " + ys.toFixed(2) + "L" + rel.slice(1);
+  el("path", { d: whole + "L" + g.xRel(f.Trel).toFixed(2) + " " + g.B + "L" + g.L + " " + g.B + "Z", fill: "var(--blush)", opacity: 0.16 }, svg);
+  el("path", { d: pre, fill: "none", stroke: "var(--charcoal)", "stroke-width": 1.8, "stroke-linejoin": "round", "stroke-linecap": "round", "data-curve": 1 }, svg);
+  el("path", { d: "M" + g.gapX.toFixed(2) + " " + ys.toFixed(2) + "H" + ku.toFixed(2), fill: "none", stroke: "var(--charcoal)", "stroke-width": 1.4, "stroke-dasharray": "1.5 3.5", "stroke-linecap": "round" }, svg);
+  el("path", { d: rel, fill: "none", stroke: "var(--charcoal)", "stroke-width": 1.8, "stroke-linejoin": "round", "stroke-linecap": "round", "data-curve": 1 }, svg);
+  el("path", { d: whole, fill: "none", stroke: "transparent", "stroke-width": 14, class: "hit", "data-hit": 1 }, svg);
+  // Bends: a small hollow round at the middle of each stretch in time, on the curve.
+  const addBends = (pts, xOf, side) => {
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      if (q.t - p.t <= 0 || p.lvl === q.lvl || Math.abs(xOf(q.t) - xOf(p.t)) < 22) continue;
+      const x = (xOf(p.t) + xOf(q.t)) / 2, y = g.ax.y(travel(p.lvl, q.lvl, q.bend, 0.5)), id = "b" + side + i, on = SEL && SEL.kind === kind && SEL.id === id;
+      const grp = el("g", { class: "bh", tabindex: 0, role: "slider", "data-bend": id, "aria-label": "Bend" }, svg);
+      el("circle", { cx: x, cy: y, r: 9, fill: "transparent" }, grp);
+      el("circle", { cx: x, cy: y, r: 3.2, fill: on ? "var(--gold)" : "var(--paper)", stroke: "var(--text-soft)", "stroke-width": 1.2, class: "ring" }, grp);
+    }
+  };
+  addBends(f.pre, g.xPre, "pre"); addBends(f.rel, g.xRel, "rel");
+  // Points: round; the anchors paper with an ink ring, yours filled.
+  const pts = [];
+  f.pre.forEach((p, i) => { if (p.role === "start" || p.role === "delay" || p.role === "hold") return; pts.push({ p, id: "pre" + i, x: g.xPre(p.t), y: g.ax.y(p.lvl) }); });
+  f.rel.forEach((p, i) => { if (p.role === "held") return; pts.push({ p, id: "rel" + i, x: g.xRel(p.t), y: g.ax.y(p.lvl) }); });
+  for (const q of pts) {
+    const anchor = q.p.role !== "inner", on = SEL && SEL.kind === kind && SEL.id === q.id;
+    const grp = el("g", { class: "pt", tabindex: 0, role: "slider", "data-pt": q.id, "aria-label": anchor ? NAMES[q.p.role === "decay" ? "sus" : q.p.role] + " point" : "A point you added",
+                          "aria-valuetext": timeReading(kind, q.p.t) + ", " + levelReading(kind, q.p.lvl) }, svg);
+    el("circle", { cx: q.x, cy: q.y, r: 12, fill: "transparent" }, grp);
+    el("circle", { cx: q.x, cy: q.y, r: anchor ? 5 : 4, fill: on ? "var(--blush-deep)" : anchor ? "var(--paper)" : "var(--charcoal)", stroke: on ? "var(--blush-deep)" : "var(--charcoal)", "stroke-width": 1.4, class: "ring", "data-cx": q.x, "data-cy": q.y }, grp);
+  }
+  // Delay and Hold, on the curve, shown on hover or hold.
+  const dx = g.spans.delay.x0 + g.spans.delay.w, hx = e.m.hold > 0 ? g.spans.hold.x0 + g.spans.hold.w : g.spans.hold.x0 + 9;
+  for (const [s, x, y] of [["delay", dx, g.ax.y(0)], ["hold", hx, g.ax.y(1)]]) {
+    const on = (SEL && SEL.kind === kind && SEL.id === "tab" + s) || e.m[s] > 0;
+    const m = el("g", { class: "tabm dh" + (on ? " shown" : ""), tabindex: 0, role: "slider", "data-tab": s, "aria-label": NAMES[s] + ": " + timeReading(kind, e.m[s]) }, svg);
+    el("circle", { cx: x, cy: y, r: 10, fill: "transparent" }, m);
+    el("circle", { cx: x, cy: y, r: 3.6, fill: "var(--paper)", stroke: "var(--gold)", "stroke-width": 1.4, class: "ring" }, m);
+  }
+  if (S.note) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    if (up == null || now - up <= f.Trel + 40) {
+      let x;
+      if (up == null || now < up) x = now <= f.Tpre ? g.xPre(now) : e.loop != null ? g.xPre((() => { const L = Math.min(e.loop, f.pre.length - 2), t0 = f.pre[L].t, per = f.Tpre - t0; return per > 0 ? t0 + (now - f.Tpre) % per : f.Tpre; })()) : (g.gapX + ku) / 2;
+      else x = g.xRel(now - up);
+      el("circle", { cx: x, cy: g.ax.y(levelAt(e, now, up)), r: 4, fill: "var(--gold)", "data-now": 1 }, svg);
+    }
+  }
+  svg._g = g; svg._kind = kind;
+  return g;
+}
+/* ===================== dragging an envelope ===================== */
+function stageScale() { return parseFloat(document.getElementById("stage").dataset.scale || "1"); }
+function toPlot(svg, ev) {
+  const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+// Which point an id names, and what it means.
+function pointOf(kind, id) {
+  const f = flatten(envOf(kind)), side = id.startsWith("pre") ? "pre" : "rel", i = +id.slice(3);
+  return { f, side, i, p: f[side][i] };
+}
+const stretchStart = (e, s) => { let t = 0; for (const x of STRETCH) { if (x === s) return t; t += e.m[x]; } return 0; };
+function msOfX(g, x, side) { return side === "pre" ? (x - g.L) / g.ppm + g.ms0 : (x - g.gapX - GAP) / g.ppm; }
+function snapT(kind, t) {
+  if (!S.sync[kind]) return t;
+  const step = 60000 / S.bpm * 4 / S.grid;
+  return Math.round(t / step) * step;
+}
+// A point moved to time t (ms on its side) and level lvl.
+function movePoint(kind, id, t, lvl) {
+  writeEnv(kind, (e) => {
+    const { side, i, p, f } = pointOf(kind, id);
+    t = snapT(kind, t);
+    if (p.role === "inner") {
+      const s = p.s, st = s === "release" ? 0 : stretchStart(e, s), T = e.m[s];
+      const pts = f[side], lo = pts[i - 1].t, hi_ = pts[i + 1].t;
+      const tt = clamp(t, lo, hi_);
+      e.inner[s][p.k].u = T > 0 ? clamp((tt - st) / T, 0, 1) : 0;
+      e.inner[s][p.k].lvl = clamp(lvl, 0, 1);
+      return;
+    }
+    const prevT = (() => { // the stretch's start
+      if (p.role === "release") return 0;
+      return stretchStart(e, p.role);
+    })();
+    // An anchor's time is its stretch's length: the points inside keep their shares.
+    const len = Math.max(p.role === "release" ? 1 : 0, Math.min(TMAX[p.role], t - prevT));
+    e.m[p.role] = snapMs(kind, len);
+    if (p.role === "decay") e.m.sus = clamp(lvl, 0, 1);
+  });
+}
+let drag = null, lastDown = null, longPress = null;
+function wirePlot(svg) {
+  const kind = svg.dataset.kind;
+  svg.addEventListener("contextmenu", (ev) => {
+    const t = ev.target.closest(".pt, .bh");
+    ev.preventDefault();
+    if (t) openMenu(kind, t.dataset.pt || t.dataset.bend, ev.clientX, ev.clientY);
+  });
+  svg.addEventListener("pointerdown", (ev) => {
+    hideMenu();
+    const pt = ev.target.closest(".pt"), bh = ev.target.closest(".bh"), tab = ev.target.closest(".tabm"), loop = ev.target.closest(".loopm");
+    if (ev.button !== 0) return;
+    const g = svg._g, at = toPlot(svg, ev), now = performance.now();
+    const key = pt ? pt.dataset.pt : bh ? bh.dataset.bend : tab ? "tab" + tab.dataset.tab : loop ? "loop" : ev.target.dataset.hit ? "hit" : "bg";
+    const dbl = lastDown && lastDown.key === key && now - lastDown.t < 380 && Math.hypot(at.x - lastDown.x, at.y - lastDown.y) < 6;
+    lastDown = { key, t: now, x: at.x, y: at.y };
+    if (dbl) { lastDown = null; doubleAt(kind, key, at, g); ev.preventDefault(); return; }
+    if (key === "bg" || key === "hit") {
+      if (!g.warp && g.ppm * g.total > g.avail * 1.08) { drag = { kind, pan: true, x: at.x, ms0: g.ui.view.ms0, id: ev.pointerId }; svg.setPointerCapture(ev.pointerId); }
+      return;
+    }
+    ev.preventDefault();
+    (pt || bh || tab || loop).focus({ preventScroll: true });
+    svg.setPointerCapture(ev.pointerId);
+    if (pt) { const q = pointOf(kind, key); SEL = { kind, id: key, knob: pointKnobs(kind, q.p) }; }
+    else if (bh) SEL = { kind, id: key, knob: [] };
+    else if (tab) SEL = { kind, id: key, knob: [kind + "-" + tab.dataset.tab] };
+    drag = { kind, key, id: ev.pointerId, x: at.x, y: at.y, moved: false };
+    // A long press is the right-click, for a finger.
+    clearTimeout(longPress);
+    if (pt || bh) longPress = setTimeout(() => { if (drag && !drag.moved) { const k = drag.key; drag = null; openMenu(kind, k, ev.clientX, ev.clientY); } }, 550);
+    paint(); showReadout(kind, key);
+  });
+  svg.addEventListener("pointermove", (ev) => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const g = svg._g, at = toPlot(svg, ev);
+    if (drag.pan) { g.ui.view.ms0 = Math.max(0, drag.ms0 - (at.x - drag.x) / g.ppm); paint(); return; }
+    if (!drag.moved && Math.hypot(at.x - drag.x, at.y - drag.y) < 3) return;
+    drag.moved = true; clearTimeout(longPress);
+    const k = drag.key;
+    if (k.startsWith("pre") || k.startsWith("rel")) {
+      const side = k.startsWith("pre") ? "pre" : "rel";
+      movePoint(kind, k, g.tOf(at.x, side, pointOf(kind, k).p.role), g.ax.lvl(at.y));
+    } else if (k.startsWith("b")) {
+      bendTo(kind, k, at.y, g);
+    } else if (k.startsWith("tab")) {
+      const s = k.slice(3), e = envOf(kind);
+      writeEnv(kind, (en) => { en.m[s] = snapMs(kind, clamp(g.tOf(at.x, "pre", s) - stretchStart(en, s), 0, TMAX[s])); });
+    } else if (k === "loop") {
+      const f = flatten(envOf(kind)), t = g.tOf(at.x, "pre");
+      let best = 0, bd = Infinity;
+      f.pre.forEach((p, i) => { if (i < f.pre.length - 1 && Math.abs(p.t - t) < bd) { bd = Math.abs(p.t - t); best = i; } });
+      writeEnv(kind, (en) => { en.loop = best; });
+    }
+    showReadout(kind, k);
+  });
+  const up = (ev) => { if (!drag || ev.pointerId !== drag.id) return; drag = null; clearTimeout(longPress); hideReadoutSoon(); };
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  svg.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const g = svg._g, at = toPlot(svg, ev);
+    zoomAt(kind, ev.deltaY < 0 ? 1.25 : 0.8, at.x, g);
+  }, { passive: false });
+  svg.addEventListener("keydown", (ev) => {
+    const t = ev.target.closest(".pt, .bh, .tabm, .loopm");
+    if (!t) return;
+    if (ev.shiftKey && ev.key === "F10") { ev.preventDefault(); const r = t.getBoundingClientRect(); openMenu(kind, t.dataset.pt || t.dataset.bend, r.right, r.bottom); return; }
+    if (ev.key === "ContextMenu") { ev.preventDefault(); const r = t.getBoundingClientRect(); openMenu(kind, t.dataset.pt || t.dataset.bend, r.right, r.bottom); return; }
+    const g = svg._g;
+    if ((ev.key === "Delete" || ev.key === "Backspace") && t.dataset.pt) { ev.preventDefault(); removePoint(kind, t.dataset.pt); return; }
+    const dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key];
+    if (!dir) return;
+    ev.preventDefault();
+    if (t.dataset.pt) {
+      const id = t.dataset.pt, { p, side } = pointOf(kind, id);
+      SEL = { kind, id, knob: pointKnobs(kind, p) };
+      const span = (g.W - g.L - g.R) / g.ppm, dt = dir[0] * span * (ev.shiftKey ? 0.002 : 0.01);
+      let lvl = p.lvl;
+      if (dir[1]) {
+        if (kind === "amp") { const d = p.lvl <= 0 ? FLOOR_DB - 0.5 : lvlDb(p.lvl); const nd = d + dir[1] * (ev.shiftKey ? 0.1 : 0.5); lvl = nd < FLOOR_DB ? 0 : Math.pow(10, Math.min(0, nd) / 20); }
+        else lvl = clamp(p.lvl + dir[1] * (ev.shiftKey ? 0.002 : 0.01), 0, 1);
+      }
+      movePoint(kind, id, p.t + dt, lvl);
+      refocus(svg, '[data-pt="' + id + '"]');
+      showReadout(kind, id); hideReadoutSoon();
+    } else if (t.dataset.bend && dir[1]) {
+      const id = t.dataset.bend;
+      SEL = { kind, id, knob: [] };
+      writeEnv(kind, (e) => { const s = bendSlot(kind, e, id); const m = midOf(s.a, s.b, s.get()); s.set({ m: clamp(Math.round((m + dir[1] * Math.sign(s.b - s.a) * (ev.shiftKey ? 0.01 : 0.05)) * 1000) / 1000, 0.1, 0.9) }); });
+      refocus(svg, '[data-bend="' + id + '"]');
+    } else if (t.dataset.tab && dir[0]) {
+      const s = t.dataset.tab;
+      writeEnv(kind, (e) => { e.m[s] = snapMs(kind, clamp(e.m[s] + dir[0] * (ev.shiftKey ? 1 : 10), 0, TMAX[s])); });
+      refocus(svg, '[data-tab="' + s + '"]');
+    }
+  });
+}
+function refocus(svg, sel) { const n = svg.querySelector(sel); if (n) n.focus({ preventScroll: true }); }
+// The bend of the stretch ending at point i of a side, wherever it is kept.
+function bendSlot(kind, e, id) {
+  const side = id.slice(1, 4), i = +id.slice(4), f = flatten(e), q = f[side][i], p = f[side][i - 1];
+  const get = () => (q.role === "inner" ? e.inner[q.s][q.k].b : e.b[q.role]);
+  const set = (b) => { if (q.role === "inner") e.inner[q.s][q.k].b = b; else e.b[q.role] = b; };
+  return { a: p.lvl, b: q.lvl, get, set, q };
+}
+function bendTo(kind, id, y, g) {
+  writeEnv(kind, (e) => {
+    const s = bendSlot(kind, e, id), want = g.ax.lvl(y);
+    // The midpoint is the level reached half-way, as a share of the fall: the fade's rule.
+    const m = clamp((want - s.a) / (s.b - s.a), 0.1, 0.9);
+    s.set({ m: Math.round(m * 1000) / 1000 });
+  });
+}
+function zoomAt(kind, factor, x, g) {
+  if (g.warp) { g.ui.view.k = clamp(g.ui.view.k * factor, g.fitK, g.fitK * 8); paint(); return; }
+  const ui = g.ui, msAt = (x - g.L) / g.ppm + g.ms0;
+  const fit = g.avail / (g.total * 1.06);
+  ui.view.ppm = clamp(ui.view.ppm * factor, fit, fit * 64);
+  ui.view.ms0 = ui.view.ppm <= fit * 1.001 ? 0 : Math.max(0, msAt - (x - g.L) / ui.view.ppm);
+  paint();
+}
+// Two presses: on the line, a point; on a point you added, away with it; on an anchor, its knob back.
+function doubleAt(kind, key, at, g) {
+  if (key === "hit" || key === "bg") {
+    if (key === "bg") return;
+    const side = at.x > g.gapX + (g.gapW || GAP) ? "rel" : at.x < g.gapX ? "pre" : null;
+    if (!side) return;
+    addPoint(kind, side, snapT(kind, g.tOf(at.x, side)));
+  } else if (key.startsWith("pre") || key.startsWith("rel")) {
+    const { p } = pointOf(kind, key);
+    if (p.role === "inner") removePoint(kind, key);
+    else for (const k of pointKnobs(kind, p)) knobDef(k).reset();
+  } else if (key.startsWith("b")) writeEnv(kind, (e) => bendSlot(kind, e, key).set({ m: 0.5 }));
+  else if (key.startsWith("tab")) writeEnv(kind, (e) => { e.m[key.slice(3)] = 0; });
+}
+/* A new point on the curve, splitting its stretch so the two halves aim where the whole did: a
+   one-pole forgets where it started, so nothing you hear changes until the point is moved. */
+function addPoint(kind, side, t) {
+  writeEnv(kind, (e) => {
+    const f = flatten(e), pts = f[side];
+    let i = 1;
+    while (i < pts.length - 1 && pts[i].t < t) i++;
+    const p = pts[i - 1], q = pts[i];
+    if (q.t - p.t <= 0 || t <= p.t || t >= q.t) return;
+    const s = q.role === "inner" ? q.s : q.role === "release" ? "release" : q.role;
+    if (!(s in e.inner)) return;
+    const x = (t - p.t) / (q.t - p.t), lvl = travel(p.lvl, q.lvl, q.bend, x), T = aimOf(p.lvl, q.lvl, q.bend);
+    const first = T === null ? { l: 1 } : lvl === p.lvl ? { l: 1 } : { p: (T - lvl) / (lvl - p.lvl) };
+    const second = T === null ? { l: 1 } : q.lvl === lvl ? { l: 1 } : { p: (T - q.lvl) / (q.lvl - lvl) };
+    const st = s === "release" ? 0 : stretchStart(e, s), u = e.m[s] > 0 ? (t - st) / e.m[s] : 0;
+    const np = { u, lvl, b: first };
+    if (q.role === "inner") e.inner[s][q.k].b = second; else e.b[s] = second;
+    e.inner[s].push(np);
+    e.inner[s].sort((a, b) => a.u - b.u);
+    const idx = e.inner[s].indexOf(np);
+    const nf = flatten(e), ni = nf[side].findIndex((r) => r.role === "inner" && r.s === s && r.k === idx);
+    SEL = { kind, id: side + ni, knob: [] };
+  });
+}
+function removePoint(kind, id) {
+  writeEnv(kind, (e) => {
+    const { p, f, side, i } = pointOf(kind, id);
+    if (p.role !== "inner") return;
+    const next = f[side][i + 1];
+    // The stretch that is left keeps the bend of the first half, as a midpoint.
+    const mid = midOf(f[side][i - 1].lvl, p.lvl, p.bend);
+    if (next.role === "inner") e.inner[next.s][next.k].b = { m: Math.round(clamp(mid, 0.1, 0.9) * 1000) / 1000 };
+    else e.b[next.role] = { m: Math.round(clamp(mid, 0.1, 0.9) * 1000) / 1000 };
+    e.inner[p.s].splice(p.k, 1);
+    if (e.loop != null && e.loop >= i && side === "pre") e.loop = Math.max(0, e.loop - 1);
+  });
+  SEL = null; paint();
+}
+
+/* ===================== the filter's point ===================== */
+function wireFilterPlot(svg) {
+  let d = null;
+  svg.addEventListener("contextmenu", (ev) => { ev.preventDefault(); if (ev.target.closest(".pt")) openFilterMenu(ev.clientX, ev.clientY); });
+  svg.addEventListener("pointerdown", (ev) => {
+    hideMenu();
+    const pt = ev.target.closest(".pt");
+    if (!pt || ev.button !== 0) return;
+    ev.preventDefault(); pt.focus({ preventScroll: true }); svg.setPointerCapture(ev.pointerId);
+    const at = toPlot(svg, ev), F = filt();
+    d = { id: ev.pointerId, y: at.y, res: F.res };
+    SEL = { kind: "filter", id: "f", knob: ["f-cut", "f-res"] }; paint(); showFilterReadout();
+  });
+  svg.addEventListener("pointermove", (ev) => {
+    if (!d || ev.pointerId !== d.id) return;
+    const g = svg._g, at = toPlot(svg, ev), F = filt();
+    const cut = clamp(cutoffStep(g.fOf(at.x)), 0, 1000);
+    let res;
+    if (F.type === 1 || F.type === 3) { const q = Math.pow(10, clamp((g.DBT - (at.y - g.T) / (g.B - g.T) * (g.DBT - g.DBB)), -3.01, 26.02) / 20); res = clamp(resStep(Math.max(Math.SQRT1_2, q)), 0, 100); }
+    else res = clamp(Math.round(d.res - (at.y - d.y) / 2), 0, 100);
+    writeHand("filter", (f) => { f.cut = cut; f.res = res; });
+    paint(); showFilterReadout();
+  });
+  const up = (ev) => { if (d && ev.pointerId === d.id) { d = null; hideReadoutSoon(); } };
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  svg.addEventListener("keydown", (ev) => {
+    if (!ev.target.closest(".pt")) return;
+    if ((ev.shiftKey && ev.key === "F10") || ev.key === "ContextMenu") { ev.preventDefault(); const r = ev.target.getBoundingClientRect(); openFilterMenu(r.right, r.bottom); return; }
+    const dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key];
+    if (!dir) return;
+    ev.preventDefault();
+    writeHand("filter", (f) => { f.cut = clamp(f.cut + dir[0] * (ev.shiftKey ? 1 : 10), 0, 1000); f.res = clamp(f.res + dir[1] * (ev.shiftKey ? 1 : 5), 0, 100); });
+    paint(); refocus(svg, "[data-fpt]"); showFilterReadout(); hideReadoutSoon();
+  });
+}
+
+/* ===================== readout and menu ===================== */
+let readoutTimer = null;
+function placeNear(node, svgNode) {
+  const win = document.getElementById("win").getBoundingClientRect(), r = svgNode.getBoundingClientRect(), sc = stageScale();
+  node.style.left = ((r.right - win.left) / sc + 8) + "px";
+  node.style.top = ((r.top - win.top) / sc - 26) + "px";
+}
+function showReadout(kind, key) {
+  clearTimeout(readoutTimer);
+  const ro = document.getElementById("readout"), e = envOf(kind);
+  let text = "", target = document.querySelector('svg[data-kind="' + kind + '"] [data-pt="' + key + '"], svg[data-kind="' + kind + '"] [data-bend="' + key + '"], svg[data-kind="' + kind + '"] [data-tab="' + key.slice(3) + '"]');
+  if (key.startsWith("pre") || key.startsWith("rel")) {
+    const { p } = pointOf(kind, key);
+    text = p.role === "inner" ? (key.startsWith("rel") ? "+" : "") + timeReading(kind, p.t) + " · " + levelReading(kind, p.lvl)
+      : p.role === "decay" ? "Decay " + timeReading(kind, e.m.decay) + " · Sustain " + levelReading(kind, e.m.sus) : NAMES[p.role] + " " + timeReading(kind, e.m[p.role]);
+  } else if (key.startsWith("b")) {
+    const s = bendSlot(kind, e, key), m = midOf(s.a, s.b, s.get());
+    text = "Half-way: " + Math.round(m * 100) + "% of the way" + (s.get().m == null ? " · the old curve" : "");
+  } else if (key.startsWith("tab")) text = NAMES[key.slice(3)] + " " + timeReading(kind, e.m[key.slice(3)]);
+  else return;
+  ro.textContent = text; ro.hidden = false;
+  if (target) placeNear(ro, target);
+}
+function showFilterReadout() {
+  clearTimeout(readoutTimer);
+  const ro = document.getElementById("readout"), F = filt(), t = document.querySelector("svg[data-filter] [data-fpt]");
+  ro.textContent = hzReading(cutoffHz(F.cut)) + " · Q " + resonanceQ(F.res).toFixed(2); ro.hidden = false;
+  if (t) placeNear(ro, t);
+}
+function hideReadoutSoon() { clearTimeout(readoutTimer); readoutTimer = setTimeout(() => { document.getElementById("readout").hidden = true; }, 900); }
+function placeMenu(m, cx, cy) {
+  const win = document.getElementById("win"), r = win.getBoundingClientRect(), sc = stageScale();
+  m.hidden = false;
+  let x = (cx - r.left) / sc + 2, y = (cy - r.top) / sc + 2;
+  x = Math.min(x, win.offsetWidth - m.offsetWidth - 6); y = Math.min(y, win.offsetHeight - m.offsetHeight - 6);
+  m.style.left = x + "px"; m.style.top = y + "px";
+  const first = m.querySelector("button:not([disabled]), input"); if (first) first.focus({ preventScroll: true });
+}
+function hideMenu() { document.getElementById("ctx").hidden = true; }
+const INFO = {
+  attack: "How long the note takes to reach its peak. Turning the knob stretches every point you added inside the attack with it.",
+  decay: "The sustain point: sideways how long the fall from the peak (or the hold) takes, up and down the level the note holds while the key is down, in decibels.",
+  release: "How long the sound takes to die once you let go. It starts from wherever the level is when the key comes up.",
+  delay: "Silence before the attack starts.",
+  hold: "How long the note stays at its peak before the decay.",
+  inner: "A point you added. It keeps its share of its stretch's time when the stretch's knob turns, and its own level.",
+  bend: "The curve of this stretch: drag up or down for quicker or slower to start. What is stored is the level reached half-way.",
+};
+function openMenu(kind, key, cx, cy) {
+  const m = document.getElementById("ctx"), e = envOf(kind);
+  if (!key) return;
+  let html = "";
+  if (key.startsWith("b")) {
+    const s = bendSlot(kind, e, key), m_ = midOf(s.a, s.b, s.get());
+    html = '<div class="h">Bend · half-way ' + Math.round(m_ * 100) + '%</div>'
+      + '<button type="button" data-act="straight">Straight</button>'
+      + '<button type="button" data-act="old">As the old envelope (a fifth past its end)</button>'
+      + '<div class="info"><b>What is this?</b>' + INFO.bend + '</div>';
+  } else {
+    const { p, side, i } = pointOf(kind, key);
+    const role = p.role === "decay" ? "Sustain point" : p.role === "inner" ? "Point" : NAMES[p.role] + " point";
+    const canLoop = side === "pre" && i < flatten(e).pre.length - 1;
+    html = '<div class="h">' + role + ' · ' + (side === "rel" ? "+" : "") + timeReading(kind, p.t) + ' · ' + levelReading(kind, p.lvl) + '</div>'
+      + '<div class="type"><label for="ctxT">Time</label><input id="ctxT" value="' + (side === "rel" ? p.t : p.t).toFixed(1) + ' ms"' + (p.role === "inner" || p.role !== "start" ? "" : " disabled") + '>'
+      + (p.role === "inner" || p.role === "decay" ? '<label for="ctxL">Level</label><input id="ctxL" value="' + (kind === "amp" ? (p.lvl <= 0 ? "-inf" : lvlDb(p.lvl).toFixed(1)) + ' dB' : Math.round(p.lvl * 100) + '%') + '">' : "") + '</div>'
+      + '<button type="button" data-act="type">Type a value</button>'
+      + (canLoop ? '<button type="button" data-act="loop">Loop from here while held</button>' : "")
+      + (p.role === "inner" ? '<button type="button" data-act="remove">Remove</button>' : '<button type="button" data-act="reset">Reset (' + pointKnobs(kind, p).map((k) => knobDef(k).k.nm).join(" and ") + ' to where ' + (pointKnobs(kind, p).length > 1 ? "they start" : "it starts") + ')</button>')
+      + '<div class="info"><b>What is this?</b>' + INFO[p.role === "inner" ? "inner" : p.role] + '</div>';
+  }
+  m.innerHTML = html;
+  m.onclick = (ev) => {
+    const a = ev.target.dataset && ev.target.dataset.act;
+    if (!a) return;
+    if (a === "straight") writeEnv(kind, (en) => bendSlot(kind, en, key).set({ m: 0.5 }));
+    else if (a === "old") writeEnv(kind, (en) => { const s = bendSlot(kind, en, key); s.set(s.q.role === "release" ? { a: REACH } : { p: REACH }); });
+    else if (a === "loop") writeEnv(kind, (en) => { en.loop = +key.slice(3); });
+    else if (a === "remove") removePoint(kind, key);
+    else if (a === "reset") pointKnobs(kind, pointOf(kind, key).p).forEach((k) => knobDef(k).reset());
+    else if (a === "type") {
+      const t = parseFloat(document.getElementById("ctxT").value), lI = document.getElementById("ctxL");
+      const { p, side } = pointOf(kind, key);
+      let lvl = p.lvl;
+      if (lI) { const v = lI.value.trim().toLowerCase(); lvl = kind === "amp" ? (v.startsWith("-inf") ? 0 : Math.pow(10, Math.min(0, parseFloat(v)) / 20)) : clamp(parseFloat(v) / 100, 0, 1); }
+      if (isFinite(t) && isFinite(lvl)) movePoint(kind, key, t, lvl);
+    }
+    hideMenu();
+  };
+  m.onkeydown = (ev) => { if (ev.key === "Enter" && ev.target.tagName === "INPUT") m.querySelector('[data-act="type"]').click(); if (ev.key === "Escape") { ev.stopPropagation(); hideMenu(); } };
+  placeMenu(m, cx, cy);
+}
+function openFilterMenu(cx, cy) {
+  const m = document.getElementById("ctx"), F = filt();
+  m.innerHTML = '<div class="h">Cutoff ' + hzReading(cutoffHz(F.cut)) + ' · Q ' + resonanceQ(F.res).toFixed(2) + '</div>'
+    + '<div class="type"><label for="ctxC">Cutoff</label><input id="ctxC" value="' + Math.round(cutoffHz(F.cut)) + ' Hz"><label for="ctxQ">Q</label><input id="ctxQ" value="' + resonanceQ(F.res).toFixed(2) + '"></div>'
+    + '<button type="button" data-act="type">Type a value</button><button type="button" data-act="reset">Reset (Cutoff to 2.0 kHz, Resonance to Q 0.71)</button>'
+    + '<div class="info"><b>What is this?</b>Where the filter starts taking the top off (sideways), and how much it rings there (up and down). Lower is darker, and the figure gets rounder.</div>';
+  m.onclick = (ev) => {
+    const a = ev.target.dataset && ev.target.dataset.act;
+    if (a === "reset") writeHand("filter", (f) => { f.cut = 667; f.res = 0; });
+    if (a === "type") { const c = parseFloat(document.getElementById("ctxC").value), q = parseFloat(document.getElementById("ctxQ").value);
+      writeHand("filter", (f) => { if (isFinite(c)) f.cut = clamp(cutoffStep(c), 0, 1000); if (isFinite(q)) f.res = clamp(resStep(Math.max(Math.SQRT1_2, q)), 0, 100); }); }
+    if (a) { hideMenu(); paint(); }
+  };
+  m.onkeydown = (ev) => { if (ev.key === "Escape") { ev.stopPropagation(); hideMenu(); } };
+  placeMenu(m, cx, cy);
+}
+
+/* ===================== the screen ===================== */
+function paintScreen() {
+  const c = document.getElementById("screen"), x = c.getContext("2d"), W = c.width, H = c.height;
+  x.fillStyle = "#fffcf7"; x.fillRect(0, 0, W, H);
+  x.strokeStyle = "#e4d9cc"; x.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) { const p = 10 + i * (W - 20) / 10; x.beginPath(); x.moveTo(p, 10); x.lineTo(p, H - 10); x.stroke(); x.beginPath(); x.moveTo(10, p); x.lineTo(W - 10, p); x.stroke(); }
+  x.strokeStyle = "#241f1d"; x.strokeRect(10, 10, W - 20, H - 20);
+  // A fifth, its size the amp envelope's level while a note sounds; a dot at rest.
+  let lvl = 0.0;
+  if (S.note) { const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0; lvl = levelAt(ampEnv(), now, up); }
+  x.strokeStyle = "#241f1d"; x.lineWidth = 1.4; x.beginPath();
+  const r = (W - 40) / 2 * 0.85 * lvl;
+  for (let i = 0; i <= 600; i++) { const t = i / 600 * 2 * Math.PI * 2; const px = W / 2 + r * Math.sin(2 * t + 0.6), py = H / 2 - r * Math.sin(3 * t); i ? x.lineTo(px, py) : x.moveTo(px, py); }
+  x.stroke();
+  if (lvl < 0.01) { x.fillStyle = "#b6afa4"; x.beginPath(); x.arc(W / 2, H / 2, 2.5, 0, 7); x.fill(); }
+}
+
+/* ===================== the keys ===================== */
+function paintKeys() {
+  const svg = document.getElementById("keys"); svg.innerHTML = "";
+  const W = 588, H = 66, n = 21, kw = W / n;
+  for (let i = 0; i < n; i++) {
+    const upper = i >= 14 ? false : i >= 7;
+    el("rect", { x: i * kw, y: 0, width: kw - 1, height: H, fill: i < 14 ? "#f6e6e3" : "#ecebe0", stroke: "var(--line)" }, svg);
+  }
+  const blacks = [0, 1, 3, 4, 5];
+  for (let o = 0; o < 3; o++) for (const b of blacks) el("rect", { x: (o * 7 + b + 0.65) * kw, y: 0, width: kw * 0.7, height: H * 0.6, fill: o < 2 ? "#5a4743" : "#4c4921" }, svg);
+  for (const [i, t] of [[0, "C2"], [7, "C3"], [14, "C4"]]) { const l = el("text", { x: i * kw + 3, y: H - 4, "font-size": 9, fill: "var(--text-soft)" }, svg); l.textContent = t; }
+}
+
+function fitStage() {
+  const wrap = document.getElementById("stageWrap"), stage = document.getElementById("stage"), win = document.getElementById("win");
+  // 960x600 at Auto's 90 per cent: the page's 1067x667 drawn at nine tenths.
+  const zoom = S.size === "small" ? 0.9 : 1;
+  const nat = win.offsetWidth * zoom;
+  const sc = Math.min(1, wrap.clientWidth / nat) * zoom;
+  stage.style.transform = "scale(" + sc + ")";
+  stage.style.left = Math.max(0, (wrap.clientWidth - win.offsetWidth * sc) / 2) + "px";
+  stage.dataset.scale = sc;
+  wrap.style.height = Math.ceil(win.offsetHeight * sc) + "px";
+}
+/* ===================== round 3: the popover only ===================== */
+Object.assign(S, { take: "wide", block: "a", fblock: "words", level: "lin", edit: "amp", knobsOpen: false });
+const TAKE_NOTES = {
+  wide: "<b>Take 1 · Wide and short.</b> The amp envelope's panel sits <i>above</i> its block, two columns wide and only as tall as the Generator, pointing down at the block; the filter's sits beside its block, two columns wide and as tall as it needs. The six knobs are one row of small knobs under the drawing.",
+  beside: "<b>Take 2 · Beside, knobs behind a toggle.</b> Where round 2 put it, over the neighbouring column at the columns' full height, but the drawing has the panel to itself: the knobs are behind <i>Knobs</i> (one row of small knobs when shown), a quiet line of readings under the drawing, and the value of what you drag beside your pointer.",
+};
+const DOTS = '<span class="dots">···</span>';
+const title = (name, extra, cls) => '<div class="sec-title' + (cls ? " " + cls : "") + '">' + name + (extra || "") + DOTS + '</div>';
+const row = (lab, ctl) => '<div class="row"><span class="lab">' + lab + '</span>' + ctl + '</div>';
+const sel1 = (lab, opt) => row(lab, '<select aria-label="' + lab + '"><option>' + opt + '</option></select>');
+const exprSect = () => '<div class="sect">' + title("Expression") + sel1("Pitch bend", "±2 semitones") + sel1("Mod wheel", "Vibrato") + sel1("Pressure", "Nothing") + sel1("Velocity", "Level and strike") + '</div>';
+const genSect = () => '<div class="sect" data-sect="gen">' + title("Generator") + sel1("Shape", "Sine") + row("Glide", '<span class="mini-knob">' + knobHTML(0.05, false) + '<span class="reading">off</span></span>')
+  + sel1("Interval", "Unison · 1:1") + row("● Level", '<span class="mini-knob">' + knobHTML(0.55, false) + '<span class="reading">0.55</span></span>') + '</div>';
+const shapeSel = (kind) => '<select class="shape-sel" data-shape-sel="' + kind + '" aria-label="Shape"><option value="">Shape…</option>'
+  + (kind === "fenv" ? ["ADSR", "Pluck", "Swell", "Pulse"] : PRESET_NAMES).map((n) => '<option>' + n + '</option>').join("") + '</select>';
+const loopBtn = (kind) => '<button type="button" class="tbtn" data-loop-btn="' + kind + '" aria-pressed="' + (envOf(kind).loop != null) + '">Loop</button>';
+const playBtn = '<button type="button" class="tbtn play" data-play="1" aria-pressed="false">Hold a note</button>';
+const closeBtn = '<button type="button" class="link-btn caps close" data-close="1">Close</button>';
+const knobsBtn = '<button type="button" class="tbtn" data-knobs="1" aria-pressed="' + S.knobsOpen + '">Knobs</button>';
+const knobRow = (ks) => '<div class="knobs tiny' + (ks.length === 4 ? " f4" : "") + '">' + ks.map((k) => cellHTML(k.id, k.nm, k.host)).join("") + '</div>';
+const typeSwitch = () => '<span class="switch caps ftype">' + ["Off", "Low", "Band", "High", "Notch"].map((n, i) => '<button type="button" data-ftype="' + i + '" aria-pressed="' + (filt().type === i) + '">' + n + '</button>').join("") + '</span>';
+const typeRow = () => row("Type", '<select class="vcf-type" aria-label="Filter type">' + ["Off", "Low pass", "Band pass", "High pass", "Notch"].map((n, i) => '<option value="' + i + '"' + (filt().type === i ? " selected" : "") + '>' + n + '</option>').join("") + '</select>');
+const plotHTML = (attrs) => '<div class="plot-wrap"><svg class="plot" ' + attrs + ' role="group"></svg></div>';
+const msegPlot = (kind) => plotHTML('data-kind="' + kind + '" aria-label="' + (kind === "amp" ? "The amp envelope" : "The filter’s envelope") + ': drag its points; double-click the line to add one"');
+const respPlot = () => plotHTML('data-filter="1" aria-label="The filter’s response: drag the point"');
+const quiet = (k) => '<div class="quiet-reads" data-quiet="' + k + '"></div>';
+const fenvWords = '<span class="fenv-words" data-fenv-words="1"></span>';
+// The small blocks.
+function ampBlock() {
+  const on = S.edit === "amp";
+  return '<div class="sect' + (on ? " on" : "") + '" data-sect="amp">' + title("Amp envelope", "", on ? "on-edit" : "")
+    + '<button type="button" class="prev v-' + S.block + '" data-open="amp" aria-label="Amp envelope: edit it"><svg class="pv" data-pv="amp" aria-hidden="true"></svg>'
+    + (S.block === "b" ? '<span class="hover-reads" data-hover="amp"></span>' : "") + '</button>'
+    + (S.block === "a" ? '<div class="reads" data-reads="amp"></div>' : "") + '</div>';
+}
+function filterBlock() {
+  const on = S.edit === "filter";
+  return '<div class="sect' + (on ? " on" : "") + '" data-sect="filter">' + title("Voice filter", "", on ? "on-edit" : "") + typeRow()
+    + '<button type="button" class="prev v-' + S.block + '" data-open="filter" aria-label="Voice filter: edit it"><svg class="pvf" aria-hidden="true"></svg>'
+    + (S.block === "b" ? '<span class="hover-reads" data-hover="filter"></span>' : "") + '</button>'
+    + (S.block === "a" ? '<div class="reads three" data-reads="filter"></div>' : "")
+    + (S.fblock === "box" ? '<div class="env-line-small"><button type="button" class="prev" data-open="filter" aria-label="The filter’s envelope: edit it"><svg class="pv" data-pv="fenv" aria-hidden="true"></svg></button>' + fenvWords + '</div>'
+      : '<div class="env-words-only">Its envelope ' + fenvWords + '</div>') + '</div>';
+}
+// The panel.
+function editorHTML() {
+  const T = S.take, k = S.knobsOpen;
+  if (S.edit === "amp") {
+    if (T === "wide") return '<div class="ed-head"><span class="nm">Amp envelope</span>' + shapeSel("amp") + loopBtn("amp") + playBtn + closeBtn + '</div>'
+      + msegPlot("amp") + knobRow(envKnobs("amp"));
+    return '<div class="ed-head"><span class="nm">Amp envelope</span>' + closeBtn + '</div><div class="mini-tools">' + shapeSel("amp") + loopBtn("amp") + playBtn + knobsBtn + '</div>'
+      + msegPlot("amp") + (k ? knobRow(envKnobs("amp")) : quiet("amp"));
+  }
+  if (T === "wide") return '<div class="ed-head"><span class="nm">Voice filter</span>' + typeSwitch() + playBtn + closeBtn + '</div>'
+    + '<div class="ed-split"><div class="ed-col">' + respPlot() + knobRow(FILTER_KNOBS) + '</div><span class="vsep"></span>'
+    + '<div class="ed-col"><div class="sub-title">Its envelope ' + fenvWords + '<span class="gap"></span>' + shapeSel("fenv") + loopBtn("fenv") + '</div>' + msegPlot("fenv") + knobRow(envKnobs("fenv")) + '</div></div>';
+  return '<div class="ed-head"><span class="nm">Voice filter</span>' + closeBtn + '</div><div class="mini-tools">' + typeSwitch() + playBtn + knobsBtn + '</div>'
+    + respPlot() + (k ? knobRow(FILTER_KNOBS) : quiet("filter"))
+    + '<div class="sub-title">Its envelope ' + fenvWords + '<span class="gap"></span>' + shapeSel("fenv") + loopBtn("fenv") + '</div>' + msegPlot("fenv") + (k ? knobRow(envKnobs("fenv")) : quiet("fenv"));
+}
+function buildPlay() {
+  const cols = document.getElementById("cols"), pop = document.getElementById("pop");
+  cols.innerHTML = '<div class="col" id="col1">' + exprSect() + '<div class="free" data-free="1"></div></div>'
+    + '<div class="col" id="col2">' + genSect() + ampBlock() + '<div class="free" data-free="2"></div></div>'
+    + '<div class="col" id="col3">' + filterBlock() + '<div class="free" data-free="3"></div></div>';
+  pop.hidden = !S.edit;
+  pop.className = "popover take-" + S.take + " for-" + (S.edit || "none");
+  pop.innerHTML = pop.hidden ? "" : editorHTML();
+  for (const host of [cols, pop]) {
+    wireKnobs(host);
+    host.querySelectorAll("svg.plot[data-kind]").forEach(wirePlot);
+    host.querySelectorAll("svg.plot[data-filter]").forEach(wireFilterPlot);
+  }
+}
+/* Where the panel goes. Take 1: the amp envelope's above its block over Expression and the
+   Generator, as tall as the space over the block; the filter's to its left over the two columns.
+   Take 2: over the neighbouring column at the columns' height. Never over its own block, the
+   keyboard band or the screen; the arrow points at the block's drawing. */
+function placePop() {
+  const pop = document.getElementById("pop");
+  if (pop.hidden) return;
+  const bench = document.getElementById("bench"), sc = stageScale(), br = bench.getBoundingClientRect();
+  const r = (n) => { const q = n.getBoundingClientRect(); return { l: (q.left - br.left) / sc, t: (q.top - br.top) / sc, r: (q.right - br.left) / sc, b: (q.bottom - br.top) / sc }; };
+  const block = document.querySelector('[data-sect="' + S.edit + '"]'), Bk = r(block), P = r(block.querySelector(".prev") || block);
+  const C = r(document.getElementById("cols")), c1 = r(document.getElementById("col1")), c2 = r(document.getElementById("col2"));
+  let box, arrow;
+  if (S.take === "wide" && S.edit === "amp") {
+    box = { l: c1.l - 6, r: c2.r + 6, t: C.t + 3, b: Bk.t - 9 };
+    arrow = { side: "down", at: (P.l + P.r) / 2 - (c1.l - 6) };
+  } else if (S.take === "wide") {
+    const h = S.size === "small" ? 236 : 262;
+    box = { l: c1.l - 6, r: Bk.l - 10, t: C.t + 3, b: Math.min(C.b, C.t + 3 + h) };
+    arrow = { side: "right", at: (P.t + P.b) / 2 - box.t };
+  } else {
+    const nb = S.edit === "amp" ? c1 : c2;
+    box = { l: nb.l - 6, r: Bk.l - 10, t: C.t + 3, b: C.b };
+    arrow = { side: "right", at: (P.t + P.b) / 2 - box.t };
+  }
+  Object.assign(pop.style, { left: box.l + "px", top: box.t + "px", width: (box.r - box.l) + "px", height: (box.b - box.t) + "px" });
+  pop.dataset.arrow = arrow.side;
+  pop.style.setProperty("--arrow-at", Math.max(16, arrow.at) + "px");
+}
+function paint() {
+  const small = S.size === "small";
+  document.querySelectorAll("svg.pv").forEach((svg) => {
+    const k = svg.dataset.pv, w = (svg.parentNode.clientWidth || 200) - 2;
+    const dead = k === "fenv" && (filt().type === 0 || filt().amt === 0);
+    const h = k === "fenv" ? (small ? 24 : 28) : S.block === "a" ? (small ? 52 : 66) : (small ? 64 : 80);
+    prevPlain(k, svg, k === "fenv" ? 80 : w, h, envOf(k), dead);
+  });
+  document.querySelectorAll("svg.pvf").forEach((svg) => filterPlot(svg, (svg.parentNode.clientWidth || 200) - 2, S.block === "a" ? (small ? 52 : 66) : (small ? 64 : 80), { plain: true }));
+  document.querySelectorAll("svg.plot[data-kind]").forEach((svg) => {
+    drawSoft(svg.dataset.kind, svg);
+    if (svg.dataset.kind === "fenv") svg.style.opacity = filt().type === 0 || filt().amt === 0 ? 0.45 : 1;
+  });
+  document.querySelectorAll("svg.plot[data-filter]").forEach((svg) => filterPlot(svg, svg.clientWidth, svg.clientHeight, { big: true, lite: true, quiet: true, L: 32, R: 10, T: 8, Bm: 16, dbTop: 24, dbBot: -36 }));
+  const F = filt(), e = ampEnv(), fe = fenvEnv();
+  const cell = (v, n) => '<span>' + v + '<small>' + n + '</small></span>';
+  const ampCells = cell(timeReading("amp", e.m.attack), "Attack") + cell(timeReading("amp", e.m.decay), "Decay") + cell(dbReading(e.m.sus), "Sustain") + cell(timeReading("amp", e.m.release), "Release");
+  const filtCells = F.type === 0 ? cell("Off", "Type") + cell("—", "Resonance") + cell("—", "Envelope") : cell(hzReading(cutoffHz(F.cut)), "● Cutoff") + cell("Q " + resonanceQ(F.res).toFixed(2), "Resonance") + cell(octReading(F.amt), "Envelope");
+  document.querySelectorAll('[data-reads="amp"]').forEach((n) => { n.innerHTML = ampCells; });
+  document.querySelectorAll('[data-reads="filter"]').forEach((n) => { n.innerHTML = filtCells; });
+  const line = (parts) => parts.join(" · ");
+  const ampLine = line([timeReading("amp", e.m.attack), timeReading("amp", e.m.decay), dbReading(e.m.sus), timeReading("amp", e.m.release)]);
+  const filtLine = F.type === 0 ? "Off" : line([hzReading(cutoffHz(F.cut)), "Q " + resonanceQ(F.res).toFixed(2), "key " + F.track + "%", octReading(F.amt)]);
+  const fenvLine = line([timeReading("fenv", fe.m.attack), timeReading("fenv", fe.m.decay), pctReading(fe.m.sus), timeReading("fenv", fe.m.release)]);
+  document.querySelectorAll('[data-hover="amp"]').forEach((n) => { n.textContent = ampLine; });
+  document.querySelectorAll('[data-hover="filter"]').forEach((n) => { n.textContent = filtLine; });
+  document.querySelectorAll('[data-quiet="amp"]').forEach((n) => { n.textContent = "A " + timeReading("amp", e.m.attack) + "  ·  D " + timeReading("amp", e.m.decay) + "  ·  S " + dbReading(e.m.sus) + "  ·  R " + timeReading("amp", e.m.release); });
+  document.querySelectorAll('[data-quiet="filter"]').forEach((n) => { n.textContent = filtLine; });
+  document.querySelectorAll('[data-quiet="fenv"]').forEach((n) => { n.textContent = fenvLine; });
+  document.querySelectorAll("[data-fenv-words]").forEach((n) => { n.innerHTML = F.type === 0 ? '<span class="dead">· the filter is off</span>' : F.amt === 0 ? '<span class="dead">· amount 0, does nothing</span>' : '· sweeps <b>' + octReading(F.amt) + '</b>'; });
+  document.querySelectorAll(".vcf-type").forEach((s) => { s.value = String(F.type); });
+  document.querySelectorAll(".ftype button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.ftype === F.type));
+  document.querySelectorAll("[data-loop-btn]").forEach((b) => b.setAttribute("aria-pressed", envOf(b.dataset.loopBtn).loop != null));
+  prevPlain("menv", document.getElementById("menvCardSvg"), 220, 36, menvShown(), false);
+  paintKnobs();
+  paintScreen();
+  measure();
+}
+/* ===================== the fit, measured ===================== */
+// The panel's content past its own inner edge (its arrow sits outside it on purpose, so scrollHeight would count that).
+function popOver(pop, sc) {
+  const r = pop.getBoundingClientRect(), pad = parseFloat(getComputedStyle(pop).paddingBottom) * sc;
+  const last = Array.from(pop.children).reduce((m, c) => Math.max(m, c.getBoundingClientRect().bottom), 0);
+  return Math.round((last - (r.bottom - pad - sc)) / sc);
+}
+function measureNow() {
+  const sc = stageScale(), body = document.getElementById("playBody"), cols = document.getElementById("cols");
+  const over = Math.max(body.scrollHeight - body.clientHeight, cols.scrollHeight - cols.clientHeight, ...Array.from(cols.children).map((c) => c.scrollHeight - c.clientHeight));
+  const frees = Array.from(document.querySelectorAll("[data-free]")).map((f) => [f.dataset.free, Math.round(f.getBoundingClientRect().height / sc)]);
+  const plots = Array.from(document.querySelectorAll("svg.plot")).map((s) => ({ what: s.dataset.filter ? "response" : s.dataset.kind, w: s.clientWidth, h: s.clientHeight }));
+  const out = { take: S.take, size: S.size, edit: S.edit, block: S.block, over, frees, plots };
+  const pop = document.getElementById("pop"), tab = body.getBoundingClientRect(), area = tab.width * tab.height;
+  if (!pop.hidden) {
+    const p = pop.getBoundingClientRect(), blk = document.querySelector('[data-sect="' + S.edit + '"]').getBoundingClientRect(), band = document.querySelector(".band").getBoundingClientRect();
+    const hits = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+    // The knobs in one row: every cell's top the same.
+    const rows = Array.from(pop.querySelectorAll(".knobs")).map((k) => new Set(Array.from(k.querySelectorAll(".kcell")).map((c) => Math.round(c.getBoundingClientRect().top))).size);
+    out.pop = { w: Math.round(p.width / sc), h: Math.round(p.height / sc), share: Math.round(100 * p.width * p.height / area),
+                coversBlock: hits(p, blk), coversBand: hits(p, band), inside: p.left >= tab.left - 8 && p.right <= tab.right + 8 && p.top >= tab.top - 8 && p.bottom <= tab.bottom + 8,
+                over: popOver(pop, sc), knobRows: rows };
+  }
+  return out;
+}
+function measure() {
+  const m = measureNow();
+  window.__fit = m;
+  document.querySelectorAll("[data-free]").forEach((f) => { const v = m.frees.find((x) => x[0] === f.dataset.free); f.textContent = v ? v[1] + " px free" : ""; });
+  const parts = ['<span class="' + (m.over > 1 ? "over" : "ok") + '">Play: ' + (m.over > 1 ? m.over + " px over" : "fits, no scroll") + '</span>', "<span>Free: " + m.frees.map((x) => x[1]).join(" · ") + " px</span>"];
+  for (const p of m.plots) parts.push("<span>" + ({ amp: "Amp drawing", fenv: "Filter envelope", response: "Response" })[p.what] + " " + p.w + " × " + p.h + "</span>");
+  if (m.pop) parts.push('<span class="' + (m.pop.coversBlock || m.pop.coversBand || m.pop.over > 1 ? "over" : "ok") + '">Panel ' + m.pop.w + " × " + m.pop.h + ", " + m.pop.share + "% of the tab" + (m.pop.knobRows.length ? ", knobs in " + m.pop.knobRows.join(" and ") + " row(s)" : "") + "</span>");
+  document.getElementById("fitLine").innerHTML = parts.join("");
+}
+function survey() {
+  const keep = { take: S.take, size: S.size, edit: S.edit, knobsOpen: S.knobsOpen }, rows = [];
+  for (const take of ["wide", "beside"]) for (const size of ["big", "small"]) for (const edit of ["amp", "filter"]) for (const ko of (take === "beside" ? [false, true] : [false])) {
+    Object.assign(S, { take, size, edit, knobsOpen: ko }); render();
+    const m = measureNow(); m.label = (edit === "amp" ? "amp envelope" : "filter") + (take === "beside" ? (ko ? ", knobs shown" : ", knobs hidden") : ""); rows.push(m);
+  }
+  Object.assign(S, keep); render();
+  window.__survey = rows;
+  document.getElementById("surveyRows").innerHTML = rows.map((m) => "<tr><td>" + (m.take === "wide" ? "1 · Wide" : "2 · Beside") + "</td><td>" + (m.size === "big" ? "1400×900" : "960×600") + "</td><td>" + m.label + "</td><td>"
+    + m.pop.w + "×" + m.pop.h + " (" + m.pop.share + "%)" + '</td><td class="' + (m.over > 1 || m.pop.coversBlock || m.pop.coversBand || m.pop.over > 1 ? "bad" : "ok") + '">' + (m.over > 1 ? "Play " + m.over + " px over" : m.pop.over > 1 ? "panel " + m.pop.over + " px over" : m.pop.coversBlock ? "covers its block" : "fits, clear") + "</td><td>"
+    + m.plots.map((p) => ({ amp: "amp ", fenv: "filter env ", response: "response " })[p.what] + p.w + "×" + p.h).join(", ") + "</td><td>" + (m.pop.knobRows.length ? m.pop.knobRows.join(", ") : "hidden") + "</td></tr>").join("");
+}
+/* ===================== the page's own switches ===================== */
+function render() {
+  const win = document.getElementById("win");
+  win.classList.toggle("compact", S.size === "small");
+  S.ui = {};
+  for (const [id, key] of [["pgTake", "take"], ["pgBlock", "block"], ["pgFblock", "fblock"], ["pgLevel", "level"], ["pgSize", "size"], ["pgEdit", "edit"]])
+    document.querySelectorAll("#" + id + " button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === String(S[key])));
+  document.getElementById("takeNote").innerHTML = TAKE_NOTES[S.take];
+  buildPlay();
+  fitStage();
+  paint();
+  placePop();
+  paint();
+}
+function pgSwitch(id, key) {
+  document.querySelectorAll("#" + id + " button").forEach((b) => b.addEventListener("click", () => { S[key] = b.dataset.v; SEL = null; hideMenu(); render(); }));
+}
+for (const [id, key] of [["pgTake", "take"], ["pgBlock", "block"], ["pgFblock", "fblock"], ["pgLevel", "level"], ["pgSize", "size"], ["pgEdit", "edit"]]) pgSwitch(id, key);
+document.getElementById("win").addEventListener("click", (ev) => {
+  const t = ev.target.closest("button, select");
+  if (!t) return;
+  if (t.dataset.open) { S.edit = t.dataset.open; SEL = null; render(); }
+  else if (t.dataset.close) { S.edit = ""; SEL = null; render(); }
+  else if (t.dataset.knobs) { S.knobsOpen = !S.knobsOpen; render(); }
+  else if (t.dataset.loopBtn) { const kind = t.dataset.loopBtn; writeEnv(kind, (e) => { e.loop = e.loop == null ? Math.max(1, flatten(e).pre.findIndex((p) => p.role === "attack")) : null; }); }
+  else if (t.dataset.ftype != null) { writeHand("filter", (f) => { f.type = +t.dataset.ftype; }); paint(); }
+});
+document.getElementById("win").addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (t.classList.contains("vcf-type")) { writeHand("filter", (f) => { f.type = +t.value; }); paint(); }
+  if (t.dataset.shapeSel && t.value) {
+    const kind = t.dataset.shapeSel, name = t.value;
+    writeEnv(kind, (e) => { const s = (kind === "fenv" && name === "ADSR" ? FILTER_ENV : SHAPES[name])(); e.m = s.m; e.b = s.b; e.inner = s.inner; e.loop = s.loop; });
+    t.value = ""; S.ui = {}; SEL = null; paint();
+  }
+});
+// Esc, Close, or a press outside the panel and its block closes it.
+document.addEventListener("pointerdown", (ev) => {
+  if (!S.edit || !ev.target.closest("#win") || ev.target.closest("#pop, #ctx, [data-open], [data-sect]")) return;
+  S.edit = ""; render();
+});
+document.addEventListener("keydown", (ev) => {
+  if ((ev.key === " " || ev.key === "Enter") && ev.target.closest && ev.target.closest("[data-play], #pgNote")) { ev.preventDefault(); if (!ev.repeat) noteDown(); return; }
+  if (ev.key === "Escape") { if (!document.getElementById("ctx").hidden) hideMenu(); else if (S.edit) { S.edit = ""; render(); } }
+});
+document.addEventListener("keyup", (ev) => { if (ev.key === " " || ev.key === "Enter") noteUp(); });
+let raf = 0;
+function tick() {
+  paint();
+  if (!S.note) return;
+  const now = performance.now(), longest = Math.max(ampEnv().m.release, fenvEnv().m.release);
+  if (S.note.up != null && now - S.note.up > longest + 80) { S.note = null; paint(); return; }
+  raf = requestAnimationFrame(tick);
+}
+function noteDown() { cancelAnimationFrame(raf); S.note = { t0: performance.now(), up: null }; setPlayPressed(true); tick(); }
+function noteUp() { if (S.note && S.note.up == null) { S.note.up = performance.now(); setPlayPressed(false); } }
+function setPlayPressed(on) { document.querySelectorAll("[data-play], #pgNote").forEach((b) => b.setAttribute("aria-pressed", on)); }
+document.addEventListener("pointerdown", (ev) => { if (ev.target.closest && ev.target.closest("[data-play], #pgNote") && ev.button === 0) { ev.preventDefault(); noteDown(); } });
+document.addEventListener("pointerup", () => noteUp());
+document.addEventListener("pointerdown", (ev) => { if (!ev.target.closest("#ctx")) hideMenu(); }, true);
+window.__mseg = { S, noteDown, noteUp, render, paint, measureNow, survey, prevPlain };
+document.getElementById("picKnobs").innerHTML = [["0%", "Amount", 0], ["off", "Scan", 0], ["50%", "Strike", 0.5], ["3.0 cells", "Softness", 0.4], ["32 ms", "Persistence", 0.3], ["0 dB", "Output", 0.75]]
+  .map(([v, n, f]) => staticCell(v, n, f, true)).join("");
+paintKeys();
+window.addEventListener("resize", () => { fitStage(); placePop(); paint(); });
+render();
+const settle = () => { fitStage(); render(); survey(); };
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle); else settle();
+</script>
+</body>
+</html>
