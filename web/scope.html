@@ -2942,6 +2942,33 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                   </select>
                 </div>
               </div>
+              <!-- Play's Wave figure's (18 Nov): written here, where they were, so the morph and the core
+                   read the sliders in the order they always have (MORPH_IDS, kMorphIds), and moved into
+                   Wave's band as the script starts (figs, below). -->
+              <div class="menu-row" id="morphRow" data-mod-dest="gen.morph" data-mod-control="morph"
+                   data-layer="b" hidden>
+                <label class="menu-label" for="morph">Morph</label>
+                <div class="grow">
+                  <input type="range" id="morph" min="0" max="300" value="150">
+                  <span class="reading" id="morphValue">tri&rarr;saw</span>
+                </div>
+              </div>
+              <div class="menu-row" id="widthRow" data-mod-dest="gen.width" data-mod-control="width"
+                   data-layer="b" hidden>
+                <label class="menu-label" for="width">Width</label>
+                <div class="grow">
+                  <input type="range" id="width" min="5" max="95" value="25">
+                  <span class="reading" id="widthValue">25%</span>
+                </div>
+              </div>
+              <div class="menu-row" id="tableRow" data-mod-dest="gen.table" data-mod-control="table"
+                   data-layer="b" hidden>
+                <label class="menu-label" for="table">Position</label>
+                <div class="grow">
+                  <input type="range" id="table" min="0" max="300" value="150">
+                  <span class="reading" id="tableValue">2&rarr;3</span>
+                </div>
+              </div>
               <!-- Glide beside Shape since G3: how a phrase moves from note to
                    note is the generator's, not the envelope's. -->
               <div class="menu-row">
@@ -3740,6 +3767,74 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             </div>
           </div>
 
+          <!-- The nine drawbars, where the Drawbars section was on Ink until 18 Nov, so the morph reads
+               them in its old order; moved into Play's Wave as the script starts. -->
+          <div id="barsCarry" hidden>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar0" data-mod-control="bar0">
+              <label class="menu-label" for="bar0"><span class="bar-mark" data-colour="brown"></span>16&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar0" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar0Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar1" data-mod-control="bar1">
+              <label class="menu-label" for="bar1"><span class="bar-mark" data-colour="brown"></span>5&#8531;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar1" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar1Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar2" data-mod-control="bar2">
+              <label class="menu-label" for="bar2"><span class="bar-mark" data-colour="white"></span>8&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar2" min="0" max="8" step="1" value="8">
+                <span class="reading" id="bar2Value">8</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar3" data-mod-control="bar3">
+              <label class="menu-label" for="bar3"><span class="bar-mark" data-colour="white"></span>4&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar3" min="0" max="8" step="1" value="7">
+                <span class="reading" id="bar3Value">7</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar4" data-mod-control="bar4">
+              <label class="menu-label" for="bar4"><span class="bar-mark" data-colour="black"></span>2&#8532;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar4" min="0" max="8" step="1" value="4">
+                <span class="reading" id="bar4Value">4</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar5" data-mod-control="bar5">
+              <label class="menu-label" for="bar5"><span class="bar-mark" data-colour="white"></span>2&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar5" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar5Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar6" data-mod-control="bar6">
+              <label class="menu-label" for="bar6"><span class="bar-mark" data-colour="black"></span>1&#8535;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar6" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar6Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar7" data-mod-control="bar7">
+              <label class="menu-label" for="bar7"><span class="bar-mark" data-colour="black"></span>1&#8531;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar7" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar7Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar8" data-mod-control="bar8">
+              <label class="menu-label" for="bar8"><span class="bar-mark" data-colour="white"></span>1&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar8" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar8Value">0</span>
+              </div>
+            </div>
+          </div>
+
           <div class="menu-group" id="oscGroup" data-home="bench" data-tab="ink">
             <span class="menu-title" id="oscTitle">Oscillator<button type="button" class="hand-link" id="linkOsc" data-link="osc" aria-pressed="true" hidden></button></span>
             <!-- The pitch, which a note sets and a turn moves, and the second channel's start:
@@ -4015,30 +4110,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             <span class="menu-title" id="waveTitle">Wave<button type="button" class="hand-link" id="linkGenWave" data-link="gen" aria-pressed="true" hidden></button></span>
             <div class="fig-plot"><canvas id="cycleCanvas" class="cycle-canvas" aria-label="One cycle of what the generator plays"></canvas></div>
             <div class="wave-band" id="waveBand">
-              <div class="menu-row" id="widthRow" data-mod-dest="gen.width" data-mod-control="width"
-                   data-layer="b" hidden>
-                <label class="menu-label" for="width">Width</label>
-                <div class="grow">
-                  <input type="range" id="width" min="5" max="95" value="25">
-                  <span class="reading" id="widthValue">25%</span>
-                </div>
-              </div>
-              <div class="menu-row" id="morphRow" data-mod-dest="gen.morph" data-mod-control="morph"
-                   data-layer="b" hidden>
-                <label class="menu-label" for="morph">Morph</label>
-                <div class="grow">
-                  <input type="range" id="morph" min="0" max="300" value="150">
-                  <span class="reading" id="morphValue">tri&rarr;saw</span>
-                </div>
-              </div>
-              <div class="menu-row" id="tableRow" data-mod-dest="gen.table" data-mod-control="table"
-                   data-layer="b" hidden>
-                <label class="menu-label" for="table">Position</label>
-                <div class="grow">
-                  <input type="range" id="table" min="0" max="300" value="150">
-                  <span class="reading" id="tableValue">2&rarr;3</span>
-                </div>
-              </div>
               <span class="switch cycle-slots" role="radiogroup" aria-label="Wavetable slot" id="cycleSlots" hidden>
                   <button type="button" role="radio" aria-checked="true" data-slot="0">1</button><button
                     type="button" role="radio" aria-checked="false" data-slot="1">2</button><button
@@ -4053,69 +4124,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="cycleNote" hidden></span>
               </div>
               <div class="wave-bars" id="barsGroup" role="group" aria-label="The drawbars" hidden>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar0" data-mod-control="bar0">
-              <label class="menu-label" for="bar0"><span class="bar-mark" data-colour="brown"></span>16&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar0" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar0Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar1" data-mod-control="bar1">
-              <label class="menu-label" for="bar1"><span class="bar-mark" data-colour="brown"></span>5&#8531;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar1" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar1Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar2" data-mod-control="bar2">
-              <label class="menu-label" for="bar2"><span class="bar-mark" data-colour="white"></span>8&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar2" min="0" max="8" step="1" value="8">
-                <span class="reading" id="bar2Value">8</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar3" data-mod-control="bar3">
-              <label class="menu-label" for="bar3"><span class="bar-mark" data-colour="white"></span>4&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar3" min="0" max="8" step="1" value="7">
-                <span class="reading" id="bar3Value">7</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar4" data-mod-control="bar4">
-              <label class="menu-label" for="bar4"><span class="bar-mark" data-colour="black"></span>2&#8532;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar4" min="0" max="8" step="1" value="4">
-                <span class="reading" id="bar4Value">4</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar5" data-mod-control="bar5">
-              <label class="menu-label" for="bar5"><span class="bar-mark" data-colour="white"></span>2&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar5" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar5Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar6" data-mod-control="bar6">
-              <label class="menu-label" for="bar6"><span class="bar-mark" data-colour="black"></span>1&#8535;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar6" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar6Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar7" data-mod-control="bar7">
-              <label class="menu-label" for="bar7"><span class="bar-mark" data-colour="black"></span>1&#8531;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar7" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar7Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar8" data-mod-control="bar8">
-              <label class="menu-label" for="bar8"><span class="bar-mark" data-colour="white"></span>1&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar8" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar8Value">0</span>
-              </div>
-            </div>
               </div>
               <p class="wave-say" id="waveSay"></p>
             </div>
@@ -26392,6 +26400,11 @@ function wireVcfResponse(svg) {
    a wall. */
 const FIG_SUBS = [["amp", "Amp", "ampEnvGroup"], ["filter", "Filter", "vcfGroup"], ["wave", "Wave", "waveGroup"]];
 const figs = { sub: "amp", bar: null };
+/* Wave's own controls into its band, from where the markup keeps them for the morph's order: the
+   width's, the morph's and the table's rows from the Generator, the nine bars from where Ink had them. */
+for (const id of ["widthRow", "morphRow", "tableRow"]) el.waveBand.insertBefore(el[id], el.cycleSlots);
+for (const row of Array.from(document.getElementById("barsCarry").children)) el.barsGroup.appendChild(row);
+document.getElementById("barsCarry").remove();
 const msegRowOf = (id) => el[id].closest(".menu-row");
 // Each knob row in the drawing's order, Delay first; the markup keeps its own, which the morph and the panel read.
 for (const [kind, box] of [["amp", "ampKnobs"], ["fenv", "vcfEnvKnobs"]])
