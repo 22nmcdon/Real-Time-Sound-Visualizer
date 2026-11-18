@@ -535,6 +535,23 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 .menv-ed .ed-tools .say { font-size: 11.5px; color: var(--text-soft); white-space: nowrap; }
 .menv-ed .ed-tools .say b { font-weight: 500; color: var(--charcoal); }
 .menv-ed .dot-sm { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+/* Round 6: Wave. The band under the cycle is one height for every shape: the drawbars'. */
+.fview[data-view="wave"] .fhead .say { font-size: 12px; color: var(--text-soft); }
+.fview[data-view="wave"] .fhead .say b { font-family: var(--serif); font-weight: 500; font-size: 14px; color: var(--charcoal); }
+.wave-band { flex: 0 0 var(--wband, 78px); height: var(--wband, 78px); display: flex; align-items: flex-end; gap: 16px; min-width: 0; overflow: hidden; border-top: 1px solid var(--line); padding-top: 4px; }
+.wave-band .say { font-size: 11.5px; color: var(--text-soft); margin: 0 0 6px; line-height: 1.4; flex: 1 1 auto; min-width: 0; }
+.wave-band .say.only { align-self: center; margin: 0; font-family: var(--script); font-style: italic; font-size: 16px; }
+.wave-band .bars { display: flex; gap: 2px; flex: 0 0 auto; align-self: stretch; }
+.wave-band .dbar { display: flex; flex-direction: column; align-items: center; width: 30px; gap: 1px; margin: 0; }
+.win.compact .wave-band .dbar { width: 26px; }
+.wave-band .bv { font-size: 10px; color: var(--charcoal); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.wave-band .bf { font-size: 9px; color: var(--text-soft); line-height: 1.1; white-space: nowrap; }
+.wave-band input.vbar { writing-mode: vertical-lr; direction: rtl; width: 16px; flex: 1 1 auto; min-height: 0; margin: 0; accent-color: var(--blush-deep); }
+.wave-band .tools-row { display: inline-flex; gap: 6px; margin-bottom: 6px; }
+.wave-band .slots { margin-bottom: 8px; }
+.wave-band .slots button { padding: 2px 8px; font-size: 9.5px; }
+.setrow .dots[data-gen-dots] { cursor: pointer; }
+.ctx .type .switch button { padding: 2px 9px; font-size: 9.5px; }
 .page-note { font-size: 13.5px; color: var(--pg-soft); margin: 6px 0 0; }
 .shot .page > :not(.stage-wrap) { display: none; }
 .shot .page { padding: 0; max-width: none; }
@@ -543,7 +560,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 </head>
 <body>
 <div class="page">
-  <p class="eyebrow">Mockup · Play · 18 Nov · the figure area · round 2, the build’s spec</p>
+  <p class="eyebrow">Mockup · Play · 18 Nov · the figure area · round 3, with Wave</p>
   <h1>Play, with its figures full width</h1>
   <p class="lede">The Keyboard band; under it one row of the settings that are not figures; and the rest of the tab a figure area, Amp and Filter along its top, each label carrying its summary. The Envelope opens from its card, over the tabs. Nothing moves when anything is selected.</p>
   <p class="small">Live: the curve law, the drawing, the gestures and the menu are the chosen popover’s (<a href="../mseg/popover.html">round 3</a>), with the sustain point that moves and the one-shot as built. The window is laid out in the boxes <code>scope.html</code> itself measures at each size. Nothing in <code>scope.html</code> or the core has changed.</p>
@@ -563,6 +580,12 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
       <div class="pg-switch" id="pgSub">
         <button type="button" data-v="amp">Amp envelope</button>
         <button type="button" data-v="filter">Voice filter</button>
+        <button type="button" data-v="wave">Wave</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Wave’s shape</span>
+      <div class="pg-switch" id="pgShape">
+        <button type="button" data-v="sine">Sine</button><button type="button" data-v="pulse">Pulse</button><button type="button" data-v="morph">Morph</button>
+        <button type="button" data-v="wavetable">Wavetable</button><button type="button" data-v="drawn">Drawn</button><button type="button" data-v="drawbars">Drawbars</button><button type="button" data-v="noise">Noise</button>
       </div></div>
     <div class="grp"><span class="lbl">Envelope card</span>
       <div class="pg-switch" id="pgMenv">
@@ -587,6 +610,9 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
   <p class="page-note">Measured live in the window’s own pixels (the plugin’s 960 × 600 is 1067 × 667 of them at Auto’s 90 per cent). Right-click a point for the menu; <i>Hold a note</i> latches until pressed again.</p>
   <h2>Round 2: the spec</h2>
   <p>The owner approved the direction (18 Nov) and asked for four things, all here: the Envelope out of Play and into its own editor over the tabs; the settings row’s values shortened so nothing is cut; <b>nothing on Play moves when anything on it is selected</b>; and the build’s spec written down, <a href="../../play-figures.md"><code>web/docs/play-figures.md</code></a>. Everything below is measured in the brand’s own faces (Jost, Playfair Display), which the checks now load; the first round’s numbers were taken in a fallback face and differed by a pixel or two.</p>
+
+  <h2>Round 3: Wave</h2>
+  <p>The owner chose a third subtab, <b>Wave</b>: one cycle of what the generator plays, in the same drawing style, and under it a band of the chosen shape’s own controls. These are Width for Pulse, Morph, Position and its four slots for Wavetable, Sine · Smooth · Grab for the Drawn cycle (drawn on the cycle itself), and the nine drawbars, sliders as always. Those last two sections move here from Ink. Every other shape has nothing of its own, and the band holds one line saying what the shape is. <b>The band is one height for every shape</b>, the drawbars’ 78 px, so the drawing is the same size whichever is chosen: 689 × 124 at 960 × 600, 802 × 349 at 1660 × 1050. The drawbars are 50 px tall at every window. <b>Tuning</b> is in the Generator’s dots menu. Pick a shape with <i>Wave’s shape</i> above, or the Generator’s Shape menu.</p>
 
   <h2>The gap, found</h2>
   <p>Not the hidden knob store and not the popover: both are out of the flow, and taking both out of the page leaves the gap where it was. <code>.bench-body</code> became a <b>wrapping flex row</b> on 17 Nov (<code>flex-wrap: wrap</code>, <code>scope.html</code> line 1630) so the band could be its first line and the columns its second; with <code>align-content</code> left at <code>normal</code> a wrapping flex container <b>stretches its lines</b>, so the spare height under the columns is shared between the two, and the band has half of it under it. At 1660 × 1050 that is 124 px (the 12 px row gap and half of 224 spare); at 1400 × 900, 49. It grows with the window’s height. <b>The fix is <code>.bench-body { align-content: flex-start; }</code></b>, which leaves the row gap and nothing more (<code>checks/gap_cause.py</code>, with nulls). The popover’s drawing at 1660 × 1050 is 254 × 427, the tower; its running past the window I could not reproduce here.</p>
@@ -883,6 +909,12 @@ function setFace(face, frac, bip) {
 }
 // One knob's definition by its id: an envelope's six or the filter's four.
 function knobDef(id) {
+  if (id.startsWith("g-")) {
+    const k = GEN_KNOBS.find((x) => x.id === id);
+    return { k, frac: () => (S.gen[k.key] - k.min) / (k.max - k.min), read: () => k.read(S.gen[k.key]), bip: false,
+      set: (fr) => { S.gen[k.key] = clamp(Math.round(k.min + fr * (k.max - k.min)), k.min, k.max); paint(); },
+      reset: () => { S.gen[k.key] = k.start; paint(); }, dim: () => false };
+  }
   if (id.startsWith("f-")) {
     const k = FILTER_KNOBS.find((x) => x.id === id);
     return { k, frac: () => (k.get(filt()) - k.min) / (k.max - k.min), read: () => k.read(filt()), bip: k.bip,
@@ -2084,19 +2116,21 @@ const MENUS = {
     ["Tritone 45:32", "Tritone · 45:32"], ["5th 3:2", "Perfect 5th · 3:2"], ["Min 6th 8:5", "Minor 6th · 8:5"], ["Maj 6th 5:3", "Major 6th · 5:3"], ["Min 7th 16:9", "Minor 7th · 16:9"], ["Maj 7th 15:8", "Major 7th · 15:8"], ["Octave 2:1", "Octave · 2:1"]] },
 };
 const fld = (lab, ctl, host) => '<div class="fld"><span class="fl' + (host ? " host" : "") + '">' + lab + '</span>' + ctl + '</div>';
-const menu = (lab) => { const m = MENUS[lab]; return fld(lab, '<select data-menu="' + lab + '" aria-label="' + lab + '" title="' + m.opts[m.at][1] + '">'
-  + m.opts.map(([s, f], i) => '<option title="' + f + '"' + (i === m.at ? " selected" : "") + '>' + s + '</option>').join("") + '</select>'); };
+const menu = (lab) => { const m = MENUS[lab], at = lab === "Shape" ? WAVE_SHAPES.findIndex(([v]) => v === S.shape) : m.at;
+  return fld(lab, '<select data-menu="' + lab + '" aria-label="' + lab + '" title="' + m.opts[at][1] + '">'
+  + m.opts.map(([s, f], i) => '<option title="' + f + '"' + (lab === "Shape" ? ' value="' + WAVE_SHAPES[i][0] + '"' : "") + (i === at ? " selected" : "") + '>' + s + '</option>').join("") + '</select>'); };
 const mini = (lab, frac, val, host) => fld(lab, '<span class="mini-knob">' + knobHTML(frac, false, ' aria-label="' + lab + '"') + '<span>' + val + '</span></span>', host);
 function setrowHTML() {
   return '<div class="setrow" id="setrow">'
     + '<div class="grp" data-sect="expr">' + title("Expression") + '<div class="fields expr">'
     + menu("Pitch bend") + menu("Mod wheel") + menu("Pressure") + menu("Velocity") + '</div></div>'
-    + '<div class="grp" data-sect="gen">' + title("Generator", " " + handPill("gen")) + '<div class="fields gen">'
+    + '<div class="grp" data-sect="gen">' + title("Generator", " " + handPill("gen")).replace('<span class="dots">', '<span class="dots" role="button" tabindex="0" data-gen-dots="1" title="Tuning, and the section’s menu">') + '<div class="fields gen">'
     + menu("Shape") + mini("Glide", 0.04, "off") + menu("Interval") + mini("Level", 0.55, "0.55", true) + '</div></div></div>';
 }
-const SUBS = [["amp", "Amp"], ["filter", "Filter"]];
+const SUBS = [["amp", "Amp"], ["filter", "Filter"], ["wave", "Wave"]];
 // Each subtab's summary, longest first: the first that fits its label is shown.
 function summaries(sub) {
+  if (sub === "wave") return waveSummaries();
   if (sub === "amp") {
     const e = ampEnv(), si = susIdx(e, flatten(e)), A = timeReading("amp", e.m.attack), D = timeReading("amp", e.m.decay), R = timeReading("amp", e.m.release);
     const Sv = si < 0 ? "one shot" : dbReading(e.m.sus);
@@ -2132,7 +2166,7 @@ function viewsHTML() {
   const filter = '<div class="fview" data-view="filter"' + (S.sub === "filter" ? "" : " hidden") + '>'
     + '<div class="fhead">' + typeSwitch() + playBtn + headEnd("filter") + '</div>'
     + '<div class="fbody' + (S.flay === "stacked" ? " stacked" : "") + '" id="fbody">' + fpaneResp + fpaneEnv + '</div></div>';
-  return '<div class="fviews">' + amp + filter + '</div>';
+  return '<div class="fviews">' + amp + filter + waveViewHTML() + '</div>';
 }
 /* The Envelope card's editor: over the tabs, as the LFOs' are, the card's source drawn large in the
    chosen style and Where it goes beside it. A modulation source, so not part of Play's figures. */
@@ -2179,6 +2213,143 @@ function winHTML() {
     + [["0%", "Amount", 0], ["off", "Scan", 0], ["50%", "Strike", 0.5], ["3.0 cells", "Softness", 0.4], ["32 ms", "Persistence", 0.3], ["0 dB", "Output", 0.75]].map(([v, n, f]) => staticCell(v, n, f, true)).join("")
     + '</div></div><div class="ctx" id="ctx" role="menu" hidden></div><div class="readout" id="readout" hidden></div>';
 }
+/* ===================== round 3: Wave ===================== */
+/* The generator's shapes, in scope.html's order, with the controls each shows today (toneRows: the
+   Morph, Width and Position rows, and the Drawn cycle's and Drawbars' links to the Ink tab, whose
+   sections move here), and the cycle each plays. */
+const WAVE_SHAPES = [
+  ["harmonic", "Sine + 3rd harmonic"], ["sine", "Sine"], ["square", "Square"], ["pulse", "Pulse"], ["triangle", "Triangle"], ["ramp", "Saw"],
+  ["drawbars", "Drawbars"], ["morph", "Morph"], ["drawn", "Drawn cycle"], ["wavetable", "Wavetable"],
+  ["noise", "White noise"], ["pink", "Pink noise"], ["brown", "Brown noise"], ["stepped", "Stepped (S&H)"],
+];
+const FOOT = ["16′", "5⅓′", "8′", "4′", "2⅔′", "2′", "1⅗′", "1⅓′", "1′"], FOOT_MUL = [0.5, 1.5, 1, 2, 3, 4, 5, 6, 8];
+Object.assign(S, { shape: "sine", tuning: "just", gen: { width: 25, morph: 150, table: 150, bars: [0, 0, 8, 7, 4, 0, 0, 0, 0], slot: 0,
+  cycle: Array.from({ length: 64 }, (_, i) => Math.sin(2 * Math.PI * i / 64) * 0.8 + 0.2 * Math.sin(6 * Math.PI * i / 64)) } });
+const triAt = (x) => 1 - 4 * Math.abs(((x + 0.25) % 1 + 1) % 1 - 0.5);
+const sawAt = (x) => 2 * (((x + 0.5) % 1 + 1) % 1) - 1;
+const sqAt = (x) => (((x % 1) + 1) % 1 < 0.5 ? 1 : -1);
+const SLOTS = [(x) => Math.sin(2 * Math.PI * x), triAt, sawAt, sqAt];
+const morphReading = (v) => { const names = ["sine", "tri", "saw", "square"], i = Math.min(2, Math.floor(v / 100)), f = v / 100 - i; return f < 0.02 ? names[i] : f > 0.98 ? names[i + 1] : names[i] + "→" + names[i + 1]; };
+const tableReading = (v) => { const i = Math.min(2, Math.floor(v / 100)), f = v / 100 - i; return f < 0.02 ? String(i + 1) : f > 0.98 ? String(i + 2) : (i + 1) + "→" + (i + 2); };
+// A seeded noise, so a noise's stretch draws the same each time it is painted.
+const noiseAt = (n, kind) => { let s = 12345, b = 0, out = []; for (let i = 0; i < n; i++) { s = (s * 1103515245 + 12345) % 2147483648; const w = s / 1073741824 - 1;
+  b = kind === "brown" ? Math.max(-1, Math.min(1, b + w * 0.12)) : kind === "pink" ? 0.85 * b + 0.15 * w * 3 : w; out.push(kind === "white" ? w : b); } return out; };
+// One period of what the generator plays, as [x in 0..1, level -1..1]; noise has none, so a stretch.
+function waveCycle(shape, n) {
+  const G = S.gen, xs = Array.from({ length: n + 1 }, (_, i) => i / n);
+  switch (shape) {
+    case "sine": return xs.map((x) => [x, Math.sin(2 * Math.PI * x)]);
+    case "harmonic": return xs.map((x) => [x, (Math.sin(2 * Math.PI * x) + Math.sin(6 * Math.PI * x) / 3) / 1.15]);
+    case "square": return xs.map((x) => [x, sqAt(x)]);
+    case "pulse": return xs.map((x) => [x, x % 1 < G.width / 100 ? 1 : -1]);
+    case "triangle": return xs.map((x) => [x, triAt(x)]);
+    case "ramp": return xs.map((x) => [x, sawAt(x)]);
+    case "drawbars": {
+      // With 16' or 5 1/3' out the period is two of the note's (the organ's own rule), so two are drawn.
+      const two = G.bars[0] > 0 || G.bars[1] > 0, amp = G.bars.map((b) => (b > 0 ? Math.pow(10, -(8 - b) * 3 / 20) : 0));
+      const raw = xs.map((x) => amp.reduce((s, a, k) => s + a * Math.sin(2 * Math.PI * FOOT_MUL[k] * x * (two ? 2 : 1)), 0));
+      const peak = Math.max(1e-9, ...raw.map(Math.abs));
+      return xs.map((x, i) => [x, raw[i] / peak]);
+    }
+    case "morph": { const v = G.morph / 100, i = Math.min(2, Math.floor(v)), f = v - i, A = SLOTS[i], B = SLOTS[i + 1]; return xs.map((x) => [x, (1 - f) * A(x) + f * B(x)]); }
+    case "wavetable": { const v = G.table / 100, i = Math.min(2, Math.floor(v)), f = v - i, A = SLOTS[i], B = SLOTS[i + 1]; return xs.map((x) => [x, (1 - f) * A(x) + f * B(x)]); }
+    case "drawn": { const c = G.cycle, m = c.length; return xs.map((x) => { const p = x * m, i = Math.floor(p) % m, f = p - Math.floor(p); return [x, c[i] * (1 - f) + c[(i + 1) % m] * f]; }); }
+    case "stepped": { const v = noiseAt(16, "white"); return xs.map((x) => [x, v[Math.min(15, Math.floor(x * 16))]]); }
+    default: { const v = noiseAt(n + 1, shape === "noise" ? "white" : shape); return xs.map((x, i) => [x, v[i]]); }
+  }
+}
+const isNoise = (shape) => ["noise", "pink", "brown", "stepped"].includes(shape);
+const waveName = () => WAVE_SHAPES.find(([v]) => v === S.shape)[1];
+function waveSummaries() {
+  const G = S.gen, sh = S.shape, nm = waveName().toLowerCase();
+  const main = sh === "pulse" ? "pulse " + G.width + "%" : sh === "morph" ? "morph " + morphReading(G.morph) : sh === "wavetable" ? "wavetable " + tableReading(G.table)
+    : sh === "drawbars" ? "drawbars " + G.bars.join("") : sh === "harmonic" ? "sine + 3rd" : sh === "stepped" ? "stepped" : nm;
+  return [main, main.split(" ")[0], ""];
+}
+function drawWave(svg) {
+  svg.innerHTML = "";
+  const W = svg.clientWidth, H = svg.clientHeight;
+  if (!W || !H) { svg._g = null; return; }
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  const L = 34, R = 14, T = 10, B = H - 18, mid = (T + B) / 2, xOf = (x) => L + x * (W - L - R), yOf = (v) => mid - v * (B - T) / 2 * 0.92;
+  const grid = el("g", { "aria-hidden": "true" }, svg);
+  for (const [v, t] of [[1, "+1"], [0, "0"], [-1, "−1"]]) {
+    el("line", { x1: L, x2: W - R, y1: yOf(v), y2: yOf(v), stroke: "var(--line)", opacity: v ? 0.7 : 1, "data-gridline": 1 }, grid);
+    const n = el("text", { x: L - 5, y: yOf(v) + 3, "text-anchor": "end", "font-size": 9, fill: "var(--text-soft)" }, grid); n.textContent = t;
+  }
+  const noise = isNoise(S.shape), two = S.shape === "drawbars" && (S.gen.bars[0] > 0 || S.gen.bars[1] > 0);
+  const foot = el("text", { x: W - R, y: B + 13, "text-anchor": "end", "font-size": 8.5, fill: "var(--text-soft)", "data-wave-foot": 1 }, grid);
+  foot.textContent = noise ? "no cycle: a stretch of it" : two ? "one period: two of the note’s, with 16′ or 5⅓′ out" : "one cycle";
+  const pts = waveCycle(S.shape, Math.max(64, Math.round((W - L - R) / 2)));
+  const d = pts.map(([x, v], i) => (i ? "L" : "M") + xOf(x).toFixed(2) + " " + yOf(v).toFixed(2)).join("");
+  el("path", { d: d + "L" + xOf(1) + " " + yOf(0) + "L" + xOf(0) + " " + yOf(0) + "Z", fill: "var(--blush)", opacity: 0.16 }, svg);
+  const unl = S.hands === 2 && !S.linked.gen;
+  el("path", { d, fill: "none", stroke: unl ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--charcoal)", "stroke-width": 1.8, "stroke-linejoin": "round", "data-curve": 1 }, svg);
+  if (S.shape === "drawn") for (let i = 0; i < S.gen.cycle.length; i += 8) el("circle", { cx: xOf(i / S.gen.cycle.length), cy: yOf(S.gen.cycle[i]), r: 2.5, fill: "var(--paper)", stroke: "var(--text-soft)" }, svg);
+  svg._g = { L, R, T, B, W, H, xOf, yOf };
+}
+// Drawing on the cycle, for the Drawn cycle: the pointer writes the points it passes.
+function wireWave(svg) {
+  let down = false;
+  const write = (ev) => {
+    const g = svg._g; if (!g || S.shape !== "drawn") return;
+    const p = toPlot(svg, ev), x = clamp((p.x - g.L) / (g.W - g.L - g.R), 0, 0.9999), v = clamp((((g.T + g.B) / 2) - p.y) / ((g.B - g.T) / 2 * 0.92), -1, 1);
+    S.gen.cycle[Math.floor(x * S.gen.cycle.length)] = v; paint();
+  };
+  svg.addEventListener("pointerdown", (ev) => { if (S.shape !== "drawn") return; down = true; svg.setPointerCapture(ev.pointerId); write(ev); });
+  svg.addEventListener("pointermove", (ev) => { if (down) write(ev); });
+  svg.addEventListener("pointerup", () => { down = false; });
+}
+const GEN_KNOBS = [
+  { id: "g-width", nm: "Width", min: 5, max: 95, key: "width", read: (v) => v + "%", start: 25 },
+  { id: "g-morph", nm: "Morph", min: 0, max: 300, key: "morph", read: morphReading, start: 150 },
+  { id: "g-table", nm: "Position", min: 0, max: 300, key: "table", read: tableReading, start: 150 },
+];
+/* The band under the drawing: one height for every shape, the drawbars' (the tallest), so changing the
+   shape never moves the drawing or anything above it. What is in it, by shape:
+   - Pulse, Morph, Wavetable: their knob (Width, Morph, Position; the wavetable also its four slots);
+   - Drawn cycle: Sine, Smooth and Grab, the drawing above being the thing you draw on;
+   - Drawbars: the nine bars, sliders as they always were, with their footages;
+   - the rest (Sine, Sine + 3rd, Square, Triangle, Saw, the noises, S&H): nothing of their own, so the
+     band says what the shape is in one line, where the knob would be. */
+const WAVE_SAY = {
+  sine: "One partial: the purest figure, a clean ellipse or a line.", harmonic: "The note and its third harmonic at a third of its level.",
+  square: "Odd harmonics, falling as 1/n: the figure gets corners.", triangle: "Odd harmonics, falling as 1/n²: softer than the square.",
+  ramp: "Every harmonic, falling as 1/n: the brightest of the plain shapes.", noise: "No pitch and no cycle: the figure is a cloud.",
+  pink: "Noise falling 3 dB an octave: a softer cloud.", brown: "Noise falling 6 dB an octave: a wandering cloud.",
+  stepped: "A new random level sixteen times a cycle, held between.",
+};
+function waveBandHTML() {
+  const sh = S.shape;
+  if (sh === "drawbars") return '<div class="bars" role="group" aria-label="The drawbars">' + S.gen.bars.map((b, i) => '<label class="dbar"><span class="bv">' + b + '</span>'
+    + '<input type="range" class="vbar" min="0" max="8" step="1" value="' + b + '" data-bar="' + i + '" aria-label="' + FOOT[i] + ' drawbar"><span class="bf">' + FOOT[i] + '</span></label>').join("") + '</div>'
+    + '<p class="say">Nine sine partials at an organ’s footages; each step about 3 dB. 8′ is the note you play.</p>';
+  if (sh === "drawn") return '<span class="tools-row"><button type="button" class="tbtn" data-cycle="sine">Sine</button><button type="button" class="tbtn" data-cycle="smooth">Smooth</button><button type="button" class="tbtn" data-cycle="grab">Grab</button></span>'
+    + '<p class="say">Draw on the cycle above. <i>Grab</i> takes one cycle of what is playing.</p>';
+  const k = GEN_KNOBS.find((x) => x.key === { pulse: "width", morph: "morph", wavetable: "table" }[sh]);
+  if (k) return '<div class="knobs fig">' + cellHTML(k.id, k.nm) + '</div>'
+    + (sh === "wavetable" ? '<span class="switch caps slots" role="radiogroup" aria-label="Wavetable slot to draw">' + [1, 2, 3, 4].map((n, i) => '<button type="button" aria-pressed="' + (S.gen.slot === i) + '" data-slot="' + i + '">' + n + '</button>').join("") + '</span>' : "")
+    + '<p class="say">' + ({ pulse: "The share of the cycle spent high: 50% is the square.", morph: "Sine, triangle, saw and square, one into the next.", wavetable: "Four drawn cycles, one into the next; pick a slot to draw it." })[sh] + '</p>';
+  return '<p class="say only">' + WAVE_SAY[sh] + '</p>';
+}
+function waveViewHTML() {
+  return '<div class="fview" data-view="wave"' + (S.sub === "wave" ? "" : " hidden") + '>'
+    + '<div class="fhead"><span class="say" data-wave-say="1"></span>' + headEnd("gen") + '</div>'
+    + '<div class="plot-wrap"><svg class="plot" data-wave="1" role="img" aria-label="One cycle of what the generator plays"></svg></div>'
+    + '<div class="wave-band" id="waveBand">' + waveBandHTML() + '</div></div>';
+}
+// Tuning, in the Generator's dots menu: set once and left, so it need not be on the face.
+function openGenMenu(cx, cy) {
+  const m = document.getElementById("ctx");
+  m.innerHTML = '<div class="h">Generator</div><div class="type"><span>Tuning</span><span class="switch caps" role="radiogroup" aria-label="Tuning">'
+    + ["just", "equal"].map((t) => '<button type="button" data-tune="' + t + '" aria-pressed="' + (S.tuning === t) + '">' + (t === "just" ? "Just" : "Equal") + '</button>').join("") + '</span></div>'
+    + '<button type="button" data-act="reset">Reset the Generator</button><button type="button" data-act="copy">Copy to the other hand</button>'
+    + '<div class="info"><b>Tuning</b>In <i>just</i> tuning a fifth is exactly 2:3 and its figure stands still; in <i>equal</i> it is slightly off, and the figure turns at the rate the interval beats.</div>';
+  m.onclick = (ev) => { const b = ev.target.closest("[data-tune]"); if (b) { S.tuning = b.dataset.tune; m.querySelectorAll("[data-tune]").forEach((x) => x.setAttribute("aria-pressed", x === b)); } else if (ev.target.closest("[data-act]")) hideMenu(); };
+  m.onkeydown = (ev) => { if (ev.key === "Escape") { ev.stopPropagation(); hideMenu(); } };
+  placeMenu(m, cx, cy);
+}
+
 function buildPlay() {
   const win = document.getElementById("win"), z = Z();
   win.className = "win" + (z.compact ? " compact" : "");
@@ -2188,6 +2359,7 @@ function buildPlay() {
   wireKnobs(win);
   win.querySelectorAll("svg.plot[data-kind]").forEach(wirePlot);
   win.querySelectorAll("svg.plot[data-filter]").forEach(wireFilterPlot);
+  win.querySelectorAll("svg.plot[data-wave]").forEach(wireWave);
   paintKeys();
 }
 
@@ -2208,6 +2380,9 @@ function paint() {
     drawFig(svg.dataset.kind, svg);
     if (svg.dataset.kind === "fenv") svg.style.opacity = filt().type === 0 || filt().amt === 0 ? 0.45 : 1;
   });
+  document.querySelectorAll("svg.plot[data-wave]").forEach(drawWave);
+  document.querySelectorAll("[data-wave-say]").forEach((n) => { n.innerHTML = "<b>" + waveName() + "</b>" + (S.shape === "drawn" ? " · draw on it" : ""); });
+  document.querySelectorAll(".bars .dbar").forEach((b, i) => { b.querySelector(".bv").textContent = S.gen.bars[i]; });
   document.querySelectorAll("svg.plot[data-filter]").forEach((svg) => { if (svg.clientWidth) filterPlot(svg, svg.clientWidth, svg.clientHeight, { big: true, quiet: true, L: 32, R: 10, T: 8, Bm: 16, dbTop: 24, dbBot: -36 }); });
   const F = filt();
   document.querySelectorAll("[data-fenv-words]").forEach((n) => { n.innerHTML = F.type === 0 ? '<span class="dead">· the filter is off</span>' : F.amt === 0 ? '<span class="dead">· amount 0, does nothing</span>' : '· sweeps <b>' + octReading(F.amt) + '</b>'; });
@@ -2232,7 +2407,7 @@ function measureNow() {
   const mod = R(document.getElementById("modrow")), pic = R(document.getElementById("pic")), stage = R(body);
   const view = document.querySelector('.fview:not([hidden])');
   const vr = R(view), lastBottom = Math.max(...Array.from(view.querySelectorAll(".kcell, .plot-wrap, .fhead, .sub-title")).map((n) => R(n).b));
-  const plotsIn = (host) => Array.from(host.querySelectorAll("svg.plot")).map((s) => ({ what: s.dataset.filter ? "response" : s.dataset.kind, w: Math.round(s.clientWidth), h: Math.round(s.clientHeight), aspect: r1(s.clientWidth / Math.max(1, s.clientHeight)) }));
+  const plotsIn = (host) => Array.from(host.querySelectorAll("svg.plot")).map((s) => ({ what: s.dataset.filter ? "response" : s.dataset.wave ? "wave" : s.dataset.kind, w: Math.round(s.clientWidth), h: Math.round(s.clientHeight), aspect: r1(s.clientWidth / Math.max(1, s.clientHeight)) }));
   const rowsIn = (host) => Array.from(host.querySelectorAll(".knobs.fig, .fields")).filter((k) => k.getClientRects().length).map((k) => new Set(Array.from(k.children).map((c) => Math.round(R(c).t))).size);
   const between = Array.from(body.querySelectorAll("*")).filter((n) => { const q = R(n); return q.h > 0 && q.t >= band.b - 0.5 && q.b <= set.t + 0.5 && !n.closest("#band, #setrow"); }).length;
   // The band's content against its one height: the lowest thing in it, in every mode and hands state.
@@ -2284,6 +2459,7 @@ function boxesNow() {
     put(k, v); put(k + "head", v.querySelector(".fhead"));
     v.querySelectorAll(".fhead > select, .fhead > button, .fhead > .switch, .sub-title, .sub-title select, .sub-title button, .head-end .dots").forEach((n, i) => put(k + "tool " + i, n));
     v.querySelectorAll(".plot-wrap").forEach((n, i) => put(k + "drawing " + i, n));
+    put(k + "controls band", v.querySelector(".wave-band"));
     v.querySelectorAll(".kcell").forEach((n) => put(k + "knob " + n.dataset.k, n));
   }
   return out;
@@ -2362,7 +2538,7 @@ function fitStage() {
   stage.dataset.scale = sc;
   wrap.style.height = Math.ceil(win.offsetHeight * sc) + "px";
 }
-const PG = [["pgSize", "size"], ["pgSub", "sub"], ["pgHands", "hands"], ["pgFlay", "flay"], ["pgMenv", "menvOpen"]];
+const PG = [["pgSize", "size"], ["pgSub", "sub"], ["pgHands", "hands"], ["pgFlay", "flay"], ["pgMenv", "menvOpen"], ["pgShape", "shape"]];
 function chooseFilterLayout() {
   const b = document.getElementById("fbody");
   S.flayUsed = S.flay;
@@ -2382,13 +2558,19 @@ function render(quiet) {
 }
 for (const [id, key] of PG) document.querySelectorAll("#" + id + " button").forEach((b) => b.addEventListener("click", () => {
   S[key] = key === "hands" ? +b.dataset.v : key === "menvOpen" ? b.dataset.v === "true" : b.dataset.v;
+  if (key === "shape") S.sub = "wave";
   if (key === "hands") { S.linked.amp = S.hands !== 2; S.editing = 0; if (S.hands === 2) upperOwn(); }
   SEL = null; hideMenu(); render();
 }));
 document.getElementById("stage").addEventListener("click", (ev) => {
+  const dots = ev.target.closest("[data-gen-dots]");
+  if (dots) { const r = dots.getBoundingClientRect(); openGenMenu(r.left, r.bottom); return; }
   const t = ev.target.closest("button, select, [data-menv-card]");
   if (!t) return;
   if (t.dataset.sub) { S.sub = t.dataset.sub; SEL = null; render(); }
+  else if (t.dataset.slot != null) { S.gen.slot = +t.dataset.slot; render(); }
+  else if (t.dataset.cycle) { const c = S.gen.cycle; if (t.dataset.cycle === "sine") c.forEach((_, i) => { c[i] = Math.sin(2 * Math.PI * i / c.length); });
+    else if (t.dataset.cycle === "smooth") { const o = c.slice(); c.forEach((_, i) => { c[i] = (o[(i + c.length - 1) % c.length] + 2 * o[i] + o[(i + 1) % c.length]) / 4; }); } paint(); }
   else if (t.dataset.menvCard) { S.menvOpen = !S.menvOpen; SEL = null; render(); }
   else if (t.dataset.menvClose) { S.menvOpen = false; SEL = null; render(); }
   else if (t.dataset.mode) { S.mode = t.dataset.mode; render(); }
@@ -2405,8 +2587,13 @@ document.getElementById("stage").addEventListener("click", (ev) => {
   else if (t.dataset.loopBtn) { const kind = t.dataset.loopBtn; writeEnv(kind, (e) => { const f = flatten(e), si = susIdx(e, f); e.loop = e.loop == null && si > 1 ? Math.max(1, f.pre.findIndex((p) => p.role === "attack")) : null; if (e.loop != null && e.loop >= si) e.loop = null; }); }
   else if (t.dataset.ftype != null) { writeHand("filter", (f) => { f.type = +t.dataset.ftype; }); paint(); }
 });
+document.getElementById("stage").addEventListener("input", (ev) => {
+  const t = ev.target;
+  if (t.dataset.bar != null) { S.gen.bars[+t.dataset.bar] = +t.value; paint(); }
+});
 document.getElementById("stage").addEventListener("change", (ev) => {
   const t = ev.target;
+  if (t.dataset.menu === "Shape") { S.shape = t.value; SEL = null; render(); return; }
   if (t.dataset.shapeSel && t.value) {
     const kind = t.dataset.shapeSel, name = t.value;
     writeEnv(kind, (e) => { const s = (kind === "fenv" && name === "ADSR" ? FILTER_ENV : SHAPES[name])(); e.m = s.m; e.b = s.b; e.inner = s.inner; e.loop = s.loop; e.sus = s.sus; });
@@ -2439,10 +2626,11 @@ const Q = new URLSearchParams(location.search);
 if (Q.get("size") && SIZES[Q.get("size")]) S.size = Q.get("size");
 if (Q.get("sub") === "menv") S.menvOpen = true; else if (Q.get("sub")) S.sub = Q.get("sub");
 if (Q.get("mode")) S.mode = Q.get("mode");
+if (Q.get("shape")) S.shape = Q.get("shape");
 if (Q.get("flay")) S.flay = Q.get("flay");
 if (Q.get("hands") === "2") { S.hands = 2; S.linked.amp = false; upperOwn(); }
 if (Q.get("shot")) document.body.classList.add("shot");
-window.__figs = { S, SIZES, SIZE_ORDER, FIT_SIZES, BAND_H, MENUS, render, paint, measureNow, boxesNow, survey, noteDown, noteUp, levelAt, makeEnv, flatten, susIdx, shapeGeo };
+window.__figs = { WAVE_SHAPES, waveCycle, S, SIZES, SIZE_ORDER, FIT_SIZES, BAND_H, MENUS, render, paint, measureNow, boxesNow, survey, noteDown, noteUp, levelAt, makeEnv, flatten, susIdx, shapeGeo };
 window.addEventListener("resize", () => { fitStage(); paint(); });
 render();
 const settle = () => { render(); if (!Q.get("shot")) survey(); window.__ready = true; };

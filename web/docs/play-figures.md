@@ -26,8 +26,8 @@ more, so nothing can stretch between them.
    1.34, Generator 1.3 · 0.75 · 1.3 · 0.75. The row is 67 px tall (60
    compact). Each section keeps its dots menu at the right of its title, and
    the Generator keeps its link pill after its name.
-3. **The figure area**: the rest of the tab, a paper sheet with a bar of two
-   subtabs along its top, **Amp** and **Filter**. The chosen one's view is
+3. **The figure area**: the rest of the tab, a paper sheet with a bar of three
+   subtabs along its top, **Amp**, **Filter** and **Wave**. The chosen one's view is
    shown under the bar, and the two views stack in the same place.
    - **Each subtab's label is its name and a one-line summary**: *Amp · 8 ms
      · 120 ms · −3.1 dB · 180 ms* (attack, decay, sustain, release; *one
@@ -49,6 +49,14 @@ more, so nothing can stretch between them.
      `fitRack` folds the rack, not by window size. Of the six windows only
      1660x1050 stacks (802x128 each). Stacked anywhere else, the drawings are
      30 to 61 px tall and Play scrolls at 960x600.
+   - **Wave** (the owner's choice, 18 Nov): one cycle of what the generator
+     plays now, drawn in the same style (three level lines, +1, 0, −1; the
+     soft fill; the line in the hand's ink with the Generator unlinked). Under
+     it, a band of the chosen shape's own controls. Its header names the
+     shape, and the Generator's link pill and dots sit at its right end. Its
+     summary is the shape and its main setting: *Wave · sine*, *pulse 25%*,
+     *morph tri→saw*, *wavetable 2→3*, *drawbars 008740000* (the
+     registration, 16′ to 1′), *drawn cycle*.
 
 The drawing is round 3's as chosen and as built: straight amplitude,
 square-root time, three level lines, round handles, the soft fill, the
@@ -81,6 +89,36 @@ alike, the cost is that, or a capped drawing with empty paper under it.
 
 Pressing the card again, *Close* or Esc shuts it. Play under it does not
 move.
+
+### What Wave holds, by shape
+
+These are the rows `toneRows` shows per shape today, and the two Ink
+sections they link to, which move here. Controls are moved, never copied, so
+`cycleGroup` and `barsGroup` leave Ink.
+
+| Shape | In the band under the cycle |
+|---|---|
+| Pulse | **Width** (5 to 95%) as a knob |
+| Morph | **Morph** (sine, tri, saw, square, one into the next) as a knob |
+| Wavetable | **Position** as a knob, and the four slots (1 · 2 · 3 · 4) to draw |
+| Drawn cycle | *Sine*, *Smooth*, *Grab*; the cycle above is the thing you draw on |
+| Drawbars | **the nine drawbars**, sliders as always (CLAUDE.md), upright like an organ's, each with its footage under it and its value over it |
+| Sine, Sine + 3rd harmonic, Square, Triangle, Saw, White, Pink and Brown noise, Stepped (S&H) | nothing of their own: one line, in the script face, saying what the shape is (*One partial: the purest figure, a clean ellipse or a line.*) |
+
+- **The band is one height for every shape**: the drawbars', 78 px. So
+  changing the shape never moves the drawing, the subtab bar or anything
+  above them. A shape with fewer controls leaves the band's height as it is:
+  its knob, or its line of what it is, sits in it.
+- **The drawing** of a noise is a stretch of it, labelled *no cycle: a
+  stretch of it*. Drawbars with 16′ or 5⅓′ out draw their true period, two of
+  the note's, and say so.
+- **The drawbars** are 50 px tall at every window, about 5.5 px a step. At
+  the compact face's first try (a 66 px band) they were 38 px, about 4 px a
+  step, which is why the band is 78 at every size. The cost is 12 px of the
+  drawing at 960x600.
+- **Tuning** goes to the Generator's dots menu (Just · Equal, with its *What
+  is this?*), with Reset and Copy to the other hand: it is set once and
+  left, so it need not be on the face.
 
 ## Nothing moves when anything is selected
 
@@ -131,6 +169,8 @@ states compared:
 - Loop, Sustain here, No sustain, and a note held;
 - each filter type, and the filter envelope's Loop;
 - both link pills, linked and not;
+- Wave, across all fourteen shapes (null: a band sized to its shape's
+  controls moves the drawing between Sine and the Drawbars);
 - Amp and Filter (everything outside the view);
 - the Envelope's editor open over the tabs.
 
@@ -156,10 +196,9 @@ host's parameter text.
 The band's Outline menu (*bass and melody*) is cut at 960x600, as it is on
 testing. It was outside this round; *bass + melody* would fit.
 
-Open for the build: the Generator's rows that only some shapes have (Morph,
-Width, Position, Cycle, Drawbars) and Tuning have no place in a row of four.
-They want a home, the Ink tab or the Generator's dots menu, before the
-section is cut down to its four.
+The Generator's rows that only some shapes have (Morph, Width, Position,
+Cycle, Drawbars) go to the Wave subtab, and Tuning to the Generator's dots
+menu (below).
 
 ## The gap on testing, and its fix
 
@@ -196,14 +235,16 @@ windows `fittest.py` uses and at 1660x1050. The plugin's 960x600 at Auto's
 own area, the modulation row, the Picture) are `scope.html`'s at d5c2928,
 read by `checks/real_boxes.py`.
 
-| Window | Band | Settings | Figure area | Amp drawing | Filter's two | Envelope editor, its drawing |
-|---|---|---|---|---|---|---|
-| 1660x1050 | 122 | 67 | 830x501 | 802x367, 2.2:1 | stacked 802x128, 802x124 | 830x779, 796x332 |
-| 1400x900 | 122 | 67 | 830x351 | 802x217, 3.7:1 | 384x197, 384x193 | 830x629, 796x332 |
-| 1100x860 | 122 | 67 | 742x367 | 714x233, 3.1:1 | 340x213, 340x209 (1.6:1) | 742x645, 708x295 |
-| 1200x680 | 117 | 60 | 830x278 | 810x159, 5.1:1 | 394x144, 394x136 | 830x510, 804x309 |
-| 1100x680 | 117 | 60 | 742x278 | 722x159, 4.5:1 | 350x144, 350x136 | 742x510, 716x275 |
-| 960x600 | 117 | 60 | 709x264 | 689x145, 4.8:1 | 333x130, 333x122 | 709x495, 683x263 |
+| Window | Band | Settings | Figure area | Amp drawing | Filter's two | Wave's cycle, any shape | Envelope editor, its drawing |
+|---|---|---|---|---|---|---|---|
+| 1660x1050 | 122 | 67 | 830x501 | 802x367, 2.2:1 | stacked 802x128, 802x124 | 802x349, 2.3:1 | 830x779, 796x332 |
+| 1400x900 | 122 | 67 | 830x351 | 802x217, 3.7:1 | 384x197, 384x193 | 802x199, 4.0:1 | 830x629, 796x332 |
+| 1100x860 | 122 | 67 | 742x367 | 714x233, 3.1:1 | 340x213, 340x209 (1.6:1) | 714x215, 3.3:1 | 742x645, 708x295 |
+| 1200x680 | 117 | 60 | 830x278 | 810x159, 5.1:1 | 394x144, 394x136 | 810x138, 5.9:1 | 830x510, 804x309 |
+| 1100x680 | 117 | 60 | 742x278 | 722x159, 4.5:1 | 350x144, 350x136 | 722x138, 5.2:1 | 742x510, 716x275 |
+| 960x600 | 117 | 60 | 709x264 | 689x145, 4.8:1 | 333x130, 333x122 | 689x124, 5.6:1 | 709x495, 683x263 |
+
+Wave's band is 78 px at every window and its drawbars 50 px tall.
 
 Two hands changes none of these.
 
@@ -236,6 +277,7 @@ Envelope following, and the morph. What goes and what replaces it:
 | (new) | **Nothing moves**: every box on Play, to half a pixel, across the states above (nulls: the band 6 px taller with two hands, as testing has it; the link pill before the tools) |
 | (new) | The band's content inside its one height in every mode and hands state (null: a band 90 px tall) |
 | (new) | Every value of the settings row's menus fits its menu, in the menu's font (null: the full names at 960x600) |
+| (new) | Wave: the cycle's drawing one size for all fourteen shapes and every box on Play where it was (null: a band sized to its shape's controls); the nine drawbars in one row inside the band, at least 48 px tall; the summary carrying the registration; the cycles the shapes' own (null: the saw is not the sine); Tuning in the Generator's dots menu and not on the face |
 | (new) | The Envelope's editor over the tabs at the six windows: its content inside it, clear of the modulation row, its drawing 2:1 to 7:1 and 120 px tall, its knobs one row (null: its drawing beside *Where it goes* at the bench's height is a tower) |
 
 `fittest.py`, `striptest.py` and `patchtest.py` gain the same:

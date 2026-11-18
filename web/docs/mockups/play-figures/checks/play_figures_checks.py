@@ -20,6 +20,12 @@ must be seen to fail, as CLAUDE.md asks of every new assertion.
     to the popover's 254 px is seen to make a tower;
   * each subtab's summary fits its label, and which were shortened is
     recorded. Null: a summary three times as long is seen not to fit;
+- Wave: the cycle's drawing one size for all fourteen shapes, the nine
+  drawbars in one row inside the band at least 48 px tall, the summary
+  carrying the registration, the cycles the shapes' own (null: the saw is not
+  the sine), and the band one height (null: a band sized to its shape's
+  controls moves the drawing between Sine and the Drawbars). Tuning is in the
+  Generator's dots menu (null: not in the settings row);
 - the drawing: the -3.1 dB sustain run drawn at 0.70 of the height (straight
   amplitude), to half a pixel; null, the decibel law's place, more than 5 px
   away;
@@ -47,7 +53,7 @@ must be seen to fail, as CLAUDE.md asks of every new assertion.
   same to half a pixel across Two hands on and off in Dyad, Mono and Poly;
   Loop, Sustain here, No sustain and a note held; each filter type; the
   link pills; the subtabs (outside the view); and the Envelope's editor
-  opening. Nulls: the band 6 px taller with two hands (testing's behaviour),
+  opening; and Wave across all fourteen shapes. Nulls: the band 6 px taller with two hands (testing's behaviour),
   and the link pill put before the tools, are each seen to move something;
 - Hold a note: the gold dot moves along the shape;
 - a phone's width has no horizontal page scroll.
@@ -85,9 +91,9 @@ def judge(m):
     return dict(fit=fit, nothing=nothing, clear=clear, one=one, wide=wide, fits=fits)
 
 SIZES = ["1660x1050", "1400x900", "1100x860", "1200x680", "1100x680", "960x600"]
-CASES = [("amp", 1, "auto"), ("filter", 1, "auto"), ("amp", 2, "auto")]
+CASES = [("amp", 1, "auto"), ("filter", 1, "auto"), ("wave", 1, "auto"), ("amp", 2, "auto")]
 SET = """([size, sub, hands, flay, menv, mode]) => { const F = window.__figs, S = F.S; S.size = size; S.sub = sub; S.hands = hands; S.flay = flay;
-  S.menvOpen = !!menv; S.mode = mode || "poly"; S.amp[0] = SHAPES.ADSR(); S.fenv = [FILTER_ENV(), FILTER_ENV()];
+  S.menvOpen = !!menv; S.mode = mode || "poly"; S.shape = "drawbars"; S.amp[0] = SHAPES.ADSR(); S.fenv = [FILTER_ENV(), FILTER_ENV()];
   S.filt = [{ type: 1, cut: 630, res: 32, track: 0, amt: 15 }, { type: 1, cut: 630, res: 32, track: 0, amt: 15 }]; S.menv.own = false; S.linked.amp = hands !== 2; S.linked.filter = true; if (hands === 2) upperOwn(); S.note = null; F.render(); return F.measureNow(); }"""
 results = {"rows": []}
 
@@ -220,9 +226,10 @@ with sync_playwright() as pw:
         ok, moved, nk = same(a, b2); check(ok, "%s: the filter's link pill: all %d boxes where they were %s" % (size, nk, moved or ""))
         # The subtabs: the band, the settings and the figure area's frame stay; only the view changes.
         a = p.evaluate(SET, [size, "amp", 1, "auto"]) and p.evaluate(BOX)
-        b2 = p.evaluate(SET, [size, "filter", 1, "auto"]) and p.evaluate(BOX)
-        ok, moved, nk = same(a, b2, lambda k: not k.startswith("view"))
-        check(ok, "%s: Amp to Filter: all %d boxes outside the view where they were %s" % (size, nk, moved or ""))
+        for other in ("filter", "wave"):
+            b2 = p.evaluate(SET, [size, other, 1, "auto"]) and p.evaluate(BOX)
+            ok, moved, nk = same(a, b2, lambda k: not k.startswith("view"))
+            check(ok, "%s: Amp to %s: all %d boxes outside the view where they were %s" % (size, other.capitalize(), nk, moved or ""))
         # The Envelope's editor opening over the tabs moves nothing under it.
         a = p.evaluate(SET, [size, "amp", 1, "auto"]) and p.evaluate(BOX)
         b2 = p.evaluate(SET, [size, "amp", 1, "auto", True]) and p.evaluate(BOX)
@@ -238,6 +245,51 @@ with sync_playwright() as pw:
     first = p.evaluate("() => { const h = document.querySelector('.fview:not([hidden]) .fhead'); h.prepend(h.querySelector('[data-link]')); return window.__figs.boxesNow(); }")
     ok, moved, nk = same(a, first)
     null(ok, "the link pill put before the tools is seen to move %s" % (moved[0][0] if moved else "nothing"))
+
+    # ---- Wave ----
+    SHAPES_ALL = p.evaluate("() => window.__figs.WAVE_SHAPES.map(([v]) => v)")
+    SHAPE = "(sh) => { const F = window.__figs; F.S.shape = sh; F.render(); return F.boxesNow(); }"
+    NOTGEN = lambda k: "knob g-" not in k
+    for size in SIZES:
+        p.evaluate(SET, [size, "wave", 1, "auto"])
+        base = p.evaluate(SHAPE, "sine")
+        sizes = []
+        for sh in SHAPES_ALL:
+            bx = p.evaluate(SHAPE, sh)
+            ok, moved, nk = same(base, bx, NOTGEN)
+            m = p.evaluate("() => window.__figs.measureNow()")
+            sizes.append((sh, m["plots"][0]["w"], m["plots"][0]["h"]))
+            check(ok and m["viewOver"] <= 1 and m["scroll"] <= 1,
+                  "%s: Wave with %s: all %d boxes on Play where they were with Sine, nothing over (%s)" % (size, sh, nk, moved or m["plots"][0]))
+        check(len({(w, h) for _, w, h in sizes}) == 1, "%s: the cycle's drawing one size for all %d shapes, %dx%d" % (size, len(sizes), sizes[0][1], sizes[0][2]))
+        p.evaluate(SET, [size, "wave", 1, "auto"]); p.evaluate("() => { window.__figs.S.shape = 'drawbars'; window.__figs.render(); }")
+        bars = p.evaluate("""() => { const sc = parseFloat(document.getElementById('stage').dataset.scale), b = [...document.querySelectorAll('#waveBand input.vbar')];
+          return { n: b.length, h: Math.min(...b.map((x) => x.getBoundingClientRect().height / sc)), tops: new Set(b.map((x) => Math.round(x.getBoundingClientRect().top))).size,
+                   inside: b.every((x) => x.getBoundingClientRect().bottom <= document.getElementById('waveBand').getBoundingClientRect().bottom + 0.5), label: document.querySelector('[data-sum="wave"]').textContent }; }""")
+        check(bars["n"] == 9 and bars["h"] >= 48 and bars["tops"] == 1 and bars["inside"],
+              "%s: the nine drawbars in one row inside the band, each %.0f px tall (at least 48, over five a step)" % (size, bars["h"]))
+        check(bars["label"] == "drawbars 008740000", "%s: Wave's summary carries the registration (%r)" % (size, bars["label"]))
+    # Null: the band sized to what it holds, as a section's rows are on testing, moves the drawing.
+    p.evaluate(SET, ["960x600", "wave", 1, "auto"])
+    a = p.evaluate(SHAPE, "sine")
+    p.evaluate("() => { const st = document.createElement('style'); st.id = 'nullBand'; st.textContent = '.wave-band { flex: 0 0 auto !important; height: auto !important; }'; document.head.appendChild(st); }")
+    a2 = p.evaluate(SHAPE, "sine"); b2 = p.evaluate(SHAPE, "drawbars")
+    ok, moved, nk = same(a2, b2, NOTGEN)
+    null(ok, "a band sized to its shape's controls is seen to move %s between Sine and the Drawbars" % (moved[0][0] if moved else "nothing"))
+    p.evaluate("() => document.getElementById('nullBand').remove()")
+    # The cycles: what each draws is the shape's.
+    cyc = p.evaluate("""() => { const F = window.__figs, at = (sh, x) => { const c = F.waveCycle(sh, 400); return c[Math.round(x * 400)][1]; };
+      F.S.gen.width = 25; return { sine: at('sine', 0.25), sq: [at('square', 0.25), at('square', 0.75)], pulse: [at('pulse', 0.2), at('pulse', 0.3)], saw: at('ramp', 0.5), tri: at('triangle', 0.25) }; }""")
+    check(abs(cyc["sine"] - 1) < 1e-9 and cyc["sq"] == [1, -1] and cyc["pulse"] == [1, -1] and abs(cyc["tri"] - 1) < 1e-9,
+          "the cycles are the shapes': the sine's peak a quarter in, the square high then low, a 25%% pulse high at a fifth and low at three tenths %s" % cyc)
+    null(abs(p.evaluate("() => window.__figs.waveCycle('ramp', 400)[100][1]") - 1) < 0.1, "the saw is not the sine: a quarter in it is not at its peak")
+    # Tuning, in the Generator's dots menu.
+    p.evaluate(SET, ["1400x900", "amp", 1, "auto"])
+    p.click("[data-gen-dots]")
+    tune = p.evaluate("() => { const m = document.getElementById('ctx'); return [!m.hidden, [...m.querySelectorAll('[data-tune]')].map((b) => b.textContent)]; }")
+    p.click("#ctx [data-tune='equal']")
+    check(tune[0] and tune[1] == ["Just", "Equal"] and p.evaluate("() => window.__figs.S.tuning") == "equal", "Tuning is in the Generator's dots menu, Just and Equal, and sets it")
+    null(p.evaluate("() => !!document.querySelector('#setrow [data-tune], #setrow .fld .switch')"), "the settings row itself has no Tuning")
 
     # ---- the drawing ----
     p.evaluate(SET, ["1400x900", "amp", 1, "auto"])

@@ -51,6 +51,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -162,6 +168,121 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 51,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 55,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Pressure",
+     "room": 55,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Velocity",
+     "room": 97,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Shape",
+     "room": 90,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 90,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ]
+  },
+  {
+   "size": "1660x1050",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 122,
+   "bandOver": -4.3,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 501
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 349,
+     "aspect": 2.3
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -266,6 +387,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -368,6 +495,12 @@
     "filter": {
      "shown": "low pass 1.6 kHz · +1.5 oct",
      "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
      "dropped": 0,
      "fits": true
     }
@@ -491,6 +624,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -602,6 +741,121 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 51,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 55,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Pressure",
+     "room": 55,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Velocity",
+     "room": 97,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Shape",
+     "room": 90,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 90,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ]
+  },
+  {
+   "size": "1400x900",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 122,
+   "bandOver": -4.3,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 351
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 199,
+     "aspect": 4
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -706,6 +960,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -808,6 +1068,12 @@
     "filter": {
      "shown": "low pass 1.6 kHz · +1.5 oct",
      "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
      "dropped": 0,
      "fits": true
     }
@@ -931,6 +1197,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -1042,6 +1314,121 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 42,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 45,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Pressure",
+     "room": 45,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Velocity",
+     "room": 82,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Shape",
+     "room": 76,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 76,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ]
+  },
+  {
+   "size": "1100x860",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 122,
+   "bandOver": -4.3,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 367
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 714,
+     "h": 215,
+     "aspect": 3.3
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -1146,6 +1533,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -1248,6 +1641,12 @@
     "filter": {
      "shown": "low pass 1.6 kHz · +1.5 oct",
      "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
      "dropped": 0,
      "fits": true
     }
@@ -1371,6 +1770,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -1482,6 +1887,121 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 56,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 60,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Pressure",
+     "room": 60,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Velocity",
+     "room": 102,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 95,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 95,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": true
+    }
+   ]
+  },
+  {
+   "size": "1200x680",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 117,
+   "bandOver": -12.3,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 810,
+     "h": 138,
+     "aspect": 5.9
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -1586,6 +2106,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -1688,6 +2214,12 @@
     "filter": {
      "shown": "low pass 1.6 kHz · +1.5 oct",
      "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
      "dropped": 0,
      "fits": true
     }
@@ -1811,6 +2343,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -1922,6 +2460,121 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 46,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 50,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Pressure",
+     "room": 50,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Velocity",
+     "room": 88,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Shape",
+     "room": 81,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 81,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ]
+  },
+  {
+   "size": "1100x680",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 117,
+   "bandOver": -12.3,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 722,
+     "h": 138,
+     "aspect": 5.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -2026,6 +2679,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -2128,6 +2787,12 @@
     "filter": {
      "shown": "low pass 1.6 kHz · +1.5 oct",
      "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
      "dropped": 0,
      "fits": true
     }
@@ -2251,6 +2916,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -2362,6 +3033,121 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 43,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 46,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Pressure",
+     "room": 46,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Velocity",
+     "room": 82,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Shape",
+     "room": 76,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 76,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ]
+  },
+  {
+   "size": "960x600",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 117,
+   "bandOver": -12.3,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 264
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 689,
+     "h": 124,
+     "aspect": 5.6
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -2464,6 +3250,12 @@
     "filter": {
      "shown": "low pass 1.6 kHz · +1.5 oct",
      "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
      "dropped": 0,
      "fits": true
     }
@@ -2570,6 +3362,12 @@
      "full": "low pass 1.6 kHz · +1.5 oct",
      "dropped": 0,
      "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
     }
    },
    "menus": [
@@ -2642,6 +3440,6 @@
   }
  ],
  "webfonts": true,
- "checks": 277,
+ "checks": 426,
  "fails": []
 }

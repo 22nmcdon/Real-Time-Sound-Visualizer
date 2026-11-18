@@ -28,6 +28,13 @@ SHOTS = [
     ("13-one-hand-at-960x600-compare-with-12", "size=960x600&sub=amp", False),
     ("14-envelope-editor-at-960x600", "size=960x600&sub=menv", False),
     ("15-dyad-at-1400x900", "size=1400x900&sub=amp&mode=dyad", False),
+    ("16-wave-sine-at-1400x900", "size=1400x900&sub=wave&shape=sine", False),
+    ("17-wave-drawbars-at-1400x900", "size=1400x900&sub=wave&shape=drawbars", False),
+    ("18-wave-drawbars-at-960x600", "size=960x600&sub=wave&shape=drawbars", False),
+    ("19-wave-sine-at-960x600-compare-with-18", "size=960x600&sub=wave&shape=sine", False),
+    ("20-wave-wavetable-at-1100x680", "size=1100x680&sub=wave&shape=wavetable", False),
+    ("21-wave-drawn-cycle-at-1660x1050", "size=1660x1050&sub=wave&shape=drawn", False),
+    ("22-tuning-in-the-generators-menu-at-1400x900", "size=1400x900&sub=wave&shape=pulse&genmenu=1", False),
 ]
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME)
@@ -39,6 +46,8 @@ with sync_playwright() as pw:
         p.wait_for_function("window.__ready === true", timeout=20000)
         webfonts.settle(p)
         p.evaluate("() => window.__figs.render()")
+        if "genmenu=1" in q:
+            p.click("[data-gen-dots]"); p.wait_for_timeout(200)
         if note:
             p.evaluate("() => { window.__figs.noteDown(); }")
             p.wait_for_timeout(700)
