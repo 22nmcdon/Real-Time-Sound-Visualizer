@@ -151,6 +151,18 @@ def run(kit):
     null("where the decay is one curve it has already fallen half-way in", trace(script(48000, 10, 200, 0.3, 200,
          [(0, "gate 1 1")], 24000, shape="1;A>l;D>m.7;R>l"))[480 + 4700][0] < 0.9)
 
+    # Entered on the far side of a rising segment's aim - a loop back to a
+    # point under a rise that ends below where the loop leaves - it goes
+    # straight to its end on time rather than hanging short of it.
+    rows = trace(script(48000, 10, 200, 0.9, 200, [(0, "gate 1 1"), (48000, "gate 0")], 48000,
+                        shape="1;A>l;D.4,.3,l,.7,.6,p.05>l;R>l;L4"), where=True)
+    passes = sum(1 for i in range(1, 47000) if rows[i][2] < rows[i - 1][2])
+    check("a stretch entered beyond its aim goes straight to its end: the loop goes round (%d passes)" % passes, passes >= 5)
+    stuck = trace(script(48000, 10, 200, 0.9, 200, [(0, "gate 1 1"), (48000, "gate 0")], 48000,
+                         shape="1;A>l;D.4,.3,l,.7,.6,p.05>l;R>l;L4"), where=True)
+    null("the loop's first pass re-enters that rise from above its aim: from 0.9, where the rise aims at 0.615",
+         abs(stuck[480 + 9600 + 10][0] - 0.9) < 0.05 and stuck[480 + 9600 + 10][2] == 4, "%.3f in segment %d" % stuck[480 + 9610][:3:2])
+
     # --- a point added on the line changes nothing ---
     def aim(a, b, m):
         k = 2 * math.log(m / (1 - m))

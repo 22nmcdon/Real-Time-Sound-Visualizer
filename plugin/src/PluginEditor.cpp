@@ -198,11 +198,14 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     const auto env = processor.envelopeServed();
     const auto clock = processor.clockServed();
     const auto face = processor.faceServed();
-    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed> out {};
+    const auto places = processor.envelopePlaces();
+    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed + 5> out {};
     std::copy(lfos.begin(), lfos.end(), out.begin());
     std::copy(env.begin(), env.end(), out.begin() + 6);
     std::copy(clock.begin(), clock.end(), out.begin() + 10);
     std::copy(face.begin(), face.end(), out.begin() + 10 + static_cast<std::ptrdiff_t>(clock.size()));
+    // Last, the drawn envelopes' places (18 Nov), so nothing before them moves.
+    std::copy(places.begin(), places.end(), out.begin() + 10 + static_cast<std::ptrdiff_t>(clock.size() + face.size()));
     return bytes(out.data(), out.size() * sizeof(double), "application/octet-stream");
   }
   /* The picture's grid, 64 by 64 little-endian float32s row by row, as it

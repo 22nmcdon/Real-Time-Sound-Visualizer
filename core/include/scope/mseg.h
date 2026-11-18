@@ -179,6 +179,9 @@ class Mseg {
           jump = from >= to;
         } else {
           jump = to <= 1e-9 || from <= to;
+          // Entered on the far side of its aim (a loop's return, a key let go above a rising stretch's aim),
+          // which the law would carry towards the aim and never to the end: straight from there instead.
+          if (!jump && !((b - aim) / (value_ - aim) > 0)) { line_ = true; from_ = value_; return; }
         }
         if (jump) value_ = b;
         else {

@@ -178,6 +178,24 @@ class Controls {
       value.assign(s.value);
       custom_[s.id].reserve(kJsNumberRoom);
     }
+    // The drawn envelopes' shapes (18 Nov): text boxes, room made for the longest a shape is.
+    for (const char* id : kTexts) texts_[id].reserve(640);
+  }
+  /* The page's text boxes that hold what a setup carries: the drawn
+     envelopes' shapes, written as given (the engine reads what it can of
+     one, mseg_shape.h). */
+  static constexpr const char* kTexts[] = { "envShape", "vcfShape", "menvShape" };
+  bool setText(const std::string& id, const std::u16string& written) {
+    const auto it = texts_.find(id);
+    if (it == texts_.end()) return false;
+    const std::string v = utf16To8(written);
+    keep(it->second, v);
+    return true;
+  }
+  const std::string& text(const std::string& id) const {
+    static const std::string none;
+    const auto it = texts_.find(id);
+    return it == texts_.end() ? none : it->second;
   }
   /* A slider or a menu the panel has not got is refused, and nothing is
      written: false. Each used to look its id up and use what it found, and an
@@ -244,6 +262,7 @@ class Controls {
  private:
   std::map<std::string, double> ranges_;
   std::map<std::string, std::string> selects_;
+  std::map<std::string, std::string> texts_;   // the text boxes (kTexts)
   std::map<std::string, std::string> custom_;  // a menu's option whose value is written as it is shown
   int lanes_ = 2;
   // Written into the room the string has, where an assignment of a new string would have replaced it.
@@ -456,7 +475,8 @@ inline std::optional<std::array<double, 9>> parseRegistrationText(const std::u16
 // One row of LAYER_CONTROLS: the control, the generator's field, its law, and
 // the law back from the field to the control, for showing layer B on the panel.
 struct LayerControl {
-  const char* id; const char* field; enum Kind { Range, Menu, Text } kind; double (*law)(double); double (*inverse)(double) = nullptr;
+  // Words: a text box's free text (a drawn envelope's shape), where Text is a menu's word.
+  const char* id; const char* field; enum Kind { Range, Menu, Text, Words } kind; double (*law)(double); double (*inverse)(double) = nullptr;
 };
 inline const std::vector<LayerControl>& layerControls() {
   static const auto same = [](double v) { return v; };
@@ -470,6 +490,10 @@ inline const std::vector<LayerControl>& layerControls() {
     { "envDecay", "decayMs", LayerControl::Range, same, same },
     { "envSustain", "sustain", LayerControl::Range, hundred, byHundred },
     { "envRelease", "releaseMs", LayerControl::Range, same, same },
+    // The drawn envelope's delay, hold and shape (18 Nov).
+    { "envDelay", "envDelayMs", LayerControl::Range, same, same },
+    { "envHold", "envHoldMs", LayerControl::Range, same, same },
+    { "envShape", "envShape", LayerControl::Words, nullptr },
     { "bars", "bars", LayerControl::Text, nullptr },
     { "morph", "morph", LayerControl::Range, hundred, byHundredRound },
     { "width", "width", LayerControl::Range, hundred, byHundredRound },
@@ -503,6 +527,9 @@ inline const std::vector<LayerControl>& layerControls() {
     { "vcfDec", "fDecayMs", LayerControl::Range, same, same },
     { "vcfSus", "fSustain", LayerControl::Range, hundred, byHundredRound },
     { "vcfRel", "fReleaseMs", LayerControl::Range, same, same },
+    { "vcfDelay", "fDelayMs", LayerControl::Range, same, same },
+    { "vcfHold", "fHoldMs", LayerControl::Range, same, same },
+    { "vcfShape", "fShape", LayerControl::Words, nullptr },
   };
   return rows;
 }
@@ -532,9 +559,12 @@ inline const std::array<HandSectionSpec, kHandSections>& handSections() {
       { "bAmp", "bShape", "bBars", "bMorph", "bWidth", "bTable" },
       { "gen.amp", "gen.morph", "gen.width", "gen.table", "gen.bar0", "gen.bar1", "gen.bar2", "gen.bar3", "gen.bar4",
         "gen.bar5", "gen.bar6", "gen.bar7", "gen.bar8" }, 0 },
-    { "ampEnv", "linkAmpEnv", { "envAttack", "envDecay", "envSustain", "envRelease" }, { "bAtk", "bDec", "bSus", "bRel" }, {}, 0 },
-    { "vcf", "linkVcf", { "vcfType", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel" },
-      { "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel" }, { "gen.vcf" }, 0 },
+    { "ampEnv", "linkAmpEnv", { "envAttack", "envDecay", "envSustain", "envRelease", "envDelay", "envHold", "envShape" },
+      { "bAtk", "bDec", "bSus", "bRel", "bEnvDelay", "bEnvHold", "bEnvShape" }, {}, 0 },
+    { "vcf", "linkVcf", { "vcfType", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel",
+                          "vcfDelay", "vcfHold", "vcfShape" },
+      { "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel",
+        "bVcfDelay", "bVcfHold", "bVcfShape" }, { "gen.vcf" }, 0 },
     { "osc", "linkOsc", { "oscRatio", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSubOct", "oscSubShape",
                           "oscUnison", "oscSpread" },
       { "bRatio", "bFm", "bBend", "bBendAt", "bRing", "bSync", "bSub", "bSubOct", "bSubShape", "bUnison", "bSpread" },
@@ -587,6 +617,7 @@ inline void applyVoiceLaws(Generator& gen, const Controls& panel, int layer) {
   for (const auto& row : layerControls()) {
     if (!isVoiceControl(row.id)) continue;
     if (row.kind == LayerControl::Text) { gen.set(row.field, panel.select(row.id), layer); continue; }
+    if (row.kind == LayerControl::Words) { gen.set(row.field, panel.text(row.id), layer); continue; }
     const double v = row.kind == LayerControl::Range ? panel.range(row.id) : panel.selectNumber(row.id);
     gen.set(row.field, row.law(v), layer);
   }
@@ -627,6 +658,10 @@ inline double layerFieldValue(const LayerSettings& t, std::string_view f) {
   if (f == "fDecayMs") return t.fenv.decayMs;
   if (f == "fSustain") return t.fenv.sustain;
   if (f == "fReleaseMs") return t.fenv.releaseMs;
+  if (f == "envDelayMs") return t.env.delayMs;
+  if (f == "envHoldMs") return t.env.holdMs;
+  if (f == "fDelayMs") return t.fenv.delayMs;
+  if (f == "fHoldMs") return t.fenv.holdMs;
   return std::nan("");
 }
 
@@ -638,6 +673,7 @@ inline std::u16string layerPanelValue(const Controls& panel, const LayerControl&
     for (int k = 0; k < 9; k++) out += toU16(jsNumberToString(panel.range("bar" + std::to_string(k))));
     return out;
   }
+  if (row.kind == LayerControl::Words) return utf8To16(panel.text(row.id));
   return row.kind == LayerControl::Range ? toU16(jsNumberToString(panel.range(row.id))) : utf8To16(panel.select(row.id));
 }
 inline void setLayerPanelValue(Controls& panel, const LayerControl& row, const std::u16string& text) {
@@ -648,6 +684,7 @@ inline void setLayerPanelValue(Controls& panel, const LayerControl& row, const s
     return;
   }
   if (row.kind == LayerControl::Range) panel.setRange(row.id, text);
+  else if (row.kind == LayerControl::Words) panel.setText(row.id, text);
   else panel.setSelect(row.id, text);
 }
 
@@ -667,6 +704,8 @@ inline void showLayerOnPanel(Brain& b, const Generator& gen, int layer) {
       std::u16string text;
       if (field == "shape") text = utf8To16(toneB.shapeName);
       else if (field == "subShape") text = utf8To16(toneB.subShapeName);
+      else if (field == "envShape") text = utf8To16(toneB.envShapeText);
+      else if (field == "fShape") text = utf8To16(toneB.fShapeText);
       else if (field == "bars") for (const double v : toneB.bars) text += toU16(jsNumberToString(jsMathRound(v)));
       else text = toU16(jsNumberToString(row.inverse(layerFieldValue(toneB, field))));
       setLayerPanelValue(b.panel, row, text);
@@ -792,6 +831,8 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
     { "shpDrive", "bDrive" }, { "shpFold", "bFold" }, { "shpBits", "bBits" }, { "shpRate", "bRate" }, { "vcfType", "bVcf" },
     { "vcfCut", "bVcfCut" }, { "vcfRes", "bVcfRes" }, { "vcfTrack", "bVcfTrack" }, { "vcfEnvAmt", "bVcfEnv" },
     { "vcfAtk", "bVcfAtk" }, { "vcfDec", "bVcfDec" }, { "vcfSus", "bVcfSus" }, { "vcfRel", "bVcfRel" },
+    { "envDelay", "bEnvDelay" }, { "envHold", "bEnvHold" }, { "envShape", "bEnvShape" },
+    { "vcfDelay", "bVcfDelay" }, { "vcfHold", "bVcfHold" }, { "vcfShape", "bVcfShape" },
   };
   static const std::pair<const char*, const char*> fallback[] = {
     { "amp", "amp" }, { "shape", "shape" }, { "envAttack", "atk" }, { "envDecay", "dec" }, { "envSustain", "sus" },
@@ -816,7 +857,7 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
       const RangeSpec* r = rangeSpec(row.id);
       raw = Json::number(std::fmax(r->min, std::fmin(r->max, jsToNumber(&raw))));
     }
-    if (row.kind == LayerControl::Text) {
+    if (row.kind == LayerControl::Text || row.kind == LayerControl::Words) {
       if (bars) {
         const auto levels = parseRegistrationText(jsToString(raw));
         if (levels) gen.setBars(std::vector<double>(levels->begin(), levels->end()), 1);
@@ -1362,6 +1403,16 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   panel.setRange("envSustain", str("sus"));
   panel.setRange("envRelease", str("rel"));
   panel.setRange("glide", str("glide"));
+  // The drawn envelopes (18 Nov): the delay and hold by their rule, and the shapes as text, anything else none.
+  panel.setRange("envDelay", fieldText("envDelay"));
+  panel.setRange("envHold", fieldText("envHold"));
+  const auto textOf = [&](std::string_view key) {
+    const Json* v = s(key);
+    return v && v->type == Json::Type::String ? v->s : std::u16string();
+  };
+  panel.setText("envShape", textOf("envShape"));
+  panel.setText("vcfShape", textOf("vcfShape"));
+  panel.setText("menvShape", textOf("menvShape"));
 
   // The sliders' handlers, as `restore` fires them.
   setA("freq", panel.range("freq"));
@@ -1372,6 +1423,9 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("decayMs", panel.range("envDecay"));
   setA("sustain", panel.range("envSustain") / 100);
   setA("releaseMs", panel.range("envRelease"));
+  setA("envDelayMs", panel.range("envDelay"));
+  setA("envHoldMs", panel.range("envHold"));
+  gen.set("envShape", std::string_view(panel.text("envShape")), 0);
   setA("glideMs", panel.range("glide"));
   setA("morph", panel.range("morph") / 100);
   setA("width", panel.range("width") / 100);
@@ -1559,10 +1613,12 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("menvEvery", fieldFlag("menvEvery") ? 1 : 0);
   for (const auto& [id, field, scale] : { std::tuple<const char*, const char*, double>{ "menvAtk", "menvAttackMs", 1 },
                                           { "menvDec", "menvDecayMs", 1 }, { "menvSus", "menvSustain", 100 },
-                                          { "menvRel", "menvReleaseMs", 1 } }) {
+                                          { "menvRel", "menvReleaseMs", 1 }, { "menvDelay", "menvDelayMs", 1 },
+                                          { "menvHold", "menvHoldMs", 1 } }) {
     panel.setRangeNumber(id, fieldNum(id));
     setA(field, panel.range(id) / scale);
   }
+  gen.set("menvShape", std::string_view(panel.text("menvShape")), 0);
 
   // The score and the arpeggiator: kept for their pieces.
   brain.score.on = fieldFlag("scoreOn");
@@ -1929,6 +1985,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "envDecay") layerSet("decayMs", v);
   else if (id == "envSustain") layerSet("sustain", v / 100);
   else if (id == "envRelease") layerSet("releaseMs", v);
+  else if (id == "envDelay") layerSet("envDelayMs", v);
+  else if (id == "envHold") layerSet("envHoldMs", v);
   // The generator's, read on layer A alone (G6): written there whichever hand is on the panel.
   else if (id == "glide") gen.set("glideMs", v, 0);
   // The Picture section's Amount and Strike, on each hand it is on (G6).
@@ -1945,6 +2003,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "menvDec") gen.set("menvDecayMs", v);
   else if (id == "menvSus") gen.set("menvSustain", v / 100);
   else if (id == "menvRel") gen.set("menvReleaseMs", v);
+  else if (id == "menvDelay") gen.set("menvDelayMs", v);
+  else if (id == "menvHold") gen.set("menvHoldMs", v);
   // Scan's softness in tenths of a cell, and its Persistence, which is the screen's.
   else if (id == "scanSoft") b.scanSoft = v / 10;
   else if (id == "scanStrike") pictureWrite(b, keys, true, v);
@@ -2082,6 +2142,9 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   if (id == "interval") { gen.set("interval", number, 0); keys.panel().interval = static_cast<int>(number); }
   else if (id == "inputMode") { b.inputMode = orElse(number, 0); gen.set("inputMode", b.inputMode, 0); }
   else if (id == "shape") handSet(b, gen, id, "shape", text);
+  // The drawn envelopes' shapes (18 Nov), text boxes: the hands' as any section's control, the Envelope's its own.
+  else if (id == "envShape" || id == "vcfShape") { panel.setText(id, written); handSet(b, gen, id, id == "envShape" ? "envShape" : "fShape", utf16To8(written)); }
+  else if (id == "menvShape") { panel.setText(id, written); gen.set("menvShape", std::string_view(utf16To8(written)), 0); }
   else if (id == "shpOS") gen.set("shapeOS", number, 0);
   else if (isVoiceControl(id) && menu) {
     for (const auto& row : layerControls()) {
@@ -2262,6 +2325,8 @@ inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to) {
       gen.setBars(bars, to);
     } else if (row.kind == LayerControl::Text) {
       gen.set(row.field, std::string_view(b.panel.select(row.id)), to);
+    } else if (row.kind == LayerControl::Words) {
+      gen.set(row.field, std::string_view(b.panel.text(row.id)), to);
     } else {
       gen.set(row.field, row.law(row.kind == LayerControl::Range ? b.panel.range(row.id) : b.panel.selectNumber(row.id)), to);
     }
@@ -2304,6 +2369,8 @@ inline bool handsEqual(const Brain& b, const Generator& gen, int sec) {
     if (field == "shape") { if (a.shapeName != t.shapeName) return false; }
     else if (field == "subShape") { if (a.subShapeName != t.subShapeName) return false; }
     else if (field == "bars") { if (a.bars != t.bars) return false; }
+    else if (field == "envShape") { if (a.envShapeText != t.envShapeText) return false; }
+    else if (field == "fShape") { if (a.fShapeText != t.fShapeText) return false; }
     else if (!(layerFieldValue(a, field) == layerFieldValue(t, field))) return false;
   }
   return true;

@@ -38,6 +38,9 @@ inline constexpr RangeSpec kRanges[] = {
   { "envDecay", 1, 1000, 1, 120 },
   { "envSustain", 0, 100, 1, 70 },
   { "envRelease", 1, 2000, 1, 180 },
+  // The drawn envelope's delay and hold (18 Nov), in milliseconds.
+  { "envDelay", 0, 5000, 1, 0 },
+  { "envHold", 0, 5000, 1, 0 },
   { "glide", 0, 500, 1, 0 },
   { "morphPos", 0, 100, 1, 0 },
   { "lfoRate0", 1, 800, 1, 20 },
@@ -77,6 +80,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "vcfDec", 1, 2000, 1, 300 },
   { "vcfSus", 0, 100, 1, 30 },
   { "vcfRel", 1, 2000, 1, 300 },
+  { "vcfDelay", 0, 5000, 1, 0 },
+  { "vcfHold", 0, 5000, 1, 0 },
   { "planeTurn", -50, 50, 1, 0 },
   { "planeTwist", -100, 100, 1, 0 },
   { "planeRadius", 2, 100, 1, 40 },
@@ -91,6 +96,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "menvDec", 1, 4000, 1, 300 },
   { "menvSus", 0, 100, 1, 50 },
   { "menvRel", 1, 4000, 1, 400 },
+  { "menvDelay", 0, 5000, 1, 0 },
+  { "menvHold", 0, 5000, 1, 0 },
   // F5c: the repeats' tone, low cut, width and wow.
   { "delayTone", 0, 100, 1, 100 },
   { "delayLowCut", 0, 100, 1, 0 },
@@ -201,16 +208,16 @@ inline constexpr SelectSpec kSelects[] = {
 // set it; the tempo stays, since it is heard. The page's MORPH_SKIP says more.
 inline constexpr const char* kMorphIds[] = {
   // Level in the Generator since G7, after Glide, where the page lays it out.
-  "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "quantiseGlide", "tempo",
+  "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "envDelay", "envHold", "quantiseGlide", "tempo",
   "lag", "lagMix", "acCorner", "planeTwist", "rotate", "planeTurn", "planeRadius", "planeScaleX", "planeScaleY",
   "planeShear", "eqLow", "eqMid", "eqHigh", "eqLowFreq", "eqMidFreq", "eqMidWidth", "eqHighFreq", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth",
   "chorusTime", "chorusFeedback", "delayMix", "delayMs", "delayFeedback", "delayTone", "delayLowCut", "delayWidth",
   "delayWow", "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread", "bar0", "bar1", "bar2", "bar3",
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
-  "vcfSus", "vcfRel", "inputDepth", "filterCutoff", "filterRes",
+  "vcfSus", "vcfRel", "vcfDelay", "vcfHold", "inputDepth", "filterCutoff", "filterRes",
   // The sound's own Width (16 Nov), in the Picture section after Scan's three: the setup's, so walked.
-  "oscScan", "scanStrike", "scanSoft", "soundWidth", "menvAtk", "menvDec", "menvSus", "menvRel",
+  "oscScan", "scanStrike", "scanSoft", "soundWidth", "menvAtk", "menvDec", "menvSus", "menvRel", "menvDelay", "menvHold",
 };
 
 }  // namespace scope

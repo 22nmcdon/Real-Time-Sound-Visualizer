@@ -79,7 +79,10 @@ struct LayerSettings : LayerTone {
   std::string subShapeName = "square";  // as given: a menu with nothing chosen gives ""
   std::array<double, 9> bars { 0, 0, 8, 7, 4, 0, 0, 0, 0 };
   std::optional<std::vector<NoteWant>> voices;  // none is no chord
+  // The drawn envelopes' shapes as given (18 Nov): the face's text, which the tone's parsed shapes are.
+  std::string envShapeText, fShapeText;
   LayerSettings() {
+    envShapeText.reserve(600); fShapeText.reserve(600);
     amp = 0.55; unisonCents = 12; morph = 1.5;
     env = { 8, 120, 0.7, 180 };
     fenv = { 5, 300, 0.3, 300 };
@@ -109,6 +112,7 @@ struct Tone : LayerSettings, PlaneTone {
   bool menvOwn = false;
   bool menvEvery = false;  // once a phrase, or again on every note, as the page's
   EnvelopeTone menv { 10, 300, 0.5, 400 };
+  std::string menvShapeText;
   double inputMode = 0, inputDepth = 0.5;
   std::shared_ptr<const CycleTables> cycle;
   std::shared_ptr<const std::vector<CycleTables>> wavetable;
@@ -221,6 +225,8 @@ class Generator {
     else if (field == "menvDecayMs") a.menv.decayMs = value;
     else if (field == "menvSustain") a.menv.sustain = value;
     else if (field == "menvReleaseMs") a.menv.releaseMs = value;
+    else if (field == "menvDelayMs") a.menv.delayMs = value;
+    else if (field == "menvHoldMs") a.menv.holdMs = value;
     else if (field == "scoreDecayMs") a.scoreDecayMs = value;
     else if (field == "scoreLevel") a.scoreLevel = value;
     else if (field == "output") a.output = value;
@@ -241,6 +247,12 @@ class Generator {
       return;
     }
     if (field == "subShape") { t.subSine = value == "sine"; t.subShapeName = std::string(value); return; }
+    /* The drawn envelopes' shapes (18 Nov): parsed into the tone the voices
+       read, and kept as given for the face. One that does not read plays the
+       old envelope (mseg_shape.h). */
+    if (field == "envShape") { t.env.shape.assign(value); t.envShapeText.assign(value.data(), value.size()); return; }
+    if (field == "fShape") { t.fenv.shape.assign(value); t.fShapeText.assign(value.data(), value.size()); return; }
+    if (field == "menvShape" && layer == 0) { a_.menv.shape.assign(value); a_.menvShapeText.assign(value.data(), value.size()); return; }
   }
 
   // Copied and clamped; the page ignores a registration that is not nine.
@@ -329,11 +341,11 @@ class Generator {
   // envelopeLeading: the envelope `envelope` reads - the Envelope's own, the
   // loudest voice's, the one Mono and Dyad play - or none while nothing gates
   // it; the first of equals, as the page's.
-  const Envelope* envelopeLeading() const {
+  const Mseg* envelopeLeading() const {
     if (a_.menvOwn) return gated_ ? &menv_ : nullptr;
     if (a_.voices) {
       double most = -1;
-      const Envelope* lead = nullptr;
+      const Mseg* lead = nullptr;
       for (const auto& v : voices_) if (v.env.level() > most) { most = v.env.level(); lead = &v.env; }
       for (const auto& v : voicesB_) if (v.env.level() > most) { most = v.env.level(); lead = &v.env; }
       return lead;
@@ -350,14 +362,36 @@ class Generator {
     }
     return gated_ ? env_.level() : 1;
   }
+  /* Where the drawn envelopes are on their shapes (18 Nov), for the face's
+     gold dot: the segment plus how far through its time, as one number
+     (segment + progress * 0.999), or -1 while none sounds. `which` is 0 the
+     amplifier's and 1 the filter's of a layer's loudest voice (Mono and Dyad
+     play the one), and 2 the Envelope card's own while it has one. Held at
+     the sustain point it is -(point + 2). */
+  double envelopePlace(int which, int layer = 0) const {
+    // Held at its sustain point, -(point + 2), so the face can tell it from the start of the segment after.
+    const auto place = [](const Mseg& e) {
+      return e.segment() < 0 ? -1.0 : e.holding() ? -(e.segment() + 2.0) : e.segment() + 0.999 * e.progress();
+    };
+    if (which == 2) return a_.menvOwn && gated_ ? place(menv_) : -1;
+    if (a_.voices || b_.voices) {
+      const auto& list = layer == 1 ? voicesB_ : voices_;
+      const Voice* lead = nullptr;
+      double most = 0;
+      for (const auto& v : list) if (v.env.level() > most) { most = v.env.level(); lead = &v; }
+      return lead ? place(which == 1 ? lead->fenv : lead->env) : -1;
+    }
+    if (!gated_ || layer == 1) return -1;
+    return place(which == 1 ? fenv_ : env_);
+  }
   // The stage of the envelope `envelope` reads, nought to four as Envelope::Stage
   // counts them, and its velocity: the Envelope card's dot (11 Nov), as the page's.
   int envelopeStage() const {
-    const Envelope* lead = envelopeLeading();
+    const Mseg* lead = envelopeLeading();
     return lead ? static_cast<int>(lead->stage()) : 0;
   }
   double envelopeVelocity() const {
-    const Envelope* lead = envelopeLeading();
+    const Mseg* lead = envelopeLeading();
     return lead ? lead->velocity() : 1;
   }
   bool gated() const { return gated_; }
@@ -843,7 +877,7 @@ class Generator {
       RingTails* tails = pool == &voices_ ? &tailsA_ : &tailsB_;
       for (std::size_t v = pool->size(); v-- > 0;) {
         const Voice& voice = (*pool)[v];
-        if (!voice.held && (voice.env.stage() == Envelope::Stage::Idle || voice.gone)) {
+        if (!voice.held && (voice.env.stage() == Mseg::Stage::Idle || voice.gone)) {
           // Its ring heard out on the left first, where what is heard is asked (RingTail says why).
           if (mixing) tailRing((*pool)[v], tails, quarterOf((*pool)[v], rate_));
           retireVoice((*pool)[v], ctx_);
@@ -996,6 +1030,11 @@ class Generator {
     else if (field == "fDecayMs") t.fenv.decayMs = v;
     else if (field == "fSustain") t.fenv.sustain = v;
     else if (field == "fReleaseMs") t.fenv.releaseMs = v;
+    // The drawn envelopes' delay and hold (18 Nov), in milliseconds.
+    else if (field == "envDelayMs") t.env.delayMs = v;
+    else if (field == "envHoldMs") t.env.holdMs = v;
+    else if (field == "fDelayMs") t.fenv.delayMs = v;
+    else if (field == "fHoldMs") t.fenv.holdMs = v;
     else if (field == "morph") t.morph = v;
     else if (field == "width") t.width = v;
     else if (field == "table") t.table = v;
@@ -1336,8 +1375,8 @@ class Generator {
   int inLen_ = 0;
   struct { bool low = true; long since = 0, period = 0; } clock_;
   bool gated_ = false;
-  Envelope env_, fenv_;
-  Envelope menv_;          // the Envelope card's own, one for the generator
+  Mseg env_, fenv_;
+  Mseg menv_;          // the Envelope card's own, one for the generator
   bool menvHeld_ = false;  // and whether it is open, so a gate is sent only on a change
   void menvGate(bool open) {
     if (open == menvHeld_) return;

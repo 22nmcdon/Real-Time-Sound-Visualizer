@@ -765,7 +765,16 @@ class Instrument {
     std::array<double, 4> out {};
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[i].load(std::memory_order_relaxed);
     return out;
+  }  /* And the drawn envelopes' places (18 Nov, Generator::envelopePlace),
+     served after everything else so no reading before them moves: the lower
+     hand's amplifier's and filter's, the upper's, and the card's own. */
+  std::array<double, 5> envelopePlaces() const {
+    pictureAt_.load(std::memory_order_acquire);
+    std::array<double, 5> out {};
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[4 + i].load(std::memory_order_relaxed);
+    return out;
   }
+
   /* The instrument's clock as it stood at the picture's newest frame (5a),
      for the face's clock and score panels, which read the page's own until
      5b: each oscillator's rate in hertz (locked or free, as the clock left
@@ -1475,6 +1484,12 @@ class Instrument {
     envServed_[1].store(core_->gated() ? 1.0 : 0.0, std::memory_order_relaxed);
     envServed_[2].store(static_cast<double>(core_->envelopeStage()), std::memory_order_relaxed);
     envServed_[3].store(core_->envelopeVelocity(), std::memory_order_relaxed);
+    // And where the drawn envelopes are on their shapes (18 Nov): each hand's amplifier's and filter's, then the card's own.
+    envServed_[4].store(core_->envelopePlace(0, 0), std::memory_order_relaxed);
+    envServed_[5].store(core_->envelopePlace(1, 0), std::memory_order_relaxed);
+    envServed_[6].store(core_->envelopePlace(0, 1), std::memory_order_relaxed);
+    envServed_[7].store(core_->envelopePlace(1, 1), std::memory_order_relaxed);
+    envServed_[8].store(core_->envelopePlace(2), std::memory_order_relaxed);
     const Clock& c = brain_->clock;
     const double clock[kClockServed] = {
       lfos_.size() > 0 ? lfos_[0].rate : 0, lfos_.size() > 1 ? lfos_[1].rate : 0, c.bpm, c.set,
@@ -1747,7 +1762,7 @@ class Instrument {
   std::array<float, kPictureFrames * kRingLanes> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
   std::array<std::atomic<double>, 6> lfosServed_ {};
-  std::array<std::atomic<double>, 4> envServed_ {};
+  std::array<std::atomic<double>, 9> envServed_ {};
   std::array<std::atomic<double>, kClockServed> clockServed_ {};
   std::array<std::atomic<double>, kFaceServed> faceServed_ {};
   std::array<std::atomic<float>, kGridServed> gridServed_ {};

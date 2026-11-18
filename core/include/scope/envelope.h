@@ -24,6 +24,8 @@ namespace scope {
 // Since 18 Nov the drawn envelope's too (mseg.h): its delay and hold, and its
 // shape, which this class - kept as the tests' reference - does not read.
 struct EnvelopeTone {
+  // The four, as `{ 8, 120, 0.7, 180 }` has always given them; the rest start at none and the old shape.
+  EnvelopeTone(double a = 5, double d = 200, double s = 1, double r = 200) : attackMs(a), decayMs(d), sustain(s), releaseMs(r) {}
   double attackMs = 5;
   double decayMs = 200;
   double sustain = 1;
