@@ -544,12 +544,16 @@ with sync_playwright() as pw:
                 ok, moved, nk = PF.same(base, bx)
                 out.append(("%s, %s" % (mode.capitalize(), "two hands" if two else "one hand"), ok, moved, nk))
                 if two:
-                    # Layer and Key; by Notes the strip is another picture - places for how many, low and high at
-                    # its counted edge, no octave buttons - and its keys' box changes with it, which striptest holds.
-                    for kind in ("Layer", "Key"):
-                        bx = boxes(q, "() => el.midiKind%s.click()" % kind, 200)
+                    # Each way of sharing the notes, and by notes its count and its counted end: there the octave
+                    # buttons give way to low and high, each keeping its place unseen, so the keys stay.
+                    for what, js in (("Notes", "() => el.midiKindNotes.click()"),
+                                     ("Notes, three counted", "() => { el.midiSplitCount.value = '3'; el.midiSplitCount.dispatchEvent(new Event('change', { bubbles: true })); }"),
+                                     ("Notes, from the top", "() => el.midiEndHigh.click()"),
+                                     ("Notes, from the bottom", "() => el.midiEndLow.click()"),
+                                     ("Layer", "() => el.midiKindLayer.click()"), ("Key", "() => el.midiKindKey.click()")):
+                        bx = boxes(q, js, 200)
                         ok, moved, nk = PF.same(base, bx)
-                        out.append(("Poly, two hands, %s" % kind, ok, moved, nk))
+                        out.append(("Poly, two hands, %s" % what, ok, moved, nk))
                     bx = boxes(q, "() => (%s)(false)" % HANDS, 200)
         bx = boxes(q, "() => setMidiMode('dyad')"); ok, moved, nk = PF.same(base, bx); out.append(("Dyad after two hands", ok, moved, nk))
         q.evaluate("() => setMidiMode('poly')")
@@ -601,6 +605,14 @@ with sync_playwright() as pw:
             ok, moved, nk = PF.same(a2, grown)
             null("the band 6 px taller with two hands, as testing had it, is seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
             q.evaluate("() => { el.midiGroup.style.height = ''; }")
+            # And low and high taking room only by notes, as before 18 Nov: the keys move.
+            a2 = boxes(q, "() => el.midiKindKey.click()", 200)
+            st = "() => { const st = document.createElement('style'); st.id = 'nullEnds'; st.textContent = '.kb-band .kb-ends[hidden], .kb-band .kb-oct[hidden] { display: none !important; }'; document.head.appendChild(st); }"
+            a2 = boxes(q, st, 200)
+            notes = boxes(q, "() => el.midiKindNotes.click()", 200)
+            ok, moved, nk = PF.same(a2, notes)
+            null("low and high taking room only by notes, as before, are seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate("() => { document.getElementById('nullEnds').remove(); el.midiKindKey.click(); (" + HANDS + ")(false); }")
             a2 = boxes(q, None, 200)
             first = boxes(q, "() => { const t = el.ampEnvGroup.querySelector('.fig-tools'); t.prepend(el.linkAmpEnv); }", 200)
             ok, moved, nk = PF.same(a2, first)

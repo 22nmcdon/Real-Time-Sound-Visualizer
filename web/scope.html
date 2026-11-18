@@ -1684,6 +1684,10 @@ body[data-compact] .bench-body { row-gap: 10px; }
 /* The heading's row its own height, so Dyad's and Mono's shorter left column does not give the strip's spare height to
    the heading and move the switch under it. */
 .bench-body .menu-group.kb-band { grid-template-rows: auto minmax(0, 1fr); }
+/* By notes the octave buttons give way to low and high (18 Nov, the owner's rule that nothing moves): each
+   keeps its place unseen when the other is shown, so the strip's keys stand where they stood. The cost is
+   the room of the other, 40 px of keys, in every split. */
+.kb-band .kb-ends[hidden], .kb-band .kb-oct[hidden] { display: flex !important; visibility: hidden; }
 .kb-band .kb-box { margin-top: 12px; }
 .kb-band .kb-box-head { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); margin: 0; z-index: 1;
   background: var(--paper); border-radius: 20px; }

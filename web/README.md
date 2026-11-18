@@ -7365,7 +7365,9 @@ with Amp, Filter and Wave, nothing dealt into columns (`layoutBenchBody`'s `play
   third folded away and the two stood wider and shorter than they were measured at
   (`fittest.py`'s 315 against 247). `wantColumns` never asks for more columns than sections.
 
-Two things measured and left: by notes, the strip is another picture (six places, low and high
-at its edge, no octave buttons) and its keys' box moves with it, so the no-shift check takes
-Key and Layer but not Notes; and Wave's drawing at 960x600 is 121 px, a pixel over the
-rule, where the mockup had 124.
+By notes the octave buttons give way to *low* and *high*; at first the keys moved 20 px with them,
+and the owner's rule has no exceptions, so each keeps its place unseen while the other shows
+(`.kb-ends[hidden]`, `.kb-oct[hidden]`, visibility rather than display), at the cost of 40 px of keys
+in every split; `patchtest.py` holds Notes, its count and its counted end, with the old way as its
+null. Measured and left: Wave's drawing at 960x600 is 121 px, a pixel over the rule, where the
+mockup had 124.

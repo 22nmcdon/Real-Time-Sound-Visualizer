@@ -307,8 +307,9 @@ As specified, with the defaults taken where it was silent:
   measured 103.6.
 - **Ink is two columns**, its two sections: a tab is never dealt into more columns than it
   has sections.
-- **By notes the strip's keys move**: the octave buttons give way to *low* and *high*, so the
-  no-shift check holds Key and Layer and not Notes.
+- **By notes the octave buttons give way to *low* and *high*, each keeping its place unseen**,
+  so the strip's keys do not move (the owner's rule has no exceptions); the cost is 40 px of keys
+  in every split. The no-shift check holds Notes, its count and its counted end.
 
 Wave's drawing at 960x600 is 121 px, where the mockup had 124; every other size is within a
 few pixels of the table above.

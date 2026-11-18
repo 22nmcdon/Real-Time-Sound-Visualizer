@@ -592,7 +592,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   stored), Key · Notes · Layer centred on its top edge with Two hands on, a key
   pressed to split there (Learn stays as *learn from a key*, the plugin's way
   from a host's note), by notes six places for how many and *low · high* at the
-  counted edge, and a line under it that names the Chord window, which is
+  counted edge (since 18 Nov in the room the octave buttons and they each keep
+  unseen while the other shows, so the keys never move), and a line under it that names the Chord window, which is
   Settings' (MIDI), with the on-screen keys beside it. The menus that hold the
   values (`midiLayers`, `midiSplitBy`, `midiSplitEnd`, `midiSplitCount`) are
   kept out of sight and the switches drive them by their change events, so the
@@ -629,7 +630,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   envelope keeps its knobs while it is off, and the info line's menu note
   and More sit in a column of their own, so pressing a control and changing
   the line moves neither. `patchtest.py` measures every box on Play to half
-  a pixel across the modes and two hands, Loop, Sustain here, No sustain, a
+  a pixel across the modes and two hands (Key, Layer, and Notes with its count
+  and its end), Loop, Sustain here, No sustain, a
   note held, every filter type, the link pills, the subtabs and the
   Envelope's editor at six windows, with its nulls; `msegtest.py` the
   summaries, the fit, the knobs' homes, `showControl` and Wave across all
