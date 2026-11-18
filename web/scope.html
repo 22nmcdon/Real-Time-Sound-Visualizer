@@ -1027,7 +1027,9 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
    it at most, then More. */
 .picture-bar .picture-wrap > .info-line.info-line { flex: 1 1 0; min-width: 0; align-self: center; }
 .info-line[hidden] { display: none !important; }
-.info-wrap { font-size: 12px; line-height: 1.4; display: grid; grid-template-columns: minmax(0, 1fr) 132px; column-gap: 12px; align-items: center; }
+/* The actions' column fixed where there is room for it and giving way where there is not (a phone's 82 px
+   info line made the page wider than the window, and a finger's drag a scroll). */
+.info-wrap { font-size: 12px; line-height: 1.4; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 132px); column-gap: 12px; align-items: center; overflow: hidden; }
 .info-words { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .info-words > * { display: inline; margin-right: 7px; }
 .info-words > [hidden] { display: none; }
@@ -1051,7 +1053,7 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 /* That the control has a right-click menu (G5b), which is how anyone who has
    never right-clicked a plugin finds it: on the line, not in every row of words. */
 .info-menu { color: var(--text-soft); }
-[data-compact] .info-wrap { font-size: 11.5px; grid-template-columns: minmax(0, 1fr) 112px; column-gap: 8px; }
+[data-compact] .info-wrap { font-size: 11.5px; grid-template-columns: minmax(0, 1fr) minmax(0, 112px); column-gap: 8px; }
 /* Its card: the line again, with what the page knows about the control. */
 .info-card { max-width: 380px; }
 .info-card .info-card-line { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; color: var(--charcoal); }
@@ -1415,7 +1417,8 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 #toneRows[data-layer-edit="b"] > :not([data-layer]),
 body[data-layer-edit="b"] #freqRow,
 body[data-layer-edit="b"] #phaseRow { display: none !important; }
-#toneRows:not([data-layer-edit="b"]) #layerBNote { display: none; }
+/* Said only while the upper hand is edited, in the section or in its dots menu, where it is out of the section. */
+#toneRows:not([data-layer-edit="b"]) #layerBNote, body:not([data-layer-edit="b"]) .over-body > #layerBNote { display: none; }
 /* The voice filter while it is off: on show, greyed, its menu still live. */
 #vcfGroup.is-off .vcf-on { opacity: 0.45; }
 /* A heading inside a section, for a second set of controls under the first. */
@@ -1682,6 +1685,10 @@ body[data-compact] .bench-body { row-gap: 10px; }
 .kb-band .kb-box-head { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); margin: 0; z-index: 1;
   background: var(--paper); border-radius: 20px; }
 .kb-band .kb-line { height: 2.7em; align-items: flex-start; line-height: 1.35; }
+/* The band's menus a little shorter than a section's, so Poly with two hands - the pairing menu beside
+   Tune a chord - fits the one-hand height with the gap above its rule kept. */
+.bench-body .kb-band .kb-row select { height: 24px; padding-block: 0; }
+[data-compact] .bench-body .kb-band .kb-row select { height: 22px; }
 .kb-band #midiStripLine { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 #benchBody.is-play { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; row-gap: 0; overflow-y: auto; }
 .bench-body.is-play > .bench-band { flex: 0 0 auto; }
@@ -1793,7 +1800,8 @@ body[data-compact] .bench-body { row-gap: 10px; }
 #vcfSweeps { flex: 1 1 0; }
 #vcfSweeps.is-dead { color: var(--unresolved); }
 /* Wave: the cycle, and under it a band one height for every shape (the drawbars', 78 px). */
-.wave-name { font-size: 12px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; }
+/* Its own width whatever it names, so the header's boxes stay put as the shape changes. */
+.wave-name { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; }
 .wave-name b { font-family: var(--serif); font-weight: 500; font-size: 14px; color: var(--charcoal); }
 .bench-body .wave-band { height: 78px; box-sizing: border-box; display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 16px; min-width: 0; overflow: hidden;
   border-top: 1px solid var(--line); padding-top: 4px; }
@@ -6855,20 +6863,15 @@ for (let k = 0; k < 9; k++) {
   el["bar" + k + "Value"] = document.getElementById("bar" + k + "Value");
 }
 
-/* A registration as text: nine digits, as a setup code stores it, and
-   88 8000 000 as organists write it - the two under the note, the four
-   octaves and fifths up to 2', and the three at the top. Anything that is
+/* A registration as text: nine digits, as a setup code stores it and Wave's
+   summary says it (the spaced 88 8000 000 of the row under the Shape menu went
+   with that row, 18 Nov), 16' to 1'. Anything that is
    not nine digits is not a registration, and says so with null rather than
    being read as some other one. */
 function parseRegistration(text) {
   const digits = String(text === undefined || text === null ? "" : text).replace(/[^0-9]/g, "");
   if (digits.length !== 9) return null;
   return Array.from(digits, (c) => Math.min(8, Number(c)));
-}
-
-function formatRegistration(levels) {
-  const d = levels.map((v) => String(Math.round(v))).join("");
-  return d.slice(0, 2) + " " + d.slice(2, 6) + " " + d.slice(6);
 }
 
 /* The nine sliders as one control whose value is the registration, so the
@@ -18359,8 +18362,10 @@ function drawEnv(canvas) {
   const at = msegDotAt(geo, msegPlace("menv")), rest = { x: geo.xs[P.last], y: geo.y(P.pts[P.last].lvl) };
   const dot = at || rest;
   drawDot(g, dot.x, dot.y, 3);
+  // The curve as drawn, a point every couple of pixels, for a suite to hold the dot to it.
+  const corners = (paths.whole.match(/[ML][^ML]+/g) || []).map((c) => c.slice(1).trim().split(/\s+/).map(Number));
   canvas._drawn = { dot: [dot.x, dot.y], stage: envWhere.stage, own, xs: geo.xs, ys: P.pts.map((p) => geo.y(p.lvl)),
-                    path: paths.whole, ink: own ? "ch4" : "unresolved", w, h };
+                    corners, ink: own ? "ch4" : "unresolved", w, h };
 }
 
 /* The Photocell's last four seconds, kept a frame at a time, and nought
@@ -26759,9 +26764,13 @@ function benchColumns() {
 
 /* A tab whose section is wide - the rack, since F5 - is one column the
    body's width; any other is as many as fit. */
+/* And never more columns than the tab has sections (18 Nov): Ink has two since its Drawn cycle and Drawbars
+   went to Play's Wave, and a third column left empty folded away after the deal, so its sections stood
+   wider and shorter than they were measured. */
 function wantColumns() {
-  const wide = benchGroupsAll().some((g) => tabOf(g) === benchTab && g.dataset.wide !== undefined);
-  return wide ? 1 : benchColumns();
+  const mine = benchGroupsAll().filter((g) => tabOf(g) === benchTab && g.dataset.band === undefined);
+  const wide = mine.some((g) => g.dataset.wide !== undefined);
+  return wide ? 1 : Math.max(1, Math.min(benchColumns(), mine.length));
 }
 
 /* Play (18 Nov, web/docs/play-figures.md) is not dealt: it is a column of three, the Keyboard's band,
@@ -26800,7 +26809,8 @@ function layoutBenchBody() {
     area.append(figBar(), views);
     for (const group of groups) (group.dataset.play === "set" ? set : views).appendChild(group);
     el.benchBody.append(set, area);
-    benchMeasured = new Map(groups.map((g) => [g, g.offsetHeight]));
+    // Nothing on Play is dealt, so nothing is measured to be dealt (fittest holds the dealt tabs to theirs).
+    benchMeasured = new Map();
     setFigSub(figs.sub);
     return;
   }

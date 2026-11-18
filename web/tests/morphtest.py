@@ -206,7 +206,7 @@ with sync_playwright() as pw:
           .map((b) => [b.firstChild.textContent, b.querySelector('.crumb').textContent])""")
     p.evaluate("() => { el.shape.value = 'morph'; el.shape.dispatchEvent(new Event('change')); }")
     timbre = search("timbre")
-    check("timbre finds it", ["Morph", "Generator"] in timbre, str(timbre[:4]))
+    check("timbre finds it, on Play's Wave since 18 Nov", ["Morph", "Wave"] in timbre, str(timbre[:4]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

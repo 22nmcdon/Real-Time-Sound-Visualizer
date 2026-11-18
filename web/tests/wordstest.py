@@ -290,10 +290,11 @@ with sync_playwright() as pw:
     check("in the Picture section at every size, two lines at most, the reads in the window and the section no taller",
           all(v["inBar"] and v["said"] == "scanStrike" and 1 <= v["lines"] <= 2 and v["readsIn"] and v["taller"] <= 0
               for v in sit.values()), str(sit))
-    unclamped = p.evaluate("""() => { const wrap = el.infoLine.querySelector('.info-wrap'), t = el.infoText.textContent;
-      wrap.style.webkitLineClamp = 'unset'; el.infoText.textContent = t + ' ' + t + ' ' + t;
+    # The limit is on the words since 18 Nov, which the menu's note and More sit beside in a column of their own.
+    unclamped = p.evaluate("""() => { const wrap = el.infoLine.querySelector('.info-wrap'), words = wrap.querySelector('.info-words'), t = el.infoText.textContent;
+      words.style.webkitLineClamp = 'unset'; el.infoText.textContent = t + ' ' + t + ' ' + t;
       const n = Math.round(wrap.getBoundingClientRect().height / parseFloat(getComputedStyle(wrap).lineHeight));
-      wrap.style.webkitLineClamp = ''; el.infoText.textContent = t; return n; }""")
+      words.style.webkitLineClamp = ''; el.infoText.textContent = t; return n; }""")
     null("three times the words with the limit off run past two lines, so the count can fail", unclamped > 2, str(unclamped))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
 

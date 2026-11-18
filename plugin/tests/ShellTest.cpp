@@ -3887,16 +3887,15 @@ int main() {
       const juce::String decay = ask("el.envDecay.value", 1000);
       check("a knob that is no host parameter, dragged, tells the host nothing", heard.events.empty() && decay != "120",
             heard.said() + "; decay at " + decay.toStdString());
-      // And the attack, a host knob since 18 Nov, dragged in its popover, is one gesture on its own index.
+      // And the attack, a host knob since 18 Nov, dragged on Play's Amp figure, is one gesture on its own index.
       heard.events.clear();
-      ask("openMsegPop('amp'), 1", 1000);
+      ask("showControl('envAttack'), 1", 1000);
       settle(200);
       drag("envAttack", 5, true, true);
       settle(400);
       const int attackIndex = faced.knob("attack")->getParameterIndex();
       check("the amp envelope's attack, dragged, is one gesture for the host on its own parameter",
             Heard::shaped(heard.only(attackIndex)) && Heard::balanced(heard.kinds()) == 1, heard.said());
-      ask("closeMsegPop(), 1", 1000);
       heard.events.clear();
       const juce::String keyed = ask(R"js(
         (() => {

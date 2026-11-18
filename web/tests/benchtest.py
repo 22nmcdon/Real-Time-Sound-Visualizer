@@ -328,8 +328,9 @@ with sync_playwright() as pw:
       for (const g of benchGroupsAll()) out[groupTitle(g).replace('\u22ef', '').trim()] = g.dataset.tab;
       return out;
     }""")
-    want = {"Keyboard": "play", "Generator": "play", "Voice filter": "play",
-            "Oscillator": "ink", "Drawbars": "ink", "Shaping": "ink", "Drawn cycle": "ink",
+    # Since 18 Nov (play-figures.md) the Drawbars and the Drawn cycle are Play's Wave figure, not Ink's sections.
+    want = {"Keyboard": "play", "Generator": "play", "Voice filter": "play", "Wave": "play", "Amp envelope": "play",
+            "Oscillator": "ink", "Shaping": "ink",
             # F5 put Display, Plane and the delay's section into one rack of
             # modules, the effects in the order the sound goes through them.
             "Effects": "space",
@@ -363,15 +364,16 @@ with sync_playwright() as pw:
     # CSS multi-column re-balanced the whole flow whenever a section changed
     # height, and the first drag of the first build teleported the control
     # being dragged into the next column. A patch must not re-deal the tab.
+    # On Ink: Play is a column since 18 Nov (play-figures.md), not dealt.
     steady = p.evaluate("""() => {
-      setBenchTab('play');
+      setBenchTab('ink');
       const cols = document.querySelectorAll('.bench-col').length;
       const where = () => Array.from(document.querySelectorAll('.bench-col'))
         .map((c) => Array.from(c.children).map((g) => groupTitle(g)).join(',')).join('|');
       const before = where();
-      const x = () => Math.round(document.getElementById('freq').getBoundingClientRect().x);
+      const x = () => Math.round(document.getElementById('oscFm').closest('.menu-row').getBoundingClientRect().x);
       const xBefore = x();
-      addRouting('lfo1', 'gen.freq');
+      addRouting('lfo1', 'gen.fm');
       return { cols, before, after: where(), xBefore, xAfter: x() };
     }"""); p.wait_for_timeout(300)
     check("the body is in real columns", steady["cols"] >= 2, str(steady["cols"]))
@@ -573,7 +575,10 @@ with sync_playwright() as pw:
     # Space & Memory is one wide column since F5: the rack reads top to bottom
     # in the order the sound goes through it, which three columns would deal
     # out of order. The null is all three tabs at three.
-    want_cols = {"play": 3, "ink": 3, "space": 1}
+    # Play is no columns since 18 Nov: the band, the settings row and the figures, a column of three.
+    # And Ink two: its two sections since the Drawbars and the Drawn cycle went to Play's Wave, and never
+    # more columns than a tab has sections.
+    want_cols = {"play": 0, "ink": 2, "space": 1}
     fits = lambda w: all(wide["cols"][t][0] == n and wide["cols"][t][1] <= 0 for t, n in w.items())
     check("and every tab is the columns it is meant to have, and fits", fits(want_cols), str(wide["cols"]))
     check("null: three columns everywhere is not what is there",

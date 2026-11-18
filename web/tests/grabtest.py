@@ -215,7 +215,8 @@ with sync_playwright() as pw:
       setView('bench');
       const out = { note: !el.cycleNote.hidden, pane: !el.cycleGroup.hidden, over: {} };
       for (const [tab] of BENCH_TABS) { setBenchTab(tab); out.over[tab] = el.benchBody.scrollHeight - el.benchBody.clientHeight; }
-      setBenchTab('ink');
+      // On Play's Wave since 18 Nov, where the Drawn cycle's tools went from Ink.
+      setBenchTab('play'); setFigSub('wave');
       out.shown = el.cycleNote.getBoundingClientRect().height;
       // No setView('scope') back: the Scope view went in G4, and the face is the Bench.
       return out;

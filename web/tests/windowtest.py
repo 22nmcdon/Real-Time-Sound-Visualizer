@@ -134,18 +134,23 @@ with sync_playwright() as pw:
     p.close(); ctx.close()
 
     print("\n--- the compact face as drawn: three columns, and the keys under the tab ---")
+    # Ink since 18 Nov: Play is a column of three, the band, the settings row and the figures (play-figures.md).
     COLS = """() => { setView('bench'); setBenchTab('play');
+      const play = [...el.benchBody.children].map((c) => c.className.split(' ')[0]).join(',');
+      setBenchTab('ink');
       const W = el.benchBody.clientWidth;
-      return { dealt: Array.from(el.benchBody.querySelectorAll(':scope > .bench-col')).filter((c) => c.children.length).length,
-               full: Math.floor((W + BENCH_GAP) / (BENCH_COL + BENCH_GAP)), W } }"""
+      const out = { dealt: Array.from(el.benchBody.querySelectorAll(':scope > .bench-col')).filter((c) => c.children.length).length,
+               full: Math.floor((W + BENCH_GAP) / (BENCH_COL + BENCH_GAP)), W, play };
+      setBenchTab('play'); return out; }"""
     ctx = b.new_context()
     for w, h in [(960, 600), (1100, 680)]:
         p = open_page(ctx, w, h)
         r = p.evaluate(COLS)
         # The mockup draws the minimum in three columns. Two also fit, so the fit
         # cannot tell; this is what holds the drawing.
-        check("at %dx%d Play is dealt in three columns, as the minimum is drawn" % (w, h), r["dealt"] == 3, str(r))
-        check("null: the full face's column at that width would deal two", r["full"] == 2, str(r))
+        # Play was dealt in three here until 18 Nov; Ink holds two sections since, side by side.
+        check("at %dx%d Play is its band, its settings row and its figures, a column" % (w, h), r["play"] == "bench-band,play-set,play-figs", r["play"])
+        check("and Ink's two sections are side by side, a column each", r["dealt"] == 2, str(r))
         if (w, h) == (960, 600):
             k = p.evaluate("""async () => { setScreenKeys(true); await new Promise((r) => setTimeout(r, 250));
               const keys = document.querySelector('.screen-keys').getBoundingClientRect();

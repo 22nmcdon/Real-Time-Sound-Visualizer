@@ -128,12 +128,15 @@ with sync_playwright() as pw:
     # Shape, until G3 took it to Ink; Twist was, in the Plane, until F5 made
     # it one of the rack's module's main knobs); FM is one of the
     # oscillator's run.
+    # Since 18 Nov (play-figures.md) Glide and Level are fields of Play's settings row: the name in small
+    # type over the knob and its reading on one line, as tall as the menus' fields beside them.
     p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(200)
-    lone = p.evaluate("() => { const r = el.glide.closest('.menu-row'); return { h: r.offsetHeight, w: r.offsetWidth }; }")
+    lone = p.evaluate("""() => { const r = el.glide.closest('.menu-row'), f = el.glideValue.getBoundingClientRect(), k = r.querySelector('.knob-face').getBoundingClientRect();
+      return { h: r.offsetHeight, w: r.offsetWidth, menu: el.shape.closest('.menu-row').offsetHeight, oneLine: Math.abs((f.top + f.bottom) / 2 - (k.top + k.bottom) / 2) < 3 }; }""")
     p.evaluate("() => setBenchTab('ink')"); p.wait_for_timeout(200)
     cell = p.evaluate("() => { const r = el.oscFm.closest('.menu-row'); return { h: r.offsetHeight, w: r.offsetWidth }; }")
     print("    alone %s, in a run %s" % (lone, cell))
-    check("a knob alone is one line, no taller than a menu row", lone["h"] <= 44 and lone["w"] > 200, str(lone))
+    check("a knob alone is one line, no taller than a menu's field beside it", lone["h"] <= lone["menu"] + 1 and lone["oneLine"], str(lone))
     null("a knob in a run is a cell, taller and narrow", cell["h"] > 56 and cell["w"] < 90, str(cell))
 
     print("\n--- the face points where the value says ---")

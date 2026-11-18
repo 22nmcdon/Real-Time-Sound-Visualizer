@@ -149,7 +149,8 @@ with sync_playwright() as pw:
       const shown = {};
       for (const shape of ['morph', 'drawn', 'wavetable']) {
         el.shape.value = shape; el.shape.dispatchEvent(new Event('change'));
-        shown[shape] = [!el.tableRow.hidden, !el.cycleSlots.hidden, !el.cycleGroup.hidden, el.cycleTitle.textContent];
+        // Since 18 Nov, on Play's Wave: the Position knob, the slots, the Drawn cycle's tools, and whether the cycle is drawn on.
+        shown[shape] = [!el.tableRow.hidden, !el.cycleSlots.hidden, !el.cycleGroup.hidden, el.cycleCanvas.classList.contains('is-drawn-on')];
       }
       const start = { reading: el.tableValue.textContent, at: genSettings().table };
       el.table.value = '200'; el.table.dispatchEvent(new Event('input'));
@@ -159,20 +160,21 @@ with sync_playwright() as pw:
       return { shown, start, set, late };
     }""")
     print("    %s" % panel)
-    check("the Position row and the slot switch show only with Wavetable, the pane with it or the drawn cycle",
-          panel["shown"] == {"morph": [False, False, False, "Drawn cycle"], "drawn": [False, False, True, "Drawn cycle"],
-                             "wavetable": [True, True, True, "Wavetable"]}, str(panel["shown"]))
+    check("the Position knob and the slot switch show only with Wavetable, the Drawn cycle's tools with it, and the cycle is drawn on with either",
+          panel["shown"] == {"morph": [False, False, False, False], "drawn": [False, False, True, True],
+                             "wavetable": [True, True, False, True]}, str(panel["shown"]))
     check("it starts between slots two and three, says where it is, and writes the generator",
           panel["start"] == {"reading": "2→3", "at": 1.5} and panel["set"] == {"reading": "3", "at": 2}
           and panel["late"] == "3→4", str(panel))
 
     p.evaluate("""() => { showControl('cycleCanvas'); el.cycleSlots.querySelector('[data-slot="2"]').click(); }""")
     p.wait_for_timeout(100)
-    box = p.evaluate("() => { const r = el.cycleCanvas.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; }")
-    x0, y0, w, h = box
-    p.mouse.move(x0 + 2, y0 + h * 0.1); p.mouse.down()
+    # Where 0.8 is on the drawing, and its cycle's two ends, by its own geometry (the figures' margins since 18 Nov).
+    box = p.evaluate("() => { const r = el.cycleCanvas.getBoundingClientRect(), g = el.cycleCanvas._g; return [r.left + g.x(0), r.top + g.y(0.8), g.x(1) - g.x(0)]; }")
+    x0, y8, w = box
+    p.mouse.move(x0 + 1, y8); p.mouse.down()
     for k in range(1, 41):
-        p.mouse.move(x0 + 2 + (w - 4) * k / 40, y0 + h * 0.1)
+        p.mouse.move(x0 + 1 + (w - 2) * k / 40, y8)
     p.mouse.up(); p.wait_for_timeout(150)
     drawn = p.evaluate("""() => ({
       editing: drawnCycle.editing,
@@ -274,7 +276,7 @@ with sync_playwright() as pw:
     # destination's label alone, so it could not show the synonym works, and
     # the first version of this check passed on any row called Position.
     found = search("scan")
-    check("scan finds the generator's Position", ["Position", "Generator"] in found, str(found[:4]))
+    check("scan finds the generator's Position, on Play's Wave", ["Position", "Wave"] in found, str(found[:4]))
     reach = p.evaluate("() => { const d = MOD_DESTS.get('gen.table'); return [d.reach(150, 1), d.reach(0, 1), d.reach(100, -1), d.reach(250, 1)]; }")
     check("full depth on the position is a slot and a half, stopped at both ends",
           reach == [300, 150, 0, 300], str(reach))

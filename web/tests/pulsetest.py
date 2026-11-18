@@ -205,7 +205,7 @@ with sync_playwright() as pw:
           .map((b) => [b.firstChild.textContent, b.querySelector('.crumb').textContent])""")
     p.evaluate("() => { el.shape.value = 'pulse'; el.shape.dispatchEvent(new Event('change')); }")
     pwm = search("pwm")
-    check("pwm finds it", ["Width", "Generator"] in pwm, str(pwm[:4]))
+    check("pwm finds it, on Play's Wave since 18 Nov", ["Width", "Wave"] in pwm, str(pwm[:4]))
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

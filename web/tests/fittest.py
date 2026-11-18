@@ -44,6 +44,10 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
+def null(name, red, detail=""):
+    """A check's null: the same comparison fed a value it must reject."""
+    check("null: " + name, red, detail)
+
 
 SWEEP = """async ([bands]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -130,7 +134,8 @@ SWEEP = """async ([bands]) => {
     setMidiMode('poly');
     el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
     document.getElementById('editHandB').click();
-    document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => link.click());
+    // Each still linked when its turn comes: the Generator has two pills (18 Nov), and the second, pressed after the first, would link it again.
+    document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'true') link.click(); });
     el.planeLimit.value = '1'; el.planeLimit.dispatchEvent(new Event('change')); await wait(120);
     planeRows = [el.planeTurnRow.hidden, !el.rotateRow.hidden, el.planeRadiusRow.hidden,
                  document.getElementById('handsPick').hidden,
@@ -191,7 +196,7 @@ SWEEP = """async ([bands]) => {
     openFx(null);
     for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 0);
     setEqOn(false);
-    document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
+    document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'false') link.click(); });
     document.getElementById('editHandA').click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
   }
@@ -212,12 +217,17 @@ SWEEP = """async ([bands]) => {
   const row = { under: rowBox.top >= mainBox.bottom - 1 && rowBox.top >= el.benchSide.getBoundingClientRect().bottom - 1,
                 height: Math.round(rowBox.height), chips: document.body.dataset.chips !== undefined,
                 cards: el.modStrip.querySelectorAll('.mod-card').length };
-  /* The null: the cards' row in place of the chips, on Ink, the tab that was
-     over at 1100x860 before the fold. Only where the row is chips. */
+  /* The null: the cards' row in place of the chips. It put Ink over at
+     1100x860 before the fold; since 18 Nov Ink has two sections and Play's
+     figures take what height there is, so what the row costs is read off
+     Play's Amp drawing, which must be the row's height shorter with the
+     cards, and the row read back as cards. Only where the row is chips. */
   if (row.chips) {
-    setBenchTab('ink'); await wait(80);
-    delete document.body.dataset.chips; await wait(80);
-    row.cardsOver = el.benchBody.scrollHeight - el.benchBody.clientHeight;
+    setBenchTab('play'); setFigSub('amp'); await wait(120);
+    row.ampChips = el.ampPlot.getBoundingClientRect().height;
+    delete document.body.dataset.chips; await wait(120);
+    row.ampCards = el.ampPlot.getBoundingClientRect().height;
+    row.cardsHeight = Math.round(el.modRow.getBoundingClientRect().height);
     document.body.dataset.chips = ''; await wait(80);
   }
   /* The null for the EQ's editor: its plot asked for more height than the
@@ -319,8 +329,8 @@ with sync_playwright() as pw:
               r["row"]["under"] and r["row"]["cards"] == 4 and r["row"]["chips"] == want_chips
               and (r["row"]["height"] <= 40 if want_chips else r["row"]["height"] >= 70), str(r["row"]))
         if (w, h) == (1100, 860) and name == "tone":
-            check("null: at 1100x860 the cards' row in place of the chips puts Ink over", r["row"].get("cardsOver", 0) > 0,
-                  str(r["row"]))
+            null("at 1100x860 the cards' row in place of the chips is read as cards and takes its height from Play's figures",
+                 r["row"].get("cardsHeight", 0) >= 70 and r["row"].get("ampCards", 999) < r["row"].get("ampChips", 0) - 40, str(r["row"]))
         check("and every section is dealt at the height it was measured at (%dx%d)" % (w, h),
               r["mismeasured"] == [], str(r["mismeasured"][:4]))
         check("an oscillator on a dozen controls is a dozen rows in its editor, and the editor does not scroll (%dx%d)" % (w, h),

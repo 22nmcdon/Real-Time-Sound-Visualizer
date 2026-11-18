@@ -126,7 +126,7 @@ with sync_playwright() as pw:
     p.evaluate("""() => { el.shape.value = 'drawn'; el.shape.dispatchEvent(new Event('change'));
                           el.freq.value = '55'; el.freq.dispatchEvent(new Event('input')); showControl('cycleCanvas'); }""")
     p.wait_for_timeout(300)
-    box = p.evaluate("() => { const r = el.cycleCanvas.getBoundingClientRect(); return [r.left, r.top, r.width, r.height, !el.cycleGroup.hidden, !el.cycleGoRow.hidden]; }")
+    box = p.evaluate("() => { const r = el.cycleCanvas.getBoundingClientRect(); return [r.left, r.top, r.width, r.height, !el.cycleGroup.hidden]; }")
     x, y, w, h = box[:4]
     p.mouse.move(x + 1, y + 2); p.mouse.down(); p.mouse.move(x + w / 2 - 1, y + 2, steps=12)
     p.mouse.move(x + w / 2 + 1, y + h - 2, steps=2); p.mouse.move(x + w - 1, y + h - 2, steps=12); p.mouse.up()
@@ -142,7 +142,7 @@ with sync_playwright() as pw:
       return { first: pts.slice(8, 120), second: pts.slice(136, 248), sent, got, want };
     }""")
     check("the pane shows with the drawn cycle chosen, and a square drawn with the mouse is a square in the points",
-          box[4] and box[5] and min(drawn["first"]) > 0.9 and max(drawn["second"]) < -0.9,
+          box[4] and min(drawn["first"]) > 0.9 and max(drawn["second"]) < -0.9,
           "%.2f..%.2f then %.2f..%.2f" % (min(drawn["first"]), max(drawn["first"]), min(drawn["second"]), max(drawn["second"])))
     check("the tables the generator is sent are the tables of those points", drawn["sent"], str(drawn["sent"]))
     got, want = np.asarray(drawn["got"]), np.asarray(drawn["want"])

@@ -37,6 +37,7 @@ drawn shape reaching the instrument. Each check has its null beside it.
 """
 import json, os, subprocess, sys
 from playwright.sync_api import sync_playwright
+import webfonts, playfigs as PF
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -54,10 +55,12 @@ def null(name, red, detail=""):
 
 def open_page(b, w=1400, h=900):
     p = b.new_page(viewport={"width": w, "height": h})
+    webfonts.route(p)
     bad = []
     p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
     p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(900)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
+    webfonts.settle(p)
     p.evaluate("() => setView('bench')"); p.wait_for_timeout(200)
     return p, bad
 
@@ -136,72 +139,179 @@ with sync_playwright() as pw:
     null("the same bend drawn the other way is far from what is played half-way through it", abs(off - trace[(20 + 150) * 48]) > 0.02,
          "%.3f against %.3f" % (off, trace[(20 + 150) * 48]))
 
-    print("\n--- the small blocks ---")
-    p.evaluate("() => { restore(BASE_SETUP); el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); }")
+    print("\n--- the subtabs' summaries ---")
+    # Replaced the small blocks' checks (18 Nov, play-figures.md): the amp's block was just the shape with
+    # its four readings under it, and the filter's said "does nothing" at amount nought and "sweeps" otherwise.
+    # Now each subtab's label carries a summary, and the filter envelope's title the words.
+    p.evaluate("() => { restore(BASE_SETUP); setFigSub('amp'); el.vcfType.value = '0'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); }")
     p.wait_for_timeout(400)
-    blk = p.evaluate("""() => { paintAmpEnv(); const d = el.ampEnvSmall._drawn;
-      return { reads: el.ampEnvReads.textContent, handles: el.ampEnvSmall.querySelectorAll('[data-handle], text, line').length,
-               curve: !!el.ampEnvSmall.querySelector('[data-curve]'), sus: d.ys[d.sus], top: d.ys[2], foot: d.ys[0], words: el.vcfSweeps.textContent }; }""")
-    check("the amp's block is just the shape: a curve, no handles, no words or lines, and its four readings under it",
-          blk["curve"] and blk["handles"] == 0 and "8 ms" in blk["reads"] and "−3.1 dB" in blk["reads"] and "180 ms" in blk["reads"], str(blk))
-    lin = (blk["foot"] - blk["sus"]) / (blk["foot"] - blk["top"])
-    check("in straight amplitude: a sustain of -3.1 dB stands at seven tenths of the peak", abs(lin - 0.7) < 0.02, "%.3f" % lin)
-    null("in decibels over 60 it would stand at nineteen twentieths", abs(lin - (60 - 3.1) / 60) > 0.2, "%.3f" % lin)
-    check("the filter's block says its envelope does nothing while its amount is nought", blk["words"] == "amount 0, does nothing", blk["words"])
-    p.evaluate("() => { el.vcfEnvAmt.value = '15'; el.vcfEnvAmt.dispatchEvent(new Event('input', { bubbles: true })); paintAmpEnv(); }")
-    words = p.evaluate("() => [el.vcfSweeps.textContent, !!el.vcfRespSmall.querySelector('[data-sweep]'), el.vcfEnvSmall.querySelector('[data-curve]').classList.contains('is-dead')]")
-    check("and sweeps +1.5 oct once it has an amount, its band shaded and its envelope drawn live", words == ["sweeps +1.5 oct", True, False], str(words))
+    SUMS = "() => { paintFigs(true); return Object.fromEntries([...figs.bar.children].map((t) => [t.dataset.sub, [t.querySelector('.fig-sum').textContent, Number(t.dataset.form)]])); }"
+    sums = p.evaluate(SUMS)
+    check("Amp's summary is the attack, decay, sustain and release, and Filter's says off", sums["amp"] == ["8 ms · 120 ms · −3.1 dB · 180 ms", 0]
+          and sums["filter"] == ["off", 0] and sums["wave"][0] == "sine", str(sums))
+    words = []
+    for t, amt in (("1", "0"), ("1", "15"), ("0", "15")):
+        p.evaluate("([t, a]) => { el.vcfType.value = t; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); setControl('vcfEnvAmt', Number(a)); }", [t, amt])
+        p.wait_for_timeout(100)
+        words.append([p.evaluate(SUMS)["filter"][0], p.evaluate("() => [el.vcfSweeps.textContent, el.vcfSweeps.classList.contains('is-dead')]")])
+    print("    %s" % words)
+    check("the filter's summary is its type, cutoff and sweep, and its envelope's title says what it does",
+          words == [["low pass 2.0 kHz · 0.0 oct", ["amount 0, does nothing", True]], ["low pass 2.0 kHz · +1.5 oct", ["sweeps +1.5 oct", False]],
+                    ["off", ["the filter is off", True]]], str(words))
+    p.evaluate("() => { el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); }")
+    oneshot = p.evaluate("() => { const t = el.envShape.value; msegWriteShape('amp', Object.assign(msegParse(t), { sus: -1 })); const s = figSummaries('amp')[0]; el.envShape.value = t; el.envShape.dispatchEvent(new Event('input', { bubbles: true })); return s; }")
+    check("a one-shot's sustain says so in the summary", oneshot == "8 ms · 120 ms · one shot · 180 ms", oneshot)
+    # The shortest form only where the longer does not fit: the bar squeezed, each label still fits.
+    squeezed = p.evaluate("""(sums) => { figs.bar.style.width = '330px'; figs.bar.style.flex = '0 0 auto'; for (const t of figs.bar.children) t.dataset.said = '';
+      const s = (0, eval)('(' + sums + ')')(); figs.bar.style.width = ''; figs.bar.style.flex = ''; for (const t of figs.bar.children) t.dataset.said = ''; paintFigs(true); return s; }""", SUMS)
+    fits = p.evaluate("() => [...figs.bar.children].every((t) => { const s = t.querySelector('.fig-sum'); return s.scrollWidth <= s.clientWidth + 0.5; })")
+    check("squeezed, a shorter form is used, and only then", squeezed["amp"][1] > 0 and fits, str(squeezed))
+    over = p.evaluate("() => { const s = document.querySelector('#figTab-amp .fig-sum'), t = s.textContent; s.textContent = t + ' ' + t + ' ' + t; const o = s.scrollWidth > s.clientWidth + 0.5; s.textContent = t; return o; }")
+    null("a summary three times as long does not fit its label", over)
 
-    print("\n--- the popover: beside its block, at every window ---")
-    PLACE = """(which) => { const pop = el.msegPop.getBoundingClientRect(), blk = el[MSEG_POP[which].block].getBoundingClientRect();
-      const band = document.querySelector('.bench-band').getBoundingClientRect(), screen = document.getElementById('screenFrame').getBoundingClientRect();
-      const hits = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
-      const rows = (box) => new Set([...box.querySelectorAll('.knob-row')].map((r) => Math.round(r.getBoundingClientRect().top))).size;
-      return { open: !el.msegPop.hidden, block: hits(pop, blk), band: hits(pop, band), screen: hits(pop, screen),
-               over: el.msegPop.scrollHeight - el.msegPop.clientHeight, rows: rows(el.msegKnobs), frows: which === 'vcf' ? rows(el.msegFKnobs) : 1,
-               six: el.msegKnobs.querySelectorAll('.knob-row').length, inWindow: pop.bottom <= innerHeight + 1 && pop.right <= innerWidth + 1,
-               scrolls: el.benchBody.scrollHeight - el.benchBody.clientHeight, plot: el.msegPlot.clientHeight }; }"""
-    for w, h in ((1400, 900), (1100, 860), (1200, 680), (1100, 680), (1067, 667)):
+    print("\n--- the figures fit, at six windows ---")
+    # Replaced the popover's placement (beside its block, never over it, the band or the screen, all in, its
+    # knobs in one row, Play not scrolled, at five windows; its null the popover moved over its block).
+    for w, h in PF.SIZES:
         q, qbad = open_page(b, w, h)
-        q.evaluate("() => { el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); }"); q.wait_for_timeout(200)
-        for which in ("amp", "vcf"):
-            q.locator("#" + ("ampEnvBlock" if which == "amp" else "vcfBlock")).click(); q.wait_for_timeout(250)
-            m = q.evaluate(PLACE, which)
-            check("%dx%d, %s: open beside its block - not over it, the band or the screen - all in, its knobs in one row, Play not scrolled"
-                  % (w, h, which), m["open"] and not m["block"] and not m["band"] and not m["screen"] and m["over"] <= 1 and m["rows"] == 1
-                  and m["frows"] == 1 and m["six"] == 6 and m["inWindow"] and m["scrolls"] <= 1 and m["plot"] >= 50, str(m))
-            q.keyboard.press("Escape"); q.wait_for_timeout(100)
-        if w == 1400:
-            q.evaluate("() => { openMsegPop('amp'); el.msegPop.style.left = (parseFloat(el.msegPop.style.left) + 300) + 'px'; }")
-            mm = q.evaluate(PLACE, "amp")
-            null("the same measure finds the popover moved over its block", mm["block"], str(mm))
-            q.keyboard.press("Escape")
+        q.evaluate("() => { el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); setControl('vcfEnvAmt', 15); }")
+        for sub in ("amp", "filter", "wave"):
+            q.evaluate("(s) => setFigSub(s)", sub); q.wait_for_timeout(250)
+            m = q.evaluate(PF.MEASURE); j = PF.judge(m)
+            tag = "%dx%d, %s%s" % (w, h, sub, " (%s)" % m["flay"] if sub == "filter" else "")
+            check(tag + ": nothing between the band and the settings row, Play not scrolled and the view inside it, clear of the modulation row and the Picture",
+                  j["nothing"] and j["fit"] and j["clear"], "gap %.1f, scroll %s, view %.1f" % (m["gapBandToSettings"], m["scroll"], m["viewOver"]))
+            check(tag + ": every knob row and settings row one row, the drawings %s" % PF.plots_said(m), j["one"] and j["wide"], str((m["knobRows"], m["setRows"])))
+            if sub == "amp":
+                check(tag + ": the summaries fit their labels", j["fits"], str(m["labels"]))
+                tight = min(m["menus"], key=lambda x: x["room"] - x["widest"])
+                check("%dx%d: every value of the settings row's menus fits its menu, in its own font (tightest %s, %r, %.1f of %.1f px)"
+                      % (w, h, tight["menu"], tight["text"], tight["widest"], tight["room"]), all(x["fits"] for x in m["menus"]))
+                if (w, h) == (960, 600):
+                    null("the full names do not fit at 960x600", any(not x["fullFits"] for x in m["menus"]), str([x["menu"] for x in m["menus"] if not x["fullFits"]]))
+        if (w, h) == (1660, 1050):
+            check("by room: at 1660x1050 the filter's two drawings stack", q.evaluate("(s) => { setFigSub('filter'); return el.vcfBody.classList.contains('stacked'); }"))
+        q.evaluate("() => openModCard('env.note')"); q.wait_for_timeout(300)
+        e = q.evaluate(PF.MEASURE)["editor"]
+        check("%dx%d: the Envelope's editor over the tabs, %dx%d, its content inside it and clear of the modulation row, its drawing %s, its knobs one row"
+              % (w, h, e["w"], e["h"], ", ".join("%dx%d %.1f:1" % (q_["w"], q_["h"], q_["aspect"]) for q_ in e["plots"])),
+              e["over"] <= 1 and not e["covers"] and all(2 <= q_["aspect"] <= 7 and q_["h"] >= 120 for q_ in e["plots"]) and e["knobRows"] == [1], str(e))
+        if (w, h) == (960, 600):
+            # Nulls, each on the measurement its check reads.
+            q.evaluate("() => { closeModCard(); setFigSub('amp'); }"); q.wait_for_timeout(150)
+            m = q.evaluate("""() => { const d = document.createElement('div'); d.style.cssText = 'height: 250px; flex: 0 0 auto';
+              document.querySelector('.bench-band').after(d); const m = (""" + PF.MEASURE + """)(); d.remove(); return m; }""")
+            null("a 250 px block between the band and the settings row is seen (%.1f px)" % m["gapBandToSettings"], not PF.judge(m)["nothing"])
+            m = q.evaluate("() => { const f = document.querySelector('.play-figs'); f.style.minHeight = '2000px'; const m = (" + PF.MEASURE + ")(); f.style.minHeight = ''; return m; }")
+            null("a figure area 2000 px tall is seen to scroll (%s px)" % m["scroll"], not PF.judge(m)["fit"])
+            m = q.evaluate("() => { const f = document.querySelector('.play-figs'); f.style.transform = 'translateY(120px)'; const m = (" + PF.MEASURE + ")(); f.style.transform = ''; return m; }")
+            null("the figures moved down 120 px are seen to cover the modulation row", not PF.judge(m)["clear"])
+            m = q.evaluate("() => { const k = el.ampKnobs; k.style.flexWrap = 'wrap'; k.style.width = '120px'; const m = (" + PF.MEASURE + ")(); k.style.flexWrap = ''; k.style.width = ''; return m; }")
+            null("a knob row squeezed to 120 px is seen to wrap %s" % m["knobRows"], not PF.judge(m)["one"])
+            m = q.evaluate("() => { const f = document.querySelector('.play-figs'); f.style.width = '254px'; f.style.alignSelf = 'flex-start'; const m = (" + PF.MEASURE + ")(); f.style.width = ''; f.style.alignSelf = ''; return m; }")
+            null("the figure area squeezed to the popover's 254 px is seen to make a tower (%s)" % PF.plots_said(m), not PF.judge(m)["wide"])
+        if (w, h) == (1660, 1050):
+            # The editor's null: its drawing beside Where it goes, at the bench's height, is a tower.
+            tower = q.evaluate("""() => { const st = document.createElement('style'); st.id = 'nullTower';
+              st.textContent = '#modEditor[data-src="env.note"] #srcDetail { grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows: minmax(0,1fr) !important; } #modEditor[data-src="env.note"] #menvCurve { aspect-ratio: auto !important; height: 630px !important; }';
+              document.head.appendChild(st); const m = (""" + PF.MEASURE + """)().editor; st.remove(); return m.plots; }""")
+            null("the editor's drawing beside Where it goes at the bench's height is a tower %s" % [(t["w"], t["h"]) for t in tower],
+                 not all(2 <= t["aspect"] <= 7 for t in tower))
         if qbad: check("no page errors at %dx%d" % (w, h), False, "; ".join(qbad[:2]))
         q.close()
 
-    p.locator("#ampEnvBlock").click(); p.wait_for_timeout(250)
-    homes = p.evaluate("() => ['envAttack', 'envDelay'].map((id) => el.msegKnobs.contains(el[id]))")
-    p.locator("#msegPopClose").click(); p.wait_for_timeout(150)
-    back = p.evaluate("() => [el.msegPop.hidden, el.ampEnvStore.contains(el.envAttack), el.ampEnvStore.contains(el.envDelay)]")
-    check("its six knobs move in while it is open and back to their section on Close", homes == [True, True] and back == [True, True, True], "%s %s" % (homes, back))
-    p.locator("#ampEnvBlock").click(); p.wait_for_timeout(200)
-    p.mouse.click(30, 450); p.wait_for_timeout(150)
-    check("a press outside it closes it", p.evaluate("() => el.msegPop.hidden"))
-    null("and a press inside does not", (p.locator("#ampEnvBlock").click(), p.wait_for_timeout(200), p.mouse.click(*centre(p, "#msegPopName")),
-         p.wait_for_timeout(150), not p.evaluate("() => el.msegPop.hidden"))[-1])
-    shown = p.evaluate("() => { msegPop.open && closeMsegPop(); showControl('envHold'); return [msegPop.open, el.msegKnobs.contains(el.envHold)]; }")
-    check("showControl on a knob of the envelope opens its editor with the knob in it", shown == ["amp", True], str(shown))
-    p.keyboard.press("Escape"); p.wait_for_timeout(100)
+    print("\n--- the knobs live in their views ---")
+    # Replaced: its six knobs moved in while the popover was open and back to their section on Close, and a
+    # press outside closed it. Now nothing moves in or out, and the subtab chosen is a view, not stored.
+    homes = p.evaluate("""() => { const where = () => ({ amp: [...el.ampKnobs.querySelectorAll('input')].map((i) => i.id),
+        f4: [...el.vcfFKnobs.querySelectorAll('input')].map((i) => i.id), env: [...el.vcfEnvKnobs.querySelectorAll('input')].map((i) => i.id) });
+      setFigSub('amp'); const a = where(), code = encodeSetup(snapshot()); setFigSub('filter'); const b = where(), code2 = encodeSetup(snapshot()); setFigSub('wave'); const c = where();
+      setFigSub('amp'); return { a, same: JSON.stringify(a) === JSON.stringify(b) && JSON.stringify(b) === JSON.stringify(c), stored: code === code2 }; }""")
+    check("the amp's six, the filter's four and its envelope's six are in their views, in the drawing's order, and stay there whichever subtab is shown",
+          homes["a"] == {"amp": ["envDelay", "envAttack", "envHold", "envDecay", "envSustain", "envRelease"], "f4": ["vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt"],
+                         "env": ["vcfDelay", "vcfAtk", "vcfHold", "vcfDec", "vcfSus", "vcfRel"]} and homes["same"], str(homes))
+    check("and the subtab chosen is not in the setup", homes["stored"])
+    # The Envelope's editor: its knobs move in while it is open and back after (controls are moved, never copied).
+    ed = {}
+    p.locator('.mod-card[data-source="env.note"]').click(); p.wait_for_timeout(250)
+    ed["open"] = p.evaluate("() => [!el.modEditor.hidden, el.srcDetail.contains(el.menvAtk), document.querySelectorAll('#menvAtk').length]")
+    p.locator("#modEditorClose").click(); p.wait_for_timeout(150)
+    ed["close"] = p.evaluate("() => [el.modEditor.hidden, el.srcDetail.contains(el.menvAtk)]")
+    p.locator('.mod-card[data-source="env.note"]').click(); p.wait_for_timeout(200); p.keyboard.press("Escape"); p.wait_for_timeout(150)
+    ed["esc"] = p.evaluate("() => el.modEditor.hidden")
+    p.locator('.mod-card[data-source="env.note"]').click(); p.wait_for_timeout(200); p.locator('.mod-card[data-source="env.note"]').click(); p.wait_for_timeout(150)
+    ed["card"] = p.evaluate("() => el.modEditor.hidden")
+    print("    %s" % ed)
+    check("the Envelope's editor opens over the tabs with its knobs in it, one of each; Close, Esc and its card again shut it",
+          ed["open"] == [True, True, 1] and ed["close"][0] and ed["esc"] and ed["card"], str(ed))
+    null("open, its knobs were in it, and shut they are not shown", ed["open"][1] and p.evaluate("() => el.menvAtk.offsetParent === null"))
+
+    print("\n--- showControl ---")
+    # Replaced: showControl on an envelope's knob opened its editor with the knob in it.
+    shown = p.evaluate("""() => { const out = {};
+      for (const id of ['envHold', 'vcfDec', 'vcfCut', 'bar2', 'menvAtk']) { closeModCard(); setBenchTab('ink'); setFigSub('wave');
+        // The bars are on the face only while the Drawbars are the shape.
+        el.shape.value = id === 'bar2' ? 'drawbars' : 'sine'; el.shape.dispatchEvent(new Event('change')); setFigSub(id === 'bar2' ? 'amp' : 'wave'); setBenchTab('ink'); showControl(id);
+        out[id] = [benchTab, figs.sub, !el.modEditor.hidden && editingSource, document.getElementById(id).closest('.knob-face, .menu-row').getClientRects().length > 0]; }
+      closeModCard(); setFigSub('amp'); return out; }""")
+    check("showControl on an amp or filter knob chooses its subtab on Play, on a bar Wave, and on an Envelope knob opens the card's editor",
+          shown == {"envHold": ["play", "amp", False, True], "vcfDec": ["play", "filter", False, True], "vcfCut": ["play", "filter", False, True],
+                    "bar2": ["play", "wave", False, True], "menvAtk": ["ink", "wave", "env.note", True]}, str(shown))
+
+    print("\n--- Wave ---")
+    for w, h in PF.SIZES:
+        q, qbad = open_page(b, w, h)
+        q.evaluate("() => setFigSub('wave')"); q.wait_for_timeout(200)
+        shapes = q.evaluate("() => Array.from(el.shape.options).map((o) => o.value)")
+        SHAPE = "(sh) => { el.shape.value = sh; el.shape.dispatchEvent(new Event('change')); paintFigs(true); paintCycle(); return (" + PF.BOXES + ")(); }"
+        base = q.evaluate(SHAPE, "sine")
+        sizes, moved_any = [], []
+        for sh in shapes:
+            bx = q.evaluate(SHAPE, sh)
+            ok, moved, nk = PF.same(base, bx)
+            m = q.evaluate(PF.MEASURE)
+            sizes.append((sh, m["plots"][0]["w"], m["plots"][0]["h"]))
+            if not (ok and m["viewOver"] <= 1 and m["scroll"] <= 1): moved_any.append((sh, moved, m["viewOver"], m["scroll"]))
+        check("%dx%d: Wave with each of the %d shapes, every box on Play where it was with Sine and nothing over" % (w, h, len(shapes)), not moved_any, str(moved_any[:2]))
+        check("%dx%d: the cycle's drawing one size for all of them, %dx%d, at least 120 tall" % (w, h, sizes[0][1], sizes[0][2]),
+              len({(a, c) for _, a, c in sizes}) == 1 and sizes[0][2] >= 120, str(sizes[:3]))
+        bars = q.evaluate("""() => { el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change')); paintFigs(true); const z = pageZoom || 1, band = el.waveBand.getBoundingClientRect();
+          const b = [...el.barsGroup.querySelectorAll('input[type=range]')];
+          return { n: b.length, h: Math.min(...b.map((x) => x.getBoundingClientRect().height / z)), tops: new Set(b.map((x) => Math.round(x.getBoundingClientRect().top))).size,
+                   inside: b.every((x) => x.getBoundingClientRect().bottom <= band.bottom + 0.5), label: document.querySelector('#figTab-wave .fig-sum').textContent }; }""")
+        check("%dx%d: the nine drawbars in one row inside the band, each %.0f px tall, and the summary the registration (%r)" % (w, h, bars["h"], bars["label"]),
+              bars["n"] == 9 and bars["h"] >= 48 and bars["tops"] == 1 and bars["inside"] and bars["label"] == "drawbars 008740000", str(bars))
+        if (w, h) == (960, 600):
+            q.evaluate("() => { el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change')); }")
+            st = "() => { const st = document.createElement('style'); st.id = 'nullBand'; st.textContent = '.bench-body .wave-band { height: auto !important; }'; document.head.appendChild(st); }"
+            q.evaluate(st)
+            a2 = q.evaluate(SHAPE, "sine"); b2 = q.evaluate(SHAPE, "drawbars")
+            ok, moved, nk = PF.same(a2, b2, lambda k: "fig-plot" in k)
+            null("a band sized to its shape's controls moves the drawing between Sine and the Drawbars (%s)" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate("() => document.getElementById('nullBand').remove()")
+        if qbad: check("no page errors at %dx%d" % (w, h), False, "; ".join(qbad[:2]))
+        q.close()
+    cyc = p.evaluate("""() => { const at = (sh, x, extra) => { const t = Object.assign({}, genSettings(), { shape: sh }, extra || {}); const c = waveCycle(t, 400); return c[Math.round(x * 400)]; };
+      return { sine: at('sine', 0.25), square: [at('square', 0.25), at('square', 0.75)], pulse: [at('pulse', 0.2, { width: 0.25 }), at('pulse', 0.3, { width: 0.25 })],
+               saw: at('ramp', 0.25), tri: at('triangle', 0.25) }; }""")
+    check("the cycles are the shapes' own: a sine's quarter at its peak, a square high then low, a pulse of a quarter high only for a quarter",
+          abs(cyc["sine"] - 1) < 1e-6 and cyc["square"][0] > 0.5 and cyc["square"][1] < -0.5 and cyc["pulse"][0] > 0 and cyc["pulse"][1] < 0 and cyc["tri"] > 0.9, str(cyc))
+    null("the saw is not the sine: a quarter in it is not at its peak", abs(cyc["saw"] - 1) > 0.1, str(cyc["saw"]))
+    tuning = p.evaluate("""() => { closeModCard(); closeOverlay(); setBenchTab('play'); setFigSub('amp'); const onFace = el.tuneJust.offsetParent !== null;
+      openGroupDetail(el.toneRows, el.toneRows.querySelector('.more-dots')); const inMenu = !!document.querySelector('.over') && document.querySelector('.over').contains(el.tuneJust) && el.tuneJust.offsetParent !== null;
+      closeOverlay(); return { onFace, inMenu }; }""")
+    check("Tuning is in the Generator's dots menu and not on the face", tuning == {"onFace": False, "inMenu": True}, str(tuning))
+    null("in the menu it is seen, so the reading can tell", tuning["inMenu"])
 
     print("\n--- a point writes its knob, by the drawing's scale ---")
     p.evaluate("() => { restore(BASE_SETUP); for (const [id, v] of [['envAttack', 20], ['envDecay', 200], ['envSustain', 60], ['envRelease', 400]]) setControl(id, v); }")
     p.wait_for_timeout(600)
-    p.locator("#ampEnvBlock").click(); p.wait_for_timeout(250)
+    p.evaluate("() => showControl('envAttack')"); p.wait_for_timeout(250)
     before, u0 = p.evaluate(AMP), p.evaluate(UNDO)
-    WANT = """([cx]) => { const g = msegPlots.amp.g, local = new DOMPoint(cx, 0).matrixTransform(el.msegPlot.getScreenCTM().inverse()).x;
+    WANT = """([cx]) => { const g = msegPlots.amp.g, local = new DOMPoint(cx, 0).matrixTransform(el.ampPlot.getScreenCTM().inverse()).x;
       return { undo: undoHistory.undo.length, sqrt: Math.round(msegTimeAt(local - g.x0.attack, g.k)), straight: Math.round(20 * (local - g.x0.attack) / (g.k * Math.sqrt(20))) }; }"""
-    x0, _ = centre(p, PT("msegPlot", "p2"))
-    (px, py), w = drag(p, PT("msegPlot", "p2"), 20, 0, hold=lambda: p.evaluate(WANT, [x0 + 20]))
+    x0, _ = centre(p, PT("ampPlot", "p2"))
+    (px, py), w = drag(p, PT("ampPlot", "p2"), 20, 0, hold=lambda: p.evaluate(WANT, [x0 + 20]))
     held, want = w["undo"], w
     p.wait_for_timeout(900)
     after, u1 = p.evaluate(AMP), p.evaluate(UNDO)
@@ -211,7 +321,7 @@ with sync_playwright() as pw:
     null("nor is a straight scale's", abs(want["straight"] - want["sqrt"]) > 5, str(want))
     check("one step of undo, once the pointer lifts", u1 == u0 + 1, "%d -> %d" % (u0, u1))
     null("with the pointer still down there was no step yet", held == u0, "%s" % held)
-    under = p.evaluate("""([x, y]) => { const r = el.msegPlot.querySelector('[data-handle="p2"] circle:last-child').getBoundingClientRect();
+    under = p.evaluate("""([x, y]) => { const r = el.ampPlot.querySelector('[data-handle="p2"] circle:last-child').getBoundingClientRect();
       return Math.hypot(r.x + r.width / 2 - x, r.y + r.height / 2 - y); }""", [px, py])
     check("and the point is under the pointer that let go of it", under < 1.5, "%.2f px" % under)
     p.evaluate("() => undoStep(true)"); p.wait_for_timeout(300)
@@ -219,17 +329,17 @@ with sync_playwright() as pw:
 
     p.evaluate("() => msegPlots.amp.draw(true)")
     dec = p.evaluate("() => msegNow('amp').shape.ok !== undefined && msegPoints(msegNow('amp').shape, msegNow('amp').m).decayEnd")
-    (dx, dy), _ = drag(p, PT("msegPlot", "p%d" % dec), 12, -20)
+    (dx, dy), _ = drag(p, PT("ampPlot", "p%d" % dec), 12, -20)
     p.wait_for_timeout(200)
     d = p.evaluate(AMP)
-    lvl = p.evaluate("""([y]) => { const g = msegPlots.amp.g; return g.lvl(new DOMPoint(0, y).matrixTransform(el.msegPlot.getScreenCTM().inverse()).y); }""", [dy])
+    lvl = p.evaluate("""([y]) => { const g = msegPlots.amp.g; return g.lvl(new DOMPoint(0, y).matrixTransform(el.ampPlot.getScreenCTM().inverse()).y); }""", [dy])
     check("the decay's point: the decay longer and the sustain the level it let go at, the rest as they were",
           d[3] > 200 and abs(d[4] / 100 - lvl) < 0.002 and d[1] == 20 and d[5] == 400, "%s, level %.4f" % (d, lvl))
     ro = p.evaluate("() => el.msegReadout.textContent")
     check("its readout says the decay and the sustain in decibels", ro.startswith("Decay ") and "dB" in ro, ro)
 
     # Every point on its curve: its centre at the shape's own level at its time.
-    oncurve = p.evaluate("""() => { const g = msegPlots.amp.g; return [...el.msegPlot.querySelectorAll('.mseg-pt')].map((h) => {
+    oncurve = p.evaluate("""() => { const g = msegPlots.amp.g; return [...el.ampPlot.querySelectorAll('.mseg-pt')].map((h) => {
       const i = Number(h.dataset.handle.slice(1)), c = h.querySelector('circle:last-child');
       return Math.hypot(Number(c.getAttribute('cx')) - g.xs[i], Number(c.getAttribute('cy')) - g.y(g.P.pts[i].lvl)); }); }""")
     check("every point's handle sits where the shape has it, within half a pixel", oncurve and max(oncurve) < 0.5, str(oncurve))
@@ -241,7 +351,7 @@ with sync_playwright() as pw:
         if (t <= q.t && q.t > a.t) { out.push(msegTravel(a.lvl, q.lvl, q.bend, (t - a.t) / (q.t - a.t))); break; } } } return out; }"""
     l0 = p.evaluate(LEVELS)
     at = p.evaluate("""() => { const g = msegPlots.amp.g, i = g.P.decayEnd, x = g.startX(i) + 0.3 * (g.xs[i] - g.startX(i));
-      const P = g.P, y = g.y(msegTravel(P.pts[i - 1].lvl, P.pts[i].lvl, P.pts[i].bend, 0.3)), r = el.msegPlot.getBoundingClientRect();
+      const P = g.P, y = g.y(msegTravel(P.pts[i - 1].lvl, P.pts[i].lvl, P.pts[i].bend, 0.3)), r = el.ampPlot.getBoundingClientRect();
       return [r.left + x * r.width / g.W, r.top + y * r.height / g.H]; }""")
     p.mouse.click(*at); p.mouse.click(*at); p.wait_for_timeout(200)
     s1 = p.evaluate(POINTS, "amp")
@@ -257,20 +367,20 @@ with sync_playwright() as pw:
     null("the point's halves each given the old midpoint would draw it elsewhere",
          abs(naive - p.evaluate("""() => { const n = msegNow('amp'), P = msegPoints(n.shape, n.m), q = P.pts[P.decayEnd - 1], a = P.pts[P.decayEnd - 2]; return msegTravel(a.lvl, q.lvl, q.bend, 0.5); }""")) > 1e-3)
     added = p.evaluate("() => msegPoints(msegNow('amp').shape, msegNow('amp').m).decayEnd - 1")
-    p.locator(PT("msegPlot", "p%d" % added)).focus(); p.keyboard.press("ArrowUp"); p.wait_for_timeout(100)
+    p.locator(PT("ampPlot", "p%d" % added)).focus(); p.keyboard.press("ArrowUp"); p.wait_for_timeout(100)
     up = p.evaluate(POINTS, "amp")
     check("an arrow moves a point you added: up a twentieth", abs(up["pts"][added][2] - s1["pts"][added][2] - 0.05) < 1e-6, "%s -> %s" % (s1["pts"][added], up["pts"][added]))
     p.keyboard.press("Delete"); p.wait_for_timeout(150)
     gone = p.evaluate(POINTS, "amp")
     check("Delete takes it away again", gone["last"] == 5, gone["text"])
     p.mouse.click(*at); p.mouse.click(*at); p.wait_for_timeout(150)
-    hx, hy = centre(p, PT("msegPlot", "p%d" % added))
+    hx, hy = centre(p, PT("ampPlot", "p%d" % added))
     p.mouse.click(hx, hy); p.mouse.click(hx, hy); p.wait_for_timeout(150)
     check("and two presses on a point you added take it away", p.evaluate(POINTS, "amp")["last"] == 5, p.evaluate(POINTS, "amp")["text"])
 
     print("\n--- the menu: sustain, one-shot, loop ---")
     def menu(key):
-        p.locator(PT("msegPlot", key)).click(button="right"); p.wait_for_timeout(200)
+        p.locator(PT("ampPlot", key)).click(button="right"); p.wait_for_timeout(200)
         return p.evaluate("() => overlay ? [...overlay.node.querySelectorAll('.ctx-item')].map((b) => b.dataset.item) : []")
     items = menu("p2")
     check("a point's menu: Type a value, Sustain here, No sustain, Loop from here, Reset", items == ["type", "sustain", "oneshot", "loop", "reset"], str(items))
@@ -280,47 +390,47 @@ with sync_playwright() as pw:
     items = menu("p2")
     p.locator('.ctx-item[data-item="oneshot"]').click(); p.wait_for_timeout(150)
     s = p.evaluate(POINTS, "amp")
-    keyup = p.evaluate("() => !!el.msegPlot.querySelector('.mseg-keyup')")
+    keyup = p.evaluate("() => !!el.ampPlot.querySelector('.mseg-keyup')")
     check("No sustain makes it a one-shot, with no key up drawn", s["sus"] == -1 and s["text"].endswith(";S-") and not keyup, "%s %s" % (s["text"], keyup))
     items = menu("p2")
     check("and a one-shot's menu offers the sustain back", "sustainback" in items and "oneshot" not in items, str(items))
     p.locator('.ctx-item[data-item="sustainback"]').click(); p.wait_for_timeout(150)
     check("and it puts the sustain back where it always is", p.evaluate(POINTS, "amp")["sus"] == 4, p.evaluate(POINTS, "amp")["text"])
-    p.locator(PT("msegPlot", "p2")).focus(); p.keyboard.press("Shift+F10"); p.wait_for_timeout(200)
+    p.locator(PT("ampPlot", "p2")).focus(); p.keyboard.press("Shift+F10"); p.wait_for_timeout(200)
     opened = p.evaluate("() => !!overlay && overlay.opener && overlay.opener.dataset.handle")
     check("Shift+F10 on a focused point opens its menu", opened == "p2", str(opened))
     p.locator('.ctx-item[data-item="loop"]').click(); p.wait_for_timeout(150)
     s = p.evaluate(POINTS, "amp")
-    wash = p.evaluate("() => [!!el.msegPlot.querySelector('.mseg-loop'), el.msegLoop.getAttribute('aria-pressed')]")
+    wash = p.evaluate("() => [!!el.ampPlot.querySelector('.mseg-loop'), el.ampLoop.getAttribute('aria-pressed')]")
     check("Loop from here loops back to that point while held, drawn and the Loop button on", s["loop"] == 2 and wash == [True, "true"], "%s %s" % (s["text"], wash))
-    p.locator("#msegLoop").click(); p.wait_for_timeout(100)
+    p.locator("#ampLoop").click(); p.wait_for_timeout(100)
     check("and Loop pressed again takes it away", p.evaluate(POINTS, "amp")["loop"] == -1, p.evaluate(POINTS, "amp")["text"])
-    null("a shape with no loop has none to draw", not p.evaluate("() => !!el.msegPlot.querySelector('.mseg-loop')"))
+    null("a shape with no loop has none to draw", not p.evaluate("() => !!el.ampPlot.querySelector('.mseg-loop')"))
     menu("p%d" % p.evaluate("() => msegPoints(msegNow('amp').shape, msegNow('amp').m).last"))
     p.locator('.ctx-item[data-item="type"]').click(); p.wait_for_timeout(100)
     p.keyboard.press("Control+a"); p.keyboard.type("1.5 s"); p.keyboard.press("Enter"); p.wait_for_timeout(150)
     check("Type a value on the release's point writes the release: 1.5 s", p.evaluate(AMP)[5] == 1500, str(p.evaluate(AMP)))
     rel = p.evaluate("() => msegPoints(msegNow('amp').shape, msegNow('amp').m).last")
-    x, y = centre(p, PT("msegPlot", "p%d" % rel))
+    x, y = centre(p, PT("ampPlot", "p%d" % rel))
     p.mouse.click(x, y); p.mouse.click(x, y); p.wait_for_timeout(150)
     check("two presses on it put the release back to where it starts", p.evaluate(AMP)[5] == 180, str(p.evaluate(AMP)))
 
     print("\n--- the bends, and Delay and Hold ---")
-    bend = p.evaluate("() => [...el.msegPlot.querySelectorAll('.mseg-bend')].map((h) => h.dataset.handle)")
+    bend = p.evaluate("() => [...el.ampPlot.querySelectorAll('.mseg-bend')].map((h) => h.dataset.handle)")
     check("a bend's handle on each segment with a fall", "b2" in bend, str(bend))
     t0 = p.evaluate("() => el.envShape.value")
-    drag(p, PT("msegPlot", "b2"), 0, 25); p.wait_for_timeout(150)
+    drag(p, PT("ampPlot", "b2"), 0, 25); p.wait_for_timeout(150)
     t1 = p.evaluate("() => el.envShape.value")
     mid = p.evaluate("() => { const sh = msegParse(el.envShape.value); return sh.close.attack; }")
     check("dragged down, the attack's bend becomes a drawn midpoint under the old curve's", mid["law"] == "m" and mid["v"] < 0.71, "%s -> %s" % (t0, t1))
-    x, y = centre(p, PT("msegPlot", "b2"))
+    x, y = centre(p, PT("ampPlot", "b2"))
     p.mouse.click(x, y); p.mouse.click(x, y); p.wait_for_timeout(150)
     check("two presses straighten it", p.evaluate("() => msegParse(el.envShape.value).close.attack.v") == 0.5, p.evaluate("() => el.envShape.value"))
-    shown = p.evaluate("() => getComputedStyle(el.msegPlot.querySelector('[data-handle=\"whold\"]')).opacity")
-    p.mouse.move(*centre(p, "#msegPlot")); p.wait_for_timeout(250)
-    hover = p.evaluate("() => getComputedStyle(el.msegPlot.querySelector('[data-handle=\"whold\"]')).opacity")
+    shown = p.evaluate("() => getComputedStyle(el.ampPlot.querySelector('[data-handle=\"whold\"]')).opacity")
+    p.mouse.move(*centre(p, "#ampPlot")); p.wait_for_timeout(250)
+    hover = p.evaluate("() => getComputedStyle(el.ampPlot.querySelector('[data-handle=\"whold\"]')).opacity")
     check("Hold's ring shows while the pointer is over the drawing, and not otherwise at nought", hover == "1", "%s, %s" % (shown, hover))
-    drag(p, PT("msegPlot", "whold"), 20, 0); p.wait_for_timeout(150)
+    drag(p, PT("ampPlot", "whold"), 20, 0); p.wait_for_timeout(150)
     hold = p.evaluate(AMP)[2]
     check("dragged, it writes the Hold", hold > 0, str(p.evaluate(AMP)))
     null("before, the Hold was nought", before[2] == 0)
@@ -340,12 +450,12 @@ with sync_playwright() as pw:
     p.keyboard.press("Escape"); p.wait_for_timeout(100)
     p.evaluate("() => { restore(Object.assign({}, BASE_SETUP, { layers: 'split' })); }"); p.wait_for_timeout(300)
     p.evaluate("() => { document.getElementById('linkAmpEnv').click(); document.getElementById('editHandB').click(); }"); p.wait_for_timeout(200)
-    p.locator("#ampEnvBlock").click(); p.wait_for_timeout(250)
+    p.evaluate("() => showControl('envAttack')"); p.wait_for_timeout(250)
     s0 = p.evaluate("() => { const s = snapshot(); return [s.atk, s.bAtk, s.envShape, s.bEnvShape]; }")
-    drag(p, PT("msegPlot", "p2"), 25, 0); p.wait_for_timeout(200)
+    drag(p, PT("ampPlot", "p2"), 25, 0); p.wait_for_timeout(200)
     at = p.evaluate("() => msegPlots.amp.g.startX(4) + 0.3 * (msegPlots.amp.g.xs[4] - msegPlots.amp.g.startX(4))")
     s1 = p.evaluate("() => { const s = snapshot(); return [s.atk, s.bAtk, s.envShape, s.bEnvShape]; }")
-    ghost = p.evaluate("() => !!el.msegPlot.querySelector('[data-ghost]')")
+    ghost = p.evaluate("() => !!el.ampPlot.querySelector('[data-ghost]')")
     check("editing the upper hand of an unlinked split, a drag writes its attack and not the lower's", s1[0] == s0[0] and s1[1] != s0[1], "%s -> %s" % (s0, s1))
     check("and the lower hand's shape is drawn dashed behind", ghost)
     p.evaluate("() => { msegStartFrom('amp', 'Pluck'); }"); p.wait_for_timeout(150)

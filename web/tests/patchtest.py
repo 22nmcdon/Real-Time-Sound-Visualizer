@@ -358,7 +358,7 @@ with sync_playwright() as pw:
       await settle();
       // The upper hand, every section its own, so each title's link shows (G6).
       document.getElementById('editHandB').click();
-      document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => link.click());
+      document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'true') link.click(); });
       await settle();
       out['poly+split, editing B'] = fits();
       // The drawbars add the registration row under the menu, on both layers.
@@ -386,7 +386,7 @@ with sync_playwright() as pw:
       out['poly+split+keys, morph, the voice filter on'] = fits();
       el.vcfType.value = '0'; el.vcfType.dispatchEvent(new Event('change'));
       el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
-      document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
+      document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'false') link.click(); });
       document.getElementById('editHandA').click();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
       setScreenKeys(false);
