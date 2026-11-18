@@ -1027,11 +1027,14 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
    it at most, then More. */
 .picture-bar .picture-wrap > .info-line.info-line { flex: 1 1 0; min-width: 0; align-self: center; }
 .info-line[hidden] { display: none !important; }
-.info-wrap {
-  font-size: 12px; line-height: 1.4; white-space: normal;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
-}
-.info-wrap > * { display: inline; margin-right: 7px; }
+.info-wrap { font-size: 12px; line-height: 1.4; display: grid; grid-template-columns: minmax(0, 1fr) 132px; column-gap: 12px; align-items: center; }
+.info-words { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.info-words > * { display: inline; margin-right: 7px; }
+.info-words > [hidden] { display: none; }
+/* Kept in place while hidden (visibility), so the first control said brings nothing in beside them. */
+.info-acts { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 0; }
+.info-acts > .is-unseen { visibility: hidden; }
+.info-acts .info-menu { display: block; max-width: 100%; font-size: 10.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .info-name { font-family: var(--serif); font-size: 13.5px; color: var(--charcoal); }
 .info-value { color: var(--charcoal); font-variant-numeric: tabular-nums; }
 .info-value:empty { display: none; }
@@ -1048,8 +1051,7 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 /* That the control has a right-click menu (G5b), which is how anyone who has
    never right-clicked a plugin finds it: on the line, not in every row of words. */
 .info-menu { color: var(--text-soft); }
-.info-wrap > [hidden] { display: none; }
-[data-compact] .info-wrap { font-size: 11.5px; }
+[data-compact] .info-wrap { font-size: 11.5px; grid-template-columns: minmax(0, 1fr) 112px; column-gap: 8px; }
 /* Its card: the line again, with what the page knows about the control. */
 .info-card { max-width: 380px; }
 .info-card .info-card-line { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; color: var(--charcoal); }
@@ -1221,48 +1223,15 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 .eq-band { display: flex; align-items: flex-start; column-gap: 6px; padding: 2px 3px; border-radius: 1px; }
 .eq-band[data-lit] { background: var(--wash); }
 .eq-band > .menu-row.knob-row { margin-top: 0; }
-/* The drawn envelopes (18 Nov): the small blocks on Play, and the editor
-   that opens beside them (#msegPop) and in the Envelope card's editor. */
-.mseg-block { all: unset; display: block; box-sizing: border-box; width: 100%; cursor: pointer; border: 1px solid var(--line);
-  background: var(--paper); border-radius: 1px; padding: 0; }
-.mseg-block:hover { border-color: var(--text-soft); }
-.mseg-block:focus-visible { outline: 1px solid var(--blush-deep); outline-offset: 2px; }
-.mseg-block[aria-expanded="true"] { border-color: var(--blush-deep); }
-.mseg-small, .mseg-resp-small { display: block; width: 100%; height: 56px; }
-[data-compact] .mseg-small, [data-compact] .mseg-resp-small { height: 44px; }
-.mseg-reads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; margin: 3px 0 2px;
-  font-size: 11.5px; line-height: 1.2; color: var(--charcoal); font-variant-numeric: tabular-nums; }
-.mseg-reads.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.mseg-reads small { display: block; font-size: 10px; color: var(--text-soft); }
-.mseg-envline { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-.mseg-envline .mseg-envbox { width: 76px; flex: 0 0 auto; }
-.mseg-envline .mseg-small { height: 24px; }
-.mseg-sweeps-words { font-size: 11.5px; color: var(--text-soft); }
-.mseg-sweeps-words .is-dead, #vcfSweeps.is-dead, #msegSweeps.is-dead { color: var(--unresolved); }
-.mseg-pop { position: absolute; z-index: 25; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; overflow: hidden;
-  padding: 10px 14px 8px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 6px 22px rgba(36, 31, 29, 0.12); }
-.mseg-pop[hidden] { display: none; }
-.mseg-pop::after { content: ""; position: absolute; top: calc(var(--arrow-at, 40px) - 7px); width: 12px; height: 12px;
-  background: var(--paper); border: 1px solid var(--line); transform: rotate(45deg); }
-.mseg-pop[data-arrow="right"]::after { right: -7px; border-left: 0; border-bottom: 0; }
-.mseg-pop[data-arrow="left"]::after { left: -7px; border-right: 0; border-top: 0; }
+/* The drawn envelopes (18 Nov): Play's Amp and Filter figures, and the Envelope card's editor. */
 .mseg-pop-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .mseg-pop-name { font-family: var(--serif); font-size: 19px; color: var(--charcoal); }
-.mseg-filter { display: flex; flex-direction: column; gap: 4px; }
-.mseg-filter[hidden] { display: none; }
 .mseg-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .mseg-tools select { max-width: 120px; }
-.mseg-sub { margin-top: 2px; }
-.mseg-pop .mseg-tools { flex-wrap: nowrap; gap: 6px; min-width: 0; }
-.mseg-pop .mseg-tools > * { flex: 0 0 auto; }
-.mseg-pop .mseg-tools .mseg-sweeps-words { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mseg-pop .mseg-tools .menu-sub { margin: 0; }
 .mseg-plot { display: block; width: 100%; flex: 2 1 100px; min-height: 56px; touch-action: none; user-select: none; -webkit-user-select: none; }
 .mseg-resp { display: block; width: 100%; flex: 1 1 64px; min-height: 40px; max-height: 96px; touch-action: none; }
-.mseg-filter:not([hidden]) { flex: 1 1 auto; min-height: 0; }
-.mseg-pop .mseg-ftype button { font-size: 10px; padding: 2px 6px; }
-.mseg-pop .mseg-tools select, .src-own .mseg-tools select { font-size: 12px; padding: 1px 4px; height: 24px; }
-.mseg-pop .mseg-knobs, .src-own .mseg-knobs { flex-wrap: nowrap; column-gap: 2px; }
+.src-own .mseg-tools select { font-size: 12px; padding: 1px 4px; height: 24px; }
+.src-own .mseg-knobs { flex-wrap: nowrap; column-gap: 2px; }
 .mseg-knobs { display: flex; flex-wrap: nowrap; justify-content: space-between; column-gap: 2px; flex: 0 0 auto; }
 .mseg-knobs > .menu-row.knob-row { min-width: 38px; max-width: 60px; margin-top: 0; flex: 1 1 0; }
 .mseg-knobs .knob-face { width: 26px; height: 26px; }
@@ -1274,7 +1243,6 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 /* The drawing's parts. */
 .mseg-fill { fill: var(--blush); opacity: 0.16; stroke: none; }
 .mseg-curve { fill: none; stroke: var(--charcoal); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
-.mseg-small .mseg-curve, .mseg-resp-small .mseg-curve { stroke-width: 1.5; }
 .mseg-curve.is-dead, .mseg-curve.is-following, .follows .mseg-curve { stroke: var(--unresolved); stroke-dasharray: 4 3; }
 .follows .mseg-fill { opacity: 0; }
 #menvCurve:not(.follows) .mseg-curve { stroke: var(--ch4); }
@@ -1321,6 +1289,22 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
   grid-template-rows: minmax(0, 1fr); gap: 0 30px; align-items: start;
 }
 #srcDetail .src-goes { border-left: 1px solid var(--line); padding-left: 22px; align-self: stretch; }
+/* The Envelope's editor in one column (18 Nov, play-figures.md): its tools along the top, the drawing the
+   editor's width held at 2.4:1 (2.6:1 compact), its six knobs under it, and Where it goes taking the rest
+   and scrolling inside itself. Its two columns, as the LFOs' are, were measured and rejected: at the
+   bench's height the drawing beside Where it goes was a tower again (588x630 at 1660x1050). */
+#modEditor[data-src="env.note"] #srcDetail { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 6px 0; }
+#modEditor[data-src="env.note"] #srcDetail .src-goes { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 4px;
+  min-height: 0; overflow-y: auto; }
+#modEditor[data-src="env.note"] .src-env { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+#modEditor[data-src="env.note"] .src-env-top { margin: 0; flex-wrap: nowrap; white-space: nowrap; }
+#modEditor[data-src="env.note"] .src-env > .mseg-tools { flex-wrap: nowrap; }
+#modEditor[data-src="env.note"] .src-env > #menvCurve, #modEditor[data-src="env.note"] .src-env > .src-knobs { grid-column: 1 / -1; }
+#modEditor[data-src="env.note"] #menvCurve { height: auto; aspect-ratio: 2.4; margin-top: 4px; background: var(--paper); border: 0; }
+[data-compact] #modEditor[data-src="env.note"] #menvCurve { aspect-ratio: 2.6; }
+#modEditor[data-src="env.note"] .src-knobs { display: flex; flex-wrap: nowrap; column-gap: 2px; margin-top: 2px; }
+#modEditor[data-src="env.note"] .src-knobs > .menu-row.knob-row { width: 54px; min-width: 0; margin: 0; }
+#modEditor[data-src="env.note"] .src-knobs .knob-face { width: 28px; height: 28px; }
 /* What an editor draws (G5a): the source itself, large, with a dot where it
    is now - an LFO's wave, the Envelope's curve, what the Photocell sees and
    its last four seconds. Canvases sized here and drawn by paintModLive. */
@@ -1432,28 +1416,6 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 body[data-layer-edit="b"] #freqRow,
 body[data-layer-edit="b"] #phaseRow { display: none !important; }
 #toneRows:not([data-layer-edit="b"]) #layerBNote { display: none; }
-/* The amplifier's envelope, drawn over its knobs (G3). */
-/* Its place and size since G3; since 17 Nov drawn in its own pixels, so its
-   handles stay round, and taken hold of (envelopeDrawing). */
-.env-curve { display: block; width: 100%; height: 40px; margin: 2px 0 6px; overflow: visible; }
-.env-curve .env-line { stroke: var(--blush-deep); stroke-width: 1.5; }
-/* The voice filter's envelope (17 Nov): its heading opens its drawing, over
-   the section's top, since a drawing in the section did not fit Play at
-   1100x860, where the filter shares a column with the amp envelope. The
-   heading carries a small copy of the curve, so the shape is on show shut. */
-.env-open { all: unset; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
-.env-open:focus-visible { outline: 1px solid var(--blush-deep); outline-offset: 2px; }
-.env-open:disabled { cursor: default; }
-.env-thumb { width: 34px; height: 10px; overflow: visible; }
-.env-thumb path { fill: none; stroke: var(--blush-deep); stroke-width: 1.2; stroke-linejoin: round; }
-.env-open[aria-expanded="true"] .env-thumb path { stroke: var(--charcoal); }
-.env-pop {
-  position: absolute; left: -8px; right: -8px; z-index: 30; padding: 8px 8px 6px;
-  background: var(--paper); border: 1px solid var(--line); box-shadow: 0 8px 26px rgba(36, 31, 29, 0.14);
-}
-.env-pop[hidden] { display: none; }
-.env-pop .env-pop-curve { display: block; width: 100%; height: 72px; overflow: visible; }
-.env-pop .env-line { stroke: var(--blush-deep); }
 /* The voice filter while it is off: on show, greyed, its menu still live. */
 #vcfGroup.is-off .vcf-on { opacity: 0.45; }
 /* A heading inside a section, for a second set of controls under the first. */
@@ -1708,6 +1670,19 @@ body[data-compact] .bench-body { row-gap: 10px; }
    with `normal` stretched its lines to its height, and the band had half of
    the spare height under it - 124 px at 1660x1050, the gap the owner saw. */
 .bench-body { align-content: flex-start; }
+/* The band one height in every mode and with one hand or two (122 px, 117 compact: the one-hand height in
+   Poly), so nothing under it moves when a mode or Two hands is chosen. The room is reserved rather than
+   laid over the strip: Key, Notes, Layer sits on the strip's top edge in a margin that is there either
+   way, and the line under the strip always has two lines' room. The cost is a blank second line with one
+   sound. */
+.bench-body .menu-group.kb-band { height: 122px; box-sizing: border-box; overflow: hidden; align-content: start; }
+[data-compact] .bench-body .menu-group.kb-band { height: 117px; }
+.pill-toggle.is-unseen { visibility: hidden; }
+.kb-band .kb-box { margin-top: 12px; }
+.kb-band .kb-box-head { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); margin: 0; z-index: 1;
+  background: var(--paper); border-radius: 20px; }
+.kb-band .kb-line { height: 2.7em; align-items: flex-start; line-height: 1.35; }
+.kb-band #midiStripLine { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .bench-body.is-play { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; row-gap: 0; overflow-y: auto; }
 .bench-body.is-play > .bench-band { flex: 0 0 auto; }
 .play-set { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 26px;
@@ -1800,7 +1775,6 @@ body[data-compact] .bench-body { row-gap: 10px; }
 [data-compact] .bench-body .fig-view .mseg-knobs .knob-face { width: 22px; height: 22px; }
 [data-compact] .bench-body .fig-view .mseg-knobs > .menu-row.knob-row > .grow > .reading { font-size: 9.5px; }
 [data-compact] .bench-body .fig-view .mseg-knobs > .menu-row.knob-row > .menu-label { font-size: 8.5px; }
-.mseg-knobs.is-off { opacity: 0.45; }
 /* Filter: the response and its envelope, side by side or stacked (fitFilter). */
 .fig-body { display: flex; gap: 18px; }
 .fig-body.stacked { flex-direction: column; gap: 4px; }
@@ -2612,7 +2586,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           <div class="menu-group kb-band" id="midiGroup" data-tab="play" data-home="bench" data-band="1">
             <!-- The pill inside the title, so the section is still found by its
                  title (decorateGroup, the search, the folds) and named by its first word. -->
-            <span class="menu-title">Keyboard<button type="button" class="pill-toggle caps" id="midiTwoHands" aria-pressed="false" hidden
+            <span class="menu-title">Keyboard<button type="button" class="pill-toggle caps is-unseen" id="midiTwoHands" aria-pressed="false" aria-hidden="true" tabindex="-1"
                     title="A second sound: split at a key, split by the notes held, or layered"><span class="pt-dot"></span>Two hands</button></span>
             <div class="kb-left">
               <!-- No visible label: the radiogroup's own name says what it is. -->
@@ -4944,14 +4918,18 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
          height and wraps to a second line where it must. Its words
          are CONTROL_WORDS, written from web/docs/what-each-control-says.md. -->
     <div class="info-line" id="infoLine" data-empty="1">
+      <!-- The words on the left, two lines at most; the menu's note and More in a column of their own at
+           the right, one size whatever the words say, so pressing a control and changing the line moves
+           neither (18 Nov: the owner's rule that nothing moves when something is selected; inline after
+           the words, More went wherever the sentence ended). -->
       <div class="wrap info-wrap">
-        <span class="info-name" id="infoName"></span>
+        <span class="info-words"><span class="info-name" id="infoName"></span>
         <span class="info-value" id="infoValue"></span>
         <span class="info-host" id="infoHost" title="A host can automate it" hidden></span>
         <span class="info-hand" id="infoHand" hidden></span>
-        <span class="info-text" id="infoText">Rest the pointer on a control to read what it does.</span>
-        <span class="info-menu" id="infoMenu" hidden></span>
-        <button type="button" class="link-btn caps info-more" id="infoMore" hidden>More</button>
+        <span class="info-text" id="infoText">Rest the pointer on a control to read what it does.</span></span>
+        <span class="info-acts"><span class="info-menu is-unseen" id="infoMenu"></span>
+        <button type="button" class="link-btn caps info-more is-unseen" id="infoMore">More</button></span>
       </div>
     </div>
     <div class="picture-meters">
@@ -18356,64 +18334,32 @@ function stepEnvWhere(level, stage, velocity) {
   if (named === "release" && envWhere.stage !== "release") envWhere.from = u;
   envWhere.level = level; envWhere.stage = named; envWhere.velocity = vel;
 }
-// Its four times and its sustain: its own when it has them, Play's while it follows the amp envelope.
-function envTimes() {
-  const own = el.menvOwn.checked;
-  return { own, a: Number((own ? el.menvAtk : el.envAttack).value), d: Number((own ? el.menvDec : el.envDecay).value),
-           s: Number((own ? el.menvSus : el.envSustain).value) / 100, r: Number((own ? el.menvRel : el.envRelease).value) };
-}
-/* Times on a gentle square-root scale, so a 2 ms attack is still seen beside
-   a 2 s release, and the hold a fixed share, since a held note has no length
-   of its own. Following Play, the curve is Play's and greyed, until its editor makes it its own.
-   Its height is the velocity of the note it is following (see envWhere). */
-function drawEnv(canvas, large) {
+/* The Envelope's card draws its shape as its editor does (18 Nov): the drawn
+   shape, every point and bend, on the drawing's square-root time, at the
+   card's size - until then it was the old four-corner ADSR picture, which
+   said nothing of a shape's points, its loop or a one-shot. Following the
+   amp envelope it is the amp's, grey and unfilled; its own, in its sage ink.
+   The dot is where the core says the Envelope is on its shape (msegPlace),
+   as in the editor; at rest, at the shape's end. */
+function drawEnv(canvas) {
   const c = canvasFor(canvas);
   if (!c) return;
-  const { g, w, h } = c, { own, a, d, s, r } = envTimes();
-  const t = (ms) => Math.sqrt(Math.max(0, ms));
-  const hold = t(400), total = t(a) + t(d) + hold + t(r) || 1;
-  const pad = large ? 8 : 2, lo = h - (large ? 10 : 2), hi = large ? 10 : 3;
-  const x = (u) => pad + (u / total) * (w - 2 * pad);
-  const level = (v) => lo - v * (lo - hi);
-  const vel = envWhere.velocity;
-  const xs = [x(0), x(t(a)), x(t(a) + t(d)), x(t(a) + t(d) + hold), x(total)];
-  const ys = [level(0), level(vel), level(s * vel), level(s * vel), level(0)];
-  const ink = own ? inkOf("ch2", "#5f6b86") : inkOf("unresolved", "#9a948c");
-  if (large) {
-    g.strokeStyle = inkOf("line", "#e4d9cc"); g.lineWidth = 1;
-    g.beginPath(); g.moveTo(0, lo); g.lineTo(w, lo); g.stroke();
-    if (own) {
-      g.fillStyle = inkOf("blush", "#d9a6a0"); g.globalAlpha = 0.16;
-      g.beginPath(); g.moveTo(xs[0], ys[0]); for (let i = 1; i < 5; i++) g.lineTo(xs[i], ys[i]); g.closePath(); g.fill();
-      g.globalAlpha = 1;
-    }
+  const { g, w, h } = c, own = el.menvOwn.checked, now = msegNow("menv"), P = msegPoints(now.shape, now.m);
+  const geo = msegGeo(P, { W: w, H: h, L: 2, R: 3, T: 3, B: h - 2, gap: Math.max(6, Math.round((w - 5) * 0.07)) });
+  const paths = msegPaths(geo);
+  const ink = own ? inkOf("ch4", "#6f8f6a") : inkOf("unresolved", "#9a948c");
+  if (own) {
+    g.fillStyle = inkOf("blush", "#d9a6a0"); g.globalAlpha = 0.16;
+    g.fill(new Path2D(paths.whole + "L" + paths.end.toFixed(2) + " " + geo.B + "L" + geo.L + " " + geo.B + "Z"));
+    g.globalAlpha = 1;
   }
-  g.strokeStyle = ink; g.lineWidth = large ? 2 : 1.4;
-  if (!own && large) g.setLineDash([5, 4]);
-  g.beginPath(); g.moveTo(xs[0], ys[0]); for (let i = 1; i < 5; i++) g.lineTo(xs[i], ys[i]); g.stroke();
-  g.setLineDash([]);
-  if (large) {
-    g.fillStyle = inkOf("text-soft", "#6b615a"); g.font = "10px " + (inkOf("sans", "sans-serif"));
-    const names = [["attack", 0], ["decay", 1], ["held", 2], ["release", 3]];
-    for (const [name, i] of names) {
-      const mid = (xs[i] + xs[i + 1]) / 2 - g.measureText(name).width / 2;
-      if (xs[i + 1] - xs[i] > g.measureText(name).width + 4) g.fillText(name, mid, lo - 4);
-    }
-  }
-  /* The dot: along the stretch the envelope is in, at the level it is at -
-     the curve's own height there, the velocity taken out, placing it, so it
-     sits on the line. At rest it waits where the last release ended, so the
-     only jump back is a note struck. */
-  const v = Math.max(0, Math.min(1, envWhere.level)), st = envWhere.stage, u = v / vel;
-  const along = (i, f) => xs[i] + (xs[i + 1] - xs[i]) * Math.max(0, Math.min(1, f));
-  const from = Math.max(s, envWhere.from);
-  const dx = st === "attack" ? along(0, u)
-           : st === "decay" ? along(1, (1 - u) / Math.max(1e-6, 1 - s))
-           : st === "sustain" ? (xs[2] + xs[3]) / 2
-           : st === "release" ? along(3, from > 1e-6 ? 1 - u / from : 1)
-           : xs[4];
-  drawDot(g, dx, level(v), large ? 5 : 3);
-  canvas._drawn = { dot: [dx, level(v)], stage: st, own, velocity: vel, corners: xs.map((cx, i) => [cx, ys[i]]), ink, w, h };
+  g.strokeStyle = ink; g.lineWidth = 1.4; g.lineJoin = "round";
+  g.stroke(new Path2D(paths.whole));
+  const at = msegDotAt(geo, msegPlace("menv")), rest = { x: geo.xs[P.last], y: geo.y(P.pts[P.last].lvl) };
+  const dot = at || rest;
+  drawDot(g, dot.x, dot.y, 3);
+  canvas._drawn = { dot: [dot.x, dot.y], stage: envWhere.stage, own, xs: geo.xs, ys: P.pts.map((p) => geo.y(p.lvl)),
+                    path: paths.whole, ink: own ? "ch4" : "unresolved", w, h };
 }
 
 /* The Photocell's last four seconds, kept a frame at a time, and nought
@@ -18471,7 +18417,7 @@ function drawPhotoCrop(canvas, ink) {
 
 function drawCard(canvas, source) {
   if (source.index !== undefined) drawLfo(canvas, lfos[source.index], source.ink, false);
-  else if (source.id === "env.note") drawEnv(canvas, false);
+  else if (source.id === "env.note") drawEnv(canvas);
   else if (source.id === "photo.1") drawPhotoTrail(canvas, source.ink, false);
 }
 
@@ -18637,6 +18583,8 @@ function buildSourceDetail() {
   if (!MOD_SOURCES.has(selectedSource) && !cardSource(selectedSource)) selectedSource = "lfo1";
   const source = MOD_SOURCES.get(selectedSource) || cardSource(selectedSource);
   if (!source) { el.srcDetail.innerHTML = ""; return; }
+  // Which source the editor is laid out for: the Envelope's is one column (18 Nov, play-figures.md).
+  el.modEditor.dataset.src = source.id;
   const carded = offered(source);
   el.srcDetailTitle.textContent = source.label;
   el.srcDetailDot.style.background = "var(--" + source.ink + ")";
@@ -18724,7 +18672,6 @@ function buildSourceDetail() {
     el.menvControls.hidden = false;
     dressKnobs(el.menvControls);
     paintMenv();
-    ownColumn.insertAdjacentHTML("beforeend", '<p class="bench-hint">Following, it shows Play\u2019s amp envelope, dashed. Drag a point or turn a knob and it is its own.</p>');
   }
   if (photocell) {
     ownColumn.appendChild(el.photoControls);
@@ -19006,7 +18953,11 @@ function syncMidi() {
     el.midiPolyJustRow.hidden = !poly;
     const on = layersOn();
     const two = poly && midi.layers.mode !== "off";
-    el.midiTwoHands.hidden = !poly;
+    /* Shown in Poly only, and in Dyad and Mono keeping its place unseen, so the heading never reflows
+       (18 Nov, the owner's rule that nothing moves when something is selected). */
+    el.midiTwoHands.classList.toggle("is-unseen", !poly);
+    el.midiTwoHands.tabIndex = poly ? 0 : -1;
+    el.midiTwoHands.setAttribute("aria-hidden", String(!poly));
     el.midiTwoHands.setAttribute("aria-pressed", String(two));
     el.midiKindsRow.hidden = !two;
     const split = midi.layers.mode === "split", byNotes = midi.layers.by === "notes";
@@ -26311,24 +26262,6 @@ function msegTypeBoxes(part, plot, i) {
    amplitude, the held part a short plateau, and a gold dot riding it while a
    note sounds. No grid, letters, values, handles or band: the readings are
    in a row under it, and pressing it opens the editor. */
-function msegSmall(svg, kind, dead) {
-  const W = svg.clientWidth, H = svg.clientHeight;
-  if (!W || !H) return false;
-  const now = msegNow(kind), place = dead ? null : msegPlace(kind);
-  const key = JSON.stringify([now, W, H, dead, place, msegFollows(kind)]);
-  if (svg._said === key) return true;
-  svg._said = key;
-  const P = msegPoints(now.shape, now.m), g = msegGeo(P, { W, H, L: 3, R: 3, T: 4, B: H - 2, gap: Math.max(6, Math.round((W - 6) * 0.07)) });
-  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
-  svg.textContent = "";
-  const paths = msegPaths(g);
-  if (!dead) msegNode("path", { d: paths.whole + "L" + paths.end.toFixed(2) + " " + g.B + "L" + g.L + " " + g.B + "Z", class: "mseg-fill" }, svg);
-  msegNode("path", { d: paths.whole, class: "mseg-curve" + (dead ? " is-dead" : "") + (msegFollows(kind) ? " is-following" : ""), "data-curve": 1 }, svg);
-  const dot = msegDotAt(g, place);
-  if (dot) msegNode("circle", { cx: dot.x.toFixed(2), cy: dot.y.toFixed(2), r: 3, class: "mseg-dot", "data-now": 1 }, svg);
-  svg._drawn = { dot: dot ? [dot.x, dot.y] : null, xs: g.xs, ys: P.pts.map((p) => g.y(p.lvl)), sus: P.susPt, w: W, h: H };
-  return true;
-}
 /* The voice filter's response, as the core's state-variable filter has it
    (wave.h: the analogue one under the bilinear transform, warped at its
    cutoff), from 20 Hz to 20 kHz, with the band its envelope sweeps shaded.
@@ -26570,7 +26503,6 @@ function paintFigs(force) {
   if (el.vcfSweeps.textContent !== words) el.vcfSweeps.textContent = words;
   el.vcfSweeps.classList.toggle("is-dead", dead);
   el.fenvPlot.classList.toggle("is-dead", dead);
-  el.vcfFKnobs.classList.toggle("is-off", F.type === 0);
   for (const [kind, button] of [["amp", el.ampLoop], ["fenv", el.vcfLoop]]) {
     const now = msegNow(kind);
     button.setAttribute("aria-pressed", String(msegPoints(now.shape, now.m).loopPt >= 0));
@@ -28321,10 +28253,11 @@ function sayInfo(node) {
   el.infoHand.textContent = hand;
   el.infoText.textContent = line;
   const menu = menuControl(node) === node;
-  el.infoMenu.hidden = !menu;
+  // Unseen rather than hidden, keeping its place (and More's under it).
+  el.infoMenu.classList.toggle("is-unseen", !menu);
   el.infoMenu.textContent = !menu ? "" : node.closest("[data-mod-dest]") && node.type === "range"
-    ? "Right-click for modulation and more." : "Right-click for more.";
-  el.infoMore.hidden = false;
+    ? "Right-click: modulation, more" : "Right-click for more";
+  el.infoMore.classList.remove("is-unseen");
   delete el.infoLine.dataset.empty;
 }
 
