@@ -307,6 +307,9 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   // How many the queue holds before it refuses one: a host not processing, and a page still moving.
   static constexpr std::size_t kQueueMost = 4096;
   double slider(const char* id) const { return instrument_.slider(id); }
+  // The screen's two Persistences and what it draws (painting, step 2), for the shell test.
+  double tracePersistence() const { return instrument_.tracePersistence(); }
+  double paintPersistence() const { return instrument_.paintPersistence(); }
 
  private:
   // A command from the page, waiting for the next block; or refused, and false.

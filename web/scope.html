@@ -5201,6 +5201,17 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <span>Frequency up, time running right to left, level as ink. Hover it and it names
         the frequency and the note under the pointer.</span></li>
 
+      <li><b>Trace or Paint</b>
+        <span>The switch beside them chooses what the screen draws, and so what the sound is
+        read from. <i>Paint</i> lets the playing paint: time goes clockwise round the canvas,
+        one turn in eight seconds, and pitch goes outward, so a held note is an arc, a chord
+        concentric arcs and a run a line in and out. Each note reads the ring at its own pitch,
+        so its tone is the paint in its own register, and wet paint reads a little stronger
+        than dry. The Picture amount's Glow is the wet paint, Motion the paint being laid and
+        Memory new paint landing on old. <i>Persistence</i> on the Picture section is then the
+        painting's own, how long paint takes to fade to half; the trace's is kept apart.
+        The colours are only the look: the sound reads how much paint is where.</span></li>
+
       <li><b>Zoom magnifies, and the wheel works</b>
         <span>In Y&ndash;T it shows a slice of the capture stretched, centred on the trigger
         &mdash; the record is unchanged, so the measurements still read all of it. In X&ndash;Y
@@ -14432,6 +14443,25 @@ void main() {
     get wantsMap() { return wantMap; },
     get timing() { return timing; },
     get canvas() { return canvas; },
+    // The core's map as it was last served (thickness then wetness), or null.
+    get map() { return map; },
+    /* For a test: the look's paint, 128 square, each cell the summed amount
+       of its pixels as it stands now (over the gain); null with no graphics card. */
+    sample() {
+      if (mode !== "gpu" || !gl) return null;
+      const n = PAINT_SIZE, out = new Float32Array(PAINT_CELLS * PAINT_CELLS), per = n / PAINT_CELLS;
+      for (const k of [0, 1]) {
+        const buf = new Float32Array(n * n * 4);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, pair[0].fb); gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
+        gl.readPixels(0, 0, n, n, gl.RGBA, gl.FLOAT, buf);
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+          const i = (y * n + x) * 4, a = k === 0 ? buf[i] + buf[i + 1] + buf[i + 2] + buf[i + 3] : buf[i] + buf[i + 1];
+          out[Math.floor(y / per) * PAINT_CELLS + Math.floor(x / per)] += a / gain;
+        }
+      }
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      return out;
+    },
     /* What the instrument served: whether it is painting, the count its
        stamps start at, how many, and the stamps; and the map, when it came. */
     take(paint) {
@@ -27860,6 +27890,8 @@ const CONTROL_WORDS = {
   "dispYT": ["Y–T", "Each channel drawn against time, as a waveform. Scan reads the waveform as it is drawn, so the timebase moves the tone too."],
   "dispXY": ["X–Y", "The left channel against the right, drawn as one figure: the picture Scan is made to read. Turns Persistence on if it was off."],
   "dispSpect": ["Spect", "Frequency up, time running right to left, loudness as ink. Scan and the picture read nothing here, so the tone keeps its last wave."],
+  "drawTrace": ["Trace", "The screen draws the signal as a scope does, and Scan and the Picture amount read that trace. Persistence is the trace's fade."],
+  "drawPaint": ["Paint", "The sound paints, a ring a register, and Scan and the Picture amount read the paint. Persistence is the paint's half-life."],
   "clearButton": ["Clear", "Wipes the screen and the light Scan and the photocell read, so the picture builds up again from nothing. Persistence stays as set."],
   "enlargeButton": ["Enlarge", "Fills the window with the screen; Esc or this again brings the face back. Nothing it does changes the sound or is a step in undo."],
   "pictureOnly": ["Picture only", "Hides all that is drawn over the trace: the graticule and its labels, the reticle, the loop, the hand's mark, the verdict and the panes."],
@@ -27873,7 +27905,7 @@ const CONTROL_WORDS = {
   "oscScan": ["Scan", "How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone."],
   "scanStrike": ["Strike", "How brightly each note lights the screen where Scan reads it. Higher, and every new note flares in the tone, then settles as the light fades."],
   "scanSoft": ["Softness", "How much the light is blurred before Scan reads it. At nought thin lines read as spikes and buzz; higher is rounder. Only while Scan is on."],
-  "scanMemory": ["Persistence", "How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more."],
+  "scanMemory": ["Persistence", "How long a stroke takes to fade to half: the trace’s, or in Paint the painting’s own. Longer, and the tone and the picture’s reads remember more."],
   "output": ["Output", "How loud you hear it, after everything, and nothing else: the picture, Scan and the loop are the same at any setting. No preset changes it."],
   "stereoWidth": ["Width", "How wide each note is heard: at nought every note the same in both ears, at a hundred each its own ring. No note moves as others join it."],
   "soundWidth": ["Width", "The sound's own Width, saved with it, while the Width is on what's drawn too: the screen draws every note at it, and you hear what's drawn."],

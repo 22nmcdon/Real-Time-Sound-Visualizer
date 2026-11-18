@@ -581,6 +581,19 @@ Do not re-litigate these without a reason; each replaced something that failed.
   are the site's only: in the plugin their row is hidden and M does nothing,
   since a host has its own keys and musical typing. `striptest.py`,
   `fittest.py` and the plugin's shell test hold it.
+- **Trace · Paint, and the painting's own Persistence** (painting, step 2, 18 Nov;
+  `web/docs/painting-design.md`). The screen draws the trace or the painting the core keeps
+  (`core/include/scope/paint.h`), a setup field (`screenDraws`), and Scan and the Picture
+  amount read whichever is shown. The switch is on the screen's toolbar beside Y–T · X–Y ·
+  Spect, which costs the toolbar a row at every window (the screen keeps its size).
+  Persistence on the Picture section is the painting's own half-life in seconds while Paint
+  is shown (`paintPersistence`, 16 to start), kept apart from the trace's - the owner's
+  choice over one value meaning two things - and the instrument keeps a hand on it in Paint
+  as a `paintPersistence` hand, so a hand in Trace does not replace it. The look is painted on
+  the graphics card from the core's stamps and never reaches the sound; without WebGL 2 the
+  face draws the core's map plain. *Which hands* is hidden in Paint. Each note reads the ring
+  at its own pitch; Mono and Dyad read the lower note's. `painttest.py`, `paintcosttest.py`,
+  `core/tests/pieces/painting.py` and the plugin's shell test hold it.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back, and the screen, its toolbar and
   the dock into Enlarge's frame and back. Two elements with one id is how the

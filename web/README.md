@@ -7314,3 +7314,22 @@ changes until step 2. Two things learned building it:
   that picked wet paint up could never put it down on bare canvas: the pick-up, restored,
   did nothing measurable. What a brush picks up is kept apart, on the tips (`carry`), and
   smears on wherever they touch, while the brush's own load keeps the dry-brush rule.
+
+## Painting live, and three traps on the way (18 Nov)
+
+Step 2 of painting (`web/docs/painting-design.md`): Trace · Paint on the screen's toolbar,
+the painting's own Persistence on the one knob, the look painted on the graphics card from
+the core's strokes (`paintView`), held by `painttest.py` and `paintcosttest.py`.
+
+- **A knob that means two values needs two hands.** The instrument keeps a slider moved as
+  a hand keyed by the slider's id, and a later hand on the same key replaces the earlier
+  one. So the Persistence knob moved in Paint and then in Trace kept only the trace's, and
+  a reopened state lost the painting's half-life. In Paint the knob's hand is kept as a
+  control of its own, `paintPersistence`, with the value in seconds.
+- **Fading a whole float canvas every frame is a software renderer's undoing.** SwiftShader
+  (a headless browser, a machine whose drivers it stands in for) managed about five frames
+  a second at 768 square with a pass over every pixel. The fade is a gain instead: paint
+  stored grown by the half-life and read over it, so a frame touches only its stamps' box.
+- **A canvas asked for WebGL 2 cannot then give a 2D context**, even when WebGL 2 was
+  refused a float target: the plain drawing replaces the canvas with a fresh one.
+

@@ -4382,6 +4382,122 @@ int main() {
           "not the state's: " + differ);
   }
 
+  std::printf("\n--- painting (step 2): Trace and Paint, and the painting's Persistence, in the plugin ---\n");
+  {
+    /* The host's Persistence knob follows whichever the screen draws: in
+       Paint it moves the painting's half-life and leaves the trace's, Trace
+       pressed reads the knob back to the trace's place, and - auval's
+       "parameters retain value across reset and initialization" - a value the
+       host set while Paint is shown survives prepareToPlay, reset and
+       prepareToPlay again, its slider following. The null: the knob read back
+       on switching does move, so a check that it stays put could fail. */
+    std::size_t memory = 0;
+    for (std::size_t i = 0; i < ScopeProcessor::kKnobs.size(); ++i)
+      if (std::string(ScopeProcessor::kKnobs[i].slider) == "scanMemory") memory = i;
+    ScopeProcessor painted;
+    painted.prepareToPlay(rate, block);
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer m;
+    const auto step = [&](int n) { for (int k = 0; k < n; ++k) { buf.clear(); juce::MidiBuffer none; painted.processBlock(buf, none); } };
+    step(2);
+    const double traceAt = painted.tracePersistence();
+    painted.pageClick("drawPaint");
+    step(4);
+    auto* knob = painted.knob(memory);
+    const float inPaint = knob->get();
+    knob->setValueNotifyingHost(knob->convertTo0to1(40.0f));
+    step(4);
+    const double half = painted.paintPersistence(), traceKept = painted.tracePersistence();
+    check("the host's Persistence knob in Paint moves the painting's half-life (6.8 s at 40) and leaves the trace's",
+          inPaint == 58.0f && std::fabs(half - 6.8) < 1e-9 && traceKept == traceAt,
+          "knob opened at " + num(inPaint) + ", " + num(half) + " s, the trace's " + num(traceKept));
+    painted.prepareToPlay(rate, block);
+    painted.reset();
+    painted.releaseResources();
+    painted.prepareToPlay(rate, block);
+    step(2);
+    check("and keeps it through prepareToPlay, reset and prepareToPlay again (auval), the slider and the half-life following",
+          knob->get() == 40.0f && painted.slider("scanMemory") == 40 && std::fabs(painted.paintPersistence() - 6.8) < 1e-9,
+          num(knob->get()) + ", slider " + num(painted.slider("scanMemory")) + ", " + num(painted.paintPersistence()) + " s");
+    painted.pageClick("drawTrace");
+    step(4);
+    const float inTrace = knob->get();
+    check("Trace pressed: the knob reads back to the trace's place, and the painting's half-life stays",
+          inTrace == static_cast<float>(painted.slider("scanMemory")) && std::fabs(painted.paintPersistence() - 6.8) < 1e-9,
+          num(inTrace) + " against the slider's " + num(painted.slider("scanMemory")));
+    check("null: the trace's place is not the painting's, so a knob left where Paint had it would fail", inTrace != 40.0f, num(inTrace));
+    juce::MemoryBlock held;
+    painted.getStateInformation(held);
+    ScopeProcessor reopened;
+    reopened.setStateInformation(held.getData(), static_cast<int>(held.getSize()));
+    reopened.prepareToPlay(rate, block);
+    for (int k = 0; k < 2; ++k) { buf.clear(); juce::MidiBuffer none; reopened.processBlock(buf, none); }
+    check("a project reopened keeps both Persistences", std::fabs(reopened.paintPersistence() - 6.8) < 1e-9
+          && reopened.tracePersistence() == painted.tracePersistence(),
+          num(reopened.paintPersistence()) + " s and " + num(reopened.tracePersistence()));
+  }
+  {
+    /* The face in the plugin's web view paints from the strokes the plugin
+       serves (paint/COUNT.bin): Paint pressed on the face, a chord from the
+       host, and the page asked how far it has read and how it paints - on
+       WebKitGTK's graphics, or the core's map drawn plain where it has none -
+       and what its frames cost. The null is the count before the chord. */
+    ScopeProcessor seen;
+    seen.prepareToPlay(rate, block);
+    std::unique_ptr<juce::AudioProcessorEditor> owned(seen.createEditor());
+    auto* face = dynamic_cast<ScopeEditor*>(owned.get());
+    if (face == nullptr || !face->hasFace()) {
+      check("a web view to open the face in (run under xvfb-run -a, with WebKitGTK)", false, "no web view");
+    } else {
+      owned->addToDesktop(juce::ComponentPeer::windowHasTitleBar);
+      owned->setVisible(true);
+      juce::AudioBuffer<float> buf(2, block);
+      const auto clock0 = juce::Time::getMillisecondCounterHiRes();
+      double played = 0;
+      const auto run = [&](int ms, juce::MidiBuffer* first = nullptr) {
+        if (first != nullptr) { buf.clear(); seen.processBlock(buf, *first); played += block; }
+        const double until = juce::Time::getMillisecondCounterHiRes() + ms;
+        while (juce::Time::getMillisecondCounterHiRes() < until) {
+          const double due = (juce::Time::getMillisecondCounterHiRes() - clock0) / 1000.0 * rate;
+          while (played < due) { buf.clear(); juce::MidiBuffer m; seen.processBlock(buf, m); played += block; }
+          juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
+      };
+      const auto ask = [&](const juce::String& script, int waitMs) {
+        auto answer = std::make_shared<std::optional<juce::String>>();
+        face->evaluate(script, [answer](juce::WebBrowserComponent::EvaluationResult r) {
+          if (const juce::var* v = r.getResult()) *answer = v->toString();
+          else *answer = "error: " + (r.getError() ? r.getError()->message : juce::String("?"));
+        });
+        for (int waited = 0; !*answer && waited < waitMs; waited += 20) run(20);
+        return answer->value_or("no answer");
+      };
+      juce::String ready;
+      for (int k = 0; k < 300 && ready != "true"; ++k)
+        ready = ask("String(typeof faceLaidOut !== 'undefined' && !!faceLaidOut && !!state.source && state.source.kind === 'host')", 200);
+      ask(R"js((() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
+          setControl('oscScan', 60); document.getElementById('drawPaint').click(); return 'paint'; })())js", 1000);
+      run(500);
+      const juce::String before = ask("String(paintView.since)", 1000);
+      juce::MidiBuffer chord;
+      for (const int n : { 57, 64, 69 }) chord.addEvent(juce::MidiMessage::noteOn(1, n, static_cast<juce::uint8>(100)), 0);
+      run(0, &chord);
+      run(2500);
+      const juce::String after = ask(R"js(JSON.stringify({ since: paintView.since, mode: paintView.mode, why: paintView.why,
+          frames: paintView.timing.frames, ms: paintView.timing.frames ? +(paintView.timing.ms / paintView.timing.frames).toFixed(3) : 0,
+          worst: +paintView.timing.worst.toFixed(3), fps: Math.round(state.fps) }))js", 2000);
+      std::printf("  (the face in WebKitGTK, painting: %s)\n", after.toRawUTF8());
+      check("the face in the plugin's web view paints from the strokes the plugin serves, Paint pressed on it",
+            seen.painting() && after.contains("\"since\":") && !after.contains("\"since\":0,") && !after.contains("\"mode\":\"none\""),
+            after.toStdString());
+      check("null: before the chord it had read none", before == "0", before.toStdString());
+      owned->setVisible(false);
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+      owned.reset();
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+    }
+  }
+
   std::printf("\n--- the Envelope card's dot, on the plugin's face ---\n");
   {
     /* Until 12 Nov the plugin sent its page none of what the Envelope card's

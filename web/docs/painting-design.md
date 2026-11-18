@@ -138,10 +138,8 @@ Off, none of it runs, and the core's recordings are unchanged to the bit.
   Swell and hold (`PictureStage::stepPaint`). Running away is paint covering more than
   0.35 of the canvas, the trace's saturation. One canvas: while painting, the hands' own
   pictures are not used.
-- **Known limits.** Only Poly's voices paint; Mono and Dyad play through the generator's
-  own path, which has no voices to give brushes, and stay plain while painting. Up to 32
-  voices paint at once; past that a voice plays its ink. The settings are not stored and
-  not on any control.
+- **Known limits (as step 1 left them).** Only Poly's voices painted; step 2 painted
+  Mono and Dyad too (below). Up to 32 voices paint at once; past that a voice plays its ink.
 - **Cost.** A held chord of sixteen costs 0.168 s of a core a second on the trace and 0.185
   painting, natively (`paint_cpp cost`): about 0.35 microseconds a sample more, inside the
   core's budget with room. The governor's model does not count painting yet. At under
@@ -153,6 +151,78 @@ Off, none of it runs, and the core's recordings are unchanged to the bit.
   painting reads brighter than the trace (centroid 1.7 to 3.0 against about 1.13) and
   steadier note by note (movement about 0.005 against 0.02). The slower drying is heard
   mostly through Glow, which it doubles on Crossed hands.
+
+## What step 2 built (18 Nov)
+
+The owner heard step 1 ("a whole different timbre and texture to the sound and visual ...
+heading on the right path"); the two dryings sounded alike to them, so 2 s and 6 s stay.
+Step 2 put the painting live on the page, behind *Trace · Paint*.
+
+- **Two setup fields, additive, no version bump.** `screenDraws` (`trace` or `paint`) and
+  `paintPersistence`, the painting's half-life in seconds (16 to start, one to 120). A code
+  from before them draws the trace and keeps the trace's persistence. The core follows
+  `screenDraws` at each picture frame, so Scan and the Picture amount read whichever is
+  shown; the painter is made at prepare, so switching makes nothing on the audio thread.
+- **Trace · Paint** is on the screen's toolbar beside Y–T · X–Y · Spect, as asked. It costs a
+  row: at 1400x900 the toolbar goes from one row to two, at the four smaller windows from
+  two to three. The screen keeps its size at all five, since it is bound by its column's
+  width; `fittest.py`, `layouttest.py` and `enlargetest.py` pass unchanged. The press is a
+  click the instrument keeps as a hand (`drawTrace`, `drawPaint`).
+- **Persistence in Paint is its own value** on the one knob (the owner's choice over one value
+  meaning two things). The knob reads "16 s to half", a log scale from a second to two
+  minutes, 16 s at 58 (`paintOfSlider`, `paintSliderOf`, page and core alike). A hand on it
+  in Paint is kept as a `paintPersistence` hand, not a slider's, so a later hand on the knob
+  in Trace does not take its place among the hands and a reopened state has both. The
+  host's Persistence knob follows whichever is shown: the plugin reads it back when Trace or
+  Paint is pressed, as it does when the panel turns layer; the shell test holds auval's
+  retention with Paint shown.
+- **Mono and Dyad paint.** A brush for the lower note and, while the pair is apart, one for
+  the upper, each a stroke like any note's; a note struck again is a new brush, so a line's
+  notes are strokes of their own rather than one bent through them. The generator plays one
+  table for the line or the pair, so it is read off the lower note's ring, the one its phase
+  runs at.
+- **The face is served every stamp** the core lays, twenty floats each - where, which way,
+  its width and pressure, when, how far it went, its eight bristle groups' loads, and its
+  brush, hand, ink and note - from a ring of 4096 counted from the first: on the site with
+  the worklet's readings (`brain_paint`), in the plugin as `paint/COUNT.bin`, the count in
+  the path since not every web view hands a resource provider a query. The map is served
+  every third frame (`brain_paint_map`, `paintmap.bin`). Each stamp's ink is its harmony
+  against the lowest note sounding, judged by the core as the study judged it.
+- **The look on the graphics card** (`paintView` in the page): the study's physical paint in
+  WebGL 2 - bristle groups, six pigments mixed by Kubelka-Munk, the weave under a raking
+  light, wet paint glistening and drying by its thickness - with **the pick-up put back** as a
+  pass of its own: each brush's eight bristle groups take up wet paint from under where they
+  pass and carry its colour on to where they lay next, a frame behind at most. The inks are
+  the lane inks, by hand and harmony as the study had them (charcoal, slate, terracotta;
+  olive, sage, plum) on the paper, so `DESIGN.md` gains nothing. The canvas is 768 square
+  whatever the screen, so Enlarge and a resize keep it. **The fade is a gain**: paint is stored
+  grown by the half-life and read over the gain, so a frame paints only the box its stamps
+  fall in and the screen; the whole canvas is divided back once the gain passes a million.
+  Fading every pixel every frame, the first try, held SwiftShader to about five frames a
+  second.
+- **Without WebGL 2** or a float render target the face draws the core's map plain, ink on
+  the paper, and the instrument plays on (`?paint=plain` shows it). The plugin's web view
+  (WebKitGTK under the shell test) said which it used; the shell test prints it.
+- **Two hands:** one canvas and a shared map, each hand's ink the look only. Enlarge and
+  Picture only work as on the trace. *Which hands* is hidden in Paint, and the loop
+  overlay's rings, which are the trace's Scan path, are not drawn there.
+- **Presets.** The owner's rule holds as it stands in CLAUDE.md: a preset answers to its
+  heading as shipped, and Paint is a change it does not contain, so no check holds a preset
+  to its heading under Paint.
+- **Cost.** The core as WebAssembly in Chromium, a chord of eight held (`paintcosttest.py`):
+  0.43 ms a block of 128 on the trace, 0.60 painting - 0.18 ms more, 7 per cent of a block
+  at 48 kHz, about 1.4 microseconds a sample, under the suite's bound of half a millisecond.
+  Natively (`paint_cpp cost`, sixteen voices) about 0.35 microseconds a sample more. The
+  ring reads and their tables are most of it: one ring and one table a voice a frame. The
+  face's own time painting the look, on the CPU, 0.7 ms a frame with six notes laying
+  strokes; the graphics card's work is asynchronous and was SwiftShader's here, about six
+  frames a second with a chord - the study measured 0.7 to 2.3 ms a frame on the owner's
+  card at 512 to 1000 square. The governor's model still does not count painting; at 7 per
+  cent of a block for eight voices it need not yet, but a dense chord in the plugin at
+  small blocks is where to look first.
+- **Known limits.** The photocell and the score still read the trace's grid in Paint. The
+  look's drying times are the owner's defaults written into the shader, not read from the
+  core, since they are not settings yet.
 
 Still open, for when the first build is seen: the drying time (the study used 1.2 s; the
 owner wanted it slower, drying smoothly from thin to thick), whether a dark ground is

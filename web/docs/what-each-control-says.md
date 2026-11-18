@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-374 controls: 374 lines, none marked as removed by a later stage, 89 wanting a paragraph
+376 controls: 376 lines, none marked as removed by a later stage, 89 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -29,7 +29,8 @@ it follows until it is edited); and again on 17 Nov, the EQ drawn: its switch ma
 its curve on the line, its editor's switch and Close, and a point on its curve; and on 18 Nov,
 the drawn envelopes: each envelope's Delay and Hold, the amp envelope's and the filter's blocks that
 open the editor, the editor's Close, Shape, Loop, Hold a note, the filter's type and its two drawings,
-and the Envelope card's Shape, Loop and Hold a note, with *Its envelope* gone into the filter's block).
+and the Envelope card's Shape, Loop and Hold a note, with *Its envelope* gone into the filter's block; and
+again on 18 Nov, painting's Trace and Paint on the screen's toolbar).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -341,6 +342,8 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | dispYT | Y–T | Each channel drawn against time, as a waveform. Scan reads the waveform as it is drawn, so the timebase moves the tone too. | 123 | yes — in Y–T Scan and the three reads read the lanes as drawn, so timebase and zoom reach the sound |
 | dispXY | X–Y | The left channel against the right, drawn as one figure: the picture Scan is made to read. Turns Persistence on if it was off. | 126 | yes — switching in with Persistence off sets it to a short fade, once; change it after and it stays |
 | dispSpect | Spect | Frequency up, time running right to left, loudness as ink. Scan and the picture read nothing here, so the tone keeps its last wave. | 131 | yes — the photocell reads nothing too, and Persistence is greyed |
+| drawTrace | Trace | The screen draws the signal as a scope does, and Scan and the Picture amount read that trace. Persistence is the trace's fade. | 126 | - |
+| drawPaint | Paint | The sound paints, a ring a register, and Scan and the Picture amount read the paint. Persistence is the paint's half-life. | 122 | yes — painting, step 2: time goes clockwise, one turn in 8 s, pitch outward; each note reads its own ring; Glow is wet paint, Motion paint being laid, Memory new paint on old; its Persistence is its own value, kept apart from the trace's |
 | clearButton | Clear | Wipes the screen and the light Scan and the photocell read, so the picture builds up again from nothing. Persistence stays as set. | 130 | - |
 | enlargeButton | Enlarge | Fills the window with the screen; Esc or this again brings the face back. Nothing it does changes the sound or is a step in undo. | 129 | yes — added in G4: it replaced the Scope view; the panes show only in it; the light Scan reads is kept as it opens and closes, the canvas redrawn from blank |
 
@@ -366,7 +369,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | oscScan | Scan | How much of the voice’s wave is read off the screen, up to 80 per cent. A moving picture moves the tone; a still one is a still tone. | 133 | yes — read sixty times a second round a circle by the figure; the pitch holds; reined in to a quarter while the loop runs away; with a split, the hand being edited, or both while the Picture is linked |
 | scanStrike | Strike | How brightly each note lights the screen where Scan reads it. Higher, and every new note flares in the tone, then settles as the light fades. | 141 | yes — only while Scan is above nought; each note at its own place round the circle, as hard as it was played |
 | scanSoft | Softness | How much the light is blurred before Scan reads it. At nought thin lines read as spikes and buzz; higher is rounder. Only while Scan is on. | 139 | - |
-| scanMemory | Persistence | How long a stroke takes to fade to half, from off to infinite. Longer, and the tone, the picture’s reads and the score remember more. | 133 | yes — the screen’s, shared by both hands; the photocell’s memory too; the same setting as the menu over the screen |
+| scanMemory | Persistence | How long a stroke takes to fade to half: the trace’s, or in Paint the painting’s own. Longer, and the tone and the picture’s reads remember more. | 145 | yes — the screen’s, shared by both hands; in Trace the photocell’s memory too and the same setting as the menu over the screen; in Paint the painting’s half-life, a second to two minutes, kept apart from the trace’s |
 | output | Output | How loud you hear it, after everything, and nothing else: the picture, Scan and the loop are the same at any setting. No preset changes it. | 139 | yes — both hands’, on what is heard alone, like a monitor’s volume; −6 dB at 71, −12 dB at 50, unity at the top; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it; its meter is what is heard |
 | stereoWidth | Width | How wide each note is heard: at nought every note the same in both ears, at a hundred each its own ring. No note moves as others join it. | 137 | yes — both hands’, on what is heard alone, before the Output; every note in both ears whatever else is held, its left behind its right by up to a quarter of its own cycle, so a hundred is a lone note as it always was, fifty an eighth and nought mono; the rack's modules come after it, so a delay's or a reverb's own spread is theirs; the picture, Scan and the loop are the same to the bit at any setting; the input is heard as it comes; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it; while the Width is on what's drawn too it is put away, and the sound's own Width takes its place |
 | soundWidth | Width | The sound's own Width, saved with it, while the Width is on what's drawn too: the screen draws every note at it, and you hear what's drawn. | 139 | yes - the ring before its name says it is the sound's, as a gold dot says the host can move one; in the setup as soundWidth, so a preset, a code, undo and the morph move it, where the Width on what you hear is the player's and none of theirs; nought draws and plays every note the same on both sides, a hundred each its own ring |
