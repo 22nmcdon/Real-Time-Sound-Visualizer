@@ -6,7 +6,10 @@
 // render.cpp; a script in the format core/tests/tools/instrument_cpp.cpp
 // reads ("make", "midi" and "block"), then:
 //
-//   render <script> <out prefix> <width> [<map cells>]
+//   render <script> <out prefix> <width> [<chain>]
+//
+// <chain> is PaintParams::chain, the seconds within which a note struck alone
+// takes up the last one's stroke (0: every note a stroke of its own).
 //
 // Out, beside the prefix, as painting-step1's (.f32, .reads, .tables, .maps,
 // .cost), and:
@@ -37,6 +40,7 @@ int main(int argc, char** argv) {
   const bool paint = true;
   scope::PaintParams params;
   params.width = std::atof(argv[3]);
+  if (argc > 4) params.chain = std::atof(argv[4]);
   std::ifstream file(argv[1]);
   std::FILE* audio = std::fopen((prefix + ".f32").c_str(), "wb");
   std::FILE* reads = std::fopen((prefix + ".reads").c_str(), "w");

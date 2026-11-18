@@ -256,6 +256,12 @@ narrower. So a wider brush is wider for the sound too.
   frame, are strokes of their own. The strike presses as the study's did, rising over 15 ms
   and falling over 60, widening 6 per cent. It changes what a run sounds like at every width,
   since Scan reads the joined line; painting is off in the recordings, which are unchanged.
+  Heard at width 2 both ways: the run's tone moves a little (centroid 2.66 joined, 2.77
+  separate) and Crossed hands not at all. A melody at a note a second does not join - each
+  note is struck past the 0.45 s - and reads as a row of strokes, each heavy where it is
+  struck and dry where its note decays; not beads, since each paints the second it sounds.
+  Joining a note struck while the last one's key is still down, whatever the time, would make
+  a slow legato line one stroke too; that is the owner's to decide.
 - **The look draws the core's footprint**, its half width and tip in the core's cells
   (`uCell`), where before it computed a shorter tip of its own that laid about half the paint
   per length. Finer than the map, the look's only: four bristles to each of the core's eight
