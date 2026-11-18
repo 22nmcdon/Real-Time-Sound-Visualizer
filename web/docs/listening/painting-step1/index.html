@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painting, step 1</title>
+<!-- Painting, step 1 (web/docs/painting-design.md): the core paints, and Scan
+     and the Picture amount read the paint. The study's four phrases rendered
+     offline by the core, on the trace and painting with two dryings, for the
+     owner to judge by ear before anything is live. Made by page.py from
+     results.json, which render.py writes with the audio and the pictures. -->
+<style>
+  :root { --cream: #faf6f0; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
+          --line: #e4d9cc; --gold: #b08d57; --slate: #5c6488; }
+  body { background: var(--cream); color: var(--text); font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+  main { max-width: 1040px; margin: 0 auto; }
+  h1 { color: var(--charcoal); font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { color: var(--charcoal); font-size: 1.2rem; margin: 36px 0 6px; }
+  p { margin: 8px 0; }
+  .soft { color: var(--text-soft); }
+  .vers { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 12px 0; }
+  .ver { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .ver p { font-size: 0.85rem; margin: 6px 0 0; }
+  .tag { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); display: block; margin-bottom: 6px; }
+  audio { width: 100%; height: 32px; }
+  .pics { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  figure { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  figure img { display: block; max-width: 100%; height: auto; margin: 0 auto; image-rendering: pixelated; }
+  figure img.strip { margin-top: 12px; }
+  figcaption { font-size: 0.85rem; color: var(--text-soft); margin-top: 6px; }
+  table { border-collapse: collapse; width: 100%; background: var(--paper); border: 1px solid var(--line); margin-top: 12px; }
+  th, td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: left; font-size: 0.9rem; }
+  th { font-weight: 600; color: var(--charcoal); }
+  .scroll { overflow-x: auto; }
+  .key { display: inline-block; width: 0.9em; height: 0.9em; vertical-align: -0.1em; border-radius: 2px; }
+  code { font-size: 0.9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Painting, step 1</h1>
+  <p class="soft">18 Nov. The core now paints: from each voice it decides where a stroke goes, how wide, how wet and
+    which hand, and keeps a map of how much paint is where. Here Scan and the Picture amount read that map in place
+    of the trace. Nothing on the page has changed yet; these are offline renders by the instrument&rsquo;s own core, of
+    the painting study&rsquo;s four phrases, for you to judge by ear before step 2 puts it live.</p>
+
+  <h2>What you are hearing</h2>
+  <p><b>The canvas is a record.</b> Time goes clockwise from the top, one turn in 8 s, and pitch goes outward:
+    A0 a third of the way out, C8 at the edge, so a held note is an arc at its own radius and a chord is concentric arcs.
+    <b>Each note reads the ring at its own pitch</b> and plays a table of its own, so its tone is the paint in its
+    own register. Scan reads thickness, never colour, and wet paint reads 1.4 times as strong as dry. The paint fades
+    by a half-life of 16 s, two turns.</p>
+  <p><b>The Picture amount&rsquo;s three reads come off the paint.</b> Glow is wet coverage, Motion is paint being
+    laid, and Memory is new paint landing on old. They go through the picture stage as the trace&rsquo;s do, so
+    Responds to, Rise and Fall and Swell work as now. The Tine piano and the Drawbar organ are Settled presets at
+    Picture amount 0, so there you hear Scan alone. The Slow pad (100) and Crossed hands (47) hear the reads too.</p>
+  <p><b>Two dryings.</b> Yours: thin paint falls to a tenth wet in 2 s and a thick stroke in 6 s, smoothly by
+    thickness. Beside it is drying three times slower (6 s and 18 s), chosen because it is the setting that crosses
+    the turn: a thick stroke is still wet when the brush comes round 8 s later, so a held note merges into its own
+    start rather than laying over it dry. Through Scan the two differ only a little, since wet paint reads only 1.4
+    times dry. Where the Picture amount is up, the slower drying doubles Glow on Crossed hands (0.17 to 0.33) and
+    lifts it by half on the pad, which is the difference to listen for. A faster drying (0.5 s and 1.5 s) was rendered
+    too and moved Glow as far the other way, but you had already asked for slower than the study&rsquo;s 1.2 s.</p>
+  <p class="soft">In the pictures, thickness is grey (a thick stroke near black) and wet paint is blue over it, as far
+    as it is wet. Ink is the look only and never reaches the sound, so it is not drawn here.</p>
+
+  <h2>What the numbers mean</h2>
+  <p><b>Centroid</b> is the brightness of the table Scan reads, in harmonics. A sine is 1, around 2 is a mellow,
+    hollow tone and 3 is reedier. The bracket is the tenth and ninetieth percentile: how far it ranges.
+    <b>Movement</b> is how much the table changes from one sixtieth of a second to the next, from nought (still) to
+    one (replaced). Under about 0.005 you hear a steady tone; 0.02 and up shimmers or shifts. <b>Above the 8th</b> is
+    the share of energy past the eighth harmonic, which is harsh when large. <b>Glow</b>, <b>Motion</b> and
+    <b>Memory</b> are the stage&rsquo;s medians, what the Picture amount pushes with. The last column is where the paint
+    landed: into wet paint (merging), onto dry (layering) or on bare canvas. Painting reads one table a note, so its
+    numbers are over every sounding note; the trace reads one a hand.</p>
+
+<section><h2>Held pad</h2><p class=soft>Slow pad, Breathing, Picture amount 100: a Cmaj9 voicing (C3 G3 D4 E4 B4) held 9 s, 12 s in all. Held past one turn, so its strokes come back round over their own start.</p><div class=vers><div class=ver><span class=tag>Trace</span><audio controls preload="none" src="audio/pad-trace.mp3"></audio><p class=soft>As the instrument ships: Scan and the Picture amount read the trace.</p></div>
+<div class=ver><span class=tag>Paint</span><audio controls preload="none" src="audio/pad-paint.mp3"></audio><p class=soft>The owner&#x27;s drying: thin paint 2 s, a thick stroke 6 s.</p></div>
+<div class=ver><span class=tag>Paint, slow drying</span><audio controls preload="none" src="audio/pad-slow.mp3"></audio><p class=soft>Three times slower: 6 s and 18 s, so a thick stroke is still wet a turn later.</p></div></div><div class=pics><figure><img src="pictures/pad-paint.png" width="384" height="384" alt="The paint map at the end of the held pad, paint"><figcaption>Paint, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 1.77 against 1.14) and steadier note by note (movement 0.0050 against 0.0235).</figcaption><img class=strip src="pictures/pad-paint-strip.png" alt="Eight moments of the held pad painted, paint"><figcaption>Eight moments, at 0.0, 1.7, 3.4, 5.1, 6.8, 8.5, 10.2, 11.9 s.</figcaption></figure><figure><img src="pictures/pad-slow.png" width="384" height="384" alt="The paint map at the end of the held pad, paint, slow drying"><figcaption>Paint, slow drying, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 1.70 against 1.14) and steadier note by note (movement 0.0048 against 0.0235).</figcaption><img class=strip src="pictures/pad-slow-strip.png" alt="Eight moments of the held pad painted, paint, slow drying"><figcaption>Eight moments, at 0.0, 1.7, 3.4, 5.1, 6.8, 8.5, 10.2, 11.9 s.</figcaption></figure></div><div class=scroll><table><thead><tr><th></th><th>Centroid <span class=soft>(p10&ndash;p90)</span></th><th>Movement</th><th>Above the 8th</th><th>Glow</th><th>Motion</th><th>Memory</th><th>Into wet / onto dry / bare, %</th></tr></thead><tbody><tr><th>Trace</th><td>1.14 <span class=soft>(1.03&ndash;1.33)</span></td><td>0.0235</td><td>0.0%</td><td>0.63</td><td>0.63</td><td>0.18</td><td>&ndash;</td></tr>
+<tr><th>Paint</th><td>1.77 <span class=soft>(1.47&ndash;3.14)</span></td><td>0.0050</td><td>0.4%</td><td>0.35</td><td>0.38</td><td>0.10</td><td>11 / 1 / 87</td></tr>
+<tr><th>Paint, slow drying</th><td>1.70 <span class=soft>(1.44&ndash;2.95)</span></td><td>0.0048</td><td>0.3%</td><td>0.51</td><td>0.38</td><td>0.10</td><td>12 / 1 / 87</td></tr></tbody></table></div></section>
+<section><h2>Crossed hands</h2><p class=soft>The owner&#x27;s own setup code, Picture amount 47: the left hand&#x27;s chords under a right-hand run that quickens, then two grace notes after a breath, 15.5 s.</p><div class=vers><div class=ver><span class=tag>Trace</span><audio controls preload="none" src="audio/crossed-trace.mp3"></audio><p class=soft>As the instrument ships: Scan and the Picture amount read the trace.</p></div>
+<div class=ver><span class=tag>Paint</span><audio controls preload="none" src="audio/crossed-paint.mp3"></audio><p class=soft>The owner&#x27;s drying: thin paint 2 s, a thick stroke 6 s.</p></div>
+<div class=ver><span class=tag>Paint, slow drying</span><audio controls preload="none" src="audio/crossed-slow.mp3"></audio><p class=soft>Three times slower: 6 s and 18 s, so a thick stroke is still wet a turn later.</p></div></div><div class=pics><figure><img src="pictures/crossed-paint.png" width="384" height="384" alt="The paint map at the end of the crossed hands, paint"><figcaption>Paint, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 2.10 against 1.15) and moving about as much (movement 0.0050 against 0.0050).</figcaption><img class=strip src="pictures/crossed-paint-strip.png" alt="Eight moments of the crossed hands painted, paint"><figcaption>Eight moments, at 0.0, 2.2, 4.4, 6.6, 8.8, 11.0, 13.2, 15.4 s.</figcaption></figure><figure><img src="pictures/crossed-slow.png" width="384" height="384" alt="The paint map at the end of the crossed hands, paint, slow drying"><figcaption>Paint, slow drying, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 2.03 against 1.15) and moving about as much (movement 0.0049 against 0.0050).</figcaption><img class=strip src="pictures/crossed-slow-strip.png" alt="Eight moments of the crossed hands painted, paint, slow drying"><figcaption>Eight moments, at 0.0, 2.2, 4.4, 6.6, 8.8, 11.0, 13.2, 15.4 s.</figcaption></figure></div><div class=scroll><table><thead><tr><th></th><th>Centroid <span class=soft>(p10&ndash;p90)</span></th><th>Movement</th><th>Above the 8th</th><th>Glow</th><th>Motion</th><th>Memory</th><th>Into wet / onto dry / bare, %</th></tr></thead><tbody><tr><th>Trace</th><td>1.15 <span class=soft>(1.02&ndash;1.51)</span></td><td>0.0050</td><td>0.0%</td><td>0.54</td><td>0.17</td><td>0.26</td><td>&ndash;</td></tr>
+<tr><th>Paint</th><td>2.10 <span class=soft>(1.47&ndash;3.49)</span></td><td>0.0050</td><td>0.3%</td><td>0.17</td><td>0.14</td><td>0.04</td><td>6 / 1 / 93</td></tr>
+<tr><th>Paint, slow drying</th><td>2.03 <span class=soft>(1.44&ndash;3.48)</span></td><td>0.0049</td><td>0.3%</td><td>0.33</td><td>0.14</td><td>0.04</td><td>6 / 1 / 93</td></tr></tbody></table></div></section>
+<section><h2>Fast run</h2><p class=soft>Tine piano, Settled, Picture amount 0 and Scan at 50: C major from C4 to C5 and back three times at nine notes a second, swelling to each top, 7.2 s.</p><div class=vers><div class=ver><span class=tag>Trace</span><audio controls preload="none" src="audio/run-trace.mp3"></audio><p class=soft>As the instrument ships: Scan and the Picture amount read the trace.</p></div>
+<div class=ver><span class=tag>Paint</span><audio controls preload="none" src="audio/run-paint.mp3"></audio><p class=soft>The owner&#x27;s drying: thin paint 2 s, a thick stroke 6 s.</p></div>
+<div class=ver><span class=tag>Paint, slow drying</span><audio controls preload="none" src="audio/run-slow.mp3"></audio><p class=soft>Three times slower: 6 s and 18 s, so a thick stroke is still wet a turn later.</p></div></div><div class=pics><figure><img src="pictures/run-paint.png" width="384" height="384" alt="The paint map at the end of the fast run, paint"><figcaption>Paint, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 3.01 against 1.13) and steadier note by note (movement 0.0043 against 0.0289).</figcaption><img class=strip src="pictures/run-paint-strip.png" alt="Eight moments of the fast run painted, paint"><figcaption>Eight moments, at 0.0, 1.0, 2.0, 3.0, 4.1, 5.1, 6.1, 7.1 s.</figcaption></figure><figure><img src="pictures/run-slow.png" width="384" height="384" alt="The paint map at the end of the fast run, paint, slow drying"><figcaption>Paint, slow drying, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 3.00 against 1.13) and steadier note by note (movement 0.0042 against 0.0289).</figcaption><img class=strip src="pictures/run-slow-strip.png" alt="Eight moments of the fast run painted, paint, slow drying"><figcaption>Eight moments, at 0.0, 1.0, 2.0, 3.0, 4.1, 5.1, 6.1, 7.1 s.</figcaption></figure></div><div class=scroll><table><thead><tr><th></th><th>Centroid <span class=soft>(p10&ndash;p90)</span></th><th>Movement</th><th>Above the 8th</th><th>Glow</th><th>Motion</th><th>Memory</th><th>Into wet / onto dry / bare, %</th></tr></thead><tbody><tr><th>Trace</th><td>1.13 <span class=soft>(1.01&ndash;1.42)</span></td><td>0.0289</td><td>0.0%</td><td>0.76</td><td>0.62</td><td>0.00</td><td>&ndash;</td></tr>
+<tr><th>Paint</th><td>3.01 <span class=soft>(2.12&ndash;3.65)</span></td><td>0.0043</td><td>2.3%</td><td>0.44</td><td>0.62</td><td>0.18</td><td>34 / 0 / 66</td></tr>
+<tr><th>Paint, slow drying</th><td>3.00 <span class=soft>(2.10&ndash;3.64)</span></td><td>0.0042</td><td>2.3%</td><td>0.52</td><td>0.62</td><td>0.18</td><td>34 / 0 / 66</td></tr></tbody></table></div></section>
+<section><h2>Chord change</h2><p class=soft>Drawbar organ, Settled, Picture amount 0 and Scan at 14: Dm7 G7 Cmaj7 Am7, 2.5 s each, 11.6 s.</p><div class=vers><div class=ver><span class=tag>Trace</span><audio controls preload="none" src="audio/chords-trace.mp3"></audio><p class=soft>As the instrument ships: Scan and the Picture amount read the trace.</p></div>
+<div class=ver><span class=tag>Paint</span><audio controls preload="none" src="audio/chords-paint.mp3"></audio><p class=soft>The owner&#x27;s drying: thin paint 2 s, a thick stroke 6 s.</p></div>
+<div class=ver><span class=tag>Paint, slow drying</span><audio controls preload="none" src="audio/chords-slow.mp3"></audio><p class=soft>Three times slower: 6 s and 18 s, so a thick stroke is still wet a turn later.</p></div></div><div class=pics><figure><img src="pictures/chords-paint.png" width="384" height="384" alt="The paint map at the end of the chord change, paint"><figcaption>Paint, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 1.90 against 1.12) and steadier note by note (movement 0.0051 against 0.0198).</figcaption><img class=strip src="pictures/chords-paint-strip.png" alt="Eight moments of the chord change painted, paint"><figcaption>Eight moments, at 0.0, 1.6, 3.3, 4.9, 6.6, 8.2, 9.9, 11.5 s.</figcaption></figure><figure><img src="pictures/chords-slow.png" width="384" height="384" alt="The paint map at the end of the chord change, paint, slow drying"><figcaption>Paint, slow drying, at the phrase&rsquo;s end. Scan&#x27;s tone is brighter than the trace (centroid 1.87 against 1.12) and steadier note by note (movement 0.0050 against 0.0198).</figcaption><img class=strip src="pictures/chords-slow-strip.png" alt="Eight moments of the chord change painted, paint, slow drying"><figcaption>Eight moments, at 0.0, 1.6, 3.3, 4.9, 6.6, 8.2, 9.9, 11.5 s.</figcaption></figure></div><div class=scroll><table><thead><tr><th></th><th>Centroid <span class=soft>(p10&ndash;p90)</span></th><th>Movement</th><th>Above the 8th</th><th>Glow</th><th>Motion</th><th>Memory</th><th>Into wet / onto dry / bare, %</th></tr></thead><tbody><tr><th>Trace</th><td>1.12 <span class=soft>(1.04&ndash;1.24)</span></td><td>0.0198</td><td>0.0%</td><td>0.63</td><td>0.47</td><td>0.16</td><td>&ndash;</td></tr>
+<tr><th>Paint</th><td>1.90 <span class=soft>(1.47&ndash;2.83)</span></td><td>0.0051</td><td>0.4%</td><td>0.40</td><td>0.51</td><td>0.16</td><td>21 / 1 / 78</td></tr>
+<tr><th>Paint, slow drying</th><td>1.87 <span class=soft>(1.44&ndash;2.80)</span></td><td>0.0050</td><td>0.4%</td><td>0.53</td><td>0.52</td><td>0.16</td><td>21 / 1 / 78</td></tr></tbody></table></div></section>
+
+  <h2>What it costs</h2>
+  <p>A held chord of sixteen voices: the instrument takes 0.168 s of one core for each second of audio on the trace,
+    and 0.185 s painting (best of three, natively, on the cloud machine these were made on). That is about 0.35
+    microseconds a sample more, under 2 per cent of a core. Over these phrases, against the trace: held pad -11%, crossed hands -10%, fast run +11%, chord change +14%, each one run, so within
+    the run-to-run noise of a shared machine. The painter runs once a picture frame
+    (sixty a second), and the voices&rsquo; own tables cost one ring read and one table each, a frame.</p>
+  <p class="soft">Made by <code>render.py</code> (and <code>render.cpp</code>, the core playing the script) and then
+    <code>page.py</code>, beside this page; every number is in <code>results.json</code>. The audio is MP3 at 64 kbps.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,342 @@
+{
+ "chords": {
+  "paint": {
+   "glow": 0.397,
+   "glow_p90": 0.53,
+   "into_wet": 0.208,
+   "memory": 0.163,
+   "memory_p90": 0.216,
+   "motion": 0.513,
+   "motion_p90": 0.651,
+   "onto_bare": 0.779,
+   "onto_dry": 0.013,
+   "realtime": 0.0868,
+   "scan": {
+    "centroid": 1.9,
+    "centroid_p10": 1.47,
+    "centroid_p90": 2.83,
+    "high": 0.004,
+    "movement": 0.0051,
+    "movement_p90": 0.0116,
+    "readings": 2380,
+    "sine": 0.533
+   },
+   "strip_times": [
+    0.0,
+    1.6,
+    3.3,
+    4.9,
+    6.6,
+    8.2,
+    9.9,
+    11.5
+   ]
+  },
+  "slow": {
+   "glow": 0.53,
+   "glow_p90": 0.635,
+   "into_wet": 0.211,
+   "memory": 0.163,
+   "memory_p90": 0.215,
+   "motion": 0.515,
+   "motion_p90": 0.651,
+   "onto_bare": 0.779,
+   "onto_dry": 0.01,
+   "realtime": 0.0885,
+   "scan": {
+    "centroid": 1.87,
+    "centroid_p10": 1.44,
+    "centroid_p90": 2.8,
+    "high": 0.004,
+    "movement": 0.005,
+    "movement_p90": 0.0115,
+    "readings": 2380,
+    "sine": 0.533
+   },
+   "strip_times": [
+    0.0,
+    1.6,
+    3.3,
+    4.9,
+    6.6,
+    8.2,
+    9.9,
+    11.5
+   ]
+  },
+  "trace": {
+   "glow": 0.627,
+   "glow_p90": 0.918,
+   "memory": 0.159,
+   "memory_p90": 0.445,
+   "motion": 0.468,
+   "motion_p90": 0.535,
+   "realtime": 0.076,
+   "scan": {
+    "centroid": 1.12,
+    "centroid_p10": 1.04,
+    "centroid_p90": 1.24,
+    "high": 0.0,
+    "movement": 0.0198,
+    "movement_p90": 0.0679,
+    "readings": 681,
+    "sine": 0.902
+   }
+  }
+ },
+ "crossed": {
+  "paint": {
+   "glow": 0.169,
+   "glow_p90": 0.407,
+   "into_wet": 0.06,
+   "memory": 0.037,
+   "memory_p90": 0.05,
+   "motion": 0.145,
+   "motion_p90": 0.45,
+   "onto_bare": 0.931,
+   "onto_dry": 0.009,
+   "realtime": 0.1595,
+   "scan": {
+    "centroid": 2.1,
+    "centroid_p10": 1.47,
+    "centroid_p90": 3.49,
+    "high": 0.003,
+    "movement": 0.005,
+    "movement_p90": 0.0125,
+    "readings": 3276,
+    "sine": 0.491
+   },
+   "strip_times": [
+    0.0,
+    2.2,
+    4.41,
+    6.6,
+    8.8,
+    11.01,
+    13.21,
+    15.41
+   ]
+  },
+  "slow": {
+   "glow": 0.334,
+   "glow_p90": 0.531,
+   "into_wet": 0.06,
+   "memory": 0.037,
+   "memory_p90": 0.05,
+   "motion": 0.145,
+   "motion_p90": 0.451,
+   "onto_bare": 0.931,
+   "onto_dry": 0.009,
+   "realtime": 0.1529,
+   "scan": {
+    "centroid": 2.03,
+    "centroid_p10": 1.44,
+    "centroid_p90": 3.48,
+    "high": 0.003,
+    "movement": 0.0049,
+    "movement_p90": 0.0115,
+    "readings": 3276,
+    "sine": 0.509
+   },
+   "strip_times": [
+    0.0,
+    2.2,
+    4.41,
+    6.6,
+    8.8,
+    11.01,
+    13.21,
+    15.41
+   ]
+  },
+  "trace": {
+   "glow": 0.536,
+   "glow_p90": 1.0,
+   "memory": 0.26,
+   "memory_p90": 0.387,
+   "motion": 0.174,
+   "motion_p90": 0.552,
+   "realtime": 0.177,
+   "scan": {
+    "centroid": 1.15,
+    "centroid_p10": 1.02,
+    "centroid_p90": 1.51,
+    "high": 0.0,
+    "movement": 0.005,
+    "movement_p90": 0.0371,
+    "readings": 1830,
+    "sine": 0.883
+   }
+  }
+ },
+ "pad": {
+  "paint": {
+   "glow": 0.348,
+   "glow_p90": 0.536,
+   "into_wet": 0.113,
+   "memory": 0.1,
+   "memory_p90": 0.142,
+   "motion": 0.379,
+   "motion_p90": 0.411,
+   "onto_bare": 0.873,
+   "onto_dry": 0.014,
+   "realtime": 0.1104,
+   "scan": {
+    "centroid": 1.77,
+    "centroid_p10": 1.47,
+    "centroid_p90": 3.14,
+    "high": 0.004,
+    "movement": 0.005,
+    "movement_p90": 0.0096,
+    "readings": 3145,
+    "sine": 0.595
+   },
+   "strip_times": [
+    0.0,
+    1.7,
+    3.41,
+    5.1,
+    6.8,
+    8.5,
+    10.21,
+    11.9
+   ]
+  },
+  "slow": {
+   "glow": 0.506,
+   "glow_p90": 0.646,
+   "into_wet": 0.115,
+   "memory": 0.1,
+   "memory_p90": 0.142,
+   "motion": 0.383,
+   "motion_p90": 0.413,
+   "onto_bare": 0.873,
+   "onto_dry": 0.012,
+   "realtime": 0.1267,
+   "scan": {
+    "centroid": 1.7,
+    "centroid_p10": 1.44,
+    "centroid_p90": 2.95,
+    "high": 0.003,
+    "movement": 0.0048,
+    "movement_p90": 0.0087,
+    "readings": 3145,
+    "sine": 0.63
+   },
+   "strip_times": [
+    0.0,
+    1.7,
+    3.41,
+    5.1,
+    6.8,
+    8.5,
+    10.21,
+    11.9
+   ]
+  },
+  "trace": {
+   "glow": 0.627,
+   "glow_p90": 0.909,
+   "memory": 0.176,
+   "memory_p90": 0.344,
+   "motion": 0.634,
+   "motion_p90": 0.673,
+   "realtime": 0.1242,
+   "scan": {
+    "centroid": 1.14,
+    "centroid_p10": 1.03,
+    "centroid_p90": 1.33,
+    "high": 0.0,
+    "movement": 0.0235,
+    "movement_p90": 0.0789,
+    "readings": 705,
+    "sine": 0.89
+   }
+  }
+ },
+ "run": {
+  "paint": {
+   "glow": 0.437,
+   "glow_p90": 0.483,
+   "into_wet": 0.342,
+   "memory": 0.182,
+   "memory_p90": 0.244,
+   "motion": 0.623,
+   "motion_p90": 0.919,
+   "onto_bare": 0.658,
+   "onto_dry": 0.0,
+   "realtime": 0.0751,
+   "scan": {
+    "centroid": 3.01,
+    "centroid_p10": 2.12,
+    "centroid_p90": 3.65,
+    "high": 0.023,
+    "movement": 0.0043,
+    "movement_p90": 0.0123,
+    "readings": 1614,
+    "sine": 0.408
+   },
+   "strip_times": [
+    0.0,
+    1.01,
+    2.0,
+    3.01,
+    4.1,
+    5.1,
+    6.1,
+    7.1
+   ]
+  },
+  "slow": {
+   "glow": 0.52,
+   "glow_p90": 0.572,
+   "into_wet": 0.342,
+   "memory": 0.182,
+   "memory_p90": 0.244,
+   "motion": 0.623,
+   "motion_p90": 0.919,
+   "onto_bare": 0.658,
+   "onto_dry": 0.0,
+   "realtime": 0.0803,
+   "scan": {
+    "centroid": 3.0,
+    "centroid_p10": 2.1,
+    "centroid_p90": 3.64,
+    "high": 0.023,
+    "movement": 0.0042,
+    "movement_p90": 0.0121,
+    "readings": 1614,
+    "sine": 0.414
+   },
+   "strip_times": [
+    0.0,
+    1.01,
+    2.0,
+    3.01,
+    4.1,
+    5.1,
+    6.1,
+    7.1
+   ]
+  },
+  "trace": {
+   "glow": 0.762,
+   "glow_p90": 0.871,
+   "memory": 0.0,
+   "memory_p90": 0.039,
+   "motion": 0.62,
+   "motion_p90": 0.995,
+   "realtime": 0.0675,
+   "scan": {
+    "centroid": 1.13,
+    "centroid_p10": 1.01,
+    "centroid_p90": 1.42,
+    "high": 0.0,
+    "movement": 0.0289,
+    "movement_p90": 0.2445,
+    "readings": 415,
+    "sine": 0.893
+   }
+  }
+ }
+}

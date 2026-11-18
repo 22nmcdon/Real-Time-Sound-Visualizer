@@ -91,6 +91,69 @@ what is there, so it reshapes the sound from the painting's history), **Splatter
 5. **Palettes** (made ones in a product table in `DESIGN.md`, and the player's own),
    **saving a painting and loading one as a sound**, and **Colour heard**.
 
+## What step 1 built (18 Nov)
+
+The core paints; nothing on the page has changed. `core/include/scope/paint.h` is four
+pieces, each swappable without touching the next: **layout → strokes → paint map → reads**.
+Painting is an internal switch, `Instrument::setPainting`, with its settings in
+`PaintParams` (defaults below); the Trace · Paint switch and its setup field are step 2's.
+Off, none of it runs, and the core's recordings are unchanged to the bit.
+
+- **The layout** (`PaintLayout`) answers two questions: where a brush sounding a pitch is at
+  a time, and which ring a note at a pitch reads. `RoundLayout` is the owner's of 18 Nov:
+  clockwise from the top, one turn in 8 s, pitch outward on a log scale with A0 a third of
+  the way to the outermost radius (0.47 of the canvas: the record's hole) and C8 at it.
+  **A new layout is a class with those two answers, handed to `Painter::setLayout`**;
+  nothing else changes. The brushwork asks it where, and the reads ask it which ring. A
+  layout whose notes should read something other than a circle would widen `PaintRing` into
+  a path, which the reads already take point by point. The pieces hold that a second
+  layout (round turned a quarter) moves only where paint lands: the map turned back
+  matches to 1.4 per cent of its paint, from where stamps meet the cells, and the reads and
+  every note's table agree to 0.004.
+- **The strokes.** Each sounding voice is a brush with eight bristle groups. Striking the
+  note dips it, by more for velocity times the hand's Strike, and presses it wider for
+  60 ms. While the key is down the brush is fed by the voice's level, so a held note paints
+  an unbroken arc; once the key is let go it runs dry. It spends its load as it lays and
+  feathers as it lifts, a nearly empty group catches only on high paint, and it **picks wet
+  paint up and carries it on**. That is the pick-up the graphics-card test cut, here kept on
+  the bristles' tips apart from the load (web/README.md says why). Width and pressure are
+  the voice's level to the 0.7. Each frame's stamps, with the hand that made them, are kept
+  for step 2's look (`Painter::stamps`).
+- **The map** is 128 cells square, so a semitone is about half a cell, holding thickness
+  and wetness. Paint dries smoothly by thickness: to a tenth wet in 2 s thin and in 6 s
+  thick (a loud, loaded stroke, about one unit), smoothstep between. It **fades by a
+  half-life of 16 s** (`fade`, two turns), which is what step 2 shows as Persistence while
+  Paint is chosen. A half-life, because the Persistence knob already reads in one. Over
+  wet paint new paint mixes; over dry it covers by its opacity, as in the study.
+- **The reads.** Each voice reads the ring at its own pitch into a table of its own: the
+  field there (thickness, wet paint 1.4 times dry, `wetRead`), a little across the ring,
+  smoothed *along* it by Scan's Softness. Along and not across, because across is the next
+  register: the trace's blur, applied here, would read a note's neighbours a fifth away.
+  The voice plays its own table where it played the layer's, at the layer's depth and
+  hold. Until its brush has read once (a frame or two) it plays its ink, which is a short
+  attack of plain tone. The Picture amount's three reads come off the map: Glow from wet
+  coverage (a quarter of the canvas wet reads one, as the trace's cover does), Motion
+  from paint laid, and Memory from the share of it landing on paint already there (not
+  its own stroke). They go through the picture stage's own Responds to, Rise and Fall,
+  Swell and hold (`PictureStage::stepPaint`). Running away is paint covering more than
+  0.35 of the canvas, the trace's saturation. One canvas: while painting, the hands' own
+  pictures are not used.
+- **Known limits.** Only Poly's voices paint; Mono and Dyad play through the generator's
+  own path, which has no voices to give brushes, and stay plain while painting. Up to 32
+  voices paint at once; past that a voice plays its ink. The settings are not stored and
+  not on any control.
+- **Cost.** A held chord of sixteen costs 0.168 s of a core a second on the trace and 0.185
+  painting, natively (`paint_cpp cost`): about 0.35 microseconds a sample more, inside the
+  core's budget with room. The governor's model does not count painting yet. At under
+  2 per cent of a core for sixteen voices it need not, but step 2 should time it as
+  WebAssembly in the plugin's webview before calling that settled.
+- **Heard.** `web/docs/listening/painting-step1/` has the study's four phrases on the
+  trace, painting, and painting with drying three times slower (6 s and 18 s: the setting
+  that crosses the turn, so a held note's next lap lands in wet paint). Through Scan,
+  painting reads brighter than the trace (centroid 1.7 to 3.0 against about 1.13) and
+  steadier note by note (movement about 0.005 against 0.02). The slower drying is heard
+  mostly through Glow, which it doubles on Crossed hands.
+
 Still open, for when the first build is seen: the drying time (the study used 1.2 s; the
 owner wanted it slower, drying smoothly from thin to thick), whether a dark ground is
 allowed, and whether a palette may trade separation for character.

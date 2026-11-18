@@ -7254,3 +7254,22 @@ handle - copies the amp's four in, applies the edit, and sets `menvOwn` (`menvAd
 Reset, two presses, and *Follow* set it back (`menvFollowAmp`, `knobReset`). `setControl`,
 which suites use, is no hand and adopts nothing: a suite that wants it its own sets the
 checkbox.
+
+## The core paints, and two traps on the way (18 Nov)
+
+Painting's step 1 is in the core only (`core/include/scope/paint.h`, held by
+`core/tests/pieces/painting.py`, heard on `web/docs/listening/painting-step1/`). The page
+is untouched and the switch is internal (`Instrument::setPainting`), so nothing here
+changes until step 2. Two things learned building it:
+
+- **A mutant that does not compile is not a mutant that survived.** The pieces'
+  `PIECES_INCLUDE` builds every tool with `-Werror`, so a mutation that leaves a variable
+  unused (here, reading every note's ring at 220 Hz, which left `hz` unread) fails to build,
+  and a harness that only greps the output for `FAIL` reports it green. Read the exit code,
+  or make the mutation keep the variable in use (`220 + 0 * hz`), before believing a
+  survivor.
+- **The study's dry-brush rule swallows picked-up paint.** A bristle group under half a
+  load lays only where the paint stands above the brush's mean, so a nearly empty brush
+  that picked wet paint up could never put it down on bare canvas: the pick-up, restored,
+  did nothing measurable. What a brush picks up is kept apart, on the tips (`carry`), and
+  smears on wherever they touch, while the brush's own load keeps the dry-brush rule.
