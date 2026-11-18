@@ -76,6 +76,20 @@ struct PaintParams {
   double wetRead = 0.4;     // how much stronger fully wet paint reads than dry
   // How fast paint laid is a full Motion: thickness per cell of the canvas per second.
   double motionFull = 0.012;
+  /* The brush's base width, over today's (paint-width, 18 Nov): one is the
+     width step 2 shipped, a brush one to four cells across by its pressure.
+     Internal, for the owner to choose between by ear and eye
+     (web/docs/listening/paint-width/); the look draws whatever the stamps
+     say, so a wider brush is wider for the sound and the picture alike. */
+  double width = 1;
+  /* A melody is one stroke (the study's rule, paint.phrases): a hand's next
+     note struck alone within this many seconds of its last strike takes up
+     that note's brush where it is - the same stroke, dipped again by the
+     strike - so a run is a line in and out across the turn rather than a
+     row of dabs, one a note, which is what the owner saw as beads (18 Nov).
+     Nought: every note a stroke of its own, as step 2 painted. A chord's
+     notes, struck together, are strokes of their own either way. */
+  double chain = 0.45;
 };
 
 // ---- The layout -------------------------------------------------------------
@@ -194,6 +208,11 @@ struct PaintBrush {
   // Wet paint picked up off the canvas, on the bristles' tips, laid on further along whatever the brush's own load.
   std::array<double, kPaintBins> carry {};
   std::size_t slot = 0;              // its table slot
+  // Its stroke taken up by a later note (PaintParams::chain): it lays no more, and goes on reading its ring.
+  bool handed = false;
+  int from = -1;                     // the brush whose stroke it took up, while that one sounds
+  double level = 0;                  // its voice's level at its last frame
+  double hz = 0;                     // the pitch it is at: a stroke taken up glides to its new note's
 };
 
 // What the map says this frame, for the picture stage.
@@ -260,14 +279,26 @@ class Painter {
     int low = 1000;
     for (std::size_t i = 0; i < count; i++) if (notes[i].level > 0) low = std::min(low, notes[i].note);
     for (auto& b : brushes_) b.live = false;  // marked again below for every note still sounding
+    // A layer striking more than one note this frame strikes a chord: its notes are strokes of their own.
+    std::array<int, 2> fresh {};
+    for (std::size_t i = 0; i < count; i++)
+      if (notes[i].layer >= 0 && notes[i].layer < 2 && !find(notes[i].layer, notes[i].id)) fresh[static_cast<std::size_t>(notes[i].layer)]++;
     for (std::size_t i = 0; i < count; i++) {
-      PaintBrush* b = brushOf(notes[i], t, low);
+      PaintBrush* b = brushOf(notes[i], t, low, fresh[static_cast<std::size_t>(std::clamp(notes[i].layer, 0, 1))] == 1);
       if (!b) continue;
       b->live = true;
       stroke(*b, notes[i], t, dt);
     }
     // Brushes whose voices are gone let go of their slots.
-    for (auto& b : brushes_) if (!b.live && b.serial) { slots_[b.slot].owner = 0; b.serial = 0; }
+    for (auto& b : brushes_) {
+      if (b.live || !b.serial) continue;
+      // The hand's latest stroke, kept as it lifts, so a note struck soon after takes it up (PaintParams::chain).
+      if (!b.handed && b.layer >= 0 && b.layer < 2) {
+        PaintBrush& kept = lifted_[static_cast<std::size_t>(b.layer)];
+        if (!kept.serial || b.bornAt >= kept.bornAt) { kept = b; kept.from = -1; }
+      }
+      slots_[b.slot].owner = 0; b.serial = 0;
+    }
     measure(dt);
   }
 
@@ -299,7 +330,10 @@ class Painter {
   }
 
   // Clear (step 2): the canvas wiped, as the trace's Clear wipes its grid; the brushes go on.
-  void clear() { map_.clear(); }
+  void clear() { map_.clear(); lifted_ = {}; }
+
+  // The base width (PaintParams::width), internal: the owner's three to choose between.
+  void setWidth(double width) { if (std::isfinite(width) && width > 0) p_.width = width; }
 
   // The fade, a half-life in seconds, as the setup's paintPersistence sets it (step 2).
   void setFade(double seconds) { if (std::isfinite(seconds) && seconds > 0) p_.fade = seconds; }
@@ -415,7 +449,7 @@ class Painter {
   }
 
   // The voice's brush, made and dipped the first frame it sounds.
-  PaintBrush* brushOf(const PaintNote& v, double t, int low) {
+  PaintBrush* brushOf(const PaintNote& v, double t, int low, bool alone) {
     const int layer = v.layer;
     if (PaintBrush* b = find(layer, v.id)) return b;
     PaintBrush* b = nullptr;
@@ -424,8 +458,30 @@ class Painter {
     std::size_t slot = kPaintBrushes;
     for (std::size_t s = 0; s < kPaintBrushes; s++) if (!slots_[s].owner) { slot = s; break; }
     if (slot == kPaintBrushes) return nullptr;
+    // The hand's last strike, if this note is struck alone soon enough after it to go on with its stroke.
+    // Its brush may still be sounding, or have lifted already (a short note), which is kept for the purpose.
+    PaintBrush* live = nullptr;
+    const PaintBrush* from = nullptr;
+    if (alone && p_.chain > 0 && layer >= 0 && layer < 2) {
+      for (auto& c : brushes_)
+        if (c.serial && &c != b && c.layer == layer && !c.handed && c.placed && (!live || c.bornAt > live->bornAt)) live = &c;
+      const PaintBrush& lifted = lifted_[static_cast<std::size_t>(layer)];
+      from = live;
+      if (lifted.serial && (!from || lifted.bornAt > from->bornAt)) { from = &lifted; live = nullptr; }
+      if (from && !(t - from->bornAt >= kChordSeconds && t - from->bornAt <= p_.chain)) from = live = nullptr;
+    }
+    const PaintBrush was = from ? *from : PaintBrush {};
     *b = {};
     b->serial = ++serials_;
+    if (from) {
+      // The same stroke: its serial (its own paint is not dragged, and the look carries its colour on), where it is,
+      // what it holds and carries; the old note's brush, if it still sounds, lays no more.
+      b->serial = was.serial;
+      b->x = was.x; b->y = was.y; b->placed = true;
+      b->load = was.load; b->carry = was.carry; b->hz = was.hz;
+      if (live) { live->handed = true; b->from = static_cast<int>(live - brushes_.data()); }
+      lifted_[static_cast<std::size_t>(layer)].serial = 0;
+    }
     b->layer = layer; b->born = v.id; b->note = v.note; b->slot = slot; b->bornAt = t;
     // Its ink against the lowest note sounding, round the circle of fifths: a unison, fifth or fourth
     // the hand's own, a second, third, sixth or minor seventh related, a semitone or tritone a clash.
@@ -436,21 +492,32 @@ class Painter {
     for (auto& s : struck_) {
       if (s.at >= 0 && s.note == v.note && (s.layers & (1 << layer))) { b->impact = s.impact; s.at = -1; break; }
     }
-    const double dip = kDipBase + kDipStrike * b->impact;
+    // A note going on with a stroke dips less than a stroke's first (the study's 0.4 of a first dip, before the strike's).
+    const double dip = kDipBase * (from ? 0.4 : 1.0) + kDipStrike * b->impact;
     for (int k = 0; k < kPaintBins; k++) {
       const auto ki = static_cast<std::size_t>(k);
       b->share[ki] = 0.45 + 0.55 * paintHash(static_cast<std::uint32_t>(b->serial) * 977u + static_cast<std::uint32_t>(k) * 31u + 7u);
-      b->load[ki] = std::min(kLoadMost, dip * b->share[ki]);
+      // Dipped again, a stroke going on keeps what it held (the study's: dipping does not wipe the brush).
+      b->load[ki] = std::min(kLoadMost, (from ? b->load[ki] : 0) + dip * b->share[ki]);
     }
     return b;
   }
 
   /* One frame of a brush: fed while its key is down, moved to where its pitch
      is now, stamping every 0.35 of a cell. Its pressure is the voice's level
-     to the 0.7, as the study's width was, so a note tapers as it fades; a
-     hard strike presses it wider for 60 ms. */
+     to the 0.7, as the study's width was, so a note tapers as it fades - on
+     a stroke taken up from another note, the louder of the two, as the
+     study's path took it, so the line does not pinch where one note gives
+     way to the next; a hard strike presses it, rising over 15 ms and falling
+     over 60, and widens it a little (the study's: a sudden jump in width,
+     as step 2 had, read as a notch cut in the stroke, and a run as beads). */
   void stroke(PaintBrush& b, const PaintNote& v, double t, double dt) {
-    const double level = std::clamp(v.level, 0.0, 1.0);
+    b.level = std::clamp(v.level, 0.0, 1.0);
+    double level = b.level;
+    if (b.from >= 0) {
+      const PaintBrush& f = brushes_[static_cast<std::size_t>(b.from)];
+      if (f.serial == b.serial && f.handed) level = std::max(level, f.level); else b.from = -1;
+    }
     const double p = std::pow(level, 0.7);
     if (v.held) {
       const double k = 1 - std::exp(-dt / kFeedTime);
@@ -460,13 +527,21 @@ class Painter {
         if (b.load[ii] < want) b.load[ii] += (want - b.load[ii]) * k;
       }
     }
-    const PaintPoint at = layout_->at(t, v.hz);
+    /* Where it goes: its note's pitch, but a stroke taken up from another
+       note glides there over about 40 ms rather than jumping in a frame,
+       which drew a run as a staircase (the study smoothed its path over
+       25 ms, knowing the next note; here only the last is known). */
+    if (!(b.hz > 0) || !(v.hz > 0)) b.hz = v.hz;
+    else b.hz *= std::pow(v.hz / b.hz, 1 - std::exp(-dt / kGlideSeconds));
+    const PaintPoint at = layout_->at(t, b.hz);
     const double x = at.x * kPaintN, y = at.y * kPaintN;
     if (!b.placed) { b.x = x; b.y = y; b.placed = true; }
     const double dx = x - b.x, dy = y - b.y, len = std::hypot(dx, dy);
-    const double bulge = t - b.bornAt < kImpactSeconds ? 1 + kImpactWiden * b.impact : 1;
-    const double w = (kWidthLeast + kWidthPress * p) * bulge;
-    if (!(p > 0.02)) { b.x = x; b.y = y; return; }
+    const double since = std::max(0.0, t - b.bornAt);
+    const double bump = (1 - std::exp(-since / kImpactRise)) * std::exp(-since / kImpactFall) * b.impact * 1.6;
+    const double bulge = 1 + kImpactPress * bump;
+    const double w = (kWidthLeast + kWidthPress * p) * (1 + kImpactWiden * bump) * p_.width;
+    if (!(p > 0.02) || b.handed) { b.x = x; b.y = y; return; }
     const int steps = std::max(1, static_cast<int>(std::ceil(len / kSpacing)));
     const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
     for (int s = 1; s <= steps; s++) {
@@ -635,7 +710,8 @@ class Painter {
   static constexpr double kDipBase = 0.8, kDipStrike = 1.2, kLoadMost = 2.5;
   static constexpr double kFeed = 1.6, kFeedTime = 0.25;
   static constexpr double kWidthLeast = 1.0, kWidthPress = 3.0, kSpacing = 0.35;
-  static constexpr double kImpactSeconds = 0.06, kImpactWiden = 0.8, kOwnSeconds = 1.5;
+  static constexpr double kChordSeconds = 0.04, kGlideSeconds = 0.04;  // strikes closer than this are one chord (the study's)
+  static constexpr double kImpactRise = 0.015, kImpactFall = 0.06, kImpactPress = 0.6, kImpactWiden = 0.06, kOwnSeconds = 1.5;
   static constexpr int kDrySteps = 32;
 
   PaintParams p_;
@@ -644,6 +720,7 @@ class Painter {
   PaintCover cover_;
   PaintReads reads_, acc_;  // the last frame's reads, and what is being laid towards the next
   std::array<PaintBrush, kPaintBrushes> brushes_ {};
+  std::array<PaintBrush, 2> lifted_ {};  // each hand's last stroke as it lifted
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;

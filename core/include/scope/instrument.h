@@ -766,6 +766,14 @@ class Instrument {
     setDraws(*brain_, on ? "paint" : "trace");
     if (on) switchPaint(true);
   }
+  /* The brush's base width (PaintParams::width, paint-width, 18 Nov): internal,
+     for the owner to judge three widths by; nothing stores it. Keeps the
+     painting, so it may be set while playing. */
+  void setPaintWidth(double width) {
+    if (!(std::isfinite(width) && width > 0)) return;
+    paintParams_.width = width;
+    painter_->setWidth(width);
+  }
   const Painter* painter() const { return paintOn_ ? painter_.get() : nullptr; }
   Painter* painter() { return paintOn_ ? painter_.get() : nullptr; }
   bool painting() const { return paintOn_; }

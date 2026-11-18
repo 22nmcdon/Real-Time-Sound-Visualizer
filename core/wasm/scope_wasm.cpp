@@ -662,6 +662,8 @@ EXPORT(brain_paint) int brainPaint(double since) {
   paintFrom = static_cast<double>(from);
   return static_cast<int>(n);
 }
+// The brush's base width, internal (paint-width): for the cost of each width as WebAssembly, and nothing stores it.
+EXPORT(brain_paint_width) void brainPaintWidth(double width) { instrument->setPaintWidth(width); }
 EXPORT(brain_paint_from) double brainPaintFrom() { return paintFrom; }
 EXPORT(brain_paint_stamps) float* brainPaintStamps() { return paintCopy.data(); }
 EXPORT(brain_paint_map) float* brainPaintMap() { instrument->paintMapServed(paintMapCopy.data()); return paintMapCopy.data(); }

@@ -31,9 +31,15 @@
 //   line MODE              A3 held in Mono, or A3 and E4 in Dyad, painting: the paint's radius
 //                          and how much lies within a cell of each note's ring, and whether
 //                          the layer plays a painted table
+//   chain [SECONDS [WIDTH]]  a run of eleven short notes struck alone, painting, with a melody's notes one stroke
+//                          if struck within SECONDS (PaintParams::chain; 0 each its own stroke): how much of the
+//                          run's arc has paint, the longest stretch without (degrees), the arc's degrees, and
+//                          its thinnest tenth over its median (how deep it dips between notes)
+//   width WIDTH            A3 held at a base width: the map's spread across its ring and the core's own contact
+//                          half-width at the last stamp, both in cells, and the ring's radius
 //   served                 the strokes the face is served: the count, the last frame's stamps
 //                          against the ring's newest, and a read from the count itself
-//   cost SECONDS           a chord of sixteen held, trace and painting, the best of three
+//   cost SECONDS [WIDTH]   a chord of sixteen held, trace and painting (at a base width), the best of three
 //                          runs: the instrument's seconds per second of audio
 #include <algorithm>
 #include <chrono>
@@ -196,10 +202,12 @@ double tablesDiff(const std::vector<std::vector<double>>& a, const std::vector<s
   return d;
 }
 
-double costOf(bool paint, double seconds) {
+double costOf(bool paint, double seconds, double width = 1) {
   double best = 1e9;
+  PaintParams params;
+  params.width = width;
   for (int run = 0; run < 3; run++) {
-    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"pictureAmount":50,"atk":2,"sus":80,"rel":400})", paint);
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"pictureAmount":50,"atk":2,"sus":80,"rel":400})", paint, params);
     std::vector<std::vector<std::uint8_t>> chord;
     for (int k = 0; k < 16; k++) chord.push_back({ 0x90, static_cast<std::uint8_t>(36 + 3 * k), 90 });
     p.blocks(0.5, chord);
@@ -413,6 +421,67 @@ int main(int argc, char** argv) {
     const double hz = hzOf(57), fifth = hzOf(64);
     std::printf("%d %.4f %.4f %.4f %d\n", p.in.painting() ? 1 : 0, radiusOfMap(p.in.painter()->map()), near(hz), near(fifth),
                 p.in.generator().scanTable(0) ? 1 : 0);
+  } else if (cmd == "chain") {
+    // A run of short notes in Poly, each struck alone a ninth of a second after the last, painting; chain on (1) or off (0).
+    PaintParams params;
+    params.chain = argc > 2 ? std::atof(argv[2]) : params.chain;
+    params.width = argc > 3 ? std::atof(argv[3]) : 1;
+    // Plucked: a short release, so a note's own stroke ends soon after its key, as Tine piano's does.
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"pictureAmount":50,"atk":2,"dec":300,"sus":60,"rel":30})", true, params);
+    const int scale[] = { 60, 62, 64, 65, 67, 69, 71, 72, 71, 69, 67 };
+    const double t0 = 0;
+    for (const int n : scale) {
+      p.blocks(0.06, { { 0x90, static_cast<std::uint8_t>(n), 100 } });
+      p.blocks(1.0 / 9 - 0.06, { { 0x80, static_cast<std::uint8_t>(n), 0 } });
+    }
+    p.blocks(0.05, { { 0x80, 67, 0 } });
+    const double t1 = 11.0 / 9;
+    // Along the run's turn, a bin of a degree at a time: the most paint across the canvas's radius in it.
+    const auto& m = p.in.painter()->map();
+    const double turn = p.in.painter()->params().turn;
+    const int a0 = static_cast<int>(std::ceil(360 * (t0 + 0.05) / turn)), a1 = static_cast<int>(std::floor(360 * (t1 - 0.05) / turn));
+    std::vector<double> most(static_cast<std::size_t>(a1 - a0 + 1), 0.0);
+    for (int y = 0; y < kPaintN; y++)
+      for (int x = 0; x < kPaintN; x++) {
+        const double dx = x + 0.5 - kPaintN / 2.0, dy = y + 0.5 - kPaintN / 2.0;
+        double deg = std::atan2(dx, -dy) * 180 / kPi;
+        if (deg < 0) deg += 360;
+        const int bin = static_cast<int>(std::floor(deg));
+        if (bin < a0 || bin > a1) continue;
+        double& v = most[static_cast<std::size_t>(bin - a0)];
+        v = std::max(v, static_cast<double>(m.thick[static_cast<std::size_t>(y * kPaintN + x)]));
+      }
+    std::vector<double> sorted = most;
+    std::sort(sorted.begin(), sorted.end());
+    const double median = sorted[sorted.size() / 2];
+    // How much of the run's arc has paint at a fifth of the median's, and the longest stretch without.
+    int covered = 0, gap = 0, longest = 0;
+    for (const double v : most) {
+      if (v > 0.2 * median) { covered++; gap = 0; } else longest = std::max(longest, ++gap);
+    }
+    // And how deep the stroke dips between notes: its thinnest tenth over its median.
+    std::printf("%.4f %d %d %.4f\n", static_cast<double>(covered) / static_cast<double>(most.size()), longest, static_cast<int>(most.size()),
+                median > 0 ? sorted[sorted.size() / 10] / median : 0);
+  } else if (cmd == "width") {
+    // A3 held, painting at a base width: the map's spread across its ring (the thickness-weighted RMS of the
+    // radius about its mean, in cells), and the core's own contact half-width at the last stamp, in cells.
+    PaintParams params;
+    params.width = argc > 2 ? std::atof(argv[2]) : 1;
+    Player p(kSine, true, params);
+    p.blocks(1.5, { { 0x90, 57, 100 } });
+    const auto& m = p.in.painter()->map();
+    double s = 0, sr = 0, srr = 0;
+    for (int y = 0; y < kPaintN; y++)
+      for (int x = 0; x < kPaintN; x++) {
+        const double a = m.thick[static_cast<std::size_t>(y * kPaintN + x)];
+        const double r = std::hypot(x + 0.5 - kPaintN / 2.0, y + 0.5 - kPaintN / 2.0);
+        s += a; sr += a * r; srr += a * r * r;
+      }
+    const double mean = s > 0 ? sr / s : 0, spread = s > 0 ? std::sqrt(std::max(0.0, srr / s - mean * mean)) : 0;
+    const auto& st = p.in.painter()->stamps();
+    const double w = st.empty() ? 0 : st.back().w * kPaintN, pr = st.empty() ? 0 : st.back().p;
+    const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * pr));
+    std::printf("%.4f %.4f %.4f\n", spread, hw, mean);
   } else if (cmd == "served") {
     Player p(kSine, true);
     p.blocks(0.5, { { 0x90, 60, 100 }, { 0x90, 64, 100 } });
@@ -452,7 +521,8 @@ int main(int argc, char** argv) {
     std::printf("%.5f %.5f %.5f %.5f %.5f\n", level.glow(), stageLevel(0.3), change.glow(), level.motion(), level.memory());
   } else if (cmd == "cost") {
     const double seconds = arg(2, 2);
-    std::printf("%.5f %.5f\n", costOf(false, seconds), costOf(true, seconds));
+    const double width = arg(3, 1);
+    std::printf("%.5f %.5f\n", costOf(false, seconds), costOf(true, seconds, width));
   } else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); return 2; }
   return 0;
 }
