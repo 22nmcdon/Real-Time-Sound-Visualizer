@@ -15,15 +15,22 @@
 
 #include <cmath>
 
+#include "scope/mseg_shape.h"
+
 namespace scope {
 
 // The four numbers of the tone the envelope reads, per sample, so a slider
 // moved mid-note takes effect mid-note - as `tone.attackMs` does in the page.
+// Since 18 Nov the drawn envelope's too (mseg.h): its delay and hold, and its
+// shape, which this class - kept as the tests' reference - does not read.
 struct EnvelopeTone {
   double attackMs = 5;
   double decayMs = 200;
   double sustain = 1;
   double releaseMs = 200;
+  double delayMs = 0;
+  double holdMs = 0;
+  MsegShape shape;
 };
 
 class Envelope {
