@@ -145,6 +145,14 @@ struct Voice {
   std::optional<Shaper> shp;
   Crush cr;
   VcfState vcf;
+  /* Painting (paint.h): the voice's own Scan tables, read off the ring at its
+     own pitch - the latest, and the two it fades between, moved on at
+     Scan's tick as the layer's are. `painted` once the painter has a brush
+     for it; until then, and always on the trace, it plays the layer's. */
+  bool painted = false;
+  const CycleTables* paintTable = nullptr;
+  const CycleTables* paintPrev = nullptr;
+  const CycleTables* paintNext = nullptr;
   Voice(double rate, const LayerTone& tone) : env(rate, tone.env), fenv(rate, tone.fenv) {}
 };
 
@@ -364,6 +372,11 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     if (tone.noise) {
       if (!voice.nz) voice.nz.emplace(*c.random);
       wave = noiseStep(*voice.nz, tone.noiseShape, voice.phase, std::fabs(f) / c.rate, *c.random);
+    } else if (vx.on && voice.painted && vx.scanW > 0) {
+      // The oscillator mixes Scan in itself, so a painted voice hands it a copy with its own tables.
+      VoiceFx own = vx;
+      own.scanPrev = voice.paintPrev; own.scanNext = voice.paintNext;
+      wave = oscStep(voice.osc, voice.phase, 0, f, tone, bars, amount, own, c.rate);
     } else if (vx.on) {
       wave = oscStep(voice.osc, voice.phase, 0, f, tone, bars, amount, vx, c.rate);
     } else {
@@ -371,8 +384,10 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     }
     double w = wave;
     // Scan, where the oscillator is off: under it, `oscStep` has mixed it in.
+    // A painted voice reads its own ring's tables in place of the layer's.
     if (vx.scanW > 0 && !vx.on && !tone.noise) {
-      w = scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW);
+      w = voice.painted ? scanMix(w, voice.paintPrev, voice.paintNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW)
+                        : scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW);
     }
     if (vx.shapeRun) {
       if (!voice.shp || voice.shp->factor() != c.shapeFactor) {

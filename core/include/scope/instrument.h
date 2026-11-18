@@ -39,6 +39,7 @@
 #include "scope/limiter.h"
 #include "scope/matrix.h"
 #include "scope/restore.h"
+#include "scope/paint.h"
 #include "scope/scan.h"
 #include "scope/screen.h"
 #include "scope/sources.h"
@@ -495,8 +496,10 @@ class Instrument {
        steady frame allocates nothing (parity's block_alloc_cpp). */
     const bool pictureFrame = pictureRun_->due(nowMs_);
     if (pictureFrame) {
+      // Painting (paint.h): the brushes and the map stepped first, so the stage reads this frame's paint.
+      if (painter_) paintFrame();
       pictureRun_->before(*matrix_, pictureSource_, limiting());
-      scanFrame();
+      if (painter_) paintScanFrame(); else scanFrame();
     }
     matrix_->setLayered(keyboard_->layersOn());
     matrix_->setStrikes(keyboard_->strikes());
@@ -512,7 +515,8 @@ class Instrument {
     // The zoom made again from what the matrix wrote, and the frame's deposits, as the page draws after its matrix.
     pictureRun_->afterMatrix();
     if (pictureFrame) {
-      pictureRun_->setLayered(keyboard_->layersOn());
+      // One canvas while painting: the hands' own pictures are the trace's (painting-design.md).
+      pictureRun_->setLayered(keyboard_->layersOn() && !painter_);
       pictureRun_->draw(pictureSource_, kCanvas);  // held under Stop (5a): nothing faded or laid
       // And the readout's: the automatic lag locked to the held note while the note is the truth, else to what is heard.
       std::optional<double> played;
@@ -738,6 +742,27 @@ class Instrument {
   }
   // The generator, for what the page reads off it: its envelope, gate and budget.
   const Generator& generator() const { return *core_; }
+
+  /* Painting, step 1 (paint.h, web/docs/painting-design.md): on, the core
+     paints from the voices and Scan and the Picture amount read the paint
+     map in place of the trace; off, nothing of it runs and the instrument is
+     the trace's to the bit. Internal for now - no setup field, no control -
+     and made here, off the audio thread, so call it after prepare and before
+     playing, as the offline renders do. The Trace / Paint switch is step 2's. */
+  void setPainting(bool on, const PaintParams& params = {}) {
+    if (on) {
+      painter_ = std::make_unique<Painter>(params);
+      pictureRun_->paintWith(&painter_->reads());
+      // No voice plays the layers' trace tables while painting: until its brush reads, a voice plays its ink.
+      core_->setScanTable(nullptr, 0); core_->setScanTable(nullptr, 1);
+    } else {
+      pictureRun_->paintWith(nullptr);
+      painter_.reset();
+    }
+    core_->setPainting(on);
+  }
+  const Painter* painter() const { return painter_.get(); }
+  Painter* painter() { return painter_.get(); }
   // Each layer's picture (P6), for the page's readings and a harness.
   const LayerPictures& layerPictures() const { return pictureRun_->layers(); }
   // The two oscillators, which move the picture's destinations on the page as well as the sound here.
@@ -1415,6 +1440,27 @@ class Instrument {
      table unless the setup is still landing or the path reads darkness.
      Here, unlike the page, the frame is a sixtieth of a second of audio, so
      what a tick plays does not depend on a screen (scan.h). */
+  /* Painting's frame (paint.h): each sounding voice's brush moved and laid,
+     the map dried and faded, and the reads the stage takes measured. */
+  void paintFrame() {
+    std::vector<Voice>* pools[2] = { &core_->voicesOf(0), &core_->voicesOf(1) };
+    painter_->frame(pools, nowMs_, pictureRun_->elapsed());
+  }
+  /* And Scan's, while painting: each voice reads the ring at its own pitch
+     into its own table, at its layer's depth; each layer's hold sent as the
+     trace's Scan sends it, from the one stage (one canvas). */
+  void paintScanFrame() {
+    std::vector<Voice>* pools[2] = { &core_->voicesOf(0), &core_->voicesOf(1) };
+    const std::array<double, 2> depth { { core_->tone().scan, keyboard_->layersOn() ? core_->toneB().scan : 0.0 } };
+    const double hold = pictureRun_->stage().hold();
+    for (int layer = 0; layer < 2; layer++) {
+      if (!(depth[static_cast<std::size_t>(layer)] > 0)) continue;
+      double& held = paintHeld_[static_cast<std::size_t>(layer)];
+      if (std::fabs(hold - held) > 0.005 || (hold == 1 && held != 1)) { held = hold; core_->set("scanHold", hold, layer); }
+    }
+    painter_->readRings(pools, depth, brain_->scanSoft, nowMs_ < scan_->frozenUntil);
+  }
+
   void scanFrame() {
     scan_->frame(*core_, brain_->view.screen.display == "spect", keyboard_->layersOn() ? 2 : 1, scanIn(),
                  pictureRun_->elapsed(), brain_->scanSoft, nowMs_);
@@ -1442,6 +1488,12 @@ class Instrument {
      as on the page: they reach the generator without passing noteOn. */
   void scanStrike(int note, double velocity, int layers) {
     if (!pictureRun_ || !scan_ || !running_) return;  // stopped, the picture is held (5a)
+    /* Painting: the strike is the brush's impact - its dip and its press -
+       at the velocity times the hand's Strike, as the trace's light is. */
+    if (painter_) {
+      const int hand = (layers & 2) && !(layers & 1) ? 1 : 0;
+      painter_->strike(note, velocity * (hand == 1 ? brain_->scanStrikeB : brain_->scanStrike), layers, nowMs_);
+    }
     PictureRun& run = *pictureRun_;
     const Plot plot = run.plot();
     // Each hand at its own Strike (G6).
@@ -1685,6 +1737,9 @@ class Instrument {
   std::unique_ptr<PictureRun> pictureRun_;
   // Scan's paths and tables (P7a): the generator reads the tables, which are made in prepare.
   std::unique_ptr<ScanReader> scan_;
+  // Painting (paint.h): made by setPainting, nothing while the trace is shown; and each layer's hold as last sent.
+  std::unique_ptr<Painter> painter_;
+  std::array<double, 2> paintHeld_ { { 1, 1 } };
   CaptureSource pictureSource_;
   /* Its lane count again, for the plugin's message thread, which serves the
      ring (pictureServed) while the audio thread may change how many lanes it

@@ -47,6 +47,7 @@
 #include "scope/capture.h"
 #include "scope/hearing.h"  // estimatePeriod, for the lag's lock
 #include "scope/matrix.h"
+#include "scope/paint.h"   // PaintReads, which the stage reads while painting
 #include "scope/picture.h"
 #include "scope/restore.h"
 
@@ -261,7 +262,12 @@ class PictureRun {
       const auto ms = pictureFeelMs(hand);
       responses[h] = { hand.responds, ms[0], ms[1], hand.swell, brain_.view.screen.persistence };
     }
-    stage_.step(pics_.values(), pics_.raw(), elapsed_, spect, pics_.meter().verdict() == "running away", responses[0]);
+    /* Painting (paint.h), when the instrument hands this frame's reads off
+       the paint map: the one stage reads them, with the lower hand's
+       response as the shared picture always has, and running away is the
+       paint covering past the meter's saturation, the trace's lit. */
+    if (paint_) stage_.stepPaint(paint_->cover, paint_->moved, paint_->repaint, elapsed_, paint_->covered > kSaturated, responses[0]);
+    else stage_.step(pics_.values(), pics_.raw(), elapsed_, spect, pics_.meter().verdict() == "running away", responses[0]);
     /* Each layer's picture, after the shared one as the page's pictureStep
        has it: from the grids the last frame's walk left, each from its own
        figure's shape. */
@@ -322,6 +328,9 @@ class PictureRun {
   bool stopped() const { return stopped_; }
   // Whether the keyboard has two layers, which is what gives each figure a picture of its own.
   void setLayered(bool on) { layered_ = on; }
+  /* The paint map's reads for the next frames' stage (paint.h), or nothing
+     for the trace's. The instrument keeps them alive. */
+  void paintWith(const PaintReads* reads) { paint_ = reads; }
   const Frame& frame() const { return frame_; }
   const Plot& plot() const { return plot_; }
   /* Room for `lanes` lanes of a source at `rate` holding `capacity` frames,
@@ -356,6 +365,7 @@ class PictureRun {
   CaptureScratch scratch_;
   std::vector<Lane> lagLanes_;
   Plot plot_;
+  const PaintReads* paint_ = nullptr;
   bool registered_ = false, held_ = false, layered_ = false, stopped_ = false;
   int restored_ = -1;
   double last_ = -1, next_ = 0, elapsed_ = 16;

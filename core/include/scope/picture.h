@@ -520,19 +520,41 @@ class PictureStage {
   void step(const PictureValues& values, const PictureValues& raw, double elapsedMs, bool spectrogram, bool running,
             const StageResponse& r = {}) {
     if (spectrogram) { glow_ = motion_ = memory_ = familiar_ = 0; return; }
+    const double repeating = std::fmax(0.0, std::fmin(1.0, 1 - raw.novelty / (2 * kNoveltyFloor)));
+    advance(values.bored, repeating, raw.cover, elapsedMs, running, r, [&](double lastCover) {
+      return std::fmax(0.0, std::fmin(1.0, raw.change * (raw.cover + lastCover) / 2 / kStageMotionScale));
+    });
+  }
+
+  /* The same stage read off the paint map (paint.h) rather than the
+     phosphor: `cover` is the wet coverage, on the trace's scale, for Glow;
+     `moved` the paint being laid, nought to one, for Motion; `repaint` how
+     much of what was laid landed on paint already there, which Memory
+     gathers as it gathers the trace's repeating. Responds to, Rise and Fall,
+     Swell and the hold are the trace's, unchanged. */
+  void stepPaint(double cover, double moved, double repaint, double elapsedMs, bool running, const StageResponse& r = {}) {
+    advance(0, std::fmax(0.0, std::fmin(1.0, repaint)), cover, elapsedMs, running, r,
+            [moved](double) { return std::fmax(0.0, std::fmin(1.0, moved)); });
+  }
+
+ private:
+  /* One frame of the stage, whatever it reads: `bored` and `repeating` for
+     Memory, `cover` for Glow, and `motion(lastCover)` for Motion, asked after
+     the first frame's cover is taken as the last, as the trace's always was. */
+  template <class Motion>
+  void advance(double bored, double repeating, double cover, double elapsedMs, bool running, const StageResponse& r, Motion&& motion) {
     const double dt = std::fmax(0.0, elapsedMs) / 1000;
     hold_ = running ? std::fmax(kStageHoldFloor, hold_ - kStageHoldFall * dt) : std::fmin(1.0, hold_ + kStageHoldRise * dt);
-    const double repeating = std::fmax(0.0, std::fmin(1.0, 1 - raw.novelty / (2 * kNoveltyFloor)));
     familiar_ += dt * (kBoredRise * repeating - kBoredLeak * familiar_);
     familiar_ = std::fmax(0.0, std::fmin(1.0, familiar_));
-    level_ = stageLevel(raw.cover);
-    if (!seen_) { base_ = level_; lastCover_ = raw.cover; seen_ = true; }
+    level_ = stageLevel(cover);
+    if (!seen_) { base_ = level_; lastCover_ = cover; seen_ = true; }
     base_ += (level_ - base_) * (1 - std::exp(-dt * (level_ > base_ ? kStageSettle : kStageRelease)));
     change_ = std::fmax(0.0, std::fmin(1.0, (level_ - base_ - kStageChangeDead) / kStageChangeSpan));
     const double want = r.respondsTo == 1 ? level_ : r.respondsTo == 2 ? std::fmin(1.0, kStageBothBase * level_ + change_) : change_;
     smooth_ = stageToward(smooth_, want, dt, r.riseMs, r.fallMs);
-    const double moved = std::fmax(0.0, std::fmin(1.0, raw.change * (raw.cover + lastCover_) / 2 / kStageMotionScale));
-    lastCover_ = raw.cover;
+    const double moved = motion(lastCover_);
+    lastCover_ = cover;
     motionSmooth_ = stageToward(motionSmooth_, moved, dt, r.riseMs, r.fallMs);
     double breath = 0;
     if (r.swell && level_ >= kStageLitFloor) {
@@ -543,8 +565,10 @@ class PictureStage {
     } else phase_ = 0;
     glow_ = std::fmax(0.0, std::fmin(1.0, smooth_ + breath));
     motion_ = motionSmooth_;
-    memory_ = std::fmax(values.bored, familiar_);
+    memory_ = std::fmax(bored, familiar_);
   }
+
+ public:
   double glow() const { return glow_; }
   double motion() const { return motion_; }
   double memory() const { return memory_; }

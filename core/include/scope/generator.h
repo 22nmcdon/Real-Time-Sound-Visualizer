@@ -375,6 +375,13 @@ class Generator {
   double pitch() const { return lastHz_; }
   const std::vector<Voice>& voices() const { return voices_; }
   const std::vector<Voice>& voicesB() const { return voicesB_; }
+  /* Painting (paint.h): the pools for the painter, which gives each voice
+     its own tables, and whether their tables move on at Scan's tick. Off,
+     nothing a voice holds is read, and the generator is the trace's to the
+     bit. */
+  std::vector<Voice>& voicesOf(int layer) { return layer == 1 ? voicesB_ : voices_; }
+  void setPainting(bool on) { painting_ = on; }
+  bool painting() const { return painting_; }
   const Budget& budget() const { return budget_; }
   // Where layer `l`'s voice was in its cycle at the last tick, 0 to 1, or -1 (scanHeadOf).
   double scanHead(int l) const { return scanHead_[l == 1 ? 1 : 0]; }
@@ -1042,6 +1049,11 @@ class Generator {
       scanClock_ -= scanPer_;
       vxA_.scanPrev = vxA_.scanNext; vxA_.scanNext = a_.scanTable;
       vxB_.scanPrev = vxB_.scanNext; vxB_.scanNext = b_.scanTable;
+      // Painting: each painted voice from the table it was fading to, to its own latest.
+      if (painting_) {
+        for (auto* pool : { &voices_, &voicesB_ })
+          for (auto& v : *pool) if (v.painted) { v.paintPrev = v.paintNext; v.paintNext = v.paintTable; }
+      }
       scanHead_[0] = scanHeadOf(voices_, phaseL_);
       scanHead_[1] = scanHeadOf(voicesB_, NAN);
     }
@@ -1367,6 +1379,7 @@ class Generator {
   double askedCostA_ = -1, askedCostB_ = -1, askedFixed_ = -1;
   int govFactor_ = 4;
   Budget budget_;
+  bool painting_ = false;
   Shaper shapeL_, shapeR_;
   Crush crushL_, crushR_;
   Osc oscL_, oscR_;
