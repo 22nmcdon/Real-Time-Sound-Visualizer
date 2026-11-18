@@ -72,6 +72,13 @@ CONTROL = {
 }
 # Ruled fields with no control of their own, and why.
 NO_CONTROL = {
+    # Painting, step 2: Paint is the fourth place in the display switch, beside
+    # three buttons that are the display's (each the trace again), so the
+    # switch is no group of one button a value of this field.
+    "screenDraws": "Paint shares the display switch: drawPaint sets it, Y-T, X-Y and Spect set it back",
+    # The one Persistence knob shows it while Paint is drawn, on a log scale
+    # of its own (paintOfSlider), as it shows the trace's otherwise.
+    "paintPersistence": "shown on scanMemory, the trace's Persistence knob, while Paint is drawn",
 }
 
 # The judgments, as functions of the page's own table, so that each can be
