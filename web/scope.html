@@ -14488,18 +14488,20 @@ void main() {
     get canvas() { return canvas; },
     // The core's map as it was last served (thickness then wetness), or null.
     get map() { return map; },
-    /* For a test: the look's paint, 128 square, each cell the summed amount
+    /* For a test: the look's paint, 128 square (or `cells` square, a divisor
+       of PAINT_SIZE: PAINT_SIZE for every pixel), each cell the summed amount
        of its pixels as it stands now (over the gain); null with no graphics card. */
-    sample() {
+    sample(cells) {
       if (mode !== "gpu" || !gl) return null;
-      const n = PAINT_SIZE, out = new Float32Array(PAINT_CELLS * PAINT_CELLS), per = n / PAINT_CELLS;
+      const C = cells || PAINT_CELLS;
+      const n = PAINT_SIZE, out = new Float32Array(C * C), per = n / C;
       for (const k of [0, 1]) {
         const buf = new Float32Array(n * n * 4);
         gl.bindFramebuffer(gl.READ_FRAMEBUFFER, pair[0].fb); gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
         gl.readPixels(0, 0, n, n, gl.RGBA, gl.FLOAT, buf);
         for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
           const i = (y * n + x) * 4, a = k === 0 ? buf[i] + buf[i + 1] + buf[i + 2] + buf[i + 3] : buf[i] + buf[i + 1];
-          out[Math.floor(y / per) * PAINT_CELLS + Math.floor(x / per)] += a / gain;
+          out[Math.floor(y / per) * C + Math.floor(x / per)] += a / gain;
         }
       }
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);

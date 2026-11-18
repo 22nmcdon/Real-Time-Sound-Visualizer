@@ -1541,8 +1541,9 @@ class Instrument {
     } else {
       /* Mono's line or Dyad's pair (step 2): a brush for the lower note and,
          while the pair is apart, one for the upper, each a stroke like any
-         note's; a note struck again is a new brush (lineId_), so a line's
-         notes are strokes of their own rather than one bent through them. */
+         note's; a note struck again is a new brush (lineId_), which the
+         painter joins to the line's stroke when it is struck alone soon
+         enough (PaintParams::chain), so a melody is one stroke. */
       const double hz = core_->pitch(), level = core_->lineLevel(), ratio = core_->lineRatio();
       const auto noteOf = [](double f) { return f > 0 ? static_cast<int>(std::lround(69 + 12 * std::log2(f / 440))) : 0; };
       if (hz > 0 && level > 0) {

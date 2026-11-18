@@ -84,6 +84,81 @@ def knob_to(p, value):
     p.evaluate("(v) => { el.scanMemory.value = String(v); el.scanMemory.dispatchEvent(new Event('input', { bubbles: true })); }", value)
     p.wait_for_timeout(250)
 
+# Every stroke the face is served, kept as served, so a test can paint them again (paint width, 18 Nov).
+RECORD = """() => { window.__served = []; const take = window.__take = paintView.take.bind(paintView);
+  paintView.take = (paint) => { if (paint && paint.on && paint.stamps && paint.count)
+    window.__served.push(paint.stamps.slice(0, paint.count * 20)); take(paint); }; }"""
+# The kept strokes painted again on a cleared canvas, a batch per 1/fps of their own time, every `every`th
+# stamp, `widen` times their width: the look's paint as 128 cells, and at `cells` if asked, with where the stamps went.
+REPLAY = """({ fps, every, widen, cells }) => {
+  const all = []; for (const b of window.__served) for (let k = 0; k < b.length / 20; k++) all.push(b.subarray(k * 20, k * 20 + 20));
+  const kept = all.filter((_, k) => k % every === 0).map((s) => { const c = Float32Array.from(s); c[4] *= widen; return c; });
+  paintView.clear();
+  let from = paintView.since + 1, i = 0;
+  const t0 = kept.length ? kept[0][6] : 0, step = 1 / fps;
+  for (let edge = t0 + step; i < kept.length; edge += step) {
+    const batch = []; while (i < kept.length && kept[i][6] < edge) batch.push(kept[i++]);
+    if (batch.length) { const f = new Float32Array(batch.length * 20); batch.forEach((s, k) => f.set(s, k * 20));
+      window.__take({ on: true, from, count: batch.length, stamps: f }); from += batch.length; }
+    paintView.draw(edge * 1000);
+  }
+  const look = paintView.sample(cells || 128), coarse = cells ? paintView.sample() : null;
+  return { look: look ? Array.from(look) : null, coarse: coarse ? Array.from(coarse) : null, stamps: kept.length,
+           at: kept.map((s) => [s[0], s[1]]), cells: cells || 128 };
+}"""
+
+# A run of eleven notes, a ninth of a second apart and each held 60 ms, struck alone, painted by a core of its own.
+PLAY_RUN = """() => {
+  const code = encodeSetup(Object.assign({}, decodeSetup(encodeSetup(snapshot())),
+    { midiMode: 'poly', oscScan: 60, screenDraws: 'paint', rel: 30 }));
+  const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
+  const l = new Float32Array(128), r = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
+  const run = [60, 62, 64, 65, 67, 69, 71, 72, 71, 69, 67], at = (s) => Math.round(s * 48000 / 128);
+  for (let k = 0; k < at(1.6); k++) {
+    run.forEach((n, i) => { if (k === at(i / 9)) brain.midi([0x90, n, 100], -1); if (k === at(i / 9 + 0.06)) brain.midi([0x80, n, 0], -1); });
+    brain.block(128, l, r, pics, null);
+    const p = brain.readings().paint;
+    if (p && p.on && p.stamps && p.count) window.__served.push(p.stamps.slice(0, p.count * 20));
+  }
+}"""
+
+def spread(g, n=128):
+    # The paint's RMS radius about its mean, in the map's cells: how wide a ring's stroke is.
+    s = sr = srr = 0.0
+    for y in range(n):
+        for x in range(n):
+            a = g[y * n + x]
+            if a <= 0: continue
+            r = math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) * 128 / n
+            s += a; sr += a * r; srr += a * r * r
+    if s <= 0: return 0.0
+    m = sr / s
+    return math.sqrt(max(0.0, srr / s - m * m))
+
+def along(run):
+    """Along the run's own arc, from its first stamp's angle to its last's, in half degrees: the share with
+    paint at a fifth of the median's most, the longest stretch without, and the thinnest tenth over the median."""
+    n = run["cells"]; g = run["look"]
+    ang = lambda x, y: math.degrees(math.atan2(x - 0.5, -(y - 0.5))) % 360
+    a0, a1 = ang(*run["at"][0]), ang(*run["at"][-1])
+    bins = max(1, int((a1 - a0) % 360 * 2))
+    most = [0.0] * bins
+    for y in range(n):
+        for x in range(n):
+            v = g[y * n + x]
+            if v <= 0: continue
+            d = (ang((x + 0.5) / n, (y + 0.5) / n) - a0) % 360
+            k = int(d * 2)
+            if 1 <= k < bins - 1: most[k] = max(most[k], v)
+    most = most[1:-1] or [0.0]
+    srt = sorted(most); med = srt[len(srt) // 2]
+    if med <= 0: return 0.0, len(most), 0.0
+    gap = longest = cov = 0
+    for v in most:
+        if v > 0.2 * med: cov += 1; gap = 0
+        else: gap += 1; longest = max(longest, gap)
+    return cov / len(most), longest, srt[len(srt) // 10] / med
+
 def corr(a, b):
     n = len(a); ma = sum(a) / n; mb = sum(b) / n
     sab = sum((x - ma) * (y - mb) for x, y in zip(a, b))
@@ -196,6 +271,51 @@ with sync_playwright() as pw:
         if (Math.abs(Math.hypot(x + 0.5 - 64, y + 0.5 - 64) - r) < 1.5) on += a; }
       return { on, all }; }""")
     check("a note in Mono paints its own ring", ring and ring["all"] > 0.5 and ring["on"] / ring["all"] > 0.8, str(ring))
+    p.close()
+
+    # --- paint width (18 Nov): the look draws the stroke the sound reads, and draws it whole ---
+    p = open_page(b)
+    p.click("#drawPaint"); p.wait_for_timeout(300)
+    p.evaluate(RECORD)
+    p.evaluate("() => { el.oscScan.value = '60'; el.oscScan.dispatchEvent(new Event('input')); midiNoteOn(57, 110); }")
+    p.wait_for_timeout(2000)
+    p.evaluate("() => midiNoteOff(57)"); p.wait_for_timeout(1500)
+    got = p.evaluate("""() => { const m = paintView.map, s = paintView.sample();
+      return { map: m ? Array.from(m.subarray(0, 128 * 128)) : null, look: s ? Array.from(s) : null }; }""")
+    if got["map"] and got["look"]:
+        sm, sl = spread(got["map"]), spread(got["look"])
+        check("the look's stroke is the map's width: a held note's spread across its ring, look against map", abs(sl / sm - 1) < 0.12,
+              "look %.3f cells, map %.3f" % (sl, sm))
+        wide = p.evaluate(REPLAY, {"fps": 60, "every": 1, "widen": 2})
+        sw = spread(wide["look"])
+        null("the same strokes drawn twice as wide in the look are not the map's width", abs(sw / sm - 1) > 0.5,
+             "look %.3f cells, map %.3f" % (sw, sm))
+    else:
+        check("the look's stroke is the map's width", False, "map %s, look %s" % (bool(got["map"]), bool(got["look"])))
+    p.close()
+
+    # A run, each note struck alone, played by the core itself (the page's own module, as the worklet runs it, so
+    # the timing is the instrument's to the block and not the page's timers'): its strokes, as served, painted
+    # again at 60 and at 4 frames a second.
+    p = open_page(b)
+    p.click("#drawPaint"); p.wait_for_timeout(300)
+    p.evaluate(RECORD)
+    p.evaluate(PLAY_RUN)
+    runs = {}
+    for name, fps, every in (("60", 60, 1), ("4", 4, 1), ("thinned", 60, 8)):
+        runs[name] = p.evaluate(REPLAY, {"fps": fps, "every": every, "widen": 1, "cells": 768})
+    if runs["60"]["look"]:
+        for name in ("60", "4"):
+            cov, gap, dip = along(runs[name])
+            check("the run's look is one unbroken stroke painted at %s frames a second" % name, cov > 0.9 and gap <= 2,
+                  "%.0f%% of the arc, longest gap %d half-degrees, %d stamps" % (100 * cov, gap, runs[name]["stamps"]))
+        c = corr(runs["60"]["coarse"], runs["4"]["coarse"])
+        check("and the same picture at either rate (correlation over 128 cells)", c > 0.95, "%.3f" % c)
+        cov, gap, _ = along(runs["thinned"])
+        null("the same strokes with seven stamps in eight dropped break into beads, and the check sees it", gap > 2 or cov < 0.8,
+             "%.0f%% of the arc, longest gap %d half-degrees" % (100 * cov, gap))
+    else:
+        check("the run's look is painted", False, str(runs["60"].get("stamps")))
     p.close()
 
     # --- switching moves nothing on the face ---

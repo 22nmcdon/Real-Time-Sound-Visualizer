@@ -7333,3 +7333,28 @@ the core's strokes (`paintView`), held by `painttest.py` and `paintcosttest.py`.
 - **A canvas asked for WebGL 2 cannot then give a 2D context**, even when WebGL 2 was
   refused a float target: the plain drawing replaces the canvas with a fresh one.
 
+
+## Paint width, and three traps on the way (18 Nov)
+
+Three base brush widths for the owner to choose between (`PaintParams::width`, internal; the
+page `web/docs/listening/paint-width/`), the beads in a run, and the look drawn on the core's
+own footprint (`painting-design.md`, *What paint width built*).
+
+- **The beads were the brushwork, not the frame rate.** The core lays its stamps at sixty a
+  second of audio time whatever the face does, so the face's frame rate only batches them;
+  a phrase's stamps painted at 60 and at 4 frames a second are the same picture. Look at the
+  stamps (`render.cpp` there writes every one) before blaming the renderer. A run was beads
+  because each short note was a brush of its own; a melody is one stroke now (`chain`), and
+  the brush it takes up may already have lifted, so the hand's last stroke is kept as it
+  lifts (`lifted_`).
+- **A look that draws its own footprint is a look that lies.** The face computed the stamp's
+  tip from its pixels (`max(1.2, 0.15 w)`) while the core's is `max(0.75 cells, 0.15 w)`: a
+  shorter tip with the core's deposit per length laid about half the paint, which was the
+  faint wires. The shader now takes the core's half width and tip in its cells (`uCell`), and
+  `painttest.py` holds the look's stroke to the map's width, with the null drawn twice as wide.
+- **A test that records what the face is served must not record its own replay.**
+  `painttest.py` wraps `paintView.take` to keep the strokes, then paints them again through
+  `take`: the first version replayed through the wrapper, so the second replay painted the
+  first's stamps too and the 4 fps picture had twice the 60's. It replays through the
+  original now. And a run timed by the page's `setTimeout` under SwiftShader bunched its notes
+  into chords; the run is played by a core of its own, block by block (`makeWasmBrain`).
