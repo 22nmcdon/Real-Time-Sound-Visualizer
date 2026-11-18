@@ -298,6 +298,9 @@ class Painter {
     return into && scanTables(points_, *into) ? into : nullptr;
   }
 
+  // Clear (step 2): the canvas wiped, as the trace's Clear wipes its grid; the brushes go on.
+  void clear() { map_.clear(); }
+
   // The fade, a half-life in seconds, as the setup's paintPersistence sets it (step 2).
   void setFade(double seconds) { if (std::isfinite(seconds) && seconds > 0) p_.fade = seconds; }
 

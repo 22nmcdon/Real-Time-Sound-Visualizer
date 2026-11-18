@@ -502,6 +502,8 @@ class Instrument {
     if (pictureFrame) {
       // Painting (paint.h): the switch as the setup has it, then the brushes and the map, so the stage reads this frame's paint.
       if ((brain_->draws == "paint") != paintOn_) switchPaint(!paintOn_);
+      // Clear wipes the painting too, while it is shown (the trace's grid is wiped at the draw, which reads the same press).
+      if (paintOn_ && brain_->view.wipe) painter_->clear();
       if (paintOn_) paintFrame();
       pictureRun_->before(*matrix_, pictureSource_, limiting());
       if (paintOn_) paintScanFrame(); else scanFrame();
