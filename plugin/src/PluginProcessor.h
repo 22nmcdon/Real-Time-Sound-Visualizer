@@ -143,6 +143,12 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   // The picture's grid and the fade's gains (5b's second half), as the instrument keeps them for the editor's thread.
   bool gridServed(float* out) const { return instrument_.gridServed(out); }
   std::size_t fadeServed(char* out, std::size_t room) const { return instrument_.fadeServed(out, room); }
+  // The painting's strokes and map for the face (painting, step 2): Instrument::paintServed and paintMapServed.
+  std::size_t paintServed(std::uint64_t since, float* out, std::size_t room, std::uint64_t& from) const {
+    return instrument_.paintServed(since, out, room, from);
+  }
+  bool paintMapServed(float* out) const { return instrument_.paintMapServed(out); }
+  bool painting() const { return instrument_.painting(); }
   bool bands() const { return instrument_.bands(); }
   int lanes() const { return instrument_.lanes(); }
   double bandGain(int lane) const { return instrument_.bandGain(lane); }
@@ -320,6 +326,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   std::array<std::atomic<float>, kKnobs.size()> pageSet_;
   std::array<bool, kKnobs.size()> gesture_ {};  // a change gesture open on each, message thread only
   int panelLayer_ = 0;                          // the layer the panel showed at the last block
+  bool drawsPaint_ = false;                     // whether the screen drew the painting at the last block (step 2)
   /* Which parameters a load leaves as the host set them (readBack): none;
      those moved since they were last applied (a prepare with nothing
      waiting, the panel's layer turned); or those moved since a state or

@@ -169,9 +169,23 @@ class PaintCover {
 
 // ---- The brush --------------------------------------------------------------
 
+/* What sounds, as the painter is handed it a frame: a Poly voice, or Mono's
+   line or Dyad's pair (step 2), each with its layer (the hand), an id that is
+   its own while it sounds - a voice's birth, or the instrument's count of the
+   line's notes - its key, its pitch where its glide has got to, its level,
+   and whether its key is down. */
+struct PaintNote {
+  int layer = 0, id = 0, note = 0;
+  double hz = 0, level = 0;
+  bool held = false;
+};
+constexpr std::size_t kPaintNotesMost = 64;
+
 struct PaintBrush {
   bool live = false;
-  int layer = 0, born = 0;
+  int layer = 0, born = 0, note = 0;
+  // Its ink's role in the harmony, look only: 0 the hand's own, 1 related, 2 a clash (the study's mapping).
+  int ink = 0;
   std::int32_t serial = 0;           // whose paint a cell is: unique to this brush's life
   double x = 0, y = 0;               // where it is, in cells
   bool placed = false;
@@ -192,8 +206,18 @@ struct PaintReads {
   double intoWet = 0, ontoDry = 0, ontoBare = 0;  // where it landed, as the study counted
 };
 
-// One stamp of a brush, for the look (step 2 paints from these) and the renders.
-struct PaintStamp { float x, y, dx, dy, w, p; std::uint8_t hand; };
+/* One stamp of a brush, for the look: the page paints the graphics card's
+   picture from these (step 2), so a stamp carries what the study's stroke
+   stream carried - where, which way, how wide (in the canvas's widths) and
+   how hard, when, how far it moved over its own reach (`per`), its bristle
+   groups' loads, and whose it is: the brush (for its own paint, and the
+   colour it picks up), the hand, the note and its ink's role. */
+struct PaintStamp {
+  float x = 0, y = 0, dx = 1, dy = 0, w = 0, p = 0, t = 0, per = 0;
+  std::array<float, kPaintBins> load {};
+  std::int32_t serial = 0;
+  std::uint8_t hand = 0, ink = 0, note = 0;
+};
 
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
    picture frame. Made off the audio thread (its map and its tables are a few
@@ -227,26 +251,55 @@ class Painter {
      voice's brush moved from where it was to where the layout puts its pitch
      now, laying paint along the way. `voices[layer]` are the generator's
      pools. */
-  void frame(std::vector<Voice>* const voices[2], double nowMs, double elapsedMs) {
+  void frame(const PaintNote* notes, std::size_t count, double nowMs, double elapsedMs) {
     const double t = nowMs / 1000, dt = std::max(0.0, elapsedMs) / 1000;
     stamps_.clear();
     dropped_ = 0;
     age(dt);
-    for (auto& b : brushes_) b.live = false;  // marked again below for every voice still sounding
-    for (int layer = 0; layer < 2; layer++) {
-      if (!voices[layer]) continue;
-      for (auto& v : *voices[layer]) {
-        if (v.gone) continue;
-        PaintBrush* b = brushOf(layer, v, t);
-        if (!b) continue;
-        b->live = true;
-        stroke(*b, v, t, dt);
-      }
+    // The lowest note sounding, either hand, which the inks' harmony is judged against (look only).
+    int low = 1000;
+    for (std::size_t i = 0; i < count; i++) if (notes[i].level > 0) low = std::min(low, notes[i].note);
+    for (auto& b : brushes_) b.live = false;  // marked again below for every note still sounding
+    for (std::size_t i = 0; i < count; i++) {
+      PaintBrush* b = brushOf(notes[i], t, low);
+      if (!b) continue;
+      b->live = true;
+      stroke(*b, notes[i], t, dt);
     }
     // Brushes whose voices are gone let go of their slots.
     for (auto& b : brushes_) if (!b.live && b.serial) { slots_[b.slot].owner = 0; b.serial = 0; }
     measure(dt);
   }
+
+  /* Poly's voices as the painter is handed them: every voice not gone, into
+     `out`, which holds kPaintNotesMost; how many. */
+  static std::size_t notesOf(std::vector<Voice>* const voices[2], PaintNote* out, std::size_t room, std::size_t at = 0) {
+    for (int layer = 0; layer < 2; layer++) {
+      if (!voices[layer]) continue;
+      for (const auto& v : *voices[layer]) {
+        if (v.gone || at >= room) continue;
+        out[at++] = { layer, v.born, v.note, v.hz > 0 ? v.hz : v.freq, std::clamp(v.env.level(), 0.0, 1.0), v.held };
+      }
+    }
+    return at;
+  }
+
+  /* Mono's or Dyad's ring (step 2): the generator plays one table for the
+     line or the pair, so it is read off the ring of the lower note's pitch -
+     the one its phase runs at - into the brush's slot, avoiding the three
+     the layer is playing. Null for none, and while a setup lands. */
+  CycleTables* readLine(int layer, int id, double hz, double soft, const CycleTables* a, const CycleTables* b,
+                        const CycleTables* c) {
+    const PaintBrush* brush = find(layer, id);
+    if (!brush) return nullptr;
+    field();
+    if (!readRing(layout_->ring(hz), soft, points_)) return nullptr;
+    CycleTables* into = slots_[brush->slot].tables->fresh(a, b, c);
+    return into && scanTables(points_, *into) ? into : nullptr;
+  }
+
+  // The fade, a half-life in seconds, as the setup's paintPersistence sets it (step 2).
+  void setFade(double seconds) { if (std::isfinite(seconds) && seconds > 0) p_.fade = seconds; }
 
   /* Each voice's ring read into a table of its own, through its slot, at the
      layer's Scan: nothing for a layer at no depth or while a setup lands. The
@@ -359,8 +412,9 @@ class Painter {
   }
 
   // The voice's brush, made and dipped the first frame it sounds.
-  PaintBrush* brushOf(int layer, const Voice& v, double t) {
-    if (PaintBrush* b = find(layer, v.born)) return b;
+  PaintBrush* brushOf(const PaintNote& v, double t, int low) {
+    const int layer = v.layer;
+    if (PaintBrush* b = find(layer, v.id)) return b;
     PaintBrush* b = nullptr;
     for (auto& c : brushes_) if (!c.serial) { b = &c; break; }
     if (!b) return nullptr;  // more voices than brushes: the rest sound their ink
@@ -369,7 +423,11 @@ class Painter {
     if (slot == kPaintBrushes) return nullptr;
     *b = {};
     b->serial = ++serials_;
-    b->layer = layer; b->born = v.born; b->slot = slot; b->bornAt = t;
+    b->layer = layer; b->born = v.id; b->note = v.note; b->slot = slot; b->bornAt = t;
+    // Its ink against the lowest note sounding, round the circle of fifths: a unison, fifth or fourth
+    // the hand's own, a second, third, sixth or minor seventh related, a semitone or tritone a clash.
+    const int fifths = ((v.note - (low > 999 ? v.note : low)) * 7 % 12 + 12) % 12, steps = std::min(fifths, 12 - fifths);
+    b->ink = steps <= 1 ? 0 : steps <= 4 ? 1 : 2;
     slots_[slot].owner = b->serial;
     // The strike that made it, if the keyboard handed one.
     for (auto& s : struck_) {
@@ -388,8 +446,8 @@ class Painter {
      is now, stamping every 0.35 of a cell. Its pressure is the voice's level
      to the 0.7, as the study's width was, so a note tapers as it fades; a
      hard strike presses it wider for 60 ms. */
-  void stroke(PaintBrush& b, Voice& v, double t, double dt) {
-    const double level = std::clamp(v.env.level(), 0.0, 1.0);
+  void stroke(PaintBrush& b, const PaintNote& v, double t, double dt) {
+    const double level = std::clamp(v.level, 0.0, 1.0);
     const double p = std::pow(level, 0.7);
     if (v.held) {
       const double k = 1 - std::exp(-dt / kFeedTime);
@@ -399,8 +457,7 @@ class Painter {
         if (b.load[ii] < want) b.load[ii] += (want - b.load[ii]) * k;
       }
     }
-    const double hz = v.hz > 0 ? v.hz : v.freq;
-    const PaintPoint at = layout_->at(t, hz);
+    const PaintPoint at = layout_->at(t, v.hz);
     const double x = at.x * kPaintN, y = at.y * kPaintN;
     if (!b.placed) { b.x = x; b.y = y; b.placed = true; }
     const double dx = x - b.x, dy = y - b.y, len = std::hypot(dx, dy);
@@ -433,8 +490,13 @@ class Painter {
     const double hl = std::max(0.75, 0.15 * w);
     const double per = std::clamp(moved / (1.4 * hl), 0.02, 1.0);
     if (stamps_.size() < kPaintStampsMost) {
-      stamps_.push_back({ static_cast<float>(x / N), static_cast<float>(y / N), static_cast<float>(dx), static_cast<float>(dy),
-                          static_cast<float>(2 * hw / N), static_cast<float>(p), static_cast<std::uint8_t>(b.layer) });
+      PaintStamp st;
+      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(dx); st.dy = static_cast<float>(dy);
+      st.w = static_cast<float>(w / N); st.p = static_cast<float>(p); st.t = static_cast<float>(t); st.per = static_cast<float>(per);
+      for (std::size_t k = 0; k < static_cast<std::size_t>(kPaintBins); k++) st.load[k] = static_cast<float>(b.load[k] + b.carry[k]);
+      st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
+      st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
+      stamps_.push_back(st);
     } else dropped_++;
     const int x0 = std::max(0, static_cast<int>(std::floor(x - hw - hl - 1))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + hw + hl + 1)));
     const int y0 = std::max(0, static_cast<int>(std::floor(y - hw - hl - 1))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + hw + hl + 1)));

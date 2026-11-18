@@ -415,6 +415,13 @@ class Generator {
      bit. */
   std::vector<Voice>& voicesOf(int layer) { return layer == 1 ? voicesB_ : voices_; }
   void setPainting(bool on) { painting_ = on; }
+  /* Mono's line and Dyad's pair as the painter sees them (step 2): whether
+     the voices are Poly's, how loud the line is - its envelope while it is
+     gated or letting go, nought once it has finished - and the pair's
+     interval as it sounds now, one for Mono or a unison. */
+  bool polyVoices() const { return a_.voices.has_value(); }
+  double lineLevel() const { return env_.stage() == Mseg::Stage::Idle ? 0.0 : env_.level(); }
+  double lineRatio() const { return dyadRatio_ > 0 ? dyadRatio_ : 1; }
   bool painting() const { return painting_; }
   const Budget& budget() const { return budget_; }
   // Where layer `l`'s voice was in its cycle at the last tick, 0 to 1, or -1 (scanHeadOf).

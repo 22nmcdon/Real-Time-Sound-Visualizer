@@ -645,6 +645,27 @@ std::array<char, scope::Instrument::kFadeText> fadeCopy {};
 EXPORT(brain_grid) float* brainGrid() { instrument->gridServed(gridCopy.data()); return gridCopy.data(); }
 EXPORT(brain_fade_gains) int brainFadeGains() { return static_cast<int>(instrument->fadeServed(fadeCopy.data(), fadeCopy.size())); }
 EXPORT(brain_fade_gains_out) const char* brainFadeGainsOut() { return fadeCopy.data(); }
+/* The painting (step 2), as the plugin serves it to its page: whether the
+   core is painting; the strokes laid since the count the page last had
+   (Instrument::paintServed), twenty floats a stamp, how many, and the count
+   the first of them is; and the map, thickness then wetness, for a face that
+   draws it plain. */
+std::array<float, scope::Instrument::kPaintServed * scope::Instrument::kStampFloats> paintCopy {};
+std::array<float, scope::Instrument::kPaintMapServed> paintMapCopy {};
+double paintFrom = 0;
+EXPORT(brain_painting) int brainPainting() { return instrument->painting() ? 1 : 0; }
+EXPORT(brain_paint_count) double brainPaintCount() { return static_cast<double>(instrument->paintCount()); }
+EXPORT(brain_paint) int brainPaint(double since) {
+  std::uint64_t from = 0;
+  const std::size_t n = instrument->paintServed(since > 0 ? static_cast<std::uint64_t>(since) : 0, paintCopy.data(),
+                                                scope::Instrument::kPaintServed, from);
+  paintFrom = static_cast<double>(from);
+  return static_cast<int>(n);
+}
+EXPORT(brain_paint_from) double brainPaintFrom() { return paintFrom; }
+EXPORT(brain_paint_stamps) float* brainPaintStamps() { return paintCopy.data(); }
+EXPORT(brain_paint_map) float* brainPaintMap() { instrument->paintMapServed(paintMapCopy.data()); return paintMapCopy.data(); }
+
 // How many lanes the picture has now: two, or four.
 EXPORT(brain_picture_lanes) int brainPictureLanes() { return instrument->pictureLanes(); }
 

@@ -73,6 +73,7 @@ void ScopeProcessor::readBack(Keep keep) {
     applied_[i] = knobs_[i]->get();
   }
   panelLayer_ = instrument_.panelLayer();
+  drawsPaint_ = instrument_.drawsPaint();
 }
 
 bool ScopeProcessor::queue(std::optional<scope::Instrument::Command> command) {
@@ -455,6 +456,9 @@ void ScopeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
      their parameters read back, or the host would show A's cutoff while its
      next move wrote B's. */
   if (instrument_.panelLayer() != panelLayer_) readBack(Keep::sinceApplied);
+  /* Trace and Paint switched (painting, step 2): the Persistence knob shows
+     the other one's value now, so it reads back as a layer turned does. */
+  else if (instrument_.drawsPaint() != drawsPaint_) readBack(Keep::sinceApplied);
   // Each parameter the host has moved since the last block, to its slider.
   moved_.clear();
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {

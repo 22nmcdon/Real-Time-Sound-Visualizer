@@ -41,6 +41,9 @@ juce::WebBrowserComponent::Options browserOptions(std::function<std::optional<ju
         // The picture's grid and the fade's gains (5b's second half), what the face reads in place of its own.
         info->setProperty("gridUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "grid.bin");
         info->setProperty("fadeUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "fade.txt");
+        // The painting (step 2): its strokes since a count, paint/COUNT.bin, and its map, for the face to paint.
+        info->setProperty("paintUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "paint/");
+        info->setProperty("paintMapUrl", juce::WebBrowserComponent::getResourceProviderRoot() + "paintmap.bin");
         complete(juce::var(info));
       })
       /* The page as the plugin's face: a slider moved, a setup loaded, a
@@ -213,6 +216,31 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
      lands on and the score and the loop overlay draw over, in place of a grid
      the page faded and deposited for itself. A frame being laid throughout
      the read is served as the last whole one. */
+  /* The painting's strokes since the count in the name (step 2), as the
+     site's brain_paint serves them: a little-endian float64 header - whether
+     the core is painting, the count the first stamp is, how many - and then
+     twenty float32s a stamp (Instrument::paintServed). The count is in the
+     path rather than a query, which not every platform's web view hands a
+     resource provider. */
+  if (path.startsWith("/paint/") && path.endsWith(".bin")) {
+    static thread_local std::vector<unsigned char> out;
+    const auto since = static_cast<std::uint64_t>(path.fromFirstOccurrenceOf("/paint/", false, false)
+                                                      .upToFirstOccurrenceOf(".bin", false, false).getLargeIntValue());
+    constexpr std::size_t stampBytes = scope::Instrument::kStampFloats * sizeof(float);
+    out.resize(3 * sizeof(double) + scope::Instrument::kPaintServed * stampBytes);
+    std::uint64_t from = 0;
+    const std::size_t n = processor.paintServed(since, reinterpret_cast<float*>(out.data() + 3 * sizeof(double)),
+                                                scope::Instrument::kPaintServed, from);
+    const double head[3] = { processor.painting() ? 1.0 : 0.0, static_cast<double>(from), static_cast<double>(n) };
+    std::memcpy(out.data(), head, sizeof head);
+    return bytes(out.data(), 3 * sizeof(double) + n * stampBytes, "application/octet-stream");
+  }
+  // And its map, thickness then wetness, 128 by 128 little-endian float32s each, for a face that draws it plain.
+  if (path == "/paintmap.bin") {
+    static thread_local std::array<float, scope::Instrument::kPaintMapServed> map {};
+    processor.paintMapServed(map.data());
+    return bytes(map.data(), map.size() * sizeof(float), "application/octet-stream");
+  }
   if (path == "/grid.bin") {
     static thread_local std::array<float, scope::Instrument::kGridServed> grid {};
     processor.gridServed(grid.data());

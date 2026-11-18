@@ -131,6 +131,37 @@ def run(kit):
     check("the same performance paints the same map, to the bit", same == 1)
     null("another drying paints another map", same_other == 0 and apart > 0.01, "wetness apart by %.3f" % apart)
 
+    # --- step 2: the stored switch and the painting's own Persistence ---
+    (paints, p30, t03, knob30, p40, t40, traced, knob_trace, p_after, t80, again, again_p, again_t, again_knob) = nums("switch")
+    check("a setup that draws Paint paints, at its own Persistence, the knob showing it", paints == 1 and p30 == 30 and knob30 == 71,
+          "painting %d, %.1f s, knob at %d" % (paints, p30, knob30))
+    check("the knob moved in Paint moves the painting's Persistence and leaves the trace's",
+          abs(p40 - 6.8) < 1e-9 and t40 == t03 == 0.3, "painting's %.1f s, the trace's %.3f" % (p40, t40))
+    check("Trace pressed: the core stops painting and the knob shows the trace's", traced == 0 and knob_trace == 9,
+          "painting %d, knob at %d" % (traced, knob_trace))
+    check("the knob moved in Trace moves the trace's and leaves the painting's", p_after == p40 and t80 != t03,
+          "painting's %.1f s, the trace's %.4f" % (p_after, t80))
+    null("one value for both would have moved the painting's with the trace's", t80 != t03 and p_after != 0.0038)
+    check("reopened from its state, both are where the hands left them and Paint is shown again",
+          again == 1 and again_p == p40 and again_t == t80 and again_knob == 40,
+          "painting %d, %.1f s and %.4f, knob at %d" % (again, again_p, again_t, again_knob))
+    null("the reopened knob is not the trace's place", again_knob != knob_trace)
+
+    # --- step 2: Mono and Dyad paint ---
+    on, radius_mono, near_a, near_e, table = nums("line", "mono")
+    check("Mono paints its line at the note's radius and plays a table read off it", on == 1 and near_a > 0.9 and table == 1,
+          "%.0f%% of the paint within a cell and a half of A3's ring" % (100 * near_a))
+    null("none of it on E4's ring", near_e < 0.05, "%.1f%%" % (100 * near_e))
+    _, _, dyad_a, dyad_e, dyad_table = nums("line", "dyad")
+    check("Dyad paints both notes of its pair, each on its own ring", dyad_a > 0.3 and dyad_e > 0.3 and dyad_table == 1,
+          "%.0f%% on A3's ring, %.0f%% on E4's" % (100 * dyad_a, 100 * dyad_e))
+
+    # --- step 2: the strokes the face is served ---
+    count, last, served, err, none = nums("served")
+    check("the face is served every stamp the painter lays: the ring's newest are the last frame's", served == last > 0 and err == 0,
+          "%d laid, the last frame's %d served exactly" % (count, served))
+    null("asked from the count itself, nothing new", none == 0)
+
     # --- what it costs ---
     trace, paint = nums("cost", "2")
     check("painting a held chord of sixteen costs under a tenth of a core more than the trace", paint - trace < 0.1,

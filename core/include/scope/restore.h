@@ -313,6 +313,13 @@ struct Brain {
   struct Photo { bool on = false; double u = 0.75, v = 0.5; } photo;
   // Scan's softness in cells (P7a), the page's `scan.soft`: the slider's tenths.
   double scanSoft = 3;
+  /* What the screen draws (painting, step 2): the trace, or the painting the
+     core keeps (paint.h), which Scan and the Picture amount then read - the
+     setup's `screenDraws`. And the painting's own Persistence, a half-life
+     in seconds (`paintPersistence`): its own value rather than the trace's
+     read two ways (the owner, 18 Nov), shown on the one knob while Paint is. */
+  std::string draws = "trace";
+  double paintPersistence = 16;
   /* A note's strike on the screen (P7b), the page's `scan.strike`: the
      slider's percent as a fraction, a full-velocity note's light; and the
      upper hand's (G6, `scan.strikeB`). */
@@ -1333,7 +1340,35 @@ inline void setPersistence(Brain& b, double p) {
   }
   if (found) b.panel.setSelect("persistence", toU16(text));
   else b.panel.setCustomOption("persistence", text);
-  b.panel.setRangeNumber("scanMemory", memorySliderOf(p));
+  // The knob shows the trace's only while the trace is shown (painting, step 2).
+  if (b.draws != "paint") b.panel.setRangeNumber("scanMemory", memorySliderOf(p));
+}
+
+/* Painting's Persistence on Scan's knob (step 2): a half-life from a second
+   to two minutes on a log scale, nought to a hundred, so 16 s, where it
+   starts, sits at 58. The page's paintOfSlider and paintSliderOf. A value is
+   kept to a tenth of a second, as the reading shows it. */
+constexpr double kPaintLeast = 1, kPaintMost = 120, kPaintDefault = 16;
+inline double paintOfSlider(double m) {
+  const double x = jsMax(0, jsMin(100, std::isfinite(m) ? m : 0)) / 100;
+  return jsMathRound(10 * kPaintLeast * std::pow(kPaintMost / kPaintLeast, x)) / 10;
+}
+inline double paintSliderOf(double h) {
+  const double v = std::isfinite(h) && h > 0 ? h : kPaintDefault;
+  return jsMax(0, jsMin(100, jsMathRound(100 * std::log(v / kPaintLeast) / std::log(kPaintMost / kPaintLeast))));
+}
+/* setPaintPersistence: the value, and the knob when Paint is shown. Held to
+   the field's range, a second to two minutes. */
+inline void setPaintPersistence(Brain& b, double h) {
+  b.paintPersistence = std::isfinite(h) ? jsMax(kPaintLeast, jsMin(kPaintMost, h)) : kPaintDefault;
+  if (b.draws == "paint") b.panel.setRangeNumber("scanMemory", paintSliderOf(b.paintPersistence));
+}
+/* setDraws: the trace or the painting, and the Persistence knob put where the
+   one shown has it - the trace's persistence untouched either way. */
+inline void setDraws(Brain& b, const std::string& mode) {
+  b.draws = mode == "paint" ? "paint" : "trace";
+  b.panel.setRangeNumber("scanMemory", b.draws == "paint" ? paintSliderOf(b.paintPersistence)
+                                                          : memorySliderOf(b.view.screen.persistence));
 }
 
 // setDisplay: X-Y with no persistence is a thin scribble, so it is nudged once, on the way in.
@@ -1969,6 +2004,9 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     // Persistence after the display, because switching to X-Y nudges it.
     setDisplay(brain, text("display"));
     setPersistence(brain, num("persistence"));
+    // What the screen draws and the painting's Persistence (step 2), after the trace's, which the knob shows otherwise.
+    setPaintPersistence(brain, fieldNum("paintPersistence"));
+    setDraws(brain, utf16To8(field("screenDraws").s));
     // Scan's softness, in tenths of a cell, held to its slider.
     {
       panel.setRange("scanSoft", fieldText("scanSoft"));
@@ -2082,7 +2120,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   // How the picture responds (11 Nov): Custom's Rise and Fall.
   else if (id == "pictureRise") pictureWriteWith(b, keys, [v](Brain::PictureHand& h) { h.rise = v; });
   else if (id == "pictureFall") pictureWriteWith(b, keys, [v](Brain::PictureHand& h) { h.fall = v; });
-  else if (id == "scanMemory") setPersistence(b, memoryOfSlider(v));
+  // The one knob, the Persistence of whichever the screen draws (painting, step 2).
+  else if (id == "scanMemory") { if (b.draws == "paint") setPaintPersistence(b, paintOfSlider(v)); else setPersistence(b, memoryOfSlider(v)); }
   else if (id == "morphPos") b.morphPos = v / 100;
   else if (id == "tempo") setTempo(b, v, b.clock.now());
   else if (id.size() == 4 && id.compare(0, 3, "bar") == 0) {
@@ -2335,6 +2374,8 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "beamXY") b.view.screen.beamXY = checked;
   else if (id == "beamYT") b.view.screen.beamYT = checked;
   else if (id == "persistence") setPersistence(b, jsStringToNumber(value));
+  // The painting's Persistence in seconds (step 2), as a hand on the knob in Paint is kept.
+  else if (id == "paintPersistence") setPaintPersistence(b, jsStringToNumber(value));
   else if (id == "xyX" || id == "xyY") {
     Brain::ViewState& w = b.view;
     const std::size_t which = id == "xyY" ? 1 : 0;
@@ -2524,6 +2565,8 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
   // Together, A and B (setPlaneLayer) were here until G6: each module's link now.
   // The view's buttons.
   else if (id == "dispYT" || id == "dispXY" || id == "dispSpect") setDisplay(b, id == "dispYT" ? "yt" : id == "dispXY" ? "xy" : "spect");
+  // Trace or Paint (painting, step 2).
+  else if (id == "drawTrace" || id == "drawPaint") setDraws(b, id == "drawPaint" ? "paint" : "trace");
   else if (id == "edgeRising" || id == "edgeFalling") b.view.edge = id == "edgeRising" ? "rising" : "falling";
   else if (id == "modeAuto" || id == "modeNormal" || id == "modeSingle") b.view.mode = id == "modeAuto" ? "auto" : id == "modeNormal" ? "normal" : "single";
   else if (id == "lagAuto" || id == "lagManual") {

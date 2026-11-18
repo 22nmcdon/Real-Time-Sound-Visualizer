@@ -148,6 +148,10 @@ class Instrument {
     lfos_[0].rate = 0.2; lfos_[0].depth = 0.5;
     lfos_[1].rate = 0.5; lfos_[1].depth = 0.3;
     scan_ = std::make_unique<ScanReader>();  // its tables made here, off the audio thread
+    // The painter too (paint.h): a few megabytes, made here so switching to Paint on the audio thread makes nothing.
+    painter_ = std::make_unique<Painter>(paintParams_);
+    paintOn_ = false;
+    paintHeld_ = { { 1, 1 } };
     // The default cycles' tables, and the setup's own, built here rather than
     // by a load on the audio thread later (CycleCache).
     for (int k = 0; k < static_cast<int>(kCycleSlots); k++) CycleCache::shared().warm(cycleDefault(k));
@@ -496,10 +500,11 @@ class Instrument {
        steady frame allocates nothing (parity's block_alloc_cpp). */
     const bool pictureFrame = pictureRun_->due(nowMs_);
     if (pictureFrame) {
-      // Painting (paint.h): the brushes and the map stepped first, so the stage reads this frame's paint.
-      if (painter_) paintFrame();
+      // Painting (paint.h): the switch as the setup has it, then the brushes and the map, so the stage reads this frame's paint.
+      if ((brain_->draws == "paint") != paintOn_) switchPaint(!paintOn_);
+      if (paintOn_) paintFrame();
       pictureRun_->before(*matrix_, pictureSource_, limiting());
-      if (painter_) paintScanFrame(); else scanFrame();
+      if (paintOn_) paintScanFrame(); else scanFrame();
     }
     matrix_->setLayered(keyboard_->layersOn());
     matrix_->setStrikes(keyboard_->strikes());
@@ -516,7 +521,7 @@ class Instrument {
     pictureRun_->afterMatrix();
     if (pictureFrame) {
       // One canvas while painting: the hands' own pictures are the trace's (painting-design.md).
-      pictureRun_->setLayered(keyboard_->layersOn() && !painter_);
+      pictureRun_->setLayered(keyboard_->layersOn() && !paintOn_);
       pictureRun_->draw(pictureSource_, kCanvas);  // held under Stop (5a): nothing faded or laid
       // And the readout's: the automatic lag locked to the held note while the note is the truth, else to what is heard.
       std::optional<double> played;
@@ -743,26 +748,25 @@ class Instrument {
   // The generator, for what the page reads off it: its envelope, gate and budget.
   const Generator& generator() const { return *core_; }
 
-  /* Painting, step 1 (paint.h, web/docs/painting-design.md): on, the core
-     paints from the voices and Scan and the Picture amount read the paint
-     map in place of the trace; off, nothing of it runs and the instrument is
-     the trace's to the bit. Internal for now - no setup field, no control -
-     and made here, off the audio thread, so call it after prepare and before
-     playing, as the offline renders do. The Trace / Paint switch is step 2's. */
+  /* Painting (paint.h, web/docs/painting-design.md): on, the core paints
+     from the voices and Scan and the Picture amount read the paint map in
+     place of the trace; off, nothing of it runs and the instrument is the
+     trace's to the bit. Since step 2 it follows the setup's `screenDraws`
+     (the Trace / Paint switch) at the next picture frame. This sets that
+     and, for the offline renders and the pieces, the painter's own settings
+     - drying, the layout's - making it again, so call it after prepare and
+     before playing, off the audio thread. */
   void setPainting(bool on, const PaintParams& params = {}) {
-    if (on) {
-      painter_ = std::make_unique<Painter>(params);
-      pictureRun_->paintWith(&painter_->reads());
-      // No voice plays the layers' trace tables while painting: until its brush reads, a voice plays its ink.
-      core_->setScanTable(nullptr, 0); core_->setScanTable(nullptr, 1);
-    } else {
-      pictureRun_->paintWith(nullptr);
-      painter_.reset();
-    }
-    core_->setPainting(on);
+    paintParams_ = params;
+    if (paintOn_) switchPaint(false);
+    painter_ = std::make_unique<Painter>(params);
+    setPaintPersistence(*brain_, params.fade);
+    setDraws(*brain_, on ? "paint" : "trace");
+    if (on) switchPaint(true);
   }
-  const Painter* painter() const { return painter_.get(); }
-  Painter* painter() { return painter_.get(); }
+  const Painter* painter() const { return paintOn_ ? painter_.get() : nullptr; }
+  Painter* painter() { return paintOn_ ? painter_.get() : nullptr; }
+  bool painting() const { return paintOn_; }
   // Each layer's picture (P6), for the page's readings and a harness.
   const LayerPictures& layerPictures() const { return pictureRun_->layers(); }
   // The two oscillators, which move the picture's destinations on the page as well as the sound here.
@@ -864,6 +868,53 @@ class Instrument {
     }
     return false;
   }
+  /* The painting's strokes for the face (painting, step 2): every stamp the
+     painter lays, twenty floats each - where, which way, its width and
+     pressure, when, how far it went, its eight bristle groups' loads, and
+     its brush, hand, ink and note (PaintStamp) - into a ring of the last
+     kPaintServed, counted from the first. The face asks for those after the
+     count it last had, and paints the look from them on the graphics card;
+     the site's page through brain_paint, the plugin's through paint/N.bin. A
+     face that falls more than the ring behind takes what is left. */
+  static constexpr std::size_t kPaintServed = 4096, kStampFloats = 20;
+  std::uint64_t paintCount() const { return paintCount_.load(std::memory_order_acquire); }
+  /* The stamps from `since` (or the oldest still kept) to now into `out`,
+     room for `room` stamps of kStampFloats; how many, and where they began. */
+  std::size_t paintServed(std::uint64_t since, float* out, std::size_t room, std::uint64_t& from) const {
+    const std::uint64_t now = paintCount_.load(std::memory_order_acquire);
+    from = std::max(since, now > kPaintServed ? now - kPaintServed : 0);
+    if (from > now) from = now;
+    const std::size_t n = static_cast<std::size_t>(std::min<std::uint64_t>(now - from, room));
+    for (std::size_t k = 0; k < n; k++) {
+      const std::size_t at = static_cast<std::size_t>((from + k) % kPaintServed) * kStampFloats;
+      for (std::size_t f = 0; f < kStampFloats; f++) out[k * kStampFloats + f] = paintRing_[at + f].load(std::memory_order_relaxed);
+    }
+    // Overwritten while it was copied: what is left whole is from the oldest the writer has not reached.
+    const std::uint64_t after = paintCount_.load(std::memory_order_acquire);
+    if (after > from + kPaintServed) {
+      const std::uint64_t lost = after - kPaintServed - from;
+      if (lost >= n) return 0;
+      for (std::size_t k = 0; k + lost < n; k++)
+        for (std::size_t f = 0; f < kStampFloats; f++) out[k * kStampFloats + f] = out[(k + lost) * kStampFloats + f];
+      from += lost;
+      return n - static_cast<std::size_t>(lost);
+    }
+    return n;
+  }
+  /* And the map, for a face with no graphics card to paint on, which draws
+     it plain: thickness then wetness, 128 by 128 each, as it stood a few
+     frames ago (written every third), a whole one or false. */
+  static constexpr std::size_t kPaintMapServed = 2 * PaintMap::kCells;
+  bool paintMapServed(float* out) const {
+    for (int tries = 0; tries < 4; ++tries) {
+      const unsigned before = paintMapSeq_.load(std::memory_order_acquire);
+      if (before & 1u) continue;
+      for (std::size_t i = 0; i < kPaintMapServed; ++i) out[i] = paintMap_[i].load(std::memory_order_relaxed);
+      if (paintMapSeq_.load(std::memory_order_acquire) == before) return true;
+    }
+    return false;
+  }
+
   /* The fade's gains as the face reads them (5b): one line a routing,
      ghosts among them, in the matrix's order - its key, each layer's gain,
      its depth and the upper hand's (or nothing), and 1 if it is in the setup
@@ -997,6 +1048,12 @@ class Instrument {
      parameters on those controls read back when it changes, since the same
      slider then shows the other layer's value. */
   int panelLayer() const { return brain_->panelLayer; }
+  /* The screen's two Persistences (painting, step 2): the trace's, as its
+     menu holds it, and the painting's, a half-life in seconds - kept apart,
+     the one knob showing whichever the screen draws. And what it draws. */
+  double tracePersistence() const { return brain_->view.screen.persistence; }
+  double paintPersistence() const { return brain_->paintPersistence; }
+  bool drawsPaint() const { return brain_->draws == "paint"; }
   /* A hand on a slider that is not remembered, and an end of the morph
      stored: the plugin's shell test's way in. */
   void moveSlider(const std::string& id, double value) {
@@ -1057,9 +1114,19 @@ class Instrument {
       return;
     }
     Json hand = Json::array();
-    hand.a.push_back(Json::string(std::string_view("s"))); hand.a.push_back(Json::string(std::string_view(id)));
-    hand.a.push_back(Json::string(std::string_view(jsNumberToString(brain_->panel.range(id)))));
-    remember("s:" + id, std::move(hand));
+    /* The Persistence knob while Paint is shown (step 2) is the painting's
+       own value, kept as that value - a hand of its own, so the trace's
+       Persistence moved later, on the same knob, does not take its place
+       among the hands, and a state reopened has both. */
+    if (id == "scanMemory" && brain_->draws == "paint") {
+      hand.a.push_back(Json::string(std::string_view("c"))); hand.a.push_back(Json::string(std::string_view("paintPersistence")));
+      hand.a.push_back(Json::string(std::string_view(jsNumberToString(brain_->paintPersistence))));
+      remember("c:paintPersistence", std::move(hand));
+    } else {
+      hand.a.push_back(Json::string(std::string_view("s"))); hand.a.push_back(Json::string(std::string_view(id)));
+      hand.a.push_back(Json::string(std::string_view(jsNumberToString(brain_->panel.range(id)))));
+      remember("s:" + id, std::move(hand));
+    }
     changed_ = true;
     if (fromHost) {
       hostVersion_++;
@@ -1456,8 +1523,63 @@ class Instrument {
   /* Painting's frame (paint.h): each sounding voice's brush moved and laid,
      the map dried and faded, and the reads the stage takes measured. */
   void paintFrame() {
-    std::vector<Voice>* pools[2] = { &core_->voicesOf(0), &core_->voicesOf(1) };
-    painter_->frame(pools, nowMs_, pictureRun_->elapsed());
+    painter_->setFade(brain_->paintPersistence);
+    std::size_t n = 0;
+    if (core_->polyVoices()) {
+      std::vector<Voice>* pools[2] = { &core_->voicesOf(0), &core_->voicesOf(1) };
+      n = Painter::notesOf(pools, paintNotes_.data(), paintNotes_.size());
+    } else {
+      /* Mono's line or Dyad's pair (step 2): a brush for the lower note and,
+         while the pair is apart, one for the upper, each a stroke like any
+         note's; a note struck again is a new brush (lineId_), so a line's
+         notes are strokes of their own rather than one bent through them. */
+      const double hz = core_->pitch(), level = core_->lineLevel(), ratio = core_->lineRatio();
+      const auto noteOf = [](double f) { return f > 0 ? static_cast<int>(std::lround(69 + 12 * std::log2(f / 440))) : 0; };
+      if (hz > 0 && level > 0) {
+        paintNotes_[n++] = { 0, -1 - 2 * lineId_, noteOf(hz), hz, std::clamp(level, 0.0, 1.0), core_->gated() };
+        if (ratio != 1) paintNotes_[n++] = { 0, -2 - 2 * lineId_, noteOf(hz * ratio), hz * ratio, std::clamp(level, 0.0, 1.0), core_->gated() };
+      }
+    }
+    painter_->frame(paintNotes_.data(), n, nowMs_, pictureRun_->elapsed());
+    publishPaint();
+  }
+
+  // The frame's stamps into the face's ring, and every third frame the map (paintServed, paintMapServed).
+  void publishPaint() {
+    std::uint64_t count = paintCount_.load(std::memory_order_relaxed);
+    for (const PaintStamp& st : painter_->stamps()) {
+      const std::size_t at = static_cast<std::size_t>(count % kPaintServed) * kStampFloats;
+      const float row[kStampFloats] = { st.x, st.y, st.dx, st.dy, st.w, st.p, st.t, st.per,
+                                        st.load[0], st.load[1], st.load[2], st.load[3], st.load[4], st.load[5], st.load[6], st.load[7],
+                                        static_cast<float>(st.serial), static_cast<float>(st.hand), static_cast<float>(st.ink), static_cast<float>(st.note) };
+      for (std::size_t f = 0; f < kStampFloats; f++) paintRing_[at + f].store(row[f], std::memory_order_relaxed);
+      count++;
+    }
+    paintCount_.store(count, std::memory_order_release);
+    if (++paintFrames_ % 3 != 0) return;
+    const PaintMap& m = painter_->map();
+    paintMapSeq_.fetch_add(1, std::memory_order_acq_rel);
+    for (std::size_t i = 0; i < PaintMap::kCells; ++i) {
+      paintMap_[i].store(m.thick[i], std::memory_order_relaxed);
+      paintMap_[PaintMap::kCells + i].store(m.wet[i], std::memory_order_relaxed);
+    }
+    paintMapSeq_.fetch_add(1, std::memory_order_acq_rel);
+  }
+
+  /* Trace to Paint or back (step 2). On: the stage reads the paint, and no
+     voice plays a trace table until its brush has read. Off: the voices let
+     go of their own tables, so the layer's are played again from the next
+     frame's Scan, and the stage reads the trace. Nothing made or freed. */
+  void switchPaint(bool on) {
+    paintOn_ = on;
+    pictureRun_->paintWith(on ? &painter_->reads() : nullptr);
+    core_->setPainting(on);
+    core_->setScanTable(nullptr, 0); core_->setScanTable(nullptr, 1);
+    if (!on) {
+      for (int layer = 0; layer < 2; layer++)
+        for (auto& v : core_->voicesOf(layer)) { v.painted = false; v.paintTable = v.paintPrev = v.paintNext = nullptr; }
+    }
+    paintHeld_ = { { 1, 1 } };
   }
   /* And Scan's, while painting: each voice reads the ring at its own pitch
      into its own table, at its layer's depth; each layer's hold sent as the
@@ -1471,7 +1593,14 @@ class Instrument {
       double& held = paintHeld_[static_cast<std::size_t>(layer)];
       if (std::fabs(hold - held) > 0.005 || (hold == 1 && held != 1)) { held = hold; core_->set("scanHold", hold, layer); }
     }
-    painter_->readRings(pools, depth, brain_->scanSoft, nowMs_ < scan_->frozenUntil);
+    const bool frozen = nowMs_ < scan_->frozenUntil;
+    if (core_->polyVoices()) painter_->readRings(pools, depth, brain_->scanSoft, frozen);
+    else if (depth[0] > 0 && !frozen && core_->pitch() > 0) {
+      // Mono's and Dyad's one table: the lower note's ring (Painter::readLine).
+      if (CycleTables* t = painter_->readLine(0, -1 - 2 * lineId_, core_->pitch(), brain_->scanSoft, core_->scanTable(0),
+                                              core_->scanPrev(0), core_->scanNext(0)))
+        core_->setScanTable(t, 0);
+    }
   }
 
   void scanFrame() {
@@ -1503,7 +1632,8 @@ class Instrument {
     if (!pictureRun_ || !scan_ || !running_) return;  // stopped, the picture is held (5a)
     /* Painting: the strike is the brush's impact - its dip and its press -
        at the velocity times the hand's Strike, as the trace's light is. */
-    if (painter_) {
+    if (paintOn_ && !core_->polyVoices()) lineId_++;  // Mono's or Dyad's next note: a brush of its own
+    if (paintOn_) {
       const int hand = (layers & 2) && !(layers & 1) ? 1 : 0;
       painter_->strike(note, velocity * (hand == 1 ? brain_->scanStrikeB : brain_->scanStrike), layers, nowMs_);
     }
@@ -1758,6 +1888,20 @@ class Instrument {
   std::unique_ptr<ScanReader> scan_;
   // Painting (paint.h): made by setPainting, nothing while the trace is shown; and each layer's hold as last sent.
   std::unique_ptr<Painter> painter_;
+  PaintParams paintParams_;
+  bool paintOn_ = false;
+  int lineId_ = 0;  // Mono's and Dyad's notes counted, each a brush of its own
+  std::array<PaintNote, kPaintNotesMost> paintNotes_ {};
+  // What the face reads of the painting (paintServed, paintMapServed): made with the instrument, a few hundred kilobytes.
+  std::unique_ptr<std::array<std::atomic<float>, kPaintServed * kStampFloats>> paintRingStore_ =
+      std::make_unique<std::array<std::atomic<float>, kPaintServed * kStampFloats>>();
+  std::array<std::atomic<float>, kPaintServed * kStampFloats>& paintRing_ = *paintRingStore_;
+  std::atomic<std::uint64_t> paintCount_ { 0 };
+  std::unique_ptr<std::array<std::atomic<float>, kPaintMapServed>> paintMapStore_ =
+      std::make_unique<std::array<std::atomic<float>, kPaintMapServed>>();
+  std::array<std::atomic<float>, kPaintMapServed>& paintMap_ = *paintMapStore_;
+  std::atomic<unsigned> paintMapSeq_ { 0 };
+  unsigned paintFrames_ = 0;
   std::array<double, 2> paintHeld_ { { 1, 1 } };
   CaptureSource pictureSource_;
   /* Its lane count again, for the plugin's message thread, which serves the

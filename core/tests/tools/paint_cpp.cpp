@@ -24,6 +24,15 @@
 //   same                   a phrase painted twice, and once with another drying: whether the
 //                          maps are the same to the bit
 //   stage                  the picture stage on the paint's inputs, Level and Change
+//   switch                 the stored switch and Persistence (step 2): a setup drawing Paint at a
+//                          Persistence of 30 s, its knob moved, then Trace pressed and the knob
+//                          moved again, and the state reopened in a second instrument: whether
+//                          each paints, both Persistences at each step, and the knob's place
+//   line MODE              A3 held in Mono, or A3 and E4 in Dyad, painting: the paint's radius
+//                          and how much lies within a cell of each note's ring, and whether
+//                          the layer plays a painted table
+//   served                 the strokes the face is served: the count, the last frame's stamps
+//                          against the ring's newest, and a read from the count itself
 //   cost SECONDS           a chord of sixteen held, trace and painting, the best of three
 //                          runs: the instrument's seconds per second of audio
 #include <algorithm>
@@ -357,6 +366,70 @@ int main(int argc, char** argv) {
     double ab = 0, bc = 0, e = 0;
     for (std::size_t i = 0; i < a.size(); i++) { ab += (a[i] - b[i]) * (a[i] - b[i]); bc += (b[i] - c[i]) * (b[i] - c[i]); e += b[i] * b[i]; }
     std::printf("%.6f %.6g\n", std::sqrt(ab / e), std::sqrt(bc / e));
+  } else if (cmd == "switch") {
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"persistence":"0.3","screenDraws":"paint","paintPersistence":30})", false);
+    p.blocks(0.1, { { 0x90, 60, 100 } });
+    const int a = p.in.painting() ? 1 : 0;
+    const double a1 = p.in.paintPersistence(), t1 = p.in.tracePersistence(), k1 = p.in.slider("scanMemory");
+    p.in.apply(*Instrument::slider("scanMemory", u"40"));
+    p.blocks(0.05);
+    const double a2 = p.in.paintPersistence(), t2 = p.in.tracePersistence();
+    p.in.apply(Instrument::click("drawTrace"));
+    p.blocks(0.05);
+    const int b = p.in.painting() ? 1 : 0;
+    const double k3 = p.in.slider("scanMemory");
+    p.in.apply(*Instrument::slider("scanMemory", u"80"));
+    p.blocks(0.05);
+    const double a4 = p.in.paintPersistence(), t4 = p.in.tracePersistence();
+    p.in.apply(Instrument::click("drawPaint"));
+    p.blocks(0.05);
+    // Reopened from its state, as a host's project is.
+    Instrument again;
+    again.prepare(kRate, kBlock, *Instrument::setup(p.in.stateCode())->setup);
+    std::vector<float> l(kBlock), r(kBlock);
+    for (int k = 0; k < 20; k++) again.block(l.data(), r.data(), kBlock, nullptr, 0, nullptr, nullptr, 0, nullptr);
+    std::printf("%d %.4f %.4f %.1f %.4f %.4f %d %.1f %.4f %.4f %d %.4f %.4f %.1f\n", a, a1, t1, k1, a2, t2, b, k3, a4, t4,
+                again.painting() ? 1 : 0, again.paintPersistence(), again.tracePersistence(), again.slider("scanMemory"));
+  } else if (cmd == "line") {
+    const std::string mode = argc > 2 ? argv[2] : "mono";
+    const std::string json = R"({"shape":"sine","oscScan":60,"atk":2,"sus":80,"screenDraws":"paint","midiMode":")" + mode + R"("})";
+    Player p(json.c_str(), false);
+    // A fifth held in Dyad, its two keys; the lower alone in Mono.
+    if (mode == "dyad") p.blocks(1.5, { { 0x90, 57, 100 }, { 0x90, 64, 100 } });
+    else p.blocks(1.5, { { 0x90, 57, 100 } });
+    const RoundLayout round;
+    const auto near = [&](double hz) {
+      const double want = round.radius(hz) * kPaintN;
+      double in = 0, all = 0;
+      const auto& m = p.in.painter()->map();
+      for (int y = 0; y < kPaintN; y++)
+        for (int x = 0; x < kPaintN; x++) {
+          const double a = m.thick[static_cast<std::size_t>(y * kPaintN + x)];
+          all += a;
+          if (std::fabs(std::hypot(x + 0.5 - kPaintN / 2.0, y + 0.5 - kPaintN / 2.0) - want) < 1.5) in += a;
+        }
+      return all > 0 ? in / all : 0;
+    };
+    const double hz = hzOf(57), fifth = hzOf(64);
+    std::printf("%d %.4f %.4f %.4f %d\n", p.in.painting() ? 1 : 0, radiusOfMap(p.in.painter()->map()), near(hz), near(fifth),
+                p.in.generator().scanTable(0) ? 1 : 0);
+  } else if (cmd == "served") {
+    Player p(kSine, true);
+    p.blocks(0.5, { { 0x90, 60, 100 }, { 0x90, 64, 100 } });
+    const std::uint64_t count = p.in.paintCount();
+    const auto& last = p.in.painter()->stamps();
+    std::vector<float> out(Instrument::kPaintServed * Instrument::kStampFloats);
+    std::uint64_t from = 0;
+    const std::size_t n = p.in.paintServed(count - last.size(), out.data(), Instrument::kPaintServed, from);
+    double err = 0;
+    for (std::size_t k = 0; k < n && k < last.size(); k++) {
+      const float* row = &out[k * Instrument::kStampFloats];
+      err = std::max({ err, std::fabs(static_cast<double>(row[0] - last[k].x)), std::fabs(static_cast<double>(row[4] - last[k].w)),
+                       std::fabs(static_cast<double>(row[16] - static_cast<float>(last[k].serial))) });
+    }
+    std::uint64_t at = 0;
+    const std::size_t none = p.in.paintServed(count, out.data(), Instrument::kPaintServed, at);
+    std::printf("%llu %zu %zu %.3g %zu\n", static_cast<unsigned long long>(count), last.size(), n, err, none);
   } else if (cmd == "layout") {
     const Phrase a = phrase(false), b = phrase(true);
     std::printf("%.6g %.6g %.6g %.6g %.6g %.6g %.6g %.6g\n", l1(turned(b.thick, -1), a.thick), l1(turned(b.thick, 1), a.thick),
