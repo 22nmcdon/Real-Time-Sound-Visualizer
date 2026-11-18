@@ -2,50 +2,92 @@
 
 17 Nov. The owner's direction: envelopes as versatile as Serum 2's, drawn
 multi-segment shapes rather than ADSR with curves; every shaping feature a
-small clear **preview block** on its tab that opens a **large editor over the
-tabs**; and three complaints fixed - the sustain feels dead for small moves and
-drastic for visible ones, there is not enough room to work, and the voice
-filter cannot be read (its envelope amount does nothing at nought while the
-drawing looks live, and its popover covers its Type menu).
+small clear **preview block** on its tab that opens a larger editor; and three
+complaints fixed - the sustain feels dead for small moves and drastic for
+visible ones, there is not enough room to work, and the voice filter cannot be
+read (its envelope amount does nothing at nought while the drawing looks live,
+and its popover covers its Type menu).
 
-The mockup is `web/docs/mockups/mseg/index.html`, with screenshots beside it
-and its checks in `checks/`. This note is how it would be built. Nothing in
-`scope.html` or the core has changed.
+18 Nov, after three rounds of mockups, the owner chose the design below. The
+chosen one is `web/docs/mockups/mseg/popover.html` as it opens (take 2,
+straight amplitude, small block a, the filter's block with its envelope),
+with screenshots and its checks beside it. The earlier rounds stay for the
+record and are superseded where they differ: `index.html` (the editor over
+the tabs, the level drawn in decibels, Delay and Hold as tabs, a shaded held
+band) and `alternatives.html` (four places for the editor). This note is how
+it would be built. Nothing in `scope.html` or the core has changed.
 
 It acts on the loop (`making-it-one-instrument.md`'s first rule): the amp
 envelope is how a note strikes the screen and comes to rest, which is what
 the two preset headings, *Settled* and *Breathing*, are measured on. A loop
 held under a key is a new way for a held chord to keep breathing.
 
-## What the owner sees
+## The chosen design (18 Nov)
 
-- **On Play**, the Amp envelope and Voice filter sections become preview
-  blocks. The amp's is its drawing on the loudness scale with its four main
-  readings under it; the filter's is its response from 20 Hz to 20 kHz with
-  its one point and a shaded band for how far its envelope sweeps the cutoff,
-  its envelope small beneath, grey and saying *does nothing* while the amount
-  is nought. The Type menu stays on the block. Play then has room to spare:
-  243 / 65 / 176 px free under its three columns at 1400x900, 182 / 38 / 136 at
-  960x600 (measured on the mockup's page; the null, 150 and 160 px more in two
-  columns, overflows at 960x600).
-- **The editor**, over the tabs where the EQ's and the modulation editor
-  open: the shape large, its six knobs under it, shape presets, *Loop while
-  held*, *Sync*, zoom, *Hold a note*.
-- **The filter's editor**: the response with one draggable point (sideways the
-  cutoff, up and down the resonance), the type as a switch, Key track and
-  Amount as knobs, the sweep band moving while a note is held, and its envelope
-  beside it as the same editor on a linear axis.
-- **The Envelope card's editor**: the same editor; dashed and grey while it
-  follows the amp envelope, solid in its sage once edited.
-
-The page says what each interaction does; the choices are argued there under
-*The choices made*. The ones that need building are below.
+- **On Play**, the Amp envelope and Voice filter sections become small blocks.
+  - **The amp's block** is the shape and nothing else: one line with a faint
+    fill, time on the square-root scale (each stretch as wide as the root of
+    its time, so an 8 ms attack has a slope), the level in straight amplitude
+    (a -3 dB sustain sits at seven tenths, the ADSR anyone knows), the held
+    part a short plateau, and a gold dot riding it while a note sounds. No
+    grid, letters, values, dots, band or axis words. Its four readings
+    (attack, decay, sustain in dB, release) sit in a row under it.
+  - **The filter's block** keeps its Type menu, its response from 20 Hz to
+    20 kHz with the shaded band its envelope sweeps (no point, no dashed
+    edge), the three readings under it, and its envelope small beside the
+    words *Its envelope · sweeps +1.5 oct*, in the same plain style, grey
+    and saying *does nothing* while the amount is nought.
+  - Play keeps room to spare at both windows (measured on the page).
+- **The editor is a popover beside its block**, over the neighbouring column
+  at the columns' full height, its arrow pointing at the block it came from:
+  over Expression for the amp envelope, over the Generator's column for the
+  filter. It never covers its own block, the keyboard band or the screen.
+  *Esc*, *Close* or a press outside closes it. This replaces the editor over
+  the tabs, which the owner found too large.
+- **Inside it**: the name and *Close*; a line of tools (the shape presets,
+  *Loop*, *Hold a note*; the type switch for the filter); the drawing; and
+  **the six knobs always, one row of small knobs at the bottom** (the
+  filter's four over its envelope's six). No toggle for the knobs.
+- **The drawing is quiet**:
+  - Time on the square-root scale, as the block. There is no millisecond
+    ruler: the times are in the knobs' readings and in the readout beside the
+    handle being dragged.
+  - The level in **straight amplitude** (see below), with three level lines
+    only, labelled at the left: 0 dB, -6 and silence for the amp envelope;
+    100, 50 and 0 per cent for the filter's.
+  - No frame and **no held band**: the sustain runs on dotted to a small tick
+    on the foot marked *key up*, where the release starts.
+  - Round handles for the points and the bends, and a soft fill under the
+    curve.
+  - **Delay and Hold are rings on the curve**, not labelled tabs: Delay where
+    the silence ends, Hold where the peak ends (just right of the peak while
+    it is nought). They show while the pointer is over the drawing, while
+    one is held or focused, or once its time is not nought.
+  - Every gesture of the first round is unchanged: drag a point, double-click
+    the line to add one and a point to remove it, drag a bend, right-click or
+    long press or Shift+F10 for the menu, the arrows and Delete.
+- **The Envelope card's editor** is the same popover, opened from its card;
+  dashed and grey while it follows the amp envelope, solid in its sage once
+  edited.
 
 ## The level axis and the sustain
 
-The amp envelope's axis is in decibels: 0 dB at the top, a floor of -60 dB, and
-under it a band marked -inf for silence, where the shape starts and ends. The
-Sustain knob turns in decibels (-60 to 0, its bottom silence).
+The drawing shows the amp envelope's level in **straight amplitude**, as
+Serum 2 does: a -3.1 dB sustain sits 30 per cent of the way down, the decay is
+a visible curve and the release a smooth fall. The first two rounds drew it
+in decibels, which put that sustain 6.5 per cent down a 48 dB axis and made
+the release drop its last 20 dB in its last eighth of time - a box with one
+rounded corner and a cliff, since a decibel drawing of an envelope that ends
+at silence always ends in one. What straight amplitude costs: quiet levels
+are crushed to the foot (-30 dB is 3 per cent of the height), so a shape that
+lives below -20 dB is hard to draw finely. The mockup keeps a switch to the
+decibel drawing for comparison; whether the instrument keeps it is open.
+
+**The Sustain knob turns in decibels** (-60 to 0, its bottom silence), so the
+top quarter of its travel is the top 15 dB rather than the top quarter of the
+amplitude, which is the complaint about it fixed. The readings and the
+readout beside a dragged handle are in decibels too. The knob is a loudness
+scale; the drawing is a picture of the shape.
 
 **Nothing stored changes.** The sustain stays the linear level the engine
 multiplies by (`sus`, percent of full scale, as now); only the knob's law and
@@ -54,10 +96,9 @@ is needed for it: the field still has one answer, a level. The knob writes the
 linear value for the decibels it shows, so a value it writes need not be a
 whole percent; the setup field takes a number already.
 
-The filter's envelope and the Envelope card keep a **linear** axis, nought to
-the whole amount: what they move is already on a musical scale (octaves of
-cutoff, a modulation depth), and decibels would crowd their small values
-into the floor.
+The filter's envelope and the Envelope card are linear too, nought to the
+whole amount: what they move is already on a musical scale (octaves of
+cutoff, a modulation depth).
 
 ## How a shape is stored
 
@@ -238,7 +279,7 @@ it already is; a 32-point shape adds only segment changes.
 - **Golden:** no recording changes for the migration; a new scenario or two
   with a drawn shape and a loop, recorded with `--write-golden --because`.
 - **The face:** a suite for the editor in `web/tests/` (points dragged,
-  added, removed by real mouse; the right-click menu; the dB axis by numbers
+  added, removed by real mouse; the right-click menu; the level axis by numbers
   as the mockup's table does; the follow rule); `fittest.py` and `patchtest.py`
   with the blocks in place of the sections at the five windows;
   `designtest.py` (no new colour token: the mockup uses none).

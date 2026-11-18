@@ -396,25 +396,25 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 .plot:hover .dh, .plot .dh.shown, .plot .dh:focus-visible { opacity: 1; }
 .plot .pt, .plot .bh, .plot .tabm, .plot .loopm { cursor: grab; outline: none; }
 .plot .pt:focus-visible .ring, .plot .bh:focus-visible .ring, .plot .tabm:focus-visible .ring { stroke: var(--gold); stroke-width: 2.5; }
-.popover .ed-split .sub-title .fenv-words { display: none; }
+.popover .sub-title .fenv-words { display: none; }
 .knobs.tiny.f4 .kcell, .win.compact .knobs.tiny.f4 .kcell { width: 48px; }
 </style>
 </head>
 <body>
 <div class="page">
-  <p class="eyebrow">Mockup · Play · 18 Nov · round 3: the popover</p>
+  <p class="eyebrow">Mockup · Play · 18 Nov · round 3: the popover · the owner chose take 2</p>
   <h1>Envelopes, drawn: the popover</h1>
-  <p class="lede">The owner chose the popover. Here it is with a small block that shows much less, and a panel that tries not to look like a box: two takes on where it sits, and a choice of how loudness is drawn.</p>
+  <p class="lede">The owner's choice: the popover beside its block, its six knobs always in one row at the bottom, the level drawn in straight amplitude; on Play the plain shape with its readings under it, and the filter's block with its small envelope. The page opens on it; the other choices stay one switch away for comparison.</p>
   <p class="small">Live, with the same curve law, gestures and stored shape as <a href="index.html">the first mockup</a> and <a href="alternatives.html">the alternatives</a>, which are left as they were. Press a block on Play to open its panel; <kbd>Esc</kbd>, <i>Close</i> or a press outside closes it. Nothing in <code>scope.html</code> or the core has changed.</p>
   <div class="bar" role="toolbar" aria-label="What the mockup shows">
     <div class="grp"><span class="lbl">Panel</span>
       <div class="pg-switch" id="pgTake">
-        <button type="button" data-v="wide" aria-pressed="true">1 · Wide and short</button>
-        <button type="button" data-v="beside" aria-pressed="false">2 · Beside, knobs hidden</button>
+        <button type="button" data-v="wide" aria-pressed="false">1 · Wide and short</button>
+        <button type="button" data-v="beside" aria-pressed="true">2 · Beside (chosen)</button>
       </div></div>
     <div class="grp"><span class="lbl">Loudness drawn</span>
       <div class="pg-switch" id="pgLevel">
-        <button type="button" data-v="lin" aria-pressed="true">Straight amplitude</button>
+        <button type="button" data-v="lin" aria-pressed="true">Straight amplitude (chosen)</button>
         <button type="button" data-v="db" aria-pressed="false">Decibels</button>
       </div></div>
     <div class="grp"><span class="lbl">Editing</span>
@@ -427,13 +427,13 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
   <div class="bar" role="toolbar" aria-label="Small blocks and window" style="margin-top:0">
     <div class="grp"><span class="lbl">Small block</span>
       <div class="pg-switch" id="pgBlock">
-        <button type="button" data-v="a" aria-pressed="true">a · Readings under it</button>
+        <button type="button" data-v="a" aria-pressed="true">a · Readings under it (chosen)</button>
         <button type="button" data-v="b" aria-pressed="false">b · Readings on hover</button>
       </div></div>
     <div class="grp"><span class="lbl">Filter block</span>
       <div class="pg-switch" id="pgFblock">
-        <button type="button" data-v="words" aria-pressed="true">Words only</button>
-        <button type="button" data-v="box" aria-pressed="false">With its envelope</button>
+        <button type="button" data-v="words" aria-pressed="false">Words only</button>
+        <button type="button" data-v="box" aria-pressed="true">With its envelope (chosen)</button>
       </div></div>
     <div class="grp"><span class="lbl">Window</span>
       <div class="pg-switch" id="pgSize">
@@ -525,19 +525,19 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
     <li><b>Three level lines</b> (0, −6 and −∞ in straight amplitude, read as dB; 0, −24 and −48 in decibels; 100, 50 and 0 per cent for the filter's envelope), labelled quietly at the left.</li>
     <li><b>Round handles</b> for the points and the bends, and a <b>soft fill</b>.</li>
     <li><b>Delay and Hold</b> are gold rings on the curve (Delay where the silence ends, Hold where the peak ends, just right of the peak while it is nought), shown while the pointer is over the drawing, while one is held or focused, or when its time is not nought. No tab labels, so nothing collides at the top left.</li>
-    <li><b>One row of small knobs</b> (40 px cells) under the drawing in take 1; behind <i>Knobs</i> in take 2, with a quiet line of readings in their place and the value of what is dragged beside the pointer.</li>
+    <li><b>One row of small knobs</b> (40 px cells; the filter's four 48 px, so <i>Resonance</i> fits) at the bottom of the panel, always: the owner's choice over hiding them behind a toggle. The value of what is dragged also shows beside the pointer.</li>
   </ul>
   <dl class="verdict">
     <dt>1 · Wide and short</dt>
     <dd>For the amp envelope, the panel sits <b>above</b> its block, over Expression and the Generator, two columns wide and as tall as the space over the block, with its arrow pointing down. That is the only place a wider panel fits without covering its own block. For the filter, whose block is at the top of its column, the panel is to its left over the two columns, as tall as it needs, with the response and its envelope side by side. Its cost: the amp envelope's panel is short (see the table), and it covers the Generator, which is the next thing you might want while shaping a note.</dd>
-    <dt>2 · Beside, knobs hidden</dt>
-    <dd>Where round 2 put it, over the neighbouring column at the columns' full height, but the drawing has the panel to itself. Its cost: it is narrow, so a long release and a short attack share 260 px, and the knobs are one press further away.</dd>
+    <dt>2 · Beside (chosen)</dt>
+    <dd>Where round 2 put it, over the neighbouring column at the columns' full height, pointing at its block: the drawing over one row of small knobs, always shown. The owner chose it on 18 Nov, with the knobs never hidden. Its cost: it is narrow, so a long release and a short attack share about 250 px.</dd>
     <dt>Loudness drawn</dt>
     <dd><b>I would pick straight amplitude for the panel</b>, with the Sustain knob, the readings and the readout beside the pointer staying in decibels. Measured on the default shape at 1400 × 900: in decibels the −3.1 dB sustain sits 6 per cent of the way down a 48 dB axis, so the decay is a 6 px fall and the shape is a box; the release runs flat and then drops its last 20 dB in its last eighth of time, the cliff. In straight amplitude the sustain sits 30 per cent of the way down, the decay is a visible curve and the release a smooth fall, the shape Serum 2 and every hardware manual draw. What it costs: quiet levels are crushed to the foot (−30 dB is 3 per cent of the height), so a shape that lives below −20 dB is hard to draw finely, which is where the decibel view is still better, and why it stays a choice rather than going.</dd>
   </dl>
 
   <h2 id="survey">Measured: both takes at both windows</h2>
-  <p class="small">Filled in by the page as it loads. <i>Knob rows</i> is the number of rows each row of knobs actually takes (1 is the aim).</p>
+  <p class="small">Filled in by the page as it loads. <i>Knob rows</i> is the number of rows each group of knobs actually takes: the knobs are always shown, and 1 is the aim.</p>
   <div class="table-wrap"><table class="check-table">
     <thead><tr><th>Take</th><th>Window</th><th>Editing</th><th>Panel (% of tab)</th><th>Fit</th><th>Drawings</th><th>Knob rows</th></tr></thead>
     <tbody id="surveyRows"></tbody>
@@ -1740,10 +1740,12 @@ function fitStage() {
   wrap.style.height = Math.ceil(win.offsetHeight * sc) + "px";
 }
 /* ===================== round 3: the popover only ===================== */
-Object.assign(S, { take: "wide", block: "a", fblock: "words", level: "lin", edit: "amp", knobsOpen: false });
+// The owner's choice of 18 Nov, which the page opens on.
+const CHOSEN = { take: "beside", block: "a", fblock: "box", level: "lin" };
+Object.assign(S, CHOSEN, { edit: "amp" });
 const TAKE_NOTES = {
   wide: "<b>Take 1 · Wide and short.</b> The amp envelope's panel sits <i>above</i> its block, two columns wide and only as tall as the Generator, pointing down at the block; the filter's sits beside its block, two columns wide and as tall as it needs. The six knobs are one row of small knobs under the drawing.",
-  beside: "<b>Take 2 · Beside, knobs behind a toggle.</b> Where round 2 put it, over the neighbouring column at the columns' full height, but the drawing has the panel to itself: the knobs are behind <i>Knobs</i> (one row of small knobs when shown), a quiet line of readings under the drawing, and the value of what you drag beside your pointer.",
+  beside: "<b>Take 2 · Beside (chosen).</b> Over the neighbouring column at the columns' full height, pointing at its block: the drawing, then the six knobs always in one row of small knobs at the bottom, and the value of what you drag beside your pointer.",
 };
 const DOTS = '<span class="dots">···</span>';
 const title = (name, extra, cls) => '<div class="sec-title' + (cls ? " " + cls : "") + '">' + name + (extra || "") + DOTS + '</div>';
@@ -1757,7 +1759,6 @@ const shapeSel = (kind) => '<select class="shape-sel" data-shape-sel="' + kind +
 const loopBtn = (kind) => '<button type="button" class="tbtn" data-loop-btn="' + kind + '" aria-pressed="' + (envOf(kind).loop != null) + '">Loop</button>';
 const playBtn = '<button type="button" class="tbtn play" data-play="1" aria-pressed="false">Hold a note</button>';
 const closeBtn = '<button type="button" class="link-btn caps close" data-close="1">Close</button>';
-const knobsBtn = '<button type="button" class="tbtn" data-knobs="1" aria-pressed="' + S.knobsOpen + '">Knobs</button>';
 const knobRow = (ks) => '<div class="knobs tiny' + (ks.length === 4 ? " f4" : "") + '">' + ks.map((k) => cellHTML(k.id, k.nm, k.host)).join("") + '</div>';
 const typeSwitch = () => '<span class="switch caps ftype">' + ["Off", "Low", "Band", "High", "Notch"].map((n, i) => '<button type="button" data-ftype="' + i + '" aria-pressed="' + (filt().type === i) + '">' + n + '</button>').join("") + '</span>';
 const typeRow = () => row("Type", '<select class="vcf-type" aria-label="Filter type">' + ["Off", "Low pass", "Band pass", "High pass", "Notch"].map((n, i) => '<option value="' + i + '"' + (filt().type === i ? " selected" : "") + '>' + n + '</option>').join("") + '</select>');
@@ -1785,19 +1786,19 @@ function filterBlock() {
 }
 // The panel.
 function editorHTML() {
-  const T = S.take, k = S.knobsOpen;
+  const T = S.take;
   if (S.edit === "amp") {
     if (T === "wide") return '<div class="ed-head"><span class="nm">Amp envelope</span>' + shapeSel("amp") + loopBtn("amp") + playBtn + closeBtn + '</div>'
       + msegPlot("amp") + knobRow(envKnobs("amp"));
-    return '<div class="ed-head"><span class="nm">Amp envelope</span>' + closeBtn + '</div><div class="mini-tools">' + shapeSel("amp") + loopBtn("amp") + playBtn + knobsBtn + '</div>'
-      + msegPlot("amp") + (k ? knobRow(envKnobs("amp")) : quiet("amp"));
+    return '<div class="ed-head"><span class="nm">Amp envelope</span>' + closeBtn + '</div><div class="mini-tools">' + shapeSel("amp") + loopBtn("amp") + playBtn + '</div>'
+      + msegPlot("amp") + knobRow(envKnobs("amp"));
   }
   if (T === "wide") return '<div class="ed-head"><span class="nm">Voice filter</span>' + typeSwitch() + playBtn + closeBtn + '</div>'
     + '<div class="ed-split"><div class="ed-col">' + respPlot() + knobRow(FILTER_KNOBS) + '</div><span class="vsep"></span>'
     + '<div class="ed-col"><div class="sub-title">Its envelope ' + fenvWords + '<span class="gap"></span>' + shapeSel("fenv") + loopBtn("fenv") + '</div>' + msegPlot("fenv") + knobRow(envKnobs("fenv")) + '</div></div>';
-  return '<div class="ed-head"><span class="nm">Voice filter</span>' + closeBtn + '</div><div class="mini-tools">' + typeSwitch() + playBtn + knobsBtn + '</div>'
-    + respPlot() + (k ? knobRow(FILTER_KNOBS) : quiet("filter"))
-    + '<div class="sub-title">Its envelope ' + fenvWords + '<span class="gap"></span>' + shapeSel("fenv") + loopBtn("fenv") + '</div>' + msegPlot("fenv") + (k ? knobRow(envKnobs("fenv")) : quiet("fenv"));
+  return '<div class="ed-head"><span class="nm">Voice filter</span>' + closeBtn + '</div><div class="mini-tools">' + typeSwitch() + playBtn + '</div>'
+    + respPlot() + knobRow(FILTER_KNOBS)
+    + '<div class="sub-title">Its envelope ' + fenvWords + '<span class="gap"></span>' + shapeSel("fenv") + loopBtn("fenv") + '</div>' + msegPlot("fenv") + knobRow(envKnobs("fenv"));
 }
 function buildPlay() {
   const cols = document.getElementById("cols"), pop = document.getElementById("pop");
@@ -1914,14 +1915,14 @@ function measure() {
   document.getElementById("fitLine").innerHTML = parts.join("");
 }
 function survey() {
-  const keep = { take: S.take, size: S.size, edit: S.edit, knobsOpen: S.knobsOpen }, rows = [];
-  for (const take of ["wide", "beside"]) for (const size of ["big", "small"]) for (const edit of ["amp", "filter"]) for (const ko of (take === "beside" ? [false, true] : [false])) {
-    Object.assign(S, { take, size, edit, knobsOpen: ko }); render();
-    const m = measureNow(); m.label = (edit === "amp" ? "amp envelope" : "filter") + (take === "beside" ? (ko ? ", knobs shown" : ", knobs hidden") : ""); rows.push(m);
+  const keep = { take: S.take, size: S.size, edit: S.edit }, rows = [];
+  for (const take of ["beside", "wide"]) for (const size of ["big", "small"]) for (const edit of ["amp", "filter"]) {
+    Object.assign(S, { take, size, edit }); render();
+    const m = measureNow(); m.label = edit === "amp" ? "amp envelope" : "filter"; rows.push(m);
   }
   Object.assign(S, keep); render();
   window.__survey = rows;
-  document.getElementById("surveyRows").innerHTML = rows.map((m) => "<tr><td>" + (m.take === "wide" ? "1 · Wide" : "2 · Beside") + "</td><td>" + (m.size === "big" ? "1400×900" : "960×600") + "</td><td>" + m.label + "</td><td>"
+  document.getElementById("surveyRows").innerHTML = rows.map((m) => "<tr><td>" + (m.take === "wide" ? "1 · Wide" : "2 · Beside (chosen)") + "</td><td>" + (m.size === "big" ? "1400×900" : "960×600") + "</td><td>" + m.label + "</td><td>"
     + m.pop.w + "×" + m.pop.h + " (" + m.pop.share + "%)" + '</td><td class="' + (m.over > 1 || m.pop.coversBlock || m.pop.coversBand || m.pop.over > 1 ? "bad" : "ok") + '">' + (m.over > 1 ? "Play " + m.over + " px over" : m.pop.over > 1 ? "panel " + m.pop.over + " px over" : m.pop.coversBlock ? "covers its block" : "fits, clear") + "</td><td>"
     + m.plots.map((p) => ({ amp: "amp ", fenv: "filter env ", response: "response " })[p.what] + p.w + "×" + p.h).join(", ") + "</td><td>" + (m.pop.knobRows.length ? m.pop.knobRows.join(", ") : "hidden") + "</td></tr>").join("");
 }
@@ -1937,6 +1938,8 @@ function render() {
   fitStage();
   paint();
   placePop();
+  // The drawings' fitted scales were taken before the panel had its place: fit them again in it.
+  S.ui = {};
   paint();
 }
 function pgSwitch(id, key) {
@@ -1948,7 +1951,6 @@ document.getElementById("win").addEventListener("click", (ev) => {
   if (!t) return;
   if (t.dataset.open) { S.edit = t.dataset.open; SEL = null; render(); }
   else if (t.dataset.close) { S.edit = ""; SEL = null; render(); }
-  else if (t.dataset.knobs) { S.knobsOpen = !S.knobsOpen; render(); }
   else if (t.dataset.loopBtn) { const kind = t.dataset.loopBtn; writeEnv(kind, (e) => { e.loop = e.loop == null ? Math.max(1, flatten(e).pre.findIndex((p) => p.role === "attack")) : null; }); }
   else if (t.dataset.ftype != null) { writeHand("filter", (f) => { f.type = +t.dataset.ftype; }); paint(); }
 });
@@ -1985,7 +1987,7 @@ function setPlayPressed(on) { document.querySelectorAll("[data-play], #pgNote").
 document.addEventListener("pointerdown", (ev) => { if (ev.target.closest && ev.target.closest("[data-play], #pgNote") && ev.button === 0) { ev.preventDefault(); noteDown(); } });
 document.addEventListener("pointerup", () => noteUp());
 document.addEventListener("pointerdown", (ev) => { if (!ev.target.closest("#ctx")) hideMenu(); }, true);
-window.__mseg = { S, noteDown, noteUp, render, paint, measureNow, survey, prevPlain };
+window.__mseg = { S, CHOSEN, noteDown, noteUp, render, paint, measureNow, survey, prevPlain };
 document.getElementById("picKnobs").innerHTML = [["0%", "Amount", 0], ["off", "Scan", 0], ["50%", "Strike", 0.5], ["3.0 cells", "Softness", 0.4], ["32 ms", "Persistence", 0.3], ["0 dB", "Output", 0.75]]
   .map(([v, n, f]) => staticCell(v, n, f, true)).join("");
 paintKeys();
