@@ -263,7 +263,7 @@ button { font-family: inherit; cursor: pointer; }
 .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; align-self: center; }
 .switch button { background: none; border: none; padding: 6px 13px; color: var(--text-soft); }
 .switch button:hover { color: var(--blush-deep); }
-.switch button[aria-checked="true"] { background: var(--charcoal); color: var(--cream); }
+.switch button[aria-checked="true"], .mseg-ftype button[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); }
 /* The screen's display switch, four places since Paint joined it (painting, step 2): two
    pixels off each side of each, so the toolbar stays one row at 1400x900, as it was with three. */
 .screen-tools .switch button { padding: 6px 11px; }
