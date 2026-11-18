@@ -1,0 +1,54 @@
+{
+ "rows": [
+  {
+   "what": "Envelope: 8 ms, 120 ms, 0.70, 180 ms; held 400 ms",
+   "ok": true,
+   "page": "5.2e-13 of full scale, 30000 samples",
+   "null": "relative release 0.0230; straight 0.215"
+  },
+  {
+   "what": "Envelope: A pluck: 2 ms, 700 ms, 0, 250 ms; let go at 300 ms, in the decay",
+   "ok": true,
+   "page": "6.4e-05: the core a sample late at a stage's end (2.0e-05 with that sample allowed)",
+   "null": "relative release 0.0456; straight 0.215"
+  },
+  {
+   "what": "Envelope: 200 ms, 300 ms, 0.50, 400 ms; let go at 60 ms, in the attack",
+   "ok": true,
+   "page": "6.8e-13 of full scale, 30000 samples",
+   "null": "relative release 0.0311; straight 0.199"
+  },
+  {
+   "what": "Envelope: 150 ms, 1 s, 0.25, 2 s; held 2 s",
+   "ok": true,
+   "page": "3.4e-05: the core a sample late at a stage's end (1.1e-12 with that sample allowed)",
+   "null": "relative release 0.0288; straight 0.215"
+  },
+  {
+   "what": "Filter: Low pass, 1 kHz, Q 0.71",
+   "ok": true,
+   "page": "4.5e-08 dB at 24 frequencies",
+   "null": "resonance as damping 6.02 dB"
+  },
+  {
+   "what": "Filter: Low pass, 1.6 kHz, Q 2.06",
+   "ok": true,
+   "page": "3.0e-08 dB at 24 frequencies",
+   "null": "resonance as damping 12.55 dB"
+  },
+  {
+   "what": "Filter: High pass, 400 Hz, Q 5",
+   "ok": true,
+   "page": "3.0e-08 dB at 24 frequencies",
+   "null": "resonance as damping 24.18 dB"
+  },
+  {
+   "what": "Filter: Band pass, 2 kHz, Q 1.5",
+   "ok": true,
+   "page": "4.5e-08 dB at 24 frequencies",
+   "null": "resonance as damping 7.04 dB"
+  }
+ ],
+ "note": "Run by checks/curves_against_core.py: the core's Envelope stepped at 48 kHz against the page's levelAt with the old four numbers, within 0.0001 of full scale (-80 dB); where it is not within 1e-12 it is because the core ends a stage a sample after the drawn time, which the MSEG engine keeps (the design note). The filter to 0.01 dB. All pass.",
+ "ok": true
+}
