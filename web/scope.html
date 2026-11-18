@@ -1681,6 +1681,9 @@ body[data-compact] .bench-body { row-gap: 10px; }
 .bench-body .menu-group.kb-band { height: 122px; box-sizing: border-box; overflow: hidden; align-content: start; }
 [data-compact] .bench-body .menu-group.kb-band { height: 117px; }
 .pill-toggle.is-unseen { visibility: hidden; }
+/* The heading's row its own height, so Dyad's and Mono's shorter left column does not give the strip's spare height to
+   the heading and move the switch under it. */
+.bench-body .menu-group.kb-band { grid-template-rows: auto minmax(0, 1fr); }
 .kb-band .kb-box { margin-top: 12px; }
 .kb-band .kb-box-head { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); margin: 0; z-index: 1;
   background: var(--paper); border-radius: 20px; }
@@ -1759,13 +1762,15 @@ body[data-compact] .bench-body { row-gap: 10px; }
 [data-compact] .fig-sub { min-height: 18px; }
 .bench-body .fig-view > .menu-title > .hand-link, .bench-body .play-set .menu-title > .hand-link { position: static; }
 /* The pills one width whatever they say, so one appearing or changing its words moves nothing beside it. */
-.bench-body .is-play .hand-link, .bench-body.is-play .hand-link { min-width: 98px; justify-content: center; box-sizing: border-box; }
+.bench-body .is-play .hand-link, .bench-body.is-play .hand-link { width: 106px; justify-content: center; box-sizing: border-box; overflow: hidden; }
 .bench-body .fig-view > .fig-plot, .bench-body .fig-view > .fig-body { grid-column: 1 / -1; grid-row: 2; min-height: 0; min-width: 0; }
 .bench-body .fig-view > .fig-foot, .bench-body .fig-view > .wave-band { grid-column: 1 / -1; grid-row: 3; }
 .fig-plot { position: relative; min-height: 30px; }
 .fig-plot > svg, .fig-plot > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .fig-tools select.mseg-shapes, .fig-sub select.mseg-shapes { font-size: 11px; padding: 1px 3px; height: 22px; max-width: 92px; }
 .fig-tools .switch button { padding: 2px 8px; font-size: 9.5px; }
+/* One height pressed or not: a pressed link thickens its rule, which grew the button a pixel and moved it. */
+.fig-tools .link-btn, .fig-sub .link-btn { box-sizing: border-box; height: 19px; }
 [data-compact] .fig-tools .switch button { padding: 1px 6px; font-size: 9px; letter-spacing: 0.1em; }
 .bench-body .fig-view > .fig-tools.menu-row > .menu-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .fig-foot { display: flex; align-items: flex-end; gap: 16px; min-width: 0; }
@@ -17472,7 +17477,9 @@ function syncVcfRows() {
   const on = el.vcfType.value !== "0";
   el.vcfGroup.classList.toggle("is-off", !on);
   for (const row of el.vcfGroup.querySelectorAll(".vcf-on")) {
-    row.hidden = !on && row.classList.contains("vcf-env");
+    /* Its envelope's rows stay while it is off, greyed with the rest (18 Nov): hidden, they took the
+       envelope's knob row away and its drawing grew into the room, which moved what the type switch is
+       beside - the owner's rule is that a choice moves nothing. */
     for (const input of row.querySelectorAll("input, select, button")) input.disabled = !on;
   }
 }
