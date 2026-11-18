@@ -7254,3 +7254,44 @@ handle - copies the amp's four in, applies the edit, and sets `menvOwn` (`menvAd
 Reset, two presses, and *Follow* set it back (`menvFollowAmp`, `knobReset`). `setControl`,
 which suites use, is no hand and adopts nothing: a suite that wants it its own sets the
 checkbox.
+
+## Envelopes as drawn shapes, and seven traps on the way (18 Nov)
+
+The amp's, the filter's and the Envelope card's envelopes are multi-segment
+shapes (`mseg-design.md`, *As built*), each a string field the core parses
+(`scope/mseg_shape.h`) and plays by one law (`scope/mseg.h`), opened from a
+small block into a popover beside it. `msegtest.py`; it replaced
+`dragenvtest.py`, which dragged the three handles of a drawing that is gone.
+
+- **A new field named for what it is, not for where it lives, collides.** The
+  envelope's delay was first `delayMs`, which is the echo's: the upper hand's
+  echo went silent, since B's twin overwrote it. Envelope fields are
+  `envDelayMs`, `envHoldMs`, `fDelayMs`, `menvDelayMs` and so on. The schema
+  would not catch it: both are numbers.
+- **Wire a plot's listeners once.** The popover reuses one svg for the amp's
+  and the filter's shape; wiring on every open added another set each time,
+  and a double press added a point four times. The plot keeps its state on the
+  svg (`svg._plot`) and is wired the first time only.
+- **A drawing refitted while a point is held moves it away.** The vertical
+  scale fits the shape with headroom (`room`, 0.15), and the scale is held for
+  the length of a drag (`plot.k`); refitted on every move, a point dragged up
+  raised the ceiling and slid down under the pointer. A test reading the
+  value after the release read a refitted drawing, so `msegtest.py` reads it
+  while the pointer is down.
+- **Repainting on focus takes the focus.** A focusin handler that redrew the
+  handles replaced the focused one, so Shift+F10 opened its menu on nothing.
+  Focus only toggles `.is-sel`.
+- **A ring drawn over a point takes its presses.** The hold's gold ring sat on
+  the peak at Hold nought; it is drawn under the points, with a smaller hit
+  area, and kept `MSEG_HOLD_AWAY` pixels off, the offset taken out of its drag.
+- **An id is one element.** The card's *Hold a note* button was first
+  `menvHold`, the Envelope's Hold knob, and the page failed to load. It is
+  `menvHoldNote`.
+- **A press outside a popover includes the line that explains it.** The info
+  line's *More* closed the filter's popover, which moved its knobs back to the
+  store, so the card it opened had no next control to step to. `#infoMore` is
+  inside, for that.
+
+The plugin serves the drawn envelopes' places (the dot on each drawing) after
+everything else in `lfos.bin`, five values, so no reading before them moved;
+the shell test reads them in their place, with the bytes at rest as its null.

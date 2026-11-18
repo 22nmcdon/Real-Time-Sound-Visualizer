@@ -15,7 +15,9 @@ with screenshots and its checks beside it. The earlier rounds stay for the
 record and are superseded where they differ: `index.html` (the editor over
 the tabs, the level drawn in decibels, Delay and Hold as tabs, a shaded held
 band) and `alternatives.html` (four places for the editor). This note is how
-it would be built. Nothing in `scope.html` or the core has changed.
+it would be built, and since 18 Nov how it was: built on `claude/mseg-build`,
+with the defaults taken where the design was silent listed under *As built*,
+at the end.
 
 It acts on the loop (`making-it-one-instrument.md`'s first rule): the amp
 envelope is how a note strikes the screen and comes to rest, which is what
@@ -307,3 +309,28 @@ additive. Nothing here commits to it, and nothing here closes it off.
    points when they are as many?
 5. **One bend law:** should the fade's drawing take this one?
 6. **Host knobs:** should Attack and Release (or the Sustain) join `kKnobs`?
+
+## As built (18 Nov)
+
+Built in nine stages, in the order above. Where the design was silent, the
+defaults taken - each reasonable the other way, and each cheap to change:
+
+- **Moving the sustain point** sets the Sustain knob to the level of the
+  point it lands on, so the knob still says the held level.
+- **A one-shot** (*No sustain*) runs to its end whether the key is held or
+  not, and a fresh key restarts it.
+- **A loop plays only while the key is held**; let go, the shape leaves the
+  loop for its release.
+- **The morph** blends two shapes point by point when they have as many
+  points and the same bend law at each; otherwise it snaps to the far end at
+  half-way, as a menu does.
+- **The Envelope card's editor** stays where its editor already opened, over
+  the tabs, rather than a popover beside a block it does not have.
+- **The amp's Attack and Release as host knobs** are a third parameter group,
+  *Amp envelope*, after *Setups*: in the Instrument group they would have
+  moved the Morph's index.
+
+Known limitations, where a reader will hit them: the Envelope card's face on
+the modulation row still draws its four as the old ADSR picture, not the
+shape; and the host knobs cannot be checked with `auval` on Linux, so the AU's
+parameter list is held only by the shell test's ids and order.

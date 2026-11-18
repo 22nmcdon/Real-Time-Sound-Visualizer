@@ -1,5 +1,7 @@
 #include "PluginProcessor.h"
 
+#include <string_view>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -17,19 +19,28 @@ ScopeProcessor::ScopeProcessor()
      sections - puts the morph apart from the bank it plays with. */
   auto main = std::make_unique<juce::AudioProcessorParameterGroup>("loop", "Instrument", "|");
   auto setups = std::make_unique<juce::AudioProcessorParameterGroup>("setups", "Setups", "|");
+  /* And the amp envelope's two (18 Nov), a group after the Setups: a host
+     lists the parameters in the groups' order, so in the Instrument group
+     they would have moved the Morph's index from 14 to 16, and automation a
+     host stored by index would have gone to the wrong knob. */
+  auto envelope = std::make_unique<juce::AudioProcessorParameterGroup>("envelope", "Amp envelope", "|");
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
     const auto* spec = scope::rangeSpec(kKnobs[i].slider);
     auto knob = std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID { kKnobs[i].id, kKnobs[i].version }, kKnobs[i].name,
-        juce::NormalisableRange<float>(static_cast<float>(spec->min), static_cast<float>(spec->max), static_cast<float>(spec->step)),
+        juce::NormalisableRange<float>(static_cast<float>(spec->min), static_cast<float>(spec->max), static_cast<float>(spec->step),
+                                       // The envelope's times on their knobs' square-root law; everything else straight.
+                                       std::string_view(kKnobs[i].slider).rfind("env", 0) == 0 ? 0.5f : 1.0f),
         static_cast<float>(spec->value));
     knobs_[i] = knob.get();
     // Applied as made, so a host's set before the first prepare reads as the host's (prepareToPlay).
     applied_[i] = knob->get();
-    (kKnobs[i].main ? main : setups)->addChild(std::move(knob));
+    const bool env = std::string_view(kKnobs[i].slider).rfind("env", 0) == 0;
+    (env ? envelope : kKnobs[i].main ? main : setups)->addChild(std::move(knob));
   }
   addParameterGroup(std::move(main));
   addParameterGroup(std::move(setups));
+  addParameterGroup(std::move(envelope));
   moved_.reserve(kKnobs.size());
   for (auto& set : pageSet_) set.store(std::numeric_limits<float>::quiet_NaN());
   // What the out sends goes to the host's MIDI out, at its sample.

@@ -352,7 +352,9 @@ with sync_playwright() as pw:
     print("    %s" % marks)
     # Fourteen since G7 added the master Output, in Level's old corner; fifteen
     # since the Width after it (12 Nov).
-    check("the page's host parameters are the plugin's kKnobs, in its order", marks["list"] == plugin and len(plugin) == 15
+    # Seventeen since 18 Nov: the amp envelope's Attack and Release, appended after the morph.
+    check("the page's host parameters are the plugin's kKnobs, in its order", marks["list"] == plugin and len(plugin) == 17
+          and plugin[-3:] == ["morphPos", "envAttack", "envRelease"]
           and plugin[5:7] == ["output", "stereoWidth"],
           str((marks["list"], plugin)))
     check("every one, and only those, is marked on the face", sorted(marks["marked"]) == sorted(plugin), str(marks["marked"]))

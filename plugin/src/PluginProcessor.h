@@ -207,7 +207,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
      the hand the panel shows while it is that hand's own (`readBack` when
      the panel turns to the other hand). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
-  static constexpr std::array<HostKnob, 15> kKnobs { {
+  static constexpr std::array<HostKnob, 17> kKnobs { {
     // F7c of web/docs/redesigning-the-face.md: the Picture section along the
     // bottom of the face, then the sound controls people automate. Strike,
     // softness and twist arrived in version 3; the rest kept their ids, so
@@ -237,6 +237,14 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
     // P9, the reverb's amount (9 Nov), new in version 4; the morph still last.
     { "reverb", "Reverb mix", "reverbMix", 4, true },
     { "morph", "Morph", "morphPos", 1, false },
+    /* The amp envelope's Attack and Release (18 Nov, the owner's), new in
+       version 7 and appended so every index before them - automation a host
+       stored by index, and the morph's place in its group - stays where it
+       was; in a group of their own after the Setups (the constructor says
+       why). On the knobs' square-root law (a skew of a half), so a host's
+       slider spends its travel where the times are heard, as the face's knob
+       does: the first quarter of it is the first 1.25 s of 20. */
+    { "attack", "Attack", "envAttack", 7, true }, { "release", "Release", "envRelease", 7, true },
   } };
   juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }
   // By the parameter's id, which outlives its index: the shell test's way to a knob.

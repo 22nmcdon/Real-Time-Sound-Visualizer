@@ -185,6 +185,13 @@ class Controls {
      envelopes' shapes, written as given (the engine reads what it can of
      one, mseg_shape.h). */
   static constexpr const char* kTexts[] = { "envShape", "vcfShape", "menvShape" };
+  // The same written as plain ASCII, nothing made: the morph's walk writes a shape this way on the audio thread.
+  bool setTextAscii(const std::string& id, std::string_view written) {
+    const auto it = texts_.find(id);
+    if (it == texts_.end()) return false;
+    keep(it->second, written);
+    return true;
+  }
   bool setText(const std::string& id, const std::u16string& written) {
     const auto it = texts_.find(id);
     if (it == texts_.end()) return false;
@@ -296,6 +303,10 @@ struct Brain {
   struct Arp { std::string mode = "off", rate = "1/8", octaves = "1"; } arp;  // the menus' values
   using MorphEnd = std::vector<std::pair<std::string, double>>;  // every slider the morph walks, in order
   std::optional<MorphEnd> morphA, morphB;
+  /* And each end's envelope shapes (18 Nov): the three text boxes', kept
+     beside the sliders while the end is (msegBlend walks them). */
+  using MorphShapes = std::array<std::string, 3>;
+  MorphShapes morphShapesA, morphShapesB;
   double morphPos = 0;
   double morphMod = 0;                     // what the matrix pushes into the fader
   std::optional<double> morphApplied;      // where the sliders were last put, or nothing
@@ -457,6 +468,64 @@ std::string encodeMorphEnd(const std::optional<Brain::MorphEnd>& end, Ref ref) {
     first = false;
   }
   return out;
+}
+
+/* The morph's ends' envelope shapes (18 Nov), after the sliders in the same
+   text: id, a colon and the shape as encodeURIComponent writes it, so the
+   shape's own commas and semicolons do not read as the end's. A shape the end
+   does not name is the reference's - none for A, A's for B - as a slider's is. */
+constexpr const char* kMorphShapeIds[3] = { "envShape", "vcfShape", "menvShape" };
+inline Brain::MorphShapes decodeMorphShapes(const Json* text, const Brain::MorphShapes& ref) {
+  Brain::MorphShapes out = ref;
+  if (!text || text->type != Json::Type::String || text->s.empty() || text->s[0] != u'=') return out;
+  const std::u16string& body = text->s;
+  std::size_t at = 1;
+  while (at <= body.size()) {
+    const std::size_t end = std::min(body.find(u',', at), body.size());
+    const std::u16string part = body.substr(at, end - at);
+    const std::size_t colon = part.find(u':');
+    if (colon != std::u16string::npos) {
+      const std::string id = utf16To8(part.substr(0, colon));
+      const std::size_t next = part.find(u':', colon + 1);
+      const std::u16string value = part.substr(colon + 1, next == std::u16string::npos ? std::u16string::npos : next - colon - 1);
+      for (int k = 0; k < 3; k++) {
+        if (id != kMorphShapeIds[k]) continue;
+        // decodeURIComponent: a % and two hex digits a byte; one malformed, and the page's throws and keeps nothing.
+        std::string bytes;
+        bool ok = true;
+        for (std::size_t i = 0; i < value.size() && ok; i++) {
+          const char16_t c = value[i];
+          if (c != u'%') { bytes += c < 0x80 ? static_cast<char>(c) : '?'; continue; }
+          const auto hex = [](char16_t h) { return h >= u'0' && h <= u'9' ? h - u'0' : h >= u'a' && h <= u'f' ? h - u'a' + 10 : h >= u'A' && h <= u'F' ? h - u'A' + 10 : -1; };
+          if (i + 2 >= value.size() + 0 || hex(value[i + 1]) < 0 || hex(value[i + 2]) < 0) { ok = false; break; }
+          bytes += static_cast<char>(hex(value[i + 1]) * 16 + hex(value[i + 2]));
+          i += 2;
+        }
+        if (ok) out[static_cast<std::size_t>(k)] = bytes;
+      }
+    }
+    if (end >= body.size()) break;
+    at = end + 1;
+  }
+  return out;
+}
+// encodeURIComponent of a shape's ASCII, and each that differs from its reference after the sliders' pairs.
+inline std::string encodeMorphShapes(std::string text, const Brain::MorphShapes& shapes, const Brain::MorphShapes& ref) {
+  for (int k = 0; k < 3; k++) {
+    const std::string& v = shapes[static_cast<std::size_t>(k)];
+    if (v == ref[static_cast<std::size_t>(k)]) continue;
+    text += text.size() > 1 ? "," : "";
+    text += kMorphShapeIds[k];
+    text += ':';
+    static const char* digits = "0123456789ABCDEF";
+    for (const char c : v) {
+      const bool keep = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || std::string_view("-_.!~*'()").find(c) != std::string_view::npos;
+      if (keep) { text += c; continue; }
+      const unsigned char u = static_cast<unsigned char>(c);
+      text += '%'; text += digits[u >> 4]; text += digits[u & 15];
+    }
+  }
+  return text;
 }
 
 // parseRegistration: nine digits among whatever else, each no more than eight.
@@ -1642,6 +1711,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       return morphHome(id);
     };
     brain.morphB = decodeMorphEnd(s("morphB"), refB);
+    brain.morphShapesA = decodeMorphShapes(s("morphA"), Brain::MorphShapes {});
+    brain.morphShapesB = decodeMorphShapes(s("morphB"), brain.morphShapesA);
     brain.morphPos = fieldNum("morphPos") / 100;
     panel.setRange("morphPos", toU16(jsNumberToString(jsMathRound(brain.morphPos * 100))));
     brain.morphApplied.reset();
@@ -2522,6 +2593,8 @@ inline Brain::MorphEnd morphCapture(const Brain& b) {
 // morphStore: storing an end puts the fader at it, so storing moves nothing.
 inline void morphStore(Brain& b, bool endB) {
   (endB ? b.morphB : b.morphA) = morphCapture(b);
+  auto& shapes = endB ? b.morphShapesB : b.morphShapesA;
+  for (int k = 0; k < 3; k++) shapes[static_cast<std::size_t>(k)] = b.panel.text(kMorphShapeIds[k]);
   b.morphPos = endB ? 1 : 0;
   b.morphApplied = b.morphPos + b.morphMod;
   b.panel.setRange("morphPos", toU16(jsNumberToString(b.morphPos * 100)));
@@ -2548,6 +2621,21 @@ inline void morphStep(Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>
     // The page writes String(want) into the slider; the number is what that text reads back as.
     b.panel.setRangeNumber(id, want);
     if (b.panel.range(id) != before) sliderInput(id, b, gen, keys, lfos);
+  }
+  /* The envelopes' shapes (18 Nov): walked point by point where the two have
+     as many, else changed at half-way (msegBlend), into a buffer and the
+     room the text box and the tone already have, so nothing is made. */
+  for (int k = 0; k < 3; k++) {
+    const std::string& a = b.morphShapesA[static_cast<std::size_t>(k)];
+    const std::string& z = b.morphShapesB[static_cast<std::size_t>(k)];
+    if (a == z) continue;
+    char buf[kMsegTextRoom];
+    const std::string_view want(buf, msegBlend(a, z, t, buf, sizeof buf));
+    const std::string id = kMorphShapeIds[k];
+    if (b.panel.text(id) == want) continue;
+    b.panel.setTextAscii(id, want);
+    if (k < 2) handSet(b, gen, id, k == 0 ? "envShape" : "fShape", want);
+    else gen.set("menvShape", want, 0);
   }
 }
 

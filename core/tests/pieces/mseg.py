@@ -260,3 +260,18 @@ def run(kit):
           "%.3f, %.3f, %.3f, %.3f" % (rows[2398][0], rows[2400 + 480 + 10][0], rows[2400 + 480 + 4790][0], rows[2400 + 480 + 4800 + 2400][0]))
     plain = trace(script(48000, 10, 100, 0.5, 100, [(0, "gate 1 1"), (48000, "gate 0")], 48000, shape=OLD))
     null("without them it is already sounding at 50 ms", plain[2398][0] > 0.4, "%.3f" % plain[2398][0])
+
+    # --- the modulation fade on the same bend law (18 Nov, the owner's) ---
+    # Its travel at a midpoint m against the engine's attack drawn with that
+    # midpoint over a second: the same curve, to the engine's own rounding.
+    worst, at_half = 0, []
+    for m in (0.2, 0.35, 0.5, 0.71, 0.9):
+        fade = kit.floats("mseg_cpp", "", "fade", repr(m))
+        played = trace(script(48000, 1000, 100, 1.0, 100, [(0, "gate 1 1")], 48000, shape="1;A>m%s;D>l;R>l" % repr(m)[1:]))
+        worst = max(worst, max(abs(fade[i] - played[i * 480 - 1][0]) for i in range(1, 100)))
+        at_half.append(abs(fade[50] - m))
+    check("the fade travels as a drawn envelope's stretch does at the same midpoint", worst < 2e-3, "worst %.2g" % worst)
+    check("and reaches its midpoint half-way through its time", max(at_half) < 1e-12, str(at_half))
+    old = [0.2 ** (math.log(0.9) / math.log(0.5)), kit.floats("mseg_cpp", "", "fade", "0.9")[20]]
+    null("the power law it replaced is plainly another curve at a midpoint of 0.9, a fifth of the way in", abs(old[0] - old[1]) > 0.02,
+         "%.3f against %.3f" % tuple(old))

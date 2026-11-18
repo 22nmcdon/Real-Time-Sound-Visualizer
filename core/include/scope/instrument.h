@@ -765,7 +765,8 @@ class Instrument {
     std::array<double, 4> out {};
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[i].load(std::memory_order_relaxed);
     return out;
-  }  /* And the drawn envelopes' places (18 Nov, Generator::envelopePlace),
+  }
+  /* And the drawn envelopes' places (18 Nov, Generator::envelopePlace),
      served after everything else so no reading before them moves: the lower
      hand's amplifier's and filter's, the upper's, and the card's own. */
   std::array<double, 5> envelopePlaces() const {
@@ -1006,8 +1007,11 @@ class Instrument {
       if (b.morphA) for (const auto& [mid, v] : *b.morphA) if (mid == id) return v;
       return morphHome(id);
     };
-    setup_.set("morphA", Json::string(std::string_view(encodeMorphEnd(b.morphA, morphHome))));
-    setup_.set("morphB", Json::string(std::string_view(encodeMorphEnd(b.morphB, refB))));
+    // And each end's envelope shapes, after its sliders (18 Nov), as the page's encodeMorphEnd writes them.
+    setup_.set("morphA", Json::string(std::string_view(encodeMorphShapes(encodeMorphEnd(b.morphA, morphHome), b.morphShapesA,
+                                                                         Brain::MorphShapes {}))));
+    setup_.set("morphB", Json::string(std::string_view(encodeMorphShapes(encodeMorphEnd(b.morphB, refB), b.morphShapesB,
+                                                                         b.morphShapesA))));
     setup_.set("morphPos", Json::number(endB ? 100 : 0));
     keepSlider("morphPos", false);
   }

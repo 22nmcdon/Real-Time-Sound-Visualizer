@@ -78,9 +78,9 @@ int main() {
   // names them (plugin/src/PluginProcessor.h, which this cannot include for
   // JUCE's sake); parity reads that list and requires this one to be it.
   // In the plugin's kKnobs order, which core_tests.py reads and holds this to (F7c added three, the reverb one,
-  // G7 the Output before the level, and the Width after it on 12 Nov).
+  // G7 the Output before the level, the Width after it on 12 Nov, and the amp envelope's Attack and Release on 18 Nov).
   for (const char* id : { "pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "output", "stereoWidth", "amp", "vcfCut", "oscBend",
-                          "planeTwist", "delayMix", "phaserMix", "reverbMix", "morphPos" }) {
+                          "planeTwist", "delayMix", "phaserMix", "reverbMix", "morphPos", "envAttack", "envRelease" }) {
     const scope::RangeSpec* r = scope::rangeSpec(id);
     const double from = brain.panel.range(id);
     /* Up from the bottom, or down from the top for one that starts at its

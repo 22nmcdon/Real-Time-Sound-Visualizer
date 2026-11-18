@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "scope/matrix.h"
 #include "scope/mseg.h"
 
 namespace {
@@ -36,6 +37,19 @@ std::vector<std::string> split(const std::string& line) {
 
 int main(int argc, char** argv) {
   if (argc < 3) { std::fprintf(stderr, "usage: mseg_cpp old|new|both [--where] <scenario> | parse <text>\n"); return 2; }
+  // `mseg_cpp fade <mid>`: the modulation fade's travel (matrix.h) at each hundredth of its time.
+  if (std::strcmp(argv[1], "fade") == 0) {
+    const double mid = std::stod(argv[2]);
+    for (int i = 0; i <= 100; i++) std::printf("%.17g\n", scope::fadeTravel(i / 100.0, mid));
+    return 0;
+  }
+  // `mseg_cpp blend <a> <b> <t>`: the morph's blend of two shapes' texts (mseg_shape.h's msegBlend).
+  if (std::strcmp(argv[1], "blend") == 0 && argc > 4) {
+    char buf[scope::kMsegTextRoom];
+    const std::size_t n = scope::msegBlend(argv[2], argv[3], std::stod(argv[4]), buf, sizeof buf);
+    std::printf("%.*s\n", static_cast<int>(n), buf);
+    return 0;
+  }
   if (std::strcmp(argv[1], "parse") == 0) {
     scope::MsegShape sh;
     const bool ok = sh.assign(argv[2]);

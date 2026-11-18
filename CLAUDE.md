@@ -345,15 +345,30 @@ Do not re-litigate these without a reason; each replaced something that failed.
   a text box, so Paste still works there. `ringtest.py` holds it, and the
   plugin's shell test right-clicks a knob in the real face under
   `xvfb-run -a`.
-- **An envelope is a drawing you take hold of, over its knobs** (17 Nov).
-  The fade's, the amp envelope's on Play, the voice filter's and the
-  Envelope card's are one drawing (`envelopeDrawing`; the knobs' three are
-  `knobEnvelope`): the peak the attack, the corner the decay and the
-  sustain, the end the release, each stretch the square root of its time
-  over its knob's range, written through the knobs as a hand on them is.
-  The knobs stay the values. The voice filter's opens from its *Its
-  envelope* heading rather than sitting in the section, which did not fit
-  Play at 1100x860. `dragenvtest.py` holds it.
+- **An envelope is a drawn shape, opened from a small block** (18 Nov,
+  `web/docs/mseg-design.md`, the owner's choice of
+  `web/docs/mockups/mseg/popover.html`). The amp's, the filter's and the
+  Envelope card's are multi-segment shapes, a string field each (`envShape`,
+  `vcfShape`, `menvShape`, with B twins under `linksSettle`), played by the
+  core's one segment law (`scope/mseg.h`); the knobs - Delay, Attack, Hold,
+  Decay, Sustain in dB, Release, times on the square-root scale to 20 s (5 s
+  for Delay and Hold) - write the shape's stretches, and the shape keeps the
+  points a hand added. A version-13 decode pass writes an old code's
+  envelope as the shape that plays it to the bit. On Play the amp's and the
+  filter's sections are small blocks (the shape, four readings under it; the
+  filter's response and its envelope's line); pressing one opens its editor
+  as a popover over the neighbouring column at the columns' full height,
+  never over its own block, the Keyboard band or the screen, its knobs moved
+  in from the section's hidden store and back (`openMsegPop`); Esc, Close or
+  a press outside shuts it. The peak is full scale; the sustain point moves
+  (*Sustain here*) or goes (*No sustain*, a one-shot); a loop plays only while
+  held. The fade's travel is the same bend law. The morph interpolates two
+  shapes with as many points and snaps at half-way otherwise (`msegBlend`,
+  page and core). The amp's Attack and Release are host knobs 16 and 17, in
+  a group of their own after the Setups so no index moved. The Envelope
+  card's editor is the same drawing, still following the amp until edited
+  (`menvAdopt`, `knobShows`). `msegtest.py` holds it (it replaced
+  `dragenvtest.py`), the core's `pieces/mseg.py` the law.
 - **Space & Memory is a rack of effect modules** (F5, 7 Nov), one wide
   column top to bottom in the order the engine runs them - Plane (its Turn
   is the screen's rotation), the EQ (17 Nov: three bands, the same on both

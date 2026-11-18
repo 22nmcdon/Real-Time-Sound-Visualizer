@@ -258,7 +258,8 @@ with sync_playwright() as pw:
     curve = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const canvas = el.menvCurve;
-      const attackX = () => { paintModLive(); return canvas._drawn.corners[1][0]; };
+      // The attack's end, the drawn envelope's third point (18 Nov: its points, where they were the ADSR's corners).
+      const attackX = () => { paintModLive(); menvPlot.draw(true); return canvas._drawn.xs[2]; };
       const out = {};
       // Following: the switch went on 17 Nov, Follow is the way back, and setControl writes with no hand.
       menvFollowAmp(); await wait(50);

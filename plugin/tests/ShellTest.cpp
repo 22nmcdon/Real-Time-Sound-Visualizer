@@ -1327,9 +1327,11 @@ int main() {
     }
     // P9 added the reverb's mix, version 4, before the morph; G7 the master Output, version 5, before the level;
     // and 12 Nov the Width, version 6, after the Output.
-    check("the host's parameters are the loop's fourteen and then the morph, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 15
-          && names == "Picture, Scan, Strike, Softness, Persistence, Output, Width, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph"
+    // 18 Nov: the amp envelope's Attack and Release, version 7, appended after the morph so no index before them moved.
+    check("the host's parameters are the loop's fourteen, the morph, then the amp envelope's two, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 17
+          && names == "Picture, Scan, Strike, Softness, Persistence, Output, Width, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph, Attack, Release"
+          && p.knob("attack")->get() == 8 && p.knob("release")->get() == 180
           && p.knob("phaser")->get() == 0 && p.knob("reverb")->get() == 0
           // The Output at unity, its slider's top, which no setup moves.
           && p.knob("output")->get() == 100 && p.slider("output") == 100
@@ -1344,12 +1346,12 @@ int main() {
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Strike Softness Persistence Output Width Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph"
+          grouped == "Instrument: Picture Scan Strike Softness Persistence Output Width Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph; Amp envelope: Attack Release"
           && p.knob("output") == p.getParameters()[5] && p.knob("width") == p.getParameters()[6] && p.knob("level") == p.getParameters()[7]
           && p.knob("phaser") == p.getParameters()[12] && p.knob("reverb") == p.getParameters()[13]
-          && p.knob("morph") == p.getParameters()[14]
+          && p.knob("morph") == p.getParameters()[14] && p.knob("attack") == p.getParameters()[15] && p.knob("release") == p.getParameters()[16]
           && ids.find("macro") == std::string::npos
-          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 output:5 width:6 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1",
+          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 output:5 width:6 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1 attack:7 release:7",
           grouped + " | " + ids);
   }
   /* Every preset this file opens on by name is in the old library it reads
@@ -2503,8 +2505,15 @@ int main() {
     ScopeProcessor osc;
     osc.prepareToPlay(rate, block);
     juce::AudioBuffer<float> buf(2, block);
-    // Ten, then since 5b the clock's twelve and the face's picture, read below.
-    constexpr std::size_t kLfosBin = (10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed) * sizeof(double);
+    // Ten, then since 5b the clock's twelve and the face's picture, and since 18 Nov the drawn envelopes' five places, read below.
+    constexpr std::size_t kPlacesAt = 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed;
+    constexpr std::size_t kLfosBin = (kPlacesAt + 5) * sizeof(double);
+    const auto placesServed = [&] {
+      const auto r = scopeResource("/lfos.bin", osc);
+      std::array<double, 5> v {};
+      if (r && r->data.size() == kLfosBin) std::memcpy(v.data(), r->data.data() + kPlacesAt * sizeof(double), sizeof v);
+      return v;
+    };
     const auto served = [&] {
       // The oscillators' six first; the envelope's four after them since 12 Nov, read below.
       const auto r = scopeResource("/lfos.bin", osc);
@@ -2553,6 +2562,7 @@ int main() {
       return v;
     };
     const auto rest = envServed();
+    const auto placesRest = placesServed();
     {
       juce::MidiBuffer m;
       m.addEvent(juce::MidiMessage::noteOn(1, 60, static_cast<juce::uint8>(100)), 0);
@@ -2561,6 +2571,8 @@ int main() {
     }
     const auto struck = envServed();
     const auto envNow = osc.envelopeServed();
+    const auto placesStruck = placesServed();
+    const auto placesNow = osc.envelopePlaces();
     {
       juce::MidiBuffer m;
       m.addEvent(juce::MidiMessage::noteOff(1, 60), 0);
@@ -2578,6 +2590,21 @@ int main() {
     check("null: before any note the same bytes are at rest, stage nought and level nought",
           rest[8] == 0 && rest[6] == 0 && !(rest[8] == 1 || rest[8] == 2),
           num(rest[6]) + " " + num(rest[7]) + " " + num(rest[8]) + " " + num(rest[9]));
+    /* And last, since 18 Nov, the drawn envelopes' places, the dot the face
+       puts on each drawing: a segment and how far through it, -1 for none.
+       Struck, the lower hand's amp and filter envelopes are moving through
+       a segment, not yet holding at the sustain (which would read -(point +
+       2), under -1), and the upper hand, with no layers,
+       and the card, which follows the amp, have none. The null is the same
+       bytes before any note, where every place is -1. */
+    const auto moving = [](double x) { return x >= 0 && x < 8; };
+    check("and last the drawn envelopes' places: struck, the lower hand's two moving through a segment, the rest none",
+          moving(placesStruck[0]) && moving(placesStruck[1]) && placesStruck[2] == -1 && placesStruck[3] == -1
+          && placesStruck[4] == -1 && placesStruck == placesNow,
+          num(placesStruck[0]) + " " + num(placesStruck[1]) + " " + num(placesStruck[2]) + " " + num(placesStruck[3]) + " " + num(placesStruck[4]));
+    check("null: before any note every place is none",
+          !moving(placesRest[0]) && !moving(placesRest[1]) && placesRest[0] == -1,
+          num(placesRest[0]) + " " + num(placesRest[1]));
     /* And since 5b, after the envelope, what the face reads of the clock and
        the picture, in the order the site's brain_readings carries them, so
        the plugin's face shows the instrument's panels, verdict and screen
@@ -3721,7 +3748,8 @@ int main() {
     p.pageSlider("amp", u"70");
     p.pageGesture("amp", false); p.pageGesture("amp", false);
     p.pageGesture("vcfCut", false);
-    p.pageGesture("envAttack", true); p.pageGesture("envAttack", false);
+    // The decay, since the attack became a host knob (18 Nov): a knob that is none, whose gesture the host never hears.
+    p.pageGesture("envDecay", true); p.pageGesture("envDecay", false);
     check("a page's gesture reaches the host once: begun, the value, ended, however often the page says so",
           heard.only(level) == "b v e" && heard.kinds() == "b v e", heard.said());
     check("null: a gesture with no begin, or ended twice, is not the one shape",
@@ -3853,11 +3881,22 @@ int main() {
             Heard::shaped(heard.only(level)) && heard.only(level).size() >= 9 && dragged != before && Heard::balanced(heard.kinds()) == 1,
             heard.said() + "; Level " + before.toStdString() + " to " + dragged.toStdString());
       heard.events.clear();
+      // The decay, since the attack became a host knob (18 Nov).
+      drag("envDecay", 5, true, true);
+      settle(400);
+      const juce::String decay = ask("el.envDecay.value", 1000);
+      check("a knob that is no host parameter, dragged, tells the host nothing", heard.events.empty() && decay != "120",
+            heard.said() + "; decay at " + decay.toStdString());
+      // And the attack, a host knob since 18 Nov, dragged in its popover, is one gesture on its own index.
+      heard.events.clear();
+      ask("openMsegPop('amp'), 1", 1000);
+      settle(200);
       drag("envAttack", 5, true, true);
       settle(400);
-      const juce::String attack = ask("el.envAttack.value", 1000);
-      check("a knob that is no host parameter, dragged, tells the host nothing", heard.events.empty() && attack != "8",
-            heard.said() + "; attack at " + attack.toStdString());
+      const int attackIndex = faced.knob("attack")->getParameterIndex();
+      check("the amp envelope's attack, dragged, is one gesture for the host on its own parameter",
+            Heard::shaped(heard.only(attackIndex)) && Heard::balanced(heard.kinds()) == 1, heard.said());
+      ask("closeMsegPop(), 1", 1000);
       heard.events.clear();
       const juce::String keyed = ask(R"js(
         (() => {

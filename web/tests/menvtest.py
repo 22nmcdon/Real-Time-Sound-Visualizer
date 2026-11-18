@@ -11,7 +11,7 @@ What would go wrong, and what is checked for it:
   knobs were greyed); a knob turned with the mouse must turn the generator's
   own field, the card must read "its own" and Follow come back; a knob moved
   by hand must reach the generator in its units (the copying and the undo
-  step are dragenvtest.py's);
+  step are msegtest.py's, which replaced dragenvtest.py on 18 Nov);
 - the source reading the wrong envelope: with a slow attack of its own and
   Play's quick one, a held note's Envelope must still be low after a tenth
   of a second, where Play's has long since arrived - and the null is the
