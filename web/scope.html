@@ -5387,9 +5387,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         costs twice as much, so a big chord gives it up first; see <i>The voice budget</i>.</span></li>
 
       <li><b>The voice filter: one in every note</b>
-        <span>Under <i>Voice filter</i>, on the Play tab. A low, band or high pass or a notch
-        in each note, after its shaping and before its level. <i>Key track</i> makes the
-        cutoff follow the note, so a high note is not duller than a low one. <i>Envelope</i>
+        <span>Play's <i>Filter</i> figure. A low, band or high pass or a notch
+        in each note, after its shaping and before its level, chosen on the switch along its top. <i>Key track</i> makes the
+        cutoff follow the note, so a high note is not duller than a low one. <i>Amount</i>
         sweeps the cutoff up or down by that many octaves with the filter's own envelope,
         a shape of its own, drawn and edited as the amp envelope's is: a note that opens bright and closes, or a
         resonant wah, per note. The cutoff can take a source. The <i>Filter</i> in <i>Scope
@@ -5787,8 +5787,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         The Bench is three tabs, in the order the sound goes round the loop, each a card with
         a line under its name of what that stage is doing now, so the face can be read without
         opening one: <i>Play</i> (the
-        keyboard, the generator, the voice filter), <i>Ink</i> (what the beam draws with: the
-        voice's oscillator, the drawbars, shaping, the drawn cycle), <i>Space &amp; Memory</i>
+        keyboard, the generator and the figures: the amp envelope, the voice filter and the wave), <i>Ink</i> (what the beam draws with: the
+        voice's oscillator and its shaping), <i>Space &amp; Memory</i>
         (what the screen does to the drawing: the rack of effects); the picture read back is
         the Picture section along the bottom.
         <br><br>
@@ -5890,9 +5890,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         its rate or reading, and counts the controls it is on; in a small window it is a chip
         with a small drawing. Press it and its editor opens over the tabs, beside the screen so
         the picture stays in view: the source drawn large (an oscillator's wave with the dot
-        at its phase and its shape, sync and rate under it; the Envelope's curve, Play's,
-        dashed, while it follows the amp envelope, with its four times, its dot riding up the attack, down the decay, along the hold and
-        down the release, and resting where the release ends; what the Photocell sees around its
+        at its phase and its shape, sync and rate under it; the Envelope's shape, drawn as the amp
+        envelope's is on Play and the editor's width, Play's dashed while it follows the amp envelope,
+        with its six knobs under it and <i>Where it goes</i> under them, its dot riding the shape as the
+        phrase plays it; what the Photocell sees around its
         reticle, its last four seconds and its value now, <i>On</i> and <i>Place it on the
         figure</i>), and <i>Where it goes</i> &mdash; every control it is on with its own depth
         and a cross to take it off, and <i>Add a destination</i> to put it on another. A
@@ -6205,18 +6206,22 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         note. With no key down the readout says <i>gated &middot; no note held</i> rather than
         leaving you to wonder.
         <br><br>
-        On <i>Play</i> it is a small drawing of its shape, with its attack, decay, sustain and
-        release read under it. Press the drawing and its editor opens beside it, over the next
-        column: the shape large, and six knobs under it &mdash; <i>Delay</i>, <i>Attack</i>,
+        On <i>Play</i> it is the <i>Amp</i> figure, under the keyboard and the settings row: its subtab
+        says its attack, decay, sustain and release, and the shape is drawn the figure area's width,
+        with six knobs under it &mdash; <i>Delay</i>, <i>Attack</i>,
         <i>Hold</i>, <i>Decay</i>, <i>Sustain</i> in decibels and <i>Release</i>, the times up to
         twenty seconds (five for the delay and hold), each knob finer at the short end. Drag a
         point for its time and level, the middle of a stretch to bend it, press the line twice
         to add a point, and right-click a point for its menu: type its values, <i>Sustain
         here</i> to hold there instead, <i>No sustain</i> to make the note a one-shot that plays
         to its end, a loop to go round while the key is held, or remove it. A dot rides the
-        shape as a note plays it. <b>Esc</b>, <i>Close</i> or a press outside puts it away.
-        The voice filter's block opens the same way, its response and four knobs above its
-        envelope's shape and six; the Envelope card's editor draws its shape the same way.
+        shape as a note plays it, and <i>Hold a note</i> plays one while you hold it down.
+        The <i>Filter</i> figure beside it has the filter's type, its response with four knobs and its
+        envelope's shape with six, side by side, or one over the other where the window is tall enough;
+        <i>Wave</i> draws one cycle of what the generator plays, with the shape's own controls under it
+        &mdash; the pulse's width, the morph, the wavetable's position and slots, the drawn cycle's tools
+        (you draw on the cycle itself) and the nine drawbars. Choosing a subtab, a mode or two hands moves
+        nothing else on the tab. The Envelope card's editor draws its shape the same way.
         In a host, the amp envelope's <i>Attack</i> and <i>Release</i> are parameters, after the
         <i>Morph</i>.
         <br><br>
@@ -6247,8 +6252,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         spectrum a hole at the note and every harmonic. For a supersaw, put the saw through
         <i>Unison</i> with some <i>Spread</i>.
         <br><br>
-        <i>Drawn cycle</i> is one period of the wave, drawn with the pointer in the pane on
-        the <i>Ink</i> tab: whatever you draw is what you hear, and what the trace shows.
+        <i>Drawn cycle</i> is one period of the wave, drawn with the pointer on the cycle in
+        Play's <i>Wave</i> figure: whatever you draw is what you hear, and what the trace shows.
         <i>Sine</i> starts again and <i>Smooth</i> rounds the corners. <i>Grab</i> takes one
         cycle of what is playing instead: choose <i>Mic</i>, play a note into it, hold the same
         note on the keyboard, press it, and the generator plays that sound's cycle under your
@@ -6261,7 +6266,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <i>Wavetable</i> is four drawn cycles and a <i>Position</i> that slides between them, 1
         to 4, crossfading the two either side - put an oscillator or the pedal on it and the
         timbre travels. It starts as a sine, an organ's three partials, a saw and a narrow
-        pulse; the switch on the pane chooses which one you draw, and <i>Grab</i> fills the one
+        pulse; the slots under the cycle choose which one you draw, dashed behind what plays, and <i>Grab</i> fills the one
         chosen, so four sounds you played can be four places round the knob.
         <br><br>
         <i>Morph</i> is one knob through sine, triangle, saw and square, crossfading
@@ -6273,13 +6278,14 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         station and a half either way.
         <br><br>
         <i>Drawbars</i> are the organ's way of making a sound: nine sine partials at the
-        footages of a tonewheel organ, each drawn from nought to eight on the <i>Ink</i>
-        tab. <i>8&prime;</i> is the note; <i>16&prime;</i> is an octave under it and
+        footages of a tonewheel organ, each drawn from nought to eight under the cycle in Play's
+        <i>Wave</i> figure. <i>8&prime;</i> is the note; <i>16&prime;</i> is an octave under it and
         <i>5&#8531;&prime;</i> a fifth above that, and the rest are the octaves, fifths and
         third above. Each step is about three decibels, as on the organ, and however many
         bars are out the wave stays inside the amplitude, so pulling more out changes the
-        colour and not the level. With the drawbars chosen, the registration shows under the
-        Shape menu &mdash; <i>00 8740 000</i> to start &mdash; and pressing it goes to the bars.
+        colour and not the level. With the drawbars chosen, Wave's subtab says the registration
+        &mdash; <i>008740000</i> to start, 16&prime; to 1&prime; &mdash; and draws its cycle, two of the
+        note's with the 16&prime; or 5&#8531;&prime; out.
         Every bar is a destination: put an oscillator on one. In X&ndash;Y at an interval the figure shows how the partials line up.
         <br><br>
         A registration with the <i>16&prime;</i> out, such as <i>88 8000 000</i>, has a cycle
@@ -6293,7 +6299,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <span>A figure closes when the two frequencies are a ratio of small whole numbers,
         which is what a consonant interval is. In <i>just</i> tuning a fifth is exactly 2:3
         and stands still; in <i>equal</i> it is slightly off, and the figure turns at the rate
-        the interval beats.</span></li>
+        the interval beats. <i>Just</i> or <i>Equal</i> is in the Generator's &ctdot; menu: it is set once and left.</span></li>
 
       <li><b>Play it: a MIDI keyboard</b>
         <span><i>Settings &rarr; MIDI &rarr; Connect</i>. Two held notes become the two

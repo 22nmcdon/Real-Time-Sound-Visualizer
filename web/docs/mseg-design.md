@@ -330,7 +330,11 @@ defaults taken - each reasonable the other way, and each cheap to change:
   *Amp envelope*, after *Setups*: in the Instrument group they would have
   moved the Morph's index.
 
-Known limitations, where a reader will hit them: the Envelope card's face on
-the modulation row still draws its four as the old ADSR picture, not the
-shape; and the host knobs cannot be checked with `auval` on Linux, so the AU's
-parameter list is held only by the shell test's ids and order.
+Known limitations, where a reader will hit them: the host knobs cannot be
+checked with `auval` on Linux, so the AU's parameter list is held only by the
+shell test's ids and order. (The Envelope card's face drew its four as the old
+ADSR picture until later the same day, when it came to draw the shape.)
+
+The small blocks and the popover beside them were replaced later the same day
+by Play's figures (`play-figures.md`): the drawing the figure area's width on
+the Amp and Filter subtabs, with nothing opened from it.

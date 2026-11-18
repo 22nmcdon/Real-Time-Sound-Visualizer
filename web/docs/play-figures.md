@@ -289,3 +289,26 @@ Measure in the brand's webfonts. Headless Chromium in the cloud sessions
 cannot fetch them itself, and a fallback face moved every width by a pixel
 or two in the mockup. `checks/webfonts.py` routes the requests through
 Python.
+
+## As built (18 Nov)
+
+As specified, with the defaults taken where it was silent:
+
+- **The view's title is the section's own**, its words unseen: the subtab names it, and the
+  title keeps the section's dots and its link pill at the right end of the header, so the
+  search, the folds and the dots menus find the section as before.
+- **Filter's type is a switch driving the menu**, which stays in its row out of sight, so
+  the plugin, undo and the setup hear the menu as they always did. Off, the ten knobs stay,
+  greyed: hidden, the envelope's row went and the drawing grew into its room.
+- **Wave's cycle is the Drawn cycle's canvas**, moved, drawn in the figures' style for every
+  shape (the page's `waveAt`, as the bend reads it) and drawn on with the Drawn cycle and the
+  Wavetable; with the Wavetable the slot chosen is dashed behind what plays.
+- **The pills are 106 px** in the brand's Jost, where the mockup's were 98: *Upper's own*
+  measured 103.6.
+- **Ink is two columns**, its two sections: a tab is never dealt into more columns than it
+  has sections.
+- **By notes the strip's keys move**: the octave buttons give way to *low* and *high*, so the
+  no-shift check holds Key and Layer and not Notes.
+
+Wave's drawing at 960x600 is 121 px, where the mockup had 124; every other size is within a
+few pixels of the table above.

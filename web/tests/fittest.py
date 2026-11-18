@@ -34,6 +34,7 @@ So, against the ways it fails:
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import webfonts, playfigs as PF
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -279,7 +280,8 @@ with sync_playwright() as pw:
     # The full face at the page's size and at its smallest (1100x860); the
     # compact one at the plugin's default, at its own corner at 100, and at
     # the plugin's minimum, where Auto makes it 90.
-    SIZES = [(1400, 900, "auto", 1), (1100, 860, "auto", 1), (1200, 680, "auto", 1), (1100, 680, "auto", 1),
+    # And since 18 Nov the largest the spec measured Play's figures at, 1660x1050 (play-figures.md).
+    SIZES = [(1660, 1050, "auto", 1), (1400, 900, "auto", 1), (1100, 860, "auto", 1), (1200, 680, "auto", 1), (1100, 680, "auto", 1),
              (960, 600, "auto", 0.9)]
     # FIT_SIZES="960x600@0.9,1100x700@1" sweeps others at a Size chosen, for measuring a choice.
     if os.environ.get("FIT_SIZES"):
@@ -290,6 +292,7 @@ with sync_playwright() as pw:
     bad = []
     for w, h, zoom, want_zoom in SIZES:
         ctx = b.new_context(permissions=["microphone"], viewport={"width": w, "height": h})
+        webfonts.route(ctx)
         for bands in (False, True):
             p = ctx.new_page()
             p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
@@ -304,6 +307,24 @@ with sync_playwright() as pw:
         p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         if zoom != "auto": p.evaluate("(z) => setSize(z)", zoom); p.wait_for_timeout(300)
+        # Play's figures (18 Nov, play-figures.md): with one hand and two, each subtab, nothing between the
+        # band and the settings row, Play not scrolled and the view inside it, clear of the modulation row and
+        # the Picture, every knob and settings row one row, and every drawing 1.5:1 to 7:1 and 120 px tall
+        # (the amp's 2:1 or wider). Measured in the webfonts.
+        webfonts.settle(p)
+        for two in (False, True):
+            p.evaluate("(two) => { setView('bench'); setBenchTab('play'); setMidiMode('poly'); if ((midi.layers.mode !== 'off') !== two) el.midiTwoHands.click(); el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); }", two)
+            for sub in ("amp", "filter", "wave"):
+                p.evaluate("(s) => setFigSub(s)", sub); p.wait_for_timeout(250)
+                m = p.evaluate(PF.MEASURE); j = PF.judge(m)
+                check("Play's %s at %dx%d with %s: nothing between the band and the settings row, no scroll, clear of the row and the Picture, "
+                      "one row each, %s" % (sub.capitalize(), w, h, "two hands" if two else "one hand", PF.plots_said(m)),
+                      j["nothing"] and j["fit"] and j["clear"] and j["one"] and j["wide"],
+                      "gap %.1f, scroll %s, view %.1f, rows %s %s" % (m["gapBandToSettings"], m["scroll"], m["viewOver"], m["knobRows"], m["setRows"]))
+        if (w, h) == (960, 600):
+            m = p.evaluate("() => { const f = document.querySelector('.play-figs'); f.style.minHeight = '2000px'; const m = (" + PF.MEASURE + ")(); f.style.minHeight = ''; return m; }")
+            null("Play with a figure area 2000 px tall scrolls (%s px)" % m["scroll"], not PF.judge(m)["fit"])
+        p.evaluate("() => { if (midi.layers.mode !== 'off') el.midiTwoHands.click(); setFigSub('amp'); }")
         adv = p.evaluate(ADVANCED, 0)
         check("the Picture's Advanced at %dx%d, split and on Custom - Reads, Pictures, Responds to, Rise, fall and its two "
               "knobs - is inside the window and does not scroll" % (w, h),
@@ -324,7 +345,7 @@ with sync_playwright() as pw:
               # layered and rack cases.
               r["over"] == [] and r["cases"] >= (24 if name == "tone" else 12) and r["lanes"] == (4 if name == "bands" else 2),
               "%d lanes; %s" % (r["lanes"], r["over"][:6]))
-        want_chips = (w, h) != (1400, 900)
+        want_chips = h < 900 or w < 1100
         check("the modulation row was across the window under the tabs, four %s (%dx%d)" % ("chips" if want_chips else "cards", w, h),
               r["row"]["under"] and r["row"]["cards"] == 4 and r["row"]["chips"] == want_chips
               and (r["row"]["height"] <= 40 if want_chips else r["row"]["height"] >= 70), str(r["row"]))

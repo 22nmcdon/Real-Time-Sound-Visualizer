@@ -239,7 +239,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   input, so a value written from code turns the face with no event. Knobs
   that come together are cells read down - setting, knob, name - and a knob
   alone among menu rows is one line, since as a cell it stood taller than the
-  slider it replaced. The drawbars, the setup morph's crossfader, the strip
+  slider it replaced (Play's settings row, since 18 Nov, has the name in small
+  type over the knob and its reading, one field as tall as the menus beside
+  it). The drawbars (upright, under Play's Wave), the setup morph's crossfader, the strip
   under the screen and the editor's depths stay sliders. `knobtest.py` holds it.
 - **No Bench tab may scroll.** The Bench is three tabs along the loop - Play,
   Ink, Space & Memory, in the order the sound goes round it (the Picture tab
@@ -247,8 +249,17 @@ Do not re-litigate these without a reason; each replaced something that failed.
   drawer's Sources went in F4) - and one tab at a time must fit. `patchtest.py` measures every tab across every shape;
   `fittest.py` does it in every combination of shape, tone or band
   split, keyboard and Photocell, and the modulation editor with a source on a dozen controls,
-  at five windows: 1400x900, 1100x860, 1200x680, 1100x680 and the plugin's
-  960x600 at Auto's 90 per cent (see the minimum window, below).
+  at six windows: 1660x1050 (since 18 Nov, the largest Play's figures were measured at),
+  1400x900, 1100x860, 1200x680, 1100x680 and the plugin's
+  960x600 at Auto's 90 per cent (see the minimum window, below). Play is not
+  dealt since 18 Nov (Play, below): it is a column, the figures take the
+  height there is, and its drawings are held to 1.5:1 to 7:1 and 120 px tall.
+  Ink is two sections since then, in two columns: a tab is never dealt into
+  more columns than it has sections (`wantColumns`), since a third left empty
+  folded away after the deal and its sections stood shorter than measured.
+  The body's lines pack at its top (`align-content: flex-start`): a wrapping
+  row with `normal` stretched them, and the band had half the spare height
+  under it (124 px at 1660x1050).
   This replaced "every section on show at once, and neither panel scrolls",
   which held for the tone and never for a rack of six (cut in P5), and then
   five tabs by task (Play, Picture, Shape, Effects, Measure), which existed
@@ -280,7 +291,7 @@ Do not re-litigate these without a reason; each replaced something that failed.
   cards are 87 px and the tabs had not the difference. The on-screen keys
   cover the row, as they cover the Picture section (the owner's call: hide
   them to patch). Drag a card onto a knob; press one to open its editor over
-  the tabs, its source drawn large and *Where it goes* in a second column
+  the tabs, its source drawn large and *Where it goes* in a second column (the Envelope's under its drawing, since 18 Nov: the envelopes, below)
   scrolling inside itself past a dozen, and `fittest.py` requires a dozen to
   fit. The Photocell's card is there whether or not it is on, and patching
   from it switches it on. On a knob, the selected source (the card or editor
@@ -345,29 +356,34 @@ Do not re-litigate these without a reason; each replaced something that failed.
   a text box, so Paste still works there. `ringtest.py` holds it, and the
   plugin's shell test right-clicks a knob in the real face under
   `xvfb-run -a`.
-- **An envelope is a drawn shape, opened from a small block** (18 Nov,
-  `web/docs/mseg-design.md`, the owner's choice of
-  `web/docs/mockups/mseg/popover.html`). The amp's, the filter's and the
+- **An envelope is a drawn shape, on Play's figures** (18 Nov,
+  `web/docs/mseg-design.md`, and `web/docs/play-figures.md`, which replaced
+  its small blocks and popover the same day). The amp's, the filter's and the
   Envelope card's are multi-segment shapes, a string field each (`envShape`,
   `vcfShape`, `menvShape`, with B twins under `linksSettle`), played by the
   core's one segment law (`scope/mseg.h`); the knobs - Delay, Attack, Hold,
   Decay, Sustain in dB, Release, times on the square-root scale to 20 s (5 s
   for Delay and Hold) - write the shape's stretches, and the shape keeps the
   points a hand added. A version-13 decode pass writes an old code's
-  envelope as the shape that plays it to the bit. On Play the amp's and the
-  filter's sections are small blocks (the shape, four readings under it; the
-  filter's response and its envelope's line); pressing one opens its editor
-  as a popover over the neighbouring column at the columns' full height,
-  never over its own block, the Keyboard band or the screen, its knobs moved
-  in from the section's hidden store and back (`openMsegPop`); Esc, Close or
-  a press outside shuts it. The peak is full scale; the sustain point moves
+  envelope as the shape that plays it to the bit. On Play the amp's is the
+  Amp figure, drawn the figure area's width with its six knobs in a row under
+  it, and the filter's the Filter figure, its response with four and its
+  envelope with six (Play, below); nothing opens from them and nothing moves
+  in or out (the popover beside a small block, from earlier on 18 Nov, drew an
+  8 ms attack as a 17 px wall). The peak is full scale; the sustain point moves
   (*Sustain here*) or goes (*No sustain*, a one-shot); a loop plays only while
   held. The fade's travel is the same bend law. The morph interpolates two
   shapes with as many points and snaps at half-way otherwise (`msegBlend`,
   page and core). The amp's Attack and Release are host knobs 16 and 17, in
   a group of their own after the Setups so no index moved. The Envelope
   card's editor is the same drawing, still following the amp until edited
-  (`menvAdopt`, `knobShows`). `msegtest.py` holds it (it replaced
+  (`menvAdopt`, `knobShows`): over the tabs as the LFOs' are, but one column -
+  its tools along the top, the drawing the editor's width at 2.4:1 (2.6:1
+  compact), its six knobs, then *Where it goes* scrolling inside itself; two
+  columns made the drawing a tower again (588x630 at 1660x1050). Its knobs
+  move in while it is open and back after. The card's face draws the real
+  shape too (`drawEnv`), the dot where the core says it is, as the editor's;
+  until 18 Nov it was the old four-corner ADSR. `msegtest.py` holds it (it replaced
   `dragenvtest.py`), the core's `pieces/mseg.py` the law.
 - **Space & Memory is a rack of effect modules** (F5, 7 Nov), one wide
   column top to bottom in the order the engine runs them - Plane (its Turn
@@ -562,9 +578,14 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Additive throughout, no version bump. `handstest.py` holds it, the core's tests the
   core.
 - **The Keyboard is a band across Play** (17 Nov, `web/docs/play-redesign.md`,
-  the owner's G after five rounds of mockups). A row of its own over the three
-  columns (`data-band`, `.bench-band`, not dealt). Its left: the name with *Two
-  hands* in it (Poly on the generator only), Dyad · Mono · Poly, and under them
+  the owner's G after five rounds of mockups). A row of its own across Play's
+  top (`data-band`, `.bench-band`, not dealt), one height in every mode and
+  hands state (122 px, 117 compact; since 18 Nov): the room is reserved, not
+  laid over the strip - Key · Notes · Layer sit in a margin over the strip
+  that is there either way, and the line under it always has two lines' room,
+  a blank second line with one sound being the cost. Its left: the name with the *Two
+  hands* pill in it (seen in Poly on the generator only, and in Dyad and Mono
+  keeping its place unseen, so the heading never reflows), Dyad · Mono · Poly, and under them
   only what the mode uses of how the notes are drawn - Hold in Dyad, a line in
   Mono, Outline, Tune a chord and with two hands the pairing in Poly. Its
   right: the strip, three octaves with its own octave buttons (a view, never
@@ -575,12 +596,44 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Settings' (MIDI), with the on-screen keys beside it. The menus that hold the
   values (`midiLayers`, `midiSplitBy`, `midiSplitEnd`, `midiSplitCount`) are
   kept out of sight and the switches drive them by their change events, so the
-  plugin, undo and the setup hear what they always heard. Expression is column
-  1 alone; at the short windows the columns are shared under the band
-  (Expression alone while that fits). The on-screen keys open with **M** and
+  plugin, undo and the setup hear what they always heard. The on-screen keys open with **M** and
   are the site's only: in the plugin their row is hidden and M does nothing,
   since a host has its own keys and musical typing. `striptest.py`,
   `fittest.py` and the plugin's shell test hold it.
+- **Play is the band, a settings row and its figures** (18 Nov,
+  `web/docs/play-figures.md`, the owner's). A column of three, nothing dealt,
+  so nothing can stretch between them. Under the band, one row: Expression's
+  four menus and the Generator's Shape, Glide, Interval and Level, each name
+  in small type over its control, the menus' values shortened to fit at
+  960x600 (*±2 st*, *Level + strike*, *Sine + 3rd*, *Maj 3rd 5:4*) with the
+  full name each option's title and the menu's own while chosen, and still
+  the name in the info line and the search. Then the figure area, the rest of
+  the tab, with three subtabs, each its name and a summary that shortens only
+  where it must (`figSummaries`): *Amp* (the drawing and six knobs), *Filter*
+  (the type as a switch driving the hidden menu, the response with four
+  knobs and the envelope with six, side by side or stacked when each drawing
+  would still be 120 px tall - by room, as the rack folds, `fitFilter`) and
+  *Wave* (one cycle of what the generator plays, `paintCycle`, drawn on with
+  the Drawn cycle and the Wavetable, and under it a band one height for every
+  shape, the drawbars' 78 px: Width, Morph, Position and its slots, the Drawn
+  cycle's Sine, Smooth and Grab, the nine drawbars upright, or the shape's
+  one line). The Drawn cycle and the Drawbars were Ink's sections until then;
+  they moved here, ids and all, and Tuning went behind the Generator's dots.
+  The Generator's link is in two places, after its name and at the end of
+  Wave's header (`linkGenWave`, painted by `linkButtons`). The subtab chosen
+  is a view, never stored; `showControl` chooses it. **Nothing moves when
+  something is chosen** (the owner's general rule): the pills are one width
+  at the right of each header, the words that change keep their boxes, the
+  chosen subtab covers the bar's rule with a shadow (a negative margin moved
+  both by a pixel), a pressed link button keeps its height, the filter's
+  envelope keeps its knobs while it is off, and the info line's menu note
+  and More sit in a column of their own, so pressing a control and changing
+  the line moves neither. `patchtest.py` measures every box on Play to half
+  a pixel across the modes and two hands, Loop, Sustain here, No sustain, a
+  note held, every filter type, the link pills, the subtabs and the
+  Envelope's editor at six windows, with its nulls; `msegtest.py` the
+  summaries, the fit, the knobs' homes, `showControl` and Wave across all
+  fourteen shapes; `fittest.py` and `striptest.py` the fit and the band.
 - **Trace · Paint, and the painting's own Persistence** (painting, step 2, 18 Nov;
   `web/docs/painting-design.md`). The screen draws the trace or the painting the core keeps
   (`core/include/scope/paint.h`), a setup field (`screenDraws`), and Scan and the Picture

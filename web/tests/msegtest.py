@@ -1,6 +1,38 @@
-"""The drawn envelopes (18 Nov, web/docs/mseg-design.md): the small blocks on
-Play, the editor that opens beside them, the Envelope card's, and the knobs'
-laws. It replaced dragenvtest.py, which held the drawing of 17 Nov - three
+"""The drawn envelopes (18 Nov, web/docs/mseg-design.md) on Play's figures
+(web/docs/play-figures.md, later the same day), the Envelope card's editor, and
+the knobs' laws.
+
+Play's figures replaced the small blocks and the popover beside them, and with
+them these checks, as play-figures.md's table has it:
+
+- the amp's block was just the shape with its four readings under it, the
+  filter's said "does nothing" at amount nought and "sweeps" otherwise:
+  replaced by the subtabs' summaries, each label's text against the values,
+  the shortest form used only where the longer does not fit (null: a summary
+  three times as long does not fit), and the filter envelope's title words;
+- the popover beside its block - not over it, the band or the screen, all in,
+  its knobs in one row, Play not scrolled, at five windows (null: moved over
+  its block): replaced by the figures' fit at six windows - nothing between
+  the band and the settings row, Play not scrolled and the view inside it,
+  clear of the modulation row and the Picture, every knob and settings row one
+  row, the drawings 1.5:1 to 7:1 and 120 px tall - each with its null, and
+  every value of the settings row's menus fitting (null: the full names at
+  960x600), and the Envelope's editor over the tabs (null: its drawing beside
+  Where it goes is a tower);
+- its six knobs moving in while it was open and back on Close, a press
+  outside closing it: replaced by the knobs living in their views, in the
+  drawing's order, whichever subtab is shown, the subtab not stored; and the
+  Envelope's editor's knobs moving in and back, Close, Esc and the card
+  shutting it;
+- showControl on an envelope knob opening its editor: replaced by showControl
+  choosing the subtab (a bar's Wave), and an Envelope knob opening the card's;
+- and new, Wave: every box on Play still across all fourteen shapes and the
+  cycle one size (null: a band sized to its shape's controls), the nine
+  drawbars in one row inside the band and the summary their registration, the
+  cycles the shapes' own (null: the saw is not the sine), and Tuning behind the
+  Generator's dots.
+
+What was here before that, from the 17 Nov drawing: It replaced dragenvtest.py, which held the drawing of 17 Nov - three
 handles on a fixed ADSR curve (the peak, the corner, the end), the voice
 filter's drawing opened from its heading over its section, and the Envelope
 following the amp envelope until edited. What that suite asserted and where
