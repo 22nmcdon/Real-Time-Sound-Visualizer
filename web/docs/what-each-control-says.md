@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-375 controls: 375 lines, none marked as removed by a later stage, 89 wanting a paragraph
+376 controls: 376 lines, none marked as removed by a later stage, 89 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -30,7 +30,10 @@ its curve on the line, its editor's switch and Close, and a point on its curve; 
 the drawn envelopes: each envelope's Delay and Hold, the amp envelope's and the filter's blocks that
 open the editor, the editor's Close, Shape, Loop, Hold a note, the filter's type and its two drawings,
 and the Envelope card's Shape, Loop and Hold a note, with *Its envelope* gone into the filter's block; and
-again on 18 Nov, painting's Paint, a fourth place in the display switch).
+again on 18 Nov, painting's Paint, a fourth place in the display switch; and again on 18 Nov, Play's figures: the blocks, the
+editor beside them and the Ink tab's ways to the cycle and the drawbars gone, the Amp, Filter and Wave
+subtabs, each figure's drawing, Shape, Loop and Hold a note, the cycle drawn on, and the Generator's
+second link on Wave).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -147,8 +150,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | morph | Morph | One knob through sine, triangle, saw and square, crossfading each pair. Put a source on it and the tone and the figure change as you play. | 138 | - |
 | width | Width | How much of each cycle the pulse is up, 5 to 95 per cent. At 50 it is the square; narrower is thinner and more nasal. | 117 | - |
 | table | Position | Where the wavetable sits among its four drawn cycles, crossfading the two either side. Put a source on it and the timbre travels. | 129 | - |
-| cycleGo | Cycle | Opens the drawn cycle on the Ink tab, where you draw one period of the wave with the pointer and hear it as you draw. | 117 | - |
-| barsGo | Drawbars | The registration, bar by bar from 16′ to 1′, as an organist writes it. Press it to go to the nine drawbars on the Ink tab. | 122 | - |
+| linkGenWave | Generator’s link | Whether the Generator is the same in both hands or this hand’s own, as at its name above. Wave draws the hand being edited. | 125 | - |
 | glide | Glide | How long each new note slides from the last note's pitch rather than stepping; off at nought. In Poly every note of a chord slides from there. | 142 | yes: one Glide for both hands; a note out of silence slides from the last note however long ago; a sliding note does not land in step with the chord, so its figure turns a little before it settles; under a held note in Mono it glides a turn of Frequency too |
 | interval | Interval | The second channel against the first, in Mono; in Dyad the notes you play set it. Small whole-number ratios close the figure: a fifth is a still 2:3. | 149 | yes: the menu shows what the notes set; Poly's chords ignore it; at a unison Phase decides between line and circle |
 | tuneJust | Just | Snaps the interval to its whole-number ratio, so a fifth is exactly 2:3 and its figure stands still. Poly's chords have their own tick. | 135 | yes: how fast tempered intervals turn - a fifth about three quarters of a turn a second, a major third nearly nine, a blur under persistence |
@@ -164,9 +166,12 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | envDecay | Decay | How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck. | 104 | - |
 | envSustain | Sustain | The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own. | 115 | - |
 | envRelease | Release | How long a note takes to fade once you let go of its key. The figure shrinks with it. | 85 | - |
-| ampEnvBlock | Amp envelope | The amp envelope's shape, as every note is shaped: press it to open its editor beside it, with the drawing to take hold of and its six knobs. | 141 | yes: the drawing is square-root time and straight amplitude; the gold dot rides it while a note sounds |
 | envDelay | Delay | Silence before the attack starts, up to five seconds. A gold ring on the drawing where the silence ends; drag it. | 113 | - |
 | envHold | Hold | How long the note stays at its peak before the decay, up to five seconds. A gold ring on the drawing where the peak ends; drag it. | 130 | - |
+| ampShapes | Shape | Starts the amp envelope from a shape: its six knobs and its points together. ADSR is the old envelope's. | 104 | - |
+| ampLoop | Loop | Loops the shape while a key is held, from the attack's end back to the sustain point. Right-click a point to loop from it. | 122 | - |
+| ampHold | Hold a note | Plays a note on the hand being edited while it is held down, so the shape is heard and its dot rides the drawing. | 113 | - |
+| ampPlot | The drawing | Drag a point; press the line twice to add one and a point you added twice to take it away. Right-click a point for more. | 120 | yes: square-root time; Delay and Hold are the gold rings; a point keeps its share when its knob turns; Sustain here, No sustain (a one-shot) and Loop are on a point's menu; the bends are the small hollow rounds |
 | envShape | The shape | The amp envelope's points between its knobs, as text: what its drawing writes and a setup carries. Draw it rather than type it. | 127 | - |
 
 ### Voice filter
@@ -178,21 +183,25 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | vcfCut | Cutoff | Where the filter starts taking the top off. Lower is darker, and the figure gets rounder, since the harmonics that put corners in it go first. | 142 | - |
 | vcfRes | Resonance | How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure. | 130 | - |
 | vcfTrack | Key track | How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller. | 140 | - |
-| vcfEnvAmt | Envelope | How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. | 94 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch |
-| vcfBlock | Voice filter | The filter's response, the band its envelope sweeps shaded: press it to open its editor, with its four knobs and its envelope's six. | 132 | - |
-| vcfEnvBlock | Its envelope | The filter envelope's shape, grey while it does nothing: press it to open the filter's editor, its envelope under the response. | 127 | - |
+| vcfEnvAmt | Amount | How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. | 94 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch |
 | vcfAtk | Attack | How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought. | 118 | - |
 | vcfDec | Decay | How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah. | 104 | - |
 | vcfSus | Sustain | Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again. | 122 | - |
 | vcfRel | Release | How long the cutoff takes to come back once you let go of the key. | 66 | - |
 | vcfDelay | Delay | How long after a key goes down the filter's sweep starts, up to five seconds. | 77 | - |
 | vcfHold | Hold | How long the sweep stays at its height before it falls, up to five seconds. | 75 | - |
+| vcfResp | The response | The filter's response from 20 Hz to 20 kHz: drag its point sideways for the cutoff and up or down for the resonance. | 116 | - |
+| vcfShapes | Shape | Starts the filter's envelope from a shape: its six knobs and its points together. | 83 | - |
+| vcfLoop | Loop | Loops the filter's sweep while a key is held, from the attack's end back to the sustain point. | 96 | - |
+| vcfHoldNote | Hold a note | Plays a note on the hand being edited while it is held down, so the sweep is heard and its dot rides the drawing. | 113 | - |
+| fenvPlot | Its envelope | The filter's sweep drawn, grey while Amount is nought: drag a point, press the line twice to add one; right-click a point for more. | 133 | - |
 | vcfShape | The shape | The filter envelope's points between its knobs, as text: what its drawing writes and a setup carries. | 101 | - |
 
 ### Drawn cycle
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| cycleCanvas | The cycle | One cycle of what the generator plays, the hand being edited's. With the Drawn cycle or the Wavetable, draw on it with the pointer. | 132 | - |
 | cycleSine | Sine | Starts the drawing again from a sine. With the wavetable, only the slot chosen beside it. | 89 | - |
 | cycleSmooth | Smooth | Rounds the corners of what you drew, a little each press: the top harmonics soften, and the figure's sharp turns with them. | 123 | - |
 | cycleGrab | Grab | Takes one cycle of what is playing as the drawn wave. Hold the same note on the keyboard and the period is exact; without one it is measured. | 141 | yes: it grabs from the trigger lane - your input, or the generator's own output; the reading beside it says which, and why a grab failed |
@@ -201,7 +210,6 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| barsUse | Use drawbars | Puts the Shape on Drawbars, so the bars below are heard. Until then they are greyed and move nothing. | 101 | - |
 | bar0 | 16′ | An octave under the note, the organ's deepest bar. Out at all, the wave repeats only every other cycle of the note, and so does the figure. | 139 | yes: nought to eight, about three decibels a step; with the 16′ or 5⅓′ out the readout's frequency is an octave under the key, and the tuner can be told to read the key |
 | bar1 | 5⅓′ | A fifth above the note. Out at all, as with the 16′, the wave repeats only every other cycle of the note. | 105 | - |
 | bar2 | 8′ | The note you play, as a sine. This bar alone at eight is a full-scale sine; adding others changes the colour, not the level. | 124 | - |
@@ -471,17 +479,13 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | menvLoop | Loop | Loops the Envelope while a note is held, from the attack's end back to its sustain point. Press it again for no loop. | 117 | - |
 | menvHoldNote | Hold a note | Plays a note while it is held down, so the shape can be heard and its dot watched without a keyboard. | 101 | - |
 
-### The envelope editor (beside its block on Play)
+### Play's figures
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| msegPopClose | Close | Closes the editor; Esc, or a press outside it, does too. The knobs go back to their section. | 92 | - |
-| msegShapes | Shape | Starts the envelope from a shape: its six knobs and its points together. ADSR is the old envelope's. | 100 | - |
-| msegLoop | Loop | Loops the shape while a key is held, from the attack's end back to the sustain point. Right-click a point to loop from it. | 122 | - |
-| msegHold | Hold a note | Plays a note on the hand being edited while it is held down, so the shape is heard and its dot rides the drawing. | 113 | - |
-| msegFType | Type | Which filter is in every note, as the section's menu: Off, Low pass, Band pass, High pass, Notch. | 97 | - |
-| msegPlot | The drawing | Drag a point; press the line twice to add one and a point you added twice to take it away. Right-click a point for more. | 120 | yes: square-root time; Delay and Hold are the gold rings; a point keeps its share when its knob turns; Sustain here, No sustain (a one-shot) and Loop are on a point's menu; the bends are the small hollow rounds |
-| msegResp | The response | The filter's response from 20 Hz to 20 kHz: drag its point sideways for the cutoff and up or down for the resonance. | 116 | - |
+| figTab-amp | Amp | The amp envelope, drawn the figure area's width with its six knobs. Its summary is the attack, decay, sustain and release. | 121 | - |
+| figTab-filter | Filter | The voice filter's response and its envelope, with their ten knobs. Its summary is the type, the cutoff and the sweep. | 117 | - |
+| figTab-wave | Wave | One cycle of what the generator plays, with the shape's own controls under it: the pulse's width, the morph, the drawbars. | 121 | - |
 
 ### The on-screen keyboard
 

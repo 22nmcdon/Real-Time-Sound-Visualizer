@@ -1229,7 +1229,7 @@ body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(-
 .mseg-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .mseg-tools select { max-width: 120px; }
 .mseg-plot { display: block; width: 100%; flex: 2 1 100px; min-height: 56px; touch-action: none; user-select: none; -webkit-user-select: none; }
-.mseg-resp { display: block; width: 100%; flex: 1 1 64px; min-height: 40px; max-height: 96px; touch-action: none; }
+.mseg-resp { display: block; width: 100%; touch-action: none; }
 .src-own .mseg-tools select { font-size: 12px; padding: 1px 4px; height: 24px; }
 .src-own .mseg-knobs { flex-wrap: nowrap; column-gap: 2px; }
 .mseg-knobs { display: flex; flex-wrap: nowrap; justify-content: space-between; column-gap: 2px; flex: 0 0 auto; }
@@ -1683,7 +1683,7 @@ body[data-compact] .bench-body { row-gap: 10px; }
   background: var(--paper); border-radius: 20px; }
 .kb-band .kb-line { height: 2.7em; align-items: flex-start; line-height: 1.35; }
 .kb-band #midiStripLine { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.bench-body.is-play { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; row-gap: 0; overflow-y: auto; }
+#benchBody.is-play { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; row-gap: 0; overflow-y: auto; }
 .bench-body.is-play > .bench-band { flex: 0 0 auto; }
 .play-set { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 26px;
   margin-top: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line); height: 67px; box-sizing: border-box; }
@@ -1721,7 +1721,7 @@ body[data-compact] .bench-body { row-gap: 10px; }
 [data-compact] .play-figs { margin-top: 6px; }
 .fig-bar { flex: 0 0 auto; display: flex; background: var(--cream-2); border-bottom: 1px solid var(--line); }
 .fig-tab { flex: 1 1 0; min-width: 0; display: flex; align-items: baseline; gap: 7px; border: 0; border-right: 1px solid var(--line);
-  background: none; padding: 5px 11px; text-align: left; white-space: nowrap; overflow: hidden; position: relative; cursor: pointer; font: inherit; }
+  background: none; padding: 5px 11px; text-align: left; white-space: nowrap; overflow: hidden; position: relative; cursor: pointer; font: inherit; line-height: 1.25; }
 .fig-tab:last-child { border-right: 0; }
 .fig-tab b { flex: 0 0 auto; font-family: var(--serif); font-weight: 500; font-size: 14.5px; color: var(--charcoal); line-height: 1.25; }
 .fig-sum { flex: 1 1 auto; min-width: 0; font-size: 11.5px; color: var(--text-soft); overflow: hidden; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -1748,7 +1748,8 @@ body[data-compact] .bench-body { row-gap: 10px; }
 .bench-body .fig-view > .menu-title { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   margin: 0; padding: 0; border: 0; font-size: 0; letter-spacing: 0; min-height: 22px; }
 .bench-body .fig-view > .menu-title > * { font-size: 8.5px; letter-spacing: 0.14em; }
-.bench-body .fig-view > .menu-title > .more-dots { font-size: 13px; letter-spacing: 0.1em; }
+.bench-body .fig-view > .menu-title > .more-dots { font-size: 13px; letter-spacing: 0.1em; line-height: 18px; padding: 0; }
+[data-compact] .fig-sub { min-height: 18px; }
 .bench-body .fig-view > .menu-title > .hand-link, .bench-body .play-set .menu-title > .hand-link { position: static; }
 /* The pills one width whatever they say, so one appearing or changing its words moves nothing beside it. */
 .bench-body .is-play .hand-link, .bench-body.is-play .hand-link { min-width: 98px; justify-content: center; box-sizing: border-box; }
@@ -1765,7 +1766,7 @@ body[data-compact] .bench-body { row-gap: 10px; }
 .fig-note b { font-weight: 500; color: var(--text); }
 [data-compact] .fig-note { display: none; }
 .bench-body .fig-view .mseg-knobs { flex: 0 0 auto; display: flex; flex-wrap: nowrap; column-gap: 2px; justify-content: flex-start; }
-.bench-body .fig-view .mseg-knobs > .menu-row.knob-row { width: 54px; min-width: 0; max-width: none; flex: 0 0 auto; margin: 0; }
+.bench-body .fig-view .mseg-knobs > .menu-row.knob-row { width: 54px; min-width: 0; max-width: none; flex: 0 0 auto; margin: 0; row-gap: 0; }
 .bench-body .fig-view .mseg-knobs.f4 > .menu-row.knob-row { width: 58px; }
 .bench-body .fig-view .mseg-knobs .knob-face { width: 28px; height: 28px; }
 .bench-body .fig-view .mseg-knobs > .menu-row.knob-row > .grow > .reading { font-size: 10.5px; white-space: nowrap; }
@@ -27834,8 +27835,7 @@ const CONTROL_WORDS = {
   "morph": ["Morph", "One knob through sine, triangle, saw and square, crossfading each pair. Put a source on it and the tone and the figure change as you play."],
   "width": ["Width", "How much of each cycle the pulse is up, 5 to 95 per cent. At 50 it is the square; narrower is thinner and more nasal."],
   "table": ["Position", "Where the wavetable sits among its four drawn cycles, crossfading the two either side. Put a source on it and the timbre travels."],
-  "cycleGo": ["Cycle", "Opens the drawn cycle on the Ink tab, where you draw one period of the wave with the pointer and hear it as you draw."],
-  "barsGo": ["Drawbars", "The registration, bar by bar from 16′ to 1′, as an organist writes it. Press it to go to the nine drawbars on the Ink tab."],
+  "linkGenWave": ["Generator’s link", "Whether the Generator is the same in both hands or this hand’s own, as at its name above. Wave draws the hand being edited."],
   "glide": ["Glide", "How long each new note slides from the last note's pitch rather than stepping; off at nought. In Poly every note of a chord slides from there."],
   "interval": ["Interval", "The second channel against the first, in Mono; in Dyad the notes you play set it. Small whole-number ratios close the figure: a fifth is a still 2:3."],
   "tuneJust": ["Just", "Snaps the interval to its whole-number ratio, so a fifth is exactly 2:3 and its figure stands still. Poly's chords have their own tick."],
@@ -27846,29 +27846,35 @@ const CONTROL_WORDS = {
   "envDecay": ["Decay", "How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck."],
   "envSustain": ["Sustain", "The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own."],
   "envRelease": ["Release", "How long a note takes to fade once you let go of its key. The figure shrinks with it."],
-  "ampEnvBlock": ["Amp envelope", "The amp envelope's shape, as every note is shaped: press it to open its editor beside it, with the drawing to take hold of and its six knobs."],
   "envDelay": ["Delay", "Silence before the attack starts, up to five seconds. A gold ring on the drawing where the silence ends; drag it."],
   "envHold": ["Hold", "How long the note stays at its peak before the decay, up to five seconds. A gold ring on the drawing where the peak ends; drag it."],
+  "ampShapes": ["Shape", "Starts the amp envelope from a shape: its six knobs and its points together. ADSR is the old envelope's."],
+  "ampLoop": ["Loop", "Loops the shape while a key is held, from the attack's end back to the sustain point. Right-click a point to loop from it."],
+  "ampHold": ["Hold a note", "Plays a note on the hand being edited while it is held down, so the shape is heard and its dot rides the drawing."],
+  "ampPlot": ["The drawing", "Drag a point; press the line twice to add one and a point you added twice to take it away. Right-click a point for more."],
   "envShape": ["The shape", "The amp envelope's points between its knobs, as text: what its drawing writes and a setup carries. Draw it rather than type it."],
   "linkVcf": ["Voice filter’s link", "Whether the voice filter is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it."],
   "vcfType": ["Type", "Which filter is in every note: low pass darkens, high pass thins, band pass keeps a middle, notch takes one out. Off, the knobs below are idle."],
   "vcfCut": ["Cutoff", "Where the filter starts taking the top off. Lower is darker, and the figure gets rounder, since the harmonics that put corners in it go first."],
   "vcfRes": ["Resonance", "How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure."],
   "vcfTrack": ["Key track", "How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller."],
-  "vcfEnvAmt": ["Envelope", "How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts."],
-  "vcfBlock": ["Voice filter", "The filter's response, the band its envelope sweeps shaded: press it to open its editor, with its four knobs and its envelope's six."],
-  "vcfEnvBlock": ["Its envelope", "The filter envelope's shape, grey while it does nothing: press it to open the filter's editor, its envelope under the response."],
+  "vcfEnvAmt": ["Amount", "How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts."],
   "vcfAtk": ["Attack", "How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought."],
   "vcfDec": ["Decay", "How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah."],
   "vcfSus": ["Sustain", "Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again."],
   "vcfRel": ["Release", "How long the cutoff takes to come back once you let go of the key."],
   "vcfDelay": ["Delay", "How long after a key goes down the filter's sweep starts, up to five seconds."],
   "vcfHold": ["Hold", "How long the sweep stays at its height before it falls, up to five seconds."],
+  "vcfResp": ["The response", "The filter's response from 20 Hz to 20 kHz: drag its point sideways for the cutoff and up or down for the resonance."],
+  "vcfShapes": ["Shape", "Starts the filter's envelope from a shape: its six knobs and its points together."],
+  "vcfLoop": ["Loop", "Loops the filter's sweep while a key is held, from the attack's end back to the sustain point."],
+  "vcfHoldNote": ["Hold a note", "Plays a note on the hand being edited while it is held down, so the sweep is heard and its dot rides the drawing."],
+  "fenvPlot": ["Its envelope", "The filter's sweep drawn, grey while Amount is nought: drag a point, press the line twice to add one; right-click a point for more."],
   "vcfShape": ["The shape", "The filter envelope's points between its knobs, as text: what its drawing writes and a setup carries."],
+  "cycleCanvas": ["The cycle", "One cycle of what the generator plays, the hand being edited's. With the Drawn cycle or the Wavetable, draw on it with the pointer."],
   "cycleSine": ["Sine", "Starts the drawing again from a sine. With the wavetable, only the slot chosen beside it."],
   "cycleSmooth": ["Smooth", "Rounds the corners of what you drew, a little each press: the top harmonics soften, and the figure's sharp turns with them."],
   "cycleGrab": ["Grab", "Takes one cycle of what is playing as the drawn wave. Hold the same note on the keyboard and the period is exact; without one it is measured."],
-  "barsUse": ["Use drawbars", "Puts the Shape on Drawbars, so the bars below are heard. Until then they are greyed and move nothing."],
   "bar0": ["16′", "An octave under the note, the organ's deepest bar. Out at all, the wave repeats only every other cycle of the note, and so does the figure."],
   "bar1": ["5⅓′", "A fifth above the note. Out at all, as with the 16′, the wave repeats only every other cycle of the note."],
   "bar2": ["8′", "The note you play, as a sine. This bar alone at eight is a full-scale sine; adding others changes the colour, not the level."],
@@ -28026,13 +28032,9 @@ const CONTROL_WORDS = {
   "menvShapes": ["Shape", "Starts the Envelope from a shape: its six knobs and its points. Choosing one while following makes it its own."],
   "menvLoop": ["Loop", "Loops the Envelope while a note is held, from the attack's end back to its sustain point. Press it again for no loop."],
   "menvHoldNote": ["Hold a note", "Plays a note while it is held down, so the shape can be heard and its dot watched without a keyboard."],
-  "msegPopClose": ["Close", "Closes the editor; Esc, or a press outside it, does too. The knobs go back to their section."],
-  "msegShapes": ["Shape", "Starts the envelope from a shape: its six knobs and its points together. ADSR is the old envelope's."],
-  "msegLoop": ["Loop", "Loops the shape while a key is held, from the attack's end back to the sustain point. Right-click a point to loop from it."],
-  "msegHold": ["Hold a note", "Plays a note on the hand being edited while it is held down, so the shape is heard and its dot rides the drawing."],
-  "msegFType": ["Type", "Which filter is in every note, as the section's menu: Off, Low pass, Band pass, High pass, Notch."],
-  "msegPlot": ["The drawing", "Drag a point; press the line twice to add one and a point you added twice to take it away. Right-click a point for more."],
-  "msegResp": ["The response", "The filter's response from 20 Hz to 20 kHz: drag its point sideways for the cutoff and up or down for the resonance."],
+  "figTab-amp": ["Amp", "The amp envelope, drawn the figure area's width with its six knobs. Its summary is the attack, decay, sustain and release."],
+  "figTab-filter": ["Filter", "The voice filter's response and its envelope, with their ten knobs. Its summary is the type, the cutoff and the sweep."],
+  "figTab-wave": ["Wave", "One cycle of what the generator plays, with the shape's own controls under it: the pulse's width, the morph, the drawbars."],
   "keysDown": ["Down an octave", "Moves the on-screen keys down an octave; Z does the same from the computer keyboard."],
   "keysUp": ["Up an octave", "Moves the on-screen keys up an octave; X does the same from the computer keyboard."],
   "keysLatch": ["Tap to hold", "Each tap holds its note until you tap it again, so a mouse can hold a chord. Unticking lets go of every note it held."],
@@ -28177,6 +28179,8 @@ const SAY_KEYS = [
   ["#benchTab-space", "tab-space"],
   // The EQ editor's points (17 Nov).
   [".eq-pt", "eq-point"],
+  // The Filter figure's type switch (18 Nov), which says what the menu it drives says.
+  ["#vcfTypes button", "vcfType"],
 ];
 let infoAt = null, infoPending = null, infoTimer = 0;
 

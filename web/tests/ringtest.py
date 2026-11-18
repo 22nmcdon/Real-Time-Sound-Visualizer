@@ -367,8 +367,8 @@ with sync_playwright() as pw:
     # the hands' own first (G6: a linked section's two hands are one value, with nothing to copy),
     # then set on the lower hand alone.
     p.evaluate("() => { document.getElementById('linkAmpEnv').click(); el.envAttack.value = '150'; el.envAttack.dispatchEvent(new Event('input', { bubbles: true })); }")
-    # In the amp envelope's editor since 18 Nov, where its knobs are while it is open.
-    p.evaluate("() => openMsegPop('amp')"); p.wait_for_timeout(200)
+    # On Play's Amp figure since 18 Nov (in the popover's editor earlier that day).
+    p.evaluate("() => showControl('envAttack')"); p.wait_for_timeout(200)
     sx, sy = centre(p.locator("#envAttack ~ .knob-face, .menu-row:has(#envAttack) .knob-face").first.bounding_box())
     p.mouse.click(sx, sy, button="right"); p.wait_for_timeout(250)
     split = p.evaluate(MENU)
@@ -411,11 +411,11 @@ with sync_playwright() as pw:
     def rest_on(sel):
         p.mouse.move(5, 5); p.wait_for_timeout(100)
         bb = p.locator(sel).first.bounding_box(); p.mouse.move(*centre(bb)); p.wait_for_timeout(600)
-        return p.evaluate("() => ({ name: el.infoName.textContent, menu: el.infoMenu.hidden ? null : el.infoMenu.textContent })")
+        return p.evaluate("() => ({ name: el.infoName.textContent, menu: el.infoMenu.classList.contains('is-unseen') ? null : el.infoMenu.textContent })")
     on_knob, on_menu, on_button = rest_on(FACE % "gen.amp"), rest_on("#shape"), rest_on("#clearButton")
     print("    %s / %s / %s" % (on_knob, on_menu, on_button))
-    check("on a knob that takes a source: Right-click for modulation and more", on_knob["menu"] == "Right-click for modulation and more.", str(on_knob))
-    check("on a menu: Right-click for more", on_menu["menu"] == "Right-click for more.", str(on_menu))
+    check("on a knob that takes a source: Right-click: modulation, more", on_knob["menu"] == "Right-click: modulation, more", str(on_knob))
+    check("on a menu: Right-click for more", on_menu["menu"] == "Right-click for more", str(on_menu))
     null("on a button, which has no menu, nothing", on_button["name"] and on_button["menu"] is None, str(on_button))
 
     print("\n--- the Routings silence, stored ---")
