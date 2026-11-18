@@ -652,9 +652,17 @@ with sync_playwright() as pw:
     p.evaluate("() => dropRouting('lfo1', 'gen.amp')")
     check("the ring's handle on a patched knob moves its depth and begins no gesture for the knob",
           letters(ringed, "amp") == "" and any(c[0] == "scopeRoutings" for c in ringed), str(ringed[:3]))
-    attack = logged(drag("envAttack"))
+    # The glide since 18 Nov, when the amp envelope's attack, which this dragged, became a host knob.
+    glide = logged(drag("glide"))
     check("one that is not, dragged, is sent and begins nothing",
-          not any(c[0] == "scopeGesture" for c in attack) and letters(attack, "envAttack").count("v") >= 2, str(attack[:3]))
+          not any(c[0] == "scopeGesture" for c in glide) and letters(glide, "glide").count("v") >= 2, str(glide[:3]))
+    # And the attack, a host knob now, dragged in its envelope's editor, is one gesture of its own.
+    p.evaluate("() => openMsegPop('amp')"); p.wait_for_timeout(300)
+    attack = logged(drag("envAttack"))
+    p.evaluate("() => closeMsegPop()"); p.wait_for_timeout(200)
+    check("the amp envelope's attack, a host knob since 18 Nov, dragged in its editor, is one gesture",
+          shaped(letters(attack, "envAttack")) and [c[0] for c in attack if c[0] == "scopeGesture"] == ["scopeGesture"] * 2,
+          letters(attack, "envAttack") + " " + str(attack[:3]))
     def keys():
         p.evaluate("() => el.amp.focus()")
         for _ in range(3): p.keyboard.press("ArrowUp")

@@ -201,9 +201,12 @@ with sync_playwright() as pw:
     check("and with each taken out again, nothing is found", planted["after"] == [], str(planted["after"]))
 
     print("\n--- resting, not passing ---")
+    # The amp envelope's knobs, in its editor since 18 Nov (Hold among them, passed over on the way).
+    p.evaluate("() => openMsegPop('amp')"); p.wait_for_timeout(200)
     knobs = ["envAttack", "envDecay", "envSustain", "envRelease"]
     pts = [centre(p, face_of(k)) for k in knobs]
-    empty = (pts[-1][0] + 120, pts[-1][1] + 60)
+    # Off the knobs onto the editor's name, which says nothing (beside them was the modulation row until 18 Nov).
+    empty = centre(p, "#msegPopName")
     # Rest on Attack, then sweep across the other three and off into the space beside them.
     p.mouse.move(*pts[0]); p.wait_for_timeout(500)
     first = said(p)
@@ -231,6 +234,8 @@ with sync_playwright() as pw:
     null("what was on the line before the focus was something else", touched["at"] != "midiBendRange")
 
     print("\n--- the card ---")
+    # The filter's Cutoff, in its editor since 18 Nov.
+    p.evaluate("() => openMsegPop('vcf')"); p.wait_for_timeout(200)
     p.mouse.move(*centre(p, face_of("vcfCut"))); p.wait_for_timeout(500)
     before = p.evaluate("() => !!document.querySelector('.over.info-card, .over .info-card')")
     p.click("#infoMore"); p.wait_for_timeout(300)

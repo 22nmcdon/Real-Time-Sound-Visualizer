@@ -623,6 +623,8 @@ EXPORT(brain_readings) double* brainReadings() {
      sources, the offsets on the screen's own destinations and the figures
      laid out - the same numbers the plugin serves its page in lfos.bin. */
   for (const double v : instrument->faceServed()) brainRead.push_back(v);
+  // Last, the drawn envelopes' places (18 Nov, Instrument::envelopePlaces), so nothing before them moves.
+  for (const double v : instrument->envelopePlaces()) brainRead.push_back(v);
   return brainRead.data();
 }
 /* The table layer `layer`'s voice is playing - the one it fades to at each

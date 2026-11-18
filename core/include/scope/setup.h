@@ -28,6 +28,7 @@
 #pragma once
 
 #include <cmath>
+#include <initializer_list>
 #include <cstdlib>
 #include <optional>
 #include <string>
@@ -38,7 +39,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 12;  // SETUP_VERSION
+constexpr int kSetupVersion = 13;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 // The table (schema.h, SETUP_FIELDS on the page), parsed once.
@@ -482,6 +483,29 @@ inline bool migrateSetup(Json& setup) {
       const bool b = gainOff("bEqLow", "eqLow") || gainOff("bEqMid", "eqMid") || gainOff("bEqHigh", "eqHigh");
       if (b != a) setup.set("bEqOn", Json::boolean(b));
     }
+  }
+  /* 12 -> 13 (18 Nov): the envelopes became drawn shapes (mseg.h), each a
+     string beside its knobs - `envShape`, `vcfShape`, `menvShape` - whose
+     points are relative to them. A code from before has none, and its
+     envelopes were the old ADSR, which is exactly the shape written here:
+     the attack and decay aimed a fifth of their fall past their ends and the
+     release 0.2 under silence, with no delay or hold, which plays what the
+     old envelope played to the bit (core/tests/pieces/mseg.py). A pass rather
+     than reading "no shape" as the old one, so that an empty shape's meaning
+     stays free: a new sound's default bends can be chosen by ear later
+     without moving a saved one. The upper hand's too, where the code has any
+     of that section's own (a B field the lower's would otherwise answer). */
+  if (!(v >= 13) && setup.type == Json::Type::Object) {
+    static const char16_t* const kOld = u"1;A>p.2;D>p.2;R>a.2";
+    for (const char* key : { "envShape", "vcfShape", "menvShape" })
+      if (!setup.get(key)) setup.set(key, Json::string(kOld));
+    const auto any = [&](std::initializer_list<const char*> keys) {
+      for (const char* k : keys) if (setup.get(k)) return true;
+      return false;
+    };
+    if (!setup.get("bEnvShape") && any({ "bAtk", "bDec", "bSus", "bRel" })) setup.set("bEnvShape", Json::string(kOld));
+    if (!setup.get("bVcfShape") && any({ "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel" }))
+      setup.set("bVcfShape", Json::string(kOld));
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));
   return true;

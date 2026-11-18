@@ -2811,6 +2811,15 @@ V11 = [{"v": 10, "pictureAmount": 47}, {"v": 10, "pictureAmount": 62.5, "bPictur
        {"v": "10", "pictureAmount": 33.3}, {"pictureAmount": 47}, {"v": 10, "pictureAmount": 1e300}]
 V11_FROM = len(scmds)
 scmds += ["decode " + code_of(_json.dumps(st, separators=(",", ":"))) for st in V11]
+# Version 13 (18 Nov): the envelopes became drawn shapes, and a code from
+# before gets the old envelope's shape written into each of its three, and
+# the upper hand's where it has any of that section's own; a code made at 13,
+# and one that already names a shape, keep what they say.
+V13_OLD = "1;A>p.2;D>p.2;R>a.2"
+V13 = [{"v": 12, "freq": 330}, {"v": 12, "bAtk": 40, "layers": "split"}, {"v": 12, "bVcfCut": 400, "layers": "split"},
+       {"v": 13, "freq": 330}, {"v": 12, "envShape": "1;A>m.6;R>l"}, {"freq": 330}]
+V13_FROM = len(scmds)
+scmds += ["decode " + code_of(_json.dumps(st, separators=(",", ":"))) for st in V13]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
 v11 = sjs[V11_FROM:V11_FROM + len(V11)]
@@ -2819,6 +2828,16 @@ check("version 11: a Picture amount saved before it reads as the push it meant, 
       and '"pictureAmount":100' in v11[2] and '"pictureAmount":47' in v11[4] and '"pictureAmount":"47"' in v11[6],
       " | ".join(x[:90] for x in v11[:7]))
 check("null: the same check on the codes as written fails", not ('"pictureAmount":75.2' in _json.dumps(V11[0])))
+v13 = scpp[V13_FROM:V13_FROM + len(V13)]
+_old = lambda key, line: ('"%s":"%s"' % (key, V13_OLD)) in line
+check("version 13: a code from before the drawn envelopes gets the old envelope's shape in each of its three, and the upper "
+      "hand's only where it has that section's own; one made at 13, or naming its shape, keeps what it says",
+      all(_old(k, v13[0]) for k in ("envShape", "vcfShape", "menvShape")) and not _old("bEnvShape", v13[0])
+      and _old("bEnvShape", v13[1]) and not _old("bVcfShape", v13[1]) and _old("bVcfShape", v13[2]) and not _old("bEnvShape", v13[2])
+      and not _old("envShape", v13[3]) and '"envShape":"1;A>m.6;R>l"' in v13[4] and _old("vcfShape", v13[4])
+      and _old("envShape", v13[5]) and '"v":13' in v13[0],
+      " | ".join(x[:140] for x in v13))
+check("null: the codes as written name no shape", not any(_old("envShape", _json.dumps(st)) for st in V13))
 # The site's setup codes (5e), as the page makes them: its defaults and its
 # table of fields read off the page as it evaluates them, and the compiled
 # core's codec, from the module the page carries, through the page's own

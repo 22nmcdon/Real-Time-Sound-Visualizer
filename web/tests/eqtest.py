@@ -129,7 +129,9 @@ with sync_playwright() as pw:
       };
     }""")
     print("    %s" % old)
-    check("the page and the core are at version 12", old["version"] == 12 and old["v12gain"]["v"] == 12, str(old["version"]))
+    # At 12 or later: 13 since 18 Nov, the drawn envelopes' pass, which a version-12 code goes through on its way.
+    check("the page and the core are at version 12 or later, and a version-12 code comes up at the current one",
+          old["version"] >= 12 and old["v12gain"]["v"] == old["version"], str(old["version"]))
     check("a version-11 code with a gain off nought loads on, and the mid's counts too",
           old["v11gain"]["eqOn"] is True and old["v11mid"]["eqOn"] is True, str(old))
     check("a version-11 code with every gain at nought loads off, a frequency moved or not, and gains no field", old["v11none"]["eqOn"] is None, str(old["v11none"]))

@@ -367,6 +367,8 @@ with sync_playwright() as pw:
     # the hands' own first (G6: a linked section's two hands are one value, with nothing to copy),
     # then set on the lower hand alone.
     p.evaluate("() => { document.getElementById('linkAmpEnv').click(); el.envAttack.value = '150'; el.envAttack.dispatchEvent(new Event('input', { bubbles: true })); }")
+    # In the amp envelope's editor since 18 Nov, where its knobs are while it is open.
+    p.evaluate("() => openMsegPop('amp')"); p.wait_for_timeout(200)
     sx, sy = centre(p.locator("#envAttack ~ .knob-face, .menu-row:has(#envAttack) .knob-face").first.bounding_box())
     p.mouse.click(sx, sy, button="right"); p.wait_for_timeout(250)
     split = p.evaluate(MENU)

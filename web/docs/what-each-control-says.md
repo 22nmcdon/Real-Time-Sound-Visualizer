@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-353 controls: 353 lines, none marked as removed by a later stage, 87 wanting a paragraph
+374 controls: 374 lines, none marked as removed by a later stage, 89 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -26,7 +26,10 @@ words and the way to the Chord window, which went to Settings' MIDI with the on-
 and again on 17 Nov, the EQ's seven knobs and its link; and again on 17 Nov, the voice filter's
 *Its envelope*, which opens its drawing, and the Envelope's two switches made one *Follow*, since
 it follows until it is edited); and again on 17 Nov, the EQ drawn: its switch made a field,
-its curve on the line, its editor's switch and Close, and a point on its curve).
+its curve on the line, its editor's switch and Close, and a point on its curve; and on 18 Nov,
+the drawn envelopes: each envelope's Delay and Hold, the amp envelope's and the filter's blocks that
+open the editor, the editor's Close, Shape, Loop, Hold a note, the filter's type and its two drawings,
+and the Envelope card's Shape, Loop and Hold a note, with *Its envelope* gone into the filter's block).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -160,6 +163,10 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | envDecay | Decay | How long a note takes to fall from its peak to the sustain level. Short, with a low sustain, is a pluck. | 104 | - |
 | envSustain | Sustain | The level a note holds while its key stays down, as a share of its peak. At nought every note dies away on its own. | 115 | - |
 | envRelease | Release | How long a note takes to fade once you let go of its key. The figure shrinks with it. | 85 | - |
+| ampEnvBlock | Amp envelope | The amp envelope's shape, as every note is shaped: press it to open its editor beside it, with the drawing to take hold of and its six knobs. | 141 | yes: the drawing is square-root time and straight amplitude; the gold dot rides it while a note sounds |
+| envDelay | Delay | Silence before the attack starts, up to five seconds. A gold ring on the drawing where the silence ends; drag it. | 113 | - |
+| envHold | Hold | How long the note stays at its peak before the decay, up to five seconds. A gold ring on the drawing where the peak ends; drag it. | 130 | - |
+| envShape | The shape | The amp envelope's points between its knobs, as text: what its drawing writes and a setup carries. Draw it rather than type it. | 127 | - |
 
 ### Voice filter
 
@@ -171,11 +178,15 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | vcfRes | Resonance | How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure. | 130 | - |
 | vcfTrack | Key track | How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller. | 140 | - |
 | vcfEnvAmt | Envelope | How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. | 94 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch |
-| vcfEnvOpen | Its envelope | Opens the filter envelope's drawing over the section: drag its peak, corner and end, which turn the four knobs below. | 117 | - |
+| vcfBlock | Voice filter | The filter's response, the band its envelope sweeps shaded: press it to open its editor, with its four knobs and its envelope's six. | 132 | - |
+| vcfEnvBlock | Its envelope | The filter envelope's shape, grey while it does nothing: press it to open the filter's editor, its envelope under the response. | 127 | - |
 | vcfAtk | Attack | How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought. | 118 | - |
 | vcfDec | Decay | How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah. | 104 | - |
 | vcfSus | Sustain | Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again. | 122 | - |
 | vcfRel | Release | How long the cutoff takes to come back once you let go of the key. | 66 | - |
+| vcfDelay | Delay | How long after a key goes down the filter's sweep starts, up to five seconds. | 77 | - |
+| vcfHold | Hold | How long the sweep stays at its height before it falls, up to five seconds. | 75 | - |
+| vcfShape | The shape | The filter envelope's points between its knobs, as text: what its drawing writes and a setup carries. | 101 | - |
 
 ### Drawn cycle
 
@@ -447,10 +458,28 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | menvFollow | Follow the amp envelope | Puts the Envelope back to following Play’s amp envelope. Its own four are kept, for the next time it is edited. | 111 | - |
 | menvPhrase | Each phrase | Starts when you play after silence; notes played while it is open join the same swell. Choosing it makes the envelope its own. | 126 | - |
 | menvEvery | Every note | Starts its attack again on every new note, from where it has got to, so a run is a row of rises. Choosing it makes it its own. | 126 | - |
-| menvAtk | Attack | How long the Envelope takes to rise when it starts, up to two seconds. Following, it shows Play’s; turning it makes it its own. | 127 | - |
-| menvDec | Decay | How long it takes to fall from the top to Sustain, up to four seconds. Following, it shows Play’s; turning it makes it its own. | 127 | - |
+| menvAtk | Attack | How long the Envelope takes to rise when it starts, up to twenty seconds. Following, it shows Play’s; turning it makes it its own. | 130 | - |
+| menvDec | Decay | How long it takes to fall from the top to Sustain, up to twenty seconds. Following, it shows Play’s; turning it makes it its own. | 129 | - |
 | menvSus | Sustain | Where it rests while notes are held, from nought to the top. Following, it shows Play’s; turning it makes it its own. | 117 | - |
-| menvRel | Release | How long it takes to fall to nought after the last key lifts, up to four seconds. Turning it while following makes it its own. | 126 | - |
+| menvRel | Release | How long it takes to fall to nought after the last key lifts, up to twenty seconds. Turning it while following makes it its own. | 128 | - |
+| menvDelay | Delay | How long after it starts the Envelope waits before it rises, up to five seconds. Turning it while following makes it its own. | 125 | - |
+| menvHold | Hold | How long it stays at the top before it falls, up to five seconds. Turning it while following makes it its own. | 110 | - |
+| menvShape | The shape | The Envelope's own points between its knobs, as text: what its drawing writes and a setup carries. | 98 | - |
+| menvShapes | Shape | Starts the Envelope from a shape: its six knobs and its points. Choosing one while following makes it its own. | 110 | - |
+| menvLoop | Loop | Loops the Envelope while a note is held, from the attack's end back to its sustain point. Press it again for no loop. | 117 | - |
+| menvHoldNote | Hold a note | Plays a note while it is held down, so the shape can be heard and its dot watched without a keyboard. | 101 | - |
+
+### The envelope editor (beside its block on Play)
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| msegPopClose | Close | Closes the editor; Esc, or a press outside it, does too. The knobs go back to their section. | 92 | - |
+| msegShapes | Shape | Starts the envelope from a shape: its six knobs and its points together. ADSR is the old envelope's. | 100 | - |
+| msegLoop | Loop | Loops the shape while a key is held, from the attack's end back to the sustain point. Right-click a point to loop from it. | 122 | - |
+| msegHold | Hold a note | Plays a note on the hand being edited while it is held down, so the shape is heard and its dot rides the drawing. | 113 | - |
+| msegFType | Type | Which filter is in every note, as the section's menu: Off, Low pass, Band pass, High pass, Notch. | 97 | - |
+| msegPlot | The drawing | Drag a point; press the line twice to add one and a point you added twice to take it away. Right-click a point for more. | 120 | yes: square-root time; Delay and Hold are the gold rings; a point keeps its share when its knob turns; Sustain here, No sustain (a one-shot) and Loop are on a point's menu; the bends are the small hollow rounds |
+| msegResp | The response | The filter's response from 20 Hz to 20 kHz: drag its point sideways for the cutoff and up or down for the resonance. | 116 | - |
 
 ### The on-screen keyboard
 

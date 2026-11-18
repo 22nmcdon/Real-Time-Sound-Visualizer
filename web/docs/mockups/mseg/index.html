@@ -1,0 +1,1865 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Envelopes, drawn</title>
+<meta name="description" content="A mockup of the oscilloscope's envelopes as drawn multi-segment shapes: preview blocks on Play, and a large editor over the tabs for the amp envelope, the voice filter and its envelope, and the modulation Envelope.">
+<!-- Not render-blocking, as the brand asks of every webfont: printed first,
+     promoted once loaded, so a reader offline gets the fallback faces. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+/* Two sets of tokens, as the EQ and Play mockups had them. The instrument's
+   are DESIGN.md's, hex for hex, and never move: the instrument has one light,
+   so the mockup of the face stays in it whatever the reader's system says.
+   The page's own (--pg-*) are the paper around the mockup, and follow the
+   reader. No new colour is drawn on the face: the hands' inks are the
+   header's own, the Envelope's is --ch4 as its card has it since G5b. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d;
+  --text: #3a332f; --text-soft: #6b615a; --line: #e4d9cc;
+  --blush: #d9a6a0; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --unresolved: #b6afa4;
+  --wash: rgba(217, 166, 160, 0.16); --wash-strong: rgba(217, 166, 160, 0.26);
+  --ch1: #241f1d; --ch2: #5c6488; --ch3: #4c4921; --ch4: #6f9169; --ch5: #72245e; --ch6: #a6552d;
+  --hand-a: var(--blush-deep); --hand-b: var(--ch3);
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Georgia, serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --pg-bg: #faf6f0; --pg-sheet: #fffcf7; --pg-under: #f2ebe1; --pg-ink: #241f1d;
+  --pg-text: #3a332f; --pg-soft: #6b615a; --pg-line: #e4d9cc; --pg-accent: #c07f79;
+  --pg-accent-soft: #d9a6a0; --pg-good: #6f7f63; --pg-bad: #a4553f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+    --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+    --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+  --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+  --pg-accent-soft: #a8746f; --pg-good: #9fb091; --pg-bad: #d08a73;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--pg-bg); color: var(--pg-text);
+  font-family: var(--sans); font-weight: 300; font-size: 16px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px; }
+
+/* ---- the page around the mockup ---- */
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+@media (min-width: 760px) { .page { padding-inline: 24px; } }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--pg-accent); font-weight: 500; margin: 0; }
+h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 34px; line-height: 1.15; margin: 6px 0 8px; }
+h2 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 22px; line-height: 1.25; margin: 34px 0 8px; }
+.lede { font-family: var(--script); font-style: italic; font-size: 20px; line-height: 1.45; max-width: 62ch; margin: 0 0 6px; }
+.page p, .page li { max-width: 72ch; }
+.small { font-size: 13.5px; color: var(--pg-soft); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 12px; }
+.bar .grp { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.bar .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-soft); font-weight: 500; }
+.pg-switch { display: inline-flex; border: 1px solid var(--pg-line); border-radius: 30px; overflow: hidden; flex-wrap: wrap; }
+.pg-switch button { background: none; border: 0; padding: 6px 13px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; color: var(--pg-soft); }
+.pg-switch button:hover { color: var(--pg-accent); }
+.pg-switch button[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); }
+.pg-btn {
+  background: none; border: 1px solid var(--pg-line); border-radius: 30px; padding: 5px 13px;
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; color: var(--pg-soft);
+}
+.pg-btn:hover { color: var(--pg-accent); border-color: var(--pg-accent-soft); }
+.pg-btn[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); border-color: var(--pg-ink); }
+.stage-wrap { width: 100%; overflow: hidden; position: relative; }
+.stage { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+.fit-line { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; margin: 8px 0 0; color: var(--pg-soft); font-variant-numeric: tabular-nums; }
+.fit-line .ok { color: var(--pg-good); }
+.fit-line .over { color: var(--pg-bad); font-weight: 500; }
+.verdict { display: grid; grid-template-columns: 10em 1fr; gap: 6px 16px; margin: 14px 0 0; max-width: 940px; font-size: 15px; }
+.verdict dt { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-accent); font-weight: 500; padding-top: 4px; }
+.verdict dd { margin: 0; }
+@media (max-width: 560px) { .verdict { grid-template-columns: 1fr; } .verdict dd { margin-bottom: 8px; } }
+.check-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 940px; font-variant-numeric: tabular-nums; }
+.check-table th, .check-table td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--pg-line); vertical-align: top; }
+.check-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--pg-soft); font-weight: 500; }
+.check-table .ok { color: var(--pg-good); }
+.check-table .bad { color: var(--pg-bad); }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+code { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhere; }
+kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-line); border-bottom-width: 2px; padding: 0 4px; border-radius: 1px; }
+
+/* ---- the window: the instrument at its own size, in its one light ---- */
+.win {
+  --hdr: 71px; --scrcol: 515px; --modrow: 87px; --picrow: 90px; --knob: 36px;
+  width: 1400px; height: 900px; position: relative; overflow: hidden;
+  background: var(--cream); color: var(--text); border: 1px solid var(--line);
+  font-family: var(--sans); font-weight: 300; font-size: 14px; line-height: 1.4;
+  display: grid; grid-template-rows: var(--hdr) minmax(0, 1fr) var(--modrow) var(--picrow);
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06);
+}
+/* The plugin's 960x600 at Auto's 90 per cent: 1067 by 667 of the page's own
+   pixels, which is under 1100 by 860, so the face is compact. */
+.win.compact { --hdr: 44px; --scrcol: 303px; --modrow: 31px; --picrow: 80px; --knob: 30px; width: 1067px; height: 667px; font-size: 13px; }
+.win * { box-sizing: border-box; }
+.win button { color: inherit; }
+.win .caps { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; }
+.win .link-btn { background: none; border: 0; border-bottom: 1px solid var(--blush); padding: 0 0 2px; color: var(--charcoal); }
+.win select { border: 1px solid var(--line); background: var(--paper); border-radius: 1px; padding: 3px 6px; font-size: 13px; color: var(--charcoal); min-width: 0; }
+.win.compact select { font-size: 12px; padding: 2px 4px; }
+
+.hdr { display: flex; align-items: center; gap: 22px; padding: 0 24px 0 134px; border-bottom: 1px solid var(--line); background: var(--cream); }
+.hdr .title { font-family: var(--serif); font-size: 21px; letter-spacing: 0.08em; color: var(--charcoal); font-weight: 600; line-height: 1.1; }
+.hdr .title small { display: block; font-family: var(--script); font-style: italic; font-size: 13px; letter-spacing: 0; color: var(--text-soft); font-weight: 500; }
+.hdr .arrow { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--charcoal); }
+.hdr .preset { line-height: 1.15; }
+.hdr .preset .caps { font-size: 9.5px; color: var(--text-soft); letter-spacing: 0.2em; }
+.hdr .preset b { display: block; font-family: var(--serif); font-weight: 500; font-size: 18px; color: var(--charcoal); }
+.hdr .spacer { flex: 1 1 auto; }
+.hdr .run { border: 1px solid var(--gold); color: var(--gold); border-radius: 30px; padding: 6px 15px; }
+.hdr .edit-hands { display: inline-flex; align-items: center; gap: 8px; }
+.hdr .edit-hands[hidden] { display: none; }
+.hdr .edit-hands .eyebrow-s { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); }
+.win .switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; overflow: hidden; background: var(--paper); }
+.win .switch button { background: none; border: 0; padding: 4px 11px; color: var(--text-soft); display: inline-flex; align-items: center; gap: 5px; }
+.win .switch button[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); }
+.hand-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hand, var(--text-soft)); flex: 0 0 auto; }
+.win.compact .hdr { padding-left: 22px; gap: 14px; }
+.win.compact .hdr .title { font-size: 17px; }
+.win.compact .hdr .title small, .win.compact .hdr .hide-compact { display: none; }
+.win.compact .hdr .preset b { font-size: 15px; }
+.win.compact .hdr .run { border: 0; padding: 0; }
+
+.main { display: grid; grid-template-columns: var(--scrcol) minmax(0, 1fr); min-height: 0; }
+.scr { border-right: 1px solid var(--line); padding: 14px 22px 10px 24px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.scr .tools { display: flex; align-items: center; gap: 14px; }
+.scr .tools .gap { flex: 1 1 auto; }
+.scr .sheet { background: var(--paper); box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06); border: 1px solid var(--line); padding: 16px 16px 18px; }
+.scr canvas { display: block; width: 100%; aspect-ratio: 1; }
+.scr .verdict-line { font-family: var(--script); font-size: 19px; color: var(--sage); }
+.scr .verdict-line span { font-family: var(--sans); font-size: 12.5px; color: var(--text-soft); margin-left: 8px; }
+.win.compact .scr { padding: 10px 14px 6px 20px; gap: 6px; }
+.win.compact .scr .sheet { padding: 8px 10px 10px; }
+.win.compact .scr .verdict-line { font-size: 16px; }
+
+.bench { position: relative; padding: 15px 24px 8px 23px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.win.compact .bench { padding: 10px 20px 6px 18px; }
+.tabs { display: flex; gap: 8px; flex: 0 0 auto; }
+.tab { flex: 1 1 0; border: 1px solid var(--line); background: var(--cream-2); padding: 8px 12px 9px; min-width: 0; }
+.tab b { display: block; font-family: var(--serif); font-weight: 500; font-size: 19px; color: var(--charcoal); line-height: 1.3; }
+.tab span { display: block; font-size: 11.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab.on { background: var(--paper); box-shadow: inset 0 3px 0 var(--blush-deep); }
+.tab.find { flex: 0 0 170px; background: var(--paper); color: var(--unresolved); font-size: 13px; padding-top: 9px; }
+.win.compact .tab { padding: 5px 10px; }
+.win.compact .tab b { font-size: 15px; }
+.win.compact .tab span { display: none; }
+.win.compact .tab.find { flex-basis: 150px; font-size: 12px; }
+
+/* ---- Play, as built since 17 Nov (the keyboard band over three columns) ---- */
+.playbody { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; margin-top: 10px; }
+.win.compact .playbody { margin-top: 6px; }
+.band { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 18px; padding-bottom: 10px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+.win.compact .band { grid-template-columns: 196px minmax(0, 1fr); gap: 12px; padding-bottom: 6px; }
+.band .left { display: flex; flex-direction: column; gap: 7px; }
+.win.compact .band .left { gap: 4px; }
+.sec-title { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); font-weight: 500; min-height: 20px; }
+.sec-title .dots { margin-left: auto; color: var(--text-soft); letter-spacing: 0.1em; }
+.pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 30px; padding: 1px 8px; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--charcoal); background: var(--paper); }
+.row { display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 26px; }
+.row label, .row .lab { color: var(--text-soft); flex: 0 0 auto; }
+.win.compact .row { min-height: 22px; font-size: 12px; }
+.strip { border: 1px solid var(--line); background: var(--paper); padding: 6px 8px 4px; position: relative; margin-top: 10px; }
+.strip svg { display: block; width: 100%; height: 66px; }
+.win.compact .strip svg { height: 44px; }
+.strip .kswitch { position: absolute; left: 50%; top: -1px; transform: translate(-50%, -50%); }
+.band .hint { font-size: 11.5px; color: var(--text-soft); margin: 4px 0 0; }
+.win.compact .band .hint { font-size: 10.5px; margin-top: 2px; }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 26px; flex: 1 1 auto; min-height: 0; padding-top: 10px; }
+.win.compact .cols { gap: 0 16px; padding-top: 6px; }
+.col { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; }
+.col .sect { display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+.col .sect:last-child { border-bottom: 0; }
+.col .sect .row select { flex: 1 1 auto; }
+.col .row .lab { width: 92px; }
+.win.compact .col .row .lab { width: 64px; }
+.free { flex: 1 1 auto; border: 1px dashed var(--line); display: grid; place-items: center; font-size: 11px; color: var(--unresolved); min-height: 0; }
+.mini-knob { display: inline-flex; align-items: center; gap: 8px; }
+
+/* The preview blocks: a drawing that is a button, and the readings under it. */
+.prev { display: block; width: 100%; padding: 0; border: 1px solid var(--line); background: var(--paper); border-radius: 1px; position: relative; text-align: left; }
+.prev:hover { border-color: var(--blush); }
+.prev:hover .open-hint { opacity: 1; }
+.prev svg { display: block; width: 100%; }
+.prev .open-hint { position: absolute; right: 6px; top: 4px; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blush-deep); opacity: 0.0; transition: opacity 0.12s; font-weight: 500; }
+.reads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; margin-top: 3px; }
+.reads.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.reads span { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
+.reads small { display: block; font-size: 9.5px; color: var(--text-soft); }
+.win.compact .reads span { font-size: 10px; }
+.win.compact .reads small { font-size: 9px; }
+.env-line-small { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-soft); margin-top: 3px; }
+.env-line-small .prev { width: 96px; flex: 0 0 auto; }
+.env-line-small .prev svg { height: 26px; }
+.env-line-small b { font-weight: 500; color: var(--charcoal); }
+.env-line-small .dead { color: var(--unresolved); }
+
+/* The knob, as scope.html draws it (P8c): a ring through 270 degrees from
+   the bottom left, eleven marks, and a paper cap with its pointer. */
+.knobs { display: flex; align-items: flex-start; column-gap: 6px; }
+.kcell { display: grid; justify-items: center; width: 56px; row-gap: 1px; border-radius: 1px; padding: 2px 0; }
+.kcell .val { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kcell .nm { font-size: 10px; color: var(--text-soft); white-space: nowrap; }
+.kcell.lit { background: var(--wash); }
+.kcell.flash .val { color: var(--blush-deep); }
+.kcell.host .nm::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); margin-right: 4px; vertical-align: middle; }
+.win.compact .kcell { width: 50px; }
+.win.compact .kcell .val { font-size: 10.5px; }
+.knob-face {
+  --angle: 0deg; --lo: 0deg; --hi: 0deg;
+  position: relative; width: var(--knob); height: var(--knob); margin: 1px 0;
+  display: grid; place-items: center; touch-action: none; cursor: grab; outline-offset: 1px; border-radius: 50%;
+}
+.knob-face::before {
+  content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: conic-gradient(from 225deg,
+    var(--line) 0 var(--lo), var(--knob-arc, var(--blush-deep)) var(--lo) var(--hi),
+    var(--line) var(--hi) 270deg, transparent 270deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+}
+.knob-face:hover, .knob-face.held { --knob-arc: var(--charcoal); }
+.knob-cap {
+  position: relative; width: 52%; height: 52%; border-radius: 50%; background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(36, 31, 29, 0.14);
+  transform: rotate(calc(var(--angle) - 135deg));
+}
+.knob-cap::after { content: ""; position: absolute; left: 50%; top: 9%; width: 2px; height: 40%; margin-left: -1px; border-radius: 1px; background: var(--charcoal); }
+.knob-face:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+.kcell.dim { opacity: 0.45; }
+
+.hand-link {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border: 1px solid var(--line);
+  border-radius: 30px; background: var(--paper); color: var(--text-soft);
+  font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; line-height: 13px; white-space: nowrap; font-weight: 500;
+}
+.hand-link[aria-pressed="false"] { color: var(--hand); border-color: var(--hand); }
+.hand-link[hidden] { display: none; }
+
+/* ---- the editors: over the tabs, as the modulation and EQ editors are ---- */
+.ed {
+  position: absolute; inset: 15px 24px 8px 23px; z-index: 20; background: var(--paper);
+  display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 1px; padding: 12px 18px 10px;
+  box-shadow: 0 6px 24px rgba(36, 31, 29, 0.10); overflow: hidden;
+}
+.win.compact .ed { inset: 10px 20px 6px 18px; padding: 7px 12px 6px; }
+.ed[hidden] { display: none; }
+.ed-head { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 0 0 auto; }
+.ed-head .nm { font-family: var(--serif); font-size: 21px; color: var(--charcoal); white-space: nowrap; }
+.ed-head .desc { font-size: 12px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.ed-head .close { margin-left: auto; }
+.win.compact .ed-head .nm { font-size: 17px; }
+.win.compact .ed-head .desc { font-size: 11px; }
+.ed-tools { display: flex; align-items: center; gap: 8px 12px; margin: 6px 0 4px; flex-wrap: nowrap; min-width: 0; flex: 0 0 auto; }
+.ed-tools .switch button { padding: 2px 8px; font-size: 9.5px; }
+.ed-tools .t-lbl { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); font-weight: 500; }
+.ed-tools .gap { flex: 1 1 auto; }
+.tbtn { background: var(--paper); border: 1px solid var(--line); border-radius: 30px; padding: 2px 9px; font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; color: var(--text-soft); white-space: nowrap; }
+.tbtn:hover { border-color: var(--blush); color: var(--charcoal); }
+.tbtn[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: var(--cream); }
+.tbtn.play { border-color: var(--gold); color: var(--gold); }
+.tbtn.play[aria-pressed="true"] { background: var(--gold); color: var(--paper); }
+.win.compact .ed-tools { gap: 6px 8px; margin: 4px 0 2px; }
+.win.compact .ed-tools .switch button, .win.compact .tbtn { padding: 1px 6px; font-size: 9px; letter-spacing: 0.1em; }
+.ed-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.ed-split { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 18px; }
+.ed-split.mod { grid-template-columns: minmax(0, 1fr) 190px; }
+.win.compact .ed-split { gap: 0 12px; }
+.win.compact .ed-split.mod { grid-template-columns: minmax(0, 1fr) 150px; }
+.ed-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; gap: 4px; }
+.ed-pane + .ed-pane { border-left: 1px solid var(--line); padding-left: 18px; }
+.win.compact .ed-pane + .ed-pane { padding-left: 12px; }
+.pane-title { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); font-weight: 500; display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.pane-title .q { text-transform: none; letter-spacing: 0; color: var(--text-soft); font-weight: 300; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plot-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.plot { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; overflow: visible; }
+.plot .pt, .plot .bh, .plot .tabm, .plot .loopm { cursor: grab; outline: none; }
+.plot .pt:focus-visible .ring, .plot .bh:focus-visible .ring { stroke: var(--gold); stroke-width: 2.5; }
+.plot .hit { cursor: copy; }
+.ed-foot { display: flex; align-items: flex-end; gap: 14px; flex-wrap: nowrap; flex: 0 0 auto; }
+.ed-foot .knobs { flex: 0 0 auto; }
+.ed-foot .note { font-size: 11px; color: var(--text-soft); line-height: 1.4; margin: 0; flex: 1 1 auto; min-width: 0; }
+.ed-foot .note b { font-weight: 500; color: var(--text); }
+.win.compact .ed-foot .note { font-size: 10px; }
+.win.compact .ed-pane .ed-foot .note { display: none; }
+.knobs .sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
+.routes { font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+.routes .r { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 3px 0; }
+.routes .r b { font-weight: 500; color: var(--charcoal); }
+.routes .r span { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.routes .add { color: var(--text-soft); font-size: 11px; border: 1px dashed var(--line); padding: 3px 6px; text-align: center; }
+.follow-note { font-size: 11.5px; color: var(--text-soft); line-height: 1.4; }
+.follow-note b { color: var(--charcoal); font-weight: 500; }
+.readout {
+  position: absolute; pointer-events: none; background: var(--paper); border: 1px solid var(--line); padding: 2px 7px;
+  font-size: 11.5px; color: var(--charcoal); white-space: nowrap; font-variant-numeric: tabular-nums; border-radius: 1px;
+  box-shadow: 0 2px 8px rgba(36, 31, 29, 0.08); z-index: 30;
+}
+.readout[hidden] { display: none; }
+
+/* The right-click menu, as a knob's (G5b), without the modulation. */
+.ctx {
+  position: absolute; z-index: 40; background: var(--paper); border: 1px solid var(--line); border-radius: 1px; min-width: 220px; max-width: 300px;
+  box-shadow: 0 8px 26px rgba(36, 31, 29, 0.14); padding: 6px 0; font-size: 13px; color: var(--text);
+}
+.ctx[hidden] { display: none; }
+.ctx .h { padding: 2px 14px 6px; font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); font-weight: 500; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.ctx button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 5px 14px; color: var(--text); }
+.ctx button:hover, .ctx button:focus-visible { background: var(--wash); outline: none; }
+.ctx button[disabled] { color: var(--unresolved); cursor: default; background: none; }
+.ctx .type { padding: 4px 14px 6px; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; font-size: 12px; }
+.ctx .type input { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 1px; padding: 2px 5px; font-size: 12.5px; color: var(--charcoal); }
+.ctx .info { padding: 4px 14px 6px; font-size: 12px; line-height: 1.45; color: var(--text); border-top: 1px solid var(--line); margin-top: 4px; }
+.ctx .info b { font-family: var(--serif); font-weight: 500; font-size: 14px; display: block; color: var(--charcoal); }
+
+/* ---- the modulation row and the Picture section: context, not played ---- */
+.modrow { display: flex; align-items: center; gap: 10px; padding: 8px 24px; background: var(--cream-2); border-top: 1px solid var(--line); }
+.modrow .lead { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); width: 96px; line-height: 1.3; }
+.modrow .lead small { display: block; text-transform: none; letter-spacing: 0; color: var(--text-soft); font-size: 10.5px; margin-top: 4px; }
+.mcard { flex: 0 0 240px; height: 70px; background: var(--paper); border: 1px solid var(--line); padding: 6px 10px; font-size: 12px; position: relative; text-align: left; }
+.mcard.on { box-shadow: inset 0 0 0 1px var(--ch4); }
+.mcard .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+.mcard svg { position: absolute; left: 10px; right: 10px; bottom: 6px; width: calc(100% - 20px); height: 36px; }
+.modrow .rt { margin-left: auto; text-align: right; }
+.win.compact .modrow { padding: 2px 20px; gap: 6px; }
+.win.compact .modrow .lead { width: auto; }
+.win.compact .modrow .lead small { display: none; }
+.win.compact .mcard { flex: 0 0 auto; height: auto; border-radius: 20px; padding: 1px 10px; font-size: 11px; }
+.win.compact .mcard svg { display: none; }
+.pic { display: flex; align-items: center; gap: 24px; padding: 4px 24px 6px 134px; background: var(--cream-2); border-top: 1px solid var(--line); }
+.pic .t { font-family: var(--serif); font-size: 22px; color: var(--charcoal); }
+.pic .knobs { column-gap: 8px; }
+.win.compact .pic { padding-left: 22px; gap: 14px; }
+.win.compact .pic .t { font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Mockup · Play · 17 Nov · for the owner to choose</p>
+  <h1>Envelopes, drawn</h1>
+  <p class="lede">Every envelope a shape you draw, as many points as it needs; on Play a small clear drawing of each, and a large one to work on, opened over the tabs with the screen still in view.</p>
+  <p class="small">Everything here is live. The curves are the core's: the old envelope's law (a one-pole aimed a fifth past each stage's end, <code>core/include/scope/envelope.h</code>) and the voice filter's (the state-variable filter of <code>wave.h</code>, cutoff and resonance as <code>scope.html</code> maps the knobs), checked against the core compiled, below. What is invented is said where it is. Nothing in <code>scope.html</code> or the core has changed. The design note is <code>web/docs/mseg-design.md</code>.</p>
+
+  <div class="bar" role="toolbar" aria-label="What the mockup shows">
+    <div class="grp"><span class="lbl">Window</span>
+      <div class="pg-switch" id="pgSize">
+        <button type="button" data-v="big" aria-pressed="true">1400 × 900</button>
+        <button type="button" data-v="small" aria-pressed="false">960 × 600 at 90%</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Show</span>
+      <div class="pg-switch" id="pgView">
+        <button type="button" data-v="play" aria-pressed="true">Play</button>
+        <button type="button" data-v="amp" aria-pressed="false">Amp envelope</button>
+        <button type="button" data-v="filter" aria-pressed="false">Voice filter</button>
+        <button type="button" data-v="menv" aria-pressed="false">Envelope card</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Hands</span>
+      <div class="pg-switch" id="pgHands">
+        <button type="button" data-v="1" aria-pressed="true">One</button>
+        <button type="button" data-v="2" aria-pressed="false">Two</button>
+      </div></div>
+    <div class="grp">
+      <button type="button" class="pg-btn" id="pgNote" aria-pressed="false">Hold a note</button>
+    </div>
+  </div>
+  <p class="small" style="margin:0 0 10px"><i>Hold a note</i> (press and hold, or press <kbd>Space</kbd> on it) plays the shape as the engine would: a dot rides each drawing, the filter's curve moves with its envelope, and the figure on the screen swells and dies with the amp envelope. Let go part-way through the attack and the release starts from wherever the level has got to. The line under the window measures the fit as drawn.</p>
+
+  <div class="stage-wrap" id="stageWrap"><div class="stage" id="stage">
+    <div class="win" id="win">
+      <header class="hdr">
+        <div class="title">OSCILLOSCOPE<small>A3 · E4, a fifth</small></div>
+        <span class="arrow">&#8249;</span>
+        <div class="preset"><span class="caps">New · edited</span><b>Plain sine</b></div>
+        <span class="arrow">&#8250;</span>
+        <span class="link-btn caps hide-compact">Browse</span>
+        <span class="link-btn caps">Save</span>
+        <span class="edit-hands" id="editHands" hidden>
+          <span class="eyebrow-s hide-compact">Editing</span>
+          <span class="switch caps" id="editSwitch">
+            <button type="button" data-h="0" aria-pressed="true" style="--hand: var(--hand-a)"><i class="hand-dot"></i>Lower</button>
+            <button type="button" data-h="1" aria-pressed="false" style="--hand: var(--hand-b)"><i class="hand-dot"></i>Upper</button>
+          </span>
+        </span>
+        <span class="spacer"></span>
+        <span class="run caps">Running</span>
+        <span class="link-btn caps">Perform</span>
+        <span class="link-btn caps">Settings</span>
+      </header>
+
+      <div class="main">
+        <section class="scr" aria-label="The screen">
+          <div class="tools">
+            <span class="switch caps"><button type="button" aria-pressed="false">Y–T</button><button type="button" aria-pressed="true">X–Y</button><button type="button" aria-pressed="false">Spect</button></span>
+            <span class="link-btn caps">Clear</span><span class="gap"></span>
+          </div>
+          <div class="sheet"><canvas id="screen" width="440" height="440" aria-label="The figure: a fifth, its size following the amp envelope while a note is held"></canvas></div>
+          <div class="verdict-line">Trigger locked.<span>X–Y · a fifth · an illustration</span></div>
+        </section>
+
+        <section class="bench" id="bench" aria-label="The Bench">
+          <div class="tabs">
+            <div class="tab on"><b>Play</b><span>Poly · sine · 220 Hz · low pass</span></div>
+            <div class="tab"><b>Ink</b><span>Ratio 1:1 · unison · FM off</span></div>
+            <div class="tab"><b>Space &amp; Memory</b><span>Dry</span></div>
+            <div class="tab find">Find a control&nbsp; /</div>
+          </div>
+          <div class="playbody" id="playBody">
+            <div class="band">
+              <div class="left">
+                <div class="sec-title">Keyboard <span class="pill">● Two hands</span><span class="dots">···</span></div>
+                <span class="switch caps" style="align-self:flex-start"><button type="button" aria-pressed="false">Dyad</button><button type="button" aria-pressed="false">Mono</button><button type="button" aria-pressed="true">Poly</button></span>
+                <div class="row"><span class="lab">Outline</span><select aria-label="Outline"><option>2</option></select><select aria-label="Outline shape"><option>bass and melody</option></select></div>
+                <div class="row"><input type="checkbox" aria-label="Tune a chord"> <span class="lab">Tune a chord</span></div>
+              </div>
+              <div>
+                <div class="strip"><span class="switch caps kswitch"><button type="button" aria-pressed="true">Key</button><button type="button" aria-pressed="false">Notes</button><button type="button" aria-pressed="false">Layer</button></span><svg id="keys" viewBox="0 0 588 66" preserveAspectRatio="none" aria-label="Three octaves of keys"></svg></div>
+                <p class="hint">Notes under C4 play the lower sound; C4 and up the upper. Press a key to split there; ‹ › for other octaves. <i>C2–C6</i></p>
+              </div>
+            </div>
+            <div class="cols" id="cols">
+              <div class="col" id="col1">
+                <div class="sect">
+                  <div class="sec-title">Expression<span class="dots">···</span></div>
+                  <div class="row"><span class="lab">Pitch bend</span><select aria-label="Pitch bend"><option>±2 semitones</option></select></div>
+                  <div class="row"><span class="lab">Mod wheel</span><select aria-label="Mod wheel"><option>Vibrato</option></select></div>
+                  <div class="row"><span class="lab">Pressure</span><select aria-label="Pressure"><option>Nothing</option></select></div>
+                  <div class="row"><span class="lab">Velocity</span><select aria-label="Velocity"><option>Level and strike</option></select></div>
+                </div>
+                <div class="free" data-free="1"></div>
+              </div>
+              <div class="col" id="col2">
+                <div class="sect">
+                  <div class="sec-title">Generator <button type="button" class="hand-link link" data-link="gen" aria-pressed="true" hidden>● Same in both</button><span class="dots">···</span></div>
+                  <div class="row"><span class="lab">Shape</span><select aria-label="Shape"><option>Sine</option></select></div>
+                  <div class="row"><span class="lab">Glide</span><span class="mini-knob" id="glideK"></span></div>
+                  <div class="row"><span class="lab">Interval</span><select aria-label="Interval"><option>Unison · 1:1</option></select></div>
+                  <div class="row"><span class="lab">● Level</span><span class="mini-knob" id="levelK"></span></div>
+                </div>
+                <div class="sect" id="ampBlock">
+                  <div class="sec-title">Amp envelope <button type="button" class="hand-link link" data-link="amp" aria-pressed="true" hidden>● Same in both</button><span class="dots">···</span></div>
+                  <button type="button" class="prev" id="ampPrev" aria-label="Amp envelope: open its editor"><svg id="ampPrevSvg" aria-hidden="true"></svg><span class="open-hint">Open ↗</span></button>
+                  <div class="reads" id="ampReads"></div>
+                </div>
+                <div class="free" data-free="2"></div>
+              </div>
+              <div class="col" id="col3">
+                <div class="sect" id="vcfBlock">
+                  <div class="sec-title">Voice filter <button type="button" class="hand-link link" data-link="filter" aria-pressed="true" hidden>● Same in both</button><span class="dots">···</span></div>
+                  <div class="row"><span class="lab">Type</span><select id="vcfTypeSel" aria-label="Filter type"><option value="0">Off</option><option value="1">Low pass</option><option value="2">Band pass</option><option value="3">High pass</option><option value="4">Notch</option></select></div>
+                  <button type="button" class="prev" id="vcfPrev" aria-label="Voice filter: open its editor"><svg id="vcfPrevSvg" aria-hidden="true"></svg><span class="open-hint">Open ↗</span></button>
+                  <div class="reads three" id="vcfReads"></div>
+                  <div class="env-line-small"><button type="button" class="prev" id="fenvPrev" aria-label="The filter's envelope: open the filter's editor"><svg id="fenvPrevSvg" aria-hidden="true"></svg></button><span id="fenvWords"></span></div>
+                </div>
+                <div class="free" data-free="3"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ed" id="ed" role="dialog" aria-label="Editor" hidden></div>
+        </section>
+      </div>
+
+      <div class="modrow">
+        <div class="lead">Modulation<small>Drag onto a knob. Press to open.</small></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch1)"></span>LFO 1<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C27 -6 27 -6 55 18 S82 42 110 18 S137 -6 165 18 S192 42 220 18" fill="none" stroke="var(--ch1)" stroke-width="1.5"/></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch2)"></span>LFO 2<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C18 0 18 0 37 18 S55 36 73 18 S92 0 110 18 S128 36 147 18 S165 0 183 18 S202 36 220 18" fill="none" stroke="var(--ch2)" stroke-width="1.5"/></svg></div>
+        <div class="mcard" id="menvCard" role="button" tabindex="0" aria-label="Envelope: open its editor" style="cursor:pointer"><span class="dot" style="background: var(--ch4)"></span>Envelope<svg id="menvCardSvg" viewBox="0 0 220 36" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+        <div class="mcard"><span class="dot" style="background: var(--ch6)"></span>Photocell<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M30 30 L215 30" fill="none" stroke="var(--ch6)" stroke-width="1.5"/></svg></div>
+        <div class="rt"><span class="link-btn caps">Routings · 2</span></div>
+      </div>
+
+      <div class="pic">
+        <span class="t">Picture</span>
+        <div class="knobs" id="picKnobs"></div>
+      </div>
+
+      <div class="ctx" id="ctx" role="menu" hidden></div>
+      <div class="readout" id="readout" hidden></div>
+    </div>
+  </div></div>
+  <div class="fit-line" id="fitLine" aria-live="polite"></div>
+
+  <h2>What to try</h2>
+  <ul>
+    <li><b>Press a drawing on Play</b> to open its editor over the tabs; <i>Close</i> or <kbd>Esc</kbd> comes back. The Envelope card in the modulation row opens the third.</li>
+    <li><b>Drag a point.</b> The peak moves the attack's time; the sustain point the decay's time and the sustain level; the end the release's time; a point you added moves anywhere between its neighbours. <i>Delay</i> and <i>Hold</i> are the two tabs under the time axis: drag them right to open the stretch.</li>
+    <li><b>Double-click the line</b> to add a point there, <b>double-click a point</b> you added to take it away (double-click the peak, the sustain point or the end to put its knob back where it starts). Adding a point changes nothing you hear until you move it: see <i>The curve law</i>, below.</li>
+    <li><b>Drag the small diamond</b> in the middle of a stretch up or down to bend it; double-click it to straighten it.</li>
+    <li><b>Right-click</b> a point or a diamond (or a long press, or <kbd>Shift</kbd>+<kbd>F10</kbd>) for Type a value, Loop from here, Remove, Reset and What is this. <b>Keyboard:</b> <kbd>Tab</kbd> to a point; arrows move it (a hundredth of the view sideways, half a decibel up and down), <kbd>Shift</kbd> finer, <kbd>Delete</kbd> removes one you added.</li>
+    <li><b>Loop while held</b> loops between its marker and the sustain point for as long as the key is down; drag the marker to another point. <b>Sync</b> turns the time axis into beats at 120 bpm with a grid, and points snap to it.</li>
+    <li><b>Zoom</b> with the wheel over the drawing, or <i>−</i>, <i>Fit</i> and <i>+</i>; drag the empty paper to pan while zoomed.</li>
+    <li><b>Turn a knob</b> under the drawing: its stretch grows or shrinks with every point in it, and the Sustain knob moves the sustain point. The knobs are the values, as on the EQ.</li>
+    <li><b>The voice filter's editor:</b> drag its one point sideways for the cutoff and up and down for the resonance; the shaded band is how far its envelope sweeps the cutoff, and it moves while a note is held.</li>
+    <li><b>Two hands:</b> unlink a section (its pill, or the editor's) and the other hand's shape is drawn dashed behind, in its ink.</li>
+  </ul>
+
+  <h2>The choices made</h2>
+  <dl class="verdict">
+    <dt>On Play</dt>
+    <dd>The Amp envelope and the Voice filter become preview blocks: each a drawing that is a button, with its readings under it, and pressing it opens the editor. The amp envelope's drawing is on the same loudness scale as its editor. The filter's is its response from 20 Hz to 20 kHz with its one point, and a shaded band from where the cutoff rests to where its envelope takes it; under it, its envelope small, which goes grey and says <i>does nothing</i> while its amount is nought (today the drawing looks live at nought). The Type menu stays on the block, because it says whether there is a filter at all. The eight filter-envelope knobs and the amp's four leave the tab, so Play has room to spare at both windows (the line under the window measures it).</dd>
+    <dt>The level axis</dt>
+    <dd>For the amp envelope, in decibels: 0 dB at the top (full scale, the peak), a line every 6 dB, labelled every 12, down to a floor of <b>−60 dB</b>; under the floor a narrow band marked <b>−∞</b>, which is silence, where the start and the end sit. A curve that passes under −60 dB runs along the floor and drops into the band at its end; a point dragged into the band is silence. The Sustain knob turns in decibels too (−60 to 0, its bottom silence), so the top quarter of its travel is the top 15 dB rather than the top quarter of the amplitude. <b>Stored as now</b>: the sustain is still the linear level the engine multiplies by, so every saved sound loads to the bit; only the knob's law and the drawing change. The filter's and the Envelope card's level axes stay <b>linear</b>, from nought to the whole amount, because what they move is already on a musical scale (octaves of cutoff, a modulation depth) and a decibel axis would cramp their small values.</dd>
+    <dt>The time axis</dt>
+    <dd>Milliseconds, straight, from the note's start to the sustain point; then a gap marked <i>held</i>, of no time, because it lasts as long as the key; then the release from the key's letting go. It opens fitted, and zooms. With <i>Sync</i>, beats at the tempo, with a grid (1/4 to 1/32) the points snap to, and the knobs read note values.</dd>
+    <dt>Bends</dt>
+    <dd>Each stretch between two points has a diamond at its middle in time, sitting on the curve, and dragging it moves the level the curve has reached half-way, which is what is stored: the fade's drawing's rule, <i>what is dragged and what is stored are one number</i>. The curve through that midpoint is the core's own law rather than the fade's: see <i>The curve law</i>.</dd>
+    <dt>Sustain and loop</dt>
+    <dd>The sustain point is marked by a dashed line and <i>held</i>: the level stops there while the key is down, and what follows the gap is the release. <i>Loop while held</i> adds a marker on an earlier point; while the key is down the shape plays from the marker to the sustain point and round again, and the release starts from wherever the loop has got to. A loop never jumps: going round, the first stretch after the marker travels from the level the loop is at, with its own time and aim.</dd>
+    <dt>Delay and hold</dt>
+    <dd>Part of the shape: the delay a stretch of silence before the attack, the hold a stretch at the peak before the decay. Each is a tab under the time axis that drags sideways, and a knob; at nought they take no room in the drawing.</dd>
+    <dt>The six knobs</dt>
+    <dd>Delay, Attack, Hold, Decay, Sustain, Release, under the drawing, as the values: a setup, undo, the morph and modulation read and write them exactly as the four do now. <b>Once you have added points</b>: each time knob is the length of its stretch, and turning it stretches or squeezes every point inside in proportion, each keeping its share of the stretch's time and its own level. <b>Sustain</b> moves the sustain point's level and nothing else: points you added keep their levels. The points are not knobs: no host, routing or morph reaches them, only a setup, a preset and undo.</dd>
+    <dt>Shapes</dt>
+    <dd>ADSR (the four as today, the old curves), AHDSR, Pluck, Swell, Gate and Pulse (a loop), each setting the knobs and the points. Presets of the shape only, not of the sound.</dd>
+    <dt>The hands</dt>
+    <dd>As the EQ: with two hands the link is in the editor's head after the name and on each block's heading; unlinked, the other hand's shape is drawn dashed in its ink behind, and the block on Play draws both.</dd>
+    <dt>The filter</dt>
+    <dd>Its editor is the filter's response with one point (sideways the cutoff, up and down the resonance), the type as a switch, Key track and Amount as knobs, and beside it its envelope, the same editor as the amp's on a linear axis. The amount is drawn as the band the cutoff sweeps, signed (a negative amount shades below the cutoff), with its octaves written on it; at nought the band is gone and the envelope beside it greys and says so. Key track draws where the cutoff lands for the strip's lowest and highest keys. The resonance's point sits on the curve, which for low and high pass is the resonance's own height (the peak at the cutoff is Q, in decibels); for band pass and notch the curve's height there does not move, so the point rides at 0 dB or the floor and its drag reads Q.</dd>
+    <dt>The Envelope card</dt>
+    <dd>The same editor, on the linear axis, opened from its card. While it follows the amp envelope (the owner's rule since 17 Nov) the shape is the amp's, drawn <b>dashed and grey</b> with <i>Following the amp envelope</i> in its head; the first edit of a point, a bend or a knob copies the amp's shape into its own and draws it solid in its sage, one step of undo; <i>Follow</i> goes back. Its routings are listed beside it, as the modulation editor has <i>Where it goes</i>.</dd>
+  </dl>
+
+  <h2 id="law">The curve law</h2>
+  <p>Every stretch is the core's one-pole, as the envelope is today: it travels from its start towards an aim a little past its end, and arrives at its end exactly on time. The old envelope aims a fifth of the attack's and the decay's fall past their ends, and the release 0.2 of full scale under silence; a drawn bend is stored as the level at half the time, and turned into an aim by <code>k = 2 ln(m / (1 − m))</code> (the midpoint of <code>(1 − e<sup>−kt</sup>) / (1 − e<sup>−k</sup>)</code> is <code>1 / (1 + e<sup>−k/2</sup>)</code>), which puts the old curves at a midpoint of 0.710. Chosen over the fade's power law (<code>t<sup>p</sup></code>, <code>fadeTravel</code>) for three reasons: the old four numbers then become a shape <b>exactly</b>, sample for sample, so no saved sound changes; it costs one multiply-add a sample, the recursion the engine runs now; and it leaves every corner with a finite slope, where a power law starts a slow curve flat and a quick one vertical, which an amplifier hears as a click. It also means that <b>a point added on the line changes nothing</b>: a one-pole forgets where it started, so the two halves of a stretch split on its curve, aiming where the whole did, are the whole. Its cost: the fade's drawing and these differ at the same midpoint (by at most 0.06 of the fall at a midpoint of 0.9), which is a second law in one app; whether the fade should move to this one is an open question in the note.</p>
+  <p>Entered from anywhere else, as a release is when the key comes up during the attack, or the first stretch after a loop's marker, a stretch keeps its time and its aim and travels from where the level is. That is the old envelope's own rule, generalised, and it is why a loop never jumps.</p>
+
+  <h2 id="checked">How it was checked</h2>
+  <p><b>The curves against the core.</b> The page's <code>levelAt</code> was compared with the core's <code>Envelope</code> class, compiled from <code>core/include/scope/envelope.h</code> and stepped at 48 kHz (<code>checks/env_core.cpp</code>, <code>checks/curves_against_core.py</code>), for the four settings in the table, each held and let go, one in the attack and one in the decay. Two of them agree to 10<sup>−12</sup>. The other two differ by at most 6 × 10<sup>−5</sup> of full scale (−84 dB), and the check says why: the old envelope ends a stage on the first sample at or past its end, which after rounding is sometimes one sample after the drawn time, so the decay starts a sample late. That is the core's behaviour, not the drawing's, and the engine in the design note keeps it, sample for sample. The nulls must miss by ten times the tolerance: the page with the old release's aim made relative (a fifth of its own fall, as the decay's is), and every stretch straight. The filter's drawn response was compared with the core's <code>svfStep</code> run on sines at 24 frequencies for four settings, measuring the steady output over a whole second; the null reads the resonance as the damping.</p>
+  <div class="table-wrap"><table class="check-table" id="coreTable">
+    <thead><tr><th>Setting</th><th>Page against core</th><th>Null</th></tr></thead>
+    <tbody id="coreRows"><tr><td colspan="3">Filled in from <code>checks/results.json</code> when the checks ran; see the note under the table.</td></tr></tbody>
+  </table></div>
+  <p class="small" id="coreNote"></p>
+  <p><b>The decibel axis, live.</b> In the amp editor as now drawn: each gridline's height against where its decibels must fall between 0 dB and the floor, a level's point against its own decibels, silence on the band, and a level read back from where it is drawn. The null is the same levels on a straight amplitude axis, which must miss.</p>
+  <div class="table-wrap"><table class="check-table">
+    <thead><tr><th>Check</th><th>Drawn</th><th>Required</th><th>Off by</th><th>Null: straight amplitude</th></tr></thead>
+    <tbody id="dbRows"></tbody>
+  </table></div>
+
+  <h2>Open questions</h2>
+  <ul>
+    <li>The times' ranges. Today the attack stops at 200 ms, the decay at 1 s and the release at 2 s. A drawn shape wants longer (Serum's go to 32 s); this mockup gives the attack, decay and release 20 s, the delay and hold 5 s, on the drawing's square-root scale, so the first 200 ms still has a fair share of the knob.</li>
+    <li>Whether the peak is fixed at full scale (as drawn here, so velocity and Level stay the loudness) or a point like any other.</li>
+    <li>Whether the sustain point can be moved to another point, or turned off so the shape plays through regardless of the key (a one-shot).</li>
+    <li>What the morph does between two setups whose shapes differ: snap at half-way, or move the points when they are as many.</li>
+    <li>Whether the fade's drawing takes this law too, so the app has one bend.</li>
+  </ul>
+</div>
+
+<script>
+"use strict";
+/* ===================== the core's maths ===================== */
+const RATE = 48000;
+const FLOOR_DB = -60;
+// The old envelope's aim: kReach in envelope.h.
+const REACH = 0.2;
+// A stretch's bend: {m} a drawn midpoint (the level reached half-way, as a share of the fall),
+// {p} an aim past the end as a share of the drawn fall (the old decay's, and attack's),
+// {a} an aim past the end in full scale (the old release's), or {l} straight.
+const kOfM = (m) => 2 * Math.log(m / (1 - m));
+const rhoOfM = (m) => { const k = kOfM(m); return Math.abs(k) < 1e-9 ? Infinity : 1 / (Math.exp(k) - 1); };
+// The aim of a stretch drawn from a to b; null when it is straight.
+function aimOf(a, b, bend) {
+  if (bend.l) return null;
+  // The old release's aim is in full scale, so it holds even for a stretch drawn flat at silence (a
+  // sustain of nought), which the old envelope still travels down from wherever the key let it go.
+  if (bend.a != null) return b + bend.a * (b > a ? 1 : b < a || b <= 0 ? -1 : 1);
+  if (a === b) return b;
+  const rho = bend.p != null ? bend.p : rhoOfM(bend.m);
+  if (!isFinite(rho)) return null;
+  return b + rho * (b - a);
+}
+// Where a stretch drawn from a to b has got at share x of its time, entered from v (its own start, a,
+// unless it was entered from elsewhere): it keeps its time and its aim, as envelope.h's enterStage does.
+function travel(a, b, bend, x, v) {
+  if (v == null) v = a;
+  if (x <= 0) return v;
+  if (x >= 1) return b;
+  const T = aimOf(a, b, bend);
+  if (T === null) return v + (b - v) * x;
+  if (v === b) return b;
+  const r = (b - T) / (v - T);
+  if (!(r > 0)) return v + (b - v) * x;
+  // Already at or past the end, travelling towards an aim beyond it: the old rule jumps to the end.
+  if (Math.abs(a - T) > Math.abs(b - T) && Math.abs(v - T) <= Math.abs(b - T)) return b;
+  return T + (v - T) * Math.pow(r, x);
+}
+const midOf = (a, b, bend) => (a === b ? 0.5 : (travel(a, b, bend, 0.5) - a) / (b - a));
+
+/* ===================== envelopes ===================== */
+const STRETCH = ["delay", "attack", "hold", "decay"];
+const NAMES = { delay: "Delay", attack: "Attack", hold: "Hold", decay: "Decay", release: "Release", sus: "Sustain" };
+const legacyBends = () => ({ delay: { l: 1 }, attack: { p: REACH }, hold: { l: 1 }, decay: { p: REACH }, release: { a: REACH } });
+function makeEnv(m, bends, inner, loop) {
+  return { m: Object.assign({ delay: 0, attack: 8, hold: 0, decay: 120, sus: 0.7, release: 180 }, m),
+           b: Object.assign(legacyBends(), bends || {}),
+           inner: Object.assign({ delay: [], attack: [], hold: [], decay: [], release: [] }, inner || {}),
+           loop: loop == null ? null : loop };
+}
+const clone = (e) => JSON.parse(JSON.stringify(e));
+const endLevel = (e, s) => (s === "delay" ? 0 : s === "attack" || s === "hold" ? 1 : s === "decay" ? e.m.sus : 0);
+// The shape as points: before the sustain point (pre) and after the key comes up (rel).
+function flatten(e) {
+  const pre = [{ t: 0, lvl: 0, role: "start", s: null }];
+  let t = 0;
+  for (const s of STRETCH) {
+    const T = e.m[s];
+    for (let k = 0; k < e.inner[s].length; k++) { const p = e.inner[s][k]; pre.push({ t: t + p.u * T, lvl: p.lvl, bend: p.b, role: "inner", s, k }); }
+    pre.push({ t: t + T, lvl: endLevel(e, s), bend: e.b[s], role: s, s });
+    t += T;
+  }
+  const rel = [{ t: 0, lvl: e.m.sus, role: "held", s: null }];
+  for (let k = 0; k < e.inner.release.length; k++) { const p = e.inner.release[k]; rel.push({ t: p.u * e.m.release, lvl: p.lvl, bend: p.b, role: "inner", s: "release", k }); }
+  rel.push({ t: e.m.release, lvl: 0, bend: e.b.release, role: "release", s: "release" });
+  return { pre, rel, Tpre: t, Trel: e.m.release };
+}
+// One run of points from time t; its first stretch of any length entered from v (a level), if given.
+function runAt(pts, t, v) {
+  let first = true;
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i - 1], q = pts[i], dur = q.t - p.t;
+    if (dur <= 0) continue;
+    if (t <= q.t || i === pts.length - 1) return travel(p.lvl, q.lvl, q.bend, Math.min(1, (t - p.t) / dur), first ? v : null);
+    first = false;
+  }
+  return pts[pts.length - 1].lvl;
+}
+// The level while held, t ms after the note: with a loop, round from its marker to the sustain point,
+// the stretch after the marker travelling from where the loop is, with its own time and aim.
+function heldAt(e, f, t) {
+  if (t <= f.Tpre) return runAt(f.pre, t);
+  if (e.loop == null) return e.m.sus;
+  const L = Math.min(e.loop, f.pre.length - 2), t0 = f.pre[L].t, period = f.Tpre - t0;
+  if (period <= 0) return e.m.sus;
+  return runAt(f.pre.slice(L), t0 + (t - f.Tpre) % period, f.pre[f.pre.length - 1].lvl);
+}
+// The level t ms after the note, the key let go at up (or still down).
+function levelAt(e, t, up) {
+  const f = flatten(e);
+  if (up == null || t < up) return heldAt(e, f, t);
+  const v = heldAt(e, f, up);
+  return runAt(f.rel, t - up, v);
+}
+window.levelAt = levelAt; window.makeEnv = makeEnv; window.flatten = flatten;
+
+/* ===================== the filter, as the core has it ===================== */
+const cutoffHz = (step) => 20 * Math.pow(1000, step / 1000);
+const cutoffStep = (hz) => Math.round(1000 * Math.log(hz / 20) / Math.log(1000));
+const resonanceQ = (v) => Math.SQRT1_2 * Math.pow(20 / Math.SQRT1_2, v / 100);
+const resStep = (q) => Math.round(100 * Math.log(q / Math.SQRT1_2) / Math.log(20 / Math.SQRT1_2));
+// The state-variable filter of wave.h is the analogue one under the bilinear transform, warped at
+// its cutoff: so its response at f is the analogue one at w = tan(pi f / rate) / g.
+function svfDb(type, fc, Q, f, rate) {
+  rate = rate || RATE;
+  const g = Math.tan(Math.PI * Math.min(fc, 0.49 * rate) / rate), k = 1 / Math.max(0.1, Q);
+  const w = Math.tan(Math.PI * Math.min(f, 0.4999 * rate) / rate) / g;
+  const dr = 1 - w * w, di = k * w, den = dr * dr + di * di;
+  const num = type === 1 ? 1 : type === 2 ? k * k * w * w : type === 3 ? w * w * w * w : type === 4 ? dr * dr : den;
+  return 10 * Math.log10(Math.max(1e-30, num / den));
+}
+window.svfDb = svfDb;
+// vcfHz: the cutoff swept by the envelope and pushed by key tracking, clamped as the core clamps it.
+const vcfHz = (cut, envOct, lvl, track, noteHz) => {
+  let fc = cut * Math.pow(2, envOct * lvl);
+  if (track > 0 && noteHz > 0) fc *= Math.pow(noteHz / 261.63, track);
+  return Math.max(10, Math.min(0.45 * RATE, fc));
+};
+
+/* ===================== the mockup's state ===================== */
+const SHAPES = {
+  ADSR: () => makeEnv({ delay: 0, attack: 8, hold: 0, decay: 120, sus: 0.7, release: 180 }),
+  AHDSR: () => makeEnv({ delay: 0, attack: 10, hold: 120, decay: 400, sus: 0.5, release: 300 }, { attack: { m: 0.62 }, decay: { m: 0.75 }, release: { m: 0.75 } }),
+  Pluck: () => makeEnv({ delay: 0, attack: 2, hold: 0, decay: 700, sus: 0, release: 250 }, { decay: { m: 0.86 }, release: { m: 0.8 } }),
+  Swell: () => makeEnv({ delay: 0, attack: 1400, hold: 0, decay: 0, sus: 1, release: 1600 }, { attack: { m: 0.22 }, release: { m: 0.6 } }),
+  Gate: () => makeEnv({ delay: 0, attack: 3, hold: 0, decay: 0, sus: 1, release: 12 }, { attack: { l: 1 }, release: { l: 1 } }),
+  Pulse: () => makeEnv({ delay: 0, attack: 4, hold: 60, decay: 250, sus: 0.25, release: 300 }, { decay: { m: 0.8 }, release: { m: 0.75 } },
+    { decay: [{ u: 0.4, lvl: 0.45, b: { m: 0.7 } }, { u: 0.55, lvl: 0.9, b: { m: 0.3 } }] }, 2),
+};
+const FILTER_ENV = () => makeEnv({ delay: 0, attack: 5, hold: 0, decay: 300, sus: 0.3, release: 300 });
+const MENV = () => makeEnv({ delay: 0, attack: 10, hold: 0, decay: 300, sus: 0.5, release: 400 });
+const S = {
+  size: "big", view: "play", hands: 1, editing: 0,
+  linked: { gen: true, amp: true, filter: true },
+  amp: [SHAPES.ADSR(), SHAPES.ADSR()],
+  fenv: [FILTER_ENV(), FILTER_ENV()],
+  filt: [{ type: 1, cut: 630, res: 32, track: 0, amt: 15 }, { type: 1, cut: 630, res: 32, track: 0, amt: 15 }],
+  menv: { own: false, env: MENV() },
+  ui: { amp: {}, fenv: {}, menv: {} },
+  sync: { amp: false, fenv: false, menv: false }, grid: 16, bpm: 120,
+  note: null,     // {t0, up} while a note sounds, in ms of performance.now()
+};
+const hi = () => (S.hands === 2 ? S.editing : 0);
+const ampEnv = () => S.amp[hi()];
+const fenvEnv = () => S.fenv[hi()];
+const filt = () => S.filt[hi()];
+const menvShown = () => (S.menv.own ? S.menv.env : ampEnv());
+const clamp = (v, lo, hi_) => Math.max(lo, Math.min(hi_, v));
+// Every write goes through here: linked, both hands; else the edited one.
+function writeHand(section, fn) {
+  const list = section === "amp" ? S.amp : section === "fenv" ? S.fenv : S.filt;
+  if (S.hands === 2 && S.linked[section === "fenv" ? "filter" : section]) { fn(list[0]); fn(list[1]); }
+  else fn(list[hi()]);
+}
+function writeEnv(kind, fn) {
+  if (kind === "menv") {
+    // The first edit while following copies the amp envelope's shape into its own (menvAdopt).
+    if (!S.menv.own) { S.menv.env = clone(ampEnv()); S.menv.own = true; }
+    fn(S.menv.env);
+  } else writeHand(kind, fn);
+  paint();
+}
+const envOf = (kind) => (kind === "amp" ? ampEnv() : kind === "fenv" ? fenvEnv() : menvShown());
+const otherEnv = (kind) => {
+  if (S.hands !== 2 || kind === "menv") return null;
+  const sec = kind === "amp" ? "amp" : "filter";
+  if (S.linked[sec]) return null;
+  return (kind === "amp" ? S.amp : S.fenv)[1 - S.editing];
+};
+
+/* ===================== readings ===================== */
+const msReading = (ms) => (ms >= 1000 ? (ms / 1000).toFixed(ms >= 10000 ? 1 : 2) + " s" : ms >= 10 ? Math.round(ms) + " ms" : (Math.round(ms * 10) / 10) + " ms");
+const lvlDb = (l) => (l <= 0 ? -Infinity : 20 * Math.log10(l));
+const dbReading = (l) => { const d = lvlDb(l); return d === -Infinity || d < FLOOR_DB - 0.05 ? "−∞ dB" : (d > -0.05 ? "0.0" : "−" + Math.abs(d).toFixed(1)) + " dB"; };
+const pctReading = (l) => Math.round(l * 100) + "%";
+function noteValue(ms) {
+  const beat = 60000 / S.bpm, n32 = Math.round(ms / (beat / 8));
+  // A time off the grid (set before Sync, or short) reads in milliseconds: a note value would lie.
+  if (n32 === 0 || Math.abs(n32 * beat / 8 - ms) > 0.5) return msReading(ms);
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a), g = gcd(n32, 32);
+  const num = n32 / g, den = 32 / g;
+  return den === 1 ? num + (num === 1 ? " bar" : " bars") : num + "/" + den;
+}
+const timeReading = (kind, ms) => (S.sync[kind] ? noteValue(ms) : msReading(ms));
+const levelReading = (kind, l) => (kind === "amp" ? dbReading(l) : pctReading(l));
+const octReading = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v / 10).toFixed(1) + " oct";
+const hzReading = (hz) => (hz >= 1000 ? (hz / 1000).toFixed(hz >= 10000 ? 1 : 1) + " kHz" : Math.round(hz) + " Hz");
+
+/* ===================== knobs ===================== */
+// Times on the drawing's own square-root scale, as knobEnvelope's arrows move them.
+const TMAX = { delay: 5000, attack: 20000, hold: 5000, decay: 20000, release: 20000 };
+function envKnobs(kind) {
+  const ks = [];
+  for (const s of ["delay", "attack", "hold", "decay"]) ks.push({ id: kind + "-" + s, nm: NAMES[s], s,
+    frac: (e) => Math.sqrt(e.m[s] / TMAX[s]), set: (e, f) => { e.m[s] = snapMs(kind, TMAX[s] * f * f); }, read: (e) => timeReading(kind, e.m[s]),
+    start: (e) => (kind === "amp" ? SHAPES.ADSR() : kind === "fenv" ? FILTER_ENV() : MENV()).m[s] });
+  // The sustain: in decibels for the amp, its bottom silence; a straight share for the others.
+  ks.push({ id: kind + "-sus", nm: "Sustain", s: "sus",
+    frac: (e) => (kind === "amp" ? (e.m.sus <= 0 ? 0 : clamp((lvlDb(e.m.sus) - FLOOR_DB) / -FLOOR_DB, 0, 1)) : e.m.sus),
+    set: (e, f) => { e.m.sus = kind === "amp" ? (f <= 0.0005 ? 0 : Math.pow(10, Math.round((FLOOR_DB + f * -FLOOR_DB) * 10) / 200)) : Math.round(f * 100) / 100; },
+    read: (e) => levelReading(kind, e.m.sus), start: (e) => (kind === "amp" ? 0.7 : kind === "fenv" ? 0.3 : 0.5) });
+  ks.push({ id: kind + "-release", nm: "Release", s: "release",
+    frac: (e) => Math.sqrt(e.m.release / TMAX.release), set: (e, f) => { e.m.release = Math.max(1, snapMs(kind, TMAX.release * f * f)); },
+    read: (e) => timeReading(kind, e.m.release), start: () => (kind === "amp" ? 180 : kind === "fenv" ? 300 : 400) });
+  return ks;
+}
+const FILTER_KNOBS = [
+  { id: "f-cut", nm: "Cutoff", host: true, min: 0, max: 1000, get: (f) => f.cut, set: (f, v) => { f.cut = v; }, read: (f) => hzReading(cutoffHz(f.cut)), start: 667 },
+  { id: "f-res", nm: "Resonance", min: 0, max: 100, get: (f) => f.res, set: (f, v) => { f.res = v; }, read: (f) => "Q " + resonanceQ(f.res).toFixed(2), start: 0 },
+  { id: "f-track", nm: "Key track", min: 0, max: 100, get: (f) => f.track, set: (f, v) => { f.track = v; }, read: (f) => f.track + "%", start: 0 },
+  { id: "f-amt", nm: "Amount", min: -40, max: 40, bip: true, get: (f) => f.amt, set: (f, v) => { f.amt = v; }, read: (f) => octReading(f.amt), start: 0 },
+];
+function snapMs(kind, ms) {
+  if (!S.sync[kind]) return ms < 10 ? Math.round(ms * 10) / 10 : Math.round(ms);
+  const step = 60000 / S.bpm * 4 / S.grid;
+  return Math.round(ms / step) * step;
+}
+function knobHTML(frac, bipolar, attrs) {
+  const a = frac * 270, lo = bipolar ? Math.min(135, a) : 0, hi_ = bipolar ? Math.max(135, a) : a;
+  return '<span class="knob-face" tabindex="0" role="slider"' + (attrs || "") + ' style="--angle:' + a + 'deg;--lo:' + lo + 'deg;--hi:' + hi_ + 'deg"><span class="knob-cap"></span></span>';
+}
+const cellHTML = (id, nm, host) => '<div class="kcell' + (host ? " host" : "") + '" data-k="' + id + '"><span class="val"></span>' + knobHTML(0, false, ' data-knob="' + id + '" aria-label="' + nm + '"') + '<span class="nm">' + nm + '</span></div>';
+const staticCell = (val, nm, frac, host) => '<div class="kcell' + (host ? " host" : "") + '"><span class="val">' + val + '</span>' + knobHTML(frac, false) + '<span class="nm">' + nm + '</span></div>';
+function setFace(face, frac, bip) {
+  const a = clamp(frac, 0, 1) * 270;
+  face.style.setProperty("--angle", a + "deg");
+  face.style.setProperty("--lo", (bip ? Math.min(135, a) : 0) + "deg");
+  face.style.setProperty("--hi", (bip ? Math.max(135, a) : a) + "deg");
+}
+// One knob's definition by its id: an envelope's six or the filter's four.
+function knobDef(id) {
+  if (id.startsWith("f-")) {
+    const k = FILTER_KNOBS.find((x) => x.id === id);
+    return { k, frac: () => (k.get(filt()) - k.min) / (k.max - k.min), read: () => k.read(filt()), bip: k.bip,
+      set: (fr) => { writeHand("filter", (f) => k.set(f, clamp(Math.round(k.min + fr * (k.max - k.min)), k.min, k.max))); paint(); },
+      reset: () => { writeHand("filter", (f) => k.set(f, k.start)); paint(); }, dim: () => filt().type === 0 };
+  }
+  const kind = id.split("-")[0], k = envKnobs(kind).find((x) => x.id === id);
+  return { k, frac: () => k.frac(envOf(kind)), read: () => k.read(envOf(kind)),
+    set: (fr) => writeEnv(kind, (e) => k.set(e, clamp(fr, 0, 1))),
+    reset: () => writeEnv(kind, (e) => { const v = k.start(e); if (k.s === "sus") e.m.sus = v; else e.m[k.s] = v; }),
+    dim: () => kind === "fenv" && (filt().amt === 0 || filt().type === 0) };
+}
+function paintKnobs() {
+  document.querySelectorAll("#win [data-k]").forEach((cell) => {
+    const d = knobDef(cell.dataset.k), fr = d.frac();
+    const face = cell.querySelector(".knob-face");
+    setFace(face, fr, d.bip);
+    face.setAttribute("aria-valuetext", d.read());
+    cell.querySelector(".val").textContent = d.read();
+    cell.classList.toggle("dim", !!d.dim());
+    const sel = selected();
+    cell.classList.toggle("lit", !!sel && sel.knob && sel.knob.includes(cell.dataset.k));
+  });
+}
+function wireKnobs(host) {
+  host.querySelectorAll("[data-knob]").forEach((face) => {
+    const id = face.dataset.knob;
+    let start = null, last = 0;
+    face.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== 0) return;
+      ev.preventDefault(); face.focus({ preventScroll: true });
+      const now = performance.now();
+      if (now - last < 380) { knobDef(id).reset(); last = 0; return; }
+      last = now;
+      face.setPointerCapture(ev.pointerId); face.classList.add("held");
+      start = { y: ev.clientY, f: knobDef(id).frac() };
+    });
+    face.addEventListener("pointermove", (ev) => {
+      if (!start) return;
+      knobDef(id).set(clamp(start.f - (ev.clientY - start.y) / stageScale() / (ev.shiftKey ? 600 : 150), 0, 1));
+    });
+    const end = () => { start = null; face.classList.remove("held"); };
+    face.addEventListener("pointerup", end); face.addEventListener("pointercancel", end);
+    face.addEventListener("keydown", (ev) => {
+      const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[ev.key];
+      if (d == null) return;
+      ev.preventDefault();
+      knobDef(id).set(clamp(knobDef(id).frac() + d * (ev.shiftKey ? 0.005 : 0.025), 0, 1));
+    });
+  });
+}
+
+/* ===================== the drawing of an envelope ===================== */
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const GAP = 46;   // the held gap, in the page's pixels: it lasts as long as the key, so it has no time
+// The level axis: decibels for the amp, a straight share otherwise.
+function levelAxis(kind, T, B) {
+  if (kind === "amp") {
+    const yF = B - 16;
+    return { db: true, T, yF, yS: B, B,
+      y: (l) => (l <= 0 ? B : T + (clamp(lvlDb(l), FLOOR_DB, 0) / FLOOR_DB) * (yF - T)),
+      lvl: (y) => (y > yF + 8 ? 0 : Math.pow(10, clamp(FLOOR_DB * (y - T) / (yF - T), FLOOR_DB, 0) / 20)) };
+  }
+  return { db: false, T, yF: B, yS: B, B, y: (l) => T + (1 - clamp(l, 0, 1)) * (B - T), lvl: (y) => clamp(1 - (y - T) / (B - T), 0, 1) };
+}
+function msegGeo(kind, svg, compactPlot) {
+  const W = svg.clientWidth, H = svg.clientHeight;
+  const L = compactPlot ? 36 : 44, R = 12, T = 10, B = H - (compactPlot ? 30 : 42);
+  const ax = levelAxis(kind, T, B);
+  const ui = S.ui[kind + (compactPlot ? "s" : "")] || (S.ui[kind + (compactPlot ? "s" : "")] = {});
+  const f = flatten(envOf(kind)), oth = otherEnv(kind), fo = oth ? flatten(oth) : f;
+  const total = Math.max(1, f.Tpre + f.Trel, fo.Tpre + fo.Trel);
+  const avail = Math.max(40, W - L - R - GAP);
+  if (!ui.view || ui.fit) ui.view = { ppm: avail / (total * 1.06), ms0: 0 };
+  ui.fit = false;
+  const ppm = ui.view.ppm, ms0 = ui.view.ms0;
+  const xPre = (t) => L + (t - ms0) * ppm;
+  const gapX = xPre(f.Tpre);
+  const xRel = (t) => gapX + GAP + t * ppm;
+  return { W, H, L, R, T, B, ax, f, ppm, ms0, xPre, xRel, gapX, ui, kind, avail, total };
+}
+// A run of points as a path, sampled finely enough that a bend reads as a curve on the dB axis too.
+function runPath(g, pts, xOf, from) {
+  let d = "";
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i - 1], q = pts[i], dur = q.t - p.t;
+    if (dur <= 0) continue;
+    const x0 = xOf(p.t), x1 = xOf(q.t), n = Math.max(2, Math.min(160, Math.ceil(Math.abs(x1 - x0) / 2)));
+    for (let j = 0; j <= n; j++) {
+      const x = j / n, v = travel(p.lvl, q.lvl, q.bend, x, i === 1 && from != null ? from : null);
+      d += (d ? "L" : "M") + (x0 + x * (x1 - x0)).toFixed(2) + " " + g.ax.y(v).toFixed(2);
+    }
+  }
+  return d;
+}
+function shapePath(g, e) {
+  const f = flatten(e);
+  const xPre = (t) => g.xPre(t), gapX = g.xPre(f.Tpre), xRel = (t) => gapX + GAP + t * g.ppm;
+  let d = runPath(g, f.pre, xPre);
+  const ys = g.ax.y(e.m.sus).toFixed(2);
+  d += "L" + gapX.toFixed(2) + " " + ys + "L" + (gapX + GAP).toFixed(2) + " " + ys;
+  const r = runPath(g, f.rel, xRel);
+  return d + "L" + r.slice(1);
+}
+function gridFor(kind, g, svg) {
+  const grid = el("g", { "aria-hidden": "true" }, svg);
+  // Levels.
+  const levels = g.ax.db ? [0, -6, -12, -18, -24, -30, -36, -42, -48, -54, -60].map((d) => [Math.pow(10, d / 20), d]) : [1, 0.75, 0.5, 0.25, 0].map((l) => [l, null]);
+  for (const [l, d] of levels) {
+    const y = g.ax.y(l), major = g.ax.db ? d % 12 === 0 || d === -6 : true;
+    el("line", { x1: g.L, x2: g.W - g.R, y1: y, y2: y, stroke: major ? "var(--line)" : "var(--cream-2)", "stroke-width": 1, "data-db": d == null ? "" : d }, grid);
+    if (major && (g.ax.db || true)) {
+      const t = el("text", { x: g.L - 6, y: y + 3.5, "text-anchor": "end", "font-size": 10, fill: "var(--text-soft)", "data-dblabel": d == null ? "" : d }, grid);
+      t.textContent = g.ax.db ? (d === 0 ? "0 dB" : "−" + Math.abs(d)) : Math.round(l * 100) + "%";
+    }
+  }
+  if (g.ax.db) {
+    // The band under the floor is silence.
+    el("rect", { x: g.L, y: g.ax.yF + 4, width: g.W - g.R - g.L, height: g.ax.yS - g.ax.yF - 4, fill: "var(--cream-2)" }, grid);
+    el("line", { x1: g.L, x2: g.W - g.R, y1: g.ax.yS, y2: g.ax.yS, stroke: "var(--text-soft)", "stroke-width": 1, "data-silence": 1 }, grid);
+    const t = el("text", { x: g.L - 6, y: g.ax.yS + 3.5, "text-anchor": "end", "font-size": 10, fill: "var(--text-soft)" }, grid);
+    t.textContent = "−∞";
+  } else el("line", { x1: g.L, x2: g.W - g.R, y1: g.B, y2: g.B, stroke: "var(--text-soft)", "stroke-width": 1 }, grid);
+  // Time: ms, or beats with the grid when synced.
+  const f = g.f, ticks = [];
+  const xEnd = g.W - g.R;
+  if (S.sync[kind]) {
+    const step = 60000 / S.bpm * 4 / S.grid, beat = 60000 / S.bpm;
+    for (let t = 0; g.xPre(t) <= g.gapX + 0.5; t += step) ticks.push([g.xPre(t), Math.abs(t / beat - Math.round(t / beat)) < 1e-6, t, "pre"]);
+    for (let t = 0; g.xRel(t) <= xEnd; t += step) ticks.push([g.xRel(t), Math.abs(t / beat - Math.round(t / beat)) < 1e-6, t, "rel"]);
+  } else {
+    const nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+    const step = nice.find((s) => s * g.ppm >= 56) || 10000;
+    for (let t = 0; g.xPre(t) <= g.gapX + 0.5; t += step) ticks.push([g.xPre(t), true, t, "pre"]);
+    for (let t = 0; g.xRel(t) <= xEnd; t += step) ticks.push([g.xRel(t), true, t, "rel"]);
+  }
+  let lastLabel = -1e9;
+  for (const [x, major, t, side] of ticks) {
+    if (x < g.L - 0.5 || x > xEnd + 0.5) continue;
+    el("line", { x1: x, x2: x, y1: g.T, y2: g.B, stroke: major ? "var(--line)" : "var(--cream-2)", "stroke-width": 1 }, grid);
+    if ((major || S.sync[kind]) && x - lastLabel > 40) {
+      const lab = el("text", { x, y: g.B + 13, "text-anchor": "middle", "font-size": 10, fill: "var(--text-soft)" }, grid);
+      const beat = 60000 / S.bpm;
+      lab.textContent = S.sync[kind] ? (side === "rel" ? "+" : "") + (t === 0 ? "0" : noteValue(t)) : (side === "rel" ? "+" : "") + (t >= 1000 ? (t / 1000) + " s" : t + (t === 0 && side === "pre" ? " ms" : ""));
+      lastLabel = x;
+    }
+  }
+  // The held gap.
+  if (g.gapX > g.L - 1 && g.gapX < xEnd) {
+    el("rect", { x: g.gapX, y: g.T, width: GAP, height: g.B - g.T, fill: "var(--cream)", opacity: 0.9 }, grid);
+    el("line", { x1: g.gapX, x2: g.gapX, y1: g.T, y2: g.B, stroke: "var(--blush-deep)", "stroke-dasharray": "4 3", "stroke-width": 1 }, grid);
+    const h = el("text", { x: g.gapX + GAP / 2, y: (g.T + g.B) / 2, "text-anchor": "middle", "font-size": 9.5, fill: "var(--blush-deep)", "letter-spacing": "0.1em" }, grid);
+    h.textContent = "HELD";
+    const k = el("text", { x: g.gapX + GAP + 4, y: g.B + 26, "font-size": 9.5, fill: "var(--text-soft)" }, grid);
+    k.textContent = "key up";
+  }
+  return grid;
+}
+// Anything selected in an editor: {kind, id, knob: [...]}.
+let SEL = null;
+const selected = () => SEL;
+function pointKnobs(kind, p) {
+  if (p.role === "attack" || p.role === "release" || p.role === "delay" || p.role === "hold") return [kind + "-" + p.role];
+  if (p.role === "decay") return [kind + "-decay", kind + "-sus"];
+  return [];
+}
+function drawMseg(kind, svg, opts) {
+  opts = opts || {};
+  svg.innerHTML = "";
+  if (!svg.clientWidth || !svg.clientHeight) return null;
+  const g = msegGeo(kind, svg, opts.small);
+  svg.setAttribute("viewBox", "0 0 " + g.W + " " + g.H);
+  const e = envOf(kind), f = g.f;
+  const following = kind === "menv" && !S.menv.own;
+  const ink = kind === "menv" ? (following ? "var(--unresolved)" : "var(--ch4)") : S.hands === 2 && !S.linked[kind === "amp" ? "amp" : "filter"] ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--charcoal)";
+  el("rect", { x: 0, y: 0, width: g.W, height: g.H, fill: "var(--paper)", class: "bg", "data-bg": 1 }, svg);
+  const clipId = "clip-" + kind + (opts.small ? "s" : "");
+  const defs = el("defs", {}, svg), cp = el("clipPath", { id: clipId }, defs);
+  el("rect", { x: g.L, y: g.T - 8, width: g.W - g.R - g.L, height: g.B - g.T + 16 }, cp);
+  gridFor(kind, g, svg);
+  const body = el("g", { "clip-path": "url(#" + clipId + ")" }, svg);
+  // The loop's region.
+  if (e.loop != null) {
+    const L = Math.min(e.loop, f.pre.length - 2), x0 = g.xPre(f.pre[L].t);
+    el("rect", { x: x0, y: g.T, width: Math.max(0, g.gapX - x0), height: g.B - g.T, fill: "var(--wash)" }, body);
+  }
+  // The other hand's, dashed in its ink.
+  const oth = otherEnv(kind);
+  if (oth) el("path", { d: shapePath(g, oth), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1.5, "stroke-dasharray": "5 4", opacity: 0.8, "data-ghost": 1 }, body);
+  const d = shapePath(g, e);
+  el("path", { d: d + "L" + (g.xRel(f.Trel)).toFixed(2) + " " + g.ax.yS + "L" + g.xPre(0).toFixed(2) + " " + g.ax.yS + "Z", fill: following ? "none" : "var(--blush)", opacity: 0.13 }, body);
+  el("path", { d, fill: "none", stroke: ink, "stroke-width": 2, "stroke-linejoin": "round", "stroke-dasharray": following ? "6 4" : "none", "data-curve": 1 }, body);
+  el("path", { d, fill: "none", stroke: "transparent", "stroke-width": 14, class: "hit", "data-hit": 1 }, body);
+  // Bend diamonds, at the middle of each stretch in time, on the curve.
+  const bends = [];
+  const addBends = (pts, xOf, side) => {
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      if (q.t - p.t <= 0 || p.lvl === q.lvl) continue;
+      const x = (xOf(p.t) + xOf(q.t)) / 2, y = g.ax.y(travel(p.lvl, q.lvl, q.bend, 0.5));
+      if (Math.abs(xOf(q.t) - xOf(p.t)) < 18) continue;
+      bends.push({ side, i, x, y });
+    }
+  };
+  addBends(f.pre, g.xPre, "pre"); addBends(f.rel, g.xRel, "rel");
+  for (const b of bends) {
+    const id = "b" + b.side + b.i, on = SEL && SEL.kind === kind && SEL.id === id;
+    const grp = el("g", { class: "bh", tabindex: following && !opts.small ? 0 : 0, role: "slider", "data-bend": id, "aria-label": "Bend" }, svg);
+    el("rect", { x: b.x - 4, y: b.y - 4, width: 8, height: 8, transform: "rotate(45 " + b.x + " " + b.y + ")", fill: on ? "var(--gold)" : "var(--paper)", stroke: following ? "var(--unresolved)" : "var(--text-soft)", "stroke-width": 1.2, class: "ring" }, grp);
+    el("rect", { x: b.x - 9, y: b.y - 9, width: 18, height: 18, fill: "transparent" }, grp);
+  }
+  // Points.
+  const pts = [];
+  f.pre.forEach((p, i) => { if (p.role === "start") return; if ((p.role === "delay" && e.m.delay === 0) || (p.role === "hold" && e.m.hold === 0)) return; pts.push({ p, id: "pre" + i, x: g.xPre(p.t), y: g.ax.y(p.lvl) }); });
+  f.rel.forEach((p, i) => { if (p.role === "held") return; pts.push({ p, id: "rel" + i, x: g.xRel(p.t), y: g.ax.y(p.lvl) }); });
+  for (const q of pts) {
+    if (q.x < g.L - 2 || q.x > g.W - g.R + 2) continue;
+    const anchor = q.p.role !== "inner", on = SEL && SEL.kind === kind && SEL.id === q.id;
+    const grp = el("g", { class: "pt", tabindex: 0, role: "slider", "data-pt": q.id, "aria-label": anchor ? NAMES[q.p.role === "decay" ? "sus" : q.p.role] + " point" : "A point you added",
+                          "aria-valuetext": timeReading(kind, q.p.t) + ", " + levelReading(kind, q.p.lvl) }, svg);
+    el("circle", { cx: q.x, cy: q.y, r: 12, fill: "transparent" }, grp);
+    el("circle", { cx: q.x, cy: q.y, r: anchor ? 5.5 : 4.2, fill: on ? (kind === "menv" ? "var(--ch4)" : "var(--blush-deep)") : anchor ? "var(--paper)" : following ? "var(--unresolved)" : ink, stroke: following ? "var(--unresolved)" : on ? "var(--blush-deep)" : "var(--charcoal)", "stroke-width": anchor ? 1.5 : 1, class: "ring", "data-cx": q.x, "data-cy": q.y }, grp);
+  }
+  // The sustain point's mark.
+  const susX = g.gapX;
+  if (susX >= g.L - 1 && susX <= g.W - g.R) {
+    const t = el("text", { x: susX - 4, y: g.T + 12, "text-anchor": "end", "font-size": 9.5, fill: "var(--blush-deep)", "letter-spacing": "0.1em" }, svg);
+    t.textContent = opts.small ? "SUSTAIN" : "SUSTAIN " + levelReading(kind, e.m.sus);
+  }
+  // The loop's marker.
+  if (e.loop != null) {
+    const L = Math.min(e.loop, f.pre.length - 2), x0 = g.xPre(f.pre[L].t);
+    const m = el("g", { class: "loopm", tabindex: 0, role: "slider", "aria-label": "Where the loop starts", "data-loop": 1 }, svg);
+    el("line", { x1: x0, x2: x0, y1: g.T, y2: g.B, stroke: "var(--gold)", "stroke-width": 1.5 }, m);
+    el("path", { d: "M" + x0 + " " + g.T + "l8 0l-8 8z", fill: "var(--gold)" }, m);
+    el("rect", { x: x0 - 6, y: g.T, width: 12, height: g.B - g.T, fill: "transparent" }, m);
+    const lt = el("text", { x: x0 + 10, y: g.T + 30, "font-size": 9.5, fill: "var(--gold)", "letter-spacing": "0.1em" }, svg);
+    lt.textContent = "LOOP";
+  }
+  // Delay and Hold, as tabs under the time axis.
+  if (!opts.small) {
+    for (const s of ["delay", "hold"]) {
+      const idx = f.pre.findIndex((p) => p.role === s);
+      const x = g.xPre(f.pre[idx].t), y = s === "delay" ? g.B + 26 : g.T + 8;
+      if (x < g.L - 4 || x > g.W - g.R) continue;
+      const m = el("g", { class: "tabm", tabindex: 0, role: "slider", "data-tab": s, "aria-label": NAMES[s] + ": " + timeReading(kind, e.m[s]) }, svg);
+      el("path", { d: "M" + x + " " + (y - 6) + "l5 6h" + (s === "delay" ? 30 : 26) + "v9h-" + (s === "delay" ? 40 : 36) + "v-9z", fill: e.m[s] > 0 ? "var(--charcoal)" : "var(--paper)", stroke: "var(--text-soft)", "stroke-width": 1, transform: "translate(" + (-5) + " 0)" }, m);
+      const tx = el("text", { x: x + (s === "delay" ? 15 : 13) - 5, y: y + 7, "text-anchor": "middle", "font-size": 8, "letter-spacing": "0.08em", fill: e.m[s] > 0 ? "var(--cream)" : "var(--text-soft)" }, m);
+      tx.textContent = s === "delay" ? "DELAY" : "HOLD";
+    }
+  }
+  // The note, while one sounds.
+  if (S.note) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    let x;
+    if (up == null || now < up) x = now <= f.Tpre ? g.xPre(now) : e.loop != null ? g.xPre((() => { const L = Math.min(e.loop, f.pre.length - 2), t0 = f.pre[L].t, per = f.Tpre - t0; return per > 0 ? t0 + (now - f.Tpre) % per : f.Tpre; })()) : g.gapX + GAP / 2;
+    else x = g.xRel(now - up);
+    const v = levelAt(e, now, up);
+    if (x <= g.W - g.R && (up == null || now - up <= f.Trel + 40)) {
+      el("line", { x1: x, x2: x, y1: g.T, y2: g.B, stroke: "var(--gold)", "stroke-width": 1, opacity: 0.7 }, svg);
+      el("circle", { cx: x, cy: g.ax.y(v), r: 4, fill: "var(--gold)", "data-now": 1 }, svg);
+    }
+  }
+  svg._g = g; svg._kind = kind;
+  return g;
+}
+
+/* ===================== small drawings for the blocks ===================== */
+function prevEnv(kind, svg, w, h, e, otherE, dead) {
+  svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+  svg.setAttribute("height", h);
+  svg.innerHTML = "";
+  const L = 4, R = 4, T = 5, B = h - 4;
+  const ax = levelAxis(kind, T, B);
+  if (kind === "amp") { ax.yF = B - 6; ax.y = (l) => (l <= 0 ? B : T + (clamp(lvlDb(l), FLOOR_DB, 0) / FLOOR_DB) * (ax.yF - T)); }
+  const f = flatten(e), gap = Math.min(30, w * 0.12), total = Math.max(1, f.Tpre + f.Trel);
+  const ppm = (w - L - R - gap) / total;
+  const g = { ax, xPre: (t) => L + t * ppm, ppm, f };
+  g.gapX = g.xPre(f.Tpre); g.xRel = (t) => g.gapX + gap + t * ppm;
+  const path = (env) => {
+    const ff = flatten(env), gx = L + ff.Tpre * ppm, xr = (t) => gx + gap + t * ppm;
+    const ys = ax.y(env.m.sus).toFixed(2);
+    return runPath(g, ff.pre, g.xPre) + "L" + gx.toFixed(2) + " " + ys + "L" + (gx + gap).toFixed(2) + " " + ys + "L" + runPath(g, ff.rel, xr).slice(1);
+  };
+  if (kind === "amp") for (const d of [-12, -24, -36, -48]) el("line", { x1: L, x2: w - R, y1: ax.y(Math.pow(10, d / 20)), y2: ax.y(Math.pow(10, d / 20)), stroke: "var(--cream-2)" }, svg);
+  el("line", { x1: L, x2: w - R, y1: B, y2: B, stroke: "var(--line)" }, svg);
+  el("line", { x1: g.gapX, x2: g.gapX, y1: T, y2: B, stroke: dead ? "var(--line)" : "var(--blush)", "stroke-dasharray": "3 3" }, svg);
+  if (otherE) el("path", { d: path(otherE), fill: "none", stroke: S.editing ? "var(--hand-a)" : "var(--hand-b)", "stroke-width": 1.3, "stroke-dasharray": "4 3" }, svg);
+  const d = path(e);
+  const ink = dead ? "var(--unresolved)" : kind === "menv" ? (S.menv.own ? "var(--ch4)" : "var(--unresolved)") : S.hands === 2 && !S.linked[kind === "amp" ? "amp" : "filter"] ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : "var(--blush-deep)";
+  if (!dead) el("path", { d: d + "L" + g.xRel(f.Trel) + " " + B + "L" + L + " " + B + "Z", fill: "var(--blush)", opacity: 0.12 }, svg);
+  el("path", { d, fill: "none", stroke: ink, "stroke-width": 1.6, "stroke-dasharray": dead || (kind === "menv" && !S.menv.own) ? "4 3" : "none" }, svg);
+  if (S.note && !dead) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    if (up == null || now - up <= f.Trel) {
+      let x;
+      if (up == null || now < up) x = now <= f.Tpre ? g.xPre(now) : g.gapX + gap / 2; else x = g.xRel(now - up);
+      el("circle", { cx: x, cy: ax.y(levelAt(e, now, up)), r: 3, fill: "var(--gold)" }, svg);
+    }
+  }
+}
+// The filter's response as the block draws it, with the band its envelope sweeps.
+const FMIN = 20, FMAX = 20000;
+function filterPlot(svg, w, h, opts) {
+  svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+  if (!opts.big) svg.setAttribute("height", h);
+  svg.innerHTML = "";
+  const F = filt(), L = opts.L || 4, R = opts.R || 4, T = opts.T || 4, B = h - (opts.Bm || 4);
+  const DBT = opts.dbTop || 24, DBB = opts.dbBot || -36;
+  const xOf = (f) => L + Math.log(f / FMIN) / Math.log(FMAX / FMIN) * (w - L - R);
+  const fOf = (x) => FMIN * Math.pow(FMAX / FMIN, (x - L) / (w - L - R));
+  const yOf = (db) => T + (DBT - clamp(db, DBB, DBT)) / (DBT - DBB) * (B - T);
+  const g = { xOf, fOf, yOf, L, R, T, B, w, h, DBT, DBB };
+  if (opts.big) {
+    for (const f of [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]) {
+      el("line", { x1: xOf(f), x2: xOf(f), y1: T, y2: B, stroke: "var(--line)" }, svg);
+      const t = el("text", { x: xOf(f), y: B + 13, "text-anchor": "middle", "font-size": 10, fill: "var(--text-soft)" }, svg);
+      t.textContent = f >= 1000 ? f / 1000 + "k" : f;
+    }
+    for (let db = DBT; db >= DBB; db -= 12) {
+      el("line", { x1: L, x2: w - R, y1: yOf(db), y2: yOf(db), stroke: db === 0 ? "var(--text-soft)" : "var(--line)", "stroke-width": db === 0 ? 0.8 : 1 }, svg);
+      const t = el("text", { x: L - 6, y: yOf(db) + 3.5, "text-anchor": "end", "font-size": 10, fill: "var(--text-soft)" }, svg);
+      t.textContent = db > 0 ? "+" + db : db === 0 ? "0 dB" : "−" + Math.abs(db);
+    }
+  } else el("line", { x1: L, x2: w - R, y1: yOf(0), y2: yOf(0), stroke: "var(--line)" }, svg);
+  const cut = cutoffHz(F.cut), Q = resonanceQ(F.res);
+  if (F.type === 0) {
+    el("path", { d: "M" + L + " " + yOf(0) + "H" + (w - R), stroke: "var(--unresolved)", "stroke-width": 1.6, fill: "none" }, svg);
+    if (opts.big) { const t = el("text", { x: w / 2, y: yOf(0) - 10, "text-anchor": "middle", "font-size": 12, fill: "var(--text-soft)" }, svg); t.textContent = "Off: the sound passes untouched"; }
+    svg._g = g; return g;
+  }
+  // The envelope's sweep: from where the cutoff rests to where its envelope's peak takes it.
+  const sweep = F.amt / 10, live = sweep !== 0;
+  if (live) {
+    const fTop = vcfHz(cut, sweep, 1, 0, 0), x0 = xOf(Math.min(cut, fTop)), x1 = xOf(Math.max(cut, fTop));
+    el("rect", { x: x0, y: T, width: Math.max(1, x1 - x0), height: B - T, fill: "var(--wash-strong)", "data-sweep": 1 }, svg);
+    el("line", { x1: xOf(fTop), x2: xOf(fTop), y1: T, y2: B, stroke: "var(--blush)", "stroke-dasharray": "3 3" }, svg);
+    if (opts.big) {
+      const t = el("text", { x: (x0 + x1) / 2, y: T + 13, "text-anchor": "middle", "font-size": 10.5, fill: "var(--blush-deep)" }, svg);
+      t.textContent = "its envelope sweeps " + octReading(F.amt);
+    }
+  }
+  // Key tracking: where the cutoff lands for the strip's lowest and highest keys.
+  if (opts.big && F.track > 0) {
+    for (const [hz, nm] of [[65.41, "C2"], [1046.5, "C6"]]) {
+      const x = xOf(vcfHz(cut, 0, 0, F.track / 100, hz));
+      el("line", { x1: x, x2: x, y1: B - 10, y2: B, stroke: "var(--gold)", "stroke-width": 1.5 }, svg);
+      const t = el("text", { x, y: B - 13, "text-anchor": "middle", "font-size": 9.5, fill: "var(--gold)" }, svg);
+      t.textContent = nm;
+    }
+  }
+  const curve = (fc) => {
+    let d = "";
+    const n = opts.big ? 300 : 90;
+    for (let i = 0; i <= n; i++) { const f = FMIN * Math.pow(FMAX / FMIN, i / n); d += (i ? "L" : "M") + xOf(f).toFixed(2) + " " + yOf(svfDb(F.type, fc, Q, f)).toFixed(2); }
+    return d;
+  };
+  // While a note sounds, the curve where the envelope has the cutoff now, and the rest faint.
+  let fc = cut;
+  if (S.note && live) {
+    const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0;
+    fc = vcfHz(cut, sweep, levelAt(fenvEnv(), now, up), 0, 0);
+    el("path", { d: curve(cut), fill: "none", stroke: "var(--unresolved)", "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
+  }
+  const d = curve(fc);
+  el("path", { d: d + "L" + (w - R) + " " + B + "L" + L + " " + B + "Z", fill: "var(--blush)", opacity: 0.1 }, svg);
+  el("path", { d, fill: "none", stroke: S.hands === 2 && !S.linked.filter ? (S.editing ? "var(--hand-b)" : "var(--hand-a)") : opts.big ? "var(--charcoal)" : "var(--blush-deep)", "stroke-width": opts.big ? 2 : 1.6, "data-resp": 1 }, svg);
+  // The point: on the curve at the cutoff (its resting place).
+  const py = yOf(svfDb(F.type, cut, Q, cut)), px = xOf(cut);
+  const grp = el("g", { class: "pt", tabindex: opts.big ? 0 : -1, "data-fpt": 1, role: "slider", "aria-label": "Cutoff and resonance", "aria-valuetext": hzReading(cut) + ", Q " + Q.toFixed(2) }, svg);
+  if (opts.big) el("circle", { cx: px, cy: py, r: 13, fill: "transparent" }, grp);
+  el("circle", { cx: px, cy: py, r: opts.big ? 6 : 3.5, fill: opts.big ? "var(--blush-deep)" : "var(--paper)", stroke: opts.big ? "var(--paper)" : "var(--blush-deep)", "stroke-width": 1.5, class: "ring" }, grp);
+  svg._g = g;
+  return g;
+}
+
+/* ===================== the editors ===================== */
+const PRESET_NAMES = Object.keys(SHAPES);
+function toolsHTML(kind, compact) {
+  const e = envOf(kind);
+  const names = kind === "fenv" ? ["ADSR", "Pluck", "Swell", "Pulse"] : PRESET_NAMES;
+  return '<div class="ed-tools" data-tools="' + kind + '">'
+    + (compact ? "" : '<span class="t-lbl">Shape</span>')
+    + '<span class="switch caps">' + names.map((n) => '<button type="button" data-shape="' + n + '" data-kind="' + kind + '" aria-pressed="false">' + n + '</button>').join("") + '</span>'
+    + '<button type="button" class="tbtn" data-loop-btn="' + kind + '" aria-pressed="' + (e.loop != null) + '">Loop' + (compact ? "" : " while held") + '</button>'
+    + '<button type="button" class="tbtn" data-sync="' + kind + '" aria-pressed="' + S.sync[kind] + '">Sync</button>'
+    + (S.sync[kind] && !compact ? '<select data-grid="' + kind + '" aria-label="Grid">' + [4, 8, 16, 32].map((n) => '<option value="' + n + '"' + (S.grid === n ? " selected" : "") + '>1/' + n + '</option>').join("") + '</select>' : "")
+    + '<span class="gap"></span>'
+    + '<span class="switch caps"><button type="button" data-zoom="out" data-kind="' + kind + '">−</button><button type="button" data-zoom="fit" data-kind="' + kind + '">Fit</button><button type="button" data-zoom="in" data-kind="' + kind + '">+</button></span>'
+    + '</div>';
+}
+const linkHTML = (sec) => (S.hands === 2 ? '<button type="button" class="hand-link link" data-link="' + sec + '" aria-pressed="' + S.linked[sec] + '" style="--hand:' + (S.editing ? "var(--hand-b)" : "var(--hand-a)") + '">' + (S.linked[sec] ? "● Same in both" : "● " + (S.editing ? "Upper" : "Lower") + "’s own") + '</button>' : "");
+const playBtn = '<button type="button" class="tbtn play" data-play="1" aria-pressed="false">Hold a note</button>';
+function envKnobsHTML(kind) {
+  return '<div class="knobs">' + envKnobs(kind).map((k, i) => (i === 4 || i === 5 ? (i === 4 ? '<span class="sep"></span>' : "") : "") + cellHTML(k.id, k.nm)).join("") + '</div>';
+}
+function buildEditor() {
+  const ed = document.getElementById("ed");
+  if (S.view === "play") { ed.hidden = true; ed.innerHTML = ""; return; }
+  ed.hidden = false;
+  const compact = S.size === "small";
+  if (S.view === "amp") {
+    ed.setAttribute("aria-label", "Amp envelope");
+    ed.innerHTML = '<div class="ed-head"><span class="nm">Amp envelope</span>' + linkHTML("amp")
+      + '<span class="desc">How loud a note is from its start to after you let go, on a loudness scale.</span>' + playBtn
+      + '<button type="button" class="link-btn caps close" data-close="1">Close</button></div>'
+      + toolsHTML("amp", compact)
+      + '<div class="ed-body"><div class="plot-wrap"><svg class="plot" id="msegAmp" role="group" aria-label="The amp envelope: drag its points; double-click the line to add one"></svg></div>'
+      + '<div class="ed-foot">' + envKnobsHTML("amp")
+      + '<p class="note"><b>The knobs are the values.</b> A time knob stretches its part of the shape, points and all; Sustain moves the sustain point. Points you add are the shape’s own: undo and presets keep them, a host and modulation turn the knobs.</p></div></div>';
+  } else if (S.view === "filter") {
+    ed.setAttribute("aria-label", "Voice filter");
+    const F = filt();
+    ed.innerHTML = '<div class="ed-head"><span class="nm">Voice filter</span>' + linkHTML("filter")
+      + '<span class="switch caps" id="ftype">' + ["Off", "Low", "Band", "High", "Notch"].map((n, i) => '<button type="button" data-ftype="' + i + '" aria-pressed="' + (F.type === i) + '">' + n + '</button>').join("") + '</span>'
+      + playBtn + '<button type="button" class="link-btn caps close" data-close="1">Close</button></div>'
+      + '<div class="ed-split" style="margin-top:8px"><div class="ed-pane">'
+      + '<div class="pane-title">Response<span class="q">· drag the point: sideways the cutoff, up and down the resonance</span></div>'
+      + '<div class="plot-wrap"><svg class="plot" id="fresp" role="group" aria-label="The filter’s response"></svg></div>'
+      + '<div class="ed-foot"><div class="knobs">' + FILTER_KNOBS.map((k) => cellHTML(k.id, k.nm, k.host)).join("") + '</div></div></div>'
+      + '<div class="ed-pane"><div class="pane-title">Its envelope<span class="q" id="fenvState"></span></div>'
+      + toolsHTML("fenv", true)
+      + '<div class="plot-wrap"><svg class="plot" id="msegFenv" role="group" aria-label="The filter’s envelope"></svg></div>'
+      + '<div class="ed-foot">' + envKnobsHTML("fenv") + '</div></div></div>';
+  } else {
+    ed.setAttribute("aria-label", "Envelope");
+    ed.innerHTML = '<div class="ed-head"><span class="nm"><span class="hand-dot" style="--hand:var(--ch4);display:inline-block;width:8px;height:8px;margin-right:8px;vertical-align:middle"></span>Envelope</span>'
+      + '<span class="desc" id="menvState"></span>'
+      + '<span class="switch caps"><button type="button" aria-pressed="true">Every note</button><button type="button" aria-pressed="false">Once a phrase</button></span>'
+      + playBtn + '<button type="button" class="link-btn caps close" data-close="1">Close</button></div>'
+      + '<div class="ed-split mod" style="margin-top:6px"><div class="ed-pane">' + toolsHTML("menv", compact)
+      + '<div class="plot-wrap"><svg class="plot" id="msegMenv" role="group" aria-label="The modulation envelope"></svg></div>'
+      + '<div class="ed-foot">' + envKnobsHTML("menv") + '</div></div>'
+      + '<div class="ed-pane"><div class="pane-title">Where it goes</div><div class="routes">'
+      + '<div class="r"><b>Cutoff</b><span>+40%</span></div><div class="r"><b>Twist</b><span>+20%</span></div><div class="add">Drag the card onto a knob</div></div>'
+      + '<p class="follow-note" id="menvFollowNote"></p></div></div>';
+  }
+  wireKnobs(ed);
+  ed.querySelectorAll("svg.plot").forEach((svg) => (svg.id === "fresp" ? wireFilterPlot(svg) : wirePlot(svg)));
+}
+
+/* ===================== painting ===================== */
+const msegSvgs = () => ({ amp: document.getElementById("msegAmp"), fenv: document.getElementById("msegFenv"), menv: document.getElementById("msegMenv") });
+function paint() {
+  // The blocks on Play.
+  const small = S.size === "small";
+  const ampSvg = document.getElementById("ampPrevSvg");
+  const w2 = document.getElementById("ampPrev").clientWidth || 260;
+  prevEnv("amp", ampSvg, w2 - 2, small ? 58 : 84, ampEnv(), otherEnv("amp"));
+  const e = ampEnv();
+  document.getElementById("ampReads").innerHTML = [["attack", "Attack"], ["decay", "Decay"], ["sus", "Sustain"], ["release", "Release"]]
+    .map(([s, n]) => '<span>' + (s === "sus" ? dbReading(e.m.sus) : timeReading("amp", e.m[s])) + '<small>' + n + '</small></span>').join("");
+  const F = filt(), vw = document.getElementById("vcfPrev").clientWidth || 260;
+  filterPlot(document.getElementById("vcfPrevSvg"), vw - 2, small ? 64 : 92, {});
+  document.getElementById("vcfReads").innerHTML = F.type === 0 ? '<span>Off<small>Type</small></span><span>—<small>Resonance</small></span><span>—<small>Key track</small></span>'
+    : '<span>' + hzReading(cutoffHz(F.cut)) + '<small>● Cutoff</small></span><span>Q ' + resonanceQ(F.res).toFixed(2) + '<small>Resonance</small></span><span>' + F.track + '%<small>Key track</small></span>';
+  document.getElementById("vcfTypeSel").value = String(F.type);
+  const dead = F.type === 0 || F.amt === 0;
+  prevEnv("fenv", document.getElementById("fenvPrevSvg"), 94, 26, fenvEnv(), null, dead);
+  document.getElementById("fenvWords").innerHTML = F.type === 0 ? '<span class="dead">Its envelope · the filter is off</span>'
+    : F.amt === 0 ? '<span class="dead">Its envelope · amount 0, does nothing</span>' : 'Its envelope <b>' + octReading(F.amt) + '</b>';
+  document.querySelectorAll(".sect .link").forEach((b) => {
+    b.hidden = S.hands !== 2;
+    const sec = b.dataset.link, l = S.linked[sec];
+    b.setAttribute("aria-pressed", l);
+    b.style.setProperty("--hand", S.editing ? "var(--hand-b)" : "var(--hand-a)");
+    b.textContent = l ? "● Same in both" : "● " + (S.editing ? "Upper" : "Lower") + "’s own";
+  });
+  // The Envelope's card.
+  const card = document.getElementById("menvCardSvg");
+  prevEnv("menv", card, 220, 36, menvShown(), null, false);
+  document.getElementById("menvCard").classList.toggle("on", S.view === "menv");
+  // The editors.
+  const svgs = msegSvgs();
+  for (const k in svgs) if (svgs[k]) drawMseg(k, svgs[k], { small: k === "fenv" });
+  const fr = document.getElementById("fresp");
+  if (fr) {
+    filterPlot(fr, fr.clientWidth, fr.clientHeight, { big: true, L: 40, R: 10, T: 8, Bm: 20, dbTop: 30, dbBot: -42 });
+    document.querySelectorAll("#ftype button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.ftype === F.type));
+    const st = document.getElementById("fenvState");
+    st.textContent = F.type === 0 ? "· the filter is off, so this does nothing" : F.amt === 0 ? "· Amount is 0, so this does nothing" : "· sweeps the cutoff " + octReading(F.amt) + " at its top";
+    if (svgs.fenv) svgs.fenv.style.opacity = dead ? 0.45 : 1;
+  }
+  const ms = document.getElementById("menvState");
+  if (ms) {
+    ms.innerHTML = S.menv.own ? "Its own shape." : "Following the amp envelope: edit anything to make it its own.";
+    document.getElementById("menvFollowNote").innerHTML = S.menv.own
+      ? '<b>Its own.</b> <button type="button" class="tbtn" data-follow="1">Follow</button> goes back to the amp envelope’s shape (one step of undo).'
+      : '<b>Following.</b> Dashed while it follows the amp envelope; the first edit copies the amp’s shape into its own.';
+  }
+  document.querySelectorAll("button[data-shape]").forEach((b) => {
+    const en = envOf(b.dataset.kind), s = SHAPES[b.dataset.shape]();
+    b.setAttribute("aria-pressed", JSON.stringify(s) === JSON.stringify(en));
+  });
+  document.querySelectorAll("[data-loop-btn]").forEach((b) => b.setAttribute("aria-pressed", envOf(b.dataset.loopBtn).loop != null));
+  paintKnobs();
+  paintScreen();
+  measure();
+  if (S.view === "amp" && !S.note) paintDbTable();
+}
+
+/* ===================== dragging an envelope ===================== */
+function stageScale() { return parseFloat(document.getElementById("stage").dataset.scale || "1"); }
+function toPlot(svg, ev) {
+  const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+// Which point an id names, and what it means.
+function pointOf(kind, id) {
+  const f = flatten(envOf(kind)), side = id.startsWith("pre") ? "pre" : "rel", i = +id.slice(3);
+  return { f, side, i, p: f[side][i] };
+}
+const stretchStart = (e, s) => { let t = 0; for (const x of STRETCH) { if (x === s) return t; t += e.m[x]; } return 0; };
+function msOfX(g, x, side) { return side === "pre" ? (x - g.L) / g.ppm + g.ms0 : (x - g.gapX - GAP) / g.ppm; }
+function snapT(kind, t) {
+  if (!S.sync[kind]) return t;
+  const step = 60000 / S.bpm * 4 / S.grid;
+  return Math.round(t / step) * step;
+}
+// A point moved to time t (ms on its side) and level lvl.
+function movePoint(kind, id, t, lvl) {
+  writeEnv(kind, (e) => {
+    const { side, i, p, f } = pointOf(kind, id);
+    t = snapT(kind, t);
+    if (p.role === "inner") {
+      const s = p.s, st = s === "release" ? 0 : stretchStart(e, s), T = e.m[s];
+      const pts = f[side], lo = pts[i - 1].t, hi_ = pts[i + 1].t;
+      const tt = clamp(t, lo, hi_);
+      e.inner[s][p.k].u = T > 0 ? clamp((tt - st) / T, 0, 1) : 0;
+      e.inner[s][p.k].lvl = clamp(lvl, 0, 1);
+      return;
+    }
+    const prevT = (() => { // the stretch's start
+      if (p.role === "release") return 0;
+      return stretchStart(e, p.role);
+    })();
+    // An anchor's time is its stretch's length: the points inside keep their shares.
+    const len = Math.max(p.role === "release" ? 1 : 0, Math.min(TMAX[p.role], t - prevT));
+    e.m[p.role] = snapMs(kind, len);
+    if (p.role === "decay") e.m.sus = clamp(lvl, 0, 1);
+  });
+}
+let drag = null, lastDown = null, longPress = null;
+function wirePlot(svg) {
+  const kind = { msegAmp: "amp", msegFenv: "fenv", msegMenv: "menv" }[svg.id];
+  svg.addEventListener("contextmenu", (ev) => {
+    const t = ev.target.closest(".pt, .bh");
+    ev.preventDefault();
+    if (t) openMenu(kind, t.dataset.pt || t.dataset.bend, ev.clientX, ev.clientY);
+  });
+  svg.addEventListener("pointerdown", (ev) => {
+    hideMenu();
+    const pt = ev.target.closest(".pt"), bh = ev.target.closest(".bh"), tab = ev.target.closest(".tabm"), loop = ev.target.closest(".loopm");
+    if (ev.button !== 0) return;
+    const g = svg._g, at = toPlot(svg, ev), now = performance.now();
+    const key = pt ? pt.dataset.pt : bh ? bh.dataset.bend : tab ? "tab" + tab.dataset.tab : loop ? "loop" : ev.target.dataset.hit ? "hit" : "bg";
+    const dbl = lastDown && lastDown.key === key && now - lastDown.t < 380 && Math.hypot(at.x - lastDown.x, at.y - lastDown.y) < 6;
+    lastDown = { key, t: now, x: at.x, y: at.y };
+    if (dbl) { lastDown = null; doubleAt(kind, key, at, g); ev.preventDefault(); return; }
+    if (key === "bg" || key === "hit") {
+      if (g.ppm * g.total > g.avail * 1.08) { drag = { kind, pan: true, x: at.x, ms0: g.ui.view.ms0, id: ev.pointerId }; svg.setPointerCapture(ev.pointerId); }
+      return;
+    }
+    ev.preventDefault();
+    (pt || bh || tab || loop).focus({ preventScroll: true });
+    svg.setPointerCapture(ev.pointerId);
+    if (pt) { const q = pointOf(kind, key); SEL = { kind, id: key, knob: pointKnobs(kind, q.p) }; }
+    else if (bh) SEL = { kind, id: key, knob: [] };
+    drag = { kind, key, id: ev.pointerId, x: at.x, y: at.y, moved: false };
+    // A long press is the right-click, for a finger.
+    clearTimeout(longPress);
+    if (pt || bh) longPress = setTimeout(() => { if (drag && !drag.moved) { const k = drag.key; drag = null; openMenu(kind, k, ev.clientX, ev.clientY); } }, 550);
+    paint(); showReadout(kind, key);
+  });
+  svg.addEventListener("pointermove", (ev) => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const g = svg._g, at = toPlot(svg, ev);
+    if (drag.pan) { g.ui.view.ms0 = Math.max(0, drag.ms0 - (at.x - drag.x) / g.ppm); paint(); return; }
+    if (!drag.moved && Math.hypot(at.x - drag.x, at.y - drag.y) < 3) return;
+    drag.moved = true; clearTimeout(longPress);
+    const k = drag.key;
+    if (k.startsWith("pre") || k.startsWith("rel")) {
+      const side = k.startsWith("pre") ? "pre" : "rel";
+      movePoint(kind, k, msOfX(g, at.x, side), g.ax.lvl(at.y));
+    } else if (k.startsWith("b")) {
+      bendTo(kind, k, at.y, g);
+    } else if (k.startsWith("tab")) {
+      const s = k.slice(3), e = envOf(kind);
+      writeEnv(kind, (en) => { en.m[s] = snapMs(kind, clamp(msOfX(g, at.x, "pre") - stretchStart(en, s), 0, TMAX[s])); });
+    } else if (k === "loop") {
+      const f = flatten(envOf(kind)), t = msOfX(g, at.x, "pre");
+      let best = 0, bd = Infinity;
+      f.pre.forEach((p, i) => { if (i < f.pre.length - 1 && Math.abs(p.t - t) < bd) { bd = Math.abs(p.t - t); best = i; } });
+      writeEnv(kind, (en) => { en.loop = best; });
+    }
+    showReadout(kind, k);
+  });
+  const up = (ev) => { if (!drag || ev.pointerId !== drag.id) return; drag = null; clearTimeout(longPress); hideReadoutSoon(); };
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  svg.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const g = svg._g, at = toPlot(svg, ev);
+    zoomAt(kind, ev.deltaY < 0 ? 1.25 : 0.8, at.x, g);
+  }, { passive: false });
+  svg.addEventListener("keydown", (ev) => {
+    const t = ev.target.closest(".pt, .bh, .tabm, .loopm");
+    if (!t) return;
+    if (ev.shiftKey && ev.key === "F10") { ev.preventDefault(); const r = t.getBoundingClientRect(); openMenu(kind, t.dataset.pt || t.dataset.bend, r.right, r.bottom); return; }
+    if (ev.key === "ContextMenu") { ev.preventDefault(); const r = t.getBoundingClientRect(); openMenu(kind, t.dataset.pt || t.dataset.bend, r.right, r.bottom); return; }
+    const g = svg._g;
+    if ((ev.key === "Delete" || ev.key === "Backspace") && t.dataset.pt) { ev.preventDefault(); removePoint(kind, t.dataset.pt); return; }
+    const dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key];
+    if (!dir) return;
+    ev.preventDefault();
+    if (t.dataset.pt) {
+      const id = t.dataset.pt, { p, side } = pointOf(kind, id);
+      SEL = { kind, id, knob: pointKnobs(kind, p) };
+      const span = (g.W - g.L - g.R) / g.ppm, dt = dir[0] * span * (ev.shiftKey ? 0.002 : 0.01);
+      let lvl = p.lvl;
+      if (dir[1]) {
+        if (kind === "amp") { const d = p.lvl <= 0 ? FLOOR_DB - 0.5 : lvlDb(p.lvl); const nd = d + dir[1] * (ev.shiftKey ? 0.1 : 0.5); lvl = nd < FLOOR_DB ? 0 : Math.pow(10, Math.min(0, nd) / 20); }
+        else lvl = clamp(p.lvl + dir[1] * (ev.shiftKey ? 0.002 : 0.01), 0, 1);
+      }
+      movePoint(kind, id, p.t + dt, lvl);
+      refocus(svg, '[data-pt="' + id + '"]');
+      showReadout(kind, id); hideReadoutSoon();
+    } else if (t.dataset.bend && dir[1]) {
+      const id = t.dataset.bend;
+      SEL = { kind, id, knob: [] };
+      writeEnv(kind, (e) => { const s = bendSlot(kind, e, id); const m = midOf(s.a, s.b, s.get()); s.set({ m: clamp(Math.round((m + dir[1] * Math.sign(s.b - s.a) * (ev.shiftKey ? 0.01 : 0.05)) * 1000) / 1000, 0.1, 0.9) }); });
+      refocus(svg, '[data-bend="' + id + '"]');
+    } else if (t.dataset.tab && dir[0]) {
+      const s = t.dataset.tab;
+      writeEnv(kind, (e) => { e.m[s] = snapMs(kind, clamp(e.m[s] + dir[0] * (ev.shiftKey ? 1 : 10), 0, TMAX[s])); });
+      refocus(svg, '[data-tab="' + s + '"]');
+    }
+  });
+}
+function refocus(svg, sel) { const n = svg.querySelector(sel); if (n) n.focus({ preventScroll: true }); }
+// The bend of the stretch ending at point i of a side, wherever it is kept.
+function bendSlot(kind, e, id) {
+  const side = id.slice(1, 4), i = +id.slice(4), f = flatten(e), q = f[side][i], p = f[side][i - 1];
+  const get = () => (q.role === "inner" ? e.inner[q.s][q.k].b : e.b[q.role]);
+  const set = (b) => { if (q.role === "inner") e.inner[q.s][q.k].b = b; else e.b[q.role] = b; };
+  return { a: p.lvl, b: q.lvl, get, set, q };
+}
+function bendTo(kind, id, y, g) {
+  writeEnv(kind, (e) => {
+    const s = bendSlot(kind, e, id), want = g.ax.lvl(y);
+    // The midpoint is the level reached half-way, as a share of the fall: the fade's rule.
+    const m = clamp((want - s.a) / (s.b - s.a), 0.1, 0.9);
+    s.set({ m: Math.round(m * 1000) / 1000 });
+  });
+}
+function zoomAt(kind, factor, x, g) {
+  const ui = g.ui, msAt = (x - g.L) / g.ppm + g.ms0;
+  const fit = g.avail / (g.total * 1.06);
+  ui.view.ppm = clamp(ui.view.ppm * factor, fit, fit * 64);
+  ui.view.ms0 = ui.view.ppm <= fit * 1.001 ? 0 : Math.max(0, msAt - (x - g.L) / ui.view.ppm);
+  paint();
+}
+// Two presses: on the line, a point; on a point you added, away with it; on an anchor, its knob back.
+function doubleAt(kind, key, at, g) {
+  if (key === "hit" || key === "bg") {
+    if (key === "bg") return;
+    const side = at.x > g.gapX + GAP ? "rel" : at.x < g.gapX ? "pre" : null;
+    if (!side) return;
+    addPoint(kind, side, snapT(kind, msOfX(g, at.x, side)));
+  } else if (key.startsWith("pre") || key.startsWith("rel")) {
+    const { p } = pointOf(kind, key);
+    if (p.role === "inner") removePoint(kind, key);
+    else for (const k of pointKnobs(kind, p)) knobDef(k).reset();
+  } else if (key.startsWith("b")) writeEnv(kind, (e) => bendSlot(kind, e, key).set({ m: 0.5 }));
+  else if (key.startsWith("tab")) writeEnv(kind, (e) => { e.m[key.slice(3)] = 0; });
+}
+/* A new point on the curve, splitting its stretch so the two halves aim where the whole did: a
+   one-pole forgets where it started, so nothing you hear changes until the point is moved. */
+function addPoint(kind, side, t) {
+  writeEnv(kind, (e) => {
+    const f = flatten(e), pts = f[side];
+    let i = 1;
+    while (i < pts.length - 1 && pts[i].t < t) i++;
+    const p = pts[i - 1], q = pts[i];
+    if (q.t - p.t <= 0 || t <= p.t || t >= q.t) return;
+    const s = q.role === "inner" ? q.s : q.role === "release" ? "release" : q.role;
+    if (!(s in e.inner)) return;
+    const x = (t - p.t) / (q.t - p.t), lvl = travel(p.lvl, q.lvl, q.bend, x), T = aimOf(p.lvl, q.lvl, q.bend);
+    const first = T === null ? { l: 1 } : lvl === p.lvl ? { l: 1 } : { p: (T - lvl) / (lvl - p.lvl) };
+    const second = T === null ? { l: 1 } : q.lvl === lvl ? { l: 1 } : { p: (T - q.lvl) / (q.lvl - lvl) };
+    const st = s === "release" ? 0 : stretchStart(e, s), u = e.m[s] > 0 ? (t - st) / e.m[s] : 0;
+    const np = { u, lvl, b: first };
+    if (q.role === "inner") e.inner[s][q.k].b = second; else e.b[s] = second;
+    e.inner[s].push(np);
+    e.inner[s].sort((a, b) => a.u - b.u);
+    const idx = e.inner[s].indexOf(np);
+    const nf = flatten(e), ni = nf[side].findIndex((r) => r.role === "inner" && r.s === s && r.k === idx);
+    SEL = { kind, id: side + ni, knob: [] };
+  });
+}
+function removePoint(kind, id) {
+  writeEnv(kind, (e) => {
+    const { p, f, side, i } = pointOf(kind, id);
+    if (p.role !== "inner") return;
+    const next = f[side][i + 1];
+    // The stretch that is left keeps the bend of the first half, as a midpoint.
+    const mid = midOf(f[side][i - 1].lvl, p.lvl, p.bend);
+    if (next.role === "inner") e.inner[next.s][next.k].b = { m: Math.round(clamp(mid, 0.1, 0.9) * 1000) / 1000 };
+    else e.b[next.role] = { m: Math.round(clamp(mid, 0.1, 0.9) * 1000) / 1000 };
+    e.inner[p.s].splice(p.k, 1);
+    if (e.loop != null && e.loop >= i && side === "pre") e.loop = Math.max(0, e.loop - 1);
+  });
+  SEL = null; paint();
+}
+
+/* ===================== the filter's point ===================== */
+function wireFilterPlot(svg) {
+  let d = null;
+  svg.addEventListener("contextmenu", (ev) => { ev.preventDefault(); if (ev.target.closest(".pt")) openFilterMenu(ev.clientX, ev.clientY); });
+  svg.addEventListener("pointerdown", (ev) => {
+    hideMenu();
+    const pt = ev.target.closest(".pt");
+    if (!pt || ev.button !== 0) return;
+    ev.preventDefault(); pt.focus({ preventScroll: true }); svg.setPointerCapture(ev.pointerId);
+    const at = toPlot(svg, ev), F = filt();
+    d = { id: ev.pointerId, y: at.y, res: F.res };
+    SEL = { kind: "filter", id: "f", knob: ["f-cut", "f-res"] }; paint(); showFilterReadout();
+  });
+  svg.addEventListener("pointermove", (ev) => {
+    if (!d || ev.pointerId !== d.id) return;
+    const g = svg._g, at = toPlot(svg, ev), F = filt();
+    const cut = clamp(cutoffStep(g.fOf(at.x)), 0, 1000);
+    let res;
+    if (F.type === 1 || F.type === 3) { const q = Math.pow(10, clamp((g.DBT - (at.y - g.T) / (g.B - g.T) * (g.DBT - g.DBB)), -3.01, 26.02) / 20); res = clamp(resStep(Math.max(Math.SQRT1_2, q)), 0, 100); }
+    else res = clamp(Math.round(d.res - (at.y - d.y) / 2), 0, 100);
+    writeHand("filter", (f) => { f.cut = cut; f.res = res; });
+    paint(); showFilterReadout();
+  });
+  const up = (ev) => { if (d && ev.pointerId === d.id) { d = null; hideReadoutSoon(); } };
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  svg.addEventListener("keydown", (ev) => {
+    if (!ev.target.closest(".pt")) return;
+    if ((ev.shiftKey && ev.key === "F10") || ev.key === "ContextMenu") { ev.preventDefault(); const r = ev.target.getBoundingClientRect(); openFilterMenu(r.right, r.bottom); return; }
+    const dir = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key];
+    if (!dir) return;
+    ev.preventDefault();
+    writeHand("filter", (f) => { f.cut = clamp(f.cut + dir[0] * (ev.shiftKey ? 1 : 10), 0, 1000); f.res = clamp(f.res + dir[1] * (ev.shiftKey ? 1 : 5), 0, 100); });
+    paint(); refocus(svg, "[data-fpt]"); showFilterReadout(); hideReadoutSoon();
+  });
+}
+
+/* ===================== readout and menu ===================== */
+let readoutTimer = null;
+function placeNear(node, svgNode) {
+  const win = document.getElementById("win").getBoundingClientRect(), r = svgNode.getBoundingClientRect(), sc = stageScale();
+  node.style.left = ((r.right - win.left) / sc + 8) + "px";
+  node.style.top = ((r.top - win.top) / sc - 26) + "px";
+}
+function showReadout(kind, key) {
+  clearTimeout(readoutTimer);
+  const ro = document.getElementById("readout"), e = envOf(kind);
+  let text = "", target = document.querySelector('#ed [data-pt="' + key + '"], #ed [data-bend="' + key + '"], #ed [data-tab="' + key.slice(3) + '"]');
+  if (key.startsWith("pre") || key.startsWith("rel")) {
+    const { p } = pointOf(kind, key);
+    text = p.role === "inner" ? (key.startsWith("rel") ? "+" : "") + timeReading(kind, p.t) + " · " + levelReading(kind, p.lvl)
+      : p.role === "decay" ? "Decay " + timeReading(kind, e.m.decay) + " · Sustain " + levelReading(kind, e.m.sus) : NAMES[p.role] + " " + timeReading(kind, e.m[p.role]);
+  } else if (key.startsWith("b")) {
+    const s = bendSlot(kind, e, key), m = midOf(s.a, s.b, s.get());
+    text = "Half-way: " + Math.round(m * 100) + "% of the way" + (s.get().m == null ? " · the old curve" : "");
+  } else if (key.startsWith("tab")) text = NAMES[key.slice(3)] + " " + timeReading(kind, e.m[key.slice(3)]);
+  else return;
+  ro.textContent = text; ro.hidden = false;
+  if (target) placeNear(ro, target);
+}
+function showFilterReadout() {
+  clearTimeout(readoutTimer);
+  const ro = document.getElementById("readout"), F = filt(), t = document.querySelector("#fresp [data-fpt]");
+  ro.textContent = hzReading(cutoffHz(F.cut)) + " · Q " + resonanceQ(F.res).toFixed(2); ro.hidden = false;
+  if (t) placeNear(ro, t);
+}
+function hideReadoutSoon() { clearTimeout(readoutTimer); readoutTimer = setTimeout(() => { document.getElementById("readout").hidden = true; }, 900); }
+function placeMenu(m, cx, cy) {
+  const win = document.getElementById("win"), r = win.getBoundingClientRect(), sc = stageScale();
+  m.hidden = false;
+  let x = (cx - r.left) / sc + 2, y = (cy - r.top) / sc + 2;
+  x = Math.min(x, win.offsetWidth - m.offsetWidth - 6); y = Math.min(y, win.offsetHeight - m.offsetHeight - 6);
+  m.style.left = x + "px"; m.style.top = y + "px";
+  const first = m.querySelector("button:not([disabled]), input"); if (first) first.focus({ preventScroll: true });
+}
+function hideMenu() { document.getElementById("ctx").hidden = true; }
+const INFO = {
+  attack: "How long the note takes to reach its peak. Turning the knob stretches every point you added inside the attack with it.",
+  decay: "The sustain point: sideways how long the fall from the peak (or the hold) takes, up and down the level the note holds while the key is down, in decibels.",
+  release: "How long the sound takes to die once you let go. It starts from wherever the level is when the key comes up.",
+  delay: "Silence before the attack starts.",
+  hold: "How long the note stays at its peak before the decay.",
+  inner: "A point you added. It keeps its share of its stretch's time when the stretch's knob turns, and its own level.",
+  bend: "The curve of this stretch: drag up or down for quicker or slower to start. What is stored is the level reached half-way.",
+};
+function openMenu(kind, key, cx, cy) {
+  const m = document.getElementById("ctx"), e = envOf(kind);
+  if (!key) return;
+  let html = "";
+  if (key.startsWith("b")) {
+    const s = bendSlot(kind, e, key), m_ = midOf(s.a, s.b, s.get());
+    html = '<div class="h">Bend · half-way ' + Math.round(m_ * 100) + '%</div>'
+      + '<button type="button" data-act="straight">Straight</button>'
+      + '<button type="button" data-act="old">As the old envelope (a fifth past its end)</button>'
+      + '<div class="info"><b>What is this?</b>' + INFO.bend + '</div>';
+  } else {
+    const { p, side, i } = pointOf(kind, key);
+    const role = p.role === "decay" ? "Sustain point" : p.role === "inner" ? "Point" : NAMES[p.role] + " point";
+    const canLoop = side === "pre" && i < flatten(e).pre.length - 1;
+    html = '<div class="h">' + role + ' · ' + (side === "rel" ? "+" : "") + timeReading(kind, p.t) + ' · ' + levelReading(kind, p.lvl) + '</div>'
+      + '<div class="type"><label for="ctxT">Time</label><input id="ctxT" value="' + (side === "rel" ? p.t : p.t).toFixed(1) + ' ms"' + (p.role === "inner" || p.role !== "start" ? "" : " disabled") + '>'
+      + (p.role === "inner" || p.role === "decay" ? '<label for="ctxL">Level</label><input id="ctxL" value="' + (kind === "amp" ? (p.lvl <= 0 ? "-inf" : lvlDb(p.lvl).toFixed(1)) + ' dB' : Math.round(p.lvl * 100) + '%') + '">' : "") + '</div>'
+      + '<button type="button" data-act="type">Type a value</button>'
+      + (canLoop ? '<button type="button" data-act="loop">Loop from here while held</button>' : "")
+      + (p.role === "inner" ? '<button type="button" data-act="remove">Remove</button>' : '<button type="button" data-act="reset">Reset (' + pointKnobs(kind, p).map((k) => knobDef(k).k.nm).join(" and ") + ' to where ' + (pointKnobs(kind, p).length > 1 ? "they start" : "it starts") + ')</button>')
+      + '<div class="info"><b>What is this?</b>' + INFO[p.role === "inner" ? "inner" : p.role] + '</div>';
+  }
+  m.innerHTML = html;
+  m.onclick = (ev) => {
+    const a = ev.target.dataset && ev.target.dataset.act;
+    if (!a) return;
+    if (a === "straight") writeEnv(kind, (en) => bendSlot(kind, en, key).set({ m: 0.5 }));
+    else if (a === "old") writeEnv(kind, (en) => { const s = bendSlot(kind, en, key); s.set(s.q.role === "release" ? { a: REACH } : { p: REACH }); });
+    else if (a === "loop") writeEnv(kind, (en) => { en.loop = +key.slice(3); });
+    else if (a === "remove") removePoint(kind, key);
+    else if (a === "reset") pointKnobs(kind, pointOf(kind, key).p).forEach((k) => knobDef(k).reset());
+    else if (a === "type") {
+      const t = parseFloat(document.getElementById("ctxT").value), lI = document.getElementById("ctxL");
+      const { p, side } = pointOf(kind, key);
+      let lvl = p.lvl;
+      if (lI) { const v = lI.value.trim().toLowerCase(); lvl = kind === "amp" ? (v.startsWith("-inf") ? 0 : Math.pow(10, Math.min(0, parseFloat(v)) / 20)) : clamp(parseFloat(v) / 100, 0, 1); }
+      if (isFinite(t) && isFinite(lvl)) movePoint(kind, key, t, lvl);
+    }
+    hideMenu();
+  };
+  m.onkeydown = (ev) => { if (ev.key === "Enter" && ev.target.tagName === "INPUT") m.querySelector('[data-act="type"]').click(); if (ev.key === "Escape") { ev.stopPropagation(); hideMenu(); } };
+  placeMenu(m, cx, cy);
+}
+function openFilterMenu(cx, cy) {
+  const m = document.getElementById("ctx"), F = filt();
+  m.innerHTML = '<div class="h">Cutoff ' + hzReading(cutoffHz(F.cut)) + ' · Q ' + resonanceQ(F.res).toFixed(2) + '</div>'
+    + '<div class="type"><label for="ctxC">Cutoff</label><input id="ctxC" value="' + Math.round(cutoffHz(F.cut)) + ' Hz"><label for="ctxQ">Q</label><input id="ctxQ" value="' + resonanceQ(F.res).toFixed(2) + '"></div>'
+    + '<button type="button" data-act="type">Type a value</button><button type="button" data-act="reset">Reset (Cutoff to 2.0 kHz, Resonance to Q 0.71)</button>'
+    + '<div class="info"><b>What is this?</b>Where the filter starts taking the top off (sideways), and how much it rings there (up and down). Lower is darker, and the figure gets rounder.</div>';
+  m.onclick = (ev) => {
+    const a = ev.target.dataset && ev.target.dataset.act;
+    if (a === "reset") writeHand("filter", (f) => { f.cut = 667; f.res = 0; });
+    if (a === "type") { const c = parseFloat(document.getElementById("ctxC").value), q = parseFloat(document.getElementById("ctxQ").value);
+      writeHand("filter", (f) => { if (isFinite(c)) f.cut = clamp(cutoffStep(c), 0, 1000); if (isFinite(q)) f.res = clamp(resStep(Math.max(Math.SQRT1_2, q)), 0, 100); }); }
+    if (a) { hideMenu(); paint(); }
+  };
+  m.onkeydown = (ev) => { if (ev.key === "Escape") { ev.stopPropagation(); hideMenu(); } };
+  placeMenu(m, cx, cy);
+}
+
+/* ===================== the screen ===================== */
+function paintScreen() {
+  const c = document.getElementById("screen"), x = c.getContext("2d"), W = c.width, H = c.height;
+  x.fillStyle = "#fffcf7"; x.fillRect(0, 0, W, H);
+  x.strokeStyle = "#e4d9cc"; x.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) { const p = 10 + i * (W - 20) / 10; x.beginPath(); x.moveTo(p, 10); x.lineTo(p, H - 10); x.stroke(); x.beginPath(); x.moveTo(10, p); x.lineTo(W - 10, p); x.stroke(); }
+  x.strokeStyle = "#241f1d"; x.strokeRect(10, 10, W - 20, H - 20);
+  // A fifth, its size the amp envelope's level while a note sounds; a dot at rest.
+  let lvl = 0.0;
+  if (S.note) { const now = performance.now() - S.note.t0, up = S.note.up == null ? null : S.note.up - S.note.t0; lvl = levelAt(ampEnv(), now, up); }
+  x.strokeStyle = "#241f1d"; x.lineWidth = 1.4; x.beginPath();
+  const r = (W - 40) / 2 * 0.85 * lvl;
+  for (let i = 0; i <= 600; i++) { const t = i / 600 * 2 * Math.PI * 2; const px = W / 2 + r * Math.sin(2 * t + 0.6), py = H / 2 - r * Math.sin(3 * t); i ? x.lineTo(px, py) : x.moveTo(px, py); }
+  x.stroke();
+  if (lvl < 0.01) { x.fillStyle = "#b6afa4"; x.beginPath(); x.arc(W / 2, H / 2, 2.5, 0, 7); x.fill(); }
+}
+
+/* ===================== the keys ===================== */
+function paintKeys() {
+  const svg = document.getElementById("keys"); svg.innerHTML = "";
+  const W = 588, H = 66, n = 21, kw = W / n;
+  for (let i = 0; i < n; i++) {
+    const upper = i >= 14 ? false : i >= 7;
+    el("rect", { x: i * kw, y: 0, width: kw - 1, height: H, fill: i < 14 ? "#f6e6e3" : "#ecebe0", stroke: "var(--line)" }, svg);
+  }
+  const blacks = [0, 1, 3, 4, 5];
+  for (let o = 0; o < 3; o++) for (const b of blacks) el("rect", { x: (o * 7 + b + 0.65) * kw, y: 0, width: kw * 0.7, height: H * 0.6, fill: o < 2 ? "#5a4743" : "#4c4921" }, svg);
+  for (const [i, t] of [[0, "C2"], [7, "C3"], [14, "C4"]]) { const l = el("text", { x: i * kw + 3, y: H - 4, "font-size": 9, fill: "var(--text-soft)" }, svg); l.textContent = t; }
+}
+
+/* ===================== the fit, measured ===================== */
+function measure() {
+  const out = [];
+  const body = document.getElementById("playBody"), cols = document.getElementById("cols");
+  const over = Math.max(body.scrollHeight - body.clientHeight, cols.scrollHeight - cols.clientHeight);
+  const frees = Array.from(document.querySelectorAll("[data-free]")).map((f) => Math.round(f.getBoundingClientRect().height / stageScale()));
+  frees.forEach((h, i) => { const f = document.querySelector('[data-free="' + (i + 1) + '"]'); f.textContent = h + " px free"; });
+  window.__fit = { over, frees, size: S.size };
+  out.push('<span class="' + (over > 1 ? "over" : "ok") + '">Play: ' + (over > 1 ? over + " px over" : "fits, no scroll") + '</span>');
+  out.push("<span>Free under each column: " + frees.join(" · ") + " px</span>");
+  const ed = document.getElementById("ed");
+  if (!ed.hidden) {
+    const b = ed.scrollHeight - ed.clientHeight;
+    out.push('<span class="' + (b > 1 ? "over" : "ok") + '">Editor: ' + (b > 1 ? b + " px over" : "fits") + '</span>');
+    ed.querySelectorAll("svg.plot").forEach((s) => out.push("<span>" + ({ msegAmp: "Amp drawing", msegFenv: "Filter envelope", msegMenv: "Envelope", fresp: "Response" })[s.id] + " " + s.clientWidth + " × " + s.clientHeight + " px</span>"));
+    window.__fit.editorOver = b;
+  }
+  document.getElementById("fitLine").innerHTML = out.join("");
+}
+
+/* ===================== the decibel axis, checked live ===================== */
+function dbAxisCheck() {
+  const svg = document.getElementById("msegAmp");
+  if (!svg || !svg._g) return null;
+  const g = svg._g, rows = [];
+  const want = (d) => g.T + (d / FLOOR_DB) * (g.ax.yF - g.T);
+  const straight = (l) => g.T + (1 - l) * (g.ax.yF - g.T);   // the null: amplitude, not decibels
+  // Gridlines as drawn.
+  for (const line of svg.querySelectorAll("line[data-db]")) {
+    const d = +line.getAttribute("data-db"); if (line.getAttribute("data-db") === "") continue;
+    if (![0, -6, -12, -24, -48, -60].includes(d)) continue;
+    const y = +line.getAttribute("y1");
+    rows.push({ what: "Gridline " + (d === 0 ? "0" : "−" + Math.abs(d)) + " dB", drawn: y, req: want(d), nul: straight(Math.pow(10, d / 20)) });
+  }
+  // The sustain point, as drawn, against its own decibels.
+  const f = flatten(ampEnv()), i = f.pre.findIndex((p) => p.role === "decay");
+  const node = svg.querySelector('[data-pt="pre' + i + '"] .ring');
+  if (node) { const s = ampEnv().m.sus; rows.push({ what: "Sustain point at " + dbReading(s), drawn: +node.getAttribute("cy"), req: s <= 0 ? g.ax.yS : want(clamp(lvlDb(s), FLOOR_DB, 0)), nul: straight(s) }); }
+  rows.push({ what: "Silence", drawn: g.ax.y(0), req: g.ax.yS, nul: straight(0) });
+  // Read back: a level drawn and read again.
+  for (const d of [-3, -20, -45]) { const l = Math.pow(10, d / 20), back = lvlDb(g.ax.lvl(g.ax.y(l))); rows.push({ what: "Read back " + d + " dB", drawn: back, req: d, nul: lvlDb(1 - (g.ax.y(l) - g.T) / (g.ax.yF - g.T)), unit: "dB" }); }
+  return rows;
+}
+window.dbAxisCheck = dbAxisCheck;
+function paintDbTable() {
+  const rows = dbAxisCheck(), tb = document.getElementById("dbRows");
+  if (!rows) { tb.innerHTML = '<tr><td colspan="5">Open the amp envelope (Show: Amp envelope) to draw it and measure it.</td></tr>'; return; }
+  tb.innerHTML = rows.map((r) => {
+    const off = Math.abs(r.drawn - r.req), nul = Math.abs(r.nul - r.req), u = r.unit || "px";
+    const tol = u === "dB" ? 0.05 : 0.5, shared = /^Gridline (0|−60) |^Silence/.test(r.what);
+    return "<tr><td>" + r.what + "</td><td>" + r.drawn.toFixed(2) + " " + u + "</td><td>" + r.req.toFixed(2) + " " + u + '</td><td class="' + (off < tol ? "ok" : "bad") + '">' + off.toFixed(3) + "</td><td>" + (shared ? nul.toFixed(2) + " " + u + " (the axes meet here)" : nul < tol ? '<span class="bad">' + nul.toFixed(2) + " (cannot see it)</span>" : nul.toFixed(1) + " " + u + " off") + "</td></tr>";
+  }).join("");
+}
+
+/* ===================== the page's own switches, and the window ===================== */
+function fitStage() {
+  const wrap = document.getElementById("stageWrap"), stage = document.getElementById("stage"), win = document.getElementById("win");
+  // 960x600 at Auto's 90 per cent: the page's 1067x667 drawn at nine tenths.
+  const zoom = S.size === "small" ? 0.9 : 1;
+  const nat = win.offsetWidth * zoom;
+  const sc = Math.min(1, wrap.clientWidth / nat) * zoom;
+  stage.style.transform = "scale(" + sc + ")";
+  stage.style.left = Math.max(0, (wrap.clientWidth - win.offsetWidth * sc) / 2) + "px";
+  stage.dataset.scale = sc;
+  wrap.style.height = Math.ceil(win.offsetHeight * sc) + "px";
+}
+function render() {
+  const win = document.getElementById("win");
+  win.classList.toggle("compact", S.size === "small");
+  document.getElementById("editHands").hidden = S.hands !== 2;
+  document.querySelectorAll("#editSwitch button").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.h === S.editing));
+  document.querySelectorAll("#pgView button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === S.view));
+  for (const k in S.ui) S.ui[k].fit = true;
+  for (const k of ["amps", "fenvs", "menvs"]) if (S.ui[k]) S.ui[k].fit = true;
+  buildEditor();
+  fitStage();
+  paint();
+  paintDbTable();
+}
+function pgSwitch(id, key, conv) {
+  document.querySelectorAll("#" + id + " button").forEach((b) => b.addEventListener("click", () => {
+    S[key] = conv ? conv(b.dataset.v) : b.dataset.v;
+    document.querySelectorAll("#" + id + " button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    if (key === "hands" && S.hands === 1) { S.editing = 0; for (const k in S.linked) S.linked[k] = true; }
+    SEL = null;
+    render();
+  }));
+}
+pgSwitch("pgSize", "size");
+pgSwitch("pgView", "view");
+pgSwitch("pgHands", "hands", Number);
+function openView(v) { S.view = v; SEL = null; render(); }
+document.getElementById("ampPrev").addEventListener("click", () => openView("amp"));
+document.getElementById("vcfPrev").addEventListener("click", () => openView("filter"));
+document.getElementById("fenvPrev").addEventListener("click", () => openView("filter"));
+document.getElementById("menvCard").addEventListener("click", () => openView("menv"));
+document.getElementById("menvCard").addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openView("menv"); } });
+document.getElementById("vcfTypeSel").addEventListener("change", (ev) => { writeHand("filter", (f) => { f.type = +ev.target.value; }); paint(); });
+document.querySelectorAll("#editSwitch button").forEach((b) => b.addEventListener("click", () => { S.editing = +b.dataset.h; render(); }));
+// One listener for the clicks inside the window that rebuild something.
+document.getElementById("win").addEventListener("click", (ev) => {
+  const t = ev.target.closest("button, select");
+  if (!t) return;
+  if (t.dataset.close) { S.view = "play"; SEL = null; render(); }
+  else if (t.dataset.link) {
+    const sec = t.dataset.link, list = sec === "amp" ? [S.amp] : sec === "filter" ? [S.fenv, S.filt] : [];
+    S.linked[sec] = !S.linked[sec];
+    // Unlinking leaves both hands where they were; linking copies the edited hand into the other.
+    if (S.linked[sec]) for (const l of list) l[1 - S.editing] = clone(l[S.editing]);
+    else if (sec === "amp") { const o = S.amp[1 - S.editing]; o.m.attack = 600; o.b.attack = { m: 0.3 }; o.m.release = 900; }
+    else if (sec === "filter") { S.filt[1 - S.editing].cut = 480; S.filt[1 - S.editing].amt = 25; }
+    render();
+  } else if (t.dataset.shape) {
+    const kind = t.dataset.kind;
+    writeEnv(kind, (e) => { const s = SHAPES[t.dataset.shape](); e.m = s.m; e.b = s.b; e.inner = s.inner; e.loop = s.loop; });
+    S.ui[kind + (kind === "fenv" ? "s" : "")] = { fit: true }; SEL = null; paint();
+  } else if (t.dataset.loopBtn) {
+    const kind = t.dataset.loopBtn;
+    writeEnv(kind, (e) => { e.loop = e.loop == null ? Math.max(1, flatten(e).pre.findIndex((p) => p.role === "attack")) : null; });
+  } else if (t.dataset.sync) { const k = t.dataset.sync; S.sync[k] = !S.sync[k]; buildEditor(); paint(); }
+  else if (t.dataset.zoom) {
+    const kind = t.dataset.kind, svg = msegSvgs()[kind]; if (!svg || !svg._g) return;
+    if (t.dataset.zoom === "fit") { svg._g.ui.fit = true; paint(); } else zoomAt(kind, t.dataset.zoom === "in" ? 1.5 : 1 / 1.5, svg._g.L, svg._g);
+  } else if (t.dataset.ftype != null) { writeHand("filter", (f) => { f.type = +t.dataset.ftype; }); paint(); }
+  else if (t.dataset.follow) { S.menv.own = false; paint(); }
+});
+document.getElementById("win").addEventListener("change", (ev) => { if (ev.target.dataset.grid) { S.grid = +ev.target.value; paint(); } });
+
+/* ===================== a note ===================== */
+let raf = 0;
+function tick() {
+  paint();
+  if (!S.note) return;
+  const now = performance.now();
+  const longest = Math.max(ampEnv().m.release, fenvEnv().m.release, menvShown().m.release);
+  if (S.note.up != null && now - S.note.up > longest + 80) { S.note = null; paint(); return; }
+  raf = requestAnimationFrame(tick);
+}
+function noteDown() { cancelAnimationFrame(raf); S.note = { t0: performance.now(), up: null }; setPlayPressed(true); tick(); }
+function noteUp() { if (S.note && S.note.up == null) { S.note.up = performance.now(); setPlayPressed(false); } }
+function setPlayPressed(on) { document.querySelectorAll("[data-play], #pgNote").forEach((b) => b.setAttribute("aria-pressed", on)); }
+document.addEventListener("pointerdown", (ev) => { if (ev.target.closest("[data-play], #pgNote") && ev.button === 0) { ev.preventDefault(); noteDown(); } });
+document.addEventListener("pointerup", () => noteUp());
+document.addEventListener("keydown", (ev) => {
+  if ((ev.key === " " || ev.key === "Enter") && ev.target.closest && ev.target.closest("[data-play], #pgNote")) { ev.preventDefault(); if (!ev.repeat) noteDown(); return; }
+  // Esc closes the innermost thing open: the menu first, then the editor.
+  if (ev.key === "Escape") { if (!document.getElementById("ctx").hidden) hideMenu(); else if (S.view !== "play") { S.view = "play"; render(); } }
+});
+document.addEventListener("keyup", (ev) => { if (ev.key === " " || ev.key === "Enter") noteUp(); });
+document.addEventListener("pointerdown", (ev) => { if (!ev.target.closest("#ctx")) hideMenu(); }, true);
+window.__mseg = { S, noteDown, noteUp, render, paint, flatten, levelAt, travel, addPoint, openView };
+
+document.getElementById("glideK").innerHTML = knobHTML(0.05, false) + '<span class="reading">off</span>';
+document.getElementById("levelK").innerHTML = knobHTML(0.55, false) + '<span class="reading">0.55</span>';
+document.getElementById("picKnobs").innerHTML = [["0%", "Amount", 0], ["off", "Scan", 0], ["50%", "Strike", 0.5], ["3.0 cells", "Softness", 0.4], ["32 ms", "Persistence", 0.3], ["0 dB", "Output", 0.75]]
+  .map(([v, n, f]) => staticCell(v, n, f, true)).join("");
+paintKeys();
+window.addEventListener("resize", () => { fitStage(); paint(); });
+// The checks' numbers, when they have run (checks/results.json, written by curves_against_core.py).
+const CORE_RESULTS = {"rows": [{"what": "Envelope: 8 ms, 120 ms, 0.70, 180 ms; held 400 ms", "ok": true, "page": "5.2e-13 of full scale, 30000 samples", "null": "relative release 0.0230; straight 0.215"}, {"what": "Envelope: A pluck: 2 ms, 700 ms, 0, 250 ms; let go at 300 ms, in the decay", "ok": true, "page": "6.4e-05: the core a sample late at a stage's end (2.0e-05 with that sample allowed)", "null": "relative release 0.0456; straight 0.215"}, {"what": "Envelope: 200 ms, 300 ms, 0.50, 400 ms; let go at 60 ms, in the attack", "ok": true, "page": "6.8e-13 of full scale, 30000 samples", "null": "relative release 0.0311; straight 0.199"}, {"what": "Envelope: 150 ms, 1 s, 0.25, 2 s; held 2 s", "ok": true, "page": "3.4e-05: the core a sample late at a stage's end (1.1e-12 with that sample allowed)", "null": "relative release 0.0288; straight 0.215"}, {"what": "Filter: Low pass, 1 kHz, Q 0.71", "ok": true, "page": "4.5e-08 dB at 24 frequencies", "null": "resonance as damping 6.02 dB"}, {"what": "Filter: Low pass, 1.6 kHz, Q 2.06", "ok": true, "page": "3.0e-08 dB at 24 frequencies", "null": "resonance as damping 12.55 dB"}, {"what": "Filter: High pass, 400 Hz, Q 5", "ok": true, "page": "3.0e-08 dB at 24 frequencies", "null": "resonance as damping 24.18 dB"}, {"what": "Filter: Band pass, 2 kHz, Q 1.5", "ok": true, "page": "4.5e-08 dB at 24 frequencies", "null": "resonance as damping 7.04 dB"}], "note": "Run by checks/curves_against_core.py: the core's Envelope stepped at 48 kHz against the page's levelAt with the old four numbers, within 0.0001 of full scale (-80 dB); where it is not within 1e-12 it is because the core ends a stage a sample after the drawn time, which the MSEG engine keeps (the design note). The filter to 0.01 dB. All pass.", "ok": true};
+function paintCoreTable() {
+  if (!CORE_RESULTS) return;
+  document.getElementById("coreRows").innerHTML = CORE_RESULTS.rows.map((r) => "<tr><td>" + r.what + '</td><td class="' + (r.ok ? "ok" : "bad") + '">' + r.page + "</td><td>" + r.null + "</td></tr>").join("");
+  document.getElementById("coreNote").textContent = CORE_RESULTS.note;
+}
+paintCoreTable();
+render();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitStage(); paint(); paintDbTable(); });
+</script>
+</body>
+</html>

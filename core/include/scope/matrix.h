@@ -174,12 +174,21 @@ inline double routingAmount(const ModSource* source, double amount) {
   return std::fmax(-source->reach, std::fmin(source->reach, amount));
 }
 
-// fadeTravel: how far along its stretch a fade is, a power of the share of
-// its time chosen so half the time gives the stored midpoint.
+/* fadeTravel: how far along its stretch a fade is at a share t of its time,
+   on the drawn envelopes' one bend law (18 Nov, the owner's; mseg_shape.h):
+   a one-pole aimed past its end, the aim chosen so half the time gives the
+   stored midpoint - k = 2 ln(mid / (1 - mid)), and the travel
+   (1 - e^-kt) / (1 - e^-k), straight at a midpoint of a half. Until then a
+   power of t (t^(ln mid / ln 0.5)), which met the same midpoint but started
+   a quick curve vertical and a slow one flat, and drew a bend unlike the
+   envelopes' at the same number - up to 0.06 of the fall at 0.9. A fade at
+   its default midpoints, a half, is straight either way and has not moved. */
 inline double fadeTravel(double t, double mid) {
   if (t >= 1) return 1;
   if (t <= 0) return 0;
-  return std::pow(t, std::log(mid) / std::log(0.5));
+  const double k = 2 * std::log(mid / (1 - mid));
+  if (std::fabs(k) < 1e-9) return t;
+  return (1 - std::exp(-k * t)) / (1 - std::exp(-k));
 }
 
 class Matrix {

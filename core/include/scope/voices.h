@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "scope/envelope.h"
+#include "scope/mseg.h"
 #include "scope/noise.h"
 #include "scope/osc.h"
 #include "scope/voice.h"
@@ -134,7 +135,8 @@ struct Voice {
      (16 Nov): held where it was, so a voice's last quarter-period heard from
      the pool and from the tails it moves to at a block's end is one value. */
   double stillQuarter = -1;
-  Envelope env, fenv;
+  // The drawn envelopes (18 Nov, mseg.h): the amplifier's and the filter's, on the layer's shapes.
+  Mseg env, fenv;
   std::array<double, 2> gains {}, targets {};
   std::vector<double> ring;  // the quarter turn's, made the first time it turns
   int at = 0;
@@ -441,7 +443,7 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
       const double late = lateBy(quarter);
       // At one, with the pitch its own, the drawn quarter's read: a lone note heard as it was, to the bit.
       if (hearing) {
-        if (!voice.held && voice.env.stage() == Envelope::Stage::Idle && voice.stillQuarter < 0) voice.stillQuarter = quarter;
+        if (!voice.held && voice.env.stage() == Mseg::Stage::Idle && voice.stillQuarter < 0) voice.stillQuarter = quarter;
         const double heardQuarter = voice.stillQuarter >= 0 ? voice.stillQuarter : quarter;
         tailsBefore(voice.born);
         c.heard[0] += lateBy(width * heardQuarter);

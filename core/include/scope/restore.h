@@ -178,6 +178,31 @@ class Controls {
       value.assign(s.value);
       custom_[s.id].reserve(kJsNumberRoom);
     }
+    // The drawn envelopes' shapes (18 Nov): text boxes, room made for the longest a shape is.
+    for (const char* id : kTexts) texts_[id].reserve(640);
+  }
+  /* The page's text boxes that hold what a setup carries: the drawn
+     envelopes' shapes, written as given (the engine reads what it can of
+     one, mseg_shape.h). */
+  static constexpr const char* kTexts[] = { "envShape", "vcfShape", "menvShape" };
+  // The same written as plain ASCII, nothing made: the morph's walk writes a shape this way on the audio thread.
+  bool setTextAscii(const std::string& id, std::string_view written) {
+    const auto it = texts_.find(id);
+    if (it == texts_.end()) return false;
+    keep(it->second, written);
+    return true;
+  }
+  bool setText(const std::string& id, const std::u16string& written) {
+    const auto it = texts_.find(id);
+    if (it == texts_.end()) return false;
+    const std::string v = utf16To8(written);
+    keep(it->second, v);
+    return true;
+  }
+  const std::string& text(const std::string& id) const {
+    static const std::string none;
+    const auto it = texts_.find(id);
+    return it == texts_.end() ? none : it->second;
   }
   /* A slider or a menu the panel has not got is refused, and nothing is
      written: false. Each used to look its id up and use what it found, and an
@@ -244,6 +269,7 @@ class Controls {
  private:
   std::map<std::string, double> ranges_;
   std::map<std::string, std::string> selects_;
+  std::map<std::string, std::string> texts_;   // the text boxes (kTexts)
   std::map<std::string, std::string> custom_;  // a menu's option whose value is written as it is shown
   int lanes_ = 2;
   // Written into the room the string has, where an assignment of a new string would have replaced it.
@@ -277,6 +303,10 @@ struct Brain {
   struct Arp { std::string mode = "off", rate = "1/8", octaves = "1"; } arp;  // the menus' values
   using MorphEnd = std::vector<std::pair<std::string, double>>;  // every slider the morph walks, in order
   std::optional<MorphEnd> morphA, morphB;
+  /* And each end's envelope shapes (18 Nov): the three text boxes', kept
+     beside the sliders while the end is (msegBlend walks them). */
+  using MorphShapes = std::array<std::string, 3>;
+  MorphShapes morphShapesA, morphShapesB;
   double morphPos = 0;
   double morphMod = 0;                     // what the matrix pushes into the fader
   std::optional<double> morphApplied;      // where the sliders were last put, or nothing
@@ -440,6 +470,64 @@ std::string encodeMorphEnd(const std::optional<Brain::MorphEnd>& end, Ref ref) {
   return out;
 }
 
+/* The morph's ends' envelope shapes (18 Nov), after the sliders in the same
+   text: id, a colon and the shape as encodeURIComponent writes it, so the
+   shape's own commas and semicolons do not read as the end's. A shape the end
+   does not name is the reference's - none for A, A's for B - as a slider's is. */
+constexpr const char* kMorphShapeIds[3] = { "envShape", "vcfShape", "menvShape" };
+inline Brain::MorphShapes decodeMorphShapes(const Json* text, const Brain::MorphShapes& ref) {
+  Brain::MorphShapes out = ref;
+  if (!text || text->type != Json::Type::String || text->s.empty() || text->s[0] != u'=') return out;
+  const std::u16string& body = text->s;
+  std::size_t at = 1;
+  while (at <= body.size()) {
+    const std::size_t end = std::min(body.find(u',', at), body.size());
+    const std::u16string part = body.substr(at, end - at);
+    const std::size_t colon = part.find(u':');
+    if (colon != std::u16string::npos) {
+      const std::string id = utf16To8(part.substr(0, colon));
+      const std::size_t next = part.find(u':', colon + 1);
+      const std::u16string value = part.substr(colon + 1, next == std::u16string::npos ? std::u16string::npos : next - colon - 1);
+      for (int k = 0; k < 3; k++) {
+        if (id != kMorphShapeIds[k]) continue;
+        // decodeURIComponent: a % and two hex digits a byte; one malformed, and the page's throws and keeps nothing.
+        std::string bytes;
+        bool ok = true;
+        for (std::size_t i = 0; i < value.size() && ok; i++) {
+          const char16_t c = value[i];
+          if (c != u'%') { bytes += c < 0x80 ? static_cast<char>(c) : '?'; continue; }
+          const auto hex = [](char16_t h) { return h >= u'0' && h <= u'9' ? h - u'0' : h >= u'a' && h <= u'f' ? h - u'a' + 10 : h >= u'A' && h <= u'F' ? h - u'A' + 10 : -1; };
+          if (i + 2 >= value.size() + 0 || hex(value[i + 1]) < 0 || hex(value[i + 2]) < 0) { ok = false; break; }
+          bytes += static_cast<char>(hex(value[i + 1]) * 16 + hex(value[i + 2]));
+          i += 2;
+        }
+        if (ok) out[static_cast<std::size_t>(k)] = bytes;
+      }
+    }
+    if (end >= body.size()) break;
+    at = end + 1;
+  }
+  return out;
+}
+// encodeURIComponent of a shape's ASCII, and each that differs from its reference after the sliders' pairs.
+inline std::string encodeMorphShapes(std::string text, const Brain::MorphShapes& shapes, const Brain::MorphShapes& ref) {
+  for (int k = 0; k < 3; k++) {
+    const std::string& v = shapes[static_cast<std::size_t>(k)];
+    if (v == ref[static_cast<std::size_t>(k)]) continue;
+    text += text.size() > 1 ? "," : "";
+    text += kMorphShapeIds[k];
+    text += ':';
+    static const char* digits = "0123456789ABCDEF";
+    for (const char c : v) {
+      const bool keep = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || std::string_view("-_.!~*'()").find(c) != std::string_view::npos;
+      if (keep) { text += c; continue; }
+      const unsigned char u = static_cast<unsigned char>(c);
+      text += '%'; text += digits[u >> 4]; text += digits[u & 15];
+    }
+  }
+  return text;
+}
+
 // parseRegistration: nine digits among whatever else, each no more than eight.
 inline std::optional<std::array<double, 9>> parseRegistrationText(const std::u16string& text) {
   std::array<double, 9> out {};
@@ -456,7 +544,8 @@ inline std::optional<std::array<double, 9>> parseRegistrationText(const std::u16
 // One row of LAYER_CONTROLS: the control, the generator's field, its law, and
 // the law back from the field to the control, for showing layer B on the panel.
 struct LayerControl {
-  const char* id; const char* field; enum Kind { Range, Menu, Text } kind; double (*law)(double); double (*inverse)(double) = nullptr;
+  // Words: a text box's free text (a drawn envelope's shape), where Text is a menu's word.
+  const char* id; const char* field; enum Kind { Range, Menu, Text, Words } kind; double (*law)(double); double (*inverse)(double) = nullptr;
 };
 inline const std::vector<LayerControl>& layerControls() {
   static const auto same = [](double v) { return v; };
@@ -470,6 +559,10 @@ inline const std::vector<LayerControl>& layerControls() {
     { "envDecay", "decayMs", LayerControl::Range, same, same },
     { "envSustain", "sustain", LayerControl::Range, hundred, byHundred },
     { "envRelease", "releaseMs", LayerControl::Range, same, same },
+    // The drawn envelope's delay, hold and shape (18 Nov).
+    { "envDelay", "envDelayMs", LayerControl::Range, same, same },
+    { "envHold", "envHoldMs", LayerControl::Range, same, same },
+    { "envShape", "envShape", LayerControl::Words, nullptr },
     { "bars", "bars", LayerControl::Text, nullptr },
     { "morph", "morph", LayerControl::Range, hundred, byHundredRound },
     { "width", "width", LayerControl::Range, hundred, byHundredRound },
@@ -503,6 +596,9 @@ inline const std::vector<LayerControl>& layerControls() {
     { "vcfDec", "fDecayMs", LayerControl::Range, same, same },
     { "vcfSus", "fSustain", LayerControl::Range, hundred, byHundredRound },
     { "vcfRel", "fReleaseMs", LayerControl::Range, same, same },
+    { "vcfDelay", "fDelayMs", LayerControl::Range, same, same },
+    { "vcfHold", "fHoldMs", LayerControl::Range, same, same },
+    { "vcfShape", "fShape", LayerControl::Words, nullptr },
   };
   return rows;
 }
@@ -532,9 +628,12 @@ inline const std::array<HandSectionSpec, kHandSections>& handSections() {
       { "bAmp", "bShape", "bBars", "bMorph", "bWidth", "bTable" },
       { "gen.amp", "gen.morph", "gen.width", "gen.table", "gen.bar0", "gen.bar1", "gen.bar2", "gen.bar3", "gen.bar4",
         "gen.bar5", "gen.bar6", "gen.bar7", "gen.bar8" }, 0 },
-    { "ampEnv", "linkAmpEnv", { "envAttack", "envDecay", "envSustain", "envRelease" }, { "bAtk", "bDec", "bSus", "bRel" }, {}, 0 },
-    { "vcf", "linkVcf", { "vcfType", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel" },
-      { "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel" }, { "gen.vcf" }, 0 },
+    { "ampEnv", "linkAmpEnv", { "envAttack", "envDecay", "envSustain", "envRelease", "envDelay", "envHold", "envShape" },
+      { "bAtk", "bDec", "bSus", "bRel", "bEnvDelay", "bEnvHold", "bEnvShape" }, {}, 0 },
+    { "vcf", "linkVcf", { "vcfType", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel",
+                          "vcfDelay", "vcfHold", "vcfShape" },
+      { "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel",
+        "bVcfDelay", "bVcfHold", "bVcfShape" }, { "gen.vcf" }, 0 },
     { "osc", "linkOsc", { "oscRatio", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSubOct", "oscSubShape",
                           "oscUnison", "oscSpread" },
       { "bRatio", "bFm", "bBend", "bBendAt", "bRing", "bSync", "bSub", "bSubOct", "bSubShape", "bUnison", "bSpread" },
@@ -587,6 +686,7 @@ inline void applyVoiceLaws(Generator& gen, const Controls& panel, int layer) {
   for (const auto& row : layerControls()) {
     if (!isVoiceControl(row.id)) continue;
     if (row.kind == LayerControl::Text) { gen.set(row.field, panel.select(row.id), layer); continue; }
+    if (row.kind == LayerControl::Words) { gen.set(row.field, panel.text(row.id), layer); continue; }
     const double v = row.kind == LayerControl::Range ? panel.range(row.id) : panel.selectNumber(row.id);
     gen.set(row.field, row.law(v), layer);
   }
@@ -627,6 +727,10 @@ inline double layerFieldValue(const LayerSettings& t, std::string_view f) {
   if (f == "fDecayMs") return t.fenv.decayMs;
   if (f == "fSustain") return t.fenv.sustain;
   if (f == "fReleaseMs") return t.fenv.releaseMs;
+  if (f == "envDelayMs") return t.env.delayMs;
+  if (f == "envHoldMs") return t.env.holdMs;
+  if (f == "fDelayMs") return t.fenv.delayMs;
+  if (f == "fHoldMs") return t.fenv.holdMs;
   return std::nan("");
 }
 
@@ -638,6 +742,7 @@ inline std::u16string layerPanelValue(const Controls& panel, const LayerControl&
     for (int k = 0; k < 9; k++) out += toU16(jsNumberToString(panel.range("bar" + std::to_string(k))));
     return out;
   }
+  if (row.kind == LayerControl::Words) return utf8To16(panel.text(row.id));
   return row.kind == LayerControl::Range ? toU16(jsNumberToString(panel.range(row.id))) : utf8To16(panel.select(row.id));
 }
 inline void setLayerPanelValue(Controls& panel, const LayerControl& row, const std::u16string& text) {
@@ -648,6 +753,7 @@ inline void setLayerPanelValue(Controls& panel, const LayerControl& row, const s
     return;
   }
   if (row.kind == LayerControl::Range) panel.setRange(row.id, text);
+  else if (row.kind == LayerControl::Words) panel.setText(row.id, text);
   else panel.setSelect(row.id, text);
 }
 
@@ -667,6 +773,8 @@ inline void showLayerOnPanel(Brain& b, const Generator& gen, int layer) {
       std::u16string text;
       if (field == "shape") text = utf8To16(toneB.shapeName);
       else if (field == "subShape") text = utf8To16(toneB.subShapeName);
+      else if (field == "envShape") text = utf8To16(toneB.envShapeText);
+      else if (field == "fShape") text = utf8To16(toneB.fShapeText);
       else if (field == "bars") for (const double v : toneB.bars) text += toU16(jsNumberToString(jsMathRound(v)));
       else text = toU16(jsNumberToString(row.inverse(layerFieldValue(toneB, field))));
       setLayerPanelValue(b.panel, row, text);
@@ -792,6 +900,8 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
     { "shpDrive", "bDrive" }, { "shpFold", "bFold" }, { "shpBits", "bBits" }, { "shpRate", "bRate" }, { "vcfType", "bVcf" },
     { "vcfCut", "bVcfCut" }, { "vcfRes", "bVcfRes" }, { "vcfTrack", "bVcfTrack" }, { "vcfEnvAmt", "bVcfEnv" },
     { "vcfAtk", "bVcfAtk" }, { "vcfDec", "bVcfDec" }, { "vcfSus", "bVcfSus" }, { "vcfRel", "bVcfRel" },
+    { "envDelay", "bEnvDelay" }, { "envHold", "bEnvHold" }, { "envShape", "bEnvShape" },
+    { "vcfDelay", "bVcfDelay" }, { "vcfHold", "bVcfHold" }, { "vcfShape", "bVcfShape" },
   };
   static const std::pair<const char*, const char*> fallback[] = {
     { "amp", "amp" }, { "shape", "shape" }, { "envAttack", "atk" }, { "envDecay", "dec" }, { "envSustain", "sus" },
@@ -816,7 +926,7 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
       const RangeSpec* r = rangeSpec(row.id);
       raw = Json::number(std::fmax(r->min, std::fmin(r->max, jsToNumber(&raw))));
     }
-    if (row.kind == LayerControl::Text) {
+    if (row.kind == LayerControl::Text || row.kind == LayerControl::Words) {
       if (bars) {
         const auto levels = parseRegistrationText(jsToString(raw));
         if (levels) gen.setBars(std::vector<double>(levels->begin(), levels->end()), 1);
@@ -1362,6 +1472,16 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   panel.setRange("envSustain", str("sus"));
   panel.setRange("envRelease", str("rel"));
   panel.setRange("glide", str("glide"));
+  // The drawn envelopes (18 Nov): the delay and hold by their rule, and the shapes as text, anything else none.
+  panel.setRange("envDelay", fieldText("envDelay"));
+  panel.setRange("envHold", fieldText("envHold"));
+  const auto textOf = [&](std::string_view key) {
+    const Json* v = s(key);
+    return v && v->type == Json::Type::String ? v->s : std::u16string();
+  };
+  panel.setText("envShape", textOf("envShape"));
+  panel.setText("vcfShape", textOf("vcfShape"));
+  panel.setText("menvShape", textOf("menvShape"));
 
   // The sliders' handlers, as `restore` fires them.
   setA("freq", panel.range("freq"));
@@ -1372,6 +1492,9 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("decayMs", panel.range("envDecay"));
   setA("sustain", panel.range("envSustain") / 100);
   setA("releaseMs", panel.range("envRelease"));
+  setA("envDelayMs", panel.range("envDelay"));
+  setA("envHoldMs", panel.range("envHold"));
+  gen.set("envShape", std::string_view(panel.text("envShape")), 0);
   setA("glideMs", panel.range("glide"));
   setA("morph", panel.range("morph") / 100);
   setA("width", panel.range("width") / 100);
@@ -1559,10 +1682,12 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   setA("menvEvery", fieldFlag("menvEvery") ? 1 : 0);
   for (const auto& [id, field, scale] : { std::tuple<const char*, const char*, double>{ "menvAtk", "menvAttackMs", 1 },
                                           { "menvDec", "menvDecayMs", 1 }, { "menvSus", "menvSustain", 100 },
-                                          { "menvRel", "menvReleaseMs", 1 } }) {
+                                          { "menvRel", "menvReleaseMs", 1 }, { "menvDelay", "menvDelayMs", 1 },
+                                          { "menvHold", "menvHoldMs", 1 } }) {
     panel.setRangeNumber(id, fieldNum(id));
     setA(field, panel.range(id) / scale);
   }
+  gen.set("menvShape", std::string_view(panel.text("menvShape")), 0);
 
   // The score and the arpeggiator: kept for their pieces.
   brain.score.on = fieldFlag("scoreOn");
@@ -1586,6 +1711,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
       return morphHome(id);
     };
     brain.morphB = decodeMorphEnd(s("morphB"), refB);
+    brain.morphShapesA = decodeMorphShapes(s("morphA"), Brain::MorphShapes {});
+    brain.morphShapesB = decodeMorphShapes(s("morphB"), brain.morphShapesA);
     brain.morphPos = fieldNum("morphPos") / 100;
     panel.setRange("morphPos", toU16(jsNumberToString(jsMathRound(brain.morphPos * 100))));
     brain.morphApplied.reset();
@@ -1929,6 +2056,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "envDecay") layerSet("decayMs", v);
   else if (id == "envSustain") layerSet("sustain", v / 100);
   else if (id == "envRelease") layerSet("releaseMs", v);
+  else if (id == "envDelay") layerSet("envDelayMs", v);
+  else if (id == "envHold") layerSet("envHoldMs", v);
   // The generator's, read on layer A alone (G6): written there whichever hand is on the panel.
   else if (id == "glide") gen.set("glideMs", v, 0);
   // The Picture section's Amount and Strike, on each hand it is on (G6).
@@ -1945,6 +2074,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
   else if (id == "menvDec") gen.set("menvDecayMs", v);
   else if (id == "menvSus") gen.set("menvSustain", v / 100);
   else if (id == "menvRel") gen.set("menvReleaseMs", v);
+  else if (id == "menvDelay") gen.set("menvDelayMs", v);
+  else if (id == "menvHold") gen.set("menvHoldMs", v);
   // Scan's softness in tenths of a cell, and its Persistence, which is the screen's.
   else if (id == "scanSoft") b.scanSoft = v / 10;
   else if (id == "scanStrike") pictureWrite(b, keys, true, v);
@@ -2082,6 +2213,9 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   if (id == "interval") { gen.set("interval", number, 0); keys.panel().interval = static_cast<int>(number); }
   else if (id == "inputMode") { b.inputMode = orElse(number, 0); gen.set("inputMode", b.inputMode, 0); }
   else if (id == "shape") handSet(b, gen, id, "shape", text);
+  // The drawn envelopes' shapes (18 Nov), text boxes: the hands' as any section's control, the Envelope's its own.
+  else if (id == "envShape" || id == "vcfShape") { panel.setText(id, written); handSet(b, gen, id, id == "envShape" ? "envShape" : "fShape", utf16To8(written)); }
+  else if (id == "menvShape") { panel.setText(id, written); gen.set("menvShape", std::string_view(utf16To8(written)), 0); }
   else if (id == "shpOS") gen.set("shapeOS", number, 0);
   else if (isVoiceControl(id) && menu) {
     for (const auto& row : layerControls()) {
@@ -2262,6 +2396,8 @@ inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to) {
       gen.setBars(bars, to);
     } else if (row.kind == LayerControl::Text) {
       gen.set(row.field, std::string_view(b.panel.select(row.id)), to);
+    } else if (row.kind == LayerControl::Words) {
+      gen.set(row.field, std::string_view(b.panel.text(row.id)), to);
     } else {
       gen.set(row.field, row.law(row.kind == LayerControl::Range ? b.panel.range(row.id) : b.panel.selectNumber(row.id)), to);
     }
@@ -2304,6 +2440,8 @@ inline bool handsEqual(const Brain& b, const Generator& gen, int sec) {
     if (field == "shape") { if (a.shapeName != t.shapeName) return false; }
     else if (field == "subShape") { if (a.subShapeName != t.subShapeName) return false; }
     else if (field == "bars") { if (a.bars != t.bars) return false; }
+    else if (field == "envShape") { if (a.envShapeText != t.envShapeText) return false; }
+    else if (field == "fShape") { if (a.fShapeText != t.fShapeText) return false; }
     else if (!(layerFieldValue(a, field) == layerFieldValue(t, field))) return false;
   }
   return true;
@@ -2455,6 +2593,8 @@ inline Brain::MorphEnd morphCapture(const Brain& b) {
 // morphStore: storing an end puts the fader at it, so storing moves nothing.
 inline void morphStore(Brain& b, bool endB) {
   (endB ? b.morphB : b.morphA) = morphCapture(b);
+  auto& shapes = endB ? b.morphShapesB : b.morphShapesA;
+  for (int k = 0; k < 3; k++) shapes[static_cast<std::size_t>(k)] = b.panel.text(kMorphShapeIds[k]);
   b.morphPos = endB ? 1 : 0;
   b.morphApplied = b.morphPos + b.morphMod;
   b.panel.setRange("morphPos", toU16(jsNumberToString(b.morphPos * 100)));
@@ -2481,6 +2621,21 @@ inline void morphStep(Brain& b, Generator& gen, Keyboard& keys, std::vector<Lfo>
     // The page writes String(want) into the slider; the number is what that text reads back as.
     b.panel.setRangeNumber(id, want);
     if (b.panel.range(id) != before) sliderInput(id, b, gen, keys, lfos);
+  }
+  /* The envelopes' shapes (18 Nov): walked point by point where the two have
+     as many, else changed at half-way (msegBlend), into a buffer and the
+     room the text box and the tone already have, so nothing is made. */
+  for (int k = 0; k < 3; k++) {
+    const std::string& a = b.morphShapesA[static_cast<std::size_t>(k)];
+    const std::string& z = b.morphShapesB[static_cast<std::size_t>(k)];
+    if (a == z) continue;
+    char buf[kMsegTextRoom];
+    const std::string_view want(buf, msegBlend(a, z, t, buf, sizeof buf));
+    const std::string id = kMorphShapeIds[k];
+    if (b.panel.text(id) == want) continue;
+    b.panel.setTextAscii(id, want);
+    if (k < 2) handSet(b, gen, id, k == 0 ? "envShape" : "fShape", want);
+    else gen.set("menvShape", want, 0);
   }
 }
 

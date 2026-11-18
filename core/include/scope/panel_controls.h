@@ -34,10 +34,13 @@ inline constexpr RangeSpec kRanges[] = {
   { "width", 5, 95, 1, 25 },
   { "table", 0, 300, 1, 150 },
   { "phase", 0, 360, 1, 90 },
-  { "envAttack", 0, 200, 1, 8 },
-  { "envDecay", 1, 1000, 1, 120 },
-  { "envSustain", 0, 100, 1, 70 },
-  { "envRelease", 1, 2000, 1, 180 },
+  { "envAttack", 0, 20000, 1, 8 },
+  { "envDecay", 1, 20000, 1, 120 },
+  { "envSustain", 0, 100, 0.0009765625, 70 },
+  { "envRelease", 1, 20000, 1, 180 },
+  // The drawn envelope's delay and hold (18 Nov), in milliseconds.
+  { "envDelay", 0, 5000, 1, 0 },
+  { "envHold", 0, 5000, 1, 0 },
   { "glide", 0, 500, 1, 0 },
   { "morphPos", 0, 100, 1, 0 },
   { "lfoRate0", 1, 800, 1, 20 },
@@ -73,10 +76,12 @@ inline constexpr RangeSpec kRanges[] = {
   { "vcfRes", 0, 100, 1, 0 },
   { "vcfTrack", 0, 100, 1, 0 },
   { "vcfEnvAmt", -40, 40, 1, 0 },
-  { "vcfAtk", 0, 1000, 1, 5 },
-  { "vcfDec", 1, 2000, 1, 300 },
+  { "vcfAtk", 0, 20000, 1, 5 },
+  { "vcfDec", 1, 20000, 1, 300 },
   { "vcfSus", 0, 100, 1, 30 },
-  { "vcfRel", 1, 2000, 1, 300 },
+  { "vcfRel", 1, 20000, 1, 300 },
+  { "vcfDelay", 0, 5000, 1, 0 },
+  { "vcfHold", 0, 5000, 1, 0 },
   { "planeTurn", -50, 50, 1, 0 },
   { "planeTwist", -100, 100, 1, 0 },
   { "planeRadius", 2, 100, 1, 40 },
@@ -87,10 +92,12 @@ inline constexpr RangeSpec kRanges[] = {
   { "delayMs", 10, 2000, 1, 375 },
   { "delayFeedback", 0, 90, 1, 35 },
   // The Envelope's own (8 Nov).
-  { "menvAtk", 0, 2000, 1, 10 },
-  { "menvDec", 1, 4000, 1, 300 },
+  { "menvAtk", 0, 20000, 1, 10 },
+  { "menvDec", 1, 20000, 1, 300 },
   { "menvSus", 0, 100, 1, 50 },
-  { "menvRel", 1, 4000, 1, 400 },
+  { "menvRel", 1, 20000, 1, 400 },
+  { "menvDelay", 0, 5000, 1, 0 },
+  { "menvHold", 0, 5000, 1, 0 },
   // F5c: the repeats' tone, low cut, width and wow.
   { "delayTone", 0, 100, 1, 100 },
   { "delayLowCut", 0, 100, 1, 0 },
@@ -125,6 +132,12 @@ inline constexpr RangeSpec kRanges[] = {
 
 inline constexpr SelectSpec kSelects[] = {
   { "device", nullptr, "" },
+  /* The envelopes' "Shape..." menus (18 Nov): actions, each choice loading a
+     shape into its envelope's fields and the menu going back to its blank, so
+     no setup reads them. The popover's is filled as it opens, for the amp's or
+     the filter's; the Envelope card's from the start. */
+  { "msegShapes", nullptr, "" },
+  { "menvShapes", "" "\x1f" "ADSR" "\x1f" "AHDSR" "\x1f" "Pluck" "\x1f" "Swell" "\x1f" "Gate" "\x1f" "Pulse", "" },
   { "midiOut", "", "" },
   { "midiOutCh", nullptr, "" },
   { "beamLevel", "off" "\x1f" "subtle" "\x1f" "moderate" "\x1f" "high", "moderate" },
@@ -201,16 +214,16 @@ inline constexpr SelectSpec kSelects[] = {
 // set it; the tempo stays, since it is heard. The page's MORPH_SKIP says more.
 inline constexpr const char* kMorphIds[] = {
   // Level in the Generator since G7, after Glide, where the page lays it out.
-  "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "quantiseGlide", "tempo",
+  "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "envDelay", "envHold", "quantiseGlide", "tempo",
   "lag", "lagMix", "acCorner", "planeTwist", "rotate", "planeTurn", "planeRadius", "planeScaleX", "planeScaleY",
   "planeShear", "eqLow", "eqMid", "eqHigh", "eqLowFreq", "eqMidFreq", "eqMidWidth", "eqHighFreq", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth",
   "chorusTime", "chorusFeedback", "delayMix", "delayMs", "delayFeedback", "delayTone", "delayLowCut", "delayWidth",
   "delayWow", "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread", "bar0", "bar1", "bar2", "bar3",
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
-  "vcfSus", "vcfRel", "inputDepth", "filterCutoff", "filterRes",
+  "vcfSus", "vcfRel", "vcfDelay", "vcfHold", "inputDepth", "filterCutoff", "filterRes",
   // The sound's own Width (16 Nov), in the Picture section after Scan's three: the setup's, so walked.
-  "oscScan", "scanStrike", "scanSoft", "soundWidth", "menvAtk", "menvDec", "menvSus", "menvRel",
+  "oscScan", "scanStrike", "scanSoft", "soundWidth", "menvAtk", "menvDec", "menvSus", "menvRel", "menvDelay", "menvHold",
 };
 
 }  // namespace scope
