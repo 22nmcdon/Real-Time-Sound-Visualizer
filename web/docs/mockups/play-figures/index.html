@@ -438,7 +438,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 .fld { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .fld .fl { font-size: 10.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 .fld .fl.host::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); margin-right: 4px; vertical-align: middle; }
-.fld select { width: 100%; height: 25px; font-size: 12.5px; padding: 1px 4px; }
+.fld select { width: 100%; height: 25px; font-size: 12px; padding: 1px 4px; }
 .win.compact .fld .fl { font-size: 9.5px; }
 .win.compact .fld select { height: 22px; font-size: 11.5px; padding: 0 3px; }
 .fld .mini-knob { height: 25px; gap: 6px; font-size: 12px; color: var(--charcoal); font-variant-numeric: tabular-nums; --knob: 24px; }
@@ -455,7 +455,10 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 .ftab b { flex: 0 0 auto; font-family: var(--serif); font-weight: 500; font-size: 14.5px; color: var(--charcoal); line-height: 1.25; }
 .ftab .sum { flex: 1 1 auto; min-width: 0; font-size: 11.5px; color: var(--text-soft); overflow: hidden; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ftab .dot-sm { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: 2px; }
-.ftab[aria-selected="true"] { background: var(--paper); box-shadow: inset 0 2px 0 var(--blush-deep); margin-bottom: -1px; }
+/* The chosen one covers the bar's rule with a shadow, not a negative margin: a margin changed both
+   subtabs' heights by a pixel on every switch, which the no-shift check caught. */
+.ftab { position: relative; }
+.ftab[aria-selected="true"] { background: var(--paper); box-shadow: inset 0 2px 0 var(--blush-deep), 0 1px 0 var(--paper); z-index: 1; }
 .ftab:hover b { color: var(--blush-deep); }
 .win.compact .ftab { padding: 3px 8px 4px; gap: 5px; }
 .win.compact .ftab b { font-size: 13px; }
@@ -497,6 +500,41 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 .fview .plot-wrap { min-height: 30px; }
 .fhead .hand-link { cursor: pointer; }
 .fhead .hand-link[aria-pressed="true"] { color: var(--text-soft); }
+/* Round 5: nothing moves. */
+.head-end { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.fhead .head-end .dots { margin-left: 0; }
+.hand-link { min-width: 98px; justify-content: center; cursor: pointer; }
+.fields.expr { grid-template-columns: minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.34fr); }
+.fields.gen { grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.75fr) minmax(0, 1.3fr) minmax(0, 0.75fr); }
+.band .left { min-width: 0; }
+.hands-pill { cursor: pointer; }
+.hands-pill .pt-dot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid currentColor; display: inline-block; }
+.hands-pill[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); border-color: var(--charcoal); }
+.hands-pill[aria-pressed="true"] .pt-dot { background: var(--blush); border-color: var(--blush); }
+.kb-fig { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kb-fig .row { flex-wrap: nowrap; }
+.kb-fig .row select { min-width: 0; }
+.kb-fig .check-row { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.kb-fig .kb-say { font-size: 12px; color: var(--text-soft); margin: 0; }
+.kb-fig select.pair { margin-left: auto; }
+.win .strip { margin-top: 12px; }
+.win .band .hint { height: 2.7em; line-height: 1.35; overflow: hidden; margin-top: 4px; }
+.win.compact .band .hint { margin-top: 2px; }
+.mcard[data-menv-card] { cursor: pointer; }
+.menv-ed { inset: 0; padding: 12px 16px 8px; }
+.win.compact .menv-ed { inset: 0; padding: 7px 12px 6px; }
+/* The drawing the editor's full width and held wide (2.4:1), its knobs under it, and Where it goes
+   taking the rest of the height, scrolling inside itself past what fits: the editor is the bench's
+   whole height, and a drawing given all of it was a tower again (588 x 630 at 1660 x 1050). */
+.menv-ed .ed-split { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-height: 0; margin-top: 4px; }
+.menv-ed .ed-pane:first-child { flex: 0 0 auto; }
+.menv-ed .ed-pane:first-child .plot-wrap { flex: 0 1 auto; aspect-ratio: 2.4; min-height: 140px; }
+.menv-ed .ed-pane:last-child { flex: 1 1 auto; min-height: 0; border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 4px; }
+.win.compact .menv-ed .ed-pane:first-child .plot-wrap { aspect-ratio: 2.6; }
+.menv-ed .routes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 2px 18px; overflow-y: auto; min-height: 0; align-content: start; }
+.menv-ed .ed-tools .say { font-size: 11.5px; color: var(--text-soft); white-space: nowrap; }
+.menv-ed .ed-tools .say b { font-weight: 500; color: var(--charcoal); }
+.menv-ed .dot-sm { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .page-note { font-size: 13.5px; color: var(--pg-soft); margin: 6px 0 0; }
 .shot .page > :not(.stage-wrap) { display: none; }
 .shot .page { padding: 0; max-width: none; }
@@ -505,9 +543,9 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 </head>
 <body>
 <div class="page">
-  <p class="eyebrow">Mockup · Play · 18 Nov · the figure area</p>
+  <p class="eyebrow">Mockup · Play · 18 Nov · the figure area · round 2, the build’s spec</p>
   <h1>Play, with its figures full width</h1>
-  <p class="lede">The Keyboard band; under it one row of the settings that are not figures; and the rest of the tab a figure area, its subtabs along the top, each label carrying its summary. No small blocks and no popover.</p>
+  <p class="lede">The Keyboard band; under it one row of the settings that are not figures; and the rest of the tab a figure area, Amp and Filter along its top, each label carrying its summary. The Envelope opens from its card, over the tabs. Nothing moves when anything is selected.</p>
   <p class="small">Live: the curve law, the drawing, the gestures and the menu are the chosen popover’s (<a href="../mseg/popover.html">round 3</a>), with the sustain point that moves and the one-shot as built. The window is laid out in the boxes <code>scope.html</code> itself measures at each size. Nothing in <code>scope.html</code> or the core has changed.</p>
   <div class="bar" role="toolbar" aria-label="What the mockup shows">
     <div class="grp"><span class="lbl">Window</span>
@@ -525,7 +563,11 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
       <div class="pg-switch" id="pgSub">
         <button type="button" data-v="amp">Amp envelope</button>
         <button type="button" data-v="filter">Voice filter</button>
-        <button type="button" data-v="menv">Envelope</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Envelope card</span>
+      <div class="pg-switch" id="pgMenv">
+        <button type="button" data-v="false">Shut</button>
+        <button type="button" data-v="true">Its editor open</button>
       </div></div>
     <div class="grp"><span class="lbl">Two hands</span>
       <div class="pg-switch" id="pgHands">
@@ -543,50 +585,53 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
   <div class="stage-wrap" id="stageWrap"><div class="stage" id="stage"><div class="win" id="win"></div></div></div>
   <div class="fit-line" id="fitLine" aria-live="polite"></div>
   <p class="page-note">Measured live in the window’s own pixels (the plugin’s 960 × 600 is 1067 × 667 of them at Auto’s 90 per cent). Right-click a point for the menu; <i>Hold a note</i> latches until pressed again.</p>
-  <h2>The gap, found</h2>
-  <p>Not the hidden knob store and not the popover: both are out of the flow (the store is <code>hidden</code>, the popover absolutely placed in the stage), and taking both out of the page leaves the gap where it was. The cause is the Keyboard band itself, or rather how it was added on 17 Nov. <code>.bench-body</code> became a <b>wrapping flex row</b> (<code>flex-wrap: wrap</code>, <code>scope.html</code> line 1630) so the band could be its first line and the three columns its second. Its height is the tab’s, and a wrapping flex container with <code>align-content</code> left at <code>normal</code> <b>stretches its lines to fill it</b>: the spare height under the columns is shared between the two lines, and the band, at the top of its stretched line, has half of it under it.</p>
-  <dl class="verdict">
-    <dt>Measured</dt>
-    <dd>At 1660 × 1050 the band ends and the columns start 124 px apart: the 12 px row gap plus half of 224 px spare. At 1400 × 900, 49 px (12 plus half of 74). Open or shut, the same. The owner’s 250 px is the same rule with about 480 px spare, which a taller browser window or shorter columns give; it grows with the window’s height, which is why it showed on a big screen and not at the sizes <code>fittest.py</code> measures.</dd>
-    <dt>The fix</dt>
-    <dd><code>.bench-body { align-content: flex-start; }</code> takes it to the row gap and nothing more, at both windows (<code>checks/gap_cause.py</code>, with a null for each). The layout here does not need it, because Play’s tab becomes a column of three (band, settings, figures) with nothing to stretch; but every other tab still deals into the same wrapping body, so the build should set it anyway.</dd>
-    <dt>The popover</dt>
-    <dd>Its drawing at 1660 × 1050 is 254 × 427, the tower. I could not reproduce its running past the window here: headless, it ends at 865 with the modulation row at 873, its knobs in one row. It is sized to the columns’ height, so anything that makes its content taller than that (the webfonts arriving, a longer reading) runs it over; it goes in this design, so I have not chased it.</dd>
-  </dl>
+  <h2>Round 2: the spec</h2>
+  <p>The owner approved the direction (18 Nov) and asked for four things, all here: the Envelope out of Play and into its own editor over the tabs; the settings row’s values shortened so nothing is cut; <b>nothing on Play moves when anything on it is selected</b>; and the build’s spec written down, <a href="../../play-figures.md"><code>web/docs/play-figures.md</code></a>. Everything below is measured in the brand’s own faces (Jost, Playfair Display), which the checks now load; the first round’s numbers were taken in a fallback face and differed by a pixel or two.</p>
 
-  <h2>What moved where</h2>
+  <h2>The gap, found</h2>
+  <p>Not the hidden knob store and not the popover: both are out of the flow, and taking both out of the page leaves the gap where it was. <code>.bench-body</code> became a <b>wrapping flex row</b> on 17 Nov (<code>flex-wrap: wrap</code>, <code>scope.html</code> line 1630) so the band could be its first line and the columns its second; with <code>align-content</code> left at <code>normal</code> a wrapping flex container <b>stretches its lines</b>, so the spare height under the columns is shared between the two, and the band has half of it under it. At 1660 × 1050 that is 124 px (the 12 px row gap and half of 224 spare); at 1400 × 900, 49. It grows with the window’s height. <b>The fix is <code>.bench-body { align-content: flex-start; }</code></b>, which leaves the row gap and nothing more (<code>checks/gap_cause.py</code>, with nulls). The popover’s drawing at 1660 × 1050 is 254 × 427, the tower; its running past the window I could not reproduce here.</p>
+
+  <h2>What Play is</h2>
   <ul>
-    <li><b>The Keyboard band</b> as built, at the height the page gives it (122 px, 128 with two hands; 117 and 126 compact).</li>
-    <li><b>The settings row</b> directly under it, 8 px down (6 compact): Expression’s four menus and the Generator’s Shape, Glide, Interval and Level, each a small label over its control, four to a section. Both sections keep their dots menu; the Generator keeps its link pill beside its name. It is 67 px tall (60 compact). Its cost: at a quarter of a section each, the menus truncate long values (<i>±2 semitone…</i>, <i>Level and str…</i>); the build could give the menus shorter names for their values, or Expression a little more of the width.</li>
-    <li><b>The figure area</b> takes the rest: a bar of three subtabs, <i>Amp</i>, <i>Filter</i> and <i>Envelope</i>, each label its name and a one-line summary, and under it the chosen view, the three stacked in one place. The modulation row’s Envelope card now opens the Envelope subtab rather than an editor over the tabs.</li>
-    <li><b>Amp envelope:</b> a header with the link pill (two hands only), <i>Shape…</i>, <i>Loop</i> and <i>Hold a note</i>; the drawing across the full width; its six knobs in a row (the gold dot on Attack and Release, the host knobs), the gestures in a line beside them on the full face.</li>
-    <li><b>Voice filter:</b> the type switch in the header; the response with its four knobs, and its envelope with its six. <b>Side by side, unless stacking leaves each drawing 120 px tall</b>, decided by room as the rack folds. Stacked is better where there is the height, because an envelope wants width; that is only 1660 × 1050 of the six windows (802 × 128 each). Everywhere else stacking squeezes them to slivers 30 to 61 px tall, and at 960 × 600 makes Play scroll 5 px; side by side they are 333 to 394 px wide and 122 to 213 tall.</li>
-    <li><b>Envelope:</b> the card’s shape, dashed and grey while it follows the amp envelope, solid in sage once a knob or point is moved; <i>Follow</i> puts it back; <i>Each phrase · Every note</i> in the header.</li>
-    <li><b>The editor style is round 3’s</b>, unchanged: straight amplitude, square-root time, three level lines, round handles, the soft fill, the dotted sustain run to a <i>key up</i> tick, Delay and Hold as gold rings, the right-click menu. The menu gains <b>Sustain here</b>, <b>No sustain: play through</b> (and <i>Sustain at the decay’s end</i> to undo it) and <i>No loop</i>, as built, so the held run moves to the point and a one-shot has no run and no tick. The level is round 3’s to 1e-12 for every shape when the sustain is where it was.</li>
-    <li><b>Two hands:</b> the link pill moves from the section’s title into each subtab’s header. With the amp unlinked it reads <i>Lower’s own</i> in the hand’s ink, the drawing is in that ink, and the upper hand’s shape is drawn dashed behind it on the same time scale.</li>
+    <li><b>The Keyboard band</b>, at the page’s one-hand height (122 px, 117 compact), <b>whatever the mode or the hands</b>. <i>Two hands</i> is the pill in the Keyboard’s heading, beside its name, Poly only (in Dyad and Mono it keeps its place unseen). I chose to <b>reserve the room</b> rather than lay things over the strip: <i>Key · Notes · Layer</i> sits centred on the strip’s top edge in a 12 px margin that is there either way, and the hint under the strip always has two lines’ room. The tallest state, Poly with two hands, then fits the one-hand height with 1.3 px to spare on the full face and 8.3 compact, so the band never grows and the figure area keeps the one-hand size.</li>
+    <li><b>The settings row</b> 8 px under it (6 compact): Expression’s four menus and the Generator’s Shape, Glide, Interval and Level, 67 px tall (60 compact), the columns weighted to what each holds. Every value fits its menu at all six windows (below).</li>
+    <li><b>The figure area</b>: two subtabs, <i>Amp</i> and <i>Filter</i>, each label its name and its one-line summary. Amp: <i>Shape…</i>, <i>Loop</i>, <i>Hold a note</i> in the header, the drawing full width, its six knobs. Filter: the type in the header, the response with its four knobs and its envelope with its six, side by side unless stacking leaves each 120 px tall (only 1660 × 1050).</li>
+    <li><b>The link pills</b> sit at the right end of each header, beside the dots, and are one width (98 px) whatever they say, so their appearing with Two hands and their words changing move nothing else.</li>
+    <li><b>The Envelope is a modulation source</b>, so it has no subtab: its card opens its editor <b>over the tabs</b>, as the LFOs’ do, the bench’s full width and height, in the chosen drawing style: the drawing the editor’s width and held at 2.4:1 (2.6:1 compact), its six knobs under it, and <i>Where it goes</i> taking the rest of the height, scrolling inside itself past what fits. It follows the amp envelope, dashed and grey, until edited; <i>Follow</i> puts it back. Given the whole height beside <i>Where it goes</i>, as the LFOs’ editors lay out, its drawing was a tower again (588 × 630 at 1660 × 1050), which is why it is stacked.</li>
   </ul>
 
-  <h2>Measured at six windows</h2>
-  <p class="small">Filled in by the page as it loads, in the window’s own pixels. <i>Band → settings</i> is the space between the band and the settings row (8 px, 6 compact, nothing in it). <i>Scrolls</i> is Play’s scroll and anything of the view past its foot. <i>Knob rows</i> counts the rows each knob group and both settings rows actually take. The summary is the subtab’s, shortened (in italics) only when it does not fit; at these six windows none was.</p>
+  <h2>Nothing moves</h2>
+  <p>The owner’s rule: selecting something must not shift the view. The checks compare <b>every box on Play</b>, 40 of them with the amp shown (the band, its strip, its hint and its mode switch; the settings row and each field and its control; the figure area, its bar and both subtabs; the view’s header, each tool, the drawing and every knob cell), to half a pixel, across: Two hands on and off in Dyad, Mono and Poly; Loop, Sustain here, No sustain and a note held; each filter type (Off says <i>the filter is off</i>); the filter envelope’s Loop; both link pills; Amp and Filter (outside the view); and the Envelope’s editor opening over the tabs. All hold at all six windows. The nulls: the band 6 px taller with two hands, as testing has it, and the link pill put before the tools, are each seen to move something. The check found one real shift on the way: the chosen subtab covered the bar’s rule with a 1 px negative margin, so both subtabs changed height on every switch; it is a shadow now.</p>
+
+  <h2>The shortened names</h2>
+  <p class="small">Each shown value’s full name is its option’s <code>title</code>, and the menu’s own while chosen; it stays the name everywhere else (the info line, the search, a host’s parameter text). Measured in Jost at 12 px against each menu’s width less 20 px for the arrow; the tightest margin is 2.8 px (<i>Level, strike, FM</i> at 1100 × 860, where the full face’s menus are wide but no wider than compact). The full names do not fit at 960 × 600 in any of the six menus, which is the null.</p>
   <div class="table-wrap"><table class="check-table">
-    <thead><tr><th>Window</th><th>Showing</th><th>Figure area</th><th>Drawings, aspect</th><th>Band → settings</th><th>Scrolls</th><th>Mod row, Picture</th><th>Knob rows</th><th>Its summary</th></tr></thead>
+    <thead><tr><th>Menu</th><th>Shown</th><th>Full name</th></tr></thead>
+    <tbody>
+      <tr><td>Pitch bend</td><td>±1 st … ±24 st</td><td>±1 semitone … ±24 semitones</td></tr>
+      <tr><td>Mod wheel, Pressure</td><td>Picture · Scan</td><td>Picture amount · Scan depth (Vibrato, Nothing as they were)</td></tr>
+      <tr><td>Velocity</td><td>Level + strike · Level, strike, FM</td><td>Level and strike · Level, strike and FM</td></tr>
+      <tr><td>Shape</td><td>Sine + 3rd · Drawn · Noise · Pink · Brown · S&amp;H</td><td>Sine + 3rd harmonic · Drawn cycle · White noise · Pink noise · Brown noise · Stepped (S&amp;H) (the other eight as they were)</td></tr>
+      <tr><td>Interval</td><td>Unison 1:1 · Min 2nd 16:15 · Maj 2nd 9:8 · Min 3rd 6:5 · Maj 3rd 5:4 · 4th 4:3 · Tritone 45:32 · 5th 3:2 · Min 6th 8:5 · Maj 6th 5:3 · Min 7th 16:9 · Maj 7th 15:8 · Octave 2:1</td><td>Unison · 1:1, Minor 2nd · 16:15, … Perfect 4th · 4:3, Perfect 5th · 3:2, … Octave · 2:1</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Measured at six windows</h2>
+  <p class="small">Filled in by the page as it loads, in the window’s own pixels. <i>Band → settings</i> is the space between the band and the settings row, with nothing in it. <i>Knob rows</i> counts the rows each knob group and both settings rows take. A summary is shortened (in italics) only when it does not fit; none was.</p>
+  <div class="table-wrap"><table class="check-table">
+    <thead><tr><th>Window</th><th>Showing</th><th>Figure area or editor</th><th>Drawings, aspect</th><th>Band → settings</th><th>Scrolls</th><th>Mod row, Picture</th><th>Knob rows</th><th>Its summary</th></tr></thead>
     <tbody id="surveyRows"></tbody>
   </table></div>
 
   <h2>The aspect, held</h2>
-  <p>Every drawing is wider than tall at every window. The amp envelope and the Envelope run from <b>2.2:1</b> (802 × 367 at 1660 × 1050) to <b>5.4:1</b> (810 × 150 at 1200 × 680 with two hands); the filter’s two from <b>1.6:1</b> (340 × 213 at 1100 × 860) to <b>2.9:1</b> side by side, and 6.5:1 stacked at 1660 × 1050. The checks hold every drawing between 1.5:1 and 7:1, the amp’s and the Envelope’s at 2:1 or wider, and none under 120 px tall. The squarest is the filter at 1100 × 860, the full face at its narrowest; it is the one I would watch. The 8 ms attack is a slope again: 62 px wide over a rise of about 135 px at 960 × 600, and 73 px over about 355 at 1660 × 1050, where the popover’s tower gave it 17 px over 400.</p>
-
-  <h2>At 960 × 600</h2>
-  <p>The figure area is 709 × 264 (257 with two hands), and the amp drawing in it <b>689 × 145</b> (138 with two hands), 4.8:1: shorter than the popover’s, nearly three times as wide, and with its knobs in one row and nothing scrolling. I think it is usable. The filter’s two are 333 × 130 and 333 × 122, two pixels over the floor the checks hold. If it proves too short, what gives first is the settings row (60 px): Expression’s four could fold behind its dots, which would give the drawings about 30 px more; after that, the knob row’s readings could go into the knobs’ tooltips, about 12 more.</p>
+  <p>Every drawing is wider than tall at every window. The amp envelope runs from 2.2:1 (802 × 367 at 1660 × 1050) to 5.1:1 (810 × 159 at 1200 × 680), and is the same size with two hands. The filter’s two run from 1.6:1 (340 × 213 at 1100 × 860, the squarest) to 2.9:1 side by side, and 6.5:1 stacked at 1660 × 1050. The Envelope’s editor holds 2.4:1, 2.6:1 compact (683 × 263 at 960 × 600). The checks hold every drawing between 1.5:1 and 7:1, the amp’s and the Envelope’s at 2:1 or wider, and none under 120 px tall. At 960 × 600 the figure area is 709 × 264 and the amp drawing 689 × 145; if that is too short, Expression’s four folding behind its dots would give about 30 px.</p>
 
   <h2>What I would change my mind on</h2>
   <ul>
-    <li><b>Side by side for the filter.</b> I expected stacking to win, since an envelope wants width; it does only at 1660 × 1050, where the figure area is 501 px tall; at 1400 × 900 (351 px) stacking leaves each drawing 53 px. Hence the rule by room, which costs the filter view looking different at 1660 × 1050 from everywhere else.</li>
-    <li><b>The settings row as labels over controls.</b> Labels beside the controls would need about 125 px a control, a thousand for the eight, against 709 at 960 × 600; two sections of four with their labels over them are the same height as a line each. If the owner would rather the Generator’s four were on the Ink tab with the oscillator, the row could be Expression alone and 30 px shorter.</li>
-    <li><b>The summaries.</b> I prepared shorter forms (drop the decay, then the sustain) for the compact face, and none was needed: the longest, <i>8 ms · 120 ms · −3.1 dB · 180 ms</i>, fits a third of the bar at 960 × 600. A longer sound (<i>1.40 s · 1.60 s</i>) might not; the shortening is there for it.</li>
-    <li><b>Hold and the upper hand’s ghost</b> share the same time scale as the edited hand, so a much longer upper shape runs off the right edge rather than squeezing the one you are editing. I would rather that than have the edited shape change size when the other hand changes.</li>
+    <li><b>Reserving the band’s room</b> costs nothing measurable (the band is the page’s one-hand height already), but the hint has two lines’ room on every state, so with one sound there is a blank line under the strip. Laying <i>Key · Notes · Layer</i> and the hint over the strip instead would buy that line back for the figures, at the cost of covering the keys’ tops.</li>
+    <li><b>The Envelope’s editor stacked</b> rather than in the LFOs’ two columns. If the owner wants the four cards’ editors alike, the cost is a drawing nearly square at the bench’s height, or one capped at 2.4:1 with empty paper under it.</li>
+    <li><b>Side by side for the filter</b>, except at 1660 × 1050, which costs the filter view looking different there.</li>
   </ul>
-
 </div>
 <script>
 "use strict";
@@ -1981,7 +2026,12 @@ const SIZES = {
 };
 const SIZE_ORDER = ["1660x1050", "1400x900", "1100x860", "1200x680", "1100x680", "960x600"];
 const FIT_SIZES = ["1400x900", "1100x860", "1200x680", "1100x680", "960x600"];   // fittest.py's five
-Object.assign(S, { size: "1660x1050", sub: "amp", flay: "auto", level: "lin" });
+Object.assign(S, { size: "1660x1050", sub: "amp", flay: "auto", level: "lin", mode: "poly", menvOpen: false });
+/* The band's one height, whatever the mode and the hands: the page's own one-hand height, which its
+   tallest state (Poly with two hands) fits with 13 px or more to spare once Key · Notes · Layer sits in
+   the strip's top margin and the hint's two lines are always reserved. So nothing grows when Two hands
+   is pressed, and the figure area keeps the one-hand size. The checks hold every state inside it. */
+const BAND_H = { "1660x1050": 122, "1400x900": 122, "1100x860": 122, "1200x680": 117, "1100x680": 117, "960x600": 117 };
 /* The filter's two drawings: side by side, unless stacking them leaves each at least this tall, as
    the rack folds by room (fitRack) rather than by window size. Stacked is better when there is the
    height for it, since an envelope wants width; under it, side by side, since a stacked pair is
@@ -1992,34 +2042,59 @@ const Z = () => SIZES[S.size];
 /* ===================== the pieces of Play ===================== */
 const DOTS = '<span class="dots">···</span>';
 const title = (name, extra) => '<div class="sec-title">' + name + (extra || "") + DOTS + '</div>';
-const fld = (lab, ctl, host) => '<div class="fld"><span class="fl' + (host ? " host" : "") + '">' + lab + '</span>' + ctl + '</div>';
-const menu = (lab, opt) => fld(lab, '<select aria-label="' + lab + '"><option>' + opt + '</option></select>');
-const mini = (lab, frac, val, host) => fld(lab, '<span class="mini-knob">' + knobHTML(frac, false, ' aria-label="' + lab + '"') + '<span>' + val + '</span></span>', host);
+/* The link pill: the same width whatever it says, and at the right end of its header beside the
+   dots, so its showing (Two hands on) and its words changing (linked or not) move nothing else. */
 const handPill = (section) => {
   if (S.hands !== 2) return "";
   const linked = S.linked[section], hand = S.editing ? "Upper" : "Lower";
   return '<button type="button" class="hand-link" data-link="' + section + '" aria-pressed="' + linked + '" style="--hand: var(' + (S.editing ? "--hand-b" : "--hand-a") + ')">'
     + (linked ? "Same in both" : '<span class="hand-dot"></span>' + hand + "’s own") + '</button>';
 };
+/* The band. Two hands is the pill in the Keyboard's heading (Poly only; kept in place, unseen, in
+   Dyad and Mono), and nothing moves when it is pressed: the band is always as tall as its tallest
+   state, Key · Notes · Layer sits in a margin over the strip that is there either way, and the hint
+   has two lines' room whether it needs one or two. */
 function bandHTML() {
-  const two = S.hands === 2;
+  const two = S.hands === 2, poly = S.mode === "poly";
+  const mode = (m, n) => '<button type="button" data-mode="' + m + '" aria-pressed="' + (S.mode === m) + '">' + n + '</button>';
+  const left = S.mode === "dyad" ? '<label class="row check-row"><input type="checkbox"> <span class="lab">Hold the interval under one note</span></label>'
+    : S.mode === "mono" ? '<p class="kb-say">The newest note, and the Interval above it.</p>'
+    : '<div class="row"><span class="lab">Outline</span><select aria-label="Outline"><option>2</option></select><select aria-label="Which notes make the outline"><option>bass and melody</option></select></div>'
+      + '<div class="row"><label class="check-row"><input type="checkbox"> <span class="lab">Tune a chord</span></label>'
+      + (two ? '<select class="pair" aria-label="How the two hands are drawn"><option title="a figure each">each</option><option title="A against B">A vs B</option></select>' : "") + '</div>';
   return '<div class="band" id="band"><div class="left">'
-    + '<div class="sec-title">Keyboard <span class="pill">' + (two ? "● " : "○ ") + 'Two hands</span>' + DOTS + '</div>'
-    + '<span class="switch caps" style="align-self:flex-start"><button type="button" aria-pressed="false">Dyad</button><button type="button" aria-pressed="false">Mono</button><button type="button" aria-pressed="true">Poly</button></span>'
-    + '<div class="row"><span class="lab">Outline</span><select aria-label="Outline"><option>2</option></select><select aria-label="Outline shape"><option>bass and melody</option></select></div>'
-    + '<div class="row"><input type="checkbox" aria-label="Tune a chord"> <span class="lab">Tune a chord</span></div></div>'
-    + '<div><div class="strip">' + (two ? '<span class="switch caps kswitch"><button type="button" aria-pressed="true">Key</button><button type="button" aria-pressed="false">Notes</button><button type="button" aria-pressed="false">Layer</button></span>' : "")
+    + '<div class="sec-title">Keyboard <button type="button" class="pill hands-pill" id="handsPill" aria-pressed="' + two + '"' + (poly ? "" : ' style="visibility:hidden" tabindex="-1"') + ' title="A second sound: split at a key, split by the notes held, or layered"><span class="pt-dot"></span>Two hands</button>' + DOTS + '</div>'
+    + '<span class="switch caps" id="modeSwitch" style="align-self:flex-start">' + mode("dyad", "Dyad") + mode("mono", "Mono") + mode("poly", "Poly") + '</span>'
+    + '<div class="kb-fig">' + left + '</div></div>'
+    + '<div class="kb-right"><div class="strip" id="strip"><span class="switch caps kswitch"' + (two ? "" : ' style="visibility:hidden"') + '><button type="button" aria-pressed="true">Key</button><button type="button" aria-pressed="false">Notes</button><button type="button" aria-pressed="false">Layer</button></span>'
     + '<svg id="keys" viewBox="0 0 588 66" preserveAspectRatio="none" aria-label="Three octaves of keys"></svg></div>'
-    + '<p class="hint">' + (two ? "Notes under C4 play the lower sound; C4 and up the upper. Press a key to split there." : "One sound.") + '</p></div></div>';
+    + '<p class="hint" id="hint">' + (two ? "Notes under C4 play the lower sound; C4 and up the upper. Press a key to split there; ‹ › for other octaves." : "One sound. In Poly, Two hands gives a second sound.") + '</p></div></div>';
 }
+/* The menus' values, shortened to fit a quarter of a section at 960 x 600; the full name is each
+   option's title (shown on hover, read out) and stays the name everywhere else (the info line, the
+   search, the plugin's parameter text). [shown, full]. */
+const MENUS = {
+  "Pitch bend": { at: 1, opts: [["±1 st", "±1 semitone"], ["±2 st", "±2 semitones"], ["±3 st", "±3 semitones"], ["±5 st", "±5 semitones"], ["±7 st", "±7 semitones"], ["±12 st", "±12 semitones"], ["±24 st", "±24 semitones"]] },
+  "Mod wheel": { at: 0, opts: [["Vibrato", "Vibrato"], ["Picture", "Picture amount"], ["Scan", "Scan depth"], ["Nothing", "Nothing"]] },
+  "Pressure": { at: 3, opts: [["Vibrato", "Vibrato"], ["Picture", "Picture amount"], ["Scan", "Scan depth"], ["Nothing", "Nothing"]] },
+  "Velocity": { at: 0, opts: [["Level + strike", "Level and strike"], ["Level, strike, FM", "Level, strike and FM"]] },
+  "Shape": { at: 1, opts: [["Sine + 3rd", "Sine + 3rd harmonic"], ["Sine", "Sine"], ["Square", "Square"], ["Pulse", "Pulse"], ["Triangle", "Triangle"], ["Saw", "Saw"], ["Drawbars", "Drawbars"], ["Morph", "Morph"],
+    ["Drawn", "Drawn cycle"], ["Wavetable", "Wavetable"], ["Noise", "White noise"], ["Pink", "Pink noise"], ["Brown", "Brown noise"], ["S&H", "Stepped (S&H)"]] },
+  "Interval": { at: 0, opts: [["Unison 1:1", "Unison · 1:1"], ["Min 2nd 16:15", "Minor 2nd · 16:15"], ["Maj 2nd 9:8", "Major 2nd · 9:8"], ["Min 3rd 6:5", "Minor 3rd · 6:5"], ["Maj 3rd 5:4", "Major 3rd · 5:4"], ["4th 4:3", "Perfect 4th · 4:3"],
+    ["Tritone 45:32", "Tritone · 45:32"], ["5th 3:2", "Perfect 5th · 3:2"], ["Min 6th 8:5", "Minor 6th · 8:5"], ["Maj 6th 5:3", "Major 6th · 5:3"], ["Min 7th 16:9", "Minor 7th · 16:9"], ["Maj 7th 15:8", "Major 7th · 15:8"], ["Octave 2:1", "Octave · 2:1"]] },
+};
+const fld = (lab, ctl, host) => '<div class="fld"><span class="fl' + (host ? " host" : "") + '">' + lab + '</span>' + ctl + '</div>';
+const menu = (lab) => { const m = MENUS[lab]; return fld(lab, '<select data-menu="' + lab + '" aria-label="' + lab + '" title="' + m.opts[m.at][1] + '">'
+  + m.opts.map(([s, f], i) => '<option title="' + f + '"' + (i === m.at ? " selected" : "") + '>' + s + '</option>').join("") + '</select>'); };
+const mini = (lab, frac, val, host) => fld(lab, '<span class="mini-knob">' + knobHTML(frac, false, ' aria-label="' + lab + '"') + '<span>' + val + '</span></span>', host);
 function setrowHTML() {
   return '<div class="setrow" id="setrow">'
-    + '<div class="grp" data-sect="expr">' + title("Expression") + '<div class="fields">'
-    + menu("Pitch bend", "±2 semitones") + menu("Mod wheel", "Vibrato") + menu("Pressure", "Nothing") + menu("Velocity", "Level and strike") + '</div></div>'
-    + '<div class="grp" data-sect="gen">' + title("Generator", " " + handPill("gen")) + '<div class="fields">'
-    + menu("Shape", "Sine") + mini("Glide", 0.04, "off") + menu("Interval", "Unison · 1:1") + mini("Level", 0.55, "0.55", true) + '</div></div></div>';
+    + '<div class="grp" data-sect="expr">' + title("Expression") + '<div class="fields expr">'
+    + menu("Pitch bend") + menu("Mod wheel") + menu("Pressure") + menu("Velocity") + '</div></div>'
+    + '<div class="grp" data-sect="gen">' + title("Generator", " " + handPill("gen")) + '<div class="fields gen">'
+    + menu("Shape") + mini("Glide", 0.04, "off") + menu("Interval") + mini("Level", 0.55, "0.55", true) + '</div></div></div>';
 }
-const SUBS = [["amp", "Amp"], ["filter", "Filter"], ["menv", "Envelope"]];
+const SUBS = [["amp", "Amp"], ["filter", "Filter"]];
 // Each subtab's summary, longest first: the first that fits its label is shown.
 function summaries(sub) {
   if (sub === "amp") {
@@ -2027,20 +2102,14 @@ function summaries(sub) {
     const Sv = si < 0 ? "one shot" : dbReading(e.m.sus);
     return [[A, D, Sv, R], [A, Sv, R], [A, R], []].map((p) => p.join(" · "));
   }
-  if (sub === "filter") {
-    const F = filt();
-    if (F.type === 0) return ["off", ""];
-    const ty = ["off", "low pass", "band pass", "high pass", "notch"][F.type], hz = hzReading(cutoffHz(F.cut));
-    return [ty + " " + hz + " · " + octReading(F.amt), ty + " " + hz, hz, ""];
-  }
-  if (!S.menv.own) return ["follows the amp", "follows amp", ""];
-  const e = S.menv.env;
-  return [[timeReading("menv", e.m.attack), timeReading("menv", e.m.decay), pctReading(e.m.sus), timeReading("menv", e.m.release)].join(" · "),
-    [timeReading("menv", e.m.attack), timeReading("menv", e.m.release)].join(" · "), ""];
+  const F = filt();
+  if (F.type === 0) return ["off", ""];
+  const ty = ["off", "low pass", "band pass", "high pass", "notch"][F.type], hz = hzReading(cutoffHz(F.cut));
+  return [ty + " " + hz + " · " + octReading(F.amt), ty + " " + hz, hz, ""];
 }
 function fbarHTML() {
   return '<div class="fbar" role="tablist" aria-label="Figures">' + SUBS.map(([k, n]) => '<button type="button" class="ftab" role="tab" data-sub="' + k + '" aria-selected="' + (S.sub === k) + '">'
-    + '<b>' + (k === "menv" ? '<span class="dot-sm" style="background: var(--ch4)"></span>' : "") + n + '</b><span class="sum" data-sum="' + k + '"></span></button>').join("") + '</div>';
+    + '<b>' + n + '</b><span class="sum" data-sum="' + k + '"></span></button>').join("") + '</div>';
 }
 const playBtn = '<button type="button" class="tbtn play" data-play="1" aria-pressed="false">Hold a note</button>';
 const shapeSel = (kind) => '<select class="shape-sel" data-shape-sel="' + kind + '" aria-label="Start from a shape"><option value="">Shape…</option>'
@@ -2051,26 +2120,37 @@ const plotHTML = (attrs) => '<div class="plot-wrap"><svg class="plot" ' + attrs 
 const envPlot = (kind, label) => plotHTML('data-kind="' + kind + '" aria-label="' + label + ': drag its points; press the line twice to add one; right-click a point for more"');
 const typeSwitch = () => '<span class="switch caps ftype" role="group" aria-label="The filter’s type">' + ["Off", "Low", "Band", "High", "Notch"].map((n, i) => '<button type="button" data-ftype="' + i + '" aria-pressed="false">' + n + '</button>').join("") + '</span>';
 const NOTE = '<p class="note">Drag a point; press the line twice to add one, a point you added twice to take it away. Right-click a point for <b>Sustain here</b>, <b>No sustain</b> and the loop.</p>';
+const headEnd = (section) => '<span class="head-end">' + handPill(section) + DOTS + '</span>';
 function viewsHTML() {
   const amp = '<div class="fview" data-view="amp"' + (S.sub === "amp" ? "" : " hidden") + '>'
-    + '<div class="fhead">' + handPill("amp") + shapeSel("amp") + loopBtn("amp") + playBtn + DOTS + '</div>'
+    + '<div class="fhead">' + shapeSel("amp") + loopBtn("amp") + playBtn + headEnd("amp") + '</div>'
     + envPlot("amp", "The amp envelope") + '<div class="ffoot">' + figKnobs(envKnobs("amp")) + NOTE + '</div></div>';
   const fpaneResp = '<div class="fpane"><div class="sub-title">Response <span class="fenv-words">· drag the point</span></div>'
     + plotHTML('data-filter="1" aria-label="The filter’s response: drag the point"') + figKnobs(FILTER_KNOBS, true) + '</div>';
   const fpaneEnv = '<div class="fpane"><div class="sub-title">Its envelope <span class="fenv-words" data-fenv-words="1"></span>' + shapeSel("fenv") + loopBtn("fenv") + '</div>'
     + envPlot("fenv", "The filter’s envelope") + figKnobs(envKnobs("fenv")) + '</div>';
   const filter = '<div class="fview" data-view="filter"' + (S.sub === "filter" ? "" : " hidden") + '>'
-    + '<div class="fhead">' + handPill("filter") + typeSwitch() + playBtn + DOTS + '</div>'
+    + '<div class="fhead">' + typeSwitch() + playBtn + headEnd("filter") + '</div>'
     + '<div class="fbody' + (S.flay === "stacked" ? " stacked" : "") + '" id="fbody">' + fpaneResp + fpaneEnv + '</div></div>';
-  const menv = '<div class="fview" data-view="menv"' + (S.sub === "menv" ? "" : " hidden") + '>'
-    + '<div class="fhead"><span class="say" data-menv-say="1"></span><button type="button" class="tbtn" data-follow="1">Follow</button>'
+  return '<div class="fviews">' + amp + filter + '</div>';
+}
+/* The Envelope card's editor: over the tabs, as the LFOs' are, the card's source drawn large in the
+   chosen style and Where it goes beside it. A modulation source, so not part of Play's figures. */
+function menvEditorHTML() {
+  if (!S.menvOpen) return "";
+  return '<div class="ed menv-ed" id="menvEd" role="dialog" aria-labelledby="menvEdName">'
+    + '<div class="ed-head"><span class="dot-sm" style="background: var(--ch4)"></span><span class="nm" id="menvEdName">Envelope</span>'
+    + '<span class="desc">One envelope for all the notes: a swell or a strike to move anything by.</span>'
+    + '<button type="button" class="link-btn caps close" data-menv-close="1">Close</button></div>'
+    + '<div class="ed-tools"><span class="say" data-menv-say="1"></span><button type="button" class="tbtn" data-follow="1">Follow</button>'
     + '<span class="switch caps" role="radiogroup" aria-label="When it starts"><button type="button" aria-pressed="true">Each phrase</button><button type="button" aria-pressed="false">Every note</button></span>'
-    + playBtn + DOTS + '</div>'
-    + envPlot("menv", "The Envelope card’s shape") + '<div class="ffoot">' + figKnobs(envKnobs("menv")) + '<p class="note">Routed to <b>Cutoff</b> and <b>Twist</b>. It draws the amp envelope, dashed, until you edit it; the first edit makes it its own, and <b>Follow</b> puts it back.</p></div></div>';
-  return '<div class="fviews">' + amp + filter + menv + '</div>';
+    + shapeSel("menv") + loopBtn("menv") + playBtn + '</div>'
+    + '<div class="ed-split mod"><div class="ed-pane">' + envPlot("menv", "The Envelope card’s shape") + figKnobs(envKnobs("menv")) + '</div>'
+    + '<div class="ed-pane"><div class="pane-title">Where it goes</div><div class="routes">'
+    + '<div class="r"><b>Cutoff</b><span>+40%</span></div><div class="r"><b>Twist</b><span>+25%</span></div><div class="add">Drag the card onto a knob to add one</div></div></div></div></div>';
 }
 function winHTML() {
-  const z = Z(), two = S.hands === 2, band = z.band[two ? 1 : 0], scrW = z.benchL - 23, chips = z.modH < 40;
+  const z = Z(), two = S.hands === 2, scrW = z.benchL - 23, chips = z.modH < 40;
   const side = Math.max(120, Math.min(scrW - 46 - 32, z.modT - z.hdr - (z.compact ? 110 : 150)));
   return '<header class="hdr" style="height:' + z.hdr + 'px">'
     + '<div class="title">OSCILLOSCOPE<small>A3 · E4, a fifth</small></div><span class="arrow">&#8249;</span>'
@@ -2085,14 +2165,14 @@ function winHTML() {
     + '<section class="bench" id="bench" aria-label="The Bench" style="left:' + z.benchL + 'px;top:' + z.railT + 'px;width:' + z.stageW + 'px;height:' + (z.stageT + z.stageH - z.railT) + 'px">'
     + '<div class="tabs" style="height:' + z.railH + 'px"><div class="tab on"><b>Play</b><span>Poly · sine · 220 Hz · low pass</span></div><div class="tab"><b>Ink</b><span>Ratio 1:1 · unison · FM off</span></div><div class="tab"><b>Space &amp; Memory</b><span>Dry</span></div><div class="tab find">Find a control&nbsp; /</div></div>'
     + '<div class="playbody" id="playBody" style="top:' + (z.stageT - z.railT) + 'px;width:' + z.stageW + 'px;height:' + z.stageH + 'px">'
-    + bandHTML().replace('<div class="band" id="band">', '<div class="band" id="band" style="height:' + band + 'px">')
+    + bandHTML().replace('<div class="band" id="band">', '<div class="band" id="band" style="height:' + BAND_H[S.size] + 'px">')
     + setrowHTML()
-    + '<div class="figs" id="figs">' + fbarHTML() + viewsHTML() + '</div></div></section>'
+    + '<div class="figs" id="figs">' + fbarHTML() + viewsHTML() + '</div></div>' + menvEditorHTML() + '</section>'
     + '<div class="modrow' + (chips ? " chips" : "") + '" id="modrow" style="top:' + z.modT + 'px;height:' + z.modH + 'px">'
     + '<div class="lead">Modulation<small>Drag onto a knob. Press to open.</small></div>'
     + '<div class="mcard"><span class="dot" style="background: var(--ch1)"></span>LFO 1<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C27 -6 27 -6 55 18 S82 42 110 18 S137 -6 165 18 S192 42 220 18" fill="none" stroke="var(--ch1)" stroke-width="1.5"/></svg></div>'
     + '<div class="mcard"><span class="dot" style="background: var(--ch2)"></span>LFO 2<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M0 18 C18 0 18 0 37 18 S55 36 73 18 S92 0 110 18 S128 36 147 18 S165 0 183 18 S202 36 220 18" fill="none" stroke="var(--ch2)" stroke-width="1.5"/></svg></div>'
-    + '<div class="mcard" role="button" tabindex="0" data-sub-card="menv" aria-pressed="' + (S.sub === "menv") + '"><span class="dot" style="background: var(--ch4)"></span>Envelope<svg id="menvCardSvg" viewBox="0 0 220 36" preserveAspectRatio="none" aria-hidden="true"></svg></div>'
+    + '<div class="mcard" role="button" tabindex="0" data-menv-card="1" aria-pressed="' + !!S.menvOpen + '" aria-controls="menvEd"><span class="dot" style="background: var(--ch4)"></span>Envelope<svg id="menvCardSvg" viewBox="0 0 220 36" preserveAspectRatio="none" aria-hidden="true"></svg></div>'
     + '<div class="mcard"><span class="dot" style="background: var(--ch6)"></span>Photocell<svg viewBox="0 0 220 36" preserveAspectRatio="none"><path d="M30 30 L215 30" fill="none" stroke="var(--ch6)" stroke-width="1.5"/></svg></div>'
     + '<div class="rt"><span class="link-btn caps">Routings · 2</span></div></div>'
     + '<div class="pic" id="pic" style="top:' + z.picT + 'px;height:' + z.picH + 'px"><span class="t">Picture</span><div class="knobs" id="picKnobs">'
@@ -2148,24 +2228,65 @@ function measureNow() {
   const win = document.getElementById("win"), sc = stageScale(), W = win.getBoundingClientRect();
   const R = (n) => { const q = n.getBoundingClientRect(); return { l: (q.left - W.left) / sc, t: (q.top - W.top) / sc, r: (q.right - W.left) / sc, b: (q.bottom - W.top) / sc, w: q.width / sc, h: q.height / sc }; };
   const r1 = (v) => Math.round(v * 10) / 10;
-  const body = document.getElementById("playBody"), band = R(document.getElementById("band")), set = R(document.getElementById("setrow")), figs = R(document.getElementById("figs"));
+  const body = document.getElementById("playBody"), bandN = document.getElementById("band"), band = R(bandN), set = R(document.getElementById("setrow")), figs = R(document.getElementById("figs"));
   const mod = R(document.getElementById("modrow")), pic = R(document.getElementById("pic")), stage = R(body);
   const view = document.querySelector('.fview:not([hidden])');
-  // Anything of the view's below its own foot: the view is clipped, so its scroll height would not say.
   const vr = R(view), lastBottom = Math.max(...Array.from(view.querySelectorAll(".kcell, .plot-wrap, .fhead, .sub-title")).map((n) => R(n).b));
-  const plots = Array.from(view.querySelectorAll("svg.plot")).map((s) => ({ what: s.dataset.filter ? "response" : s.dataset.kind, w: Math.round(s.clientWidth), h: Math.round(s.clientHeight), aspect: r1(s.clientWidth / Math.max(1, s.clientHeight)) }));
-  const rows = Array.from(document.querySelectorAll(".knobs.fig, .setrow .fields")).filter((k) => k.getClientRects().length).map((k) => new Set(Array.from(k.children).map((c) => Math.round(R(c).t))).size);
-  // What sits between the band and the settings row: the gap, and any element of the tab drawn in it.
+  const plotsIn = (host) => Array.from(host.querySelectorAll("svg.plot")).map((s) => ({ what: s.dataset.filter ? "response" : s.dataset.kind, w: Math.round(s.clientWidth), h: Math.round(s.clientHeight), aspect: r1(s.clientWidth / Math.max(1, s.clientHeight)) }));
+  const rowsIn = (host) => Array.from(host.querySelectorAll(".knobs.fig, .fields")).filter((k) => k.getClientRects().length).map((k) => new Set(Array.from(k.children).map((c) => Math.round(R(c).t))).size);
   const between = Array.from(body.querySelectorAll("*")).filter((n) => { const q = R(n); return q.h > 0 && q.t >= band.b - 0.5 && q.b <= set.t + 0.5 && !n.closest("#band, #setrow"); }).length;
-  return {
-    size: S.size, sub: S.sub, hands: S.hands, flay: S.flay, flayUsed: S.flayUsed,
-    stage: { w: Math.round(stage.w), h: Math.round(stage.h) }, band: Math.round(band.h), settings: Math.round(set.h),
+  // The band's content against its one height: the lowest thing in it, in every mode and hands state.
+  const bandContent = Math.max(...Array.from(bandN.querySelectorAll(".sec-title, .switch, .kb-fig > *, #strip, #hint")).map((n) => R(n).b));
+  // Every menu's every value against the room its menu gives it, measured in the menu's own font. The
+  // room is the menu's inner width less the browser's arrow (20 px, Chromium's at these sizes).
+  const ctx = (measureNow.c || (measureNow.c = document.createElement("canvas"))).getContext("2d");
+  const menus = Array.from(document.querySelectorAll("select[data-menu]")).map((sel) => {
+    const cs = getComputedStyle(sel);
+    ctx.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+    const room = sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20;
+    const widest = Array.from(sel.options).reduce((m, o) => (ctx.measureText(o.text).width > m.w ? { w: ctx.measureText(o.text).width, t: o.text } : m), { w: 0, t: "" });
+    const fullWidest = Math.max(...Array.from(sel.options).map((o) => ctx.measureText(o.title).width));
+    return { menu: sel.dataset.menu, room: r1(room), widest: r1(widest.w), text: widest.t, fits: widest.w <= room, fullFits: fullWidest <= room };
+  });
+  const out = {
+    size: S.size, sub: S.sub, hands: S.hands, flay: S.flay, flayUsed: S.flayUsed, mode: S.mode, menvOpen: !!S.menvOpen,
+    stage: { w: Math.round(stage.w), h: Math.round(stage.h) }, band: Math.round(band.h), bandOver: r1(bandContent - band.b), settings: Math.round(set.h),
     gapBandToSettings: r1(set.t - band.b), between, gapSettingsToFigs: r1(figs.t - set.b),
     figs: { w: Math.round(figs.w), h: Math.round(figs.h) },
     scroll: body.scrollHeight - body.clientHeight, viewOver: r1(lastBottom - (vr.b - 2)),
     coversModrow: figs.b > mod.t + 0.5 || stage.b > mod.t + 0.5, coversPicture: figs.b > pic.t + 0.5,
-    plots, knobRows: rows, labels: S.labels,
+    plots: plotsIn(view), knobRows: rowsIn(document.getElementById("playBody")), labels: S.labels, menus,
   };
+  const ed = document.getElementById("menvEd");
+  if (ed) {
+    const E = R(ed), last = Math.max(...Array.from(ed.querySelectorAll(".kcell, .plot-wrap, .ed-tools, .routes")).map((n) => R(n).b));
+    out.editor = { w: Math.round(E.w), h: Math.round(E.h), over: r1(last - (E.b - 4)), covers: E.b > mod.t + 0.5, plots: plotsIn(ed), knobRows: rowsIn(ed) };
+  }
+  return out;
+}
+/* Every box on Play, to the tenth of a pixel, keyed by what it is: the band, its strip and hint, the
+   mode switch; the settings row, each field, menu and knob; the figure area, its bar and each subtab;
+   and the shown view's header, its tools, drawings and every knob cell. The checks compare these across
+   the states that must not move anything (patchtest.py's knob-cell invariance, for a whole tab). */
+function boxesNow() {
+  const win = document.getElementById("win"), sc = stageScale(), W = win.getBoundingClientRect(), out = {};
+  const put = (key, n) => { if (!n || !n.getClientRects().length) return; const q = n.getBoundingClientRect();
+    out[key] = [(q.left - W.left) / sc, (q.top - W.top) / sc, q.width / sc, q.height / sc].map((v) => Math.round(v * 10) / 10); };
+  put("band", document.getElementById("band")); put("strip", document.getElementById("strip")); put("hint", document.getElementById("hint"));
+  put("modes", document.getElementById("modeSwitch")); put("handsPill", document.getElementById("handsPill"));
+  put("setrow", document.getElementById("setrow"));
+  document.querySelectorAll(".setrow .fld").forEach((f, i) => { put("field " + i, f); put("field " + i + " control", f.querySelector("select, .knob-face")); });
+  put("figs", document.getElementById("figs")); put("fbar", document.querySelector(".fbar")); put("fviews", document.querySelector(".fviews"));
+  document.querySelectorAll(".ftab").forEach((t) => put("subtab " + t.dataset.sub, t));
+  const v = document.querySelector(".fview:not([hidden])");
+  if (v) {
+    const k = "view " + v.dataset.view + " ";
+    put(k, v); put(k + "head", v.querySelector(".fhead"));
+    v.querySelectorAll(".fhead > select, .fhead > button, .fhead > .switch, .sub-title, .sub-title select, .sub-title button, .head-end .dots").forEach((n, i) => put(k + "tool " + i, n));
+    v.querySelectorAll(".plot-wrap").forEach((n, i) => put(k + "drawing " + i, n));
+    v.querySelectorAll(".kcell").forEach((n) => put(k + "knob " + n.dataset.k, n));
+  }
+  return out;
 }
 function measure() {
   const m = measureNow();
@@ -2178,25 +2299,27 @@ function measure() {
     ok(m.gapBandToSettings <= 8 && m.between === 0, "band → settings " + m.gapBandToSettings + " px"),
     "<span>Figure area " + m.figs.w + " × " + m.figs.h + "</span>",
   ];
-  for (const p of m.plots) parts.push("<span>" + ({ amp: "Amp", fenv: "Filter envelope", response: "Response", menv: "Envelope" })[p.what] + " " + p.w + " × " + p.h + " (" + p.aspect + ":1)</span>");
-  parts.push(ok(m.knobRows.every((r) => r === 1), "knob rows " + m.knobRows.join(" · ")));
+  for (const p of m.plots) parts.push("<span>" + ({ amp: "Amp", fenv: "Filter envelope", response: "Response" })[p.what] + " " + p.w + " × " + p.h + " (" + p.aspect + ":1)</span>");
+  if (m.editor) parts.push(ok(m.editor.over <= 1 && !m.editor.covers, "Envelope’s editor " + m.editor.w + " × " + m.editor.h + ", its drawing " + m.editor.plots.map((p) => p.w + " × " + p.h + " (" + p.aspect + ":1)").join("")));
+  parts.push(ok(m.knobRows.every((r) => r === 1), "rows " + m.knobRows.join(" · ")));
+  parts.push(ok(m.menus.every((x) => x.fits), m.menus.every((x) => x.fits) ? "every menu value fits" : "a menu value is cut"));
   parts.push(ok(!m.coversModrow && !m.coversPicture, m.coversModrow || m.coversPicture ? "covers the row under it" : "clear of the modulation row and Picture"));
   line.innerHTML = parts.join("");
 }
 function survey() {
-  const keep = { size: S.size, sub: S.sub, hands: S.hands, flay: S.flay, linked: Object.assign({}, S.linked), note: S.note }, rows = [];
+  const keep = { size: S.size, sub: S.sub, hands: S.hands, flay: S.flay, linked: Object.assign({}, S.linked), note: S.note, menvOpen: S.menvOpen, mode: S.mode }, rows = [];
   S.note = null;
   const cases = [];
   for (const size of SIZE_ORDER) {
-    cases.push({ size, sub: "amp", hands: 1, flay: "auto" });
-    cases.push({ size, sub: "filter", hands: 1, flay: "side" });
-    cases.push({ size, sub: "filter", hands: 1, flay: "stacked" });
-    cases.push({ size, sub: "filter", hands: 1, flay: "auto" });
-    cases.push({ size, sub: "menv", hands: 1, flay: "auto" });
-    cases.push({ size, sub: "amp", hands: 2, flay: "auto" });
+    cases.push({ size, sub: "amp", hands: 1, flay: "auto", menvOpen: false });
+    cases.push({ size, sub: "filter", hands: 1, flay: "side", menvOpen: false });
+    cases.push({ size, sub: "filter", hands: 1, flay: "stacked", menvOpen: false });
+    cases.push({ size, sub: "filter", hands: 1, flay: "auto", menvOpen: false });
+    cases.push({ size, sub: "amp", hands: 2, flay: "auto", menvOpen: false });
+    cases.push({ size, sub: "amp", hands: 1, flay: "auto", menvOpen: true });
   }
   for (const c of cases) {
-    Object.assign(S, c);
+    Object.assign(S, c, { mode: "poly" });
     S.linked.amp = c.hands !== 2;
     if (c.hands === 2) upperOwn();
     render(true);
@@ -2206,12 +2329,18 @@ function survey() {
   window.__survey = rows;
   const tb = document.getElementById("surveyRows");
   if (!tb) return rows;
-  const what = (m) => ({ amp: "Amp envelope", filter: "Voice filter", menv: "Envelope" })[m.sub] + (m.sub === "filter" ? (m.flay === "auto" ? ", by room: " + (m.flayUsed === "side" ? "side by side" : "stacked") : m.flay === "side" ? ", side by side" : ", stacked") : "") + (m.hands === 2 ? ", two hands, amp unlinked" : "");
+  const what = (m) => m.menvOpen ? "Envelope card’s editor, over the tabs" : ({ amp: "Amp envelope", filter: "Voice filter" })[m.sub] + (m.sub === "filter" ? (m.flay === "auto" ? ", by room: " + (m.flayUsed === "side" ? "side by side" : "stacked") : m.flay === "side" ? ", side by side" : ", stacked") : "") + (m.hands === 2 ? ", two hands, amp unlinked" : "");
   tb.innerHTML = rows.map((m) => {
+    if (m.menvOpen) {
+      const e = m.editor, fit = e.over <= 1, one = e.knobRows.every((r) => r === 1);
+      return "<tr><td>" + SIZES[m.size].label + "</td><td>" + what(m) + "</td><td>" + e.w + " × " + e.h + "</td><td>" + e.plots.map((p) => p.w + " × " + p.h + " <b>" + p.aspect + "</b>").join("") + "</td>"
+        + "<td>—</td>" + '<td class="' + (fit ? "ok" : "bad") + '">' + (fit ? "no" : e.over + " px over") + "</td>" + '<td class="' + (!e.covers ? "ok" : "bad") + '">' + (!e.covers ? "clear" : "covers") + "</td>"
+        + '<td class="' + (one ? "ok" : "bad") + '">' + e.knobRows.join(" · ") + "</td><td></td></tr>";
+    }
     const fit = m.scroll <= 1 && m.viewOver <= 1, clear = !m.coversModrow && !m.coversPicture, nothing = m.gapBandToSettings <= 8 && m.between === 0, one = m.knobRows.every((r) => r === 1);
     const lab = m.labels[m.sub];
     return "<tr><td>" + SIZES[m.size].label + "</td><td>" + what(m) + "</td><td>" + m.figs.w + " × " + m.figs.h + "</td><td>"
-      + m.plots.map((p) => ({ amp: "", fenv: "env ", response: "resp. ", menv: "" })[p.what] + p.w + " × " + p.h + " <b>" + p.aspect + "</b>").join("<br>") + "</td>"
+      + m.plots.map((p) => ({ amp: "", fenv: "env ", response: "resp. " })[p.what] + p.w + " × " + p.h + " <b>" + p.aspect + "</b>").join("<br>") + "</td>"
       + '<td class="' + (nothing ? "ok" : "bad") + '">' + m.gapBandToSettings + " px" + (m.between ? ", " + m.between + " things" : "") + "</td>"
       + '<td class="' + (fit ? "ok" : "bad") + '">' + (fit ? "no" : m.scroll > 1 ? m.scroll + " px" : "view " + m.viewOver + " px over") + "</td>"
       + '<td class="' + (clear ? "ok" : "bad") + '">' + (clear ? "clear" : "covers") + "</td>"
@@ -2233,7 +2362,7 @@ function fitStage() {
   stage.dataset.scale = sc;
   wrap.style.height = Math.ceil(win.offsetHeight * sc) + "px";
 }
-const PG = [["pgSize", "size"], ["pgSub", "sub"], ["pgHands", "hands"], ["pgFlay", "flay"]];
+const PG = [["pgSize", "size"], ["pgSub", "sub"], ["pgHands", "hands"], ["pgFlay", "flay"], ["pgMenv", "menvOpen"]];
 function chooseFilterLayout() {
   const b = document.getElementById("fbody");
   S.flayUsed = S.flay;
@@ -2252,14 +2381,18 @@ function render(quiet) {
   paint();
 }
 for (const [id, key] of PG) document.querySelectorAll("#" + id + " button").forEach((b) => b.addEventListener("click", () => {
-  S[key] = key === "hands" ? +b.dataset.v : b.dataset.v;
+  S[key] = key === "hands" ? +b.dataset.v : key === "menvOpen" ? b.dataset.v === "true" : b.dataset.v;
   if (key === "hands") { S.linked.amp = S.hands !== 2; S.editing = 0; if (S.hands === 2) upperOwn(); }
   SEL = null; hideMenu(); render();
 }));
 document.getElementById("stage").addEventListener("click", (ev) => {
-  const t = ev.target.closest("button, select, [data-sub-card]");
+  const t = ev.target.closest("button, select, [data-menv-card]");
   if (!t) return;
-  if (t.dataset.sub || t.dataset.subCard) { S.sub = t.dataset.sub || t.dataset.subCard; SEL = null; render(); }
+  if (t.dataset.sub) { S.sub = t.dataset.sub; SEL = null; render(); }
+  else if (t.dataset.menvCard) { S.menvOpen = !S.menvOpen; SEL = null; render(); }
+  else if (t.dataset.menvClose) { S.menvOpen = false; SEL = null; render(); }
+  else if (t.dataset.mode) { S.mode = t.dataset.mode; render(); }
+  else if (t.id === "handsPill") { S.hands = S.hands === 2 ? 1 : 2; S.linked.amp = S.hands !== 2; S.editing = 0; if (S.hands === 2) upperOwn(); render(); }
   else if (t.dataset.hand != null) { S.editing = +t.dataset.hand; SEL = null; render(); }
   else if (t.dataset.link) {
     const sec = t.dataset.link, list = sec === "amp" ? S.amp : sec === "filter" ? S.filt : null;
@@ -2282,7 +2415,7 @@ document.getElementById("stage").addEventListener("change", (ev) => {
 });
 document.addEventListener("keydown", (ev) => {
   if ((ev.key === " " || ev.key === "Enter") && ev.target.closest && ev.target.closest("[data-play], #pgNote")) { ev.preventDefault(); if (!ev.repeat) noteDown(); return; }
-  if (ev.key === "Escape" && !document.getElementById("ctx").hidden) hideMenu();
+  if (ev.key === "Escape") { if (!document.getElementById("ctx").hidden) hideMenu(); else if (S.menvOpen) { S.menvOpen = false; render(); } }
 });
 document.addEventListener("keyup", (ev) => { if (ev.key === " " || ev.key === "Enter") noteUp(); });
 let raf = 0;
@@ -2304,11 +2437,12 @@ document.addEventListener("pointerdown", (ev) => { if (!ev.target.closest("#ctx"
 // ?size=960x600&sub=filter&hands=2&shot=1: the window alone at its own size, for the screenshots.
 const Q = new URLSearchParams(location.search);
 if (Q.get("size") && SIZES[Q.get("size")]) S.size = Q.get("size");
-if (Q.get("sub")) S.sub = Q.get("sub");
+if (Q.get("sub") === "menv") S.menvOpen = true; else if (Q.get("sub")) S.sub = Q.get("sub");
+if (Q.get("mode")) S.mode = Q.get("mode");
 if (Q.get("flay")) S.flay = Q.get("flay");
 if (Q.get("hands") === "2") { S.hands = 2; S.linked.amp = false; upperOwn(); }
 if (Q.get("shot")) document.body.classList.add("shot");
-window.__figs = { S, SIZES, SIZE_ORDER, FIT_SIZES, render, paint, measureNow, survey, noteDown, noteUp, levelAt, makeEnv, flatten, susIdx, shapeGeo };
+window.__figs = { S, SIZES, SIZE_ORDER, FIT_SIZES, BAND_H, MENUS, render, paint, measureNow, boxesNow, survey, noteDown, noteUp, levelAt, makeEnv, flatten, susIdx, shapeGeo };
 window.addEventListener("resize", () => { fitStage(); paint(); });
 render();
 const settle = () => { render(); if (!Q.get("shot")) survey(); window.__ready = true; };

@@ -32,8 +32,23 @@ must be seen to fail, as CLAUDE.md asks of every new assertion.
   the move the run starts elsewhere; with a sustain, letting go changes it;
 - two hands, the amp unlinked: the other hand's shape is drawn dashed; linked,
   it is not;
-- the Envelope follows the amp envelope dashed and grey until a knob is
-  turned, then is its own in sage; Follow puts it back;
+- the Envelope card's editor over the tabs, at every window: its content
+  inside it, clear of the modulation row, its drawing 2:1 to 7:1 and 120 px
+  tall, its knobs in one row. Null: given the whole height beside Where it
+  goes, its drawing is a tower. It follows the amp envelope dashed and grey
+  until a knob is turned, then is its own in sage; Follow puts it back;
+- every value of the settings row's eight menus, shortened, fits its menu at
+  every window, in the menu's own font. Null: the full names do not;
+- the band's content inside its one height in every mode and hands state.
+  Null: a band 90 px tall cuts it;
+- nothing moves: every box on Play (the band, its strip and hint, the mode
+  switch, the settings row's fields and controls, the figure area, its bar
+  and subtabs, the shown view's header, tools, drawings and knob cells) the
+  same to half a pixel across Two hands on and off in Dyad, Mono and Poly;
+  Loop, Sustain here, No sustain and a note held; each filter type; the
+  link pills; the subtabs (outside the view); and the Envelope's editor
+  opening. Nulls: the band 6 px taller with two hands (testing's behaviour),
+  and the link pill put before the tools, are each seen to move something;
 - Hold a note: the gold dot moves along the shape;
 - a phone's width has no horizontal page scroll.
 
@@ -41,6 +56,8 @@ must be seen to fail, as CLAUDE.md asks of every new assertion.
 """
 import os, sys, json, math
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import webfonts
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE = "file://" + os.path.join(HERE, "index.html")
@@ -68,25 +85,32 @@ def judge(m):
     return dict(fit=fit, nothing=nothing, clear=clear, one=one, wide=wide, fits=fits)
 
 SIZES = ["1660x1050", "1400x900", "1100x860", "1200x680", "1100x680", "960x600"]
-CASES = [("amp", 1, "auto"), ("filter", 1, "auto"), ("menv", 1, "auto"), ("amp", 2, "auto")]
-SET = """([size, sub, hands, flay]) => { const F = window.__figs, S = F.S; S.size = size; S.sub = sub; S.hands = hands; S.flay = flay;
-  S.linked.amp = hands !== 2; if (hands === 2) upperOwn(); S.note = null; F.render(); return F.measureNow(); }"""
+CASES = [("amp", 1, "auto"), ("filter", 1, "auto"), ("amp", 2, "auto")]
+SET = """([size, sub, hands, flay, menv, mode]) => { const F = window.__figs, S = F.S; S.size = size; S.sub = sub; S.hands = hands; S.flay = flay;
+  S.menvOpen = !!menv; S.mode = mode || "poly"; S.amp[0] = SHAPES.ADSR(); S.fenv = [FILTER_ENV(), FILTER_ENV()];
+  S.filt = [{ type: 1, cut: 630, res: 32, track: 0, amt: 15 }, { type: 1, cut: 630, res: 32, track: 0, amt: 15 }]; S.menv.own = false; S.linked.amp = hands !== 2; S.linked.filter = true; if (hands === 2) upperOwn(); S.note = null; F.render(); return F.measureNow(); }"""
 results = {"rows": []}
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME)
     p = b.new_page(viewport={"width": 1300, "height": 900})
+    webfonts.route(p)
     errs = []
     p.on("pageerror", lambda e: errs.append(str(e)))
     p.on("console", lambda m: m.type == "error" and errs.append(m.text))
     p.goto(PAGE)
     p.wait_for_function("window.__ready === true", timeout=20000)
+    faces = webfonts.settle(p)
+    p.evaluate("() => { window.__figs.render(); window.__figs.survey(); }")
+    print("measured in " + ("the brand's webfonts (Jost, Playfair Display)" if faces else "FALLBACK faces: the webfonts did not load"))
+    results["webfonts"] = faces
 
     # Every switch, a note held.
     for size in SIZES:
-        for sub in ("amp", "filter", "menv"):
+        for sub in ("amp", "filter"):
             for flay in ("auto", "side", "stacked"):
-                p.evaluate(SET, [size, sub, 2 if sub == "amp" else 1, flay])
+                for mode in ("dyad", "mono", "poly"):
+                    p.evaluate(SET, [size, sub, 2 if sub == "amp" else 1, flay, flay == "auto", mode])
     p.evaluate("() => window.__figs.noteDown()"); p.wait_for_timeout(300)
     p.evaluate("() => window.__figs.noteUp()"); p.wait_for_timeout(300)
     check(not errs, "no console errors through every window, subtab, filter layout and both hands settings, with a note held" + (": " + "; ".join(errs[:3]) if errs else ""))
@@ -104,6 +128,19 @@ with sync_playwright() as pw:
             check(j["one"], tag + ": every knob row and settings row in one row %s" % m["knobRows"])
             check(j["wide"], tag + ": drawings wide, %s" % ", ".join("%s %dx%d %.1f:1" % (q["what"], q["w"], q["h"], q["aspect"]) for q in m["plots"]))
             check(j["fits"], tag + ": the subtab summaries fit their labels (shortened: %s)" % ([k for k, v in m["labels"].items() if v["dropped"]] or "none"))
+            if sub == "amp" and hands == 1:
+                tight = min(m["menus"], key=lambda x: x["room"] - x["widest"])
+                check(all(x["fits"] for x in m["menus"]), size + ": every value of the settings row's eight menus fits its menu (tightest %s, %r, %.1f of %.1f px)" % (tight["menu"], tight["text"], tight["widest"], tight["room"]))
+        # The Envelope card's editor, over the tabs.
+        m = p.evaluate(SET, [size, "amp", 1, "auto", True])
+        e = m["editor"]
+        check(e["over"] <= 1 and not e["covers"], size + ": the Envelope's editor over the tabs, %dx%d, its content inside it and clear of the modulation row" % (e["w"], e["h"]))
+        check(all(2 <= q["aspect"] <= 7 and q["h"] >= 120 for q in e["plots"]) and all(r == 1 for r in e["knobRows"]),
+              size + ": its drawing wide, %s, its knobs in one row" % ", ".join("%dx%d %.1f:1" % (q["w"], q["h"], q["aspect"]) for q in e["plots"]))
+        results["rows"].append(m)
+        # The band in every mode and hands state, inside its one height.
+        overs = [p.evaluate(SET, [size, "amp", h, "auto", False, mode])["bandOver"] for mode in ("dyad", "mono", "poly") for h in (1, 2)]
+        check(max(overs) <= 0, size + ": the band's content inside its one height in Dyad, Mono and Poly, one hand and two (the least spare %.1f px)" % -max(overs))
 
     # Nulls, each at the tightest window, on the measurement the check reads.
     p.evaluate(SET, ["960x600", "amp", 2, "auto"])
@@ -125,6 +162,82 @@ with sync_playwright() as pw:
     p.evaluate(SET, ["960x600", "amp", 1, "auto"])
     over = p.evaluate("""() => { const s = document.querySelector('[data-sum="amp"]'); s.textContent = s.textContent.repeat(3); return s.scrollWidth <= s.clientWidth + 0.5; }""")
     null(over, "a summary three times as long is seen not to fit its label")
+
+    p.evaluate(SET, ["960x600", "amp", 1, "auto"])
+    full = p.evaluate("() => window.__figs.measureNow().menus.filter((x) => !x.fullFits).map((x) => x.menu)")
+    null(not full, "the full names, measured the same way, do not fit at 960x600 (%s)" % full)
+    m = p.evaluate(SET, ["960x600", "amp", 2, "auto", False, "poly"])
+    over = p.evaluate("() => { document.getElementById('band').style.height = '90px'; return window.__figs.measureNow().bandOver; }")
+    null(over <= 0, "a band 90 px tall is seen to cut its content (%.1f px over)" % over)
+    p.evaluate(SET, ["1660x1050", "amp", 1, "auto", True])
+    tower = p.evaluate("() => { const w = document.querySelector('#menvEd .plot-wrap'); w.style.aspectRatio = 'auto'; w.style.flex = '1 1 auto'; document.querySelector('#menvEd .ed-split').style.flexDirection = 'row'; document.querySelector('#menvEd .ed-pane').style.flex = '1 1 0'; window.__figs.paint(); return window.__figs.measureNow().editor.plots; }")
+    null(all(2 <= q["aspect"] <= 7 for q in tower), "the editor's drawing given the whole height beside Where it goes is seen as a tower %s" % [(q["w"], q["h"]) for q in tower])
+
+    # ---- nothing moves ----
+    # Every box on Play (boxesNow) compared across the states that must not move anything, to half a
+    # pixel. patchtest.py's knob-cell invariance, for the whole tab.
+    def same(a, b, keys=None):
+        ks = [k for k in a if k in b and (keys is None or keys(k))]
+        moved = [(k, a[k], b[k]) for k in ks if any(abs(x - y) > 0.5 for x, y in zip(a[k], b[k]))]
+        missing = [k for k in a if k not in b and (keys is None or keys(k))]
+        return (not moved and not missing), moved[:2] + [("missing", k) for k in missing[:2]], len(ks)
+    BOX = "() => window.__figs.boxesNow()"
+    ACT = {
+      "loop on": "() => document.querySelector('.fview:not([hidden]) [data-loop-btn]').click()",
+      "Sustain here on the peak": "() => { openMenu('amp', 'pre2', 10, 10); document.querySelector('#ctx [data-act=\"sushere\"]').click(); }",
+      "No sustain": "() => { openMenu('amp', 'pre2', 10, 10); document.querySelector('#ctx [data-act=\"oneshot\"]').click(); }",
+      "Hold a note": "() => { window.__figs.noteDown(); window.__figs.paint(); }",
+    }
+    for size in SIZES:
+        # Two hands, and the mode: the whole of Play.
+        base = None
+        for mode in ("poly", "dyad", "mono"):
+            for h in (1, 2):
+                p.evaluate(SET, [size, "amp", h, "auto", False, mode])
+                if h == 2: p.evaluate("() => { window.__figs.S.linked.amp = true; window.__figs.render(); }")
+                bx = p.evaluate(BOX)
+                if base is None: base = bx; continue
+                ok, moved, nk = same(base, bx)
+                check(ok, "%s: %s, %s: all %d boxes on Play where they were in Poly with one hand %s" % (size, mode.capitalize(), "two hands" if h == 2 else "one hand", nk, moved or ""))
+        # The amp's view: Loop, Sustain here, No sustain, a note held, the link pill linked and not.
+        p.evaluate(SET, [size, "amp", 1, "auto"]); base = p.evaluate(BOX)
+        for what, js in ACT.items():
+            p.evaluate(js); ok, moved, nk = same(base, p.evaluate(BOX))
+            check(ok, "%s: the amp, %s: all %d boxes where they were %s" % (size, what, nk, moved or ""))
+        p.evaluate("() => window.__figs.noteUp()")
+        p.evaluate(SET, [size, "amp", 2, "auto"]); a = p.evaluate(BOX)
+        b2 = p.evaluate("() => { window.__figs.S.linked.amp = true; window.__figs.render(); return window.__figs.boxesNow(); }")
+        ok, moved, nk = same(a, b2); check(ok, "%s: the amp's link pill, Lower's own and Same in both: all %d boxes where they were %s" % (size, nk, moved or ""))
+        # The filter's view: each type (Off says the filter is off), its envelope's Loop, its link.
+        p.evaluate(SET, [size, "filter", 1, "auto"]); base = p.evaluate(BOX)
+        for t in (0, 2, 3, 4, 1):
+            ok, moved, nk = same(base, p.evaluate("(t) => { document.querySelector('[data-ftype=\"' + t + '\"]').click(); return window.__figs.boxesNow(); }", t))
+            check(ok, "%s: the filter's type %s: all %d boxes where they were %s" % (size, ["Off", "Low", "Band", "High", "Notch"][t], nk, moved or ""))
+        ok, moved, nk = same(base, p.evaluate("() => { document.querySelector('[data-loop-btn=\"fenv\"]').click(); return window.__figs.boxesNow(); }"))
+        check(ok, "%s: the filter envelope's Loop: all %d boxes where they were %s" % (size, nk, moved or ""))
+        p.evaluate(SET, [size, "filter", 2, "auto"]); a = p.evaluate(BOX)
+        b2 = p.evaluate("() => { document.querySelector('[data-link=\"filter\"]').click(); return window.__figs.boxesNow(); }")
+        ok, moved, nk = same(a, b2); check(ok, "%s: the filter's link pill: all %d boxes where they were %s" % (size, nk, moved or ""))
+        # The subtabs: the band, the settings and the figure area's frame stay; only the view changes.
+        a = p.evaluate(SET, [size, "amp", 1, "auto"]) and p.evaluate(BOX)
+        b2 = p.evaluate(SET, [size, "filter", 1, "auto"]) and p.evaluate(BOX)
+        ok, moved, nk = same(a, b2, lambda k: not k.startswith("view"))
+        check(ok, "%s: Amp to Filter: all %d boxes outside the view where they were %s" % (size, nk, moved or ""))
+        # The Envelope's editor opening over the tabs moves nothing under it.
+        a = p.evaluate(SET, [size, "amp", 1, "auto"]) and p.evaluate(BOX)
+        b2 = p.evaluate(SET, [size, "amp", 1, "auto", True]) and p.evaluate(BOX)
+        ok, moved, nk = same(a, b2); check(ok, "%s: the Envelope's editor open over the tabs: all %d boxes under it where they were %s" % (size, nk, moved or ""))
+    # Nulls: the band growing 6 px with two hands, as on testing; and the link pill put before the tools.
+    p.evaluate(SET, ["1400x900", "amp", 1, "auto"]); a = p.evaluate(BOX)
+    p.evaluate(SET, ["1400x900", "amp", 2, "auto"])
+    grown = p.evaluate("() => { const b = document.getElementById('band'); b.style.height = (parseFloat(b.style.height) + 6) + 'px'; return window.__figs.boxesNow(); }")
+    ok, moved, nk = same(a, grown)
+    null(ok, "the band 6 px taller with two hands, as testing has it, is seen to move %s" % (moved[0][0] if moved else "nothing"))
+    p.evaluate(SET, ["1400x900", "amp", 1, "auto"]); a = p.evaluate(BOX)
+    p.evaluate(SET, ["1400x900", "amp", 2, "auto"])
+    first = p.evaluate("() => { const h = document.querySelector('.fview:not([hidden]) .fhead'); h.prepend(h.querySelector('[data-link]')); return window.__figs.boxesNow(); }")
+    ok, moved, nk = same(a, first)
+    null(ok, "the link pill put before the tools is seen to move %s" % (moved[0][0] if moved else "nothing"))
 
     # ---- the drawing ----
     p.evaluate(SET, ["1400x900", "amp", 1, "auto"])
@@ -178,15 +291,15 @@ with sync_playwright() as pw:
     check(pill == "Lower’s own", "the link pill is in the subtab's header and says Lower’s own (%r)" % pill)
 
     # The Envelope.
-    p.evaluate(SET, ["1400x900", "menv", 1, "auto"])
+    p.evaluate(SET, ["1400x900", "amp", 1, "auto", True])
     f = p.evaluate("""() => { const F = window.__figs, c = () => document.querySelector('svg.plot[data-kind="menv"] [data-curve]');
       F.S.menv.own = false; F.render();
-      const a = [c().getAttribute('stroke'), c().getAttribute('stroke-dasharray'), document.querySelector('[data-sum="menv"]').textContent];
+      const a = [c().getAttribute('stroke'), c().getAttribute('stroke-dasharray'), document.querySelector('[data-menv-say]').textContent];
       knobDef('menv-attack').set(0.3);
       const b = [c().getAttribute('stroke'), c().getAttribute('stroke-dasharray'), F.S.menv.own];
       document.querySelector('[data-follow]').click();
       return { a, b, back: F.S.menv.own }; }""")
-    check(f["a"][0] == "var(--unresolved)" and f["a"][1] != "none" and f["a"][2] == "follows the amp", "the Envelope follows the amp envelope: dashed, grey, and its label says so")
+    check(f["a"][0] == "var(--unresolved)" and f["a"][1] != "none" and f["a"][2].startswith("Follows the amp envelope"), "the Envelope's editor, over the tabs: it follows the amp envelope dashed and grey, and says so")
     check(f["b"][0] == "var(--ch4)" and f["b"][1] == "none" and f["b"][2], "a knob turned makes it its own, solid in sage")
     null(f["a"][0] == f["b"][0], "following and its own are not drawn alike")
     check(f["back"] is False, "Follow puts it back")
@@ -198,7 +311,7 @@ with sync_playwright() as pw:
     check(dots[0] is not None and dots[1] is not None and dots[1] > dots[0] + 5, "Hold a note: the gold dot moves along the shape (%s)" % dots)
 
     # A phone.
-    ph = b.new_page(viewport={"width": 390, "height": 800}); ph.goto(PAGE); ph.wait_for_function("window.__ready === true", timeout=20000)
+    ph = b.new_page(viewport={"width": 390, "height": 800}); webfonts.route(ph); ph.goto(PAGE); ph.wait_for_function("window.__ready === true", timeout=20000)
     check(ph.evaluate("() => document.documentElement.scrollWidth <= innerWidth"), "a phone's width has no horizontal page scroll")
     ph.close()
 

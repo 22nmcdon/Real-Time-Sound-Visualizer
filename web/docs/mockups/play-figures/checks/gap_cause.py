@@ -25,6 +25,8 @@ tower) and how many rows its knobs take.
 """
 import os, sys, json
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import webfonts
 
 SCOPE = "file://" + os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scope.html"))
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium")
@@ -45,7 +47,8 @@ with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME)
     for W, H in ((1660, 1050), (1400, 900)):
         p = b.new_page(viewport={"width": W, "height": H})
-        p.goto(SCOPE); p.wait_for_timeout(1200)
+        webfonts.route(p)
+        p.goto(SCOPE); p.wait_for_timeout(1200); out["webfonts"] = webfonts.settle(p)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(400)
         for pop in (False, True):
@@ -67,7 +70,8 @@ with sync_playwright() as pw:
         p.close()
     # The popover as the owner saw it at 1660x1050.
     p = b.new_page(viewport={"width": 1660, "height": 1050})
-    p.goto(SCOPE); p.wait_for_timeout(1200)
+    webfonts.route(p)
+    p.goto(SCOPE); p.wait_for_timeout(1200); webfonts.settle(p)
     if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
     p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(300)
     p.evaluate("() => openMsegPop('amp')"); p.wait_for_timeout(400)

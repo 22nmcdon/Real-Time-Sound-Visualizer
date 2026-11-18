@@ -6,9 +6,11 @@ SIZES are this script's output at d5c2928.
 
     CHROME=/opt/pw-browsers/chromium python3 web/docs/mockups/play-figures/checks/real_boxes.py
 """
-import os
+import os, sys
 import json
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import webfonts
 SIZES=[(1660,1050),(1400,900),(1100,860),(1200,680),(1100,680),(960,600)]
 out={}
 with sync_playwright() as pw:
@@ -16,7 +18,8 @@ with sync_playwright() as pw:
     for W,H in SIZES:
       for hands in (False,True):
         p=b.new_page(viewport={"width":W,"height":H})
-        p.goto("file://" + os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scope.html"))); p.wait_for_timeout(1000)
+        webfonts.route(p)
+        p.goto("file://" + os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scope.html"))); p.wait_for_timeout(1000); webfonts.settle(p)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         p.evaluate("()=>setBenchTab('play')"); p.wait_for_timeout(300)
         if hands:
