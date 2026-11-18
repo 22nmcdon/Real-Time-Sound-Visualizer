@@ -1,0 +1,1416 @@
+{
+ "rows": [
+  {
+   "size": "1660x1050",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 501
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 367,
+     "aspect": 2.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1660x1050",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "stacked",
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 501
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 802,
+     "h": 128,
+     "aspect": 6.3
+    },
+    {
+     "what": "fenv",
+     "w": 802,
+     "h": 124,
+     "aspect": 6.5
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1660x1050",
+   "sub": "menv",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 501
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "menv",
+     "w": 802,
+     "h": 367,
+     "aspect": 2.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1660x1050",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 128,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 495
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 361,
+     "aspect": 2.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1400x900",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 351
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 217,
+     "aspect": 3.7
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1400x900",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 351
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 384,
+     "h": 197,
+     "aspect": 1.9
+    },
+    {
+     "what": "fenv",
+     "w": 384,
+     "h": 193,
+     "aspect": 2
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1400x900",
+   "sub": "menv",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 351
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "menv",
+     "w": 802,
+     "h": 217,
+     "aspect": 3.7
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1400x900",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 128,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 345
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 211,
+     "aspect": 3.8
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x860",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 367
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 714,
+     "h": 233,
+     "aspect": 3.1
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x860",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 367
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 340,
+     "h": 213,
+     "aspect": 1.6
+    },
+    {
+     "what": "fenv",
+     "w": 340,
+     "h": 209,
+     "aspect": 1.6
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x860",
+   "sub": "menv",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 122,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 367
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "menv",
+     "w": 714,
+     "h": 233,
+     "aspect": 3.1
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x860",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 128,
+   "settings": 67,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 361
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 714,
+     "h": 227,
+     "aspect": 3.1
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1200x680",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 810,
+     "h": 159,
+     "aspect": 5.1
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1200x680",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 394,
+     "h": 144,
+     "aspect": 2.7
+    },
+    {
+     "what": "fenv",
+     "w": 394,
+     "h": 136,
+     "aspect": 2.9
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1200x680",
+   "sub": "menv",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "menv",
+     "w": 810,
+     "h": 165,
+     "aspect": 4.9
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1200x680",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 126,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 269
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 810,
+     "h": 150,
+     "aspect": 5.4
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x680",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 722,
+     "h": 159,
+     "aspect": 4.5
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x680",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 350,
+     "h": 144,
+     "aspect": 2.4
+    },
+    {
+     "what": "fenv",
+     "w": 350,
+     "h": 136,
+     "aspect": 2.6
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x680",
+   "sub": "menv",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 278
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "menv",
+     "w": 722,
+     "h": 165,
+     "aspect": 4.4
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "1100x680",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 126,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 269
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 722,
+     "h": 150,
+     "aspect": 4.8
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "960x600",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 264
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 689,
+     "h": 145,
+     "aspect": 4.8
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "960x600",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 264
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 333,
+     "h": 130,
+     "aspect": 2.6
+    },
+    {
+     "what": "fenv",
+     "w": 333,
+     "h": 122,
+     "aspect": 2.7
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "960x600",
+   "sub": "menv",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 117,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 264
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "menv",
+     "w": 689,
+     "h": 151,
+     "aspect": 4.6
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  },
+  {
+   "size": "960x600",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 124,
+   "settings": 60,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 257
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 689,
+     "h": 138,
+     "aspect": 5
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "menv": {
+     "shown": "follows the amp",
+     "full": "follows the amp",
+     "dropped": 0,
+     "fits": true
+    }
+   }
+  }
+ ],
+ "checks": 170,
+ "fails": []
+}
