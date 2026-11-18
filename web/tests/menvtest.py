@@ -199,7 +199,8 @@ with sync_playwright() as pw:
     check("Every note comes back from a code, into the generator and onto its button, and goes out again",
           codes["every"] == [True, True, "true"], str(codes["every"]))
     check("and an old code is once a phrase", codes["oldEvery"] is False, str(codes["oldEvery"]))
-    check("times past their range are held to it", codes["held"][1] == 2000 and codes["held"][4] == 1, str(codes["held"]))
+    # To 20 s since 18 Nov, the drawn envelopes' range.
+    check("times past their range are held to it", codes["held"][1] == 20000 and codes["held"][4] == 1, str(codes["held"]))
     check("an old code without them follows the amp envelope, as it did", codes["old"][0] is False and codes["reading"] == "follows the amp envelope",
           "%s %s" % (codes["old"], codes["reading"]))
 

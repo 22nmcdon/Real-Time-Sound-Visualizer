@@ -53,8 +53,27 @@ def recoded(**moved):
 # What the prototype's code comes back out as: the same, less the quarter turn's
 # switch, which went on 16 Nov (always on now, so a code's polyRound is read by
 # nothing and not written back).
-# And stamped with the version it comes up to, 12 since the EQ's switch became a field (17 Nov).
-BACK_CODE = recoded(polyRound=None, v=12)
+# And stamped with the version it comes up to: 12 since the EQ's switch became a field (17 Nov), and 13
+# since the envelopes were drawn (18 Nov), whose pass writes the old envelope's shape into each of the
+# three, where the codec writes them, after the cycle.
+OLD_ENVELOPE = "1;A>p.2;D>p.2;R>a.2"
+def back_code():
+    import base64, json
+    setup = json.loads(base64.urlsafe_b64decode(PROTOTYPE_CODE + "=" * (-len(PROTOTYPE_CODE) % 4)))
+    setup.pop("polyRound")
+    setup["v"] = 13
+    out = {}
+    for k, v in setup.items():
+        out[k] = v
+        if k == "cycles": out.update(envShape=OLD_ENVELOPE, vcfShape=OLD_ENVELOPE, menvShape=OLD_ENVELOPE)
+    return base64.b64encode(json.dumps(out, separators=(",", ":")).encode()).decode().rstrip("=")
+BACK_CODE = back_code()
+
+
+def decoded(code):
+    """A code as the setup it carries, for a failure to say what came back rather than its first characters."""
+    import base64, json
+    return json.loads(base64.urlsafe_b64decode(code + "=" * (-len(code) % 4)))
 
 
 def moved_code():
@@ -120,7 +139,7 @@ with sync_playwright() as pw:
         p, errors = opened(b, query)
         r = p.evaluate(LOAD, PROTOTYPE_CODE)
         check("a code from the prototype loads and comes back out of its setup unchanged but for the quarter turn's switch, on " + brain,
-              r["back"] == BACK_CODE and r["mode"] == "poly", "%s, %s" % (r["mode"], r["back"][:24]))
+              r["back"] == BACK_CODE and r["mode"] == "poly", "%s, %s" % (r["mode"], decoded(r["back"])))
         if query.startswith("?brain=js"):
             other = p.evaluate(LOAD, moved_code())
             null("a code with one field moved does not come back as the prototype's", other["back"] != BACK_CODE,
