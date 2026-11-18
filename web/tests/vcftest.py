@@ -205,10 +205,11 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
       setView('bench'); setBenchTab('play');
-      // Off, since G3: the four main controls on show and greyed (disabled),
-      // and the envelope's four hidden. On: all of them, live.
+      // Off, since G3: the four main controls on show and greyed (disabled); since 18 Nov (Play's
+      // Filter figure) the envelope's six as well, greyed and kept, where they were hidden, which moved
+      // the drawing beside them. On: all of them, live.
       const envRow = () => el.vcfAtk.closest('.menu-row');
-      const hidden = el.vcfCut.disabled && !el.vcfCut.closest('.menu-row').hidden && envRow().hidden;
+      const hidden = el.vcfCut.disabled && !el.vcfCut.closest('.menu-row').hidden && !envRow().hidden && el.vcfAtk.disabled;
       set('vcfType', 3, 'change');
       const shownOn = !el.vcfCut.disabled && !envRow().hidden && el.vcfGroup.offsetHeight > 0;
       set('vcfCut', 500, 'input'); set('vcfRes', 100, 'input'); set('vcfTrack', 50, 'input');
@@ -242,7 +243,7 @@ with sync_playwright() as pw:
       return { hidden, shownOn, a, words, old, back, split, bRows, aRows, fallback };
     }""")
     print("    %s" % page)
-    check("the filter's controls are greyed while it is off, its envelope's hidden, and all live when it is on",
+    check("the filter's controls are greyed while it is off, its envelope's with them, and all live when it is on",
           page["hidden"] and page["shownOn"], "%s, %s" % (page["hidden"], page["shownOn"]))
     check("its controls reach the generator in its own units: hertz on the trace filter's law, Q 0.71 to 20",
           page["a"] == [3, 632.46, 20.0, 0.5, -2.5, 20, 400, 0.6, 900], str(page["a"]))

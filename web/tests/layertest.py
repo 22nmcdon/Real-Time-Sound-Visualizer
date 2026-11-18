@@ -364,7 +364,7 @@ with sync_playwright() as pw:
                        edit: el.toneRows.dataset.layerEdit };
       el.midiDyad.click(); await wait(400);
       const dyad = { channels: state.source.channels, lanes: state.source.getLatestWindow(256).length,
-                     layout: state.source.layout, edit: el.toneRows.dataset.layerEdit, rowHidden: el.midiKindsRow.hidden && el.midiTwoHands.hidden };
+                     layout: state.source.layout, edit: el.toneRows.dataset.layerEdit, rowHidden: el.midiKindsRow.hidden && el.midiTwoHands.classList.contains('is-unseen') };
       el.midiPoly.click(); await wait(200);
       return { before, dyad };
     }""")

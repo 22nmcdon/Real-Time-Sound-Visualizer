@@ -215,9 +215,12 @@ with sync_playwright() as pw:
       for (const d of dests) addRouting('env.note', d.id);
       openModCard('env.note'); el.menvOwn.checked = true; el.menvOwn.dispatchEvent(new Event('change')); await wait(200);
       const own = el.srcDetail.querySelector('.src-own'), goes = el.srcDetail.querySelector('.src-goes');
+      /* Since 18 Nov (play-figures.md) the Envelope's editor is one column: its drawing the editor's width,
+         its knobs, then Where it goes taking the rest and scrolling inside itself past what fits. So the
+         editor and its own part must not scroll, and Where it goes scrolls only inside itself. */
       return { rows: el.srcDetail.querySelectorAll('.mod-edit').length,
-               over: Math.max(el.modEditor.scrollHeight - el.modEditor.clientHeight, own.scrollHeight - own.clientHeight,
-                              goes.scrollHeight - goes.clientHeight) };
+               over: Math.max(el.modEditor.scrollHeight - el.modEditor.clientHeight, own.scrollHeight - own.clientHeight),
+               goesInside: getComputedStyle(goes).overflowY === 'auto' && goes.getBoundingClientRect().bottom <= el.modEditor.getBoundingClientRect().bottom + 1 };
     }"""
     def fit_at(w, h, size=None):
         q = b.new_page(viewport={"width": w, "height": h})
@@ -229,8 +232,8 @@ with sync_playwright() as pw:
         q.close()
         return r
     small = fit_at(960, 600)
-    check("at 960x600, its own envelope ticked and a dozen destinations, nothing in the editor scrolls",
-          small["rows"] == 12 and small["over"] <= 0, str(small))
+    check("at 960x600, its own envelope ticked and a dozen destinations, the editor and its drawing do not scroll, and Where it goes scrolls inside itself",
+          small["rows"] == 12 and small["over"] <= 0 and small["goesInside"], str(small))
     short = fit_at(960, 420, 1)
     check("null: at 960x420 and 100% something in it does", short["over"] > 0, str(short))
     b.close()

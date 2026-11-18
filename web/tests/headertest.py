@@ -156,12 +156,13 @@ with sync_playwright() as pw:
     # as a change in progress, the pause is a step and the rest of the drag,
     # trusted too, another. (A knob's face sends its value by code, so on a
     # knob the second half was absorbed and the mutation pass could not tell.)
-    p.evaluate("() => { applyPreset('b:Drawbar organ'); setBenchTab('ink'); }"); p.wait_for_timeout(600)
+    # Upright under Play's Wave since 18 Nov (on Ink, lying down, until then): dragged up from its foot.
+    p.evaluate("() => { applyPreset('b:Drawbar organ'); showControl('bar3'); }"); p.wait_for_timeout(600)
     p.evaluate("() => { %s }" % CLEAR)
-    bar = p.evaluate("() => { const r = el.bar3.getBoundingClientRect(); return [r.x, r.y + r.height / 2, r.width, el.bar3.value]; }")
-    p.mouse.move(bar[0] + 6, bar[1]); p.mouse.down(); p.mouse.move(bar[0] + bar[2] * 0.35, bar[1], steps=6)
+    bar = p.evaluate("() => { const r = el.bar3.getBoundingClientRect(); return [r.x + r.width / 2, r.bottom - 3, r.height, el.bar3.value]; }")
+    p.mouse.move(bar[0], bar[1]); p.mouse.down(); p.mouse.move(bar[0], bar[1] - bar[2] * 0.35, steps=6)
     p.wait_for_timeout(700)
-    p.mouse.move(bar[0] + bar[2] * 0.75, bar[1], steps=6); p.mouse.up(); settle()
+    p.mouse.move(bar[0], bar[1] - bar[2] * 0.75, steps=6); p.mouse.up(); settle()
     slid = p.evaluate("() => ({ value: el.bar3.value, undo: undoHistory.undo.length })")
     check("a drawbar dragged, held still half way and let go is one step",
           slid["undo"] == 1 and slid["value"] != bar[3] and int(slid["value"]) >= 5, str((bar[3], slid)))
