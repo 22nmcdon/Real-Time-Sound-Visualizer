@@ -134,9 +134,11 @@ inline constexpr SelectSpec kSelects[] = {
   { "device", nullptr, "" },
   /* The envelopes' "Shape..." menus (18 Nov): actions, each choice loading a
      shape into its envelope's fields and the menu going back to its blank, so
-     no setup reads them. The popover's is filled as it opens, for the amp's or
-     the filter's; the Envelope card's from the start. */
-  { "msegShapes", nullptr, "" },
+     no setup reads them. The amp's and the filter's on Play's figures (the
+     popover's one menu until they replaced it, the same day), the Envelope
+     card's in its editor; each filled from the start. */
+  { "ampShapes", "" "\x1f" "ADSR" "\x1f" "AHDSR" "\x1f" "Pluck" "\x1f" "Swell" "\x1f" "Gate" "\x1f" "Pulse", "" },
+  { "vcfShapes", "" "\x1f" "ADSR" "\x1f" "Pluck" "\x1f" "Swell" "\x1f" "Pulse", "" },
   { "menvShapes", "" "\x1f" "ADSR" "\x1f" "AHDSR" "\x1f" "Pluck" "\x1f" "Swell" "\x1f" "Gate" "\x1f" "Pulse", "" },
   { "midiOut", "", "" },
   { "midiOutCh", nullptr, "" },
