@@ -17966,12 +17966,16 @@ function syncBars() {
   el.cycleSlots.hidden = !table;
   cycleEdit(table ? cycleSlotChosen : 0);
   el.cycleGroup.hidden = !(wave && el.shape.value === "drawn");
+  // The cycle is drawn on with the Drawn cycle and the Wavetable, whether or not Wave is shown.
+  el.cycleCanvas.classList.toggle("is-drawn-on", drawnHeard);
   // The shapes with no controls of their own say what they are, in the band's room (Wave, 18 Nov).
   const own = wave && ["pulse", "morph", "wavetable", "drawn", "drawbars"].includes(el.shape.value);
   const say = !wave ? "Only the generator has a wave: the source is an input." : own ? WAVE_BAND_SAY[el.shape.value] || "" : WAVE_SAY[el.shape.value] || "";
   if (el.waveSay.textContent !== say) el.waveSay.textContent = say;
   el.waveSay.classList.toggle("only", !own);
   paintCycle();
+  // Wave's link pill says whose its controls are, as the Drawbars' title did on Ink: told as the hand changes.
+  paintHandLinks();
 }
 
 function syncLayerPanel() {
@@ -23817,7 +23821,6 @@ function paintCycle() {
   }
   if (!t) { canvas._drawn = null; return; }
   const shape = t.shape, n = Math.max(64, Math.round((w - g.L - g.R) / 2));
-  const drawing = shape === "drawn" || shape === "wavetable";
   const levels = shape === "drawn" ? Array.from({ length: n + 1 }, (_, i) => drawnCycle.points[Math.min(CYCLE_POINTS - 1, Math.floor(i / n * CYCLE_POINTS))])
     : waveCycle(t, n);
   ctx.textAlign = "right"; ctx.fillStyle = ink["text-soft"]; ctx.font = "8.5px Jost, sans-serif";
@@ -23841,7 +23844,6 @@ function paintCycle() {
   ctx.strokeStyle = own ? ink[handInk(panelLayer)] || ink.charcoal : ink.charcoal;
   ctx.lineWidth = 1.8; ctx.lineJoin = "round";
   ctx.stroke(line);
-  canvas.classList.toggle("is-drawn-on", drawing);
   canvas._drawn = { shape, n, levels, ink: own ? handInk(panelLayer) : "charcoal" };
 }
 // The point under the pointer, in the drawing's own geometry: which of the cycle's points, and its level.

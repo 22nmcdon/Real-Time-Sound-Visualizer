@@ -119,22 +119,23 @@ with sync_playwright() as pw:
       await wait(30);
       // The upper hand, and the Generator its own (G6: linked, the drawbars would be both hands').
       document.getElementById('editHandB').click(); document.getElementById('linkGen').click(); await wait(30);
-      const title = el.barsTitle.textContent;
+      // Said on Wave's link pill since 18 Nov (the Drawbars' title on Ink until then).
+      const title = el.linkGenWave.textContent;
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       el.bars.value = '800000000'; el.bar0.dispatchEvent(new Event('input'));
       const whileB = { a: genSettings(0).bars.slice(), b: genSettings(1).bars.slice(), panel: el.bars.value };
       document.getElementById('editHandA').click(); await wait(30);
-      const backA = { panel: el.bars.value, title: el.barsTitle.textContent, code: snapshot() };
+      const backA = { panel: el.bars.value, title: el.linkGenWave.textContent, code: snapshot() };
       return { title, whileB, backA: { panel: backA.panel, title: backA.title,
                bars: backA.code.bars, bBars: backA.code.bBars } };
     }""")
     print("    %s" % layers)
     check("editing B, the section says so and writes B's bars, leaving A's",
-          layers["title"] == "Drawbars \u00b7 Upper"
+          layers["title"] == "Upper\u2019s own"
           and layers["whileB"]["b"] == [8, 0, 0, 0, 0, 0, 0, 0, 0]
           and layers["whileB"]["a"] == [0, 0, 8, 7, 4, 0, 0, 0, 0], str(layers["whileB"]))
     check("back on A the sliders are A's again, and the code carries both",
-          layers["backA"]["panel"] == "008740000" and layers["backA"]["title"] == "Drawbars \u00b7 Lower"
+          layers["backA"]["panel"] == "008740000" and layers["backA"]["title"] == "Lower\u2019s own"
           and layers["backA"]["bars"] == "008740000" and layers["backA"]["bBars"] == "800000000",
           str(layers["backA"]))
     # Here stood "and B sounds its own: B's picture is its 16' at 110 Hz while

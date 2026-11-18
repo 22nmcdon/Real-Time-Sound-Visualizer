@@ -160,7 +160,7 @@ with sync_playwright() as pw:
       return { shown, start, set, late };
     }""")
     print("    %s" % panel)
-    check("the Position knob and the slot switch show only with Wavetable, the Drawn cycle's tools with it, and the cycle is drawn on with either",
+    check("the Position knob and the slot switch show only with Wavetable, the Drawn cycle's tools with the drawn cycle, and the cycle is drawn on with either",
           panel["shown"] == {"morph": [False, False, False, False], "drawn": [False, False, True, True],
                              "wavetable": [True, True, False, True]}, str(panel["shown"]))
     check("it starts between slots two and three, says where it is, and writes the generator",
