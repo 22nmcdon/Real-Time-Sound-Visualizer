@@ -1441,7 +1441,6 @@ body[data-layer-edit="b"] #phaseRow { display: none !important; }
    the section's top, since a drawing in the section did not fit Play at
    1100x860, where the filter shares a column with the amp envelope. The
    heading carries a small copy of the curve, so the shape is on show shut. */
-#vcfGroup { position: relative; }
 .env-open { all: unset; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .env-open:focus-visible { outline: 1px solid var(--blush-deep); outline-offset: 2px; }
 .env-open:disabled { cursor: default; }
@@ -1701,6 +1700,157 @@ body[data-compact] .bench-body { row-gap: 10px; }
 [data-compact] .kb-row select { padding-block: 2px; }
 [data-compact] .kb-strip { height: 36px; }
 [data-compact] .kb-line { margin-top: 3px; }
+
+/* --- Play with its figures (18 Nov, web/docs/play-figures.md) ------------------
+   A column of three: the Keyboard's band, the settings row and the figure
+   area filling the rest. Every other tab still deals into the same body, so
+   the body's lines are packed at its top (align-content): a wrapping row
+   with `normal` stretched its lines to its height, and the band had half of
+   the spare height under it - 124 px at 1660x1050, the gap the owner saw. */
+.bench-body { align-content: flex-start; }
+.bench-body.is-play { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; row-gap: 0; overflow-y: auto; }
+.bench-body.is-play > .bench-band { flex: 0 0 auto; }
+.play-set { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 26px;
+  margin-top: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line); height: 67px; box-sizing: border-box; }
+[data-compact] .play-set { column-gap: 16px; margin-top: 6px; padding-bottom: 5px; height: 60px; }
+/* Each section a grid of four fields, its title over them: a field is its name in small type over its control. */
+.bench-body .play-set > .menu-group { margin: 0; display: grid; column-gap: 8px; align-content: start; min-width: 0; }
+[data-compact] .bench-body .play-set > .menu-group { column-gap: 6px; }
+#expressionGroup { grid-template-columns: minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.34fr); }
+#toneRows { grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.75fr) minmax(0, 1.3fr) minmax(0, 0.75fr); }
+.bench-body .play-set > .menu-group > .menu-title { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px;
+  min-height: 18px; margin: 0 0 2px; padding: 0; border-bottom: 0; }
+.bench-body .play-set > .menu-group > .menu-title > .more-dots { margin-left: auto; }
+.bench-body .play-set > .menu-group > .menu-title > .hand-link { position: static; }
+.bench-body .play-set .menu-row:not([data-more]) { display: flex; flex-direction: column; align-items: stretch; gap: 1px; margin: 0; min-width: 0; }
+.bench-body .play-set .menu-row > .menu-label { flex: 0 0 auto; font-size: 10.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-compact] .bench-body .play-set .menu-row > .menu-label { font-size: 9.5px; }
+.bench-body .play-set .menu-row:not(.knob-row) > .grow { display: flex; flex: 0 0 auto; min-width: 0; }
+.bench-body .play-set select { width: 100%; min-width: 0; height: 25px; font-size: 12px; padding: 1px 4px; }
+[data-compact] .bench-body .play-set select { height: 22px; font-size: 11.5px; padding: 0 3px; }
+/* Glide and Level: the knob small, its reading beside it, in the field's one line. */
+/* A fixed first track, so the name spanning both cannot widen the knob's. */
+#benchBody .play-set .menu-row.knob-row { display: grid; grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-areas: "name name" "face value"; justify-items: start; align-items: center; column-gap: 6px; row-gap: 1px;
+  width: auto; max-width: none; min-width: 0; margin: 0; flex: none; }
+[data-compact] #benchBody .play-set .menu-row.knob-row { grid-template-columns: 21px minmax(0, 1fr); column-gap: 5px; }
+#benchBody .play-set .menu-row.knob-row > .grow > .reading { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+#benchBody .play-set .menu-row.knob-row > .menu-label { text-align: left; font-size: 10.5px; line-height: 1.2; }
+[data-compact] .bench-body .play-set .menu-row.knob-row > .menu-label { font-size: 9.5px; }
+.bench-body .play-set .menu-row.knob-row .knob-face { width: 24px; height: 24px; margin: 0; }
+[data-compact] .bench-body .play-set .menu-row.knob-row .knob-face { width: 21px; height: 21px; }
+.bench-body .play-set .menu-row.knob-row > .grow > .reading { font-size: 12px; white-space: nowrap; }
+
+/* The figure area: a paper sheet with its subtabs along the top, the chosen one's view under them. */
+.play-figs { flex: 1 1 auto; min-height: 0; margin-top: 8px; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--paper); }
+[data-compact] .play-figs { margin-top: 6px; }
+.fig-bar { flex: 0 0 auto; display: flex; background: var(--cream-2); border-bottom: 1px solid var(--line); }
+.fig-tab { flex: 1 1 0; min-width: 0; display: flex; align-items: baseline; gap: 7px; border: 0; border-right: 1px solid var(--line);
+  background: none; padding: 5px 11px; text-align: left; white-space: nowrap; overflow: hidden; position: relative; cursor: pointer; font: inherit; }
+.fig-tab:last-child { border-right: 0; }
+.fig-tab b { flex: 0 0 auto; font-family: var(--serif); font-weight: 500; font-size: 14.5px; color: var(--charcoal); line-height: 1.25; }
+.fig-sum { flex: 1 1 auto; min-width: 0; font-size: 11.5px; color: var(--text-soft); overflow: hidden; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The chosen one covers the bar's rule with a shadow, not a negative margin, which changed both
+   subtabs' heights by a pixel on every switch (the mockup's no-shift check caught it). */
+.fig-tab[aria-selected="true"] { background: var(--paper); box-shadow: inset 0 2px 0 var(--blush-deep), 0 1px 0 var(--paper); z-index: 1; }
+.fig-tab:hover b { color: var(--blush-deep); }
+.fig-tab:focus-visible { outline: 1px solid var(--blush-deep); outline-offset: -2px; }
+[data-compact] .fig-tab { padding: 3px 8px 4px; gap: 5px; }
+[data-compact] .fig-tab b { font-size: 13px; }
+[data-compact] .fig-sum { font-size: 10.5px; }
+.fig-views { flex: 1 1 auto; min-height: 0; position: relative; }
+/* A view: its tools on the left of its header, the link pill and the dots at the right end, the
+   drawing taking what is left, its knobs in a row under it. The title is the section's own (its
+   dots, its pill), its words unseen, since the subtab names it. */
+.bench-body .fig-views > .menu-group.fig-view { position: absolute; inset: 0; margin: 0; display: grid;
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 4px;
+  padding: 6px 14px 6px 12px; }
+[data-compact] .bench-body .fig-views > .menu-group.fig-view { padding: 4px 10px 4px 8px; row-gap: 3px; }
+.bench-body .fig-views > .menu-group.fig-view[hidden] { display: none; }
+.bench-body .fig-view > .fig-tools { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 8px; min-height: 22px;
+  white-space: nowrap; min-width: 0; margin: 0; flex-wrap: nowrap; }
+[data-compact] .bench-body .fig-view > .fig-tools { min-height: 20px; gap: 6px; }
+.bench-body .fig-view > .menu-title { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  margin: 0; padding: 0; border: 0; font-size: 0; letter-spacing: 0; min-height: 22px; }
+.bench-body .fig-view > .menu-title > * { font-size: 8.5px; letter-spacing: 0.14em; }
+.bench-body .fig-view > .menu-title > .more-dots { font-size: 13px; letter-spacing: 0.1em; }
+.bench-body .fig-view > .menu-title > .hand-link, .bench-body .play-set .menu-title > .hand-link { position: static; }
+/* The pills one width whatever they say, so one appearing or changing its words moves nothing beside it. */
+.bench-body .is-play .hand-link, .bench-body.is-play .hand-link { min-width: 98px; justify-content: center; box-sizing: border-box; }
+.bench-body .fig-view > .fig-plot, .bench-body .fig-view > .fig-body { grid-column: 1 / -1; grid-row: 2; min-height: 0; min-width: 0; }
+.bench-body .fig-view > .fig-foot, .bench-body .fig-view > .wave-band { grid-column: 1 / -1; grid-row: 3; }
+.fig-plot { position: relative; min-height: 30px; }
+.fig-plot > svg, .fig-plot > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.fig-tools select.mseg-shapes, .fig-sub select.mseg-shapes { font-size: 11px; padding: 1px 3px; height: 22px; max-width: 92px; }
+.fig-tools .switch button { padding: 2px 8px; font-size: 9.5px; }
+[data-compact] .fig-tools .switch button { padding: 1px 6px; font-size: 9px; letter-spacing: 0.1em; }
+.bench-body .fig-view > .fig-tools.menu-row > .menu-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.fig-foot { display: flex; align-items: flex-end; gap: 16px; min-width: 0; }
+.fig-note { flex: 1 1 auto; min-width: 0; margin: 0 0 4px; font-size: 11px; line-height: 1.4; color: var(--text-soft); }
+.fig-note b { font-weight: 500; color: var(--text); }
+[data-compact] .fig-note { display: none; }
+.bench-body .fig-view .mseg-knobs { flex: 0 0 auto; display: flex; flex-wrap: nowrap; column-gap: 2px; justify-content: flex-start; }
+.bench-body .fig-view .mseg-knobs > .menu-row.knob-row { width: 54px; min-width: 0; max-width: none; flex: 0 0 auto; margin: 0; }
+.bench-body .fig-view .mseg-knobs.f4 > .menu-row.knob-row { width: 58px; }
+.bench-body .fig-view .mseg-knobs .knob-face { width: 28px; height: 28px; }
+.bench-body .fig-view .mseg-knobs > .menu-row.knob-row > .grow > .reading { font-size: 10.5px; white-space: nowrap; }
+.bench-body .fig-view .mseg-knobs > .menu-row.knob-row > .menu-label { font-size: 9.5px; white-space: nowrap; }
+[data-compact] .bench-body .fig-view .mseg-knobs > .menu-row.knob-row { width: 44px; }
+[data-compact] .bench-body .fig-view .mseg-knobs.f4 > .menu-row.knob-row { width: 50px; }
+[data-compact] .bench-body .fig-view .mseg-knobs .knob-face { width: 22px; height: 22px; }
+[data-compact] .bench-body .fig-view .mseg-knobs > .menu-row.knob-row > .grow > .reading { font-size: 9.5px; }
+[data-compact] .bench-body .fig-view .mseg-knobs > .menu-row.knob-row > .menu-label { font-size: 8.5px; }
+.mseg-knobs.is-off { opacity: 0.45; }
+/* Filter: the response and its envelope, side by side or stacked (fitFilter). */
+.fig-body { display: flex; gap: 18px; }
+.fig-body.stacked { flex-direction: column; gap: 4px; }
+[data-compact] .fig-body { gap: 12px; }
+.fig-pane { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 3px; }
+.fig-pane > .fig-plot { flex: 1 1 auto; }
+.fig-pane + .fig-pane { border-left: 1px solid var(--line); padding-left: 16px; }
+.fig-body.stacked .fig-pane + .fig-pane { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 3px; }
+[data-compact] .fig-pane + .fig-pane { padding-left: 10px; }
+.fig-sub { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--blush-deep); display: flex; align-items: center;
+  gap: 6px; font-weight: 500; white-space: nowrap; min-height: 22px; }
+.fig-sub select.mseg-shapes { margin-left: auto; }
+.fig-words { text-transform: none; letter-spacing: 0; color: var(--text-soft); font-weight: 300; font-size: 11px;
+  flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#vcfSweeps { flex: 1 1 0; }
+#vcfSweeps.is-dead { color: var(--unresolved); }
+/* Wave: the cycle, and under it a band one height for every shape (the drawbars', 78 px). */
+.wave-name { font-size: 12px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; }
+.wave-name b { font-family: var(--serif); font-weight: 500; font-size: 14px; color: var(--charcoal); }
+.bench-body .wave-band { height: 78px; box-sizing: border-box; display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 16px; min-width: 0; overflow: hidden;
+  border-top: 1px solid var(--line); padding-top: 4px; }
+.bench-body .wave-band > .menu-row.knob-row { flex: 0 0 auto; width: 58px; margin: 0 0 2px; }
+.bench-body .wave-band > .menu-row.knob-row .knob-face { width: 28px; height: 28px; }
+.bench-body .wave-band > .menu-row.knob-row > .menu-label { font-size: 9.5px; }
+.bench-body .wave-band > .menu-row.knob-row > .grow > .reading { font-size: 10.5px; white-space: nowrap; }
+.bench-body .wave-band > .menu-row[hidden], .wave-band > [hidden] { display: none; }
+/* Each its own width in the band's one line (the knob cells' wrapping rule would give them a line each). */
+.bench-body .wave-band > :not(.knob-row) { flex: 0 0 auto; }
+.bench-body .wave-band > .wave-say { flex: 1 1 auto; }
+.bench-body .wave-band > .wave-bars { align-self: stretch; }
+.wave-band .cycle-slots { margin-bottom: 8px; }
+.wave-band .cycle-slots button { padding: 2px 8px; font-size: 9.5px; }
+.wave-tools { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; flex: 0 0 auto; }
+.wave-say { flex: 1 1 auto; min-width: 0; margin: 0 0 6px; font-size: 11.5px; line-height: 1.4; color: var(--text-soft); }
+.wave-say.only { align-self: center; margin: 0; font-family: var(--script); font-style: italic; font-size: 16px; }
+/* The drawbars upright, as an organ's: its value over it, its footage under it. */
+.wave-bars { display: flex; gap: 2px; flex: 0 0 auto; align-self: stretch; }
+.bench-body .wave-bars > .menu-row.drawbar { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; justify-items: center;
+  width: 30px; margin: 0; gap: 1px; flex: 0 0 auto; }
+[data-compact] .bench-body .wave-bars > .menu-row.drawbar { width: 26px; }
+.bench-body .wave-bars > .menu-row.drawbar > .grow { display: contents; }
+.bench-body .wave-bars > .menu-row.drawbar > .menu-label { grid-row: 3; flex: none; font-size: 9px; line-height: 1.1; white-space: nowrap; text-align: center; }
+.bench-body .wave-bars > .menu-row.drawbar .reading { grid-row: 1; font-size: 10px; line-height: 1.1; color: var(--charcoal); min-width: 0; }
+.bench-body .wave-bars > .menu-row.drawbar input[type="range"] { grid-row: 2; writing-mode: vertical-lr; direction: rtl; width: 16px;
+  height: 100%; min-height: 0; min-width: 0; margin: 0; accent-color: var(--blush-deep); }
+.wave-bars .bar-mark { display: none; }
+.wave-bars input[type="range"]::-webkit-slider-runnable-track { width: 2px; height: 100%; }
+.bench-body .wave-bars .mod-lane { display: none; }
+#cycleCanvas { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: none; cursor: default; }
+#cycleCanvas.is-drawn-on { cursor: crosshair; }
 
 /* --- the side column -------------------------------------------------------
    The screen, and the things you point at it. Neither is ever behind a fold.
@@ -2483,7 +2633,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                     <option value="8">8</option>
                   </select>
                   <select id="midiDrawWhich" aria-label="Which notes make the outline">
-                    <option value="outer" selected>bass and melody</option>
+                    <option value="outer" title="bass and melody" selected>bass + melody</option>
                     <option value="lowest">lowest</option>
                     <option value="highest">highest</option>
                     <option value="recent">most recent</option>
@@ -2570,23 +2720,23 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                (the-face-second-pass.md); from 6 Nov to then it was behind the
                Keyboard's dots, so a player looking for the bend range had to
                know it was there. -->
-          <div class="menu-group" id="expressionGroup" data-tab="play" data-home="bench" data-col="1">
+          <div class="menu-group" id="expressionGroup" data-tab="play" data-home="bench" data-play="set">
             <span class="menu-title">Expression</span>
             <div class="menu-row">
               <label class="menu-label" for="midiBendRange">Pitch bend</label>
               <div class="grow"><select id="midiBendRange" style="flex:1 1 auto">
-                <option value="1">&plusmn;1 semitone</option><option value="2" selected>&plusmn;2 semitones</option>
-                <option value="3">&plusmn;3 semitones</option><option value="5">&plusmn;5 semitones</option>
-                <option value="7">&plusmn;7 semitones</option><option value="12">&plusmn;12 semitones</option>
-                <option value="24">&plusmn;24 semitones</option></select></div>
+                <option value="1" title="&plusmn;1 semitone">&plusmn;1 st</option><option value="2" title="&plusmn;2 semitones" selected>&plusmn;2 st</option>
+                <option value="3" title="&plusmn;3 semitones">&plusmn;3 st</option><option value="5" title="&plusmn;5 semitones">&plusmn;5 st</option>
+                <option value="7" title="&plusmn;7 semitones">&plusmn;7 st</option><option value="12" title="&plusmn;12 semitones">&plusmn;12 st</option>
+                <option value="24" title="&plusmn;24 semitones">&plusmn;24 st</option></select></div>
             </div>
             <div class="menu-row">
               <label class="menu-label" for="midiWheelTo">Mod wheel</label>
-              <div class="grow"><select id="midiWheelTo" style="flex:1 1 auto"><option value="vibrato" selected>Vibrato</option><option value="picture">Picture amount</option><option value="scan">Scan depth</option><option value="off">Nothing</option></select></div>
+              <div class="grow"><select id="midiWheelTo" style="flex:1 1 auto"><option value="vibrato" selected>Vibrato</option><option value="picture" title="Picture amount">Picture</option><option value="scan" title="Scan depth">Scan</option><option value="off">Nothing</option></select></div>
             </div>
             <div class="menu-row">
               <label class="menu-label" for="midiPressureTo">Pressure</label>
-              <div class="grow"><select id="midiPressureTo" style="flex:1 1 auto"><option value="vibrato">Vibrato</option><option value="picture">Picture amount</option><option value="scan">Scan depth</option><option value="off" selected>Nothing</option></select></div>
+              <div class="grow"><select id="midiPressureTo" style="flex:1 1 auto"><option value="vibrato">Vibrato</option><option value="picture" title="Picture amount">Picture</option><option value="scan" title="Scan depth">Scan</option><option value="off" selected>Nothing</option></select></div>
             </div>
             <!-- Velocity (F4): it always sets a note's level and how hard it
                  strikes the screen; FM adds the routing a struck note's
@@ -2594,7 +2744,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                  a field of its own. -->
             <div class="menu-row">
               <label class="menu-label" for="midiVelocityTo">Velocity</label>
-              <div class="grow"><select id="midiVelocityTo" style="flex:1 1 auto"><option value="strike" selected>Level and strike</option><option value="fm">Level, strike and FM</option></select></div>
+              <div class="grow"><select id="midiVelocityTo" style="flex:1 1 auto"><option value="strike" title="Level and strike" selected>Level + strike</option><option value="fm" title="Level, strike and FM">Level, strike, FM</option></select></div>
             </div>
           </div>
 
@@ -2774,7 +2924,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           </div>
 
 
-          <div class="menu-group" id="toneRows" data-tab="play" data-home="bench" data-col="2">
+          <div class="menu-group" id="toneRows" data-tab="play" data-home="bench" data-play="set">
             <span class="menu-title" id="genTitle" data-layer="b">Generator<button type="button" class="hand-link" id="linkGen" data-link="gen" aria-pressed="true" hidden></button></span>
               <p class="menu-note" id="layerBNote" data-layer="b">The upper hand (B, layered) is shown:
                 its shape, level, drawbars and morph, the same as the lower's while the link on the title
@@ -2787,7 +2937,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <label class="menu-label" for="shape">Shape</label>
                 <div class="grow">
                   <select id="shape" style="flex:1 1 auto">
-                    <option value="harmonic" selected>Sine + 3rd harmonic</option>
+                    <option value="harmonic" title="Sine + 3rd harmonic" selected>Sine + 3rd</option>
                     <option value="sine">Sine</option>
                     <option value="square">Square</option>
                     <option value="pulse">Pulse</option>
@@ -2795,62 +2945,13 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                     <option value="ramp">Saw</option>
                     <option value="drawbars">Drawbars</option>
                     <option value="morph">Morph</option>
-                    <option value="drawn">Drawn cycle</option>
+                    <option value="drawn" title="Drawn cycle">Drawn</option>
                     <option value="wavetable">Wavetable</option>
-                    <option value="noise">White noise</option>
-                    <option value="pink">Pink noise</option>
-                    <option value="brown">Brown noise</option>
-                    <option value="stepped">Stepped (S&amp;H)</option>
+                    <option value="noise" title="White noise">Noise</option>
+                    <option value="pink" title="Pink noise">Pink</option>
+                    <option value="brown" title="Brown noise">Brown</option>
+                    <option value="stepped" title="Stepped (S&amp;H)">S&amp;H</option>
                   </select>
-                </div>
-              </div>
-              <!-- The registration, and the way to it: the nine bars are on the
-                   Ink tab, where the voice's colour lives. A row of its own, shown
-                   only with the drawbars chosen: beside the menu it pushed the
-                   menu down to a width that could not say "Drawbars". -->
-              <!-- Shown only with Morph chosen, as the registration row is with the
-                   drawbars: the two are never on screen together, so Play grows by
-                   one row at most. -->
-              <div class="menu-row" id="morphRow" data-mod-dest="gen.morph" data-mod-control="morph"
-                   data-layer="b" hidden>
-                <label class="menu-label" for="morph">Morph</label>
-                <div class="grow">
-                  <input type="range" id="morph" min="0" max="300" value="150">
-                  <span class="reading" id="morphValue">tri&rarr;saw</span>
-                </div>
-              </div>
-              <!-- The pulse's width, shown only with Pulse chosen: never on screen
-                   with the morph's row, so Play still grows by one row at most. -->
-              <div class="menu-row" id="widthRow" data-mod-dest="gen.width" data-mod-control="width"
-                   data-layer="b" hidden>
-                <label class="menu-label" for="width">Width</label>
-                <div class="grow">
-                  <input type="range" id="width" min="5" max="95" value="25">
-                  <span class="reading" id="widthValue">25%</span>
-                </div>
-              </div>
-              <!-- The wavetable's position, shown only with Wavetable chosen, as the
-                   morph's row is with the morph. -->
-              <div class="menu-row" id="tableRow" data-mod-dest="gen.table" data-mod-control="table"
-                   data-layer="b" hidden>
-                <label class="menu-label" for="table">Position</label>
-                <div class="grow">
-                  <input type="range" id="table" min="0" max="300" value="150">
-                  <span class="reading" id="tableValue">2&rarr;3</span>
-                </div>
-              </div>
-              <div class="menu-row" id="cycleGoRow" data-layer="b" hidden>
-                <span class="menu-label">Cycle</span>
-                <div class="grow">
-                  <button type="button" class="link-btn" id="cycleGo"
-                          title="The drawn cycle, on the Ink tab">Draw it &rsaquo;</button>
-                </div>
-              </div>
-              <div class="menu-row" id="barsGoRow" data-layer="b" hidden>
-                <span class="menu-label">Drawbars</span>
-                <div class="grow">
-                  <button type="button" class="link-btn" id="barsGo"
-                          title="The drawbars, on the Ink tab"></button>
                 </div>
               </div>
               <!-- Glide beside Shape since G3: how a phrase moves from note to
@@ -2896,16 +2997,19 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                with Glide wrapped under them, so the first column read "Attack
                off". Every row is a layer's own (data-layer), so while layer B
                is edited the whole section stays and says so. -->
-          <div class="menu-group" id="ampEnvGroup" data-tab="play" data-home="bench" data-col="2">
+          <div class="menu-group fig-view" id="ampEnvGroup" data-tab="play" data-home="bench" data-play="fig" data-fig="amp">
+            <!-- The drawn envelope as Play's Amp figure (18 Nov, web/docs/play-figures.md): the drawing the
+                 view's width, its six knobs in a row under it, and nothing opened from it. The knobs stay
+                 in the markup's order, which the morph and the plugin's panel read; the script puts them in
+                 the drawing's (Delay first). -->
+            <div class="fig-tools"><select class="mseg-shapes" id="ampShapes" aria-label="Start the amp envelope from a shape"></select><button
+              type="button" class="link-btn caps mseg-loop" id="ampLoop" aria-pressed="false">Loop</button><button
+              type="button" class="link-btn caps mseg-hold" id="ampHold" aria-pressed="false">Hold a note</button></div>
             <span class="menu-title" id="ampEnvTitle">Amp envelope<button type="button" class="hand-link" id="linkAmpEnv" data-link="ampEnv" aria-pressed="true" hidden></button></span>
-            <!-- The drawn envelope (18 Nov, web/docs/mseg-design.md): a small block of
-                 just the shape, and its four readings under it; pressed, the editor
-                 opens beside it (#msegPop) and its six knobs move into it from the
-                 store below, as the EQ's move into its editor. -->
-            <button type="button" class="mseg-block" id="ampEnvBlock" aria-expanded="false" aria-controls="msegPop"
-                    aria-label="The amp envelope: open its editor"><svg class="mseg-small" id="ampEnvSmall" aria-hidden="true"></svg></button>
-            <div class="mseg-reads" id="ampEnvReads" aria-hidden="true"></div>
-            <div class="mseg-store" id="ampEnvStore" hidden>
+            <div class="fig-plot"><svg class="mseg-plot" id="ampPlot" role="group"
+                 aria-label="The amp envelope: drag its points, and press the line twice to add one"></svg></div>
+            <div class="fig-foot">
+              <div class="mseg-knobs" id="ampKnobs">
             <div class="menu-row" data-layer="b">
               <label class="menu-label" for="envAttack">Attack</label>
               <div class="grow">
@@ -2934,8 +3038,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="envReleaseValue">180 ms</span>
               </div>
             </div>
-            <!-- The drawn envelope's (18 Nov, mseg-design.md): its delay and hold, and
-                 its shape, the points between the knobs, as the setup's text. -->
             <div class="menu-row" data-layer="b">
               <label class="menu-label" for="envDelay">Delay</label>
               <div class="grow">
@@ -2950,8 +3052,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="envHoldValue">0 ms</span>
               </div>
             </div>
-            <input type="text" id="envShape" value="" hidden aria-label="The amp envelope's shape">
+              </div>
+              <p class="fig-note">Drag a point; press the line twice to add one, a point you added twice to take it
+                away. Right-click a point for <b>Sustain here</b>, <b>No sustain</b> and the loop.</p>
             </div>
+            <input type="text" id="envShape" value="" hidden aria-label="The amp envelope's shape">
           </div>
 
 
@@ -3647,121 +3752,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             </div>
           </div>
 
-          <!-- G2: one period, drawn. Shown only while it is the shape: the
-               Shape tab (Ink's, since P8) had a dozen pixels to spare with a rack of six, and a
-               pane nobody is using would take more than that. -->
-          <div class="menu-group" id="cycleGroup" data-home="bench" data-tab="ink" hidden>
-            <span class="menu-title"><span id="cycleTitle">Drawn cycle</span></span>
-            <canvas id="cycleCanvas" class="cycle-canvas" aria-label="One cycle of the wave: draw on it"></canvas>
-            <div class="menu-row">
-              <!-- Which of the wavetable's four slots the pane draws, in the
-                   label's room so the section is no taller for it: the Shape
-                   tab has a dozen pixels to spare with a rack of six. -->
-              <span class="menu-label">
-                <span class="switch cycle-slots" role="radiogroup" aria-label="Wavetable slot" id="cycleSlots" hidden>
-                  <button type="button" role="radio" aria-checked="true" data-slot="0">1</button><button
-                    type="button" role="radio" aria-checked="false" data-slot="1">2</button><button
-                    type="button" role="radio" aria-checked="false" data-slot="2">3</button><button
-                    type="button" role="radio" aria-checked="false" data-slot="3">4</button>
-                </span>
-              </span>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="cycleSine">Sine</button>
-                <button type="button" class="link-btn caps" id="cycleSmooth">Smooth</button>
-                <button type="button" class="link-btn caps" id="cycleGrab"
-                        title="One cycle of what is playing, as the drawn cycle">Grab</button>
-                <span class="reading" id="cycleNote" hidden></span>
-              </div>
-            </div>
-            <p class="menu-note"><i>Grab</i> takes one cycle of what is playing, from the
-              trigger lane: your input, or with the tone alone the generator's own output.
-              Hold the same note on the keyboard and the
-              period is the note's, exact; without one it is measured, and a few
-              cents out is a cycle that does not quite close. The reading beside it
-              says which, and its tooltip says the rest.</p>
-          </div>
-
-          <div class="menu-group" id="barsGroup" data-home="bench" data-tab="ink">
-            <span class="menu-title" id="barsTitle">Drawbars</span>
-            <div class="bars-state" id="barsStateRow">
-              <span class="reading" id="barsState"></span>
-              <button type="button" class="link-btn caps" id="barsUse">Use drawbars</button>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar0" data-mod-control="bar0">
-              <label class="menu-label" for="bar0"><span class="bar-mark" data-colour="brown"></span>16&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar0" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar0Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar1" data-mod-control="bar1">
-              <label class="menu-label" for="bar1"><span class="bar-mark" data-colour="brown"></span>5&#8531;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar1" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar1Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar2" data-mod-control="bar2">
-              <label class="menu-label" for="bar2"><span class="bar-mark" data-colour="white"></span>8&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar2" min="0" max="8" step="1" value="8">
-                <span class="reading" id="bar2Value">8</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar3" data-mod-control="bar3">
-              <label class="menu-label" for="bar3"><span class="bar-mark" data-colour="white"></span>4&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar3" min="0" max="8" step="1" value="7">
-                <span class="reading" id="bar3Value">7</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar4" data-mod-control="bar4">
-              <label class="menu-label" for="bar4"><span class="bar-mark" data-colour="black"></span>2&#8532;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar4" min="0" max="8" step="1" value="4">
-                <span class="reading" id="bar4Value">4</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar5" data-mod-control="bar5">
-              <label class="menu-label" for="bar5"><span class="bar-mark" data-colour="white"></span>2&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar5" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar5Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar6" data-mod-control="bar6">
-              <label class="menu-label" for="bar6"><span class="bar-mark" data-colour="black"></span>1&#8535;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar6" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar6Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar7" data-mod-control="bar7">
-              <label class="menu-label" for="bar7"><span class="bar-mark" data-colour="black"></span>1&#8531;&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar7" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar7Value">0</span>
-              </div>
-            </div>
-            <div class="menu-row drawbar" data-mod-dest="gen.bar8" data-mod-control="bar8">
-              <label class="menu-label" for="bar8"><span class="bar-mark" data-colour="white"></span>1&prime;</label>
-              <div class="grow">
-                <input type="range" id="bar8" min="0" max="8" step="1" value="0">
-                <span class="reading" id="bar8Value">0</span>
-              </div>
-            </div>
-            <p class="menu-note">Nine sine partials at the footages of a tonewheel organ,
-              drawn out from nought to eight. <i>8&prime;</i> is the note you play; <i>16&prime;</i>
-              is an octave under it and <i>5&#8531;&prime;</i> a fifth above that, so a
-              registration with either out has a cycle twice the note's. Each step is about
-              three decibels, as on the organ. However many bars are out the wave stays inside
-              the amplitude: one bar at eight is a full-scale sine, and pulling out more changes
-              the colour rather than the level. A partial above half the sample rate is left
-              out rather than folded back. Every bar is a destination, so a drawbar on your
-              keyboard, once it has moved, can be put on the same bar here. With a layer B,
-              each layer has its own registration.</p>
-          </div>
-
           <div class="menu-group" id="oscGroup" data-home="bench" data-tab="ink">
             <span class="menu-title" id="oscTitle">Oscillator<button type="button" class="hand-link" id="linkOsc" data-link="osc" aria-pressed="true" hidden></button></span>
             <!-- The pitch, which a note sets and a turn moves, and the second channel's start:
@@ -3924,99 +3914,241 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               and the folding-back that a bitcrusher is bought for. Each layer has its own.</p>
           </div>
 
-          <div class="menu-group" id="vcfGroup" data-home="bench" data-tab="play" data-col="3">
-            <span class="menu-title">Voice filter<button type="button" class="hand-link" id="linkVcf" data-link="vcf" aria-pressed="true" hidden></button></span>
-            <div class="menu-row">
-              <label class="menu-label" for="vcfType">Type</label>
-              <div class="grow"><select id="vcfType" style="flex:1 1 auto">
+          <div class="menu-group fig-view" id="vcfGroup" data-home="bench" data-tab="play" data-play="fig" data-fig="filter">
+            <!-- Play's Filter figure (18 Nov, play-figures.md): the type as a switch, which drives the
+                 menu kept out of sight in its row (the plugin, undo and the setup hear the menu as they
+                 always did); the response with its four knobs and its envelope with its six, side by
+                 side, or stacked when each drawing would still be 120 px tall (fitFilter, by room). -->
+            <div class="menu-row fig-tools"><label class="menu-label" for="vcfType">Type</label><select id="vcfType" hidden>
                 <option value="0">Off</option><option value="1">Low pass</option><option value="2">Band pass</option>
-                <option value="3">High pass</option><option value="4">Notch</option></select></div>
-            </div>
-            <!-- The filter's block (18 Nov): its response, the band its envelope sweeps
-                 shaded, three readings, and its envelope small beside what it sweeps.
-                 Either opens the editor beside it, with the four knobs and the six. -->
-            <button type="button" class="mseg-block mseg-fblock" id="vcfBlock" aria-expanded="false" aria-controls="msegPop"
-                    aria-label="The voice filter: open its editor"><svg class="mseg-resp-small" id="vcfRespSmall" aria-hidden="true"></svg></button>
-            <div class="mseg-reads three" id="vcfReads" aria-hidden="true"></div>
-            <div class="mseg-envline"><button type="button" class="mseg-block mseg-envbox" id="vcfEnvBlock" aria-expanded="false" aria-controls="msegPop"
-                    aria-label="The filter's envelope: open its editor"><svg class="mseg-small" id="vcfEnvSmall" aria-hidden="true"></svg></button>
-              <span class="mseg-sweeps-words">Its envelope · <span id="vcfSweeps"></span></span></div>
-            <div class="mseg-store" id="vcfStore" hidden>
-            <div class="menu-row vcf-on" data-mod-dest="gen.vcf" data-mod-control="vcfCut">
+                <option value="3">High pass</option><option value="4">Notch</option></select><span class="switch caps mseg-ftype" id="vcfTypes"
+              role="group" aria-label="The filter's type"><button type="button" data-type="0">Off</button><button type="button"
+              data-type="1">Low</button><button type="button" data-type="2">Band</button><button type="button"
+              data-type="3">High</button><button type="button" data-type="4">Notch</button></span><button
+              type="button" class="link-btn caps mseg-hold" id="vcfHoldNote" aria-pressed="false">Hold a note</button></div>
+            <span class="menu-title">Voice filter<button type="button" class="hand-link" id="linkVcf" data-link="vcf" aria-pressed="true" hidden></button></span>
+            <div class="fig-body" id="vcfBody">
+              <div class="fig-pane">
+                <div class="fig-sub">Response <span class="fig-words">&middot; drag the point</span></div>
+                <div class="fig-plot"><svg class="mseg-resp" id="vcfResp" role="group" aria-label="The voice filter's response: drag its point"></svg></div>
+                <div class="mseg-knobs f4" id="vcfFKnobs">
+                <div class="menu-row vcf-on" data-mod-dest="gen.vcf" data-mod-control="vcfCut">
               <label class="menu-label" for="vcfCut">Cutoff</label>
               <div class="grow">
                 <input type="range" id="vcfCut" min="0" max="1000" value="667">
                 <span class="reading" id="vcfCutValue">2.0 kHz</span>
               </div>
             </div>
-            <div class="menu-row vcf-on">
+                <div class="menu-row vcf-on">
               <label class="menu-label" for="vcfRes">Resonance</label>
               <div class="grow">
                 <input type="range" id="vcfRes" min="0" max="100" value="0">
                 <span class="reading" id="vcfResValue">Q 0.71</span>
               </div>
             </div>
-            <div class="menu-row vcf-on">
+                <div class="menu-row vcf-on">
               <label class="menu-label" for="vcfTrack">Key track</label>
               <div class="grow">
                 <input type="range" id="vcfTrack" min="0" max="100" value="0">
                 <span class="reading" id="vcfTrackValue">0%</span>
               </div>
             </div>
-            <div class="menu-row vcf-on">
-              <label class="menu-label" for="vcfEnvAmt">Envelope</label>
+                <div class="menu-row vcf-on">
+              <label class="menu-label" for="vcfEnvAmt">Amount</label>
               <div class="grow">
                 <input type="range" id="vcfEnvAmt" min="-40" max="40" value="0">
                 <span class="reading" id="vcfEnvAmtValue">0.0 oct</span>
               </div>
             </div>
-            <!-- Its envelope named (G3), now that its four sit on show beside the
-                 amplifier's four, which have the same names. -->
-            <div class="menu-row vcf-on vcf-env">
+                </div>
+              </div>
+              <div class="fig-pane">
+                <div class="fig-sub">Its envelope <span class="fig-words" id="vcfSweeps"></span><select class="mseg-shapes" id="vcfShapes"
+                  aria-label="Start the filter's envelope from a shape"></select><button type="button" class="link-btn caps mseg-loop"
+                  id="vcfLoop" aria-pressed="false">Loop</button></div>
+                <div class="fig-plot"><svg class="mseg-plot" id="fenvPlot" role="group"
+                     aria-label="The filter's envelope: drag its points, and press the line twice to add one"></svg></div>
+                <div class="mseg-knobs" id="vcfEnvKnobs">
+                <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfAtk">Attack</label>
               <div class="grow">
                 <input type="range" id="vcfAtk" min="0" max="20000" value="5">
                 <span class="reading" id="vcfAtkValue">5 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on vcf-env">
+                <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfDec">Decay</label>
               <div class="grow">
                 <input type="range" id="vcfDec" min="1" max="20000" value="300">
                 <span class="reading" id="vcfDecValue">300 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on vcf-env">
+                <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfSus">Sustain</label>
               <div class="grow">
                 <input type="range" id="vcfSus" min="0" max="100" value="30">
                 <span class="reading" id="vcfSusValue">0.30</span>
               </div>
             </div>
-            <div class="menu-row vcf-on vcf-env">
+                <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfRel">Release</label>
               <div class="grow">
                 <input type="range" id="vcfRel" min="1" max="20000" value="300">
                 <span class="reading" id="vcfRelValue">300 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on vcf-env">
+                <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfDelay">Delay</label>
               <div class="grow">
                 <input type="range" id="vcfDelay" min="0" max="5000" value="0">
                 <span class="reading" id="vcfDelayValue">0 ms</span>
               </div>
             </div>
-            <div class="menu-row vcf-on vcf-env">
+                <div class="menu-row vcf-on vcf-env">
               <label class="menu-label" for="vcfHold">Hold</label>
               <div class="grow">
                 <input type="range" id="vcfHold" min="0" max="5000" value="0">
                 <span class="reading" id="vcfHoldValue">0 ms</span>
               </div>
             </div>
-            <input type="text" id="vcfShape" value="" hidden aria-label="The filter envelope's shape">
+                </div>
+              </div>
             </div>
+            <input type="text" id="vcfShape" value="" hidden aria-label="The filter envelope's shape">
           </div>
+
+          <!-- Play's Wave figure (18 Nov, play-figures.md, the owner's): one cycle of what the generator
+               plays, drawn in the figures' style, and under it a band of the chosen shape's own controls,
+               one height for every shape (the drawbars', 78 px), so changing the shape moves nothing. The
+               Drawn cycle and the Drawbars were Ink's sections until then; they moved here, ids and all.
+               The cycle is the canvas you draw on with the Drawn cycle and the Wavetable. -->
+          <div class="menu-group fig-view" id="waveGroup" data-tab="play" data-home="bench" data-play="fig" data-fig="wave">
+            <div class="fig-tools"><span class="wave-name" id="waveName"></span></div>
+            <span class="menu-title" id="waveTitle">Wave<button type="button" class="hand-link" id="linkGenWave" data-link="gen" aria-pressed="true" hidden></button></span>
+            <div class="fig-plot"><canvas id="cycleCanvas" class="cycle-canvas" aria-label="One cycle of what the generator plays"></canvas></div>
+            <div class="wave-band" id="waveBand">
+              <div class="menu-row" id="widthRow" data-mod-dest="gen.width" data-mod-control="width"
+                   data-layer="b" hidden>
+                <label class="menu-label" for="width">Width</label>
+                <div class="grow">
+                  <input type="range" id="width" min="5" max="95" value="25">
+                  <span class="reading" id="widthValue">25%</span>
+                </div>
+              </div>
+              <div class="menu-row" id="morphRow" data-mod-dest="gen.morph" data-mod-control="morph"
+                   data-layer="b" hidden>
+                <label class="menu-label" for="morph">Morph</label>
+                <div class="grow">
+                  <input type="range" id="morph" min="0" max="300" value="150">
+                  <span class="reading" id="morphValue">tri&rarr;saw</span>
+                </div>
+              </div>
+              <div class="menu-row" id="tableRow" data-mod-dest="gen.table" data-mod-control="table"
+                   data-layer="b" hidden>
+                <label class="menu-label" for="table">Position</label>
+                <div class="grow">
+                  <input type="range" id="table" min="0" max="300" value="150">
+                  <span class="reading" id="tableValue">2&rarr;3</span>
+                </div>
+              </div>
+              <span class="switch cycle-slots" role="radiogroup" aria-label="Wavetable slot" id="cycleSlots" hidden>
+                  <button type="button" role="radio" aria-checked="true" data-slot="0">1</button><button
+                    type="button" role="radio" aria-checked="false" data-slot="1">2</button><button
+                    type="button" role="radio" aria-checked="false" data-slot="2">3</button><button
+                    type="button" role="radio" aria-checked="false" data-slot="3">4</button>
+                </span>
+              <div class="wave-tools" id="cycleGroup" hidden>
+                <button type="button" class="link-btn caps" id="cycleSine">Sine</button>
+                <button type="button" class="link-btn caps" id="cycleSmooth">Smooth</button>
+                <button type="button" class="link-btn caps" id="cycleGrab"
+                        title="One cycle of what is playing, as the drawn cycle">Grab</button>
+                <span class="reading" id="cycleNote" hidden></span>
+              </div>
+              <div class="wave-bars" id="barsGroup" role="group" aria-label="The drawbars" hidden>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar0" data-mod-control="bar0">
+              <label class="menu-label" for="bar0"><span class="bar-mark" data-colour="brown"></span>16&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar0" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar0Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar1" data-mod-control="bar1">
+              <label class="menu-label" for="bar1"><span class="bar-mark" data-colour="brown"></span>5&#8531;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar1" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar1Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar2" data-mod-control="bar2">
+              <label class="menu-label" for="bar2"><span class="bar-mark" data-colour="white"></span>8&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar2" min="0" max="8" step="1" value="8">
+                <span class="reading" id="bar2Value">8</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar3" data-mod-control="bar3">
+              <label class="menu-label" for="bar3"><span class="bar-mark" data-colour="white"></span>4&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar3" min="0" max="8" step="1" value="7">
+                <span class="reading" id="bar3Value">7</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar4" data-mod-control="bar4">
+              <label class="menu-label" for="bar4"><span class="bar-mark" data-colour="black"></span>2&#8532;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar4" min="0" max="8" step="1" value="4">
+                <span class="reading" id="bar4Value">4</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar5" data-mod-control="bar5">
+              <label class="menu-label" for="bar5"><span class="bar-mark" data-colour="white"></span>2&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar5" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar5Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar6" data-mod-control="bar6">
+              <label class="menu-label" for="bar6"><span class="bar-mark" data-colour="black"></span>1&#8535;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar6" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar6Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar7" data-mod-control="bar7">
+              <label class="menu-label" for="bar7"><span class="bar-mark" data-colour="black"></span>1&#8531;&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar7" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar7Value">0</span>
+              </div>
+            </div>
+            <div class="menu-row drawbar" data-mod-dest="gen.bar8" data-mod-control="bar8">
+              <label class="menu-label" for="bar8"><span class="bar-mark" data-colour="white"></span>1&prime;</label>
+              <div class="grow">
+                <input type="range" id="bar8" min="0" max="8" step="1" value="0">
+                <span class="reading" id="bar8Value">0</span>
+              </div>
+            </div>
+              </div>
+              <p class="wave-say" id="waveSay"></p>
+            </div>
+            <p class="menu-note"><i>Grab</i> takes one cycle of what is playing, from the
+              trigger lane: your input, or with the tone alone the generator's own output.
+              Hold the same note on the keyboard and the
+              period is the note's, exact; without one it is measured, and a few
+              cents out is a cycle that does not quite close. The reading beside it
+              says which, and its tooltip says the rest.</p>
+            <p class="menu-note">Nine sine partials at the footages of a tonewheel organ,
+              drawn out from nought to eight. <i>8&prime;</i> is the note you play; <i>16&prime;</i>
+              is an octave under it and <i>5&#8531;&prime;</i> a fifth above that, so a
+              registration with either out has a cycle twice the note's. Each step is about
+              three decibels, as on the organ. However many bars are out the wave stays inside
+              the amplitude: one bar at eight is a full-scale sine, and pulling out more changes
+              the colour rather than the level. A partial above half the sample rate is left
+              out rather than folded back. Every bar is a destination, so a drawbar on your
+              keyboard, once it has moved, can be put on the same bar here. With a layer B,
+              each layer has its own registration.</p>
+          </div>
+
 
 
 
@@ -4859,25 +4991,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       </div>
       <div class="bench-stage" id="benchStage">
         <div class="bench-body" id="benchBody" role="tabpanel"></div>
-        <!-- The drawn envelopes' editor (18 Nov, the owner's popover): beside the
-             block it was opened from, over the neighbouring column. -->
-        <div class="mseg-pop" id="msegPop" role="dialog" aria-labelledby="msegPopName" hidden>
-          <div class="mseg-pop-head"><span class="mseg-pop-name" id="msegPopName">Amp envelope</span>
-            <button type="button" class="link-btn caps" id="msegPopClose">Close</button></div>
-          <div class="mseg-filter" id="msegFilter" hidden>
-            <div class="mseg-tools" id="msegFTools"><span class="switch caps mseg-ftype" id="msegFType" role="group" aria-label="The filter's type"><button
-              type="button" data-type="0">Off</button><button type="button" data-type="1">Low</button><button type="button"
-              data-type="2">Band</button><button type="button" data-type="3">High</button><button type="button" data-type="4">Notch</button></span></div>
-            <svg class="mseg-resp" id="msegResp" role="group" aria-label="The voice filter's response: drag its point"></svg>
-            <div class="mseg-knobs mseg-f4" id="msegFKnobs"></div>
-            <div class="mseg-tools mseg-sub" id="msegEnvTools"><span class="menu-sub">Its envelope</span><span class="mseg-sweeps-words" id="msegSweeps"></span></div>
-          </div>
-          <div class="mseg-tools" id="msegTools"><select id="msegShapes" aria-label="Start from a shape"></select><button type="button"
-            class="link-btn caps mseg-loop" id="msegLoop" aria-pressed="false">Loop</button><button type="button"
-            class="link-btn caps mseg-hold" id="msegHold" aria-pressed="false">Hold a note</button></div>
-          <svg class="mseg-plot" id="msegPlot" role="group" aria-label="The amp envelope"></svg>
-          <div class="mseg-knobs" id="msegKnobs"></div>
-        </div>
         <div class="mseg-readout" id="msegReadout" hidden></div>
       </div>
       <!-- A modulation card's editor (F4), over the tabs - their cards too since
@@ -6635,10 +6748,10 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "performSide", "dock", "pictureLook", "settingsLeft", "settingsRight", "helpFirst", "sizeAuto", "size90", "size100", "size125", "credit", "status", "presetPrev", "presetNext", "presetEdited", "presetBrowse", "presetSaveHead",
                   "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
-                  "ampEnvBlock", "ampEnvSmall", "ampEnvReads", "ampEnvStore", "vcfBlock", "vcfRespSmall", "vcfReads", "vcfEnvBlock",
-                  "vcfEnvSmall", "vcfSweeps", "vcfStore", "msegPop", "msegPopName", "msegPopClose", "msegFilter", "msegFTools", "msegFType",
-                  "msegResp", "msegFKnobs", "msegEnvTools", "msegSweeps", "msegTools", "msegShapes", "msegLoop", "msegHold", "msegPlot",
-                  "msegKnobs", "msegReadout", "menvShapes", "menvLoop", "menvHoldNote", "benchStage",
+                  "ampEnvGroup", "ampShapes", "ampLoop", "ampHold", "ampPlot", "ampKnobs", "vcfGroup", "vcfTypes", "vcfHoldNote",
+                  "vcfBody", "vcfResp", "vcfFKnobs", "vcfSweeps", "vcfShapes", "vcfLoop", "fenvPlot", "vcfEnvKnobs",
+                  "waveGroup", "waveName", "waveBand", "waveSay", "linkGenWave", "expressionGroup",
+                  "msegReadout", "menvShapes", "menvLoop", "menvHoldNote", "benchStage",
                   "infoLine", "infoName", "infoValue", "infoHost", "infoHand", "infoText", "infoMenu", "infoMore", "infoLineOn",
                   "benchSearch", "benchResults",
                   "lagMixRow", "lagMix", "lagMixValue",
@@ -6717,8 +6830,8 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "fadeGroup", "fadeMode", "fadeEnv", "fadeEnvValue", "fadeLayers", "fadeEditA", "fadeEditB", "fadeRestart", "fadeLoop", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "interval", "tuneJust", "tuneEqual",
-                  "cycleGoRow", "cycleGo", "cycleGroup", "cycleCanvas", "cycleSine", "cycleSmooth",
-                  "cycleGrab", "cycleNote", "cycleTitle", "cycleSlots", "tableRow", "table", "tableValue",
+                  "cycleGroup", "cycleCanvas", "cycleSine", "cycleSmooth",
+                  "cycleGrab", "cycleNote", "cycleSlots", "tableRow", "table", "tableValue",
                   "inputWhere", "inputMode", "inputDepth", "inputDepthValue",
                   "scoreOn", "scoreStep", "scoreVoices", "scoreLow", "scoreOctaves",
                   "arpMode", "arpRate", "arpOctaves",
@@ -6755,8 +6868,7 @@ for (const id of ["pictureResponds", "pictureSwell", "pictureFeel", "pictureRise
                   "pictureFall", "pictureFallValue", "pictureFallRow"]) {
   el[id] = document.getElementById(id);
 }
-for (const id of ["barsGroup", "barsTitle", "barsStateRow", "barsState", "barsUse", "barsGo",
-                  "barsGoRow", "morphRow", "morph", "morphValue", "widthRow", "width", "widthValue"]) {
+for (const id of ["barsGroup", "morphRow", "morph", "morphValue", "widthRow", "width", "widthValue"]) {
   el[id] = document.getElementById(id);
 }
 for (let k = 0; k < 9; k++) {
@@ -17710,6 +17822,10 @@ const CHAIN_SVG = [
     + '<path d="M6 2.5H4a2.5 2.5 0 0 0 0 5h2M10 2.5h2a2.5 2.5 0 0 1 0 5h-2M7.2 1 6.6 0M8.8 9l.6 1"/></svg>',
 ];
 const linkButton = (sec) => document.getElementById("link" + sec[0].toUpperCase() + sec.slice(1));
+/* Every pill a section has: the Generator's is in two places since Play's figures (18 Nov), after its
+   name in the settings row and at the end of Wave's header, since Wave is the generator's too. The
+   second is a button of its own (linkGenWave), not a copy of the first's id. */
+const linkButtons = (sec) => [linkButton(sec), ...(sec === "gen" ? [el.linkGenWave] : [])].filter(Boolean);
 function paintHandLinks() {
   const on = layersOn(), hand = editLayer();
   const pick = document.getElementById("handsPick");
@@ -17721,9 +17837,7 @@ function paintHandLinks() {
     if (name.textContent !== handName(h)) name.textContent = handName(h);
     button.style.setProperty("--hand", "var(--" + handInk(h) + ")");
   }
-  for (const sec of HAND_SECTION_IDS) {
-    const button = linkButton(sec);
-    if (!button) continue;
+  for (const sec of HAND_SECTION_IDS) for (const button of linkButtons(sec)) {
     button.hidden = !on;
     const own = !linked(sec), name = handName(hand), short = button.classList.contains("hand-link-short");
     const words = own ? (short ? name : name + "\u2019s own") : (short ? "Both" : "Same in both");
@@ -17737,13 +17851,8 @@ function paintHandLinks() {
   }
   const said = on && !linked("picture") ? " \u00b7 " + handName(hand) : "";
   if (el.pictureHandName.textContent !== said) el.pictureHandName.textContent = said;
-  // The Drawbars' title, as syncBars has it, for the layers coming and going under it.
-  const bars = on && !linked("gen") ? "Drawbars \u00b7 " + handName(panelLayer) : "Drawbars";
-  if (el.barsTitle.textContent !== bars) el.barsTitle.textContent = bars;
 }
-for (const sec of HAND_SECTION_IDS) {
-  const button = linkButton(sec);
-  if (!button) continue;
+for (const sec of HAND_SECTION_IDS) for (const button of linkButtons(sec)) {
   // Inside a section's title, which a press must not reach.
   button.addEventListener("click", (event) => { event.stopPropagation(); setLink(sec, !linked(sec)); });
 }
@@ -17843,7 +17952,7 @@ function syncBars() {
   const heard = wave && chosen;
   el.morphRow.hidden = !(wave && el.shape.value === "morph");
   el.widthRow.hidden = !(wave && el.shape.value === "pulse");
-  el.barsGoRow.hidden = !heard;
+  el.barsGroup.hidden = !heard;
   const table = wave && el.shape.value === "wavetable";
   const drawnHeard = wave && (el.shape.value === "drawn" || table);
   el.tableRow.hidden = !table;
@@ -17852,26 +17961,14 @@ function syncBars() {
      left on; otherwise drawing on a drawn cycle could change a slot it does
      not play. */
   el.cycleSlots.hidden = !table;
-  // The words alone: the title also holds the section's dots, which setting
-  // the whole title's text took away.
-  el.cycleTitle.textContent = table ? "Wavetable" : "Drawn cycle";
   cycleEdit(table ? cycleSlotChosen : 0);
-  el.cycleGoRow.hidden = !drawnHeard;
-  if (el.cycleGroup.hidden === drawnHeard) {
-    el.cycleGroup.hidden = !drawnHeard;
-    if (drawnHeard) requestAnimationFrame(paintCycle);
-  }
-  el.barsGo.textContent = formatRegistration(parseRegistration(el.bars.value)) + " \u203a";
-  el.barsGroup.toggleAttribute("data-idle", !heard);
-  el.barsStateRow.hidden = heard;
-  // Short enough to share a line with Use drawbars beside it, in a column a
-  // third of the Bench: the longer sentence wrapped the button onto a line
-  // of its own, and that line put a rack of six over the Shape tab by 3 px.
-  el.barsState.textContent = !tone ? "Only the generator has drawbars." : "Not playing.";
-  el.barsUse.hidden = !wave || chosen;
-  /* Its hand is the Generator's link's (G6), whose title is on another tab:
-     so while the Generator is a hand's own, the hand it shows is said here. */
-  el.barsTitle.textContent = layersOn() && !linked("gen") ? "Drawbars \u00b7 " + handName(panelLayer) : "Drawbars";
+  el.cycleGroup.hidden = !(wave && el.shape.value === "drawn");
+  // The shapes with no controls of their own say what they are, in the band's room (Wave, 18 Nov).
+  const own = wave && ["pulse", "morph", "wavetable", "drawn", "drawbars"].includes(el.shape.value);
+  const say = !wave ? "Only the generator has a wave: the source is an input." : own ? WAVE_BAND_SAY[el.shape.value] || "" : WAVE_SAY[el.shape.value] || "";
+  if (el.waveSay.textContent !== say) el.waveSay.textContent = say;
+  el.waveSay.classList.toggle("only", !own);
+  paintCycle();
 }
 
 function syncLayerPanel() {
@@ -17909,9 +18006,12 @@ function showGenerator() {
   el.credit.textContent = state.source.describe();
 }
 
+/* The Interval menu's names shortened to fit the settings row at 960x600 (18 Nov, play-figures.md):
+   the full name is each option's title, and stays the name everywhere else. */
+const INTERVAL_SHORT = ["Unison", "Min 2nd", "Maj 2nd", "Min 3rd", "Maj 3rd", "4th", "Tritone", "5th", "Min 6th", "Maj 6th", "Min 7th", "Maj 7th", "Octave"];
 function fillIntervals() {
   el.interval.innerHTML = INTERVALS.map(([name, p, q], i) =>
-    '<option value="' + i + '">' + name + "  \u00b7  " + p + ":" + q + "</option>").join("");
+    '<option value="' + i + '" title="' + name + " \u00b7 " + p + ":" + q + '">' + INTERVAL_SHORT[i] + " " + p + ":" + q + "</option>").join("");
   el.filterType.innerHTML = FILTER_TYPES.map(([v, t]) =>
     '<option value="' + v + '">' + t + "</option>").join("");
 }
@@ -23573,8 +23673,6 @@ el.table.addEventListener("input", () => {
   handSet("table", "table", at);
 });
 
-// To the 8' bar, which is the note, and brings the Ink tab with it.
-el.barsGo.addEventListener("click", () => showControl("bar2"));
 
 /* The drawn cycle's pane. Drawing sets the points under the pointer, and the
    ones between two moves, so a quick stroke leaves no gaps; the tables are
@@ -23636,7 +23734,7 @@ function cycleEdit(k) {
   drawnCycle.last = null;
   el.cycleNote.hidden = true;
   for (const b of el.cycleSlots.querySelectorAll("button")) b.setAttribute("aria-checked", String(Number(b.dataset.slot) === k));
-  if (!el.cycleGroup.hidden) paintCycle();
+  paintCycle();
 }
 el.cycleSlots.addEventListener("click", (event) => {
   const b = event.target.closest("button[data-slot]");
@@ -23658,30 +23756,123 @@ function cycleSend(all) {
   genSet("wavetable", drawnCycle.bank);
   hostDrawn();
 }
+/* --- Wave (18 Nov, web/docs/play-figures.md) ---
+   One cycle of what the generator plays, for the hand on the face, in the
+   figures' style: three level lines (+1, 0, -1), the soft fill, the line in
+   the hand's ink while the Generator is that hand's own. The shape is the
+   page's own waveAt, as the bend reads it (bendWave), without what
+   modulation pushes; a noise has no cycle, so a stretch of one is drawn, and
+   says so. With the Drawn cycle the canvas is the thing drawn on, and with
+   the Wavetable the slot chosen is drawn dashed behind what plays, to draw
+   on. The geometry is kept on the canvas (`_g`) for the pointer and the
+   suites. */
+const WAVE_SAY = {
+  sine: "One partial: the purest figure, a clean ellipse or a line.",
+  harmonic: "The note and its third harmonic at a third of its level.",
+  square: "Odd harmonics, falling as 1/n: the figure gets corners.",
+  triangle: "Odd harmonics, falling as 1/n²: softer than the square.",
+  ramp: "Every harmonic, falling as 1/n: the brightest of the plain shapes.",
+  noise: "No pitch and no cycle: the figure is a cloud.",
+  pink: "Noise falling 3 dB an octave: a softer cloud.",
+  brown: "Noise falling 6 dB an octave: a wandering cloud.",
+  stepped: "A new random level at every step, held between.",
+};
+// Beside the knob or the tools of the shapes that have them.
+const WAVE_BAND_SAY = {
+  pulse: "The share of the cycle spent high: 50% is the square.",
+  morph: "Sine, triangle, saw and square, one into the next.",
+  wavetable: "Four drawn cycles, one into the next; pick a slot to draw on it.",
+  drawn: "Draw on the cycle above. Grab takes one cycle of what is playing.",
+  drawbars: "Nine sine partials at an organ's footages; each step about 3 dB. 8′ is the note you play.",
+};
+const WAVE_NOISE = ["noise", "pink", "brown", "stepped"];
+// A seeded stretch, so a noise draws the same each time it is painted.
+function waveNoise(n, kind) {
+  let s = 12345, b = 0;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    s = (s * 1103515245 + 12345) % 2147483648;
+    const w = s / 1073741824 - 1;
+    b = kind === "brown" ? Math.max(-1, Math.min(1, b + w * 0.12)) : kind === "pink" ? 0.85 * b + 0.45 * w : w;
+    out.push(kind === "noise" || kind === "stepped" ? w : b);
+  }
+  return out;
+}
+// The drawbars with 16' or 5 1/3' out repeat over two of the note's cycles, so two are drawn.
+const waveTwoCycles = (t) => !!t && t.shape === "drawbars" && Array.isArray(t.bars) && (t.bars[0] > 0 || t.bars[1] > 0);
+// One period as levels at n+1 even steps, the largest at full scale for the drawbars (as the generator scales them).
+function waveCycle(t, n) {
+  const shape = t.shape;
+  if (WAVE_NOISE.includes(shape)) {
+    if (shape === "stepped") { const v = waveNoise(16, "stepped"); return Array.from({ length: n + 1 }, (_, i) => v[Math.min(15, Math.floor(i / n * 16))]); }
+    return waveNoise(n + 1, shape);
+  }
+  const at = bendWave(t), span = waveTwoCycles(t) ? 2 : 1;
+  const out = Array.from({ length: n + 1 }, (_, i) => at(TWO_PI * span * i / n));
+  if (shape === "drawbars") { const peak = Math.max(1e-9, ...out.map(Math.abs)); return out.map((v) => v / peak); }
+  return out;
+}
+function waveGeo(w, h) {
+  const L = 34, R = 14, T = 10, B = h - 18, mid = (T + B) / 2, half = (B - T) / 2 * 0.92;
+  return { L, R, T, B, w, h, x: (u) => L + u * (w - L - R), y: (v) => mid - v * half, u: (x) => (x - L) / (w - L - R), v: (y) => (mid - y) / half };
+}
 function paintCycle() {
   const canvas = el.cycleCanvas;
   const box = canvas.getBoundingClientRect();
-  if (box.width === 0) return;
+  if (box.width === 0 || box.height === 0) return;
+  const t = genSettings(panelLayer);
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(box.width * dpr); canvas.height = Math.round(box.height * dpr);
+  const z = box.width / (canvas.offsetWidth || box.width) || 1;
+  const w = canvas.offsetWidth || box.width, h = canvas.offsetHeight || box.height;
+  canvas.width = Math.round(w * z * dpr); canvas.height = Math.round(h * z * dpr);
   const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const w = box.width, h = box.height;
+  ctx.setTransform(dpr * z, 0, 0, dpr * z, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = ink.line || "#ccc"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
-  ctx.strokeStyle = ink["blush-deep"]; ctx.lineWidth = 1.6;
+  const g = waveGeo(w, h);
+  canvas._g = g;
+  ctx.font = "9px Jost, sans-serif";
+  ctx.textAlign = "right";
+  for (const [v, word] of [[1, "+1"], [0, "0"], [-1, "−1"]]) {
+    ctx.strokeStyle = ink.line || "#ccc"; ctx.globalAlpha = v ? 0.7 : 1; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(g.L, Math.round(g.y(v)) + 0.5); ctx.lineTo(w - g.R, Math.round(g.y(v)) + 0.5); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.fillStyle = ink["text-soft"]; ctx.fillText(word, g.L - 5, g.y(v) + 3);
+  }
+  if (!t) { canvas._drawn = null; return; }
+  const shape = t.shape, n = Math.max(64, Math.round((w - g.L - g.R) / 2));
+  const drawing = shape === "drawn" || shape === "wavetable";
+  const levels = shape === "drawn" ? Array.from({ length: n + 1 }, (_, i) => drawnCycle.points[Math.min(CYCLE_POINTS - 1, Math.floor(i / n * CYCLE_POINTS))])
+    : waveCycle(t, n);
+  ctx.textAlign = "right"; ctx.fillStyle = ink["text-soft"]; ctx.font = "8.5px Jost, sans-serif";
+  ctx.fillText(WAVE_NOISE.includes(shape) ? "no cycle: a stretch of it"
+    : waveTwoCycles(t) ? "one period: two of the note’s, with 16′ or 5⅓′ out"
+    : shape === "wavetable" ? "one cycle; slot " + (drawnCycle.editing + 1) + " dashed, to draw on" : "one cycle", w - g.R, g.B + 13);
+  // The slot being drawn, dashed behind what plays.
+  if (shape === "wavetable") {
+    ctx.strokeStyle = ink["text-soft"]; ctx.lineWidth = 1.2; ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    drawnCycle.points.forEach((v, i) => { const x = g.x((i + 0.5) / CYCLE_POINTS), y = g.y(v); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
   ctx.beginPath();
-  drawnCycle.points.forEach((v, i) => {
-    const x = (i + 0.5) / CYCLE_POINTS * w, y = h / 2 - v * (h / 2 - 3);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
+  levels.forEach((v, i) => { const x = g.x(i / n), y = g.y(v); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+  const line = new Path2D();
+  levels.forEach((v, i) => { const x = g.x(i / n), y = g.y(v); if (i) line.lineTo(x, y); else line.moveTo(x, y); });
+  ctx.lineTo(g.x(1), g.y(0)); ctx.lineTo(g.x(0), g.y(0)); ctx.closePath();
+  ctx.fillStyle = ink.blush; ctx.globalAlpha = 0.16; ctx.fill(); ctx.globalAlpha = 1;
+  const own = layersOn() && !linked("gen");
+  ctx.strokeStyle = own ? ink[handInk(panelLayer)] || ink.charcoal : ink.charcoal;
+  ctx.lineWidth = 1.8; ctx.lineJoin = "round";
+  ctx.stroke(line);
+  canvas.classList.toggle("is-drawn-on", drawing);
+  canvas._drawn = { shape, n, levels, ink: own ? handInk(panelLayer) : "charcoal" };
 }
+// The point under the pointer, in the drawing's own geometry: which of the cycle's points, and its level.
 function cycleAt(event) {
-  const box = el.cycleCanvas.getBoundingClientRect();
-  const i = Math.max(0, Math.min(CYCLE_POINTS - 1, Math.floor((event.clientX - box.left) / box.width * CYCLE_POINTS)));
-  const v = Math.max(-1, Math.min(1, 1 - 2 * (event.clientY - box.top) / box.height));
+  const box = el.cycleCanvas.getBoundingClientRect(), g = el.cycleCanvas._g;
+  const z = box.width / (el.cycleCanvas.offsetWidth || box.width) || 1;
+  const x = (event.clientX - box.left) / z, y = (event.clientY - box.top) / z;
+  const i = Math.max(0, Math.min(CYCLE_POINTS - 1, Math.floor(g.u(x) * CYCLE_POINTS)));
+  const v = Math.max(-1, Math.min(1, g.v(y)));
   return [i, v];
 }
 function cyclePaintStroke(event) {
@@ -23697,6 +23888,8 @@ function cyclePaintStroke(event) {
   if (performance.now() - drawnCycle.sent > 120) { drawnCycle.sent = performance.now(); cycleSend(); }
 }
 el.cycleCanvas.addEventListener("pointerdown", (event) => {
+  // Drawn on only while the shape is one that plays a drawn cycle (the Drawn cycle, the Wavetable).
+  if (!["drawn", "wavetable"].includes(el.shape.value) || !el.cycleCanvas._g) return;
   event.preventDefault();
   el.cycleCanvas.setPointerCapture(event.pointerId);
   drawnCycle.last = null;
@@ -23717,7 +23910,6 @@ el.cycleSmooth.addEventListener("click", () => {
   drawnCycle.points = p.map((v, i) => (p[(i + n - 1) % n] + 2 * v + p[(i + 1) % n]) / 4);
   paintCycle(); cycleSend();
 });
-el.cycleGo.addEventListener("click", () => showControl("cycleCanvas"));
 
 /* Grab (G2's second half): one cycle of what is playing, as the drawn cycle.
    Resynthesis in one button - play a note into the input with the same note
@@ -23871,10 +24063,6 @@ function decodeCycle(text) {
   } catch (error) { return null; }
 }
 cycleSend();
-el.barsUse.addEventListener("click", () => {
-  el.shape.value = "drawbars";
-  el.shape.dispatchEvent(new Event("change"));
-});
 
 el.phase.addEventListener("input", () => {
   const degrees = Number(el.phase.value);
@@ -26141,14 +26329,6 @@ function msegSmall(svg, kind, dead) {
   svg._drawn = { dot: dot ? [dot.x, dot.y] : null, xs: g.xs, ys: P.pts.map((p) => g.y(p.lvl)), sus: P.susPt, w: W, h: H };
   return true;
 }
-const msegCell = (value, name) => "<span>" + value + "<small>" + name + "</small></span>";
-function paintAmpReads() {
-  const m = msegNow("amp").m;
-  const html = msegCell(envMsReading(m.attack), "Attack") + msegCell(envMsReading(m.decay), "Decay")
-    + msegCell(msegLevelReading("amp", m.sus), "Sustain") + msegCell(envMsReading(m.release), "Release");
-  if (el.ampEnvReads.innerHTML !== html) el.ampEnvReads.innerHTML = html;
-}
-
 /* The voice filter's response, as the core's state-variable filter has it
    (wave.h: the analogue one under the bilinear transform, warped at its
    cutoff), from 20 Hz to 20 kHz, with the band its envelope sweeps shaded.
@@ -26229,7 +26409,7 @@ function wireVcfResponse(svg) {
     const g = svg._g, [x] = msegToLocal(svg, event);
     msegPut(el.vcfCut, Math.round(CUTOFF_STEPS * Math.log(g.fOf(x) / 20) / Math.log(1000)));
     msegPut(el.vcfRes, d.res - (event.clientY - d.y) / pageZoom / 2);
-    paintMsegPop();
+    paintFigs(true);
   });
   const up = (event) => { if (d && event.pointerId === d.id) { d = null; msegSettle(); } };
   svg.addEventListener("pointerup", up);
@@ -26242,145 +26422,171 @@ function wireVcfResponse(svg) {
     if (dir[0]) msegPut(el.vcfCut, Number(el.vcfCut.value) + dir[0] * (event.shiftKey ? 1 : 10));
     else msegPut(el.vcfRes, Number(el.vcfRes.value) + dir[1] * (event.shiftKey ? 1 : 5));
     msegSettle();
-    paintMsegPop();
+    paintFigs(true);
     const again = svg.querySelector('[data-handle="cut"]');
     if (again) again.focus({ preventScroll: true });
   });
 }
-function paintVcfBlock() {
-  const F = vcfNow(), dead = F.type === 0 || F.amt === 0;
-  vcfResponse(el.vcfRespSmall, false);
-  msegSmall(el.vcfEnvSmall, "fenv", dead);
-  const html = F.type === 0 ? msegCell("Off", "Type") + msegCell("—", "Resonance") + msegCell("—", "Envelope")
-    : msegCell(hzReading(cutoffHz(F.cut)), "Cutoff") + msegCell("Q " + resonanceQ(F.res).toFixed(2), "Resonance") + msegCell(vcfOctReading(F.amt), "Envelope");
-  if (el.vcfReads.innerHTML !== html) el.vcfReads.innerHTML = html;
-  const words = F.type === 0 ? "the filter is off" : F.amt === 0 ? "amount 0, does nothing" : "sweeps " + vcfOctReading(F.amt);
-  for (const node of [el.vcfSweeps, el.msegSweeps]) {
-    if (node.textContent !== words) node.textContent = words;
-    node.classList.toggle("is-dead", dead);
-  }
-}
-
-/* --- the popover ---
-   Beside its block, over the neighbouring column at the columns' full
-   height, its arrow at the block: over Expression for the amp envelope, over
-   the Generator's column for the filter. Never over its own block, the
-   keyboard's band or the screen. Its knobs are the section's own, moved in
-   while it is open and back after (as the EQ's editor's are), so the ids,
-   the host's parameters, undo and the plugin's panel are what they were. */
-const MSEG_POP = {
-  amp: { block: "ampEnvBlock", store: "ampEnvStore", title: "Amp envelope", envs: ["amp"] },
-  vcf: { block: "vcfBlock", store: "vcfStore", title: "Voice filter", envs: ["fenv"] },
-};
-const VCF_FOUR = ["vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt"];
-const msegPop = { open: null };
+/* --- Play's figures (18 Nov, web/docs/play-figures.md) ---
+   Under the Keyboard's band and the settings row, a figure area with three
+   subtabs: Amp, the amp envelope drawn the area's width with its six knobs
+   under it; Filter, the response with its four and its envelope with its
+   six; Wave, one cycle of what the generator plays (paintCycle). The
+   sections are the views: nothing opens from them and nothing moves in or
+   out, so a knob's id, the host's parameters, undo and the plugin's panel
+   are what they were. Which subtab is shown is a view, never stored. It
+   replaced the small blocks and the popover beside them (18 Nov, earlier the
+   same day), whose drawing was 254 px wide at 1660x1050 and an 8 ms attack
+   a wall. */
+const FIG_SUBS = [["amp", "Amp", "ampEnvGroup"], ["filter", "Filter", "vcfGroup"], ["wave", "Wave", "waveGroup"]];
+const figs = { sub: "amp", bar: null };
 const msegRowOf = (id) => el[id].closest(".menu-row");
-function msegKnobRows(kind) { return MSEG_KNOB_ORDER.map((n) => msegRowOf(MSEG_KINDS[kind].ids[n])); }
-function openMsegPop(which) {
-  if (msegPop.open === which) { placeMsegPop(); return; }
-  closeMsegPop();
-  closeModCard();
-  setRoutingsOpen(false);
-  closeEqEditor();
-  msegPop.open = which;
-  const pop = el.msegPop;
-  pop.dataset.for = which;
-  el.msegPopName.textContent = MSEG_POP[which].title;
-  el.msegFilter.hidden = which !== "vcf";
-  for (const id of VCF_FOUR) if (which === "vcf") el.msegFKnobs.appendChild(msegRowOf(id));
-  for (const row of msegKnobRows(which === "vcf" ? "fenv" : "amp")) el.msegKnobs.appendChild(row);
-  // The tools go where they belong: the filter's type and its note with its response, the shapes and loop with its envelope.
-  (which === "vcf" ? el.msegEnvTools : el.msegTools).appendChild(el.msegShapes);
-  (which === "vcf" ? el.msegEnvTools : el.msegTools).appendChild(el.msegLoop);
-  (which === "vcf" ? el.msegFTools : el.msegTools).appendChild(el.msegHold);
-  el.msegShapes.innerHTML = '<option value="">Shape…</option>' + Object.keys(MSEG_PRESETS[which === "vcf" ? "fenv" : "amp"]).map((n) => "<option>" + n + "</option>").join("");
-  pop.hidden = false;
-  el[MSEG_POP[which].block].setAttribute("aria-expanded", "true");
-  if (which === "vcf") el.vcfEnvBlock.setAttribute("aria-expanded", "true");
-  el.msegPlot.setAttribute("aria-label", (which === "vcf" ? "The filter's envelope" : "The amp envelope")
-    + ": drag its points, and press the line twice to add one");
-  msegPlot(el.msegPlot, which === "vcf" ? "fenv" : "amp").k = null;
-  placeMsegPop();
-  paintMsegPop(true);
-  const first = el.msegPlot.querySelector('[data-handle]');
-  if (first) first.focus({ preventScroll: true });
+// Each knob row in the drawing's order, Delay first; the markup keeps its own, which the morph and the panel read.
+for (const [kind, box] of [["amp", "ampKnobs"], ["fenv", "vcfEnvKnobs"]])
+  for (const n of MSEG_KNOB_ORDER) el[box].appendChild(msegRowOf(MSEG_KINDS[kind].ids[n]));
+const ampPlot = msegPlot(el.ampPlot, "amp"), fenvPlot = msegPlot(el.fenvPlot, "fenv");
+wireVcfResponse(el.vcfResp);
+for (const [kind, sel] of [["amp", "ampShapes"], ["fenv", "vcfShapes"]]) {
+  // Its options are written after the shapes (MSEG_PRESETS, below).
+  el[sel].addEventListener("change", () => {
+    const name = el[sel].value;
+    el[sel].value = "";
+    if (name) { msegStartFrom(kind, name); paintFigs(true); }
+  });
 }
-function closeMsegPop() {
-  const which = msegPop.open;
-  if (!which) return;
-  const inside = el.msegPop.contains(document.activeElement);
-  if (overlay && overlay.opener && el.msegPop.contains(overlay.opener)) closeOverlay();
-  msegPop.open = null;
-  const store = el[MSEG_POP[which].store];
-  if (which === "vcf") for (const id of VCF_FOUR) store.appendChild(msegRowOf(id));
-  for (const row of msegKnobRows(which === "vcf" ? "fenv" : "amp")) store.appendChild(row);
-  el.msegPop.hidden = true;
-  el.msegReadout.hidden = true;
-  el[MSEG_POP[which].block].setAttribute("aria-expanded", "false");
-  el.vcfEnvBlock.setAttribute("aria-expanded", "false");
-  delete msegPlots[which === "vcf" ? "fenv" : "amp"];
-  msegHoldOff();
-  if (inside) el[MSEG_POP[which].block].focus({ preventScroll: true });
-}
-/* Over the column beside its block's - the one to its left, or to its
-   right for a block in the first column - from the columns' top to the
-   tab's foot. In the stage's own pixels, so the page's Size zoom is no
-   matter. */
-function placeMsegPop() {
-  const which = msegPop.open;
-  if (!which) return;
-  const block = el[MSEG_POP[which].block], col = block.closest(".bench-col");
-  if (!col || !block.getClientRects().length) { closeMsegPop(); return; }
-  const stage = el.benchStage, sr = stage.getBoundingClientRect(), z = sr.width / stage.offsetWidth || 1;
-  const r = (n) => { const q = n.getBoundingClientRect(); return { l: (q.left - sr.left) / z, t: (q.top - sr.top) / z, r: (q.right - sr.left) / z, b: (q.bottom - sr.top) / z }; };
-  const cols = Array.from(el.benchBody.querySelectorAll(".bench-col")).filter((c) => c.getClientRects().length && c.childElementCount);
-  const at = cols.indexOf(col), left = at > 0, nb = cols[left ? at - 1 : at + 1] || col;
-  const C = r(col), N = r(nb), B = r(el.benchBody), K = r(block);
-  const band = el.benchBody.querySelector(".bench-band");
-  const top = band ? r(band).b + 4 : B.t;
-  const box = left ? { l: N.l - 6, r: C.l - 10 } : { l: C.r + 10, r: N.r + 6 };
-  const pop = el.msegPop;
-  Object.assign(pop.style, { left: box.l + "px", top: top + "px", width: Math.max(160, box.r - box.l) + "px", height: Math.max(120, B.b - top) + "px" });
-  pop.dataset.arrow = left ? "right" : "left";
-  pop.style.setProperty("--arrow-at", Math.max(14, Math.min(B.b - top - 14, (K.t + K.b) / 2 - top)) + "px");
-}
-function paintMsegPop(force) {
-  if (!msegPop.open) return;
-  const kind = msegPop.open === "vcf" ? "fenv" : "amp";
-  if (msegPop.open === "vcf") {
-    vcfResponse(el.msegResp, true);
-    const F = vcfNow();
-    for (const b of el.msegFType.querySelectorAll("button")) b.setAttribute("aria-pressed", String(Number(b.dataset.type) === F.type));
-    el.msegPlot.classList.toggle("is-dead", F.type === 0 || F.amt === 0);
-  }
-  const shape = msegNow(kind).shape;
-  el.msegLoop.setAttribute("aria-pressed", String(msegPoints(shape, msegNow(kind).m).loopPt >= 0));
-  if (msegPlots[kind]) msegPlots[kind].draw(force);
-}
-el.ampEnvBlock.addEventListener("click", () => (msegPop.open === "amp" ? closeMsegPop() : openMsegPop("amp")));
-el.vcfBlock.addEventListener("click", () => (msegPop.open === "vcf" ? closeMsegPop() : openMsegPop("vcf")));
-el.vcfEnvBlock.addEventListener("click", () => (msegPop.open === "vcf" ? closeMsegPop() : openMsegPop("vcf")));
-el.msegPopClose.addEventListener("click", closeMsegPop);
-// Esc closes it, after a menu over it (whose own Esc closes only that); so does a press outside it and its blocks.
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && msegPop.open && !event.defaultPrevented && !overlay) { event.preventDefault(); closeMsegPop(); }
-});
-document.addEventListener("pointerdown", (event) => {
-  if (!msegPop.open) return;
-  const t = event.target;
-  // The info line's More too: the card it opens is about a knob in here, and its steps go to the knobs beside it.
-  if (t instanceof Element && t.closest("#msegPop, #ampEnvBlock, #vcfBlock, #vcfEnvBlock, #infoMore, .over, .over-back")) return;
-  closeMsegPop();
-}, true);
-new ResizeObserver(() => { if (msegPop.open) { placeMsegPop(); paintMsegPop(true); } }).observe(el.benchBody);
-wireVcfResponse(el.msegResp);
-el.msegFType.addEventListener("click", (event) => {
+el.ampLoop.addEventListener("click", () => { msegToggleLoop("amp"); paintFigs(true); });
+el.vcfLoop.addEventListener("click", () => { msegToggleLoop("fenv"); paintFigs(true); });
+el.vcfTypes.addEventListener("click", (event) => {
   const b = event.target.closest("button[data-type]");
-  if (!b) return;
+  if (!b || el.vcfType.value === b.dataset.type) return;
   el.vcfType.value = b.dataset.type;
   el.vcfType.dispatchEvent(new Event("change", { bubbles: true }));
-  paintMsegPop(true);
+  paintFigs(true);
 });
+
+/* The subtabs' summaries, longest first: the first whose words fit the label is shown. At the six
+   windows measured none needed shortening, so the shorter forms are for windows nobody measured. */
+function figSummaries(sub) {
+  if (sub === "amp") {
+    const now = msegNow("amp"), P = msegPoints(now.shape, now.m);
+    const A = envMsReading(now.m.attack), D = envMsReading(now.m.decay), R = envMsReading(now.m.release);
+    const S = P.susPt < 0 ? "one shot" : msegLevelReading("amp", now.m.sus);
+    return [[A, D, S, R], [A, S, R], [A, R], []].map((p) => p.join(" · "));
+  }
+  if (sub === "filter") {
+    const F = vcfNow();
+    if (F.type === 0) return ["off", ""];
+    const type = ["off", "low pass", "band pass", "high pass", "notch"][F.type], hz = hzReading(cutoffHz(F.cut));
+    return [type + " " + hz + " · " + vcfOctReading(F.amt), type + " " + hz, hz, ""];
+  }
+  const t = genSettings(panelLayer);
+  if (!t) return ["an input", ""];
+  const shape = t.shape, name = (WAVE_NAMES[shape] || shape).toLowerCase();
+  const main = shape === "pulse" ? "pulse " + Math.round((t.width > 0 ? t.width : 0.25) * 100) + "%"
+    : shape === "morph" ? "morph " + morphReading(Number(t.morph) || 0)
+    : shape === "wavetable" ? "wavetable " + tableReading(Number.isFinite(t.table) ? t.table : 1.5)
+    : shape === "drawbars" ? "drawbars " + (Array.isArray(t.bars) ? el.bars.value : "")
+    : shape === "harmonic" ? "sine + 3rd" : name;
+  return [main, main.split(" ")[0], ""];
+}
+// The shapes' names as the summaries and Wave's header say them: the menu's full names, which its options keep as their titles.
+const WAVE_NAMES = Object.fromEntries(Array.from(el.shape.options, (o) => [o.value, o.title || o.textContent]));
+function paintFigBar() {
+  if (!figs.bar) return;
+  for (const tab of figs.bar.children) {
+    const sum = tab.querySelector(".fig-sum"), forms = figSummaries(tab.dataset.sub);
+    if (tab.dataset.said === forms.join("|") && tab.dataset.fit === String(sum.clientWidth)) continue;
+    tab.dataset.said = forms.join("|");
+    let at = 0;
+    for (; at < forms.length; at++) { sum.textContent = forms[at]; if (sum.scrollWidth <= sum.clientWidth + 0.5) break; }
+    tab.dataset.form = String(Math.min(at, forms.length - 1));
+    tab.dataset.fit = String(sum.clientWidth);
+    sum.title = forms[0];
+  }
+}
+function setFigSub(sub, focus) {
+  if (!FIG_SUBS.some(([s]) => s === sub)) return;
+  figs.sub = sub;
+  for (const [s, , id] of FIG_SUBS) {
+    el[id].hidden = s !== sub;
+    const tab = figs.bar && figs.bar.querySelector('[data-sub="' + s + '"]');
+    if (tab) { tab.setAttribute("aria-selected", String(s === sub)); tab.tabIndex = s === sub ? 0 : -1; if (focus && s === sub) tab.focus(); }
+  }
+  // Hold a note only sounds while its button is held; a view put away lets go.
+  msegHoldOff();
+  requestAnimationFrame(() => { fitFilter(); paintFigs(true); paintCycle(); paintRoutings(); });
+}
+// The bar, made once: three tabs, each its name and its summary.
+function figBar() {
+  if (figs.bar) return figs.bar;
+  const bar = document.createElement("div");
+  bar.className = "fig-bar";
+  bar.id = "figBar";
+  bar.setAttribute("role", "tablist");
+  bar.setAttribute("aria-label", "Play's figures");
+  bar.innerHTML = FIG_SUBS.map(([s, name, id]) => '<button type="button" role="tab" class="fig-tab" id="figTab-' + s + '" data-sub="' + s
+    + '" aria-controls="' + id + '" aria-selected="false" tabindex="-1"><b>' + name + '</b><span class="fig-sum"></span></button>').join("");
+  bar.addEventListener("click", (event) => { const tab = event.target.closest("[data-sub]"); if (tab) setFigSub(tab.dataset.sub); });
+  bar.addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const at = FIG_SUBS.findIndex(([s]) => s === figs.sub);
+    setFigSub(FIG_SUBS[(at + step + FIG_SUBS.length) % FIG_SUBS.length][0], true);
+  });
+  for (const [, , id] of FIG_SUBS) el[id].setAttribute("aria-labelledby", "figTab-" + FIG_SUBS.find(([, , i]) => i === id)[0]);
+  figs.bar = bar;
+  return bar;
+}
+/* Filter's two drawings side by side, or stacked when stacking still leaves each 120 px tall: decided
+   by room, as the rack folds (fitRack), not by window size. Of the six windows measured only 1660x1050
+   stacks. Measured side by side, where the panes' heights are what each drawing would have alone. */
+const FIG_STACK_MIN = 120;
+function fitFilter() {
+  const body = el.vcfBody;
+  if (el.vcfGroup.hidden || !body.getClientRects().length) return false;
+  const was = body.classList.contains("stacked");
+  body.classList.remove("stacked");
+  const panes = Array.from(body.querySelectorAll(".fig-pane"));
+  const plots = panes.map((p) => p.querySelector(".fig-plot"));
+  // Stacked, each pane loses the other's height less its own drawing's, and a rule's gap.
+  const spare = body.clientHeight - panes.reduce((sum, p, i) => sum + (p.offsetHeight - plots[i].offsetHeight), 0) - 8;
+  const stack = spare / 2 >= FIG_STACK_MIN;
+  body.classList.toggle("stacked", stack);
+  return stack !== was;
+}
+// The menus whose options are shortened carry the chosen one's full name as their own title (play-figures.md).
+const SHORT_MENUS = ["midiBendRange", "midiWheelTo", "midiPressureTo", "midiVelocityTo", "shape", "interval", "midiDrawWhich"];
+function paintFigs(force) {
+  for (const id of SHORT_MENUS) {
+    const menu = document.getElementById(id), o = menu && menu.selectedOptions[0], said = o ? o.title || o.textContent : "";
+    if (menu && menu.title !== said) menu.title = said;
+  }
+  if (!figs.bar || !figs.bar.isConnected) return;
+  paintFigBar();
+  const F = vcfNow(), dead = F.type === 0 || F.amt === 0;
+  for (const b of el.vcfTypes.querySelectorAll("button")) b.setAttribute("aria-pressed", String(Number(b.dataset.type) === F.type));
+  const words = F.type === 0 ? "the filter is off" : F.amt === 0 ? "amount 0, does nothing" : "sweeps " + vcfOctReading(F.amt);
+  if (el.vcfSweeps.textContent !== words) el.vcfSweeps.textContent = words;
+  el.vcfSweeps.classList.toggle("is-dead", dead);
+  el.fenvPlot.classList.toggle("is-dead", dead);
+  el.vcfFKnobs.classList.toggle("is-off", F.type === 0);
+  for (const [kind, button] of [["amp", el.ampLoop], ["fenv", el.vcfLoop]]) {
+    const now = msegNow(kind);
+    button.setAttribute("aria-pressed", String(msegPoints(now.shape, now.m).loopPt >= 0));
+  }
+  if (!el.ampEnvGroup.hidden) ampPlot.draw(force);
+  if (!el.vcfGroup.hidden) { vcfResponse(el.vcfResp, true); fenvPlot.draw(force); }
+  if (!el.waveGroup.hidden) {
+    const t = genSettings(panelLayer), name = t ? WAVE_NAMES[t.shape] || t.shape : "";
+    const html = t ? "<b>" + escapeText(name) + "</b>" + (WAVE_NOISE.includes(t.shape) ? " &middot; a stretch of it" : " &middot; one cycle") : "<b>An input</b>";
+    if (el.waveName.innerHTML !== html) el.waveName.innerHTML = html;
+  }
+}
+new ResizeObserver(() => { if (figs.bar && figs.bar.isConnected) { fitFilter(); paintFigs(true); paintCycle(); } }).observe(el.benchBody);
+// And each drawing as its own box settles (a view shown, the filter's two stacked): drawn in its own pixels, never stretched.
+const figPlotWatch = new ResizeObserver(() => { if (figs.bar && figs.bar.isConnected) { paintFigs(true); paintCycle(); } });
+for (const node of [el.ampPlot, el.vcfResp, el.fenvPlot, el.cycleCanvas]) figPlotWatch.observe(node);
 
 /* Shapes to start from. The times are the knobs' and the bends and points
    the shape's: ADSR is the old envelope, the rest the mockup's. */
@@ -26410,12 +26616,8 @@ function msegStartFrom(kind, name) {
   msegWriteShape(kind, msegParse(preset[1]));
   if (msegPlots[kind]) msegPlots[kind].draw(true);
 }
-const msegPopKind = () => (msegPop.open === "vcf" ? "fenv" : "amp");
-el.msegShapes.addEventListener("change", () => {
-  const name = el.msegShapes.value;
-  el.msegShapes.value = "";
-  if (name) { msegStartFrom(msegPopKind(), name); paintMsegPop(true); }
-});
+for (const [kind, sel] of [["amp", "ampShapes"], ["fenv", "vcfShapes"]])
+  el[sel].innerHTML = '<option value="">Shape…</option>' + Object.keys(MSEG_PRESETS[kind]).map((n) => "<option>" + n + "</option>").join("");
 // Loop: on, from the attack's end back while the key is down (and held again if it was a one-shot); off, no loop.
 function msegToggleLoop(kind) {
   msegBefore(kind);
@@ -26429,7 +26631,6 @@ function msegToggleLoop(kind) {
   msegWriteShape(kind, shape);
   if (msegPlots[kind]) msegPlots[kind].draw(true);
 }
-el.msegLoop.addEventListener("click", () => { msegToggleLoop(msegPopKind()); paintMsegPop(true); });
 
 /* Hold a note: a key held while the button is, on the hand being edited -
    C4, or with two hands under or over the split - so the shape can be
@@ -26448,7 +26649,7 @@ function msegHoldOff() {
   msegHeldNote = null;
   for (const b of document.querySelectorAll(".mseg-hold")) b.setAttribute("aria-pressed", "false");
 }
-for (const b of [el.msegHold, el.menvHoldNote]) {
+for (const b of [el.ampHold, el.vcfHoldNote, el.menvHoldNote]) {
   b.addEventListener("pointerdown", (event) => { if (event.button === 0) { event.preventDefault(); msegHoldOn(); } });
   b.addEventListener("pointerup", msegHoldOff);
   b.addEventListener("pointerleave", msegHoldOff);
@@ -26504,11 +26705,7 @@ el.envSustain.knobLaw = msegDbLaw;
 
 // Everything on Play that draws an envelope, a few times a second and on any change (paintAmpEnv's callers).
 function paintAmpEnv() {
-  if (!el.ampEnvSmall) return;
-  msegSmall(el.ampEnvSmall, "amp", false);
-  paintAmpReads();
-  paintVcfBlock();
-  paintMsegPop();
+  paintFigs();
   // The Envelope following the amp envelope shows the amp's numbers.
   if (!el.menvOwn.checked) paintMenv();
 }
@@ -26634,46 +26831,53 @@ function wantColumns() {
   return wide ? 1 : benchColumns();
 }
 
-/* Dealt, then checked: on a tab with the Keyboard's band the columns are
-   dealt into the body's height less the band's, and the body's height read
-   while every section is stacked in the first column to be measured is not
-   always the height it has once they are dealt - 587 against 572 at 1100x860
-   with the second hand's links showing (fittest, 17 Nov). So if the tab then
-   scrolls, it is dealt once more into the height the body really has. */
+/* Play (18 Nov, web/docs/play-figures.md) is not dealt: it is a column of three, the Keyboard's band,
+   the settings row (Expression and the Generator, `data-play="set"`) and the figure area filling the
+   rest (Amp, Filter and Wave, `data-play="fig"`, one shown at a time under their subtabs). A column has
+   nothing to stretch between its parts. Every other tab is dealt into columns, greedily, by height. */
 function layoutBenchBody() {
-  layoutBenchBodyInto();
-  if (el.benchBody.querySelector(".bench-band") && el.benchBody.scrollHeight > el.benchBody.clientHeight + 1) {
-    layoutBenchBodyInto(el.benchBody.clientHeight);
-  }
-}
-function layoutBenchBodyInto(bodyHeight) {
   const want = wantColumns();
   const all = benchGroupsAll();
   // The other tabs' sections into the store first, so clearing the body
   // below detaches nothing that is not about to be put back.
   for (const group of all) if (tabOf(group) !== benchTab) el.benchStore.appendChild(group);
   /* A section marked as a band (the Keyboard, on Play since 17 Nov) is a row
-     of its own across the body, over the columns, and is not dealt: the
-     columns share the rest of the tab's height under it. */
+     of its own across the body, over the rest. */
   const band = all.find((g) => tabOf(g) === benchTab && g.dataset.band !== undefined) || null;
   const groups = all.filter((g) => tabOf(g) === benchTab && g !== band);
+  const play = groups.length > 0 && groups.every((g) => g.dataset.play);
 
-  const cols = [];
   el.benchBody.innerHTML = "";
+  el.benchBody.classList.toggle("is-play", play);
   if (band) {
     const row = document.createElement("div");
     row.className = "bench-band";
     row.appendChild(band);
     el.benchBody.appendChild(row);
+    benchWatch.observe(band);
   }
+  benchCols = want;
+  benchWatch.observe(el.benchBody);
+  benchDealtIn = el.benchBody.clientHeight;
+  if (play) {
+    const set = document.createElement("div"), area = document.createElement("div"), views = document.createElement("div");
+    set.className = "play-set";
+    area.className = "play-figs";
+    views.className = "fig-views";
+    area.append(figBar(), views);
+    for (const group of groups) (group.dataset.play === "set" ? set : views).appendChild(group);
+    el.benchBody.append(set, area);
+    benchMeasured = new Map(groups.map((g) => [g, g.offsetHeight]));
+    setFigSub(figs.sub);
+    return;
+  }
+  const cols = [];
   for (let i = 0; i < want; i++) {
     const col = document.createElement("div");
     col.className = "bench-col";
     el.benchBody.appendChild(col);
     cols.push(col);
   }
-  benchCols = want;
-
   // Measured at the width they will actually have: the columns are flex items
   // with a basis of zero, so an empty one is still its full share wide - but
   // only while `dealing` keeps the empty ones shown; see the stylesheet.
@@ -26684,75 +26888,6 @@ function layoutBenchBodyInto(bodyHeight) {
   // Kept for the checks: what each section measured, to set beside what it is.
   benchMeasured = new Map(groups.map((g, i) => [g, heights[i]]));
   for (const group of groups) benchWatch.observe(group);
-  // The band too: Poly's rows and Two hands make it taller, and the columns under it shorter.
-  if (band) benchWatch.observe(band);
-  /* And the body, whose height can change under the columns with nothing in
-     them changing size: the tab cards over it, whose lines are written a few
-     times a second. */
-  benchWatch.observe(el.benchBody);
-  /* And the body: the tab cards over it settle a line taller after a switch
-     of tab (their lines are written a moment later), and a body 15 px shorter
-     than it was dealt into put Play 12 px over at 1100x860, with nothing that
-     changed size under it to say so (fittest, 17 Nov). */
-
-  /* A tab whose every section names its column (`data-col`, Play's since
-     G3) is laid out as drawn, when there are as many columns as it names:
-     the keyboard and how it is played on the left, the generator and its
-     envelope in the middle, the filter on the right, whatever their heights.
-     Dealt by height they moved as the filter came on or a mode brought rows,
-     so Expression ended up under the Generator and the filter beside the
-     Keyboard. With fewer columns - a narrow window - they are dealt. */
-  const named = groups.length > 0 && groups.every((g) => Number(g.dataset.col) >= 1);
-  const most = named ? Math.max(...groups.map((g) => Number(g.dataset.col))) : 0;
-  /* As drawn, if it fits. Under the Keyboard's band (17 Nov) the columns have
-     the body's height less the band's, and at the shorter windows Play's
-     Generator and Amp envelope stood taller together than that: so as drawn
-     only when its tallest column fits, and otherwise shared as below, where
-     the first section, Expression, stays in the first column. */
-  /* What a column of them has under the band. Less the last section's own
-     margin too, which the body scrolls to show: counting only the margins
-     between sections put Play 12 px over at 1100x860 (fittest, 17 Nov). */
-  const tail = groups.length ? parseFloat(getComputedStyle(groups[0]).marginBottom || "0") : 0;
-  benchDealtIn = bodyHeight || el.benchBody.clientHeight;
-  const room = benchDealtIn - tail
-    - (band ? band.parentNode.offsetHeight + parseFloat(getComputedStyle(el.benchBody).rowGap || "0") : 0);
-  const drawnFits = () => {
-    const tall = cols.map(() => 0);
-    groups.forEach((g, i) => { const c = Number(g.dataset.col) - 1; tall[c] += heights[i] + (tall[c] > 0 ? 18 : 0); });
-    return Math.max(...tall) <= room;
-  };
-  if (named && most <= cols.length && (!band || drawnFits())) {
-    for (const group of groups) cols[Number(group.dataset.col) - 1].appendChild(group);
-    return;
-  }
-  /* Fewer columns than it names - Play at 1100x860 has two - and every
-     sharing of its sections between them is tried, each column keeping
-     them in the page's order, for the one whose tallest column is least.
-     First-fit by height put the Keyboard and the amp envelope in one and
-     the other three in the other, 652 px in a 561 px body, where a sharing
-     that fits existed. Five sections in two columns is 32 tries. */
-  if (named && cols.length > 1 && Math.pow(cols.length, groups.length) <= 6561) {
-    let best = null, bestTall = Infinity;
-    const pick = new Array(groups.length).fill(0);
-    for (let n = 0; n < Math.pow(cols.length, groups.length); n++) {
-      let k = n;
-      for (let i = 0; i < groups.length; i++) { pick[i] = k % cols.length; k = Math.floor(k / cols.length); }
-      // Each sharing has its mirror; the one that starts with the tab's first section on the left.
-      if (pick[0] !== 0) continue;
-      const tall = cols.map(() => 0);
-      groups.forEach((g, i) => { tall[pick[i]] += heights[i] + (tall[pick[i]] > 0 ? 18 : 0); });
-      /* Under the band, a sharing that fits with the first section alone in
-         its column comes first (the owner's: Expression alone in column 1),
-         then the least tallest column; a tie keeps the page's order, so the
-         Generator stays before its envelope. Scored so the least wins. */
-      const worst = Math.max(...tall);
-      const alone = band && worst <= room && !pick.some((c, i) => i > 0 && c === 0) ? 0 : 1;
-      const score = alone * 1e6 + worst;
-      if (score < bestTall - 0.5 || (Math.abs(score - bestTall) <= 0.5 && pick.join() < best.join())) { bestTall = score; best = pick.slice(); }
-    }
-    groups.forEach((g, i) => cols[best[i]].appendChild(g));
-    return;
-  }
   const filled = cols.map(() => 0);
   groups.forEach((group, i) => {
     let pick = 0;
@@ -27094,14 +27229,8 @@ function showControl(node) {
     return true;
   }
   closeEqEditor();
-  // An envelope's knobs are in its editor while it is open and in its section's store when not (18 Nov): open it.
-  for (const which of ["amp", "vcf"]) {
-    if (!el[MSEG_POP[which].store].contains(target) && !(msegPop.open === which && el.msegPop.contains(target))) continue;
-    if (typeof showBenchFor === "function") showBenchFor(el[MSEG_POP[which].block].closest(".menu-group"));
-    openMsegPop(which);
-    return true;
-  }
-  if (msegPop.open && !el.msegPop.contains(target)) closeMsegPop();
+  // The Envelope card's knobs are in its editor (18 Nov): open it, over the tabs.
+  if (el.menvControls.contains(target)) { openModCard("env.note"); return true; }
   // The Picture section along the bottom is always on show (F2).
   if (el.pictureBar.contains(target) && !el.picturePanel.contains(target)) return true;
   const group = target.closest(".menu-group");
@@ -27121,6 +27250,8 @@ function showControl(node) {
     setRoutingsOpen(true);    // from the modulation row's corner, over the tabs
   } else {
     if (typeof showBenchFor === "function") showBenchFor(group);
+    // One of Play's figures (18 Nov): its subtab chosen.
+    if (group.dataset.fig) setFigSub(group.dataset.fig);
     unfold(group);
     // In the rack, the module it is in, opened if it is among the rest (F5).
     const module = target.closest(".fx-module");
@@ -27181,7 +27312,8 @@ function rowIsLive(row, group) {
   for (let node = row; node && node !== group; node = node.parentElement) {
     // A closed module's rest is hidden by its arrow, not by the mode: searched (F5).
     // Nor an envelope's knobs, in their section's store while its editor is shut (18 Nov): a search opens it.
-    if (node.hidden && !node.classList.contains("fx-rest") && !node.classList.contains("mseg-store")) return false;
+    // Nor a figure on Play behind another subtab (18 Nov): a search chooses it.
+    if (node.hidden && !node.classList.contains("fx-rest") && !node.classList.contains("fig-view")) return false;
   }
   return group.dataset.off === undefined;
 }
@@ -27221,14 +27353,7 @@ function searchEntries() {
                  hay: rowWords(row, label, section) });
     }
   }
-  // An envelope's knobs while its editor is open, which are out of their section and in it (18 Nov).
-  if (msegPop.open) {
-    const group = el[MSEG_POP[msegPop.open].block].closest(".menu-group");
-    for (const row of el.msegPop.querySelectorAll(".menu-row")) {
-      const label = rowText(row), section = groupTitle(group);
-      if (label) out.push({ kind: "row", row, group, label, crumb: section, hay: rowWords(row, label, section) });
-    }
-  }
+
   /* The strip along the top was searched here until the second review: since
      F7 its one field is the persistence menu, hidden, a carrier for the
      core's panel, so the loop found nothing. */
