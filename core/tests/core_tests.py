@@ -5401,7 +5401,23 @@ golden.section("the morph", "restore")
 # Without the EQ's sliders (17 Nov): drawn over them, every run here and in
 # the sections after it would have been new to the recordings, whose page is
 # gone; the EQ's own section holds them to the page as it is now.
-ctl_ids = [k for k in pctl["ranges"] if not k.startswith("eq")]
+# And in the order the face laid its sliders out before Play's figures (18 Nov,
+# web/docs/play-figures.md): Wave's width, morph and table and the nine bars
+# moved, and the envelopes' knobs went into the drawing's order, which moved
+# where the random runs below draw from and made every run after the first
+# new to the recordings. Drawn from the old order, each run is the one it was.
+_PLAY_17NOV = ["morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "envDelay", "envHold",
+               "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel", "vcfDelay", "vcfHold"]
+_BARS = ["bar%d" % k for k in range(9)]
+def _face_17nov(ids):
+    rest = [k for k in ids if k not in _PLAY_17NOV and k not in _BARS]
+    out = []
+    for k in rest:
+        if k == "lfoRate0": out += [x for x in _PLAY_17NOV if x in ids]
+        if k == "freq": out += [x for x in _BARS if x in ids]
+        out.append(k)
+    return out
+ctl_ids = [k for k in _face_17nov(list(pctl["ranges"])) if not k.startswith("eq")]
 def mvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     c = rrng.random()

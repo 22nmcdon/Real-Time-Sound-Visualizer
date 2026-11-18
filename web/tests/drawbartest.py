@@ -44,6 +44,10 @@ def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
 
+def null(name, red, detail=""):
+    """A check's null: the same comparison fed a value it must reject."""
+    check("null: " + name, red, detail)
+
 
 
 with sync_playwright() as pw:
@@ -115,22 +119,23 @@ with sync_playwright() as pw:
       await wait(30);
       // The upper hand, and the Generator its own (G6: linked, the drawbars would be both hands').
       document.getElementById('editHandB').click(); document.getElementById('linkGen').click(); await wait(30);
-      const title = el.barsTitle.textContent;
+      // Said on Wave's link pill since 18 Nov (the Drawbars' title on Ink until then).
+      const title = el.linkGenWave.textContent;
       el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change'));
       el.bars.value = '800000000'; el.bar0.dispatchEvent(new Event('input'));
       const whileB = { a: genSettings(0).bars.slice(), b: genSettings(1).bars.slice(), panel: el.bars.value };
       document.getElementById('editHandA').click(); await wait(30);
-      const backA = { panel: el.bars.value, title: el.barsTitle.textContent, code: snapshot() };
+      const backA = { panel: el.bars.value, title: el.linkGenWave.textContent, code: snapshot() };
       return { title, whileB, backA: { panel: backA.panel, title: backA.title,
                bars: backA.code.bars, bBars: backA.code.bBars } };
     }""")
     print("    %s" % layers)
     check("editing B, the section says so and writes B's bars, leaving A's",
-          layers["title"] == "Drawbars \u00b7 Upper"
+          layers["title"] == "Upper\u2019s own"
           and layers["whileB"]["b"] == [8, 0, 0, 0, 0, 0, 0, 0, 0]
           and layers["whileB"]["a"] == [0, 0, 8, 7, 4, 0, 0, 0, 0], str(layers["whileB"]))
     check("back on A the sliders are A's again, and the code carries both",
-          layers["backA"]["panel"] == "008740000" and layers["backA"]["title"] == "Drawbars \u00b7 Lower"
+          layers["backA"]["panel"] == "008740000" and layers["backA"]["title"] == "Lower\u2019s own"
           and layers["backA"]["bars"] == "008740000" and layers["backA"]["bBars"] == "800000000",
           str(layers["backA"]))
     # Here stood "and B sounds its own: B's picture is its 16' at 110 Hz while
@@ -176,18 +181,20 @@ with sync_playwright() as pw:
     # builds a generator; gone with stage 5, step 3, batch 2.
 
     print("\n--- the panel ---")
+    # Since 18 Nov the nine bars are Play's Wave figure's, shown under the cycle while the Drawbars are the
+    # shape (play-figures.md); until then they were an Ink section, greyed with another shape, with a row on
+    # Play going to them and a Use drawbars button.
     panel = p.evaluate("""() => {
       setView('bench'); setBenchTab('play');
       el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change'));
-      const sine = { row: el.barsGoRow.hidden, idle: el.barsGroup.hasAttribute('data-idle'),
-                     why: el.barsState.textContent, use: !el.barsUse.hidden };
-      el.barsUse.click();
-      const used = { shape: el.shape.value, heard: genSettings().shape, row: el.barsGoRow.hidden,
-                     text: el.barsGo.textContent, idle: el.barsGroup.hasAttribute('data-idle'),
-                     state: el.barsStateRow.hidden };
-      el.barsGo.click();
+      showControl('cycleCanvas'); paintFigs(true);
+      const sine = { bars: el.bar2.offsetParent !== null, say: el.waveSay.textContent, sum: document.querySelector('#figTab-wave .fig-sum').textContent };
+      el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change')); paintFigs(true);
+      const used = { shape: el.shape.value, heard: genSettings().shape, bars: el.bar2.offsetParent !== null,
+                     sum: document.querySelector('#figTab-wave .fig-sum').textContent };
+      setBenchTab('ink'); showControl('bar2');
       const went = { tab: document.querySelector('[role=tab][aria-selected=true] .tab-name').textContent.trim(),
-                     shown: el.bar2.offsetParent !== null };
+                     sub: figs.sub, shown: el.bar2.offsetParent !== null };
       // Back to a shape that is not the drawbars, as the search below was
       // written against. (A figure, which had no waveform to colour and said
       // so, was asked here on the way, until G2 took it.)
@@ -195,14 +202,13 @@ with sync_playwright() as pw:
       return { sine, used, went };
     }""")
     print("    %s" % panel)
-    check("with another shape the registration row is not on Play, and the bars say why they are greyed",
-          panel["sine"] == {"row": True, "idle": True, "why": "Not playing.", "use": True},
-          str(panel["sine"]))
-    check("Use drawbars chooses them, and the row under the menu shows the registration",
-          panel["used"] == {"shape": "drawbars", "heard": "drawbars", "row": False,
-                            "text": "00 8740 000 ›", "idle": False, "state": True}, str(panel["used"]))
-    check("pressing it goes to the bars, on the Ink tab",
-          panel["went"] == {"tab": "Ink", "shown": True}, str(panel["went"]))
+    check("with another shape Wave shows no bars and says what the shape is",
+          panel["sine"]["bars"] is False and panel["sine"]["say"].startswith("One partial") and panel["sine"]["sum"] == "sine", str(panel["sine"]))
+    check("the Drawbars chosen, the nine bars are under the cycle and Wave's summary is the registration",
+          panel["used"] == {"shape": "drawbars", "heard": "drawbars", "bars": True, "sum": "drawbars 008740000"}, str(panel["used"]))
+    null("with the sine, the same reading of the bars is not on the face", panel["sine"]["bars"] != panel["used"]["bars"])
+    check("showControl on a bar goes to Play's Wave, where the bars are",
+          panel["went"] == {"tab": "Play", "sub": "wave", "shown": True}, str(panel["went"]))
 
     print("\n--- found by name ---")
     def search(q):
@@ -215,7 +221,7 @@ with sync_playwright() as pw:
     # The first result, and a control: the sentence saying why the bars are
     # greyed used to come first, because it was built as a row.
     check("hammond finds the drawbars, and a control first rather than a sentence",
-          bool(hammond) and (hammond[0][1] == "Drawbars" and "′" in hammond[0][0]
+          bool(hammond) and (hammond[0][1] == "Wave" and "′" in hammond[0][0]
                              or hammond[0] == ["Shape", "Generator"]), str(hammond[:4]))
     check("and sawtooth the shape menu", ["Shape", "Generator"] in saw, str(saw[:4]))
 

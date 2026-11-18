@@ -7334,6 +7334,44 @@ the core's strokes (`paintView`), held by `painttest.py` and `paintcosttest.py`.
   refused a float target: the plain drawing replaces the canvas with a fresh one.
 
 
+## Play with its figures, and five traps on the way (18 Nov)
+
+Play as `web/docs/play-figures.md` draws it: the band, a settings row, and a figure area
+with Amp, Filter and Wave, nothing dealt into columns (`layoutBenchBody`'s `play` branch,
+`setFigSub`, `paintFigs`, `fitFilter`, `paintCycle`); the small blocks and the popover went.
+`patchtest.py` holds every box on Play still to half a pixel across what can be chosen
+(`playfigs.py` is the measure, shared with `msegtest.py`, `fittest.py` and `striptest.py`).
+
+- **A wrapping flex row stretches its lines.** With `align-content: normal` the spare height
+  under the columns was shared between the band's line and theirs, so the band had half of
+  it under it: 124 px at 1660x1050, growing with the window. `align-content: flex-start` on
+  the body; `web/docs/mockups/play-figures/checks/gap_cause.py` is the proof against the old page.
+- **A fixed column in a narrow box widens the page, and a finger's drag becomes a scroll.**
+  The info line's menu note and More were given a 132 px column of their own so the line's
+  words cannot move them; on a phone the line is 82 px wide, the column overflowed, the page
+  grew wider than the window, and `knobtest.py`'s finger stopped turning a knob on Ink. The
+  column is `minmax(0, 132px)`, with the line's overflow hidden.
+- **Hidden rows move what is beside them.** The filter's envelope's rows were `hidden` while
+  the filter was off, which in the popover's store cost nothing; in the figure they took the
+  knob row away, the drawing grew into the room and everything in the header moved. Greyed and
+  disabled, not hidden. The same for a pressed link button, whose thicker rule grew it a pixel
+  (a fixed height), and the link pills, whose words are different widths (one width).
+- **A grid row with a spanning item gets the item's spare height.** The band's strip spans its
+  two rows; in Dyad the left column is shorter, so the strip's height went to the heading's row
+  and the mode switch moved down 8 px. `grid-template-rows: auto minmax(0, 1fr)` gives it to
+  the second row.
+- **A tab dealt into more columns than it has sections measures them wrong.** Ink kept two
+  sections when the Drawn cycle and the Drawbars went to Wave; dealt into three, the empty
+  third folded away and the two stood wider and shorter than they were measured at
+  (`fittest.py`'s 315 against 247). `wantColumns` never asks for more columns than sections.
+
+By notes the octave buttons give way to *low* and *high*; at first the keys moved 20 px with them,
+and the owner's rule has no exceptions, so each keeps its place unseen while the other shows
+(`.kb-ends[hidden]`, `.kb-oct[hidden]`, visibility rather than display), at the cost of 40 px of keys
+in every split; `patchtest.py` holds Notes, its count and its counted end, with the old way as its
+null. Measured and left: Wave's drawing at 960x600 is 121 px, a pixel over the rule, where the
+mockup had 124.
+
 ## Paint width, and three traps on the way (18 Nov)
 
 Three base brush widths for the owner to choose between (`PaintParams::width`, internal; the

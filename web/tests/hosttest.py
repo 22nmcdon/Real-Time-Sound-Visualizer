@@ -656,11 +656,10 @@ with sync_playwright() as pw:
     glide = logged(drag("glide"))
     check("one that is not, dragged, is sent and begins nothing",
           not any(c[0] == "scopeGesture" for c in glide) and letters(glide, "glide").count("v") >= 2, str(glide[:3]))
-    # And the attack, a host knob now, dragged in its envelope's editor, is one gesture of its own.
-    p.evaluate("() => openMsegPop('amp')"); p.wait_for_timeout(300)
+    # And the attack, a host knob now, dragged on Play's Amp figure (its editor's until that replaced it, 18 Nov), is one gesture of its own.
+    p.evaluate("() => showControl('envAttack')"); p.wait_for_timeout(300)
     attack = logged(drag("envAttack"))
-    p.evaluate("() => closeMsegPop()"); p.wait_for_timeout(200)
-    check("the amp envelope's attack, a host knob since 18 Nov, dragged in its editor, is one gesture",
+    check("the amp envelope's attack, a host knob since 18 Nov, dragged on its figure, is one gesture",
           shaped(letters(attack, "envAttack")) and [c[0] for c in attack if c[0] == "scopeGesture"] == ["scopeGesture"] * 2,
           letters(attack, "envAttack") + " " + str(attack[:3]))
     def keys():

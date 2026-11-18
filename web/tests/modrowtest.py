@@ -507,7 +507,7 @@ with sync_playwright() as pw:
         if (!run) return;
         const d = canvas()._drawn;
         if (d) out.push({ strikes, stage: d.stage, x: +d.dot[0].toFixed(2), off: +offLine(d).toFixed(2),
-                          level: +MOD_SOURCES.get('env.note').value().toFixed(4), y: d.dot[1], h: d.h });
+                          level: +MOD_SOURCES.get('env.note').value().toFixed(4), vel: envWhere.velocity, y: d.dot[1], h: d.h });
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -598,11 +598,14 @@ with sync_playwright() as pw:
         wrong = phrase(rowed)
         check("on %s, over notes in a row in Poly, the dot goes back only into a new note's attack, and stays on the curve" % label,
               not wrong, "; ".join(wrong))
-        # The level it is drawn at is the source's own, what a routing takes.
-        heights = [f for f in rowed if f["level"] > 0]
-        check("and its height is the source's level, what a routing from it is given",
-              heights and all(abs((f["h"] - 2) - f["y"] - min(1, f["level"]) * ((f["h"] - 2) - 3)) < 0.75 for f in heights),
-              str(heights[:2]))
+        # The level it is drawn at is the source's own, what a routing takes, over the note's velocity: since
+        # 18 Nov the card draws the shape at full scale, as the editor does, and the dot rides it.
+        # Not in a release: one begun above the sustain, a note let go mid-decay, rides the drawn release
+        # from the core's place, as the editor's dot does, where until 18 Nov the card's came down at the level.
+        heights = [f for f in rowed if f["level"] > 0 and f["stage"] != "release"]
+        check("and its height is the source's level over the note's velocity, on the shape drawn at full scale",
+              heights and all(abs((f["h"] - 2) - f["y"] - min(1, f["level"] / f["vel"]) * ((f["h"] - 2) - 3)) < 0.75 for f in heights),
+              str([f for f in heights if abs((f["h"] - 2) - f["y"] - min(1, f["level"] / f["vel"]) * ((f["h"] - 2) - 3)) >= 0.75][:3] or heights[:2]))
     # The null: the guess put back, on the instrument, Mono, following Play.
     p.evaluate(OLD_GUESS)
     guessed = p.evaluate(TRACE, ["mono", False, False])

@@ -32,6 +32,7 @@ Parallel: values and lanes, read after settling, not times.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import webfonts, playfigs as PF
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -64,7 +65,7 @@ HANDS = """async (n) => {
 READ = """() => ({ layers: el.midiLayers.value, by: el.midiSplitBy.value, end: el.midiSplitEnd.value,
   count: el.midiSplitCount.value, code: (() => { const s = snapshot();
   return [s.layers, s.splitBy, s.splitEnd, s.splitCount].join(' '); })(),
-  pill: !el.midiTwoHands.hidden && el.midiTwoHands.getAttribute('aria-pressed'),
+  pill: !el.midiTwoHands.classList.contains('is-unseen') && el.midiTwoHands.getAttribute('aria-pressed'),
   kinds: el.midiKindsRow.hidden ? '' : ['Key', 'Notes', 'Layer'].filter((k) => el['midiKind' + k].getAttribute('aria-checked') === 'true').join(),
   ends: !el.midiEndLowSide.hidden, window: !el.midiWindowNote.hidden, learn: !el.midiSplitLearn.hidden })"""
 
@@ -94,12 +95,62 @@ with sync_playwright() as pw:
     for mode in ("dyad", "mono", "poly"):
         p.click("#midi" + mode.capitalize()); p.wait_for_timeout(150)
         shown[mode] = p.evaluate("""() => ({ hold: !el.midiHoldRow.hidden, mono: !el.midiMonoNote.hidden,
-          outline: !el.midiDrawRow.hidden, tune: !el.midiPolyJustRow.hidden, pill: !el.midiTwoHands.hidden })""")
+          outline: !el.midiDrawRow.hidden, tune: !el.midiPolyJustRow.hidden, pill: !el.midiTwoHands.classList.contains('is-unseen') })""")
     print("    %s" % shown)
     check("Dyad shows Hold the interval and nothing of Poly's", shown["dyad"] == {"hold": True, "mono": False, "outline": False, "tune": False, "pill": False}, str(shown["dyad"]))
     check("Mono shows its line and nothing else", shown["mono"] == {"hold": False, "mono": True, "outline": False, "tune": False, "pill": False}, str(shown["mono"]))
     check("Poly shows Outline, Tune a chord and Two hands, and not Hold", shown["poly"] == {"hold": False, "mono": False, "outline": True, "tune": True, "pill": True}, str(shown["poly"]))
     null("Dyad's set is not Poly's", shown["dyad"] != shown["poly"])
+
+    print("\n--- the pill in the heading, and the band one height (18 Nov, play-figures.md) ---")
+    # Two hands is the pill in the Keyboard's heading, unseen in Dyad and Mono but keeping its place, so
+    # the heading never reflows; and the band is one height (122 px, 117 compact) in every mode, with one
+    # hand or two and each of Key, Notes and Layer, its content inside it. Measured at the six windows.
+    BAND = """async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms)), z = pageZoom || 1;
+      const box = (n) => { const r = n.getBoundingClientRect(); return [r.left / z, r.top / z, r.width / z, r.height / z].map((v) => Math.round(v * 10) / 10); };
+      const out = [];
+      const read = (what) => out.push({ what, band: box(document.querySelector('.bench-band')), pill: box(el.midiTwoHands),
+        inTitle: el.midiTwoHands.parentElement === el.midiGroup.querySelector(':scope > .menu-title'),
+        seen: getComputedStyle(el.midiTwoHands).visibility === 'visible', over: el.midiGroup.scrollHeight - el.midiGroup.clientHeight,
+        under: box(document.querySelector('.play-set')) });
+      for (const m of ['Dyad', 'Mono', 'Poly']) { el['midi' + m].click(); await wait(150); read(m); }
+      el.midiTwoHands.click(); await wait(200); read('Poly, two hands');
+      for (const k of ['Notes', 'Layer', 'Key']) { el['midiKind' + k].click(); await wait(150); read('Poly, ' + k); }
+      el.midiDyad.click(); await wait(150); read('Dyad, after two hands');
+      el.midiPoly.click(); await wait(150); el.midiTwoHands.click(); await wait(150);
+      return out;
+    }"""
+    for w, h in PF.SIZES:
+        q = b.new_page(viewport={"width": w, "height": h})
+        webfonts.route(q)
+        q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(1200)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        webfonts.settle(q)
+        q.evaluate("() => { setView('bench'); setBenchTab('play'); }"); q.wait_for_timeout(200)
+        states = q.evaluate(BAND)
+        first = states[0]
+        tall = 117 if w < 1100 or h < 860 else 122
+        check("%dx%d: the band %d px in Dyad, Mono, Poly, with two hands and each of Key, Notes and Layer, the settings row under it unmoved"
+              % (w, h, tall), all(abs(s_["band"][3] - tall) <= 0.5 and s_["band"] == first["band"] and s_["under"] == first["under"] for s_ in states),
+              str([(s_["what"], s_["band"][3], s_["under"][1]) for s_ in states if s_["band"] != first["band"] or s_["under"] != first["under"]] or first["band"]))
+        check("%dx%d: and its content inside it in every one of those (the least spare %.1f px)" % (w, h, -max(s_["over"] for s_ in states)),
+              max(s_["over"] for s_ in states) <= 0, str([(s_["what"], s_["over"]) for s_ in states if s_["over"] > 0]))
+        check("%dx%d: Two hands is the pill in the heading, seen in Poly only and in its one place in every mode" % (w, h),
+              all(s_["inTitle"] and s_["pill"] == first["pill"] and s_["seen"] == s_["what"].startswith("Poly") for s_ in states),
+              str([(s_["what"], s_["seen"], s_["pill"]) for s_ in states]))
+        if (w, h) == (960, 600):
+            # Nulls: the band 6 px taller with two hands, as testing had it, moves the row under it; a band
+            # 90 px tall cuts its content; and the pill hidden by `hidden` rather than unseen moves nothing
+            # here but is not in its place to be seen.
+            grown = q.evaluate("""async () => { const z = pageZoom || 1, y = () => document.querySelector('.play-set').getBoundingClientRect().top / z;
+              const before = y(); el.midiGroup.style.height = (el.midiGroup.offsetHeight + 6) + 'px'; await new Promise((r) => setTimeout(r, 100));
+              const after = y(); el.midiGroup.style.height = ''; return [before, after]; }""")
+            null("the band 6 px taller with two hands, as testing had it, moves the settings row (%.1f to %.1f)" % tuple(grown), abs(grown[1] - grown[0]) > 0.5)
+            cut = q.evaluate("() => { el.midiGroup.style.height = '90px'; const o = el.midiGroup.scrollHeight - el.midiGroup.clientHeight; el.midiGroup.style.height = ''; return o; }")
+            null("a band 90 px tall is seen to cut its content (%.1f px over)" % cut, cut > 0)
+        q.close()
 
     print("\n--- Two hands, and Key, Notes, Layer: the menus they stand for ---")
     seen = {"start": p.evaluate(READ)}

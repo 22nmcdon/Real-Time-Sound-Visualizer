@@ -34,6 +34,7 @@ So, against the ways it fails:
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import webfonts, playfigs as PF
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -43,6 +44,10 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def null(name, red, detail=""):
+    """A check's null: the same comparison fed a value it must reject."""
+    check("null: " + name, red, detail)
 
 
 SWEEP = """async ([bands]) => {
@@ -130,7 +135,8 @@ SWEEP = """async ([bands]) => {
     setMidiMode('poly');
     el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
     document.getElementById('editHandB').click();
-    document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => link.click());
+    // Each still linked when its turn comes: the Generator has two pills (18 Nov), and the second, pressed after the first, would link it again.
+    document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'true') link.click(); });
     el.planeLimit.value = '1'; el.planeLimit.dispatchEvent(new Event('change')); await wait(120);
     planeRows = [el.planeTurnRow.hidden, !el.rotateRow.hidden, el.planeRadiusRow.hidden,
                  document.getElementById('handsPick').hidden,
@@ -191,7 +197,7 @@ SWEEP = """async ([bands]) => {
     openFx(null);
     for (const id of ['delayMix', 'chorusMix', 'phaserMix', 'eqLow']) setControl(id, 0);
     setEqOn(false);
-    document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
+    document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'false') link.click(); });
     document.getElementById('editHandA').click(); setMidiMode('dyad');
     el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); await wait(120);
   }
@@ -212,12 +218,17 @@ SWEEP = """async ([bands]) => {
   const row = { under: rowBox.top >= mainBox.bottom - 1 && rowBox.top >= el.benchSide.getBoundingClientRect().bottom - 1,
                 height: Math.round(rowBox.height), chips: document.body.dataset.chips !== undefined,
                 cards: el.modStrip.querySelectorAll('.mod-card').length };
-  /* The null: the cards' row in place of the chips, on Ink, the tab that was
-     over at 1100x860 before the fold. Only where the row is chips. */
+  /* The null: the cards' row in place of the chips. It put Ink over at
+     1100x860 before the fold; since 18 Nov Ink has two sections and Play's
+     figures take what height there is, so what the row costs is read off
+     Play's Amp drawing, which must be the row's height shorter with the
+     cards, and the row read back as cards. Only where the row is chips. */
   if (row.chips) {
-    setBenchTab('ink'); await wait(80);
-    delete document.body.dataset.chips; await wait(80);
-    row.cardsOver = el.benchBody.scrollHeight - el.benchBody.clientHeight;
+    setBenchTab('play'); setFigSub('amp'); await wait(120);
+    row.ampChips = el.ampPlot.getBoundingClientRect().height;
+    delete document.body.dataset.chips; await wait(120);
+    row.ampCards = el.ampPlot.getBoundingClientRect().height;
+    row.cardsHeight = Math.round(el.modRow.getBoundingClientRect().height);
     document.body.dataset.chips = ''; await wait(80);
   }
   /* The null for the EQ's editor: its plot asked for more height than the
@@ -269,7 +280,8 @@ with sync_playwright() as pw:
     # The full face at the page's size and at its smallest (1100x860); the
     # compact one at the plugin's default, at its own corner at 100, and at
     # the plugin's minimum, where Auto makes it 90.
-    SIZES = [(1400, 900, "auto", 1), (1100, 860, "auto", 1), (1200, 680, "auto", 1), (1100, 680, "auto", 1),
+    # And since 18 Nov the largest the spec measured Play's figures at, 1660x1050 (play-figures.md).
+    SIZES = [(1660, 1050, "auto", 1), (1400, 900, "auto", 1), (1100, 860, "auto", 1), (1200, 680, "auto", 1), (1100, 680, "auto", 1),
              (960, 600, "auto", 0.9)]
     # FIT_SIZES="960x600@0.9,1100x700@1" sweeps others at a Size chosen, for measuring a choice.
     if os.environ.get("FIT_SIZES"):
@@ -280,6 +292,7 @@ with sync_playwright() as pw:
     bad = []
     for w, h, zoom, want_zoom in SIZES:
         ctx = b.new_context(permissions=["microphone"], viewport={"width": w, "height": h})
+        webfonts.route(ctx)
         for bands in (False, True):
             p = ctx.new_page()
             p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
@@ -294,6 +307,24 @@ with sync_playwright() as pw:
         p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(700)
         if p.locator("#helpClose").is_visible(): p.locator("#helpClose").click()
         if zoom != "auto": p.evaluate("(z) => setSize(z)", zoom); p.wait_for_timeout(300)
+        # Play's figures (18 Nov, play-figures.md): with one hand and two, each subtab, nothing between the
+        # band and the settings row, Play not scrolled and the view inside it, clear of the modulation row and
+        # the Picture, every knob and settings row one row, and every drawing 1.5:1 to 7:1 and 120 px tall
+        # (the amp's 2:1 or wider). Measured in the webfonts.
+        webfonts.settle(p)
+        for two in (False, True):
+            p.evaluate("(two) => { setView('bench'); setBenchTab('play'); setMidiMode('poly'); if ((midi.layers.mode !== 'off') !== two) el.midiTwoHands.click(); el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); }", two)
+            for sub in ("amp", "filter", "wave"):
+                p.evaluate("(s) => setFigSub(s)", sub); p.wait_for_timeout(250)
+                m = p.evaluate(PF.MEASURE); j = PF.judge(m)
+                check("Play's %s at %dx%d with %s: nothing between the band and the settings row, no scroll, clear of the row and the Picture, "
+                      "one row each, %s" % (sub.capitalize(), w, h, "two hands" if two else "one hand", PF.plots_said(m)),
+                      j["nothing"] and j["fit"] and j["clear"] and j["one"] and j["wide"],
+                      "gap %.1f, scroll %s, view %.1f, rows %s %s" % (m["gapBandToSettings"], m["scroll"], m["viewOver"], m["knobRows"], m["setRows"]))
+        if (w, h) == (960, 600):
+            m = p.evaluate("() => { const f = document.querySelector('.play-figs'); f.style.minHeight = '2000px'; const m = (" + PF.MEASURE + ")(); f.style.minHeight = ''; return m; }")
+            null("Play with a figure area 2000 px tall scrolls (%s px)" % m["scroll"], not PF.judge(m)["fit"])
+        p.evaluate("() => { if (midi.layers.mode !== 'off') el.midiTwoHands.click(); setFigSub('amp'); }")
         adv = p.evaluate(ADVANCED, 0)
         check("the Picture's Advanced at %dx%d, split and on Custom - Reads, Pictures, Responds to, Rise, fall and its two "
               "knobs - is inside the window and does not scroll" % (w, h),
@@ -314,13 +345,13 @@ with sync_playwright() as pw:
               # layered and rack cases.
               r["over"] == [] and r["cases"] >= (24 if name == "tone" else 12) and r["lanes"] == (4 if name == "bands" else 2),
               "%d lanes; %s" % (r["lanes"], r["over"][:6]))
-        want_chips = (w, h) != (1400, 900)
+        want_chips = h < 900 or w < 1100
         check("the modulation row was across the window under the tabs, four %s (%dx%d)" % ("chips" if want_chips else "cards", w, h),
               r["row"]["under"] and r["row"]["cards"] == 4 and r["row"]["chips"] == want_chips
               and (r["row"]["height"] <= 40 if want_chips else r["row"]["height"] >= 70), str(r["row"]))
         if (w, h) == (1100, 860) and name == "tone":
-            check("null: at 1100x860 the cards' row in place of the chips puts Ink over", r["row"].get("cardsOver", 0) > 0,
-                  str(r["row"]))
+            null("at 1100x860 the cards' row in place of the chips is read as cards and takes its height from Play's figures",
+                 r["row"].get("cardsHeight", 0) >= 70 and r["row"].get("ampCards", 999) < r["row"].get("ampChips", 0) - 40, str(r["row"]))
         check("and every section is dealt at the height it was measured at (%dx%d)" % (w, h),
               r["mismeasured"] == [], str(r["mismeasured"][:4]))
         check("an oscillator on a dozen controls is a dozen rows in its editor, and the editor does not scroll (%dx%d)" % (w, h),

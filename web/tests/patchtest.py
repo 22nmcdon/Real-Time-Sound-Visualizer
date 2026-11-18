@@ -19,6 +19,7 @@ detail.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
+import webfonts, playfigs as PF
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
@@ -358,7 +359,7 @@ with sync_playwright() as pw:
       await settle();
       // The upper hand, every section its own, so each title's link shows (G6).
       document.getElementById('editHandB').click();
-      document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => link.click());
+      document.querySelectorAll('.hand-link[aria-pressed="true"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'true') link.click(); });
       await settle();
       out['poly+split, editing B'] = fits();
       // The drawbars add the registration row under the menu, on both layers.
@@ -386,7 +387,7 @@ with sync_playwright() as pw:
       out['poly+split+keys, morph, the voice filter on'] = fits();
       el.vcfType.value = '0'; el.vcfType.dispatchEvent(new Event('change'));
       el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change'));
-      document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => link.click());
+      document.querySelectorAll('.hand-link[aria-pressed="false"]').forEach((link) => { if (link.getAttribute('aria-pressed') === 'false') link.click(); });
       document.getElementById('editHandA').click();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change'));
       setScreenKeys(false);
@@ -503,6 +504,121 @@ with sync_playwright() as pw:
           t.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth"))
     t.screenshot(path=f"{SHOTS}/bench-touch.png", full_page=True)
     check("no page errors on touch", not tbad, "; ".join(tbad[:3]))
+
+    print("\n--- nothing on Play moves when something is chosen (18 Nov, play-figures.md) ---")
+    # The cell invariance above, for the whole tab: every box on Play (playfigs.BOXES - the band, its
+    # strip, line and modes, the settings row's fields, the figure area, its bar and subtabs, the view's
+    # tools, pill, drawings and knob cells) compared to half a pixel across what the owner's rule names:
+    # Two hands in Dyad, Mono and Poly; the amp's Loop, Sustain here, No sustain and a note held; each
+    # filter type and its envelope's Loop; the link pills linked and not; Amp to Filter and Wave (outside
+    # the view); and the Envelope's editor opening over the tabs. At the six windows, in the webfonts.
+    BOX = PF.BOXES
+    def play_page(w, h):
+        q = b.new_page(viewport={"width": w, "height": h})
+        webfonts.route(q)
+        qbad = []
+        q.on("pageerror", lambda e: qbad.append("pageerror: " + str(e)))
+        q.goto(f"file://{ART}/scope.html?picture=0"); q.wait_for_timeout(900)
+        if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+        webfonts.settle(q)
+        q.evaluate("() => { setView('bench'); setBenchTab('play'); setMidiMode('poly'); el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); setControl('vcfEnvAmt', 15); setFigSub('amp'); }")
+        q.wait_for_timeout(300)
+        return q, qbad
+    def boxes(q, js=None, wait=150):
+        if js: q.evaluate(js)
+        q.wait_for_timeout(wait)
+        return q.evaluate(BOX)
+    def menu_item(q, key, item):
+        q.locator('#ampPlot [data-handle="%s"]' % key).click(button="right"); q.wait_for_timeout(200)
+        q.locator('.ctx-item[data-item="%s"]' % item).click(); q.wait_for_timeout(150)
+    HANDS = "(two) => { if ((midi.layers.mode !== 'off') !== two) el.midiTwoHands.click(); }"
+    for w, h in PF.SIZES:
+        q, qbad = play_page(w, h)
+        tag = "%dx%d" % (w, h)
+        base = boxes(q)
+        out = []
+        for mode in ("poly", "dyad", "mono"):
+            for two in (False, True):
+                if two and mode != "poly": continue
+                bx = boxes(q, "() => { setMidiMode('%s'); (%s)(%s); }" % (mode, HANDS, "true" if two else "false"), 250)
+                ok, moved, nk = PF.same(base, bx)
+                out.append(("%s, %s" % (mode.capitalize(), "two hands" if two else "one hand"), ok, moved, nk))
+                if two:
+                    # Each way of sharing the notes, and by notes its count and its counted end: there the octave
+                    # buttons give way to low and high, each keeping its place unseen, so the keys stay.
+                    for what, js in (("Notes", "() => el.midiKindNotes.click()"),
+                                     ("Notes, three counted", "() => { el.midiSplitCount.value = '3'; el.midiSplitCount.dispatchEvent(new Event('change', { bubbles: true })); }"),
+                                     ("Notes, from the top", "() => el.midiEndHigh.click()"),
+                                     ("Notes, from the bottom", "() => el.midiEndLow.click()"),
+                                     ("Layer", "() => el.midiKindLayer.click()"), ("Key", "() => el.midiKindKey.click()")):
+                        bx = boxes(q, js, 200)
+                        ok, moved, nk = PF.same(base, bx)
+                        out.append(("Poly, two hands, %s" % what, ok, moved, nk))
+                    bx = boxes(q, "() => (%s)(false)" % HANDS, 200)
+        bx = boxes(q, "() => setMidiMode('dyad')"); ok, moved, nk = PF.same(base, bx); out.append(("Dyad after two hands", ok, moved, nk))
+        q.evaluate("() => setMidiMode('poly')")
+        for what, ok, moved, nk in out:
+            check("%s: %s: all %d boxes on Play where they were in Poly with one hand %s" % (tag, what, nk, moved or ""), ok)
+        # The amp's view.
+        base = boxes(q, "() => setFigSub('amp')")
+        bx = boxes(q, "() => el.ampLoop.click()"); ok, moved, nk = PF.same(base, bx)
+        check("%s: the amp's Loop: all %d boxes where they were %s" % (tag, nk, moved or ""), ok)
+        q.evaluate("() => el.ampLoop.click()")
+        menu_item(q, "p2", "sustain"); ok, moved, nk = PF.same(base, boxes(q))
+        check("%s: Sustain here on the peak: all %d boxes where they were %s" % (tag, nk, moved or ""), ok)
+        menu_item(q, "p2", "oneshot"); ok, moved, nk = PF.same(base, boxes(q))
+        check("%s: No sustain: all %d boxes where they were %s" % (tag, nk, moved or ""), ok)
+        q.evaluate("() => { el.envShape.value = ''; el.envShape.dispatchEvent(new Event('input', { bubbles: true })); el.envShape.dispatchEvent(new Event('change', { bubbles: true })); }")
+        bx = boxes(q, "() => msegHoldOn()", 500); ok, moved, nk = PF.same(base, bx)
+        q.evaluate("() => msegHoldOff()")
+        check("%s: a note held: all %d boxes where they were %s" % (tag, nk, moved or ""), ok)
+        # The link pills: with two hands, each section's own and linked.
+        q.evaluate("() => { (" + HANDS + ")(true); }")
+        for sub, link in (("amp", "linkAmpEnv"), ("filter", "linkVcf"), ("wave", "linkGenWave")):
+            a2 = boxes(q, "() => setFigSub('%s')" % sub, 250)
+            b2 = boxes(q, "() => document.getElementById('%s').click()" % link, 200)
+            ok, moved, nk = PF.same(a2, b2)
+            q.evaluate("() => document.getElementById('%s').click()" % link)
+            check("%s: %s's link pill, linked and the hand's own: all %d boxes where they were %s" % (tag, sub.capitalize(), nk, moved or ""), ok)
+        q.evaluate("() => { (" + HANDS + ")(false); setFigSub('filter'); }"); q.wait_for_timeout(200)
+        # The filter's view: each type, Off saying the filter is off, and its envelope's Loop.
+        base = boxes(q)
+        for t in (0, 2, 3, 4, 1):
+            ok, moved, nk = PF.same(base, boxes(q, "() => el.vcfTypes.querySelector('[data-type=\"%d\"]').click()" % t))
+            check("%s: the filter's type %s: all %d boxes where they were %s" % (tag, ["Off", "Low", "Band", "High", "Notch"][t], nk, moved or ""), ok)
+        ok, moved, nk = PF.same(base, boxes(q, "() => el.vcfLoop.click()")); q.evaluate("() => el.vcfLoop.click()")
+        check("%s: the filter envelope's Loop: all %d boxes where they were %s" % (tag, nk, moved or ""), ok)
+        # The subtabs: everything outside the view stays.
+        a2 = boxes(q, "() => setFigSub('amp')", 250)
+        for other in ("filter", "wave"):
+            ok, moved, nk = PF.same(a2, boxes(q, "() => setFigSub('%s')" % other, 250), lambda k: not k.startswith("view"))
+            check("%s: Amp to %s: all %d boxes outside the view where they were %s" % (tag, other.capitalize(), nk, moved or ""), ok)
+        # The Envelope's editor opening over the tabs moves nothing under it.
+        a2 = boxes(q, "() => setFigSub('amp')", 250)
+        ok, moved, nk = PF.same(a2, boxes(q, "() => openModCard('env.note')", 300))
+        q.evaluate("() => closeModCard()")
+        check("%s: the Envelope's editor open over the tabs: all %d boxes under it where they were %s" % (tag, nk, moved or ""), ok)
+        if (w, h) == (1400, 900):
+            # Nulls: the band 6 px taller with two hands, as testing had it; and a link pill put before the tools.
+            a2 = boxes(q, "() => setFigSub('amp')")
+            grown = boxes(q, "() => { (" + HANDS + ")(true); el.midiGroup.style.height = (el.midiGroup.offsetHeight + 6) + 'px'; }", 250)
+            ok, moved, nk = PF.same(a2, grown)
+            null("the band 6 px taller with two hands, as testing had it, is seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate("() => { el.midiGroup.style.height = ''; }")
+            # And low and high taking room only by notes, as before 18 Nov: the keys move.
+            a2 = boxes(q, "() => el.midiKindKey.click()", 200)
+            st = "() => { const st = document.createElement('style'); st.id = 'nullEnds'; st.textContent = '.kb-band .kb-ends[hidden], .kb-band .kb-oct[hidden] { display: none !important; }'; document.head.appendChild(st); }"
+            a2 = boxes(q, st, 200)
+            notes = boxes(q, "() => el.midiKindNotes.click()", 200)
+            ok, moved, nk = PF.same(a2, notes)
+            null("low and high taking room only by notes, as before, are seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate("() => { document.getElementById('nullEnds').remove(); el.midiKindKey.click(); (" + HANDS + ")(false); }")
+            a2 = boxes(q, None, 200)
+            first = boxes(q, "() => { const t = el.ampEnvGroup.querySelector('.fig-tools'); t.prepend(el.linkAmpEnv); }", 200)
+            ok, moved, nk = PF.same(a2, first)
+            null("the link pill put before the tools is seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
+        check("%s: no page errors" % tag, not qbad, "; ".join(qbad[:2]))
+        q.close()
     b.close()
 
 print()
