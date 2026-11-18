@@ -204,7 +204,8 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('play');
+      // On Play's Filter figure since 18 Nov, a subtab of its own.
+      setView('bench'); setBenchTab('play'); setFigSub('filter');
       // Off, since G3: the four main controls on show and greyed (disabled); since 18 Nov (Play's
       // Filter figure) the envelope's six as well, greyed and kept, where they were hidden, which moved
       // the drawing beside them. On: all of them, live.
