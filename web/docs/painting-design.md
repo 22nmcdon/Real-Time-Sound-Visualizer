@@ -201,8 +201,10 @@ Step 2 put the painting live on the page, behind *Trace · Paint*.
   Fading every pixel every frame, the first try, held SwiftShader to about five frames a
   second.
 - **Without WebGL 2** or a float render target the face draws the core's map plain, ink on
-  the paper, and the instrument plays on (`?paint=plain` shows it). The plugin's web view
-  (WebKitGTK under the shell test) said which it used; the shell test prints it.
+  the paper, and the instrument plays on (`?paint=plain` shows it). The plugin's web view,
+  WebKitGTK under the shell test on a virtual display with software GL, has both: it painted
+  on the graphics card path, 34 frames a second, 4.5 ms of the page's own time a frame. The
+  Mac's WKWebView and Windows' WebView2 are untested here.
 - **Two hands:** one canvas and a shared map, each hand's ink the look only. Enlarge and
   Picture only work as on the trace. *Which hands* is hidden in Paint, and the loop
   overlay's rings, which are the trace's Scan path, are not drawn there.
