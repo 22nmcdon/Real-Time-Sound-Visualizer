@@ -4419,7 +4419,7 @@ int main() {
     check("and keeps it through prepareToPlay, reset and prepareToPlay again (auval), the slider and the half-life following",
           knob->get() == 40.0f && painted.slider("scanMemory") == 40 && std::fabs(painted.paintPersistence() - 6.8) < 1e-9,
           num(knob->get()) + ", slider " + num(painted.slider("scanMemory")) + ", " + num(painted.paintPersistence()) + " s");
-    painted.pageClick("drawTrace");
+    painted.pageClick("dispXY");  // a trace view pressed is the trace again
     step(4);
     const float inTrace = knob->get();
     check("Trace pressed: the knob reads back to the trace's place, and the painting's half-life stays",

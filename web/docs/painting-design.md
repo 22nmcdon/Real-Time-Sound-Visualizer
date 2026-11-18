@@ -163,11 +163,20 @@ Step 2 put the painting live on the page, behind *Trace · Paint*.
   from before them draws the trace and keeps the trace's persistence. The core follows
   `screenDraws` at each picture frame, so Scan and the Picture amount read whichever is
   shown; the painter is made at prepare, so switching makes nothing on the audio thread.
-- **Trace · Paint** is on the screen's toolbar beside Y–T · X–Y · Spect, as asked. It costs a
-  row: at 1400x900 the toolbar goes from one row to two, at the four smaller windows from
-  two to three. The screen keeps its size at all five, since it is bound by its column's
-  width; `fittest.py`, `layouttest.py` and `enlargetest.py` pass unchanged. The press is a
-  click the instrument keeps as a hand (`drawTrace`, `drawPaint`).
+- **Paint is the fourth place in the display switch**: Y–T · X–Y · Spect · Paint. Paint is
+  another way the screen shows the sound, and each of the other three pressed is the trace
+  again in that view (the core takes the press the same way). The trace's display is kept
+  underneath, so the photocell and the score go on reading it. The first try was a Trace ·
+  Paint switch of its own beside the display switch; it cost the toolbar a row at every
+  window, so it went. In the display switch, with two pixels off each side of its buttons, the
+  toolbar is one row at 1400x900 and wider, as it was with three, and the same two rows as
+  before at the smaller windows. Switching moves and resizes nothing on the face (the owner's
+  rule of 18 Nov), measured by `painttest.py` at 1400x900 and 960x600, every element with an
+  id, the only boxes allowed to change those whose own words did - the Persistence's reading.
+  The info line is left out of that check: it names whatever was last pressed, so its menu
+  and *More* move along after its words on every press of anything, Y–T against X–Y as much
+  as Paint, which is the line's behaviour under the owner's rule rather than the switch's.
+  The press is a click the instrument keeps as a hand (`drawPaint`, and the views').
 - **Persistence in Paint is its own value** on the one knob (the owner's choice over one value
   meaning two things). The knob reads "16 s to half", a log scale from a second to two
   minutes, 16 s at 58 (`paintOfSlider`, `paintSliderOf`, page and core alike). A hand on it
@@ -222,8 +231,8 @@ Step 2 put the painting live on the page, behind *Trace · Paint*.
   card at 512 to 1000 square. The governor's model still does not count painting; at 7 per
   cent of a block for eight voices it need not yet, but a dense chord in the plugin at
   small blocks is where to look first.
-- **Known limits.** The photocell and the score still read the trace's grid in Paint. The
-  look's drying times are the owner's defaults written into the shader, not read from the
+- **Known limits.** The photocell and the score still read the trace's grid in Paint, which
+  goes on underneath (the info line on Paint and the cheat sheet say so). The look's drying times are the owner's defaults written into the shader, not read from the
   core, since they are not settings yet.
 
 Still open, for when the first build is seen: the drying time (the study used 1.2 s; the

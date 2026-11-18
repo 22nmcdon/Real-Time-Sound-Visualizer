@@ -2564,8 +2564,14 @@ inline bool controlClick(const std::string& id, Brain& b, Generator& gen, Keyboa
   }
   // Together, A and B (setPlaneLayer) were here until G6: each module's link now.
   // The view's buttons.
-  else if (id == "dispYT" || id == "dispXY" || id == "dispSpect") setDisplay(b, id == "dispYT" ? "yt" : id == "dispXY" ? "xy" : "spect");
-  // Trace or Paint (painting, step 2).
+  /* The trace's views, each pressed the trace again since Paint joined their
+     switch (painting, step 2): the draws first, so the knob is the trace's
+     as the display's nudge to its persistence lands. */
+  else if (id == "dispYT" || id == "dispXY" || id == "dispSpect") {
+    setDraws(b, "trace");
+    setDisplay(b, id == "dispYT" ? "yt" : id == "dispXY" ? "xy" : "spect");
+  }
+  // Paint (painting, step 2); and Trace, the switch's first try's, kept for a hand that names it.
   else if (id == "drawTrace" || id == "drawPaint") setDraws(b, id == "drawPaint" ? "paint" : "trace");
   else if (id == "edgeRising" || id == "edgeFalling") b.view.edge = id == "edgeRising" ? "rising" : "falling";
   else if (id == "modeAuto" || id == "modeNormal" || id == "modeSingle") b.view.mode = id == "modeAuto" ? "auto" : id == "modeNormal" ? "normal" : "single";

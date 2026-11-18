@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-376 controls: 376 lines, none marked as removed by a later stage, 89 wanting a paragraph
+375 controls: 375 lines, none marked as removed by a later stage, 89 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -30,7 +30,7 @@ its curve on the line, its editor's switch and Close, and a point on its curve; 
 the drawn envelopes: each envelope's Delay and Hold, the amp envelope's and the filter's blocks that
 open the editor, the editor's Close, Shape, Loop, Hold a note, the filter's type and its two drawings,
 and the Envelope card's Shape, Loop and Hold a note, with *Its envelope* gone into the filter's block; and
-again on 18 Nov, painting's Trace and Paint on the screen's toolbar).
+again on 18 Nov, painting's Paint, a fourth place in the display switch).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -342,8 +342,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`): how the notes soun
 | dispYT | Y–T | Each channel drawn against time, as a waveform. Scan reads the waveform as it is drawn, so the timebase moves the tone too. | 123 | yes — in Y–T Scan and the three reads read the lanes as drawn, so timebase and zoom reach the sound |
 | dispXY | X–Y | The left channel against the right, drawn as one figure: the picture Scan is made to read. Turns Persistence on if it was off. | 126 | yes — switching in with Persistence off sets it to a short fade, once; change it after and it stays |
 | dispSpect | Spect | Frequency up, time running right to left, loudness as ink. Scan and the picture read nothing here, so the tone keeps its last wave. | 131 | yes — the photocell reads nothing too, and Persistence is greyed |
-| drawTrace | Trace | The screen draws the signal as a scope does, and Scan and the Picture amount read that trace. Persistence is the trace's fade. | 126 | - |
-| drawPaint | Paint | The sound paints, a ring a register, and Scan and the Picture amount read the paint. Persistence is the paint's half-life. | 122 | yes — painting, step 2: time goes clockwise, one turn in 8 s, pitch outward; each note reads its own ring; Glow is wet paint, Motion paint being laid, Memory new paint on old; its Persistence is its own value, kept apart from the trace's |
+| drawPaint | Paint | The sound paints, and Scan and the Picture amount read the paint; the photocell and score still read the trace. Y–T, X–Y or Spect go back. | 138 | yes — painting, step 2: the fourth place in the display switch; time goes clockwise, one turn in 8 s, pitch outward; each note reads its own ring; Glow is wet paint, Motion paint being laid, Memory new paint on old; Persistence is the painting's own half-life, kept apart from the trace's; the photocell and the score read the trace's grid, which goes on underneath, a known limit of this step |
 | clearButton | Clear | Wipes the screen and the light Scan and the photocell read, so the picture builds up again from nothing. Persistence stays as set. | 130 | - |
 | enlargeButton | Enlarge | Fills the window with the screen; Esc or this again brings the face back. Nothing it does changes the sound or is a step in undo. | 129 | yes — added in G4: it replaced the Scope view; the panes show only in it; the light Scan reads is kept as it opens and closes, the canvas redrawn from blank |
 

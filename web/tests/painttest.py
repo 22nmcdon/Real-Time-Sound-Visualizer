@@ -27,7 +27,21 @@ What would go wrong, and what is checked for it, each with its null:
 - Mono not painting (step 1 painted Poly's voices only): a note in Mono, and
   paint where its ring is;
 - Which hands offered in Paint: hidden there while the hands draw a figure
-  each, and shown in Trace (the null).
+  each, and shown in Trace (the null);
+- switching moving the face (the owner's rule, 18 Nov: selecting something
+  must not shift the view): every element with an id measured in Trace, in
+  Paint and in Trace again, at 1400x900 and the plugin's 960x600, and none
+  may have moved or changed size but the painting itself and a box whose own
+  words changed with the press (the Persistence's reading): a reading that
+  grew and pushed its neighbours would still show in the neighbours. The
+  info line is left out whole: it names whatever was last pressed, so its
+  words and the menu and More after them move with every press of anything,
+  Y-T against X-Y as much as Paint - the line's own behaviour, not the
+  switch's. Elements whose box moves on
+  its own between two readings a moment apart in Trace are left out first. The null: the Clear button taken out of
+  the toolbar, which moves its neighbours, read the same way;
+- the toolbar one row at 1400x900 with Paint in the display switch, as it
+  was with three; the null is the plugin's 960x600, where it is two.
 
 Parallel: no clock is judged; the frames are waited for, and every reading is
 a value.
@@ -114,7 +128,7 @@ with sync_playwright() as pw:
         check("at %d the page and the instrument read the knob alike" % at, kept and float(kept[-1][2]) == page,
               "%s against %s" % (page, kept[-1][2] if kept else None))
     knob_to(p, 40)
-    p.click("#drawTrace"); p.wait_for_timeout(300)
+    p.click("#dispXY"); p.wait_for_timeout(300)
     knob_to(p, 80)
     got2 = p.evaluate("() => ({ paint: state.paintPersistence, trace: state.persistence, reading: el.scanMemoryValue.textContent })")
     null("in Trace the same knob does move the trace's", got2["trace"] != trace_before, str(got2))
@@ -183,6 +197,43 @@ with sync_playwright() as pw:
       return { on, all }; }""")
     check("a note in Mono paints its own ring", ring and ring["all"] > 0.5 and ring["on"] / ring["all"] > 0.8, str(ring))
     p.close()
+
+    # --- switching moves nothing on the face ---
+    SNAP = """() => { const out = {};
+      for (const e of document.querySelectorAll('body *')) {
+        if (!e.id || e.id === 'paintCanvas' || e.closest('#infoLine')) continue;
+        const r = e.getBoundingClientRect();
+        if (!r.width && !r.height) continue;
+        out[e.id] = [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 10) / 10).concat([e.textContent.slice(0, 60)]);
+      }
+      return out; }"""
+    def moved(a, b, skip):
+        # A box whose own words changed may change with them (a reading, the info line naming the press); nothing else may.
+        return sorted(k for k in set(a) | set(b) if k not in skip and a.get(k) != b.get(k)
+                      and not (k in a and k in b and a[k][4] != b[k][4]))
+    for w, h in ((1400, 900), (960, 600)):
+        p = open_page(b, "", w, h)
+        p.evaluate("() => { el.oscScan.value = '60'; el.oscScan.dispatchEvent(new Event('input')); midiNoteOn(57, 100); }")
+        p.wait_for_timeout(800)
+        one = p.evaluate(SNAP); p.wait_for_timeout(400); two = p.evaluate(SNAP)
+        live = set(moved(one, two, set()))
+        p.click("#drawPaint"); p.wait_for_timeout(600)
+        painted = p.evaluate(SNAP)
+        p.click("#dispXY"); p.wait_for_timeout(600)
+        back = p.evaluate(SNAP)
+        shift = moved(two, painted, live) + moved(two, back, live)
+        check("at %dx%d switching to Paint and back moves and resizes nothing on the face" % (w, h), not shift,
+              "%d elements read, %d live left out; moved: %s" % (len(two), len(live), ", ".join(shift[:8])))
+        rows = p.evaluate("() => Math.round(el.screenTools.getBoundingClientRect().height)")
+        if w == 1400:
+            check("the screen's toolbar is one row at 1400x900, Paint in the display switch", rows < 40, "%d px" % rows)
+            p.evaluate("() => { el.clearButton.style.display = 'none'; }"); p.wait_for_timeout(200)
+            gone = p.evaluate(SNAP)
+            null("Clear taken out of the toolbar moves its neighbours, and the same reading sees it", moved(two, gone, live) != [],
+                 ", ".join(moved(two, gone, live)[:4]))
+        else:
+            null("at the plugin's minimum the toolbar is two rows, so the row's check can fail", rows > 40, "%d px" % rows)
+        p.close()
 
     # --- Which hands ---
     p = open_page(b)

@@ -584,8 +584,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **Trace · Paint, and the painting's own Persistence** (painting, step 2, 18 Nov;
   `web/docs/painting-design.md`). The screen draws the trace or the painting the core keeps
   (`core/include/scope/paint.h`), a setup field (`screenDraws`), and Scan and the Picture
-  amount read whichever is shown. The switch is on the screen's toolbar beside Y–T · X–Y ·
-  Spect, which costs the toolbar a row at every window (the screen keeps its size).
+  amount read whichever is shown. Paint is the fourth place in the display switch (Y–T ·
+  X–Y · Spect · Paint), each other view pressed the trace again: a switch of its own beside it
+  cost the toolbar a row at every window. Switching moves nothing on the face (the owner's
+  rule, 18 Nov; `painttest.py` measures it). The photocell and the score still read the
+  trace's grid underneath.
   Persistence on the Picture section is the painting's own half-life in seconds while Paint
   is shown (`paintPersistence`, 16 to start), kept apart from the trace's - the owner's
   choice over one value meaning two things - and the instrument keeps a hand on it in Paint
