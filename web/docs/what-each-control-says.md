@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-376 controls: 376 lines, none marked as removed by a later stage, 89 wanting a paragraph
+383 controls: 383 lines, none marked as removed by a later stage, 89 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -33,7 +33,9 @@ and the Envelope card's Shape, Loop and Hold a note, with *Its envelope* gone in
 again on 18 Nov, painting's Paint, a fourth place in the display switch; and again on 18 Nov, Play's figures: the blocks, the
 editor beside them and the Ink tab's ways to the cycle and the drawbars gone, the Amp, Filter and Wave
 subtabs, each figure's drawing, Shape, Loop and Hold a note, the cycle drawn on, and the Generator's
-second link on Wave).
+second link on Wave; and on 19 Nov, the drawn LFOs: the LFO card's editor's Phase, Starts again, the drawn
+shape's text, the Grid, Hold a note and Silence, with Shape and Sync out of sight behind its seven shapes and
+Rate in, and the Rate knob's new words).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -456,9 +458,15 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| lfoShape0 | Shape | The wave the LFO sweeps with. Ramp rises and drops back; Random jumps to a new level each cycle and holds it. | 109 | - |
-| lfoSync0 | Sync | Free runs at Rate; a note value locks the LFO to the tempo, and it starts again on the beat. | 92 | - |
-| lfoRate0 | Rate | How fast the LFO sweeps, from 0.01 to 8 cycles a second. Greyed while Sync locks it to the tempo. | 97 | - |
+| lfoShape0 | Shape | The shape the LFO plays: one of today's five, or drawn. The editor's seven small shapes and its drawing set it. | 111 | - |
+| lfoSync0 | Sync | Free, or the note value the LFO follows in tempo, starting again on the beat. Rate in sets it; in tempo, the Rate knob turns it. | 128 | - |
+| lfoRate0 | Rate | How fast the LFO sweeps, from 0.01 to 8 cycles a second. In tempo it turns through the note values instead. | 107 | - |
+| lfoPhase0 | Phase | Where in its cycle the shape is read from, 0 to 355 degrees: where a restart begins, and how far LFO 1 sits from LFO 2. | 119 | - |
+| lfoStarts0 | Starts again | Free runs on; Each note starts the shape again on every key; Each phrase on a key struck with no other down. | 108 | - |
+| lfoDrawn0 | The shape | The LFO's drawn points as text: what its drawing writes and a setup carries. | 76 | - |
+| lfoGrid | Grid | How many steps to the cycle a dragged point snaps to. Hold Shift while dragging to place it freely. | 99 | - |
+| lfoHoldNote | Hold a note | Plays a note while it is held down, so the shape can be heard and its dot watched without a keyboard. | 101 | - |
+| lfoSilence | Silence | Keeps the LFO's routings and hears none of them, as its switch in Routings does. Press it again to hear them. | 109 | - |
 | srcDetail-add | Add a destination | Puts this source on another control, from every one it can reach. Dragging its card onto a knob does the same. | 110 | - |
 
 ### A modulation card’s editor › The Envelope

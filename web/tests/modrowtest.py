@@ -232,10 +232,14 @@ with sync_playwright() as pw:
     p.locator('.mod-card[data-source="lfo1"]').click(); p.wait_for_timeout(300)
     wave = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-      const canvas = document.getElementById('srcDraw');
-      // An eighth of a cycle in, where a sine is 0.71 and the LFO's square 0.9 (its height).
-      const read = () => { paintModLive(); const d = canvas._drawn, x = d.w / 16, mid = d.h / 2, amp = d.h / 2 - 4;
-        return { ink: __inkAt(canvas, x).y, sine: mid - Math.SQRT1_2 * amp, square: mid - 0.9 * amp, shape: d.shape, dot: d.dot.slice() }; };
+      /* An eighth of a cycle in, where a sine is 0.71 and the LFO's square 0.9 (its height). The
+         editor draws one cycle as an SVG path since 19 Nov (the drawn LFOs): its line is read off the
+         path it drew, the corner nearest that x, where it read the canvas's darkest pixel until then. */
+      const read = () => { drawLfoEditor(true); paintModLive(); const svg = document.getElementById('lfoPlot'), g = svg._g;
+        const path = svg.querySelector('[data-curve]').getAttribute('d'), x = g.x(0.125);
+        const corners = (path.match(/[ML][^ML]+/g) || []).map((c) => c.slice(1).trim().split(/\s+/).map(Number));
+        const near = corners.reduce((a, c) => (Math.abs(c[0] - x) < Math.abs(a[0] - x) ? c : a));
+        return { ink: near[1], sine: g.y(Math.SQRT1_2), square: g.y(0.9), shape: lfos[0].shape, dot: svg._drawn.dot.slice() }; };
       const sine = read();
       const shape = document.getElementById('lfoShape0'); shape.value = 'square'; shape.dispatchEvent(new Event('change'));
       await wait(100);
