@@ -257,7 +257,8 @@ with sync_playwright() as pw:
     page = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind)); };
-      setView('bench'); setBenchTab('ink');
+      // Shaping is a subtab of Ink's figures since 19 Nov (ink-figures.md).
+      setView('bench'); setBenchTab('ink'); setInkSub('shp');
       const shown = el.shpGroup.offsetHeight > 0;
       set('shpDrive', 50, 'input'); set('shpFold', 30, 'input'); set('shpBits', 4, 'change'); set('shpRate', 2000, 'change');
       set('shpOS', 4, 'change');

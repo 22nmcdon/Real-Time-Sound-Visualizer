@@ -432,9 +432,11 @@ with sync_playwright() as pw:
          since the Bench became tabs only one tab's controls can be at once. */
       setView('bench');
       // And each of Play's figures (since 19 Nov the Generator is Wave's header, play-band.md).
-      for (const [tab, sub] of BENCH_TABS.flatMap(([t]) => t === 'play' ? FIG_SUBS.map(([s]) => [t, s]) : [[t]])) {
+      // And Ink's two (19 Nov, ink-figures.md): Shaping's knobs are under its own subtab.
+      for (const [tab, sub] of BENCH_TABS.flatMap(([t]) => t === 'play' ? FIG_SUBS.map(([s]) => [t, s])
+                                                   : t === 'ink' ? INK_SUBS.map(([s]) => [t, s]) : [[t]])) {
       setBenchTab(tab);
-      if (sub) setFigSub(sub);
+      if (sub) (tab === 'ink' ? setInkSub : setFigSub)(sub);
       for (const row of document.querySelectorAll('[data-mod-dest]')) {
         const input = row.querySelector('input[type=range]');
         if (!input || input.offsetWidth === 0) continue;
