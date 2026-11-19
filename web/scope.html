@@ -1852,6 +1852,60 @@ body[data-compact] .bench-body { row-gap: 10px; }
   flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #vcfSweeps { flex: 1 1 0; }
 #vcfSweeps.is-dead { color: var(--unresolved); }
+/* --- Ink with its figures (19 Nov, web/docs/ink-figures.md) --------------------
+   Ink is the figure area and nothing else: no band and no settings row, so the
+   area takes the tab. The bar, the subtabs, the views and the knobs are Play's.
+   A view's rows are its header, the drawing and the controls, packed at its
+   top: the drawing is sized by room (fitInk), and the paper under the
+   controls is what the drawing could not use without leaving 1.5:1. */
+#benchBody.is-ink { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; row-gap: 0; overflow-y: auto; }
+#benchBody.is-ink > .ink-figs { margin-top: 0; }
+.bench-body.is-ink .hand-link { width: 106px; justify-content: center; box-sizing: border-box; overflow: hidden; }
+.bench-body .fig-views > .menu-group.fig-view.ink-view { grid-template-rows: auto auto auto; align-content: start; }
+.bench-body .ink-view > .fig-plot.ink-row { min-height: 0; height: 120px; display: flex; gap: 14px; align-items: flex-start; }
+.ink-row > .ink-plot { position: relative; flex: 1 1 auto; min-width: 0; height: 100%; }
+.ink-row > .ink-plot[hidden] { display: none; }
+.ink-row > .ink-plot > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+/* The figure, chosen: a square of the wave's height, centred, so the row is one height either way. */
+.ink-row.is-figure { justify-content: center; }
+.ink-row.is-figure > #oscXYBox { flex: 0 0 auto; }
+.ink-row > .ink-curve { flex: 0 0 auto; }
+/* Shaping stacked by room: the cycle the width over the curve, the curve centred under it. */
+.bench-body .ink-view > .fig-plot.ink-row.stacked { flex-direction: column; align-items: center; }
+.ink-row.stacked > .ink-cycle { order: -1; flex: 0 0 auto; width: 100%; }
+.ink-row.stacked > .ink-curve { flex: 0 0 auto; }
+/* The header's words in boxes that do not size to them, so a word that changes moves nothing after it. */
+.ink-say { flex: 1 1 0; min-width: 0; font-size: 11.5px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ink-say b { font-weight: 500; color: var(--charcoal); }
+.ink-key { flex: 0 0 150px; width: 150px; overflow: hidden; font-size: 10.5px; color: var(--text-soft); display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+.ink-key i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--charcoal); vertical-align: middle; margin-left: 3px; }
+.ink-key i.ink-kr { border-top: 1.5px solid var(--ch2); }
+.ink-key i.ink-kp { border-top: 1.5px dashed var(--unresolved); }
+[data-compact] .ink-say { font-size: 10.5px; }
+[data-compact] .ink-key { flex-basis: 130px; width: 130px; font-size: 10px; }
+.ink-draws { flex: 0 0 auto; }
+.fig-tools .ink-drift { flex: 0 0 auto; }
+.ink-drift[aria-pressed="true"] { color: var(--blush-deep); }
+/* Its controls in one row: knobs, and the menus (Ratio, Unison, Crush, Rate) their name in small type over them. */
+.bench-body .fig-view .ink-knobs { align-items: flex-end; }
+.bench-body .fig-view .ink-knobs > .menu-row:not(.knob-row):not([data-more]) { display: flex; flex-direction: column; align-items: stretch; gap: 1px;
+  flex: 0 0 auto; width: 84px; margin: 0 2px; padding-bottom: 6px; min-width: 0; }
+[data-compact] .bench-body .fig-view .ink-knobs > .menu-row:not(.knob-row):not([data-more]) { width: 72px; padding-bottom: 4px; }
+.bench-body .fig-view .ink-knobs > .menu-row:not(.knob-row) > .menu-label { flex: 0 0 auto; width: auto; font-size: 9.5px; text-align: center; color: var(--text-soft);
+  white-space: nowrap; overflow: hidden; }
+[data-compact] .bench-body .fig-view .ink-knobs > .menu-row:not(.knob-row) > .menu-label { font-size: 8.5px; }
+.bench-body .fig-view .ink-knobs > .menu-row:not(.knob-row) > .grow { display: flex; flex: 0 0 auto; min-width: 0; }
+.bench-body .fig-view .ink-knobs select { width: 100%; min-width: 0; height: 23px; font-size: 12px; padding: 1px 3px; }
+[data-compact] .bench-body .fig-view .ink-knobs select { height: 21px; font-size: 11px; padding: 0 2px; }
+/* A knob between two menus (Spread) is a cell like its neighbours here, not the one-line knob it is among menu rows. */
+.bench-body .fig-view .ink-knobs > .menu-row.knob-row.knob-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "value" "face" "name" "extra";
+  justify-items: center; align-items: start; column-gap: 0; margin-top: 0; }
+.bench-body .fig-view .ink-knobs > .menu-row.knob-row.knob-row > .menu-label { text-align: center; font-size: 9.5px; line-height: 1.2; }
+[data-compact] .bench-body .fig-view .ink-knobs > .menu-row.knob-row.knob-row > .menu-label { font-size: 8.5px; }
+.bench-body .fig-view .ink-knobs > .menu-row.knob-row.knob-row > .grow > .reading { font-size: 10.5px; }
+[data-compact] .bench-body .fig-view .ink-knobs > .menu-row.knob-row.knob-row > .grow > .reading { font-size: 9.5px; }
+/* Greyed, not hidden: Warp at while Warp is off, Spread while Unison is. */
+.ink-knobs > .menu-row.is-idle { opacity: 0.45; }
 /* Wave: the cycle, and under it a band one height for every shape (the drawbars', 78 px). */
 /* Its own width whatever it names, so the header's boxes stay put as the shape changes. */
 .wave-name { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; }
@@ -3926,10 +3980,24 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
             </div>
           </div>
 
-          <div class="menu-group" id="oscGroup" data-home="bench" data-tab="ink">
+          <div class="menu-group fig-view ink-view" id="oscGroup" data-home="bench" data-tab="ink" data-ink="osc">
+            <!-- Ink's Oscillator figure (19 Nov, web/docs/ink-figures.md): both channels over the voice's
+                 whole pattern, the plain shape dashed behind, or as the figure they draw (Wave - Figure, a
+                 look only, kept by the browser); the controls in one row under it, in the markup's order,
+                 which the morph and the plugin's panel read. The sub's octave and shape are behind the dots. -->
+            <div class="fig-tools ink-tools"><span class="ink-say" id="oscSay"></span><span class="ink-key" id="oscKey"><i
+              class="ink-kl"></i>left <i class="ink-kr"></i>right <i class="ink-kp"></i>plain</span><span class="switch caps ink-draws"
+              id="inkDraws" role="radiogroup" aria-label="What the Oscillator draws"><button type="button" role="radio" data-draws="wave"
+              aria-checked="true">Wave</button><button type="button" role="radio" data-draws="figure" aria-checked="false">Figure</button></span><button
+              type="button" class="link-btn caps ink-drift" id="inkDrift" aria-pressed="false"
+              title="Unison's copies beat: hold to watch them drift; let go and the drawing is still again">Hold to watch it drift</button></div>
             <span class="menu-title" id="oscTitle">Oscillator<button type="button" class="hand-link" id="linkOsc" data-link="osc" aria-pressed="true" hidden></button></span>
+            <div class="fig-plot ink-row" id="oscRow"><div class="ink-plot" id="oscWaveBox"><svg class="ink-svg" id="oscWave" role="img"
+              aria-label="Both channels over the voice's pattern, the plain shape dashed behind"></svg></div><div class="ink-plot"
+              id="oscXYBox" hidden><svg class="ink-svg" id="oscXY" role="img" aria-label="The figure the two channels draw, left against right"></svg></div></div>
+            <div class="fig-foot"><div class="mseg-knobs ink-knobs" id="oscKnobs">
             <!-- The pitch, which a note sets and a turn moves, and the second channel's start:
-                 the ink's, with the ratio and FM under them, since G3. On
+                 the ink's, with the ratio and FM beside them, since G3. On
                  Play they read as the instrument's main controls, which they
                  are not once a note is played. -->
             <div class="menu-row" id="freqRow" data-mod-dest="gen.freq" data-mod-control="freq">
@@ -3996,13 +4064,14 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               <label class="menu-label" for="oscUnison">Unison</label>
               <div class="grow"><select id="oscUnison" style="flex:1 1 auto"><option value="1">Off</option><option value="2">2 copies</option><option value="3">3 copies</option><option value="5">5 copies</option><option value="7">7 copies</option></select></div>
             </div>
-            <div class="menu-row" data-more="1">
+            <div class="menu-row" id="spreadRow">
               <label class="menu-label" for="oscSpread">Spread</label>
               <div class="grow">
                 <input type="range" id="oscSpread" min="0" max="50" value="12">
                 <span class="reading" id="oscSpreadValue">12 cents</span>
               </div>
             </div>
+            </div></div>
             <div class="menu-row" data-more="1">
               <label class="menu-label" for="oscSubOct">Sub octave</label>
               <div class="grow"><select id="oscSubOct" style="flex:1 1 auto"><option value="1">1 octave down</option><option value="2">2 octaves down</option></select></div>
@@ -4038,8 +4107,17 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               sync is on, the voice is one sample late.</p>
           </div>
 
-          <div class="menu-group" id="shpGroup" data-home="bench" data-tab="ink">
-            <span class="menu-title">Shaping<button type="button" class="hand-link" id="linkShp" data-link="shp" aria-pressed="true" hidden></button></span>
+          <div class="menu-group fig-view ink-view" id="shpGroup" data-home="bench" data-tab="ink" data-ink="shp">
+            <!-- Ink's Shaping figure (19 Nov, ink-figures.md): the shaper's curve with Crush's steps, and two
+                 cycles before and after with Rate's holds; side by side, or the cycle over the curve when
+                 that gives the curve more and leaves the cycle 120 px tall (fitInk, by room). -->
+            <div class="fig-tools ink-tools"><span class="ink-say" id="shpSay"></span><span class="ink-key" id="shpKey"><i
+              class="ink-kp"></i>in <i class="ink-kl"></i>out</span></div>
+            <span class="menu-title" id="shpTitle">Shaping<button type="button" class="hand-link" id="linkShp" data-link="shp" aria-pressed="true" hidden></button></span>
+            <div class="fig-plot ink-row" id="shpRow"><div class="ink-plot ink-curve" id="shpCurveBox"><svg class="ink-svg" id="shpCurve" role="img"
+              aria-label="The shaper's curve: what comes out for each level that goes in"></svg></div><div class="ink-plot ink-cycle"
+              id="shpCycleBox"><svg class="ink-svg" id="shpCycle" role="img" aria-label="Two cycles of the oscillator, before and after the shaper and the crush"></svg></div></div>
+            <div class="fig-foot"><div class="mseg-knobs ink-knobs" id="shpKnobs">
             <div class="menu-row" data-mod-dest="gen.drive" data-mod-control="shpDrive">
               <label class="menu-label" for="shpDrive">Drive</label>
               <div class="grow">
@@ -4068,6 +4146,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <option value="4000">4 kHz</option><option value="2000">2 kHz</option><option value="1000">1 kHz</option>
                 <option value="500">500 Hz</option></select></div>
             </div>
+            </div><p class="fig-note">Drive rounds the top off; Fold turns it back over. Crush is the steps the curve
+              takes; Rate holds the wave between samples.</p></div>
             <div class="menu-row" data-more="1">
               <label class="menu-label" for="shpOS">Oversampling</label>
               <div class="grow"><select id="shpOS" style="flex:1 1 auto">
@@ -6882,6 +6962,8 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "planeTurnRow", "planeTurn", "planeTurnValue",
                   "planeTwist", "planeTwistValue", "planeLimit", "planeSnap",
                   "planeScaleX", "planeScaleXValue", "planeScaleY", "planeScaleYValue", "planeShear", "planeShearValue",
+                  "oscGroup", "shpGroup", "oscSay", "shpSay", "inkDrift", "inkDraws", "oscRow", "oscWaveBox", "oscXYBox", "oscWave", "oscXY",
+                  "shpRow", "shpCurve", "shpCycle", "oscSpread", "oscUnison", "oscRing", "oscSync", "oscSub",
                   "oscGroup", "oscRatio", "oscFm", "oscFmValue", "oscBend", "oscBendValue",
                   "oscBendAt", "oscBendAtValue", "oscRing", "oscRingValue",
                   "oscScan", "oscScanValue", "scanSoft", "scanSoftValue",
@@ -17640,7 +17722,8 @@ const OSC_RATIOS = [[1, 2], [1, 1], [5, 4], [4, 3], [3, 2], [5, 3], [2, 1], [5, 
 el.oscRatio.innerHTML = OSC_RATIOS.map(([p, q]) => {
   const named = INTERVALS.find(([, a, b]) => a === p && b === q);
   const name = p === 1 && q === 1 ? " \u00b7 unison" : named && p !== q ? " \u00b7 " + named[0].toLowerCase() : "";
-  return '<option value="' + String(p / q) + '">' + p + ":" + q + name + "</option>";
+  // Shown as the ratio alone, which fits Ink's control row at 960x600; the full name is the option's title.
+  return '<option value="' + String(p / q) + '" title="' + p + ":" + q + name + '">' + p + ":" + q + "</option>";
 }).join("");
 el.oscRatio.value = "1";
 
@@ -26670,7 +26753,7 @@ function fitFilter() {
   return stack !== was;
 }
 // The menus whose options are shortened carry the chosen one's full name as their own title (play-figures.md).
-const SHORT_MENUS = ["midiBendRange", "midiWheelTo", "midiPressureTo", "midiVelocityTo", "shape", "interval", "midiDrawWhich", "midiLayerPair"];
+const SHORT_MENUS = ["oscRatio", "midiBendRange", "midiWheelTo", "midiPressureTo", "midiVelocityTo", "shape", "interval", "midiDrawWhich", "midiLayerPair"];
 function paintFigs(force) {
   for (const id of SHORT_MENUS) {
     const menu = document.getElementById(id), o = menu && menu.selectedOptions[0], said = o ? o.title || o.textContent : "";
@@ -26828,6 +26911,457 @@ for (const id of ["envAttack", "envDecay", "envSustain", "envRelease", "envDelay
   el[id].addEventListener("change", paintAmpEnv);
 }
 
+/* --- Ink's figures (19 Nov, web/docs/ink-figures.md) ---------------------------
+   Ink is a figure area and nothing else: two subtabs, Oscillator and Shaping,
+   each its name and a summary, the drawing the area's width and the controls
+   in one row under it, as Play's are. The sections are the views, moved in as
+   the tab is laid out; nothing is copied, so the ids, the host's parameters,
+   undo and the plugin's panel are what they were. Which subtab is shown is a
+   view, never stored; Wave - Figure is a look, kept by the browser.
+
+   The drawings are the page's arithmetic over the hand's tone, the core's
+   formulas line for line (osc.h's oscStep, voice.h's setShaping, shapeSample
+   and crushStep): inktest.py holds each against the core itself, built from
+   core/include, point for point. The other way, asking the module the page
+   carries, was weighed and not taken: a drawing needs each unison copy alone
+   and the bend's settled offset, which the oscillator has no export for, and
+   running it settled is two seconds of samples a redraw. What it costs is a
+   second copy of the formulas, which the comparison keeps honest.
+
+   Ink draws the settings, still (the owner, 19 Nov): a drawing changes when a
+   control does and at no other time. Nothing is driven by a clock; the tab
+   lines' few-times-a-second paint asks, and the drawings are redrawn only when
+   what they draw has changed. Unison, which beats, is frozen at one moment;
+   Hold to watch it drift runs it on while held, and only then. */
+const INK_SUBS = [["osc", "Oscillator", "oscGroup"], ["shp", "Shaping", "shpGroup"]];
+const inkFigs = { sub: "osc", bar: null, said: "", drift: null, nullT: 0 };
+const INK_DRAWS_KEY = "scope.inkDraws";
+let inkDraws = "wave";
+try { const v = window.localStorage.getItem(INK_DRAWS_KEY); if (v === "wave" || v === "figure") inkDraws = v; } catch (error) { /* no storage: the wave */ }
+/* The moment Unison is drawn at: 4.33 of the note's cycles in, a quarter of the way through the beat
+   between the outer copies at the widest Spread (50 cents). At nought every copy coincides; a quarter
+   beat at the current Spread is always 90 degrees, so the fan would not change as Spread turns; in
+   cycles, not seconds, the fan is the same at any note, and it grows with Spread and never folds back. */
+const INK_STILL_CYCLES = 0.25 / (Math.pow(2, 50 / 1200) - Math.pow(2, -50 / 1200));
+const inkStillT = (T) => (T.n > 1 ? INK_STILL_CYCLES / T.hz : 0);
+const inkNowT = (T) => inkStillT(T) + (inkFigs.drift !== null ? (performance.now() - inkFigs.drift) / 1000 : 0) + inkFigs.nullT;
+const inkClamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const inkNum = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+
+/* The hand's tone as the core reads it (restore.h's table): FM a tenth of the knob, Warp 0.009 rad a
+   step, Ring, Sync and Sub hundredths, the unison count as unisonAsked rounds it. */
+function inkTone(over) {
+  const t = genSettings(panelLayer);
+  if (!t) return null;
+  const shape = t.shape, wa = inkNum(t.warpAt, 0.25);
+  const n = Math.round(inkNum(t.unison, 1)) || 1;
+  const T = { t, shape, noise: WAVE_NOISE.includes(shape), fmI: inkClamp(inkNum(t.fmIndex, 0), 0, 20), modRatio: inkNum(t.modRatio, 1),
+    warpA: inkClamp(inkNum(t.warp, 0), -0.9, 0.9), warpC: wa - Math.floor(wa), ring: inkNum(t.ringMix, 0),
+    syncR: inkClamp(inkNum(t.syncRatio, 1), 1, 8), sub: inkNum(t.subLevel, 0), subDiv: Number(t.subOctave) === 2 ? 4 : 2,
+    subSine: t.subShape === "sine", n: inkClamp(n, 1, 7), cents: inkNum(t.unisonCents, 0), drive: inkNum(t.drive, 0),
+    fold: inkNum(t.fold, 0), bits: inkNum(t.crushBits, 0), crushHz: inkNum(t.crushHz, 0),
+    hz: Math.max(1, Number(el.freq.value) || 220), phase: Number(el.phase.value) || 0 };
+  Object.assign(T, over || {});
+  T.at = inkShapeAt(T);
+  return T;
+}
+/* The plain shape at a phase, step nought: the page's waveAt through bendWave, which reads the shape's own
+   number, bars or tables. A drawing has no sample rate, so the band-limiting adds nothing, which is the
+   shape it approaches. The drawbars at full scale, as the generator scales them. */
+const inkShapeCache = { key: "", at: null };
+function inkShapeAt(T) {
+  const t = T.t, key = T.shape + "|" + t.width + "|" + t.morph + "|" + t.table + "|" + (Array.isArray(t.bars) ? t.bars.join("") : "") + "|" + (t.cycle ? 1 : 0);
+  if (T.shape !== "drawn" && T.shape !== "wavetable" && inkShapeCache.key === key) return inkShapeCache.at;
+  const raw = bendWave(t);
+  let at = raw;
+  if (T.shape === "drawbars") {
+    let peak = 1e-9;
+    for (let i = 0; i < 512; i++) peak = Math.max(peak, Math.abs(raw(4 * Math.PI * i / 512)));
+    at = (p) => raw(p) / peak;
+  }
+  inkShapeCache.key = key; inkShapeCache.at = at;
+  return at;
+}
+/* One channel of oscStep (osc.h), settled, at the voice's phase theta (radians of the note), its channel
+   offset (Phase, for the right) and t seconds into the note for unison's drift:
+   - each unison copy at det = 2^(cents (2k/(n-1) - 1) / 1200), its phase det times the note's;
+   - the second oscillator at the Ratio, m, started where the channel starts;
+   - FM: pm = fmI sin(m); Warp: pm += warpA sin(master - 2 pi warpC), the sine's offset (besselJ1) added
+     back as the core does, any other shape's taken out by the blocker, whose settled work is the mean;
+   - Sync: the shape restarted each note cycle, run at syncR; Ring: times 1 - ring + ring sin(m).
+   `only` draws one copy alone, for the faint copies. */
+function inkVoiceAt(theta, offset, T, t, only) {
+  const n = Math.max(1, T.n), syncing = T.syncR !== 1, blocking = T.warpA !== 0 && T.shape !== "sine" && !syncing;
+  const warpDc = T.warpA !== 0 ? inkBesselJ1(T.warpA) * Math.sin(TWO_PI * T.warpC) : 0;
+  const inCycle0 = offset - TWO_PI * Math.floor(offset / TWO_PI);
+  let sum = 0, plainSum = 0, count = 0;
+  for (let k = only == null ? 0 : only; k < (only == null ? n : only + 1); k++) {
+    const det = n === 1 ? 1 : Math.pow(2, T.cents * (2 * k / (n - 1) - 1) / 1200);
+    const run = det * (theta + TWO_PI * T.hz * t);
+    const master = run + offset, m = inCycle0 * T.modRatio + run * T.modRatio;
+    const pm0 = T.fmI > 0 ? T.fmI * Math.sin(m) : 0;
+    let pm = pm0;
+    if (T.warpA !== 0) pm += T.warpA * Math.sin(master - TWO_PI * T.warpC);
+    let v;
+    if (syncing) { const inC = master - TWO_PI * Math.floor(master / TWO_PI); v = T.at(inC * T.syncR + pm); }
+    else { v = T.at(master + pm); if (T.warpA !== 0 && !blocking) v += warpDc; }
+    let plain = blocking ? T.at(master + pm0) : 0;
+    if (T.ring > 0) { const g = 1 - T.ring + T.ring * Math.sin(m); v *= g; plain *= g; }
+    sum += v; plainSum += plain; count++;
+  }
+  return { v: sum / count, bent: blocking ? (sum - plainSum) / count : 0 };
+}
+// besselJ1 (osc.h): ten terms of the series.
+function inkBesselJ1(a) { const h = a / 2, h2 = h * h; let term = h, s = h; for (let k = 1; k < 10; k++) { term *= -h2 / (k * (k + 1)); s += term; } return s; }
+function inkSubAt(theta, offset, T) {
+  if (!(T.sub > 0)) return 0;
+  const p = (theta + offset) / T.subDiv;
+  return T.subSine ? Math.sin(p) : 0.9 * (cycleOf(p) < 0.5 ? 1 : -1);
+}
+// How many of the note's cycles before the voice repeats: the Ratio's denominator while FM or Ring is on, the sub's, at most 8.
+function inkSpan(T) {
+  const gcd = (x, y) => (y ? gcd(y, x % y) : x), lcm = (a, b) => a * b / gcd(a, b);
+  let c = 1;
+  if (T.fmI > 0 || T.ring > 0) { for (let d = 1; d <= 8; d++) if (Math.abs(T.modRatio * d - Math.round(T.modRatio * d)) < 1e-9) { c = d; break; } }
+  if (T.sub > 0) c = lcm(c, T.subDiv);
+  if (T.shape === "drawbars" && waveTwoCycles(T.t)) c = lcm(c, 2);
+  return Math.min(8, c);
+}
+/* The channel over its whole pattern, N points: the blocker's settled offset (the bend's mean) taken out
+   and the sub mixed in, as oscStep's total is. */
+function inkChannel(T, offset, N, t, cycles, only) {
+  const cyc = cycles || inkSpan(T), out = new Array(N), bent = new Array(N);
+  for (let i = 0; i < N; i++) { const r = inkVoiceAt(TWO_PI * cyc * i / (N - 1), offset, T, t, only); out[i] = r.v; bent[i] = r.bent; }
+  let dc = 0;
+  for (let i = 0; i < N; i++) dc += bent[i];
+  dc /= N;
+  for (let i = 0; i < N; i++) {
+    let v = out[i] - dc;
+    if (T.sub > 0) v = (v + T.sub * inkSubAt(TWO_PI * cyc * i / (N - 1), offset, T)) / (1 + T.sub);
+    out[i] = v;
+  }
+  return { cyc, v: out };
+}
+/* The shaper (voice.h's setShaping and shapeSample): drive = 30 d^2, tanh(drive x) / tanh(drive); then
+   fold = 6 pi f, sin(fold x), normalised by 1/sin(fold) only while fold < pi/2. Then the crush
+   (crushStep): held at crushHz, then quantised to 2^(bits-1) steps either side of nought, rounded as
+   Math.round rounds. */
+function inkShaper(T) {
+  const drive = 30 * T.drive * T.drive, driveNorm = drive > 0 ? 1 / Math.tanh(drive) : 1;
+  const fold = 6 * Math.PI * T.fold, foldNorm = fold > 0 && fold < Math.PI / 2 ? 1 / Math.sin(fold) : 1;
+  const q = T.bits > 0 ? Math.pow(2, T.bits - 1) : 0;
+  return { shape: (x) => { if (drive > 0) x = Math.tanh(drive * x) * driveNorm; if (fold > 0) x = Math.sin(fold * x) * foldNorm; return x; },
+    quant: (x) => (q > 0 ? Math.round(x * q) / q : x), q };
+}
+
+/* ---- the drawings, in SVG in their boxes' own pixels ---- */
+const INK_NS = "http://www.w3.org/2000/svg";
+function inkEl(tag, attrs, parent) {
+  const n = document.createElementNS(INK_NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  parent.appendChild(n);
+  return n;
+}
+const inkPath = (xs, ys) => xs.map((x, i) => (i ? "L" : "M") + x.toFixed(2) + " " + ys[i].toFixed(2)).join("");
+const IL = 30, IR = 12, IT = 8, IF = 16;
+function inkAxes(svg, W, B) {
+  const y = (v) => IT + (1 - v) / 2 * (B - IT);
+  for (const [v, word] of [[1, "+1"], [0, "0"], [-1, "−1"]]) {
+    inkEl("line", { x1: IL, x2: W - IR, y1: y(v), y2: y(v), stroke: v === 0 ? "var(--text-soft)" : "var(--line)", "stroke-width": 1, opacity: v === 0 ? 0.45 : 1 }, svg);
+    inkEl("text", { x: IL - 5, y: y(v) + 3, "text-anchor": "end", "font-size": 9, fill: "var(--text-soft)" }, svg).textContent = word;
+  }
+  return y;
+}
+function inkSvgStart(svg) {
+  svg.textContent = "";
+  const W = svg.clientWidth, H = svg.clientHeight;
+  if (!W || !H) return null;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  return [W, H];
+}
+// The left channel's ink: the hand's while the Oscillator is that hand's own, as Play's Wave draws it.
+function inkLeftInk() { return layersOn() && !linked("osc") ? ink[handInk(panelLayer)] || "var(--charcoal)" : "var(--charcoal)"; }
+function drawInkWave(svg, T) {
+  const size = inkSvgStart(svg);
+  if (!size) return;
+  const [W, H] = size, B = H - IF, y = inkAxes(svg, W, B), N = Math.max(200, Math.round((W - IL - IR) * 1.5));
+  const foot = inkEl("text", { x: W - IR, y: B + 12, "text-anchor": "end", "font-size": 8.5, fill: "var(--text-soft)" }, svg);
+  const xsOf = (n) => Array.from({ length: n }, (_, i) => IL + (W - IL - IR) * i / (n - 1));
+  if (T.noise) {
+    // Noise has no cycle and no oscillator: the generator plays it as it is, and nothing here shapes it.
+    const v = waveCycle(T.t, N - 1);
+    foot.textContent = "no cycle: a stretch of it, which the oscillator does not shape";
+    inkEl("path", { d: inkPath(xsOf(N), v.map(y)), fill: "none", stroke: "var(--charcoal)", "stroke-width": 1.2, "data-left": 1 }, svg);
+    svg._data = { L: v, R: null, P: null, cyc: 0 };
+    return;
+  }
+  const t = inkNowT(T), L = inkChannel(T, 0, N, t), R = inkChannel(T, T.phase * Math.PI / 180, N, t);
+  // Over the voice's span, so the plain shape's cycles line up under the voice's; at the same moment, so with Unison it sits under the middle copy.
+  const P = inkChannel(Object.assign({}, T, { fmI: 0, warpA: 0, ring: 0, syncR: 1, sub: 0, n: 1 }), 0, N, t, L.cyc);
+  const cyc = L.cyc, xs = xsOf(N);
+  for (let c = 1; c < cyc; c++) { const x = IL + (W - IL - IR) * c / cyc; inkEl("line", { x1: x, x2: x, y1: IT, y2: B, stroke: "var(--line)", "stroke-width": 1, opacity: 0.8 }, svg); }
+  foot.textContent = cyc === 1 ? "one cycle of the note · " + (1000 / T.hz).toFixed(2) + " ms"
+    : cyc + " cycles: the pattern repeats every " + cyc + " · " + (1000 * cyc / T.hz).toFixed(1) + " ms";
+  inkEl("path", { d: inkPath(xs, P.v.map(y)), fill: "none", stroke: "var(--unresolved)", "stroke-width": 1.2, "stroke-dasharray": "4 3", "data-plain": 1 }, svg);
+  inkEl("path", { d: inkPath(xs, L.v.map(y)) + "L" + (W - IR) + " " + y(0) + "L" + IL + " " + y(0) + "Z", fill: "var(--blush)", opacity: 0.14 }, svg);
+  const left = inkLeftInk();
+  // Unison's copies, each faint in the left channel's ink; the bold line over them is their average, what is heard.
+  if (T.n > 1) for (let k = 0; k < T.n; k++) inkEl("path", { d: inkPath(xs, inkChannel(T, 0, N, t, L.cyc, k).v.map(y)), fill: "none", stroke: left, "stroke-width": 1, opacity: 0.28, "data-copy": k }, svg);
+  inkEl("path", { d: inkPath(xs, R.v.map(y)), fill: "none", stroke: "var(--ch2)", "stroke-width": 1.3, opacity: 0.85, "data-right": 1 }, svg);
+  inkEl("path", { d: inkPath(xs, L.v.map(y)), fill: "none", stroke: left, "stroke-width": 1.8, "stroke-linejoin": "round", "data-left": 1 }, svg);
+  svg._data = { L: L.v, R: R.v, P: P.v, cyc, t };
+}
+function drawInkXY(svg, T) {
+  const size = inkSvgStart(svg);
+  if (!size) return;
+  const [W, H] = size, s = Math.min(W, H) - 8, x0 = (W - s) / 2, y0 = (H - s) / 2, N = 1200;
+  inkEl("rect", { x: x0, y: y0, width: s, height: s, fill: "none", stroke: "var(--line)" }, svg);
+  inkEl("line", { x1: x0 + s / 2, x2: x0 + s / 2, y1: y0, y2: y0 + s, stroke: "var(--line)" }, svg);
+  inkEl("line", { x1: x0, x2: x0 + s, y1: y0 + s / 2, y2: y0 + s / 2, stroke: "var(--line)" }, svg);
+  if (T.noise) { svg._data = { X: [], Y: [], s }; return; }
+  const t = inkNowT(T), L = inkChannel(T, 0, N, t), R = inkChannel(T, T.phase * Math.PI / 180, N, t);
+  const X = L.v.map((v) => x0 + s / 2 + v * s / 2 * 0.92), Y = R.v.map((v) => y0 + s / 2 - v * s / 2 * 0.92);
+  inkEl("path", { d: inkPath(X, Y), fill: "none", stroke: "var(--blush-deep)", "stroke-width": 1.4, "data-figure": 1 }, svg);
+  svg._data = { L: L.v, R: R.v, s };
+}
+function drawInkCurve(svg, T) {
+  const size = inkSvgStart(svg);
+  if (!size) return;
+  const [W, H] = size, s = Math.max(10, Math.min(W - 24, H - 18)), x0 = 24, y0 = 4, sh = inkShaper(T), N = 600;
+  const X = (v) => x0 + (v + 1) / 2 * s, Y = (v) => y0 + (1 - v) / 2 * s;
+  inkEl("rect", { x: x0, y: y0, width: s, height: s, fill: "none", stroke: "var(--line)" }, svg);
+  for (const v of [-1, 0, 1]) inkEl("text", { x: x0 - 4, y: Y(v) + 3, "text-anchor": "end", "font-size": 9, fill: "var(--text-soft)" }, svg).textContent = v > 0 ? "+1" : v < 0 ? "−1" : "0";
+  inkEl("line", { x1: X(-1), y1: Y(-1), x2: X(1), y2: Y(1), stroke: "var(--unresolved)", "stroke-dasharray": "4 3", "stroke-width": 1.2, "data-identity": 1 }, svg);
+  inkEl("line", { x1: x0, x2: x0 + s, y1: Y(0), y2: Y(0), stroke: "var(--line)" }, svg);
+  inkEl("line", { x1: X(0), x2: X(0), y1: y0, y2: y0 + s, stroke: "var(--line)" }, svg);
+  const xs = [], ys = [], raw = [];
+  for (let i = 0; i < N; i++) { const x = -1 + 2 * i / (N - 1), v = sh.shape(x); raw.push(v); xs.push(X(x)); ys.push(Y(sh.quant(v))); }
+  if (sh.q) inkEl("path", { d: inkPath(xs, raw.map(Y)), fill: "none", stroke: "var(--charcoal)", "stroke-width": 1, opacity: 0.25, "data-unstepped": 1 }, svg);
+  inkEl("path", { d: inkPath(xs, ys), fill: "none", stroke: "var(--charcoal)", "stroke-width": 1.8, "stroke-linejoin": "round", "data-curve": 1 }, svg);
+  inkEl("text", { x: x0 + s, y: y0 + s + 13, "text-anchor": "end", "font-size": 8.5, fill: "var(--text-soft)" }, svg).textContent = "in →";
+  inkEl("text", { x: x0 + 4, y: y0 + 10, "font-size": 8.5, fill: "var(--text-soft)" }, svg).textContent = "out";
+  svg._data = { s };
+}
+function drawInkCycle(svg, T) {
+  const size = inkSvgStart(svg);
+  if (!size) return;
+  const [W, H] = size, B = H - IF, y = inkAxes(svg, W, B), N = Math.max(240, Math.round((W - IL - IR) * 2)), cycles = 2, sh = inkShaper(T);
+  // The oscillator's output, two cycles of the note: the shaper's input, as the voice gives it.
+  let inV;
+  if (T.noise) inV = waveCycle(T.t, N - 1);
+  else {
+    const one = inkChannel(Object.assign({}, T, { sub: 0 }), 0, N, inkStillT(T)), span = one.cyc;
+    inV = Array.from({ length: N }, (_, i) => one.v[Math.min(N - 1, Math.round(((i / (N - 1)) * cycles / span % 1 + 1) % 1 * (N - 1)))]);
+  }
+  // Rate: held at crushHz, the note at its Frequency, so the holds a cycle are crushHz / freq.
+  const outV = [], perStep = T.crushHz > 0 ? T.crushHz / T.hz * cycles / (N - 1) : 0;
+  let held = 0, acc = 1;
+  for (let i = 0; i < N; i++) {
+    let x = sh.shape(inV[i]);
+    if (perStep > 0) { acc += perStep; if (acc >= 1) { acc -= Math.floor(acc); held = x; } x = held; }
+    outV.push(sh.quant(x));
+  }
+  const xs = inV.map((_, i) => IL + (W - IL - IR) * i / (N - 1)), mid = IL + (W - IL - IR) / 2;
+  inkEl("line", { x1: mid, x2: mid, y1: IT, y2: B, stroke: "var(--line)" }, svg);
+  inkEl("text", { x: W - IR, y: B + 12, "text-anchor": "end", "font-size": 8.5, fill: "var(--text-soft)" }, svg).textContent = "two cycles of the oscillator, before and after";
+  inkEl("path", { d: inkPath(xs, inV.map(y)), fill: "none", stroke: "var(--unresolved)", "stroke-width": 1.2, "stroke-dasharray": "4 3", "data-in": 1 }, svg);
+  inkEl("path", { d: inkPath(xs, outV.map(y)) + "L" + (W - IR) + " " + y(0) + "L" + IL + " " + y(0) + "Z", fill: "var(--blush)", opacity: 0.14 }, svg);
+  inkEl("path", { d: inkPath(xs, outV.map(y)), fill: "none", stroke: "var(--charcoal)", "stroke-width": 1.8, "stroke-linejoin": "round", "data-out": 1 }, svg);
+  svg._data = { inV, outV };
+}
+
+/* ---- the fit: by room, as the filter's two drawings are, never by window size ----
+   Oscillator: the wave the area's width and as tall as room allows, down to 1.5:1; the figure, chosen,
+   a square of that height, centred, so the row is one height either way and Wave - Figure moves nothing
+   outside the drawing. Shaping: side by side, the curve a square of the row's height and the cycle the
+   rest, the row no taller than leaves the cycle 1.5:1; or stacked, the cycle the width at 4:1 over the
+   curve, where that gives the curve more and leaves the cycle 120 px tall (1660x1050 alone, of the six). */
+const INK_STACK_MIN = 120;
+function inkRoom(view, row) {
+  const cs = getComputedStyle(view), tools = view.querySelector(":scope > .fig-tools"), title = view.querySelector(":scope > .menu-title");
+  const foot = view.querySelector(":scope > .fig-foot");
+  const inner = view.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const head = Math.max(tools ? tools.offsetHeight : 0, title ? title.offsetHeight : 0);
+  return { room: Math.floor(inner - head - (foot ? foot.offsetHeight : 0) - 2 * (parseFloat(cs.rowGap) || 0)), W: row.clientWidth };
+}
+function fitInk() {
+  const osc = document.getElementById("oscGroup"), shp = document.getElementById("shpGroup");
+  if (!osc.hidden && osc.getClientRects().length) {
+    const row = document.getElementById("oscRow"), { room, W } = inkRoom(osc, row), h = Math.max(30, Math.floor(Math.min(room, W / 1.5)));
+    row.style.height = h + "px";
+    document.getElementById("oscXYBox").style.width = h + "px";
+  }
+  if (!shp.hidden && shp.getClientRects().length) {
+    const row = document.getElementById("shpRow"), { room, W } = inkRoom(shp, row);
+    const side = Math.max(30, Math.floor(Math.min(room, (W - 38) / 2.5))), hc = Math.round(W / 4), sq = room - hc - 14 - 18;
+    const stack = inkFigs.lay === "stacked" || (inkFigs.lay !== "side" && sq > side - 18 && hc >= INK_STACK_MIN);
+    row.classList.toggle("stacked", stack);
+    inkFigs.stacked = stack;
+    const curve = document.getElementById("shpCurveBox"), cycle = document.getElementById("shpCycleBox");
+    if (stack) {
+      const s = Math.max(60, Math.min(sq, W - 24));
+      row.style.height = room + "px";
+      cycle.style.height = hc + "px";
+      curve.style.width = (s + 24) + "px"; curve.style.height = (s + 18) + "px";
+    } else {
+      row.style.height = side + "px";
+      cycle.style.height = "";
+      curve.style.width = (side + 24) + "px"; curve.style.height = "";
+    }
+  }
+}
+
+/* ---- the subtabs and their summaries ---- */
+function inkSummaries(sub) {
+  const t = genSettings(panelLayer);
+  if (!t) return ["an input", ""];
+  if (sub === "osc") {
+    const r = optionText(el.oscRatio), parts = [], fm = Number(el.oscFm.value), bend = Number(el.oscBend.value), ring = Number(el.oscRing.value);
+    const sync = Number(el.oscSync.value), sub2 = Number(el.oscSub.value), n = Number(el.oscUnison.value);
+    if (fm) parts.push("FM " + (fm / 10).toFixed(1));
+    if (bend) parts.push("warp " + (bend > 0 ? "+" : "−") + Math.abs(bend));
+    if (ring) parts.push("ring " + ring + "%");
+    if (sync > 100) parts.push("sync " + (sync / 100).toFixed(1) + "×");
+    if (sub2) parts.push("sub " + sub2 + "%");
+    if (n > 1) parts.push(n + " voices");
+    const all = [r].concat(parts.length ? parts : ["plain"]);
+    return [all.join(" · "), all.slice(0, 3).join(" · ") + (all.length > 3 ? " …" : ""),
+      all.slice(0, 2).join(" · ") + (all.length > 2 ? " …" : ""), r];
+  }
+  const parts = [], drive = Number(el.shpDrive.value), fold = Number(el.shpFold.value), bits = Number(el.shpBits.value);
+  if (drive) parts.push("drive " + drive + "%");
+  if (fold) parts.push("fold " + fold + "%");
+  if (bits) parts.push(bits + " bit" + (bits === 1 ? "" : "s"));
+  if (Number(el.shpRate.value)) parts.push(optionText(el.shpRate));
+  const all = parts.length ? parts : ["clean"];
+  return [all.join(" · "), all.slice(0, 2).join(" · ") + (all.length > 2 ? " …" : ""), all[0], ""];
+}
+function paintInkBar() {
+  if (!inkFigs.bar) return;
+  for (const tab of inkFigs.bar.children) {
+    const sum = tab.querySelector(".fig-sum"), forms = inkSummaries(tab.dataset.sub);
+    if (tab.dataset.said === forms.join("|") && tab.dataset.fit === String(sum.clientWidth)) continue;
+    tab.dataset.said = forms.join("|");
+    let at = 0;
+    for (; at < forms.length; at++) { sum.textContent = forms[at]; if (sum.scrollWidth <= sum.clientWidth + 0.5) break; }
+    tab.dataset.form = String(Math.min(at, forms.length - 1));
+    tab.dataset.fit = String(sum.clientWidth);
+    sum.title = forms[0];
+  }
+}
+function setInkSub(sub, focus) {
+  if (!INK_SUBS.some(([s]) => s === sub)) return;
+  inkStopDrift();
+  inkFigs.sub = sub;
+  for (const [s, , id] of INK_SUBS) {
+    el[id].hidden = s !== sub;
+    const tab = inkFigs.bar && inkFigs.bar.querySelector('[data-sub="' + s + '"]');
+    if (tab) { tab.setAttribute("aria-selected", String(s === sub)); tab.tabIndex = s === sub ? 0 : -1; if (focus && s === sub) tab.focus(); }
+  }
+  paintInk(true);
+  requestAnimationFrame(() => { paintInk(true); paintRoutings(); });
+}
+function inkBar() {
+  if (inkFigs.bar) return inkFigs.bar;
+  const bar = document.createElement("div");
+  bar.className = "fig-bar";
+  bar.id = "inkBar";
+  bar.setAttribute("role", "tablist");
+  bar.setAttribute("aria-label", "Ink's figures");
+  bar.innerHTML = INK_SUBS.map(([s, name, id]) => '<button type="button" role="tab" class="fig-tab" id="inkTab-' + s + '" data-sub="' + s
+    + '" aria-controls="' + id + '" aria-selected="false" tabindex="-1"><b>' + name + '</b><span class="fig-sum"></span></button>').join("");
+  bar.addEventListener("click", (event) => { const tab = event.target.closest("[data-sub]"); if (tab) setInkSub(tab.dataset.sub); });
+  bar.addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const at = INK_SUBS.findIndex(([s]) => s === inkFigs.sub);
+    setInkSub(INK_SUBS[(at + step + INK_SUBS.length) % INK_SUBS.length][0], true);
+  });
+  for (const [s, , id] of INK_SUBS) el[id].setAttribute("aria-labelledby", "inkTab-" + s);
+  inkFigs.bar = bar;
+  return bar;
+}
+
+/* ---- painting: only when what is drawn has changed ---- */
+function setInkDraws(v) {
+  if (v !== "wave" && v !== "figure") return;
+  inkDraws = v;
+  try { window.localStorage.setItem(INK_DRAWS_KEY, v); } catch (error) { /* storage refused: the choice lasts the visit */ }
+  paintInk(true);
+}
+function paintInk(force) {
+  if (!inkFigs.bar || !inkFigs.bar.isConnected) return;
+  const T = inkTone();
+  // The words and the switches first, so the fit measures what is shown (a line that changes after it moved the drawing).
+  const on = T && T.n > 1;
+  el.oscSay.innerHTML = !T ? "<b>An input</b>" : T.noise ? "<b>Noise</b>, which the oscillator leaves alone"
+    : on ? "<b>Both channels</b>, " + T.n + " copies faint" : "<b>Both channels</b> over the voice’s pattern";
+  el.shpSay.innerHTML = "<b>The curve</b> and two cycles through it";
+  // The drift button keeps its place unseen while Unison is off, so nothing moves when it comes.
+  el.inkDrift.style.visibility = on ? "visible" : "hidden";
+  el.inkDrift.tabIndex = on ? 0 : -1;
+  for (const b of el.inkDraws.querySelectorAll("[data-draws]")) b.setAttribute("aria-checked", String(b.dataset.draws === inkDraws));
+  el.oscWaveBox.hidden = inkDraws !== "wave";
+  el.oscXYBox.hidden = inkDraws !== "figure";
+  el.oscRow.classList.toggle("is-figure", inkDraws === "figure");
+  // Greyed, not hidden: Warp at while Warp is off, Spread while Unison is.
+  el.oscBendAt.closest(".menu-row").classList.toggle("is-idle", Number(el.oscBend.value) === 0);
+  el.oscSpread.closest(".menu-row").classList.toggle("is-idle", Number(el.oscUnison.value) <= 1);
+  paintInkBar();
+  if (inkFigs.drift === null) fitInk();
+  if (!T) return;
+  const sizes = ["oscWave", "oscXY", "shpCurve", "shpCycle"].map((id) => el[id].clientWidth + "x" + el[id].clientHeight).join(",");
+  const key = [JSON.stringify(Object.assign({}, T, { t: undefined, at: undefined })), T.t.cycle ? JSON.stringify(T.t.cycle).length : 0,
+    inkShapeCache.key, sizes, inkDraws, inkFigs.sub, inkLeftInk(), inkFigs.drift !== null ? performance.now() : 0, inkFigs.nullT].join("|");
+  if (!force && key === inkFigs.said) return;
+  if (key === inkFigs.said && force !== "always") return;
+  inkFigs.said = key;
+  inkFigs.draws = (inkFigs.draws || 0) + 1;
+  if (!el.oscGroup.hidden) { if (inkDraws === "figure") drawInkXY(el.oscXY, T); else drawInkWave(el.oscWave, T); }
+  if (!el.shpGroup.hidden) { drawInkCurve(el.shpCurve, T); drawInkCycle(el.shpCycle, T); }
+}
+// Hold to watch it drift: the copies run on from the still while held, and only then.
+let inkDriftRaf = 0;
+function inkDriftTick() { if (inkFigs.drift === null) return; paintInk(); inkDriftRaf = requestAnimationFrame(inkDriftTick); }
+function inkStartDrift() {
+  if (inkFigs.drift !== null || !(Number(el.oscUnison.value) > 1)) return;
+  inkFigs.drift = performance.now();
+  el.inkDrift.setAttribute("aria-pressed", "true");
+  inkDriftTick();
+}
+function inkStopDrift() {
+  if (inkFigs.drift === null) return;
+  inkFigs.drift = null;
+  cancelAnimationFrame(inkDriftRaf);
+  el.inkDrift.setAttribute("aria-pressed", "false");
+  paintInk(true);
+}
+el.inkDrift.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  try { el.inkDrift.setPointerCapture(event.pointerId); } catch (error) { /* a pointer the browser no longer has */ }
+  inkStartDrift();
+});
+for (const kind of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) el.inkDrift.addEventListener(kind, inkStopDrift);
+el.inkDrift.addEventListener("keydown", (event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); inkStartDrift(); } });
+el.inkDrift.addEventListener("keyup", (event) => { if (event.key === " " || event.key === "Enter") inkStopDrift(); });
+el.inkDraws.addEventListener("click", (event) => { const b = event.target.closest("[data-draws]"); if (b) setInkDraws(b.dataset.draws); });
+el.inkDraws.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+  event.preventDefault();
+  setInkDraws(inkDraws === "wave" ? "figure" : "wave");
+  el.inkDraws.querySelector('[data-draws="' + inkDraws + '"]').focus();
+});
+// A control moved: drawn after the page's own handler has written the hand's tone.
+for (const id of ["oscGroup", "shpGroup"]) for (const kind of ["input", "change"]) el[id].addEventListener(kind, () => requestAnimationFrame(() => paintInk()));
+for (const id of ["freq", "phase", "shape"]) el[id].addEventListener("input", () => requestAnimationFrame(() => paintInk()));
+const inkWatch = new ResizeObserver(() => { if (inkFigs.bar && inkFigs.bar.isConnected) paintInk(true); });
+for (const id of ["oscGroup", "shpGroup", "oscWave", "oscXY", "shpCurve", "shpCycle"]) inkWatch.observe(el[id]);
+// For the checks: the maths, and the stillness check's null (a clock put back adds to nullT and paints).
+window.__ink = { tone: inkTone, channel: inkChannel, voiceAt: inkVoiceAt, shaper: inkShaper, span: inkSpan, STILL_CYCLES: INK_STILL_CYCLES,
+  stillT: inkStillT, figs: inkFigs, paint: paintInk, fit: fitInk, setSub: setInkSub, setDraws: setInkDraws, draws: () => inkDraws };
+
 let tabLinesSaid = "", tabLinesAt = 0;
 function paintTabLines(now) {
   if (now !== undefined) {
@@ -26838,6 +27372,7 @@ function paintTabLines(now) {
   paintCards();
   paintRack();
   paintAmpEnv();
+  paintInk();
   paintHandLinks();
   /* With two hands, a tab where they differ says so first (G6): "Upper
      differs in 2", in the name of the hand being edited, counting the
@@ -26965,9 +27500,12 @@ function layoutBenchBody() {
   const band = all.find((g) => tabOf(g) === benchTab && g.dataset.band !== undefined) || null;
   const groups = all.filter((g) => tabOf(g) === benchTab && g !== band);
   const play = groups.length > 0 && groups.every((g) => g.dataset.play);
+  // Ink (19 Nov, ink-figures.md) is a figure area and nothing else: no band, no settings row.
+  const inkArea = !play && groups.length > 0 && groups.every((g) => g.dataset.ink);
 
   el.benchBody.innerHTML = "";
   el.benchBody.classList.toggle("is-play", play);
+  el.benchBody.classList.toggle("is-ink", inkArea);
   if (band) {
     const row = document.createElement("div");
     row.className = "bench-band";
@@ -26994,6 +27532,17 @@ function layoutBenchBody() {
     // Nothing on Play is dealt, so nothing is measured to be dealt (fittest holds the dealt tabs to theirs).
     benchMeasured = new Map();
     setFigSub(figs.sub);
+    return;
+  }
+  if (inkArea) {
+    const area = document.createElement("div"), views = document.createElement("div");
+    area.className = "play-figs ink-figs";
+    views.className = "fig-views";
+    area.append(inkBar(), views);
+    for (const group of INK_SUBS.map(([, , id]) => el[id])) if (groups.includes(group)) views.appendChild(group);
+    el.benchBody.append(area);
+    benchMeasured = new Map();
+    setInkSub(inkFigs.sub);
     return;
   }
   const cols = [];
@@ -27377,6 +27926,8 @@ function showControl(node) {
     if (typeof showBenchFor === "function") showBenchFor(group);
     // One of Play's figures (18 Nov): its subtab chosen.
     if (group.dataset.fig) setFigSub(group.dataset.fig);
+    // One of Ink's (19 Nov): its subtab chosen.
+    if (group.dataset.ink) setInkSub(group.dataset.ink);
     unfold(group);
     // In the rack, the module it is in, opened if it is among the rest (F5).
     const module = target.closest(".fx-module");
