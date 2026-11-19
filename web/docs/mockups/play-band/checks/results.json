@@ -1,0 +1,7533 @@
+{
+ "rows": [
+  {
+   "size": "1660x1050",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 493
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 359,
+     "aspect": 2.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -471.3,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 210.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1660x1050",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 493
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 359,
+     "aspect": 2.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -99.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 194.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1660x1050",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "stacked",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 493
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 802,
+     "h": 124,
+     "aspect": 6.5
+    },
+    {
+     "what": "fenv",
+     "w": 802,
+     "h": 120,
+     "aspect": 6.7
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -471.3,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 210.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1660x1050",
+   "sub": "filter",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "stacked",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 493
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 802,
+     "h": 124,
+     "aspect": 6.5
+    },
+    {
+     "what": "fenv",
+     "w": 802,
+     "h": 120,
+     "aspect": 6.7
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -99.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 194.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1660x1050",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 493
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 339,
+     "aspect": 2.4
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 88,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 102,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -471.3,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 210.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1660x1050",
+   "sub": "wave",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 706
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 493
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 339,
+     "aspect": 2.4
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 88,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 102,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -99.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 194.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1400x900",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 343
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 209,
+     "aspect": 3.8
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -471.3,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 210.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1400x900",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 343
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 802,
+     "h": 209,
+     "aspect": 3.8
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -99.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 194.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1400x900",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 343
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 384,
+     "h": 189,
+     "aspect": 2
+    },
+    {
+     "what": "fenv",
+     "w": 384,
+     "h": 185,
+     "aspect": 2.1
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -471.3,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 210.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1400x900",
+   "sub": "filter",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 343
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 384,
+     "h": 189,
+     "aspect": 2
+    },
+    {
+     "what": "fenv",
+     "w": 384,
+     "h": 185,
+     "aspect": 2.1
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -99.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 194.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1400x900",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 343
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 189,
+     "aspect": 4.2
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 88,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 102,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -471.3,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 210.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1400x900",
+   "sub": "wave",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 556
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 830,
+    "h": 343
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 189,
+     "aspect": 4.2
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 92,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 98,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 160,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 88,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 102,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 598,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -99.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 194.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x860",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 359
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 714,
+     "h": 225,
+     "aspect": 3.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 73,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 131,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 510,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -383.2,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 122.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x860",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 359
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 714,
+     "h": 225,
+     "aspect": 3.2
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 73,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 131,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 510,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -11.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 106.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x860",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 359
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 340,
+     "h": 205,
+     "aspect": 1.7
+    },
+    {
+     "what": "fenv",
+     "w": 340,
+     "h": 201,
+     "aspect": 1.7
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 73,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 131,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 510,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -383.2,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 122.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x860",
+   "sub": "filter",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 359
+   },
+   "scroll": 0,
+   "viewOver": -4,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 340,
+     "h": 205,
+     "aspect": 1.7
+    },
+    {
+     "what": "fenv",
+     "w": 340,
+     "h": 201,
+     "aspect": 1.7
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 73,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 131,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 510,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -11.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 106.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x860",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 359
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 714,
+     "h": 205,
+     "aspect": 3.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 73,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 131,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 88,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 102,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 510,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -383.2,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 122.5,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x860",
+   "sub": "wave",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 572
+   },
+   "band": 150,
+   "bandOver": -10,
+   "settings": 47,
+   "gapBandToSettings": 8,
+   "between": 0,
+   "gapSettingsToFigs": 8,
+   "figs": {
+    "w": 742,
+    "h": 359
+   },
+   "scroll": 0,
+   "viewOver": -86,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 714,
+     "h": 205,
+     "aspect": 3.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 73,
+     "widest": 31.8,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 78,
+     "widest": 39.9,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 131,
+     "widest": 79.2,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 88,
+     "widest": 52.7,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 102,
+     "widest": 72.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 510,
+    "keysH": 84,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -11.5,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 106.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1200x680",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 810,
+     "h": 166,
+     "aspect": 4.9
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 102,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 174,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 622,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -507.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 195.7,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1200x680",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 810,
+     "h": 166,
+     "aspect": 4.9
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 102,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 174,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 622,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -156.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 181.4,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1200x680",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 394,
+     "h": 151,
+     "aspect": 2.6
+    },
+    {
+     "what": "fenv",
+     "w": 394,
+     "h": 143,
+     "aspect": 2.8
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 102,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 174,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 622,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -507.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 195.7,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1200x680",
+   "sub": "filter",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 394,
+     "h": 151,
+     "aspect": 2.6
+    },
+    {
+     "what": "fenv",
+     "w": 394,
+     "h": 143,
+     "aspect": 2.8
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 102,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 174,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 622,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -156.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 181.4,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1200x680",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 810,
+     "h": 144,
+     "aspect": 5.6
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 102,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 174,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 70,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 84,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ],
+   "bandParts": {
+    "keysW": 622,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -507.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 195.7,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1200x680",
+   "sub": "wave",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 838,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 830,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 810,
+     "h": 144,
+     "aspect": 5.6
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 102,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 108,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 174,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 70,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 84,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ],
+   "bandParts": {
+    "keysW": 622,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -156.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 181.4,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x680",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 722,
+     "h": 166,
+     "aspect": 4.3
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 83,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 145,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 534,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -419.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 175.3,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x680",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 722,
+     "h": 166,
+     "aspect": 4.3
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 83,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 145,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 534,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -68.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 160.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x680",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 350,
+     "h": 151,
+     "aspect": 2.3
+    },
+    {
+     "what": "fenv",
+     "w": 350,
+     "h": 143,
+     "aspect": 2.4
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 83,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 145,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 534,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -419.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 175.3,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x680",
+   "sub": "filter",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 350,
+     "h": 151,
+     "aspect": 2.3
+    },
+    {
+     "what": "fenv",
+     "w": 350,
+     "h": 143,
+     "aspect": 2.4
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 83,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 145,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 534,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -68.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 160.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x680",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 722,
+     "h": 144,
+     "aspect": 5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 83,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 145,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 70,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 84,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ],
+   "bandParts": {
+    "keysW": 534,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -419.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 175.3,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "1100x680",
+   "sub": "wave",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 750,
+    "h": 467
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 742,
+    "h": 285
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 722,
+     "h": 144,
+     "aspect": 5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 83,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 88,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 145,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 70,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 84,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ],
+   "bandParts": {
+    "keysW": 534,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -68.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 160.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "960x600",
+   "sub": "amp",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 271
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 689,
+     "h": 152,
+     "aspect": 4.5
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 76,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 134,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 501,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -386.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 142.3,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "960x600",
+   "sub": "amp",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 271
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "amp",
+     "w": 689,
+     "h": 152,
+     "aspect": 4.5
+    }
+   ],
+   "knobRows": [
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 76,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 134,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 501,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -35.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 127.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "960x600",
+   "sub": "filter",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 271
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 333,
+     "h": 137,
+     "aspect": 2.4
+    },
+    {
+     "what": "fenv",
+     "w": 333,
+     "h": 129,
+     "aspect": 2.6
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 76,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 134,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 501,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -386.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 142.3,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "960x600",
+   "sub": "filter",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "side",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 271
+   },
+   "scroll": 0,
+   "viewOver": -2,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "response",
+     "w": 333,
+     "h": 137,
+     "aspect": 2.4
+    },
+    {
+     "what": "fenv",
+     "w": 333,
+     "h": 129,
+     "aspect": 2.6
+    }
+   ],
+   "knobRows": [
+    1,
+    1,
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 76,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 134,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    }
+   ],
+   "bandParts": {
+    "keysW": 501,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -35.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 127.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "960x600",
+   "sub": "wave",
+   "hands": 1,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 271
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 689,
+     "h": 130,
+     "aspect": 5.3
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 76,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 134,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 70,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 84,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ],
+   "bandParts": {
+    "keysW": 501,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -386.6,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 142.3,
+    "lineOneLine": true,
+    "hint": "One sound. Two hands, in the heading, gives a second.",
+    "placed": []
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  },
+  {
+   "size": "960x600",
+   "sub": "wave",
+   "hands": 2,
+   "flay": "auto",
+   "flayUsed": "auto",
+   "mode": "poly",
+   "menvOpen": false,
+   "stage": {
+    "w": 717,
+    "h": 453
+   },
+   "band": 130,
+   "bandOver": -7,
+   "settings": 40,
+   "gapBandToSettings": 6,
+   "between": 0,
+   "gapSettingsToFigs": 6,
+   "figs": {
+    "w": 709,
+    "h": 271
+   },
+   "scroll": 0,
+   "viewOver": -83,
+   "coversModrow": false,
+   "coversPicture": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 689,
+     "h": 130,
+     "aspect": 5.3
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": {
+    "amp": {
+     "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+     "dropped": 0,
+     "fits": true
+    },
+    "filter": {
+     "shown": "low pass 1.6 kHz · +1.5 oct",
+     "full": "low pass 1.6 kHz · +1.5 oct",
+     "dropped": 0,
+     "fits": true
+    },
+    "wave": {
+     "shown": "drawbars 008740000",
+     "full": "drawbars 008740000",
+     "dropped": 0,
+     "fits": true
+    }
+   },
+   "menus": [
+    {
+     "menu": "Pitch bend",
+     "room": 76,
+     "widest": 30.5,
+     "text": "±24 st",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Mod wheel",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Pressure",
+     "room": 81,
+     "widest": 38.2,
+     "text": "Nothing",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Velocity",
+     "room": 134,
+     "widest": 75.9,
+     "text": "Level, strike, FM",
+     "fits": true,
+     "fullFits": true
+    },
+    {
+     "menu": "Shape",
+     "room": 70,
+     "widest": 50.5,
+     "text": "Sine + 3rd",
+     "fits": true,
+     "fullFits": false
+    },
+    {
+     "menu": "Interval",
+     "room": 84,
+     "widest": 69.6,
+     "text": "Min 2nd 16:15",
+     "fits": true,
+     "fullFits": false
+    }
+   ],
+   "bandParts": {
+    "keysW": 501,
+    "keysH": 75,
+    "keyCount": 36,
+    "whiteCount": 21,
+    "splitOverflow": -35.8,
+    "splitInside": true,
+    "kindsClearOfStrip": true,
+    "hintFits": true,
+    "hintSpare": 127.9,
+    "lineOneLine": true,
+    "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+    "placed": [
+     {
+      "place": 1,
+      "note": 48,
+      "onKey": true
+     },
+     {
+      "place": 2,
+      "note": 55,
+      "onKey": true
+     },
+     {
+      "place": 3,
+      "note": 60,
+      "onKey": true
+     },
+     {
+      "place": 4,
+      "note": 64,
+      "onKey": true
+     },
+     {
+      "place": 5,
+      "note": 67,
+      "onKey": true
+     },
+     {
+      "place": 6,
+      "note": 71,
+      "onKey": true
+     }
+    ]
+   },
+   "kind": "notes",
+   "count": 2,
+   "edge": "low",
+   "chord": "held"
+  }
+ ],
+ "webfonts": true,
+ "survey": [
+  {
+   "size": "1660x1050",
+   "amp": {
+    "size": "1660x1050",
+    "sub": "amp",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 706
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 830,
+     "h": 493
+    },
+    "scroll": 0,
+    "viewOver": -4,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "amp",
+      "w": 802,
+      "h": 359,
+      "aspect": 2.2
+     }
+    ],
+    "knobRows": [
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 92,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 160,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 598,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -99.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 194.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "filter": {
+    "size": "1660x1050",
+    "sub": "filter",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "stacked",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 706
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 830,
+     "h": 493
+    },
+    "scroll": 0,
+    "viewOver": -4,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "response",
+      "w": 802,
+      "h": 124,
+      "aspect": 6.5
+     },
+     {
+      "what": "fenv",
+      "w": 802,
+      "h": 120,
+      "aspect": 6.7
+     }
+    ],
+    "knobRows": [
+     1,
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 92,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 160,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 598,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -99.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 194.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "wave": {
+    "size": "1660x1050",
+    "sub": "wave",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 706
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 830,
+     "h": 493
+    },
+    "scroll": 0,
+    "viewOver": -86,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "wave",
+      "w": 802,
+      "h": 339,
+      "aspect": 2.4
+     }
+    ],
+    "knobRows": [
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 92,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 160,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Shape",
+      "room": 88,
+      "widest": 52.7,
+      "text": "Sine + 3rd",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Interval",
+      "room": 102,
+      "widest": 72.6,
+      "text": "Min 2nd 16:15",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 598,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -99.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 194.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   }
+  },
+  {
+   "size": "1400x900",
+   "amp": {
+    "size": "1400x900",
+    "sub": "amp",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 556
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 830,
+     "h": 343
+    },
+    "scroll": 0,
+    "viewOver": -4,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "amp",
+      "w": 802,
+      "h": 209,
+      "aspect": 3.8
+     }
+    ],
+    "knobRows": [
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 92,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 160,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 598,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -99.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 194.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "filter": {
+    "size": "1400x900",
+    "sub": "filter",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "side",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 556
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 830,
+     "h": 343
+    },
+    "scroll": 0,
+    "viewOver": -4,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "response",
+      "w": 384,
+      "h": 189,
+      "aspect": 2
+     },
+     {
+      "what": "fenv",
+      "w": 384,
+      "h": 185,
+      "aspect": 2.1
+     }
+    ],
+    "knobRows": [
+     1,
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 92,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 160,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 598,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -99.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 194.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "wave": {
+    "size": "1400x900",
+    "sub": "wave",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 556
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 830,
+     "h": 343
+    },
+    "scroll": 0,
+    "viewOver": -86,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "wave",
+      "w": 802,
+      "h": 189,
+      "aspect": 4.2
+     }
+    ],
+    "knobRows": [
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 92,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 98,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 160,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Shape",
+      "room": 88,
+      "widest": 52.7,
+      "text": "Sine + 3rd",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Interval",
+      "room": 102,
+      "widest": 72.6,
+      "text": "Min 2nd 16:15",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 598,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -99.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 194.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   }
+  },
+  {
+   "size": "1100x860",
+   "amp": {
+    "size": "1100x860",
+    "sub": "amp",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 750,
+     "h": 572
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 742,
+     "h": 359
+    },
+    "scroll": 0,
+    "viewOver": -4,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "amp",
+      "w": 714,
+      "h": 225,
+      "aspect": 3.2
+     }
+    ],
+    "knobRows": [
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 73,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 78,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 78,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 131,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 510,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -11.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 106.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "filter": {
+    "size": "1100x860",
+    "sub": "filter",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "side",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 750,
+     "h": 572
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 742,
+     "h": 359
+    },
+    "scroll": 0,
+    "viewOver": -4,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "response",
+      "w": 340,
+      "h": 205,
+      "aspect": 1.7
+     },
+     {
+      "what": "fenv",
+      "w": 340,
+      "h": 201,
+      "aspect": 1.7
+     }
+    ],
+    "knobRows": [
+     1,
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 73,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 78,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 78,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 131,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 510,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -11.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 106.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "wave": {
+    "size": "1100x860",
+    "sub": "wave",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 750,
+     "h": 572
+    },
+    "band": 150,
+    "bandOver": -10,
+    "settings": 47,
+    "gapBandToSettings": 8,
+    "between": 0,
+    "gapSettingsToFigs": 8,
+    "figs": {
+     "w": 742,
+     "h": 359
+    },
+    "scroll": 0,
+    "viewOver": -86,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "wave",
+      "w": 714,
+      "h": 205,
+      "aspect": 3.5
+     }
+    ],
+    "knobRows": [
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 73,
+      "widest": 31.8,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 78,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 78,
+      "widest": 39.9,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 131,
+      "widest": 79.2,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Shape",
+      "room": 88,
+      "widest": 52.7,
+      "text": "Sine + 3rd",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Interval",
+      "room": 102,
+      "widest": 72.6,
+      "text": "Min 2nd 16:15",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 510,
+     "keysH": 84,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -11.5,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 106.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   }
+  },
+  {
+   "size": "1200x680",
+   "amp": {
+    "size": "1200x680",
+    "sub": "amp",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 467
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 830,
+     "h": 285
+    },
+    "scroll": 0,
+    "viewOver": -2,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "amp",
+      "w": 810,
+      "h": 166,
+      "aspect": 4.9
+     }
+    ],
+    "knobRows": [
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 102,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 108,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 108,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 174,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 622,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -156.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 181.4,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "filter": {
+    "size": "1200x680",
+    "sub": "filter",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "side",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 467
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 830,
+     "h": 285
+    },
+    "scroll": 0,
+    "viewOver": -2,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "response",
+      "w": 394,
+      "h": 151,
+      "aspect": 2.6
+     },
+     {
+      "what": "fenv",
+      "w": 394,
+      "h": 143,
+      "aspect": 2.8
+     }
+    ],
+    "knobRows": [
+     1,
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 102,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 108,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 108,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 174,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 622,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -156.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 181.4,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "wave": {
+    "size": "1200x680",
+    "sub": "wave",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 838,
+     "h": 467
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 830,
+     "h": 285
+    },
+    "scroll": 0,
+    "viewOver": -83,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "wave",
+      "w": 810,
+      "h": 144,
+      "aspect": 5.6
+     }
+    ],
+    "knobRows": [
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 102,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 108,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 108,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 174,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Shape",
+      "room": 70,
+      "widest": 50.5,
+      "text": "Sine + 3rd",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Interval",
+      "room": 84,
+      "widest": 69.6,
+      "text": "Min 2nd 16:15",
+      "fits": true,
+      "fullFits": false
+     }
+    ],
+    "bandParts": {
+     "keysW": 622,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -156.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 181.4,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   }
+  },
+  {
+   "size": "1100x680",
+   "amp": {
+    "size": "1100x680",
+    "sub": "amp",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 750,
+     "h": 467
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 742,
+     "h": 285
+    },
+    "scroll": 0,
+    "viewOver": -2,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "amp",
+      "w": 722,
+      "h": 166,
+      "aspect": 4.3
+     }
+    ],
+    "knobRows": [
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 83,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 88,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 88,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 145,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 534,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -68.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 160.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "filter": {
+    "size": "1100x680",
+    "sub": "filter",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "side",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 750,
+     "h": 467
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 742,
+     "h": 285
+    },
+    "scroll": 0,
+    "viewOver": -2,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "response",
+      "w": 350,
+      "h": 151,
+      "aspect": 2.3
+     },
+     {
+      "what": "fenv",
+      "w": 350,
+      "h": 143,
+      "aspect": 2.4
+     }
+    ],
+    "knobRows": [
+     1,
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 83,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 88,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 88,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 145,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 534,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -68.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 160.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "wave": {
+    "size": "1100x680",
+    "sub": "wave",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 750,
+     "h": 467
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 742,
+     "h": 285
+    },
+    "scroll": 0,
+    "viewOver": -83,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "wave",
+      "w": 722,
+      "h": 144,
+      "aspect": 5
+     }
+    ],
+    "knobRows": [
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 83,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 88,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 88,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 145,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Shape",
+      "room": 70,
+      "widest": 50.5,
+      "text": "Sine + 3rd",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Interval",
+      "room": 84,
+      "widest": 69.6,
+      "text": "Min 2nd 16:15",
+      "fits": true,
+      "fullFits": false
+     }
+    ],
+    "bandParts": {
+     "keysW": 534,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -68.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 160.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   }
+  },
+  {
+   "size": "960x600",
+   "amp": {
+    "size": "960x600",
+    "sub": "amp",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 717,
+     "h": 453
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 709,
+     "h": 271
+    },
+    "scroll": 0,
+    "viewOver": -2,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "amp",
+      "w": 689,
+      "h": 152,
+      "aspect": 4.5
+     }
+    ],
+    "knobRows": [
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 76,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 81,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 81,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 134,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 501,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -35.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 127.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "filter": {
+    "size": "960x600",
+    "sub": "filter",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "side",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 717,
+     "h": 453
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 709,
+     "h": 271
+    },
+    "scroll": 0,
+    "viewOver": -2,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "response",
+      "w": 333,
+      "h": 137,
+      "aspect": 2.4
+     },
+     {
+      "what": "fenv",
+      "w": 333,
+      "h": 129,
+      "aspect": 2.6
+     }
+    ],
+    "knobRows": [
+     1,
+     1,
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 76,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 81,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 81,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 134,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     }
+    ],
+    "bandParts": {
+     "keysW": 501,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -35.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 127.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   },
+   "wave": {
+    "size": "960x600",
+    "sub": "wave",
+    "hands": 2,
+    "flay": "auto",
+    "flayUsed": "auto",
+    "mode": "poly",
+    "menvOpen": false,
+    "stage": {
+     "w": 717,
+     "h": 453
+    },
+    "band": 130,
+    "bandOver": -7,
+    "settings": 40,
+    "gapBandToSettings": 6,
+    "between": 0,
+    "gapSettingsToFigs": 6,
+    "figs": {
+     "w": 709,
+     "h": 271
+    },
+    "scroll": 0,
+    "viewOver": -83,
+    "coversModrow": false,
+    "coversPicture": false,
+    "plots": [
+     {
+      "what": "wave",
+      "w": 689,
+      "h": 130,
+      "aspect": 5.3
+     }
+    ],
+    "knobRows": [
+     1
+    ],
+    "labels": {
+     "amp": {
+      "shown": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "full": "8 ms · 120 ms · −3.1 dB · 180 ms",
+      "dropped": 0,
+      "fits": true
+     },
+     "filter": {
+      "shown": "low pass 1.6 kHz · +1.5 oct",
+      "full": "low pass 1.6 kHz · +1.5 oct",
+      "dropped": 0,
+      "fits": true
+     },
+     "wave": {
+      "shown": "drawbars 008740000",
+      "full": "drawbars 008740000",
+      "dropped": 0,
+      "fits": true
+     }
+    },
+    "menus": [
+     {
+      "menu": "Pitch bend",
+      "room": 76,
+      "widest": 30.5,
+      "text": "±24 st",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Mod wheel",
+      "room": 81,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Pressure",
+      "room": 81,
+      "widest": 38.2,
+      "text": "Nothing",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Velocity",
+      "room": 134,
+      "widest": 75.9,
+      "text": "Level, strike, FM",
+      "fits": true,
+      "fullFits": true
+     },
+     {
+      "menu": "Shape",
+      "room": 70,
+      "widest": 50.5,
+      "text": "Sine + 3rd",
+      "fits": true,
+      "fullFits": false
+     },
+     {
+      "menu": "Interval",
+      "room": 84,
+      "widest": 69.6,
+      "text": "Min 2nd 16:15",
+      "fits": true,
+      "fullFits": false
+     }
+    ],
+    "bandParts": {
+     "keysW": 501,
+     "keysH": 75,
+     "keyCount": 36,
+     "whiteCount": 21,
+     "splitOverflow": -35.8,
+     "splitInside": true,
+     "kindsClearOfStrip": true,
+     "hintFits": true,
+     "hintSpare": 127.9,
+     "lineOneLine": true,
+     "hint": "The lowest 2 notes held: the lower hand; the rest the upper.",
+     "placed": [
+      {
+       "place": 1,
+       "note": 48,
+       "onKey": true
+      },
+      {
+       "place": 2,
+       "note": 55,
+       "onKey": true
+      },
+      {
+       "place": 3,
+       "note": 60,
+       "onKey": true
+      },
+      {
+       "place": 4,
+       "note": 64,
+       "onKey": true
+      },
+      {
+       "place": 5,
+       "note": 67,
+       "onKey": true
+      },
+      {
+       "place": 6,
+       "note": 71,
+       "onKey": true
+      }
+     ]
+    },
+    "kind": "notes",
+    "count": 2,
+    "edge": "low",
+    "chord": "held"
+   }
+  }
+ ],
+ "checks": 249,
+ "fails": []
+}
