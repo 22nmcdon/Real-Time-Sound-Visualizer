@@ -1,0 +1,924 @@
+{
+ "webfonts": true,
+ "core": [
+  {
+   "case": "FM 2.0 at 3:2, left",
+   "worst": 8.191141556429631e-10,
+   "tolerance": 1e-06
+  },
+  {
+   "case": "FM 2.0 at 3:2, right at 90\u00b0",
+   "worst": 8.220588654239691e-10,
+   "tolerance": 1e-06
+  },
+  {
+   "case": "Ring 70% at 2:1",
+   "worst": 2.469343618471953e-10,
+   "tolerance": 1e-06
+  },
+  {
+   "case": "Warp +0.54 at 25% on the sine",
+   "worst": 4.4382930663999787e-10,
+   "tolerance": 1e-06
+  },
+  {
+   "case": "Sub 50%, a square an octave down",
+   "worst": 2.294480161424417e-10,
+   "tolerance": 0.01
+  },
+  {
+   "case": "Sub 50%, a sine two octaves down",
+   "worst": 0.00012783198665837543,
+   "tolerance": 0.001
+  },
+  {
+   "case": "Unison 3 at 12 cents, 2 s in",
+   "worst": 1.1753864548325055e-10,
+   "tolerance": 1e-06
+  },
+  {
+   "case": "the harmonic, FM 1.0 at 7:2",
+   "worst": 9.227604280681588e-10,
+   "tolerance": 1e-06
+  },
+  {
+   "case": "the saw, Sync 2.6\u00d7",
+   "worst": 0.001269531533913959,
+   "tolerance": 0.01
+  },
+  {
+   "case": "the square",
+   "worst": 0,
+   "tolerance": 0.01
+  },
+  {
+   "case": "Warp +0.54 on the triangle (the blocker)",
+   "worst": 0.0018879843451075073,
+   "tolerance": 0.03
+  }
+ ],
+ "tells": {
+  "phase90": [
+   {
+    "name": "FM 3.0",
+    "wave": 204.8,
+    "waveOutline": 43.6,
+    "figure": 289.9,
+    "figureOutline": 34.3
+   },
+   {
+    "name": "Warp +60",
+    "wave": 27.8,
+    "waveOutline": 13.7,
+    "figure": 39.3,
+    "figureOutline": 27.6
+   },
+   {
+    "name": "Ring 60%",
+    "wave": 84.1,
+    "waveOutline": 17.6,
+    "figure": 119,
+    "figureOutline": 84.5
+   },
+   {
+    "name": "Sync 2.5\u00d7",
+    "wave": 149.9,
+    "waveOutline": 40.6,
+    "figure": 212.2,
+    "figureOutline": 40.3
+   },
+   {
+    "name": "Sub 50%",
+    "wave": 57.2,
+    "waveOutline": 19.5,
+    "figure": 89.2,
+    "figureOutline": 65.4
+   },
+   {
+    "name": "Ratio 3:2 with FM 1.0",
+    "wave": 72.6,
+    "waveOutline": 21.4,
+    "figure": 111,
+    "figureOutline": 56.2
+   },
+   {
+    "name": "Unison 3 at 12 \u00a2, 0.25 s on",
+    "wave": 123.6,
+    "waveOutline": 26.1,
+    "figure": 174.9,
+    "figureOutline": 125.1
+   }
+  ],
+  "phase0": [
+   {
+    "name": "FM 3.0",
+    "wave": 204.8,
+    "waveOutline": 43.6,
+    "figure": 289.7,
+    "figureOutline": 0.5
+   },
+   {
+    "name": "Warp +60",
+    "wave": 27.8,
+    "waveOutline": 13.7,
+    "figure": 39.3,
+    "figureOutline": 15.7
+   },
+   {
+    "name": "Ring 60%",
+    "wave": 84.1,
+    "waveOutline": 17.6,
+    "figure": 119,
+    "figureOutline": 0.8
+   },
+   {
+    "name": "Sync 2.5\u00d7",
+    "wave": 149.9,
+    "waveOutline": 40.6,
+    "figure": 212,
+    "figureOutline": 0.6
+   },
+   {
+    "name": "Sub 50%",
+    "wave": 57.2,
+    "waveOutline": 19.5,
+    "figure": 80.9,
+    "figureOutline": 0.7
+   },
+   {
+    "name": "Ratio 3:2 with FM 1.0",
+    "wave": 72.6,
+    "waveOutline": 21.4,
+    "figure": 102.7,
+    "figureOutline": 0.6
+   },
+   {
+    "name": "Unison 3 at 12 \u00a2, 0.25 s on",
+    "wave": 123.6,
+    "waveOutline": 26.1,
+    "figure": 174.7,
+    "figureOutline": 0.8
+   }
+  ]
+ },
+ "survey": [
+  {
+   "size": "1660x1050",
+   "sub": "osc",
+   "shows": "wave",
+   "figs": {
+    "w": 830,
+    "h": 706
+   },
+   "scroll": 0,
+   "over": -41.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 534,
+     "aspect": 1.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 43.9
+  },
+  {
+   "size": "1660x1050",
+   "sub": "osc",
+   "shows": "both",
+   "figs": {
+    "w": 830,
+    "h": 706
+   },
+   "scroll": 0,
+   "over": -232.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 515,
+     "h": 343,
+     "aspect": 1.5
+    },
+    {
+     "what": "xy",
+     "w": 273,
+     "h": 273,
+     "aspect": 1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 234.9
+  },
+  {
+   "size": "1660x1050",
+   "sub": "shp",
+   "shows": "wave",
+   "figs": {
+    "w": 830,
+    "h": 706
+   },
+   "scroll": 0,
+   "over": -270.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "transfer",
+     "w": 329,
+     "h": 305,
+     "aspect": 1.1
+    },
+    {
+     "what": "cycle",
+     "w": 459,
+     "h": 305,
+     "aspect": 1.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 272.9
+  },
+  {
+   "size": "1400x900",
+   "sub": "osc",
+   "shows": "wave",
+   "figs": {
+    "w": 830,
+    "h": 556
+   },
+   "scroll": 0,
+   "over": -2.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 802,
+     "h": 423,
+     "aspect": 1.9
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 4.9
+  },
+  {
+   "size": "1400x900",
+   "sub": "osc",
+   "shows": "both",
+   "figs": {
+    "w": 830,
+    "h": 556
+   },
+   "scroll": 0,
+   "over": -82.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 515,
+     "h": 343,
+     "aspect": 1.5
+    },
+    {
+     "what": "xy",
+     "w": 273,
+     "h": 273,
+     "aspect": 1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 84.9
+  },
+  {
+   "size": "1400x900",
+   "sub": "shp",
+   "shows": "wave",
+   "figs": {
+    "w": 830,
+    "h": 556
+   },
+   "scroll": 0,
+   "over": -120.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "transfer",
+     "w": 329,
+     "h": 305,
+     "aspect": 1.1
+    },
+    {
+     "what": "cycle",
+     "w": 459,
+     "h": 305,
+     "aspect": 1.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 122.9
+  },
+  {
+   "size": "1100x860",
+   "sub": "osc",
+   "shows": "wave",
+   "figs": {
+    "w": 742,
+    "h": 572
+   },
+   "scroll": 0,
+   "over": -2.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 714,
+     "h": 439,
+     "aspect": 1.6
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 4.9
+  },
+  {
+   "size": "1100x860",
+   "sub": "osc",
+   "shows": "both",
+   "figs": {
+    "w": 742,
+    "h": 572
+   },
+   "scroll": 0,
+   "over": -137.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 457,
+     "h": 304,
+     "aspect": 1.5
+    },
+    {
+     "what": "xy",
+     "w": 243,
+     "h": 243,
+     "aspect": 1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 139.9
+  },
+  {
+   "size": "1100x860",
+   "sub": "shp",
+   "shows": "wave",
+   "figs": {
+    "w": 742,
+    "h": 572
+   },
+   "scroll": 0,
+   "over": -171.9,
+   "covers": false,
+   "plots": [
+    {
+     "what": "transfer",
+     "w": 294,
+     "h": 270,
+     "aspect": 1.1
+    },
+    {
+     "what": "cycle",
+     "w": 406,
+     "h": 270,
+     "aspect": 1.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 173.9
+  },
+  {
+   "size": "1200x680",
+   "sub": "osc",
+   "shows": "wave",
+   "figs": {
+    "w": 830,
+    "h": 461
+   },
+   "scroll": 0,
+   "over": -0.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 810,
+     "h": 350,
+     "aspect": 2.3
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 2.1
+  },
+  {
+   "size": "1200x680",
+   "sub": "osc",
+   "shows": "both",
+   "figs": {
+    "w": 830,
+    "h": 461
+   },
+   "scroll": 0,
+   "over": -3.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 521,
+     "h": 347,
+     "aspect": 1.5
+    },
+    {
+     "what": "xy",
+     "w": 275,
+     "h": 275,
+     "aspect": 1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 5.1
+  },
+  {
+   "size": "1200x680",
+   "sub": "shp",
+   "shows": "wave",
+   "figs": {
+    "w": 830,
+    "h": 461
+   },
+   "scroll": 0,
+   "over": -42.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "transfer",
+     "w": 332,
+     "h": 308,
+     "aspect": 1.1
+    },
+    {
+     "what": "cycle",
+     "w": 464,
+     "h": 308,
+     "aspect": 1.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 44.1
+  },
+  {
+   "size": "1100x680",
+   "sub": "osc",
+   "shows": "wave",
+   "figs": {
+    "w": 742,
+    "h": 461
+   },
+   "scroll": 0,
+   "over": -0.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 722,
+     "h": 350,
+     "aspect": 2.1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 2.1
+  },
+  {
+   "size": "1100x680",
+   "sub": "osc",
+   "shows": "both",
+   "figs": {
+    "w": 742,
+    "h": 461
+   },
+   "scroll": 0,
+   "over": -42.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 463,
+     "h": 308,
+     "aspect": 1.5
+    },
+    {
+     "what": "xy",
+     "w": 245,
+     "h": 245,
+     "aspect": 1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 44.1
+  },
+  {
+   "size": "1100x680",
+   "sub": "shp",
+   "shows": "wave",
+   "figs": {
+    "w": 742,
+    "h": 461
+   },
+   "scroll": 0,
+   "over": -77.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "transfer",
+     "w": 297,
+     "h": 273,
+     "aspect": 1.1
+    },
+    {
+     "what": "cycle",
+     "w": 411,
+     "h": 273,
+     "aspect": 1.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 79.1
+  },
+  {
+   "size": "960x600",
+   "sub": "osc",
+   "shows": "wave",
+   "figs": {
+    "w": 709,
+    "h": 447
+   },
+   "scroll": 0,
+   "over": -0.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 689,
+     "h": 336,
+     "aspect": 2.1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 2.1
+  },
+  {
+   "size": "960x600",
+   "sub": "osc",
+   "shows": "both",
+   "figs": {
+    "w": 709,
+    "h": 447
+   },
+   "scroll": 0,
+   "over": -42.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "wave",
+     "w": 441,
+     "h": 294,
+     "aspect": 1.5
+    },
+    {
+     "what": "xy",
+     "w": 234,
+     "h": 234,
+     "aspect": 1
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 44.1
+  },
+  {
+   "size": "960x600",
+   "sub": "shp",
+   "shows": "wave",
+   "figs": {
+    "w": 709,
+    "h": 447
+   },
+   "scroll": 0,
+   "over": -76.1,
+   "covers": false,
+   "plots": [
+    {
+     "what": "transfer",
+     "w": 284,
+     "h": 260,
+     "aspect": 1.1
+    },
+    {
+     "what": "cycle",
+     "w": 391,
+     "h": 260,
+     "aspect": 1.5
+    }
+   ],
+   "knobRows": [
+    1
+   ],
+   "labels": [
+    {
+     "sub": "osc",
+     "dropped": 0,
+     "fits": true,
+     "shown": "3:2 \u00b7 FM 2.0"
+    },
+    {
+     "sub": "shp",
+     "dropped": 0,
+     "fits": true,
+     "shown": "drive 45% \u00b7 4 bits"
+    }
+   ],
+   "empty": 78.1
+  }
+ ],
+ "checks": 57,
+ "failed": []
+}
