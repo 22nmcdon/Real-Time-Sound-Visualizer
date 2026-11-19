@@ -253,9 +253,10 @@ Do not re-litigate these without a reason; each replaced something that failed.
   960x600 at Auto's 90 per cent (see the minimum window, below). Play is not
   dealt since 18 Nov (Play, below): it is a column, the figures take the
   height there is, and its drawings are held to 1.5:1 to 7:1 and 120 px tall.
-  Ink is two sections since then, in two columns: a tab is never dealt into
-  more columns than it has sections (`wantColumns`), since a third left empty
-  folded away after the deal and its sections stood shorter than measured.
+  Ink was two sections in two columns from then (a tab is never dealt into
+  more columns than it has sections, `wantColumns`, since a third left empty
+  folded away after the deal and its sections stood shorter than measured)
+  until 19 Nov, when it became a figure area (Ink, below), not dealt either.
   The body's lines pack at its top (`align-content: flex-start`): a wrapping
   row with `normal` stretched them, and the band had half the spare height
   under it (124 px at 1660x1050).
@@ -656,6 +657,25 @@ Do not re-litigate these without a reason; each replaced something that failed.
   uncut and nothing over the keys, with its nulls; `msegtest.py` the
   summaries, the fit, the knobs' homes, `showControl` and Wave across all
   fourteen shapes; `fittest.py` and `striptest.py` the fit and the band.
+- **Ink is a figure area** (19 Nov, `web/docs/ink-figures.md`, the owner's). No band and no
+  settings row: the area takes the tab, its bar Play's (`.fig-bar`), with two subtabs, *Oscillator*
+  and *Shaping*, each its name and a summary (`inkSummaries`); the sections are the views
+  (`data-ink`), moved in as the tab is laid out, ids and markup order kept (`MORPH_IDS`). The
+  Oscillator draws both channels over the voice's whole pattern - the left charcoal, the right
+  slate, offset by Phase - with the plain shape dashed behind, the span as many of the note's
+  cycles as it takes to repeat (at most 8); its eleven controls in one row under it, Warp at and
+  Spread greyed while Warp and Unison are off, the sub's octave and shape behind the dots. *Wave ·
+  Figure* in its header draws the X–Y figure instead, a square of the wave's height, centred: only
+  the look, never in a setup, undo or the morph, kept by the browser (`scope.inkDraws`). Shaping draws
+  the shaper's curve with Crush's steps beside two cycles before and after with Rate's holds,
+  stacked (the cycle over the curve) by room where that gives the curve more and leaves the cycle
+  120 px tall - 1660x1050 alone of the six (`fitInk`). **Ink draws the settings, still**: a drawing
+  changes when a control does and at no other time, Unison frozen 4.33 of the note's cycles in
+  (`INK_STILL_CYCLES`), and *Hold to watch it drift* runs it only while held, its place kept unseen
+  while Unison is off. The drawings are the page's arithmetic over the hand's tone, the core's
+  formulas line for line; `inkfigtest.py` holds them to the core itself built from `core/include`,
+  the fit and nothing moving at six windows, the stillness with a clock as its null, and the
+  choice kept across a reload; the plugin's shell test holds Ink in WebKit.
 - **Trace · Paint, and the painting's own Persistence** (painting, step 2, 18 Nov;
   `web/docs/painting-design.md`). The screen draws the trace or the painting the core keeps
   (`core/include/scope/paint.h`), a setup field (`screenDraws`), and Scan and the Picture

@@ -3999,7 +3999,7 @@ int main() {
        in the plugin's own web view, under xvfb-run -a. The null is the old
        path, live: the same face with the instrument never told Learn is
        armed (hostSendLearn taken out), which learns nothing anywhere. */
-    struct Learnt { bool face = false; std::string shown; bool kept = false; std::string keys; std::string play; };
+    struct Learnt { bool face = false; std::string shown; bool kept = false; std::string keys; std::string play; std::string ink; };
     const auto learnRun = [&](bool told) {
       Learnt out;
       ScopeProcessor learner;
@@ -4058,6 +4058,20 @@ int main() {
                      " band: Math.round(el.midiGroup.getBoundingClientRect().height / (pageZoom || 1)) === (document.body.dataset.compact !== undefined ? 120 : 140),"
                      " clear: el.midiKindsRow.getBoundingClientRect().bottom <= el.midiStrip.closest('.kb-box').getBoundingClientRect().top + 0.5,"
                      " gen: el.toneRows.parentElement === el.waveGroup && document.querySelectorAll('#shape').length === 1 }); })()", 3000).toStdString();
+      /* Ink in the plugin's face (19 Nov, web/docs/ink-figures.md): a figure area alone, Oscillator and
+         Shaping along its top; the Oscillator's two channels drawn with its eleven controls in one row, and
+         Shaping's curve drawn; nothing scrolled. Drawn in WebKit from the hand's tone, as in the browser. */
+      out.ink = ask("(() => { setBenchTab('ink'); window.__ink.setSub('osc'); window.__ink.paint(true);"
+                    " const z = pageZoom || 1, R = (n) => n.getBoundingClientRect();"
+                    " const rows = new Set([...el.oscGroup.querySelectorAll('.ink-knobs > .menu-row')].map((n) => Math.round(R(n).bottom / z))).size;"
+                    " const o = { column: [...el.benchBody.children].map((c) => c.className).join(','),"
+                    " tabs: [...document.querySelectorAll('#inkBar [role=tab]')].map((t) => t.dataset.sub).join(','),"
+                    " wave: !!el.oscWave.querySelector('[data-left]') && !!el.oscWave.querySelector('[data-right]'),"
+                    " knobs: el.oscGroup.querySelectorAll('.ink-knobs > .menu-row').length, rows,"
+                    " scroll: el.benchBody.scrollHeight - el.benchBody.clientHeight <= 1 };"
+                    " window.__ink.setSub('shp'); window.__ink.paint(true); o.curve = !!el.shpCurve.querySelector('[data-curve]');"
+                    " o.scrollShp = el.benchBody.scrollHeight - el.benchBody.clientHeight <= 1;"
+                    " window.__ink.setSub('osc'); setBenchTab('play'); return JSON.stringify(o); })()", 3000).toStdString();
       ask(juce::String("(() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();")
           + (told ? "" : " window.hostSendLearn = () => {};")
           // In Poly, where a split is (17 Nov: the strip's line names the point there, and only there).
@@ -4097,6 +4111,11 @@ int main() {
             told.play == "{\"column\":\"bench-band,play-set,play-figs\",\"tabs\":\"amp,filter,wave\",\"points\":true,\"knobs\":6,\"pill\":true,\"scroll\":true,"
                          "\"band\":true,\"clear\":true,\"gen\":true}",
             told.play);
+      check("Ink in the plugin is its figure area, Oscillator and Shaping, both channels drawn with eleven controls in one row, "
+            "Shaping's curve drawn, and neither scrolled",
+            told.ink == "{\"column\":\"play-figs ink-figs\",\"tabs\":\"osc,shp\",\"wave\":true,\"knobs\":11,\"rows\":1,\"scroll\":true,"
+                        "\"curve\":true,\"scrollShp\":true}",
+            told.ink);
       check("null: the instrument never told Learn is armed learns nothing from the host's note, and the face still waits for a key",
             !untold.kept && untold.shown.find("\"point\":60") != std::string::npos && untold.shown.find("\"learning\":true") != std::string::npos,
             untold.shown + (untold.kept ? "; kept" : "; not kept"));

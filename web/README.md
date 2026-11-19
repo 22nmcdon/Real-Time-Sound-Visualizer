@@ -7466,3 +7466,37 @@ the places, the numbers on their keys and the rule.
   folded line without growing it, so showing it moves nothing; opening never switches a module on.
   `racktest.py` holds every arrow seen, on top and opening its module off, and the rack's boxes as
   they were with the arrows hidden.
+
+## Ink with its figures, and four traps on the way (19 Nov)
+
+`web/docs/ink-figures.md`, built from the owner's decisions on the mockup. Ink is a figure area
+alone: Oscillator and Shaping as subtabs, the sections moved in as the views. The drawings are the
+page's arithmetic over the hand's tone, the core's formulas line for line, and `inkfigtest.py` holds
+them to the core itself, built from `core/include` (`inkcore.cpp`). Measured in the brand's
+webfonts the sizes are the spec's table to the pixel: the wave 802x428 at 1400x900 and 688x343 at
+960x600, Shaping's curve and cycle 329x305 and 459x305 at 1400x900, stacked only at 1660x1050.
+What was learned on the way:
+
+- **A label's flex basis is a height in a column.** The page's `.menu-label` has a basis of 96 px,
+  its width beside a control; laid out as a column (a menu's name over it in the control row) it
+  stood 96 px tall, and the row took 213 px of the drawing's height. Give a column's children
+  `flex: 0 0 auto`. (The band met the same with `.grow`, above.)
+- **A knob between two menus is the one-line knob.** `.knob-row:not(.knob-row + .knob-row)
+  :not(:has(+ .knob-row))` is how a lone knob among menu rows lies on one line; Spread, between
+  Unison's menu and the end of the row, matched it and lay down. The row's own rule makes it a cell.
+- **A fit made before the tab cards are built is a fit for another height.** The chosen card
+  stands taller, so Ink fitted under the old cards ran 9 px over until a resize observer's next
+  frame - which every suite that measures straight after `setBenchTab` saw. `setBenchTab` fits Ink
+  again after building them, as it asks the rack's fold again.
+- **The fold's sine is two libraries' sine.** The shaper's curve is the core's to the bit for
+  drive and bits; with fold in it, V8's `Math.sin` and the C library's differ by one in the last
+  place now and then (1.1e-16 at fold 0.2), so the check is in ulps there. The page's compiled core
+  would carry a third.
+
+Ink draws the settings, still: the tab lines' few-times-a-second paint asks, and the drawings are
+redrawn only when what they draw has changed (a key over the tone, the sizes, the subtab and the
+drift). `inkfigtest.py`'s stillness check counts redraws over 1.5 s with Unison on, and its null is
+a clock put back. Calling the core's own module for the drawings was weighed: it needs each unison
+copy alone and the bend's settled offset, which the oscillator has no export for, and two seconds of
+settling a redraw; the comparison against the core keeps the second copy of the formulas honest.
+Wave · Figure is kept by the browser as `scope.inkDraws`, under the testing page's prefix there.

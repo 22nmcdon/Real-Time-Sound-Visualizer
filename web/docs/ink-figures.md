@@ -252,3 +252,36 @@ for a pattern directly.
    with their nulls:
    - it moves nothing outside the drawing;
    - it is remembered across a reload (null: a fresh browser draws the wave).
+
+## As built (19 Nov)
+
+As specified, with the defaults taken where it was silent:
+
+- **The drawings are the page's arithmetic**, the mockup's port of `oscStep`, `setShaping`,
+  `shapeSample` and `crushStep`, over the hand being edited's tone (`genSettings(panelLayer)`), with
+  the shape's own function from the page's `waveAt` through `bendWave`, so every shape draws (the
+  drawbars at full scale, as the generator scales them, and over two cycles with 16′ or 5⅓′ out).
+  Asking the core's module was weighed and not taken: the oscillator has no export for one unison
+  copy alone or for the bend's settled offset, and a settled run is two seconds of samples a
+  redraw. `web/tests/inkfigtest.py` builds `inkcore.cpp` (this mockup's `core_ref.cpp`) against
+  `core/include` and holds the page's functions to it: FM, Ring, Warp on the sine, Unison and the
+  harmonic within 1e-9; Unison's still at 3, 5 and 7 copies within 1e-9; Sync, the square and a
+  square sub within 0.0013 away from edges; a sine sub within 1e-3 (the core's sub a sample ahead,
+  left alone); Warp on the triangle within 0.002; the shaper to the bit for drive and bits, and to
+  one ulp with fold in it, where V8's sine and the C library's differ in the last place.
+- **Noise has no pattern to draw:** the Oscillator draws a stretch of it and says the oscillator
+  does not shape it, as the generator plays noise without the oscillator.
+- **The suite is `inkfigtest.py`**, since `inktest.py` was already the X–Y figure's inks.
+- **Still, by asking:** nothing on Ink is driven by a clock. The tab lines' paint, a few times a
+  second, asks Ink to paint, and it redraws only when what it draws has changed (the tone, the sizes,
+  the subtab, Wave · Figure, the drift). The stillness check counts redraws, not only the path.
+- **The Ratio menu shows the ratio alone** (*3:2*), its full name (*3:2 · perfect fifth*) each
+  option's title and the menu's own while chosen, as Play's shortened menus: the names did not fit
+  the control row's 84 px.
+- **The header's words take what the key, the switch and the drift leave**, so nothing after them
+  moves; the null is the words in a box sized to them, which moves the key when Unison comes on.
+- **On a phone** the figure area is 560 px tall and its control row wraps, since the bench there is
+  as tall as what it holds and the page scrolls. (Play's figures collapse on a phone on testing;
+  that is outside this round.)
+
+Measured in the brand's webfonts the sizes are the table above, to the pixel or within three.
