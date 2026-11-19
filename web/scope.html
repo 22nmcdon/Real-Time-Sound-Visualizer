@@ -1601,53 +1601,76 @@ span.fx-handle { visibility: hidden; }
 .bench-band { flex: 0 0 100%; min-width: 0; }
 /* The band's own gap is the body's row gap: not a section's margin under it as well. */
 .bench-body .bench-band > .menu-group.kb-band { margin: 0; }
+/* The band with room (19 Nov, web/docs/play-band.md): a grid of two columns and three rows at one height
+   in every state, 140 px (120 compact). The left column is the heading, then Dyad, Mono, Poly and what the
+   mode uses; the right is the split row, kept unseen with one hand so choosing Two hands moves nothing,
+   then the keys, which take all the height left, then one line. Nothing is laid over the keys: on testing
+   Key, Notes, Layer sat on the strip's top edge and was clipped by it (the owner's note, 19 Nov). */
 .bench-body .menu-group.kb-band {
-  display: grid; grid-template-columns: 228px minmax(0, 1fr); column-gap: 18px; align-items: start;
-  margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+  display: grid; grid-template-columns: 216px minmax(0, 1fr); grid-template-rows: 24px minmax(0, 1fr) 18px;
+  column-gap: 16px; row-gap: 6px; align-items: stretch;
+  margin: 0; padding-bottom: 9px; border-bottom: 1px solid var(--line);
+  height: 140px; box-sizing: border-box; overflow: hidden;
 }
 .bench-body .kb-band > .menu-title {
-  grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding-bottom: 4px;
+  grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0;
 }
-.kb-left { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
-.kb-right { grid-column: 2; grid-row: 1 / span 2; min-width: 0; }
+.bench-body .kb-band > .menu-title > .more-dots { margin: 0 0 0 auto; float: none; }
+.bench-body .kb-band > .menu-title > .pill-toggle { font-size: 9px; letter-spacing: 0.14em; }
+.kb-left { grid-column: 1; grid-row: 2 / span 2; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-width: 0; min-height: 0; }
 .kb-figure { display: flex; flex-direction: column; gap: 4px; width: 100%; }
 .kb-figure .check { font-size: 13px; }
 .kb-row { display: flex; align-items: center; gap: 6px; width: 100%; }
 .kb-row[hidden] { display: none; }
 .bench-body .kb-band .menu-row { margin-top: 0; flex-wrap: nowrap; gap: 6px; }
 .bench-body .kb-band .menu-row > .menu-label { flex: 0 0 auto; font-size: 12.5px; }
-.bench-body .kb-band .kb-box.menu-row { display: block; position: relative; }
 .kb-search-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .kb-row select { padding: 2px 5px; min-width: 0; }
 .kb-left > .switch button { padding: 4px 13px; }
 #midiDrawWhich { flex: 1 1 0; }
 .kb-say { font-size: 12px; color: var(--text-soft); margin: 0; }
-.kb-box { border: 1px solid var(--line); background: var(--paper); padding: 3px 4px 4px; }
-.kb-box-head { display: flex; justify-content: center; margin-bottom: 3px; }
-.kb-box-head[hidden] { display: none; }
-.kb-strip { display: flex; align-items: stretch; gap: 4px; height: 44px; }
-.kb-keys { flex: 1 1 auto; min-width: 0; position: relative; }
+/* The split row. Its contents never shrink: what does not fit is seen not to (patchtest), rather than
+   squeezed. The small switches at every window: at 1100x860 the row has 11 px to spare. */
+.bench-body .kb-band > .kb-split.menu-row { grid-column: 2; grid-row: 1; display: flex; align-items: center; gap: 10px;
+  min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; position: relative; }
+.kb-band > .kb-split[hidden] { display: flex !important; visibility: hidden; }
+.kb-split .switch { flex: 0 0 auto; align-self: center; }
+.kb-split .switch button { padding: 2px 8px; font-size: 9.5px; letter-spacing: 0.12em; justify-content: center; }
+.kb-own { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 9px; }
+.kb-own > * { flex: 0 0 auto; }
+.kb-own[hidden], .kb-own > [hidden] { display: none !important; }
+.kb-places button { width: 20px; padding: 2px 0; letter-spacing: 0; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kb-split .kb-ends button { width: 56px; }
+.kb-read { font-size: 12px; color: var(--text-soft); }
+.kb-read b { font-weight: 500; color: var(--charcoal); }
+/* The split point's name changes width (C4, C#4): its reading is one width, so Learn after it stays put. */
+#midiSplitAtRead { display: inline-block; width: 6.4em; }
+.kb-split .link-btn { font-size: 12px; padding-bottom: 0; }
+.kb-split .link-btn b { font-weight: 500; }
+/* Learn says "now play a key" while it waits, in the same width; its rule under the words only, and one
+   thickness pressed or not, so waiting moves nothing. */
+#midiSplitLearn, #midiSplitLearn[aria-pressed="true"] { width: 8.6em; text-align: left; border-bottom: 0; }
+#midiSplitLearn span { border-bottom: 1px solid var(--blush); padding-bottom: 1px; }
+#midiSplitLearn[aria-pressed="true"] span { border-color: var(--blush-deep); color: var(--blush-deep); }
+.kb-window { margin-left: auto; }
+/* The keys: the right column's whole width, the height the band has left. */
+.kb-box { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; border: 1px solid var(--line); background: var(--paper); }
+.kb-keys { width: 100%; height: 100%; position: relative; }
 .kb-keys svg { display: block; width: 100%; height: 100%; }
 .kb-keys .k { cursor: pointer; }
-.kb-oct { flex: 0 0 16px; padding: 0; background: none; border: 1px solid var(--line); border-radius: 1px;
-          color: var(--blush-deep); font-size: 15px; line-height: 1; position: relative; }
+/* The line: one sentence that fits at every window (patchtest), and the strip's octave at its end. */
+.kb-line { grid-column: 2; grid-row: 3; display: flex; flex-wrap: nowrap; align-items: center; gap: 12px; min-width: 0; }
+#midiStripLine { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; line-height: 18px; }
+.kb-octs { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; }
+.kb-oct { width: 20px; height: 16px; padding: 0; background: none; border: 1px solid var(--line); border-radius: 1px;
+          color: var(--blush-deep); font-size: 13px; line-height: 1; position: relative; }
 .kb-oct:hover { border-color: var(--blush); }
 .kb-oct:disabled { color: var(--unresolved); cursor: default; }
 /* A held note out of view that way: a gold dot on the button. */
-.kb-oct[data-beyond]::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px;
+.kb-oct[data-beyond]::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 4px; height: 4px;
                               margin-left: -2px; border-radius: 50%; background: var(--gold); }
-.kb-ends { flex: 0 0 40px; display: flex; align-items: center; }
-.kb-ends[hidden] { display: none; }
-/* One line, whatever it says: the band's height is every column's. The
-   sentence gives way (an ellipsis, the whole of it on the pointer's title)
-   before Learn or the Chord window's note does. */
-.kb-line { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 12px; margin-top: 3px; min-width: 0; }
-#midiStripLine { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.kb-line > :not(#midiStripLine) { flex: 0 0 auto; white-space: nowrap; }
-.kb-line > [hidden] { display: none; }
-.kb-window { margin-left: auto; }
+.kb-span { width: 5.6em; text-align: center; font-size: 11px; color: var(--text-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kb-playing { display: none; }
-.kb-line .link-btn { font-size: 12px; padding-bottom: 0; }
 .switch.mini button { padding: 2px 8px; font-size: 9.5px; letter-spacing: 0.12em; }
 .switch.vertical { flex-direction: column; border-radius: 20px; }
 .switch.vertical button { padding: 2px 6px; font-size: 10px; letter-spacing: 0.02em; }
@@ -1658,13 +1681,18 @@ span.fx-handle { visibility: hidden; }
 .pill-toggle:hover { color: var(--blush-deep); }
 .pill-toggle[aria-pressed="true"] { color: var(--charcoal); border-color: var(--blush); }
 .pill-toggle[aria-pressed="true"] .pt-dot { background: var(--blush-deep); border-color: var(--blush-deep); }
-[data-compact] .bench-body .menu-group.kb-band { grid-template-columns: 216px minmax(0, 1fr); column-gap: 12px; padding-bottom: 5px; }
-[data-compact] .bench-body .kb-band > .menu-title { margin-bottom: 3px; padding-bottom: 3px; }
+[data-compact] .bench-body .menu-group.kb-band { grid-template-columns: 196px minmax(0, 1fr); grid-template-rows: 22px minmax(0, 1fr) 16px;
+  column-gap: 12px; row-gap: 4px; padding-bottom: 6px; height: 120px; }
 body[data-compact] .bench-body { row-gap: 10px; }
 [data-compact] .kb-left, [data-compact] .kb-figure { gap: 4px; }
 [data-compact] .kb-row select { padding-block: 2px; }
-[data-compact] .kb-strip { height: 36px; }
-[data-compact] .kb-line { margin-top: 3px; }
+[data-compact] .bench-body .kb-band > .kb-split.menu-row { gap: 8px; }
+[data-compact] .kb-own { gap: 7px; }
+[data-compact] .kb-split .switch button { padding: 2px 7px; font-size: 9px; letter-spacing: 0.1em; }
+[data-compact] .kb-places button { width: 19px; padding: 2px 0; letter-spacing: 0; font-size: 10px; }
+[data-compact] .kb-read, [data-compact] .kb-split .link-btn { font-size: 11px; }
+[data-compact] #midiStripLine { font-size: 10.5px; line-height: 16px; }
+[data-compact] .kb-span { font-size: 10px; }
 
 /* --- Play with its figures (18 Nov, web/docs/play-figures.md) ------------------
    A column of three: the Keyboard's band, the settings row and the figure
@@ -1673,62 +1701,72 @@ body[data-compact] .bench-body { row-gap: 10px; }
    with `normal` stretched its lines to its height, and the band had half of
    the spare height under it - 124 px at 1660x1050, the gap the owner saw. */
 .bench-body { align-content: flex-start; }
-/* The band one height in every mode and with one hand or two (122 px, 117 compact: the one-hand height in
-   Poly), so nothing under it moves when a mode or Two hands is chosen. The room is reserved rather than
-   laid over the strip: Key, Notes, Layer sits on the strip's top edge in a margin that is there either
-   way, and the line under the strip always has two lines' room. The cost is a blank second line with one
-   sound. */
-.bench-body .menu-group.kb-band { height: 122px; box-sizing: border-box; overflow: hidden; align-content: start; }
-[data-compact] .bench-body .menu-group.kb-band { height: 117px; }
 .pill-toggle.is-unseen { visibility: hidden; }
-/* The heading's row its own height, so Dyad's and Mono's shorter left column does not give the strip's spare height to
-   the heading and move the switch under it. */
-.bench-body .menu-group.kb-band { grid-template-rows: auto minmax(0, 1fr); }
-/* By notes the octave buttons give way to low and high (18 Nov, the owner's rule that nothing moves): each
-   keeps its place unseen when the other is shown, so the strip's keys stand where they stood. The cost is
-   the room of the other, 40 px of keys, in every split. */
-.kb-band .kb-ends[hidden], .kb-band .kb-oct[hidden] { display: flex !important; visibility: hidden; }
-.kb-band .kb-box { margin-top: 12px; }
-.kb-band .kb-box-head { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); margin: 0; z-index: 1;
-  background: var(--paper); border-radius: 20px; }
-.kb-band .kb-line { height: 2.7em; align-items: flex-start; line-height: 1.35; }
 /* The band's menus a little shorter than a section's, so Poly with two hands - the pairing menu beside
-   Tune a chord - fits the one-hand height with the gap above its rule kept. */
+   Tune a chord - fits the left column with the heading's height kept. */
 .bench-body .kb-band .kb-row select { height: 24px; padding-block: 0; }
 [data-compact] .bench-body .kb-band .kb-row select { height: 22px; }
-.kb-band #midiStripLine { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 #benchBody.is-play { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; row-gap: 0; overflow-y: auto; }
 .bench-body.is-play > .bench-band { flex: 0 0 auto; }
-.play-set { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 26px;
-  margin-top: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line); height: 67px; box-sizing: border-box; }
-[data-compact] .play-set { column-gap: 16px; margin-top: 6px; padding-bottom: 5px; height: 60px; }
-/* Each section a grid of four fields, its title over them: a field is its name in small type over its control. */
-.bench-body .play-set > .menu-group { margin: 0; display: grid; column-gap: 8px; align-content: start; min-width: 0; }
-[data-compact] .bench-body .play-set > .menu-group { column-gap: 6px; }
-#expressionGroup { grid-template-columns: minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.34fr); }
-#toneRows { grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.75fr) minmax(0, 1.3fr) minmax(0, 0.75fr); }
-.bench-body .play-set > .menu-group > .menu-title { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px;
-  min-height: 18px; margin: 0 0 2px; padding: 0; border-bottom: 0; }
-.bench-body .play-set > .menu-group > .menu-title > .more-dots { margin-left: auto; }
-.bench-body .play-set > .menu-group > .menu-title > .hand-link { position: static; }
-.bench-body .play-set .menu-row:not([data-more]) { display: flex; flex-direction: column; align-items: stretch; gap: 1px; margin: 0; min-width: 0; }
+/* Expression alone under the band (19 Nov, web/docs/play-band.md): its title, and a line of what it is,
+   in the band's left column, its four menus across the rest, so the two rows read as one grid. The
+   first track is the band's left column and its gap less this grid's own gap (216 + 16 - 10). The
+   Generator, beside it until then, is Wave's header. */
+.play-set { flex: 0 0 auto; margin-top: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--line); height: 47px; box-sizing: border-box; }
+[data-compact] .play-set { margin-top: 6px; padding-bottom: 5px; height: 40px; }
+.bench-body .play-set > #expressionGroup { margin: 0; height: 100%; display: grid; min-width: 0;
+  grid-template-columns: 222px minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.34fr);
+  grid-template-rows: minmax(0, 1fr) auto; column-gap: 10px; align-items: end; }
+[data-compact] .bench-body .play-set > #expressionGroup { grid-template-columns: 198px minmax(0, 0.86fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.34fr); }
+.bench-body #expressionGroup > .menu-title { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 8px;
+  min-height: 18px; margin: 0; padding: 0; border-bottom: 0; }
+.bench-body #expressionGroup > .menu-title > .more-dots { margin: 0 0 0 auto; float: none; }
+#expressionGroup > .set-say { grid-column: 1; grid-row: 2; margin: 0; font-size: 11px; line-height: 1.3; color: var(--text-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.over-body .set-say { display: none; }
+[data-compact] #expressionGroup > .set-say { display: none; }
+[data-compact] .bench-body #expressionGroup > .menu-title { grid-row: 1 / span 2; align-self: end; }
+.bench-body .play-set .menu-row:not([data-more]) { grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: stretch; gap: 1px; margin: 0; min-width: 0; }
 .bench-body .play-set .menu-row > .menu-label { flex: 0 0 auto; font-size: 10.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 [data-compact] .bench-body .play-set .menu-row > .menu-label { font-size: 9.5px; }
-.bench-body .play-set .menu-row:not(.knob-row) > .grow { display: flex; flex: 0 0 auto; min-width: 0; }
+.bench-body .play-set .menu-row > .grow { display: flex; flex: 0 0 auto; min-width: 0; }
 .bench-body .play-set select { width: 100%; min-width: 0; height: 25px; font-size: 12px; padding: 1px 4px; }
 [data-compact] .bench-body .play-set select { height: 22px; font-size: 11.5px; padding: 0 3px; }
-/* Glide and Level: the knob small, its reading beside it, in the field's one line. */
-/* A fixed first track, so the name spanning both cannot widen the knob's. */
-#benchBody .play-set .menu-row.knob-row { display: grid; grid-template-columns: 24px minmax(0, 1fr);
-  grid-template-areas: "name name" "face value"; justify-items: start; align-items: center; column-gap: 6px; row-gap: 1px;
-  width: auto; max-width: none; min-width: 0; margin: 0; flex: none; }
-[data-compact] #benchBody .play-set .menu-row.knob-row { grid-template-columns: 21px minmax(0, 1fr); column-gap: 5px; }
-#benchBody .play-set .menu-row.knob-row > .grow > .reading { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-#benchBody .play-set .menu-row.knob-row > .menu-label { text-align: left; font-size: 10.5px; line-height: 1.2; }
-[data-compact] .bench-body .play-set .menu-row.knob-row > .menu-label { font-size: 9.5px; }
-.bench-body .play-set .menu-row.knob-row .knob-face { width: 24px; height: 24px; margin: 0; }
-[data-compact] .bench-body .play-set .menu-row.knob-row .knob-face { width: 21px; height: 21px; }
-.bench-body .play-set .menu-row.knob-row > .grow > .reading { font-size: 12px; white-space: nowrap; }
+
+/* Wave's header is the Generator (19 Nov, play-band.md): Shape, Glide, Interval and Level on one line,
+   each name beside its control, the link pill and the dots (Tuning) at its end. The Generator is moved
+   into the Wave view as Play is laid out (data-play="head"), never copied; the view's own tools and
+   title stand aside for it. The header is no taller than Amp's and Filter's, so the cycle keeps its size. */
+.bench-body #waveGroup > .fig-tools, .bench-body #waveGroup > .menu-title { display: none; }
+.bench-body #waveGroup > #toneRows { grid-column: 1 / -1; grid-row: 1; display: flex; flex-wrap: nowrap; align-items: center; gap: 14px;
+  margin: 0; min-height: 24px; min-width: 0; white-space: nowrap; overflow: hidden; }
+[data-compact] .bench-body #waveGroup > #toneRows { gap: 9px; min-height: 21px; }
+.bench-body #waveGroup > #toneRows > .menu-title { order: 1; flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+  width: auto; margin: 0 0 0 auto; padding: 0; border: 0; font-size: 0; letter-spacing: 0; }
+.bench-body #waveGroup > #toneRows > .menu-title > * { font-size: 8.5px; letter-spacing: 0.14em; }
+.bench-body #waveGroup > #toneRows > .menu-title > .more-dots { font-size: 13px; letter-spacing: 0.1em; line-height: 18px; padding: 0; margin: 0; float: none; }
+.bench-body #waveGroup > #toneRows > .menu-title > .hand-link { position: static; }
+.bench-body #toneRows > .menu-row:not([data-more]) { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  width: auto; min-width: 0; max-width: none; margin: 0; }
+[data-compact] .bench-body #toneRows > .menu-row:not([data-more]) { gap: 4px; }
+.bench-body #toneRows > .menu-row > .menu-label { flex: 0 0 auto; font-size: 10.5px; line-height: 1.2; color: var(--text-soft); text-align: left; }
+[data-compact] .bench-body #toneRows > .menu-row > .menu-label { font-size: 9.5px; }
+.bench-body #toneRows > .menu-row:not(.knob-row) > .grow { display: flex; flex: 0 0 auto; min-width: 0; }
+.bench-body #toneRows select { height: 23px; font-size: 12px; padding: 1px 4px; min-width: 0; }
+.bench-body #toneRows #shape { width: 118px; }
+.bench-body #toneRows #interval { width: 132px; }
+[data-compact] .bench-body #toneRows select { height: 21px; font-size: 11.5px; padding: 0 3px; }
+[data-compact] .bench-body #toneRows #shape { width: 98px; }
+[data-compact] .bench-body #toneRows #interval { width: 112px; }
+/* Glide and Level: the name, the knob small and its reading beside it, the reading in a box of one width
+   so a value that changes its width moves nothing after it. */
+#benchBody #toneRows > .menu-row.knob-row { display: inline-grid; grid-template-columns: auto 22px 3.4em; grid-template-areas: "name face value";
+  justify-items: start; align-items: center; column-gap: 5px; row-gap: 0; }
+[data-compact] #benchBody #toneRows > .menu-row.knob-row { grid-template-columns: auto 19px 3.4em; column-gap: 4px; }
+#benchBody #toneRows > .menu-row.knob-row .knob-face { width: 22px; height: 22px; margin: 0; }
+[data-compact] #benchBody #toneRows > .menu-row.knob-row .knob-face { width: 19px; height: 19px; }
+#benchBody #toneRows > .menu-row.knob-row > .grow > .reading { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+[data-compact] #benchBody #toneRows > .menu-row.knob-row > .grow > .reading { font-size: 11px; }
 
 /* The figure area: a paper sheet with its subtabs along the top, the chosen one's view under them. */
 .play-figs { flex: 1 1 auto; min-height: 0; margin-top: 8px; display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--paper); }
@@ -2606,6 +2644,44 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                  title (decorateGroup, the search, the folds) and named by its first word. -->
             <span class="menu-title">Keyboard<button type="button" class="pill-toggle caps is-unseen" id="midiTwoHands" aria-pressed="false" aria-hidden="true" tabindex="-1"
                     title="A second sound: split at a key, split by the notes held, or layered"><span class="pt-dot"></span>Two hands</button></span>
+            <!-- The split row (19 Nov, web/docs/play-band.md): how the two hands share the notes, in a
+                 row of its own over the keys, never on them. Kept, unseen, with one hand and in Dyad and
+                 Mono, so choosing Two hands moves nothing. A row to the search: "split" or "hands" finds
+                 it by a name only it reads. -->
+            <div class="kb-split menu-row" id="midiKindsRow" hidden>
+              <span class="menu-label kb-search-name">Two hands, split and layer</span>
+              <div class="switch mini" role="radiogroup" aria-label="How the two hands share the notes">
+                <button type="button" class="caps" id="midiKindKey" role="radio" aria-checked="false">Key</button>
+                <button type="button" class="caps" id="midiKindNotes" role="radio" aria-checked="false">Notes</button>
+                <button type="button" class="caps" id="midiKindLayer" role="radio" aria-checked="false">Layer</button>
+              </div>
+              <!-- By key: where, in a reading of one width (C4 and C#4 differ, and Learn moved with it in
+                   the mockup), then Learn, which says "now play a key" in the same width. -->
+              <span class="kb-own" id="midiKeyOwn" hidden>
+                <span class="kb-read" id="midiSplitAtRead">Split at <b id="midiSplitAt">C4</b></span>
+                <button type="button" class="link-btn" id="midiSplitLearn" hidden
+                        title="Press, then play the key the upper hand starts from (in the plugin, a host's note)"><span>learn from a key</span></button>
+              </span>
+              <!-- By notes: which end is counted, how many as six places (so the count can be chosen with
+                   nothing held), and the Chord window, which is Settings' and goes there. -->
+              <span class="kb-own" id="midiEndLowSide" hidden>
+                <span class="switch mini kb-ends" role="radiogroup" aria-label="Which end of the chord is counted">
+                  <button type="button" class="caps" id="midiEndLow" role="radio" aria-checked="true">Lowest</button>
+                  <button type="button" class="caps" id="midiEndHigh" role="radio" aria-checked="false">Highest</button>
+                </span>
+                <span class="switch mini kb-places" id="midiCountPlaces" role="radiogroup" aria-label="How many notes are counted">
+                  <button type="button" role="radio" aria-checked="true" data-count="1">1</button><button
+                    type="button" role="radio" aria-checked="false" data-count="2">2</button><button
+                    type="button" role="radio" aria-checked="false" data-count="3">3</button><button
+                    type="button" role="radio" aria-checked="false" data-count="4">4</button><button
+                    type="button" role="radio" aria-checked="false" data-count="5">5</button><button
+                    type="button" role="radio" aria-checked="false" data-count="6">6</button>
+                </span>
+                <span class="kb-window" id="midiWindowNote" hidden><button type="button" class="link-btn" id="midiWindowGo"
+                  title="Chord window, in Settings' MIDI: how long every note waits, so a chord struck at once is dealt by pitch">Chord window <b id="midiWindowValue">10 ms</b></button></span>
+              </span>
+              <span class="kb-own" id="midiLayerOwn" hidden><span class="kb-read">Both hands, every note</span></span>
+            </div>
             <div class="kb-left">
               <!-- No visible label: the radiogroup's own name says what it is. -->
               <div class="switch" role="radiogroup" aria-label="What held notes do">
@@ -2640,63 +2716,45 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 </div>
               </div>
             </div>
-            <div class="kb-right">
-              <!-- A row to the search: "split" or "hands" finds the strip, as
-                   "split" found the Layers menu, by a name only it reads. -->
-              <div class="kb-box menu-row">
-                <span class="menu-label kb-search-name">Two hands, split and layer</span>
-                <div class="kb-box-head" id="midiKindsRow" hidden>
-                  <div class="switch mini" role="radiogroup" aria-label="How the two hands share the notes">
-                    <button type="button" class="caps" id="midiKindKey" role="radio" aria-checked="false">Key</button>
-                    <button type="button" class="caps" id="midiKindNotes" role="radio" aria-checked="false">Notes</button>
-                    <button type="button" class="caps" id="midiKindLayer" role="radio" aria-checked="false">Layer</button>
-                  </div>
-                </div>
-                <div class="kb-strip">
-                  <div class="kb-ends" id="midiEndLowSide" hidden>
-                    <div class="switch vertical mini" role="radiogroup" aria-label="Which end is counted">
-                      <button type="button" id="midiEndLow" role="radio" aria-checked="true">low</button>
-                      <button type="button" id="midiEndHigh" role="radio" aria-checked="false">high</button>
-                    </div>
-                  </div>
-                  <button type="button" class="kb-oct" id="midiStripDown" aria-label="The strip down an octave">&lsaquo;</button>
-                  <div class="kb-keys" id="midiStrip" role="group" aria-label="The keys held, and which hand each plays in"></div>
-                  <button type="button" class="kb-oct" id="midiStripUp" aria-label="The strip up an octave">&rsaquo;</button>
-                </div>
-              </div>
-              <div class="kb-line">
-                <span class="kb-say" id="midiStripLine"></span>
-                <button type="button" class="link-btn" id="midiSplitLearn" hidden
-                        title="Press, then play the key the upper hand starts from">learn from a key</button>
-                <span class="kb-say kb-window" id="midiWindowNote" hidden>Chord window: <span id="midiWindowValue">10 ms</span>,
-                  <button type="button" class="link-btn" id="midiWindowGo">in Settings</button></span>
-                <span class="kb-say kb-playing" id="midiPlayingRow" hidden><span class="reading" id="midiMonitor">nothing held</span></span>
-              </div>
-              <p class="menu-note" id="midiLayersNote" hidden></p>
-              <!-- The values the switches and the strip set, as menus, out of sight. -->
-              <div id="midiLayersRow" hidden>
-                <select id="midiLayers" aria-label="Whether a second hand plays">
-                  <option value="off" selected>one</option>
-                  <option value="split">split</option>
-                  <option value="layer">layered</option>
-                </select>
-                <select id="midiSplitBy" aria-label="Split: at a key, or by the notes held">
-                  <option value="key" selected>by key</option>
-                  <option value="notes">by notes</option>
-                </select>
-                <select id="midiSplitEnd" aria-label="Which notes are counted: the lowest held, for the lower hand, or the highest, for the upper">
-                  <option value="lower" selected>lowest</option>
-                  <option value="upper">highest</option>
-                </select>
-                <select id="midiSplitCount" aria-label="How many notes the counted hand takes">
-                  <option value="1" selected>1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                </select>
-              </div>
+            <!-- The keys: three octaves at the strip's own size, the right column's whole width in every
+                 way of sharing, taking all the height the band has left. -->
+            <div class="kb-box">
+              <div class="kb-keys" id="midiStrip" role="group" aria-label="The keys held, and which hand each plays in"></div>
+            </div>
+            <!-- One line under the keys: one sentence, and the strip's octave at its end, in every way. -->
+            <div class="kb-line">
+              <span class="kb-say" id="midiStripLine"></span>
+              <span class="kb-octs">
+                <button type="button" class="kb-oct" id="midiStripDown" aria-label="The strip down an octave">&lsaquo;</button>
+                <span class="kb-span" id="midiStripSpan">C3 &ndash; B5</span>
+                <button type="button" class="kb-oct" id="midiStripUp" aria-label="The strip up an octave">&rsaquo;</button>
+              </span>
+            </div>
+            <span class="kb-say kb-playing" id="midiPlayingRow" hidden><span class="reading" id="midiMonitor">nothing held</span></span>
+            <p class="menu-note" id="midiLayersNote" hidden></p>
+            <!-- The values the switches and the strip set, as menus, out of sight. -->
+            <div id="midiLayersRow" hidden>
+              <select id="midiLayers" aria-label="Whether a second hand plays">
+                <option value="off" selected>one</option>
+                <option value="split">split</option>
+                <option value="layer">layered</option>
+              </select>
+              <select id="midiSplitBy" aria-label="Split: at a key, or by the notes held">
+                <option value="key" selected>by key</option>
+                <option value="notes">by notes</option>
+              </select>
+              <select id="midiSplitEnd" aria-label="Which notes are counted: the lowest held, for the lower hand, or the highest, for the upper">
+                <option value="lower" selected>lowest</option>
+                <option value="upper">highest</option>
+              </select>
+              <select id="midiSplitCount" aria-label="How many notes the counted hand takes">
+                <option value="1" selected>1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
             </div>
             <p class="menu-note" data-more="1">Two held notes are the two channels, so the interval
               under your hands is the figure on the screen: a fifth draws 2:3 and stands still,
@@ -2714,6 +2772,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                know it was there. -->
           <div class="menu-group" id="expressionGroup" data-tab="play" data-home="bench" data-play="set">
             <span class="menu-title">Expression</span>
+            <p class="set-say" id="expressionSay">What a keyboard&rsquo;s wheel, pressure and touch move</p>
             <div class="menu-row">
               <label class="menu-label" for="midiBendRange">Pitch bend</label>
               <div class="grow"><select id="midiBendRange" style="flex:1 1 auto">
@@ -2916,7 +2975,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           </div>
 
 
-          <div class="menu-group" id="toneRows" data-tab="play" data-home="bench" data-play="set">
+          <div class="menu-group" id="toneRows" data-tab="play" data-home="bench" data-play="head" data-fig="wave">
             <span class="menu-title" id="genTitle" data-layer="b">Generator<button type="button" class="hand-link" id="linkGen" data-link="gen" aria-pressed="true" hidden></button></span>
               <p class="menu-note" id="layerBNote" data-layer="b">The upper hand (B, layered) is shown:
                 its shape, level, drawbars and morph, the same as the lower's while the link on the title
@@ -3009,6 +3068,24 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 In <i>just</i> tuning a fifth is exactly 2:3 and stands still; in <i>equal</i>
                 it is slightly off, and the figure turns at the rate the interval beats.
                 At a unison the phase decides it: 0&deg; a diagonal, 90&deg; a circle.</p>
+              <!-- Wave's, until its header became the Generator (19 Nov): the dots at the header's end are
+                   the Generator's, so what the Wave figure's dots said is said here. -->
+              <p class="menu-note"><i>Grab</i> takes one cycle of what is playing, from the
+                trigger lane: your input, or with the tone alone the generator's own output.
+                Hold the same note on the keyboard and the
+                period is the note's, exact; without one it is measured, and a few
+                cents out is a cycle that does not quite close. The reading beside it
+                says which, and its tooltip says the rest.</p>
+              <p class="menu-note">Nine sine partials at the footages of a tonewheel organ,
+                drawn out from nought to eight. <i>8&prime;</i> is the note you play; <i>16&prime;</i>
+                is an octave under it and <i>5&#8531;&prime;</i> a fifth above that, so a
+                registration with either out has a cycle twice the note's. Each step is about
+                three decibels, as on the organ. However many bars are out the wave stays inside
+                the amplitude: one bar at eight is a full-scale sine, and pulling out more changes
+                the colour rather than the level. A partial above half the sample rate is left
+                out rather than folded back. Every bar is a destination, so a drawbar on your
+                keyboard, once it has moved, can be put on the same bar here. With a layer B,
+                each layer has its own registration.</p>
           </div>
 
           <!-- The amplifier's envelope (G3): a section with its curve, under the
@@ -4131,22 +4208,6 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               </div>
               <p class="wave-say" id="waveSay"></p>
             </div>
-            <p class="menu-note"><i>Grab</i> takes one cycle of what is playing, from the
-              trigger lane: your input, or with the tone alone the generator's own output.
-              Hold the same note on the keyboard and the
-              period is the note's, exact; without one it is measured, and a few
-              cents out is a cycle that does not quite close. The reading beside it
-              says which, and its tooltip says the rest.</p>
-            <p class="menu-note">Nine sine partials at the footages of a tonewheel organ,
-              drawn out from nought to eight. <i>8&prime;</i> is the note you play; <i>16&prime;</i>
-              is an octave under it and <i>5&#8531;&prime;</i> a fifth above that, so a
-              registration with either out has a cycle twice the note's. Each step is about
-              three decibels, as on the organ. However many bars are out the wave stays inside
-              the amplitude: one bar at eight is a full-scale sine, and pulling out more changes
-              the colour rather than the level. A partial above half the sample rate is left
-              out rather than folded back. Every bar is a destination, so a drawbar on your
-              keyboard, once it has moved, can be put on the same bar here. With a layer B,
-              each layer has its own registration.</p>
           </div>
 
 
@@ -6773,7 +6834,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "midiLayersRow", "midiLayers", "midiSplitLearn",
                   "midiTwoHands", "midiKindsRow", "midiKindKey", "midiKindNotes", "midiKindLayer", "midiEndLowSide",
                   "midiEndLow", "midiEndHigh", "midiStripDown", "midiStripUp", "midiStrip", "midiStripLine",
-                  "midiWindowNote", "midiWindowValue", "midiWindowGo", "midiHoldRow", "midiMonoNote", "keysOpenRow",
+                  "midiWindowNote", "midiWindowValue", "midiWindowGo", "midiSplitAt", "midiKeyOwn", "midiLayerOwn", "midiCountPlaces", "midiStripSpan", "midiHoldRow", "midiMonoNote", "keysOpenRow",
                   "midiSplitBy", "midiSplitEnd", "midiSplitCount", "midiSplitWindow", "midiSplitWindowRow",
                   "midiLayerPair", "midiLayersNote", "genTitle", "pictureHandName",
                   "pictureMovesRow", "pictureMovesA", "pictureMovesB",
@@ -19000,9 +19061,17 @@ function syncMidi() {
     el.midiKindKey.setAttribute("aria-checked", String(kind === "key"));
     el.midiKindNotes.setAttribute("aria-checked", String(kind === "notes"));
     el.midiKindLayer.setAttribute("aria-checked", String(kind === "layer"));
+    // The split row's own part for the way chosen: only one is laid out, after Key, Notes, Layer.
+    el.midiKeyOwn.hidden = kind !== "key";
     el.midiEndLowSide.hidden = kind !== "notes";
+    el.midiLayerOwn.hidden = kind !== "layer";
     el.midiEndLow.setAttribute("aria-checked", String(midi.layers.end !== "upper"));
     el.midiEndHigh.setAttribute("aria-checked", String(midi.layers.end === "upper"));
+    for (const b of el.midiCountPlaces.children) b.setAttribute("aria-checked", String(Number(b.dataset.count) === midi.layers.count));
+    {
+      const at = midiNoteName(midi.layers.point);
+      if (el.midiSplitAt.textContent !== at) el.midiSplitAt.textContent = at;
+    }
     el.midiLayerPair.hidden = !on;
     el.midiLayers.value = midi.layers.mode;
     el.midiLayerPair.value = midi.layers.pair;
@@ -19024,7 +19093,7 @@ function syncMidi() {
        is the first, and Learn takes the next key played - in the plugin a
        host's, which never comes through the face. */
     el.midiSplitLearn.hidden = kind !== "key";
-    el.midiSplitLearn.textContent = midi.layers.learning ? "now play a key" : "learn from a key";
+    el.midiSplitLearn.firstElementChild.textContent = midi.layers.learning ? "now play a key" : "learn from a key";
     el.midiSplitLearn.setAttribute("aria-pressed", String(!!midi.layers.learning));
     paintHandLinks();
     /* Kept rather than applied while the input is drawn: the choice survives
@@ -19156,9 +19225,12 @@ el.midiLayerPair.addEventListener("change", () => {
    The Keyboard band's right side: the keys held, drawn in the hand each plays
    in, and the way the hands are set. Three octaves at a time (C3 to C6 to
    begin with: about 25 px a key at 1400x900, the owner's call over four at
-   19), with its own octave buttons, which only move the view. By notes it is
-   eight places counted from the counted end instead, the held notes in them
-   by pitch, and a press on a place is how many. Painted from `midi.notes` and
+   19), with its own octave buttons, which only move the view. The keys stay
+   in every way of sharing (19 Nov, play-band.md: by notes they were eight
+   places until then, and the owner could not see which hand a note went to):
+   by notes each held note is numbered on its own key from the counted end,
+   with a dashed rule after the last counted, and how many is the split row's
+   six places. Painted from `midi.notes` and
    the layers every time either changes, as the screen's keys are, never kept.
    A press on a key, splitting at a key, is the split point: Learn's other
    way, and the one for a mouse. */
@@ -19187,7 +19259,8 @@ function stripHandOf(held, st) {
 }
 
 function stripKeysSvg(w, h, st) {
-  const lo = strip.base, hi = strip.base + strip.span;
+  // Thirty-six keys, C3 to B5 to begin with (the mockup's; until 19 Nov the C above as well).
+  const lo = strip.base, hi = strip.base + strip.span - 1;
   const whites = [];
   for (let n = lo; n <= hi; n++) if (stripWhite(n)) whites.push(n);
   const ww = w / whites.length;
@@ -19228,71 +19301,75 @@ function stripKeysSvg(w, h, st) {
   whites.forEach((n, i) => {
     if (n + 1 <= hi && !stripWhite(n + 1)) out.push(key(n + 1, (i + 1) * ww - ww * 0.3, ww * 0.6, h * 0.6, true));
   });
+  const xOf = (n) => (stripWhite(n) ? whites.indexOf(n) * ww : (whites.indexOf(n - 1) + 1) * ww - ww * 0.3);
+  const wOf = (n) => (stripWhite(n) ? ww : ww * 0.6);
   if (keySplit && midi.layers.point >= lo && midi.layers.point <= hi) {
     const p = midi.layers.point;
     const x = stripWhite(p) ? whites.indexOf(p) * ww : (whites.indexOf(p - 1) + 1) * ww;
     out.push('<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + h + '" style="stroke:var(--blush-deep);stroke-width:2;pointer-events:none"/>');
   }
-  out.push("</svg>");
-  return out.join("");
-}
-
-function stripPlacesSvg(w, h, st) {
-  const asc = midi.notes.slice().sort((a, b) => a.note - b.note);
-  const low = midi.layers.end !== "upper", N = midi.layers.count;
-  const counted = low ? 0 : 1;
-  const places = Math.max(8, asc.length), pw = w / places;
-  const r = Math.max(3, Math.min(pw * 0.28, h * 0.2));
-  const out = ['<svg viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h + '" aria-hidden="true">'];
-  for (let i = 0; i < places; i++) {
-    const fromEnd = low ? i : places - 1 - i;
-    const can = fromEnd < 6;
-    out.push('<rect' + (can ? ' class="k" data-count="' + (fromEnd + 1) + '"' : "") + ' x="' + (i * pw + 1) + '" y="1" width="' + (pw - 2) + '" height="' + (h - 2)
-      + '" style="fill:' + (fromEnd < N ? stripWash(counted, 12) : stripWash(1 - counted, 6)) + ';stroke:var(--line)">'
-      + (can ? "<title>" + (fromEnd + 1) + (low ? " from the bottom" : " from the top") + "</title>" : "") + "</rect>");
-    if (can) out.push('<text x="' + (i * pw + 4) + '" y="10" style="font-size:8.5px;fill:var(--text-soft);pointer-events:none">' + (fromEnd + 1) + "</text>");
+  /* By notes: each held note's place from the counted end, on its own key (1 the lowest, or the highest,
+     to 6), the counted ones on a paper disc in their hand's ink, and a dashed rule at the first uncounted
+     note's edge, so it never lies along a black key between the two. The ink is the hand the note was
+     dealt to (layerHandOf), which is what plays; the place is its pitch's, which is what will. */
+  if (st.kind === "notes") {
+    const asc = midi.notes.map((x) => x.note).sort((a, b) => a - b), low = midi.layers.end !== "upper";
+    const N = midi.layers.count, r = Math.min(8, ww * 0.36);
+    asc.forEach((n, i) => {
+      const fromEnd = low ? i : asc.length - 1 - i, place = fromEnd + 1, counted = fromEnd < N;
+      if (place > 6 || n < lo || n > hi) return;
+      const ink = stripInk(stripHandOf(held.get(n), st), true);
+      const cx = xOf(n) + wOf(n) / 2, cy = stripWhite(n) ? h - 14 - r : h * 0.6 - r - 3;
+      out.push('<g data-place="' + place + '" data-placed-note="' + n + '" style="pointer-events:none"><circle cx="' + cx + '" cy="' + cy + '" r="' + r
+        + '" style="fill:' + (counted ? "var(--paper)" : "transparent") + ';stroke:var(--paper);stroke-width:1.2"/><text x="' + cx + '" y="' + (cy + 3.2)
+        + '" text-anchor="middle" style="font-size:9.5px;font-weight:500;fill:' + (counted ? ink : "var(--paper)") + '">' + place + "</text></g>");
+    });
+    const k = Math.min(N, asc.length);
+    if (k > 0 && k < asc.length) {
+      const first = low ? asc[k] : asc[asc.length - k - 1];
+      if (first >= lo && first <= hi) {
+        const x = low ? xOf(first) : xOf(first) + wOf(first);
+        out.push('<line data-deal="1" x1="' + x + '" y1="0" x2="' + x + '" y2="' + h + '" style="stroke:var(--blush-deep);stroke-width:1.5;stroke-dasharray:4 3;pointer-events:none"/>');
+      }
+    }
   }
-  const off = low ? 0 : places - asc.length;
-  asc.forEach((x, i) => {
-    const cx = (i + off) * pw + pw / 2;
-    out.push('<circle cx="' + cx + '" cy="' + (h * 0.48) + '" r="' + r + '" style="fill:' + stripInk(stripHandOf(x, st), true) + ';pointer-events:none"/>');
-    out.push('<text x="' + cx + '" y="' + Math.min(h - 3, h * 0.48 + r + 10) + '" text-anchor="middle" style="font-size:9px;fill:var(--charcoal);pointer-events:none">'
-      + midiNoteName(x.note) + "</text>");
-  });
-  const k = Math.min(N, places), lx = (low ? k : places - k) * pw;
-  out.push('<line x1="' + lx + '" y1="0" x2="' + lx + '" y2="' + h + '" style="stroke:var(--blush-deep);stroke-width:1.5;stroke-dasharray:4 3;pointer-events:none"/>');
   out.push("</svg>");
   return out.join("");
 }
 
+/* The line under the keys: one sentence, which fits on one line at every window (patchtest holds it).
+   What Learn and the Chord window used to say here has places of its own in the split row. */
 function stripLine(st) {
   const notes = midi.notes.slice(-2).map((n) => n.note).sort((a, b) => a - b);
   if (midi.mode === "dyad") {
     return notes.length === 2 ? midiNoteName(notes[0]) + " on X, " + midiNoteName(notes[1]) + " on Y."
       : "Two held notes are the figure, the lower on X.";
   }
-  if (midi.mode === "mono") return "The newest note is the pitch.";
-  if (!st.two) return st.poly ? "One sound." : "";
-  if (st.kind === "key") return midiNoteName(midi.layers.point) + " and up: the upper hand. Press a key to split there.";
-  if (st.kind === "notes") {
-    const end = midi.layers.end === "upper", n = midi.layers.count;
-    return (end ? "Highest " : "Lowest ") + n + ": the " + (end ? "upper" : "lower") + " hand. Press a place for how many.";
+  if (midi.mode === "mono") return "The newest note is the pitch, the Interval above it.";
+  if (!st.two) return st.poly ? "One sound. Two hands, in the heading, gives a second." : "";
+  if (st.kind === "key") {
+    const at = midiNoteName(midi.layers.point);
+    return "Under " + at + " the lower hand, " + at + " and up the upper. Press a key to split there.";
   }
-  return "Every note in both hands, A and B.";
+  if (st.kind === "notes") {
+    const low = midi.layers.end !== "upper", n = midi.layers.count;
+    return (low ? "The lowest " : "The highest ") + (n === 1 ? "note" : n + " notes") + " held: the "
+      + (low ? "lower" : "upper") + " hand; the rest the " + (low ? "upper." : "lower.");
+  }
+  return "Every note plays in both hands, A and B.";
 }
 
 function paintStrip() {
   if (!el.midiStrip) return;
-  const st = stripState();
-  const byNotes = st.kind === "notes";
-  el.midiStripDown.hidden = byNotes;
-  el.midiStripUp.hidden = byNotes;
+  // The octave buttons in every way of sharing (19 Nov): by notes the keys are there to scroll too.
   el.midiStripDown.disabled = strip.base <= 24;
   el.midiStripUp.disabled = strip.base + strip.span >= 108;
-  const below = midi.notes.some((n) => n.note < strip.base), above = midi.notes.some((n) => n.note > strip.base + strip.span);
-  el.midiStripDown.toggleAttribute("data-beyond", !byNotes && below);
-  el.midiStripUp.toggleAttribute("data-beyond", !byNotes && above);
-  const line = stripLine(st);
+  const below = midi.notes.some((n) => n.note < strip.base), above = midi.notes.some((n) => n.note > strip.base + strip.span - 1);
+  el.midiStripDown.toggleAttribute("data-beyond", below);
+  el.midiStripUp.toggleAttribute("data-beyond", above);
+  const span = midiNoteName(strip.base) + " – " + midiNoteName(strip.base + strip.span - 1);
+  if (el.midiStripSpan.textContent !== span) el.midiStripSpan.textContent = span;
+  const line = stripLine(stripState());
   say(el.midiStripLine, line);
   if (el.midiStripLine.title !== line) el.midiStripLine.title = line;
   /* The drawing on the next frame, once for any number of notes: drawn here,
@@ -19310,7 +19387,7 @@ function drawStrip() {
   // Not laid out (another tab, or the store): drawn when it is.
   if (!(w > 0 && h > 0)) return;
   const st = stripState();
-  el.midiStrip.innerHTML = st.kind === "notes" ? stripPlacesSvg(w, h, st) : stripKeysSvg(w, h, st);
+  el.midiStrip.innerHTML = stripKeysSvg(w, h, st);
 }
 new ResizeObserver(() => paintStrip()).observe(el.midiStrip);
 
@@ -19346,10 +19423,13 @@ el.midiKindLayer.addEventListener("click", () => stripSet(el.midiLayers, "layer"
 el.midiEndLow.addEventListener("click", () => { stripSet(el.midiSplitEnd, "lower"); syncMidi(); });
 el.midiEndHigh.addEventListener("click", () => { stripSet(el.midiSplitEnd, "upper"); syncMidi(); });
 el.midiStrip.addEventListener("click", (event) => {
-  const target = event.target.closest ? event.target.closest("[data-note], [data-count]") : null;
-  if (!target) return;
-  if (target.dataset.count) { stripSet(el.midiSplitCount, target.dataset.count); syncMidi(); return; }
-  if (stripState().kind === "key") stripSplitAt(Number(target.dataset.note));
+  const target = event.target.closest ? event.target.closest("[data-note]") : null;
+  if (target && stripState().kind === "key") stripSplitAt(Number(target.dataset.note));
+});
+// How many, by notes: six places in the split row, so the count can be chosen with nothing held.
+el.midiCountPlaces.addEventListener("click", (event) => {
+  const b = event.target.closest ? event.target.closest("[data-count]") : null;
+  if (b) { stripSet(el.midiSplitCount, b.dataset.count); syncMidi(); }
 });
 el.midiStripDown.addEventListener("click", () => { strip.base = Math.max(24, strip.base - 12); paintStrip(); });
 el.midiStripUp.addEventListener("click", () => { strip.base = Math.min(108 - strip.span, strip.base + 12); paintStrip(); });
@@ -26806,9 +26886,11 @@ function wantColumns() {
 }
 
 /* Play (18 Nov, web/docs/play-figures.md) is not dealt: it is a column of three, the Keyboard's band,
-   the settings row (Expression and the Generator, `data-play="set"`) and the figure area filling the
+   the settings row (Expression alone since 19 Nov, `data-play="set"`) and the figure area filling the
    rest (Amp, Filter and Wave, `data-play="fig"`, one shown at a time under their subtabs). A column has
-   nothing to stretch between its parts. Every other tab is dealt into columns, greedily, by height. */
+   nothing to stretch between its parts. A section marked `data-play="head"` (the Generator, since 19 Nov,
+   web/docs/play-band.md) is moved into its figure's view as that view's header. Every other tab is dealt
+   into columns, greedily, by height. */
 function layoutBenchBody() {
   const want = wantColumns();
   const all = benchGroupsAll();
@@ -26839,7 +26921,12 @@ function layoutBenchBody() {
     area.className = "play-figs";
     views.className = "fig-views";
     area.append(figBar(), views);
-    for (const group of groups) (group.dataset.play === "set" ? set : views).appendChild(group);
+    for (const group of groups) if (group.dataset.play !== "head") (group.dataset.play === "set" ? set : views).appendChild(group);
+    for (const group of groups) {
+      if (group.dataset.play !== "head") continue;
+      const view = el[(FIG_SUBS.find(([s]) => s === group.dataset.fig) || [])[2]];
+      if (view) view.insertBefore(group, view.firstChild);
+    }
     el.benchBody.append(set, area);
     // Nothing on Play is dealt, so nothing is measured to be dealt (fittest holds the dealt tabs to theirs).
     benchMeasured = new Map();
