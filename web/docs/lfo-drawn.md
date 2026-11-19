@@ -435,8 +435,8 @@ Built as decided, on `claude/lfo-drawn`. Where the build differs from the note, 
   and the name in one too. **The cards** say the hertz and the note value's short name (*1/4t*) in
   a box of one width; a chip says one or the other.
 - **Add a destination** is grouped by where each control is: Play, Ink, Space & Memory, Scope &
-  measure, and two the note did not name, the Picture (its section along the bottom) and
-  Elsewhere. Pressing a row's name does not `showControl` it, as in the mockup.
+  measure, and three the note did not name: the Picture (its section along the bottom), Perform
+  (the morph's fader) and Elsewhere, for a control in none of those. Pressing a row's name does not `showControl` it, as in the mockup.
 - **Where it goes** scrolls its rows in a list of their own, so Add stays in sight under them.
   The fit, measured with eight routings: 838x780 at 1660x1050 with the drawing 800x333 (2.4:1)
   and seven rows in sight; 838x630 at 1400x900, 800x300 (2.7:1); 750x646 at 1100x860, 712x296;
