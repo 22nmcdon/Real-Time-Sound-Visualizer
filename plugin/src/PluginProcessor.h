@@ -137,6 +137,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   // And the envelope at the same frame - level, gate, stage, velocity - for the Envelope card's dot.
   std::array<double, 4> envelopeServed() const { return instrument_.envelopeServed(); }
   std::array<double, 5> envelopePlaces() const { return instrument_.envelopePlaces(); }
+  std::array<double, scope::Instrument::kLfoLevels> lfoLevels() const { return instrument_.lfoLevels(); }
   // And (5b) the clock, the limiter and what the face shows of the picture, as the site's page reads them.
   std::array<double, scope::Instrument::kClockServed> clockServed() const { return instrument_.clockServed(); }
   std::array<double, scope::Instrument::kFaceServed> faceServed() const { return instrument_.faceServed(); }
@@ -213,7 +214,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
      the hand the panel shows while it is that hand's own (`readBack` when
      the panel turns to the other hand). */
   struct HostKnob { const char* id; const char* name; const char* slider; int version; bool main; };
-  static constexpr std::array<HostKnob, 17> kKnobs { {
+  static constexpr std::array<HostKnob, 18> kKnobs { {
     // F7c of web/docs/redesigning-the-face.md: the Picture section along the
     // bottom of the face, then the sound controls people automate. Strike,
     // softness and twist arrived in version 3; the rest kept their ids, so
@@ -251,6 +252,13 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
        slider spends its travel where the times are heard, as the face's knob
        does: the first quarter of it is the first 1.25 s of 20. */
     { "attack", "Attack", "envAttack", 7, true }, { "release", "Release", "envRelease", 7, true },
+    /* LFO 1's Rate (19 Nov, lfo-drawn.md, the owner's), new in version 8 and
+       appended after the Amp envelope's two, in a group of its own after
+       theirs, so every index before it stays where it was. It carries the
+       free rate, l0r, on the face's knob's law (a log, 0.01 to 8 Hz): while
+       the LFO follows the tempo it moves the free rate kept for Hz, as the
+       Rate knob does. LFO 2's Rate is not one. */
+    { "lfo1rate", "LFO 1 rate", "lfoRate0", 8, true },
   } };
   juce::AudioParameterFloat* knob(std::size_t i) const { return knobs_[i]; }
   // By the parameter's id, which outlives its index: the shell test's way to a knob.

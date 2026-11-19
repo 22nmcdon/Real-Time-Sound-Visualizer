@@ -24,23 +24,35 @@ ScopeProcessor::ScopeProcessor()
      they would have moved the Morph's index from 14 to 16, and automation a
      host stored by index would have gone to the wrong knob. */
   auto envelope = std::make_unique<juce::AudioProcessorParameterGroup>("envelope", "Amp envelope", "|");
+  // And LFO 1's Rate (19 Nov), a group after the envelope's for the same reason: nothing before it moves.
+  auto lfo = std::make_unique<juce::AudioProcessorParameterGroup>("lfo", "LFO 1", "|");
   for (std::size_t i = 0; i < kKnobs.size(); ++i) {
     const auto* spec = scope::rangeSpec(kKnobs[i].slider);
+    const bool rate = std::string_view(kKnobs[i].slider) == "lfoRate0";
+    const float lo = static_cast<float>(spec->min), hi = static_cast<float>(spec->max), step = static_cast<float>(spec->step);
+    /* An LFO's rate on its knob's log law (19 Nov): a host's slider spends
+       as much of its travel on 0.01 to 0.1 Hz as on 0.8 to 8, where a
+       straight one gave the slow tenth of the range a hundredth of its
+       travel. Snapped to the slider's step, hundredths of a hertz. */
+    auto range = rate ? juce::NormalisableRange<float>(lo, hi,
+                          [](float a, float b, float u) { return a * std::pow(b / a, u); },
+                          [](float a, float b, float v) { return std::log(v / a) / std::log(b / a); },
+                          [step](float a, float b, float v) { return juce::jlimit(a, b, a + std::round((v - a) / step) * step); })
+                      : juce::NormalisableRange<float>(lo, hi, step,
+                          // The envelope's times on their knobs' square-root law; everything else straight.
+                          std::string_view(kKnobs[i].slider).rfind("env", 0) == 0 ? 0.5f : 1.0f);
     auto knob = std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID { kKnobs[i].id, kKnobs[i].version }, kKnobs[i].name,
-        juce::NormalisableRange<float>(static_cast<float>(spec->min), static_cast<float>(spec->max), static_cast<float>(spec->step),
-                                       // The envelope's times on their knobs' square-root law; everything else straight.
-                                       std::string_view(kKnobs[i].slider).rfind("env", 0) == 0 ? 0.5f : 1.0f),
-        static_cast<float>(spec->value));
+        juce::ParameterID { kKnobs[i].id, kKnobs[i].version }, kKnobs[i].name, range, static_cast<float>(spec->value));
     knobs_[i] = knob.get();
     // Applied as made, so a host's set before the first prepare reads as the host's (prepareToPlay).
     applied_[i] = knob->get();
     const bool env = std::string_view(kKnobs[i].slider).rfind("env", 0) == 0;
-    (env ? envelope : kKnobs[i].main ? main : setups)->addChild(std::move(knob));
+    (rate ? lfo : env ? envelope : kKnobs[i].main ? main : setups)->addChild(std::move(knob));
   }
   addParameterGroup(std::move(main));
   addParameterGroup(std::move(setups));
   addParameterGroup(std::move(envelope));
+  addParameterGroup(std::move(lfo));
   moved_.reserve(kKnobs.size());
   for (auto& set : pageSet_) set.store(std::numeric_limits<float>::quiet_NaN());
   // What the out sends goes to the host's MIDI out, at its sample.

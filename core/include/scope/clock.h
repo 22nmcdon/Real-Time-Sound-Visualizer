@@ -149,7 +149,7 @@ class Clock {
   void restart() {
     for (auto& lock : locks) {
       if (lock.sync->empty()) continue;
-      lock.lfo->phase = 0;
+      lfoRestart(*lock.lfo);  // the phase to nought, and a drawn shape from its drawn levels
       lock.lfo->epoch++;
     }
   }

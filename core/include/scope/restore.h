@@ -78,6 +78,7 @@ inline const RangeSpec* rangeSpec(std::string_view id) {
   // LFO 2's rate is made when LFO 2 is chosen, as LFO 1's is, and so is not
   // among the sliders the page opened with; it is LFO 1's slider again.
   if (id == "lfoRate1") id = "lfoRate0";
+  if (id == "lfoPhase1") id = "lfoPhase0";
   for (const auto& r : kRanges) if (id == r.id) return &r;
   return nullptr;
 }
@@ -182,9 +183,9 @@ class Controls {
     for (const char* id : kTexts) texts_[id].reserve(640);
   }
   /* The page's text boxes that hold what a setup carries: the drawn
-     envelopes' shapes, written as given (the engine reads what it can of
+     envelopes' shapes and the LFOs' (19 Nov), written as given (the engine reads what it can of
      one, mseg_shape.h). */
-  static constexpr const char* kTexts[] = { "envShape", "vcfShape", "menvShape" };
+  static constexpr const char* kTexts[] = { "envShape", "vcfShape", "menvShape", "lfoDrawn0", "lfoDrawn1" };
   // The same written as plain ASCII, nothing made: the morph's walk writes a shape this way on the audio thread.
   bool setTextAscii(const std::string& id, std::string_view written) {
     const auto it = texts_.find(id);
@@ -1690,6 +1691,18 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     const std::u16string sync = str(key + "y");
     l.sync = syncBeats(utf16To8(sync)) > 0 ? utf16To8(sync) : "";
     Lfo& lfo = lfos[static_cast<std::size_t>(i)];
+    /* The drawn shape, its Phase and when it starts again (19 Nov,
+       lfo-drawn.md): additive fields, so an old setup has their defaults and
+       plays as it did. The text first and the shape after it, so a drawn
+       shape starts from its drawn levels rather than being adopted from
+       whatever played before. */
+    lfo.wantsDrawn = lfo.drawn = lfo.random = false;
+    const Json* drawnText = s(key + "m");
+    lfo.setDrawn(drawnText && drawnText->type == Json::Type::String ? std::string_view(utf16To8(drawnText->s)) : std::string_view());
+    const double deg = jsToNumber(s(key + "p"));
+    lfo.setPhase0(std::isfinite(deg) ? std::fmod(std::fmod(deg, 360) + 360, 360) / 360 : 0);
+    const std::string starts = utf16To8(str(key + "t"));
+    lfo.starts = starts == "n" ? 'n' : starts == "p" ? 'p' : 0;
     lfo.setShape(shape && shape->type == Json::Type::String ? utf16To8(shape->s) : "sine");
     lfo.rate = l.free;
     lfo.depth = jsToNumber(s(key + "a")) / 100;
@@ -1940,6 +1953,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
   {
     const Brain::LfoSetting& l = brain.lfo[0];
     panel.setRange("lfoRate0", toU16(jsNumberToString(jsMathRound((l.sync.empty() ? lfos[0].rate : l.free) * 100))));
+    // And its Phase, made again from the LFO as the page makes it (19 Nov).
+    panel.setRange("lfoPhase0", toU16(jsNumberToString(jsMathRound(lfos[0].phase0 * 360))));
   }
 
   // The view's half: its sliders are written, and what they do is the page's.
@@ -2106,6 +2121,8 @@ inline void sliderInput(const std::string& id, Brain& b, Generator& gen, Keyboar
     b.lfo[i].free = v / 100;
     if (b.lfo[i].sync.empty()) lfos[i].rate = b.lfo[i].free;
   }
+  // Where in the cycle the shape is read (19 Nov), in degrees.
+  else if (id == "lfoPhase0" || id == "lfoPhase1") lfos[id.back() == '1' ? 1 : 0].setPhase0(std::fmod(std::fmod(v, 360) + 360, 360) / 360);
   else if (id == "quantiseGlide") { b.quantiseGlide = v; syncQuantiser(b, gen); }
   // The Envelope's own times, as syncMenv sends them.
   else if (id == "menvAtk") gen.set("menvAttackMs", v);
@@ -2239,7 +2256,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   // A menu takes only a value it has; one it has not got reads "". LFO 2's
   // menus are made when it is chosen, from the lists LFO 1's are.
   const bool menu = selectSpec(id) != nullptr;
-  const SelectSpec* like = selectSpec(id == "lfoShape1" ? "lfoShape0" : id == "lfoSync1" ? "lfoSync0" : "");
+  const SelectSpec* like = selectSpec(id == "lfoShape1" ? "lfoShape0" : id == "lfoSync1" ? "lfoSync0" : id == "lfoStarts1" ? "lfoStarts0" : "");
   if (menu) panel.setSelect(id, written);
   const std::u16string value = menu ? utf8To16(panel.select(id))
                              : like ? (selectHas(*like, utf16To8(written)) ? written : u"") : written;
@@ -2341,6 +2358,9 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     b.lfo[i].shape = Json::string(value);
     lfos[i].setShape(text);
   }
+  // The drawn shape's text (19 Nov), a text box the editor writes, and when it starts again.
+  else if (id == "lfoDrawn0" || id == "lfoDrawn1") { panel.setText(id, written); lfos[id.back() == '1' ? 1 : 0].setDrawn(utf16To8(written)); }
+  else if (id == "lfoStarts0" || id == "lfoStarts1") lfos[id.back() == '1' ? 1 : 0].starts = text == "n" ? 'n' : text == "p" ? 'p' : 0;
   else if (id == "lfoSync0" || id == "lfoSync1") {
     const std::size_t i = id.back() == '1' ? 1 : 0;
     Brain::LfoSetting& l = b.lfo[i];
@@ -2348,7 +2368,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
     l.sync = text;
     if (l.sync.empty()) lfos[i].rate = l.free;
     b.clock.step(b.clock.now());
-    if (!l.sync.empty()) { lfos[i].phase = 0; lfos[i].epoch++; }
+    if (!l.sync.empty()) { lfoRestart(lfos[i]); lfos[i].epoch++; }
   }
   // The view's switches and menus.
   else if (id == "ch1On" || id == "ch2On" || id == "ch1Ac" || id == "ch2Ac") {

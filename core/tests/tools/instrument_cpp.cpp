@@ -29,6 +29,7 @@
 //   ["tone"]                         the hands' tone, held notes, voices, envelope and lag lock (native only)
 //   ["routed"]                       each routing: source registered, its value, routes on its slot (native only)
 //   ["meter"]                        the picture meter's change, verdict, lit and novelty (native only)
+//   ["lfos"]                         each LFO's phase and value (%a), whether drawn, and its line (19 Nov)
 //   ["layers"]                       each layer's picture (P6): whether live, the figures laid
 //                                    out, each layer's raw coverage, stage reads, hold and raw
 //                                    signed area, and
@@ -135,6 +136,11 @@ int main(int argc, char** argv) {
       reads::meter(instrument);
     } else if (cmd == "layers") {
       reads::layers(instrument);
+    } else if (cmd == "lfos") {
+      // Each LFO (19 Nov): its phase and value to the bit, whether a drawn shape plays it, and the line it is on.
+      std::printf("lfos");
+      for (const auto& l : instrument.lfos()) std::printf(" %a %a %d %d", l.phase, l.value, l.drawn ? 1 : 0, l.segI);
+      std::printf("\n");
     } else if (cmd == "block") {
       const std::size_t n = static_cast<std::size_t>(arg(1).n);
       inL.assign(n, 0.0f); inR.assign(n, 0.0f);

@@ -814,6 +814,18 @@ class Instrument {
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[4 + i].load(std::memory_order_relaxed);
     return out;
   }
+  /* And each LFO's drawn levels this pass (19 Nov, lfo-drawn.md), after the
+     envelopes' places so nothing before them moves: for each, the point
+     whose line it is on (-1 while its shape is not drawn), then the level
+     every point has this pass, so the editor draws a random point where it
+     will land and the line the dot rides is the one the core plays. */
+  static constexpr std::size_t kLfoLevels = 2 * (1 + kLfoMaxPoints);
+  std::array<double, kLfoLevels> lfoLevels() const {
+    pictureAt_.load(std::memory_order_acquire);
+    std::array<double, kLfoLevels> out {};
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = lfoLevels_[i].load(std::memory_order_relaxed);
+    return out;
+  }
 
   /* The instrument's clock as it stood at the picture's newest frame (5a),
      for the face's clock and score panels, which read the page's own until
@@ -1688,6 +1700,13 @@ class Instrument {
     envServed_[6].store(core_->envelopePlace(0, 1), std::memory_order_relaxed);
     envServed_[7].store(core_->envelopePlace(1, 1), std::memory_order_relaxed);
     envServed_[8].store(core_->envelopePlace(2), std::memory_order_relaxed);
+    for (std::size_t i = 0; i < 2 && i < lfos_.size(); ++i) {
+      const Lfo& l = lfos_[i];
+      const std::size_t at = i * (1 + kLfoMaxPoints);
+      lfoLevels_[at].store(l.drawn ? static_cast<double>(l.segI) : -1.0, std::memory_order_relaxed);
+      for (std::size_t k = 0; k < static_cast<std::size_t>(kLfoMaxPoints); ++k)
+        lfoLevels_[at + 1 + k].store(l.lv[k], std::memory_order_relaxed);
+    }
     const Clock& c = brain_->clock;
     const double clock[kClockServed] = {
       lfos_.size() > 0 ? lfos_[0].rate : 0, lfos_.size() > 1 ? lfos_[1].rate : 0, c.bpm, c.set,
@@ -1978,6 +1997,7 @@ class Instrument {
   std::atomic<std::size_t> pictureAt_ { 0 };
   std::array<std::atomic<double>, 6> lfosServed_ {};
   std::array<std::atomic<double>, 9> envServed_ {};
+  std::array<std::atomic<double>, kLfoLevels> lfoLevels_ {};
   std::array<std::atomic<double>, kClockServed> clockServed_ {};
   std::array<std::atomic<double>, kFaceServed> faceServed_ {};
   std::array<std::atomic<float>, kGridServed> gridServed_ {};

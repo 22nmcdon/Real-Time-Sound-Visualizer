@@ -202,13 +202,16 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     const auto clock = processor.clockServed();
     const auto face = processor.faceServed();
     const auto places = processor.envelopePlaces();
-    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed + 5> out {};
+    const auto levels = processor.lfoLevels();
+    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed + 5 + scope::Instrument::kLfoLevels> out {};
     std::copy(lfos.begin(), lfos.end(), out.begin());
     std::copy(env.begin(), env.end(), out.begin() + 6);
     std::copy(clock.begin(), clock.end(), out.begin() + 10);
     std::copy(face.begin(), face.end(), out.begin() + 10 + static_cast<std::ptrdiff_t>(clock.size()));
     // Last, the drawn envelopes' places (18 Nov), so nothing before them moves.
     std::copy(places.begin(), places.end(), out.begin() + 10 + static_cast<std::ptrdiff_t>(clock.size() + face.size()));
+    // And after them each LFO's drawn levels this pass (19 Nov), for the editor's random points.
+    std::copy(levels.begin(), levels.end(), out.begin() + 15 + static_cast<std::ptrdiff_t>(clock.size() + face.size()));
     return bytes(out.data(), out.size() * sizeof(double), "application/octet-stream");
   }
   /* The picture's grid, 64 by 64 little-endian float32s row by row, as it

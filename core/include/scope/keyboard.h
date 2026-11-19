@@ -82,6 +82,11 @@ class NoteTarget {
   virtual void gate(bool open, double velocity) = 0;
   // A key gone down (8 Nov): the page's midiApplyNotesTo tells the generator.
   virtual void noteDown() = 0;
+  /* A key gone down, for the LFOs that start again on one (19 Nov): `fresh`
+     when no other key was down, which is the first of a phrase. Told whether
+     or not the generator waits for notes, as a restart is the LFO's, not the
+     envelope's. */
+  virtual void lfoStrike(bool fresh) { (void)fresh; }
   virtual void setGated(bool on) = 0;
   virtual bool gated() const = 0;
   // Where the note envelope has got to, `env.note`'s reading while gated: the Key's release reads it (heard).
@@ -102,6 +107,7 @@ class GeneratorNotes : public NoteTarget {
   void setVoices(const std::vector<NoteWant>* list, int layer) override { g_.setVoices(list, layer); }
   void gate(bool open, double velocity) override { g_.gate(open, velocity); }
   void noteDown() override { g_.noteDown(); }
+  void lfoStrike(bool fresh) override { g_.lfoStrike(fresh); }
   void setGated(bool on) override { g_.setGated(on); }
   bool gated() const override { return g_.gated(); }
   double envelope() const override { return g_.envelope(); }
@@ -938,6 +944,8 @@ class Keyboard {
     // A note held now that was not last time is a key gone down, as the page reckons it.
     bool struck = false;
     for (const auto& n : notes_) struck = struck || !holds(notesBefore_, n.note);
+    const bool fresh = notesBefore_.empty();
+    if (struck) t_.lfoStrike(fresh);
     notesBefore_.clear();
     for (const auto& n : notes_) notesBefore_.push_back(n.note);
     if (struck && t_.gated()) t_.noteDown();
