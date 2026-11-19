@@ -81,12 +81,22 @@ The drawings are sized by room, never by window size:
 
 - **Oscillator**: the wave takes the area's width and as much height as is
   free, down to 1.5:1.
-- **Shaping**: the curve is a square of the row's height. The row is no
-  taller than leaves the cycle at 1.5:1.
+- **Oscillator as the figure** (the switch, below): a square of the wave's
+  height, centred. The row is the same height either way.
+- **Shaping**, decided by room with a floor, as the filter's two drawings
+  are:
+  - **Side by side** (the usual): the curve is a square of the row's height,
+    and the row is no taller than leaves the cycle at 1.5:1.
+  - **Stacked**: the cycle runs the width at 4:1 over the curve, and the curve
+    takes the rest of the height, centred.
+  - It stacks only where that gives the curve more than side by side does and
+    leaves the cycle 120 px tall. Of the six windows that is 1660x1050 alone,
+    where the curve grows from 329 to 364 px square and the paper left falls
+    from 273 px to 5.
 
 | Window | Figure area | Oscillator's wave | Shaping: curve, cycle |
 |---|---|---|---|
-| 1660x1050 | 830x706 | 802x534, 1.5:1 | 329x305, 459x305 |
+| 1660x1050 | 830x706 | 802x534, 1.5:1 | stacked: 364x364 under 802x201 |
 | 1400x900 | 830x556 | 802x423, 1.9:1 | 329x305, 459x305 |
 | 1100x860 | 742x572 | 714x439, 1.6:1 | 294x270, 406x270 |
 | 1200x680 | 830x461 | 810x350, 2.3:1 | 332x308, 464x308 |
@@ -144,8 +154,18 @@ chosen, for three reasons:
   restarts, Sub's slow swell and Ring's envelope each read as what that
   control adds.
 
-Putting both in one row costs the wave its width: 441x294 against 689x336 at
-960x600.
+**The figure is a choice** (decided, below), not the default. *Wave · Figure*
+in the Oscillator's header, like the screen's display switch, draws the figure
+in the wave's place: a square of the wave's height, centred (336x336 at
+960x600, 534x534 at 1660x1050).
+
+- **It is only the look.** It never reaches the sound, and it is not stored in
+  the setup, a step of undo or the morph.
+- **It is remembered per browser**, as the page's Size is, because it is how a
+  reader likes to read Ink. Enlarge's choices are a moment's view, and are not
+  remembered. On the testing page the key takes the testing prefix.
+- **Switching moves nothing outside the drawing** at the six windows. The
+  null is the figure's row sized to the figure, which moves the controls.
 
 ## The formulas, and where they are in the core
 
@@ -218,11 +238,17 @@ for a pattern directly.
 
 **Storage: none.** The subtab chosen is a view, never stored. No field changes.
 
-## Open for the owner
+## Decided (19 Nov, the owner), the last round
 
-1. **Shaping on a tall window leaves paper** (273 px at 1660x1050). Stacking
-   the cycle over the curve when there is the height would use it.
-2. **The figure as well**, at Phase 90° on a wide window, for when the screen
-   is in Y–T or Spect.
-3. **Frequency on Ink.** It does not change the wave's shape, only its
-   milliseconds. It may belong on Play with the note's other settings.
+1. **Shaping stacks by room**, as above: the cycle over the curve where that
+   gives the curve more and leaves the cycle 120 px tall, side by side
+   otherwise. The checks hold it, with its nulls:
+   - stacked forced at 960x600 shrinks the curve from 284 to 156 px;
+   - side by side forced at 1660x1050 leaves 273 px of paper.
+2. **Frequency stays on Ink** for now.
+3. **The figure is a choice**: *Wave · Figure* in the Oscillator's header,
+   the wave by default, the figure a square at the area's height, centred.
+   It is only the look, and it is remembered per browser. The checks hold it,
+   with their nulls:
+   - it moves nothing outside the drawing;
+   - it is remembered across a reload (null: a fresh browser draws the wave).

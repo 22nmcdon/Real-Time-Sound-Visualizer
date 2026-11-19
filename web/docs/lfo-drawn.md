@@ -315,8 +315,10 @@ sample, for two LFOs: well under a voice's envelope.
 ### The schema and the hosts
 
 - `write_schema.py` after `SETUP_FIELDS` gains the three fields.
-- No host parameter changes. Whether LFO 1's Rate should be one is a question
-  for the owner, not decided here.
+- **LFO 1's Rate becomes a host knob** (decided, below). It is appended at the
+  end of `kKnobs` and `HOST_PARAMS`, after the *Amp envelope* group, so no
+  existing index moves and saved automation is untouched. LFO 2's Rate is
+  not one.
 
 ## How it is tested
 
@@ -387,6 +389,15 @@ The build follows these:
 3. **The S-curve stays a law of its own** (half a cosine), beside the
    envelopes' one-pole curve. It is not moved into the envelopes.
 
-## Open for the owner
+4. **LFO 1's Rate is a host knob**, appended at the very end of `kKnobs` (the
+   plugin) and `HOST_PARAMS` (the page), after the *Amp envelope* group.
+   - Every existing parameter keeps its index, so a project's automation
+     plays as before.
+   - It carries the free rate (`l0r`, 0.01 to 8 Hz on the knob's log law).
+     While the LFO is in tempo, the host knob moves the stored free rate,
+     which takes over when the LFO is set back to Hz, as the Rate knob does
+     today.
+   - `headertest.py`'s order check and the plugin's shell test (ids and
+     order) gain it, with the gold dot before its name in the editor.
 
-1. **LFO 1's Rate as a host knob.**
+Nothing is left open in this note.

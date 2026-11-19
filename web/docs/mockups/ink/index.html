@@ -566,6 +566,13 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
 .ink-row .plot-wrap { flex: 1 1 auto; height: 100%; min-width: 0; }
 .ink-row .plot-wrap.figure, .ink-row .plot-wrap.transfer { flex: 0 0 auto; }
 .ink-row .plot-wrap[hidden] { display: none; }
+.ink-row.figure-mode { justify-content: center; }
+/* Shaping stacked by room: the cycle the width over the curve, the curve centred under it. */
+.ink-row.stacked { flex-direction: column; align-items: center; gap: 14px; }
+.ink-row.stacked .plot-wrap.cycle { order: -1; flex: 0 0 auto; width: 100%; }
+.ink-row.stacked .plot-wrap.transfer { flex: 0 0 auto; }
+.fhead .draws button { padding: 2px 8px; font-size: 9.5px; }
+.win.compact .fhead .draws button { padding: 1px 6px; font-size: 9px; letter-spacing: 0.1em; }
 .key-ink { font-size: 10.5px; color: var(--text-soft); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .key-ink i { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--charcoal); vertical-align: middle; margin-left: 4px; }
 .key-ink i.kr { border-top: 1.5px solid var(--ch2); }
@@ -599,7 +606,8 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
   </div>
   <div class="bar" role="toolbar" aria-label="The shape and some settings" style="margin-top:0">
     <div class="grp"><span class="lbl">Play’s shape</span><div class="pg-switch" id="pgGen"><button type="button" data-v="sine">Sine</button><button type="button" data-v="harmonic">Sine + 3rd</button><button type="button" data-v="triangle">Triangle</button><button type="button" data-v="ramp">Saw</button><button type="button" data-v="square">Square</button></div></div>
-    <div class="grp"><span class="lbl">Oscillator draws</span><div class="pg-switch" id="pgShows"><button type="button" data-v="wave">The wave (chosen)</button><button type="button" data-v="both">The wave and the figure</button></div></div>
+    <div class="grp"><span class="lbl">Oscillator draws</span><div class="pg-switch" id="pgShows"><button type="button" data-v="wave">Wave (the default)</button><button type="button" data-v="figure">Figure</button></div></div>
+    <div class="grp"><span class="lbl">Shaping</span><div class="pg-switch" id="pgShpLay"><button type="button" data-v="auto">By room (chosen)</button><button type="button" data-v="side">Side by side</button><button type="button" data-v="stacked">Stacked</button></div></div>
     <div class="grp"><span class="lbl">Try</span><div class="pg-switch" id="pgPreset">
       <button type="button" data-v='{}'>Plain</button>
       <button type="button" data-v='{"oscFm":20,"oscRatio":1.5}'>FM at 3:2</button>
@@ -658,7 +666,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
     <li><b>At Phase 0° the figure is blind.</b> The two channels are then one signal, so the figure is the diagonal whatever FM, Warp, Ring, Sync, Sub or Unison do. The checks find it exactly on the diagonal for all seven, while the wave moves 14 to 44 px.</li>
     <li><b>The wave keeps a before.</b> The plain shape is drawn behind, so Sync’s restarts, Sub’s slow swell and Ring’s envelope read as what each adds. A figure has no before to compare against.</li>
   </ul>
-  <p><i>The wave and the figure</i> above puts both in one row, and it costs the wave its width: 441 × 294 at 960 × 600 against 689 × 336.</p>
+  <p><b>The figure is a choice</b> (the owner, 19 Nov): <i>Wave · Figure</i> in the Oscillator’s header, like the screen’s display switch, draws the figure in the wave’s place, a square of the wave’s height, centred. It is only the look: it never reaches the sound and is not stored in the setup. It is remembered per browser, as the page’s Size is. Switching moves nothing outside the drawing.</p>
 
   <h2>Measured at six windows</h2>
   <div class="table-wrap"><table class="check-table">
@@ -667,11 +675,12 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
   </table></div>
   <p>Nothing moves: every box on Ink stays where it is, to half a pixel, across nine settings, five shapes and both subtabs. The check found one real shift: the key over the wave said <i>the plain sine</i> or <i>the plain triangle</i> and changed its width. It is one width now.</p>
 
-  <h2>What I would change my mind on</h2>
+  <h2>Decided (19 Nov, the owner)</h2>
   <ul>
-    <li><b>Shaping on a tall window leaves paper.</b> The curve is square and the cycle is held to 1.5:1, so at 1660 × 1050 there are 273 px under them (123 at 1400 × 900). Stacking the cycle over the curve when there is the height, as the filter’s two drawings stack, would use the paper. I kept one layout until the owner has seen it.</li>
-    <li><b>The figure as well</b>, at Phase 90° on a wide window, if the owner wants Ink to stand on its own when the screen is in Y–T or Spect.</li>
-    <li><b>Frequency on Ink.</b> It changes nothing in the wave’s shape, only its milliseconds. It belongs with the note’s settings on Play; I kept it here only because Ink has it today.</li>
+    <li><b>Ink draws the settings, still.</b> Unison is a still; <i>Hold to watch it drift</i> runs it only while held.</li>
+    <li><b>Shaping stacks by room</b>: the cycle over the curve where that gives the curve more and leaves the cycle 120 px tall (at 1660 × 1050 alone, where the paper left falls from 273 px to 5), side by side otherwise.</li>
+    <li><b>The figure is a choice</b>, <i>Wave · Figure</i>, the wave by default, remembered per browser.</li>
+    <li><b>Frequency stays on Ink</b> for now.</li>
   </ul>
 
 </div>
@@ -2667,7 +2676,7 @@ const BITS = [[0, "Off"], [8, "8 bits"], [6, "6 bits"], [4, "4 bits"], [3, "3 bi
 const RATES = [[0, "Off"], [11025, "11 kHz"], [8000, "8 kHz"], [4000, "4 kHz"], [2000, "2 kHz"], [1000, "1 kHz"], [500, "500 Hz"]];
 /* The Ink tab's values, in the setup's own units (SETUP_FIELDS): what the knobs store. */
 const INK_START = { freq: 220, phase: 90, oscRatio: 1, oscFm: 0, oscBend: 0, oscBendAt: 25, oscRing: 0, oscSync: 100, oscSub: 0, oscSubOct: 1, oscSubShape: "square", oscUnison: 1, oscSpread: 12, shpDrive: 0, shpFold: 0, shpBits: 0, shpRate: 0 };
-Object.assign(S, { ink: Object.assign({}, INK_START), inkSub: "osc", genShape: "sine", inkShows: "wave", drift: null, liveNull: false, nullT: 0 });
+Object.assign(S, { ink: Object.assign({}, INK_START), inkSub: "osc", genShape: "sine", inkShows: "wave", shpLay: "auto", drift: null, liveNull: false, nullT: 0 });
 /* Ink draws the settings, still (the owner, 19 Nov): a drawing changes when a control does and at no
    other time. Unison, which beats, is frozen at one moment, chosen so the copies fan out by the Spread:
    4.33 of the note's cycles in, which is a quarter of the way through the beat between the outer copies
@@ -2813,9 +2822,10 @@ function inkHTML() {
   const bar = '<div class="fbar" role="tablist" aria-label="Ink’s figures">' + INK_SUBS.map(([k, n]) => '<button type="button" class="ftab" role="tab" data-ink-sub="' + k + '" aria-selected="' + (S.inkSub === k) + '"><b>' + n + '</b><span class="sum" data-ink-sum="' + k + '"></span></button>').join("") + '</div>';
   const osc = '<div class="fview" data-view="osc"' + (S.inkSub === "osc" ? "" : " hidden") + '>'
     + '<div class="fhead"><span class="say" data-osc-say="1"></span><span class="key-ink"><i class="kl"></i>left <i class="kr"></i>right <i class="kp"></i>the plain ' + S.genShape + '</span>'
+    + '<span class="switch caps draws" role="radiogroup" aria-label="What the Oscillator draws"><button type="button" data-draws="wave" aria-pressed="' + (S.inkShows === "wave") + '">Wave</button><button type="button" data-draws="figure" aria-pressed="' + (S.inkShows === "figure") + '">Figure</button></span>'
     + '<button type="button" class="tbtn drift" data-drift="1" aria-pressed="false" title="Unison\u2019s copies beat: hold to watch them drift, let go and the drawing is still again">Hold to watch it drift</button>' + headEnd("osc") + '</div>'
-    + '<div class="ink-row" data-ink-row="osc"><div class="plot-wrap wave"><svg class="plot" data-ink-plot="wave" role="img" aria-label="Both channels over the voice’s pattern, the plain shape faint behind"></svg></div>'
-    + '<div class="plot-wrap figure"' + (S.inkShows === "wave" ? " hidden" : "") + '><svg class="plot" data-ink-plot="xy" role="img" aria-label="The figure the two channels draw, X against Y"></svg></div></div>'
+    + '<div class="ink-row' + (S.inkShows === "figure" ? " figure-mode" : "") + '" data-ink-row="osc"><div class="plot-wrap wave"' + (S.inkShows === "figure" ? " hidden" : "") + '><svg class="plot" data-ink-plot="wave" role="img" aria-label="Both channels over the voice’s pattern, the plain shape faint behind"></svg></div>'
+    + '<div class="plot-wrap figure"' + (S.inkShows === "figure" ? "" : " hidden") + '><svg class="plot" data-ink-plot="xy" role="img" aria-label="The figure the two channels draw, X against Y"></svg></div></div>'
     + '<div class="ffoot"><div class="knobs fig ink-knobs">' + cellHTML("freq", "Frequency") + cellHTML("phase", "Phase")
     + inkMenu("oscRatio", "Ratio", RATIOS.map(([x, t]) => [x, t]), "k-menu")
     + ["oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub"].map((id) => cellHTML(id, inkKnob(id).nm)).join("")
@@ -2932,16 +2942,29 @@ function fitInk() {
   row.style.removeProperty("height"); row.style.flex = "";
   const room = row.clientHeight, W = row.clientWidth;
   if (S.inkSub === "osc") {
-    const fig = row.querySelector(".figure"), showFig = S.inkShows !== "wave";
-    const sq = showFig ? Math.min(room, Math.round(W * 0.34)) : 0;
-    if (fig) { fig.hidden = !showFig; fig.style.width = sq + "px"; fig.style.flexBasis = sq + "px"; fig.style.height = sq + "px"; }
-    const ww = W - (showFig ? sq + 14 : 0);
-    row.style.height = Math.floor(Math.min(room, ww / 1.5)) + "px"; row.style.flex = "0 0 auto";
-  } else {
-    // The curve's box is the row's height plus its 24 px of labels; the cycle keeps the rest at 1.5:1.
-    const h = Math.floor(Math.min(room, (W - 38) / 2.5));
+    /* The row is the wave's height whichever is drawn, so Wave · Figure moves nothing outside the
+       drawing: the figure is a square of that height, centred. */
+    const h = Math.floor(Math.min(room, W / 1.5)), fig = row.querySelector(".figure");
     row.style.height = h + "px"; row.style.flex = "0 0 auto";
-    const tr = row.querySelector(".transfer"); tr.style.width = tr.style.flexBasis = (h + 24) + "px";
+    if (fig) { fig.style.width = fig.style.flexBasis = h + "px"; fig.style.height = h + "px"; }
+  } else {
+    /* Side by side, the curve's box is the row's height (its square 18 px less, for its labels) and the
+       cycle keeps the rest at 1.5:1. Stacked, the cycle runs the width at 4:1 over the curve, which takes
+       the rest of the height. Stacked when that makes the curve larger than side by side and leaves the
+       cycle 120 px tall - by room, as the filter's two drawings and the rack decide, not by window size. */
+    const side = Math.floor(Math.min(room, (W - 38) / 2.5)), hc = Math.round(W / 4), sq = room - hc - 14 - 18;
+    const stack = S.shpLay === "stacked" || (S.shpLay === "auto" && sq > side - 18 && hc >= 120);
+    S.shpLayUsed = stack ? "stacked" : "side";
+    row.classList.toggle("stacked", stack);
+    const tr = row.querySelector(".transfer"), cy = row.querySelector(".cycle");
+    if (stack) {
+      const s = Math.max(60, Math.min(sq, W - 24));
+      row.style.height = room + "px"; row.style.flex = "0 0 auto";
+      cy.style.height = hc + "px"; tr.style.width = tr.style.flexBasis = (s + 24) + "px"; tr.style.height = (s + 18) + "px";
+    } else {
+      row.style.height = side + "px"; row.style.flex = "0 0 auto";
+      cy.style.removeProperty("height"); tr.style.removeProperty("height"); tr.style.width = tr.style.flexBasis = (side + 24) + "px";
+    }
   }
 }
 
@@ -3013,7 +3036,7 @@ function inkMeasure() {
   const row = view.querySelector(".ink-row"), spare = r1(R(view.querySelector(".ffoot")).t - R(row).b);
   const labels = Array.from(document.querySelectorAll(".ink-figs .ftab")).map((t) => { const s = t.querySelector(".sum"); return { sub: t.dataset.inkSub, dropped: +t.dataset.dropped, fits: s.scrollWidth <= s.clientWidth + 0.5, shown: s.textContent }; });
   const empty = r1(vr.b - last);
-  return { size: S.size, sub: S.inkSub, shows: S.inkShows, figs: { w: Math.round(figs.w), h: Math.round(figs.h) }, scroll: body.scrollHeight - body.clientHeight, over: r1(last - (vr.b - 2)),
+  return { size: S.size, sub: S.inkSub, shows: S.inkShows, shpLay: S.shpLayUsed, figs: { w: Math.round(figs.w), h: Math.round(figs.h) }, scroll: body.scrollHeight - body.clientHeight, over: r1(last - (vr.b - 2)),
     covers: figs.b > mod.t + 0.5, plots, knobRows: rows, labels, empty };
 }
 function inkBoxes() {
@@ -3075,7 +3098,7 @@ function tells(phase, shape) {
 }
 function inkSurvey() {
   const keep = { size: S.size, inkSub: S.inkSub, inkShows: S.inkShows }, rows = [];
-  for (const size of SIZE_ORDER) for (const sub of ["osc", "shp"]) for (const shows of sub === "osc" ? ["wave", "both"] : ["wave"]) {
+  for (const size of SIZE_ORDER) for (const sub of ["osc", "shp"]) for (const shows of sub === "osc" ? ["wave", "figure"] : ["wave"]) {
     Object.assign(S, { size, inkSub: sub, inkShows: shows }); render(); rows.push(inkMeasure());
   }
   Object.assign(S, keep); render();
@@ -3083,7 +3106,7 @@ function inkSurvey() {
   const tb = document.getElementById("inkRows");
   if (tb) tb.innerHTML = rows.map((m) => {
     const fit = m.scroll <= 1 && m.over <= 1, one = m.knobRows.every((r) => r === 1);
-    return "<tr><td>" + SIZES[m.size].label + "</td><td>" + (m.sub === "osc" ? (m.shows === "wave" ? "Oscillator (chosen: the wave)" : "Oscillator, wave and figure") : "Shaping") + "</td><td>" + m.figs.w + " × " + m.figs.h + "</td><td>"
+    return "<tr><td>" + SIZES[m.size].label + "</td><td>" + (m.sub === "osc" ? (m.shows === "wave" ? "Oscillator, the wave (default)" : "Oscillator, the figure") : "Shaping, " + (m.shpLay === "stacked" ? "stacked by room" : "side by side")) + "</td><td>" + m.figs.w + " × " + m.figs.h + "</td><td>"
       + m.plots.map((p) => ({ wave: "wave ", xy: "figure ", transfer: "curve ", cycle: "cycle " })[p.what] + p.w + " × " + p.h + " <b>" + p.aspect + "</b>").join("<br>") + "</td>"
       + '<td class="' + (fit ? "ok" : "bad") + '">' + (fit ? "no" : m.over + " px over") + "</td><td>" + Math.max(0, m.empty) + " px</td>"
       + '<td class="' + (one ? "ok" : "bad") + '">' + m.knobRows.join(" · ") + "</td><td>" + m.labels.map((l) => (l.dropped ? "<i>" + l.shown + "</i>" : l.shown)).join("<br>") + "</td></tr>";
@@ -3101,9 +3124,17 @@ function inkSurvey() {
 const _render = render;
 render = function (q) {
   _render(q);
-  for (const [id, key] of [["pgInkSub", "inkSub"], ["pgShows", "inkShows"], ["pgGen", "genShape"], ["pgSize", "size"]]) document.querySelectorAll("#" + id + " button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(S[key]))));
+  for (const [id, key] of [["pgInkSub", "inkSub"], ["pgShows", "inkShows"], ["pgGen", "genShape"], ["pgSize", "size"], ["pgShpLay", "shpLay"]]) document.querySelectorAll("#" + id + " button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(S[key]))));
 };
-for (const [id, key] of [["pgInkSub", "inkSub"], ["pgShows", "inkShows"], ["pgGen", "genShape"]]) document.querySelectorAll("#" + id + " button").forEach((b) => b.addEventListener("click", () => { S[key] = b.dataset.v; render(); }));
+for (const [id, key] of [["pgInkSub", "inkSub"], ["pgShows", "inkShows"], ["pgGen", "genShape"], ["pgShpLay", "shpLay"]]) document.querySelectorAll("#" + id + " button").forEach((b) => b.addEventListener("click", () => { S[key] = b.dataset.v; if (key === "inkShows") rememberDraws(); render(); }));
+/* Wave · Figure is only the look: it never reaches the sound and is not in a setup, a step of undo or
+   the morph. It is remembered per browser, as the page's Size is, since it is how this reader likes to
+   read Ink rather than a moment's view (Enlarge's choices are a moment's, and are not remembered). On
+   the testing page the key takes the testing prefix, as every stored key there does. */
+const DRAWS_KEY = "scope.inkDraws";
+function rememberDraws() { try { localStorage.setItem(DRAWS_KEY, S.inkShows); } catch (e) { /* storage refused: the choice lasts the visit */ } }
+try { const v = localStorage.getItem(DRAWS_KEY); if (v === "wave" || v === "figure") S.inkShows = v; } catch (e) { /* no storage: the wave */ }
+document.getElementById("stage").addEventListener("click", (ev) => { const b = ev.target.closest("[data-draws]"); if (b) { S.inkShows = b.dataset.draws; rememberDraws(); render(); } });
 document.querySelectorAll("#pgPreset button").forEach((b) => b.addEventListener("click", () => { Object.assign(S.ink, INK_START, JSON.parse(b.dataset.v)); render(); }));
 document.getElementById("stage").addEventListener("click", (ev) => { const t = ev.target.closest("[data-ink-sub]"); if (t) { S.inkSub = t.dataset.inkSub; render(); } });
 document.getElementById("stage").addEventListener("change", (ev) => { const t = ev.target; if (t.dataset.ink) { S.ink[t.dataset.ink] = isNaN(+t.value) ? t.value : +t.value; paint(); } });
@@ -3136,6 +3167,7 @@ const Q = new URLSearchParams(location.search);
 if (Q.get("size") && SIZES[Q.get("size")]) S.size = Q.get("size");
 if (Q.get("sub")) S.inkSub = Q.get("sub");
 if (Q.get("shows")) S.inkShows = Q.get("shows");
+if (Q.get("shp")) S.shpLay = Q.get("shp");
 if (Q.get("gen")) S.genShape = Q.get("gen");
 if (Q.get("set")) Object.assign(S.ink, JSON.parse(Q.get("set")));
 

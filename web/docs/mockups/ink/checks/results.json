@@ -166,6 +166,7 @@
    "size": "1660x1050",
    "sub": "osc",
    "shows": "wave",
+   "shpLay": null,
    "figs": {
     "w": 830,
     "h": 706
@@ -203,25 +204,20 @@
   {
    "size": "1660x1050",
    "sub": "osc",
-   "shows": "both",
+   "shows": "figure",
+   "shpLay": null,
    "figs": {
     "w": 830,
     "h": 706
    },
    "scroll": 0,
-   "over": -232.9,
+   "over": -41.9,
    "covers": false,
    "plots": [
     {
-     "what": "wave",
-     "w": 515,
-     "h": 343,
-     "aspect": 1.5
-    },
-    {
      "what": "xy",
-     "w": 273,
-     "h": 273,
+     "w": 534,
+     "h": 534,
      "aspect": 1
     }
    ],
@@ -242,31 +238,32 @@
      "shown": "drive 45% \u00b7 4 bits"
     }
    ],
-   "empty": 234.9
+   "empty": 43.9
   },
   {
    "size": "1660x1050",
    "sub": "shp",
    "shows": "wave",
+   "shpLay": "stacked",
    "figs": {
     "w": 830,
     "h": 706
    },
    "scroll": 0,
-   "over": -270.9,
+   "over": -2.9,
    "covers": false,
    "plots": [
     {
      "what": "transfer",
-     "w": 329,
-     "h": 305,
-     "aspect": 1.1
+     "w": 364,
+     "h": 364,
+     "aspect": 1
     },
     {
      "what": "cycle",
-     "w": 459,
-     "h": 305,
-     "aspect": 1.5
+     "w": 802,
+     "h": 201,
+     "aspect": 4
     }
    ],
    "knobRows": [
@@ -286,12 +283,13 @@
      "shown": "drive 45% \u00b7 4 bits"
     }
    ],
-   "empty": 272.9
+   "empty": 4.9
   },
   {
    "size": "1400x900",
    "sub": "osc",
    "shows": "wave",
+   "shpLay": "stacked",
    "figs": {
     "w": 830,
     "h": 556
@@ -329,25 +327,20 @@
   {
    "size": "1400x900",
    "sub": "osc",
-   "shows": "both",
+   "shows": "figure",
+   "shpLay": "stacked",
    "figs": {
     "w": 830,
     "h": 556
    },
    "scroll": 0,
-   "over": -82.9,
+   "over": -2.9,
    "covers": false,
    "plots": [
     {
-     "what": "wave",
-     "w": 515,
-     "h": 343,
-     "aspect": 1.5
-    },
-    {
      "what": "xy",
-     "w": 273,
-     "h": 273,
+     "w": 423,
+     "h": 423,
      "aspect": 1
     }
    ],
@@ -368,12 +361,13 @@
      "shown": "drive 45% \u00b7 4 bits"
     }
    ],
-   "empty": 84.9
+   "empty": 4.9
   },
   {
    "size": "1400x900",
    "sub": "shp",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 830,
     "h": 556
@@ -418,6 +412,7 @@
    "size": "1100x860",
    "sub": "osc",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 742,
     "h": 572
@@ -455,25 +450,20 @@
   {
    "size": "1100x860",
    "sub": "osc",
-   "shows": "both",
+   "shows": "figure",
+   "shpLay": "side",
    "figs": {
     "w": 742,
     "h": 572
    },
    "scroll": 0,
-   "over": -137.9,
+   "over": -2.9,
    "covers": false,
    "plots": [
     {
-     "what": "wave",
-     "w": 457,
-     "h": 304,
-     "aspect": 1.5
-    },
-    {
      "what": "xy",
-     "w": 243,
-     "h": 243,
+     "w": 439,
+     "h": 439,
      "aspect": 1
     }
    ],
@@ -494,12 +484,13 @@
      "shown": "drive 45% \u00b7 4 bits"
     }
    ],
-   "empty": 139.9
+   "empty": 4.9
   },
   {
    "size": "1100x860",
    "sub": "shp",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 742,
     "h": 572
@@ -544,6 +535,7 @@
    "size": "1200x680",
    "sub": "osc",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 830,
     "h": 461
@@ -581,25 +573,20 @@
   {
    "size": "1200x680",
    "sub": "osc",
-   "shows": "both",
+   "shows": "figure",
+   "shpLay": "side",
    "figs": {
     "w": 830,
     "h": 461
    },
    "scroll": 0,
-   "over": -3.1,
+   "over": -0.1,
    "covers": false,
    "plots": [
     {
-     "what": "wave",
-     "w": 521,
-     "h": 347,
-     "aspect": 1.5
-    },
-    {
      "what": "xy",
-     "w": 275,
-     "h": 275,
+     "w": 350,
+     "h": 350,
      "aspect": 1
     }
    ],
@@ -620,12 +607,13 @@
      "shown": "drive 45% \u00b7 4 bits"
     }
    ],
-   "empty": 5.1
+   "empty": 2.1
   },
   {
    "size": "1200x680",
    "sub": "shp",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 830,
     "h": 461
@@ -670,6 +658,7 @@
    "size": "1100x680",
    "sub": "osc",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 742,
     "h": 461
@@ -707,25 +696,20 @@
   {
    "size": "1100x680",
    "sub": "osc",
-   "shows": "both",
+   "shows": "figure",
+   "shpLay": "side",
    "figs": {
     "w": 742,
     "h": 461
    },
    "scroll": 0,
-   "over": -42.1,
+   "over": -0.1,
    "covers": false,
    "plots": [
     {
-     "what": "wave",
-     "w": 463,
-     "h": 308,
-     "aspect": 1.5
-    },
-    {
      "what": "xy",
-     "w": 245,
-     "h": 245,
+     "w": 350,
+     "h": 350,
      "aspect": 1
     }
    ],
@@ -746,12 +730,13 @@
      "shown": "drive 45% \u00b7 4 bits"
     }
    ],
-   "empty": 44.1
+   "empty": 2.1
   },
   {
    "size": "1100x680",
    "sub": "shp",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 742,
     "h": 461
@@ -796,6 +781,7 @@
    "size": "960x600",
    "sub": "osc",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 709,
     "h": 447
@@ -833,25 +819,20 @@
   {
    "size": "960x600",
    "sub": "osc",
-   "shows": "both",
+   "shows": "figure",
+   "shpLay": "side",
    "figs": {
     "w": 709,
     "h": 447
    },
    "scroll": 0,
-   "over": -42.1,
+   "over": -0.1,
    "covers": false,
    "plots": [
     {
-     "what": "wave",
-     "w": 441,
-     "h": 294,
-     "aspect": 1.5
-    },
-    {
      "what": "xy",
-     "w": 234,
-     "h": 234,
+     "w": 336,
+     "h": 336,
      "aspect": 1
     }
    ],
@@ -872,12 +853,13 @@
      "shown": "drive 45% \u00b7 4 bits"
     }
    ],
-   "empty": 44.1
+   "empty": 2.1
   },
   {
    "size": "960x600",
    "sub": "shp",
    "shows": "wave",
+   "shpLay": "side",
    "figs": {
     "w": 709,
     "h": 447
@@ -919,6 +901,6 @@
    "empty": 78.1
   }
  ],
- "checks": 65,
+ "checks": 72,
  "failed": []
 }

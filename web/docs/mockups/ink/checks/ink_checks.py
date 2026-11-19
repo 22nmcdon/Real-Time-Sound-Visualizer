@@ -29,8 +29,8 @@ seen to fail, as CLAUDE.md asks of every new assertion.
   300 px drawing. At Phase 0 the figure is the diagonal whatever the
   oscillator does: every control leaves it on the diagonal while the wave
   moves 10 px or more. Null: at Phase 90 FM takes it off the diagonal;
-- the fit at the six windows, for each subtab (and the wave with the figure
-  beside it): nothing past the view, Ink not scrolled, every drawing that is
+- the fit at the six windows, for each subtab and for the Oscillator drawn as
+  the figure: nothing past the view, Ink not scrolled, every drawing that is
   a time 1.5:1 to 7:1 and 120 px tall, the curve and the figure square, the
   controls one row, clear of the modulation row, each summary fitting its
   label. Nulls: a drawing row 100 px taller than the room is seen to run
@@ -42,6 +42,13 @@ seen to fail, as CLAUDE.md asks of every new assertion.
   neither the wave nor the screen redraws over 1.5 s. Null: the clock-driven
   redraw this replaced, put back, moves the wave. Hold to watch it drift moves
   the copies while held and lets go to the same still;
+- Shaping stacks by room (the cycle over the curve) only where that gives the
+  curve more than side by side and leaves the cycle 120 px tall, which is
+  1660x1050, leaving little paper. Nulls: stacked forced at 960x600 shrinks
+  the curve below side by side's; side by side forced at 1660x1050 leaves the paper;
+- Wave · Figure moves nothing outside the drawing at the six windows (null:
+  the figure's row sized to the figure moves the controls), and the choice is
+  remembered by the browser (null: a fresh browser draws the wave);
 - no console errors through every window, subtab and setting;
 - a phone's width has no horizontal page scroll.
 
@@ -182,10 +189,10 @@ with sync_playwright() as pw:
     null(d90[0] < 1e-9, f"at Phase 90 FM takes the figure {d90[0]:.2f} off the diagonal")
 
     # ---- the fit ----
-    SET = """([size, sub, shows, set]) => { const I = window.__ink, S = I.S; S.size = size; S.inkSub = sub; S.inkShows = shows; Object.assign(S.ink, I.INK_START, set || {}); I.render(); return I.inkMeasure(); }"""
+    SET = """([size, sub, shows, set, lay]) => { const I = window.__ink, S = I.S; S.size = size; S.inkSub = sub; S.inkShows = shows; S.shpLay = lay || "auto"; Object.assign(S.ink, I.INK_START, set || {}); I.render(); return I.inkMeasure(); }"""
     surv = []
     for size in SIZES:
-        for sub, shows in (("osc", "wave"), ("osc", "both"), ("shp", "wave")):
+        for sub, shows in (("osc", "wave"), ("osc", "figure"), ("shp", "wave")):
             m = E(SET, [size, sub, shows, {"oscFm": 20, "oscRatio": 1.5, "shpDrive": 45, "shpBits": 4}])
             surv.append(m)
             timey = [q for q in m["plots"] if q["what"] in ("wave", "cycle")]
@@ -193,8 +200,20 @@ with sync_playwright() as pw:
             ok = (m["scroll"] <= 1 and m["over"] <= 1 and all(1.5 <= q["aspect"] <= 7 and q["h"] >= 120 for q in timey)
                   and all(0.85 <= q["aspect"] <= 1.25 and q["h"] >= 120 for q in square) and all(r == 1 for r in m["knobRows"]) and not m["covers"]
                   and all(l["fits"] for l in m["labels"]))
-            check(ok, f"{size}, {sub}{' with the figure' if shows == 'both' else ''}: fits, " + ", ".join(f"{q['what']} {q['w']}x{q['h']} ({q['aspect']}:1)" for q in m["plots"]) + f", one row, {m['empty']:.0f} px of paper spare")
+            check(ok, f"{size}, {sub}{' as the figure' if shows == 'figure' else ''}{', ' + str(m.get('shpLay')) if sub == 'shp' else ''}: fits, " + ", ".join(f"{q['what']} {q['w']}x{q['h']} ({q['aspect']}:1)" for q in m["plots"]) + f", one row, {m['empty']:.0f} px of paper spare")
     results["survey"] = surv
+    # Shaping stacks by room: only where stacking gives the curve more than side by side and leaves the
+    # cycle 120 px tall. Where it stacks, the paper left is small. Nulls: stacked forced at 960x600 makes
+    # a curve under 120 px; side by side forced at 1660x1050 leaves the paper this replaced.
+    stacked = [m["size"] for m in surv if m["sub"] == "shp" and m.get("shpLay") == "stacked"]
+    big = next(m for m in surv if m["sub"] == "shp" and m["size"] == "1660x1050")
+    check("1660x1050" in stacked and big["empty"] <= 60, f"Shaping stacks by room at {', '.join(stacked) or 'no window'}, leaving {big['empty']:.0f} px of paper at 1660x1050")
+    forced = E(SET, ["960x600", "shp", "wave", {"shpDrive": 45}, "stacked"])
+    curve = next(q for q in forced["plots"] if q["what"] == "transfer")
+    sideCurve = next(q for q in next(m for m in surv if m["sub"] == "shp" and m["size"] == "960x600")["plots"] if q["what"] == "transfer")
+    null(curve["h"] >= sideCurve["h"], f"stacked forced at 960x600 shrinks the curve to {curve['w']}x{curve['h']}, from side by side's {sideCurve['w']}x{sideCurve['h']}")
+    forced = E(SET, ["1660x1050", "shp", "wave", {"shpDrive": 45}, "side"])
+    null(forced["empty"] <= 60, f"side by side forced at 1660x1050 leaves {forced['empty']:.0f} px of paper")
     over = E("""() => { const I = window.__ink, S = I.S; S.size = "1400x900"; S.inkSub = "osc"; S.inkShows = "wave"; I.render();
       const row = document.querySelector('[data-ink-row="osc"]'); row.style.height = (row.parentElement.clientHeight) + "px"; return I.inkMeasure(); }""")
     null(over["over"] <= 1 and over["scroll"] <= 1, f"a drawing row given the whole view runs {over['over']} px over")
@@ -219,6 +238,18 @@ with sync_playwright() as pw:
         outside = moved({k: v for k, v in a.items() if not k.startswith("view ")}, {k: v for k, v in bb.items() if not k.startswith("view ")})
         if outside: bad.append("the subtabs: " + ", ".join(outside[:3]))
         check(not bad, f"{size}: nothing moves across {len(SETTINGS)} settings, 5 shapes and both subtabs" + ("; " + " | ".join(bad[:3]) if bad else ""))
+    # Wave · Figure moves nothing outside the drawing.
+    WF = """([size, shows]) => { const I = window.__ink, S = I.S; S.size = size; S.inkSub = "osc"; S.inkShows = shows; Object.assign(S.ink, I.INK_START, { oscFm: 20, oscRatio: 1.5 }); I.render();
+      const b = I.inkBoxes(); for (const k of Object.keys(b)) if (k.includes("drawing")) delete b[k]; return b; }"""
+    bad = []
+    for size in SIZES:
+        mv = moved(E(WF, [size, "wave"]), E(WF, [size, "figure"]))
+        if mv: bad.append(size + ": " + ", ".join(mv[:3]))
+    check(not bad, "Wave · Figure moves nothing outside the drawing at the six windows" + ("; " + " | ".join(bad) if bad else ""))
+    E("() => { const st = document.createElement('style'); st.id = 'nullFig'; st.textContent = '.ink-row.figure-mode { height: auto !important; flex: 1 1 auto !important; } .ink-row.figure-mode .plot-wrap.figure { height: 200px !important; }'; document.head.appendChild(st); }")
+    a = E(WF, ["1400x900", "wave"]); bb = E(WF, ["1400x900", "figure"])
+    E("() => document.getElementById('nullFig').remove()")
+    null(not moved(a, bb), "the figure's row sized to the figure moves " + ", ".join(moved(a, bb)[:3]))
     E("() => { const st = document.createElement('style'); st.id = 'nullKey'; st.textContent = '.key-ink { width: auto !important; flex: 0 0 auto !important; }'; document.head.appendChild(st); }")
     a = E(STATE, ["1400x900", "osc", {}, "sine"]); bb = E(STATE, ["1400x900", "osc", {}, "triangle"])
     E("() => document.getElementById('nullKey').remove()")
@@ -243,6 +274,15 @@ with sync_playwright() as pw:
     check(drift["held"] and drift["after"], "Hold to watch it drift moves the copies while held, and lets go back to the very same still")
 
     check(not errs, "no console errors through every window, subtab and setting" + (": " + "; ".join(errs[:3]) if errs else ""))
+    # Wave · Figure is remembered per browser, never in the setup. Null: a fresh browser draws the wave.
+    ctx = b.new_context(viewport={"width": 1700, "height": 1100}); q = ctx.new_page(); webfonts.route(q)
+    q.goto(PAGE + "?shot=1"); q.wait_for_function("window.__ready === true", timeout=60000)
+    fresh = q.evaluate("() => window.__ink.S.inkShows")
+    q.click('[data-draws="figure"]'); q.reload(); q.wait_for_function("window.__ready === true", timeout=60000)
+    kept = q.evaluate("() => window.__ink.S.inkShows")
+    check(kept == "figure", "Figure chosen is remembered by the browser across a reload")
+    null(fresh == "figure", "a fresh browser draws " + fresh)
+    ctx.close()
     ph = b.new_page(viewport={"width": 430, "height": 900}); webfonts.route(ph)
     ph.goto(PAGE); ph.wait_for_function("window.__ready === true", timeout=90000)
     sw = ph.evaluate("() => document.documentElement.scrollWidth")

@@ -23,9 +23,9 @@ SHOTS = [
     ("07-oscillator-unison-at-1100x680", "size=1100x680", {"oscUnison": 5, "oscSpread": 20}),
     ("08-shaping-drive-and-4-bits-at-1400x900", "size=1400x900&sub=shp", {"shpDrive": 45, "shpBits": 4}),
     ("09-shaping-fold-and-2-khz-at-960x600", "size=960x600&sub=shp", {"shpFold": 35, "shpRate": 2000}),
-    ("10-shaping-at-1660x1050", "size=1660x1050&sub=shp", {"shpDrive": 30, "shpFold": 15}),
-    ("11-not-chosen-wave-and-figure-at-1400x900", "size=1400x900&shows=both", {"oscFm": 20, "oscRatio": 1.5}),
-    ("12-not-chosen-wave-and-figure-at-960x600", "size=960x600&shows=both", {"oscRing": 70, "oscRatio": 2}),
+    ("10-shaping-stacked-by-room-at-1660x1050", "size=1660x1050&sub=shp", {"shpDrive": 30, "shpFold": 15}),
+    ("11-figure-chosen-fm-at-3-2-at-1400x900", "size=1400x900&shows=figure", {"oscFm": 20, "oscRatio": 1.5}),
+    ("12-figure-chosen-ring-at-960x600", "size=960x600&shows=figure", {"oscRing": 70, "oscRatio": 2}),
 ]
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME)
