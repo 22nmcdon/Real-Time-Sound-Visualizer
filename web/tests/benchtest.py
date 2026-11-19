@@ -128,7 +128,8 @@ with sync_playwright() as pw:
                        menu: menuControl(el.amp) === el.amp })"""
     # Level is the Generator's since G7, on Play; it was in the Picture
     # section, on every tab, which is why this never chose one.
-    p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(200)
+    # On Wave since 19 Nov, whose header is the Generator (play-band.md).
+    p.evaluate("() => { setBenchTab('play'); setFigSub('wave'); }"); p.wait_for_timeout(200)
     rest = p.evaluate(BARE)
     p.locator('[data-mod-dest="gen.amp"]').first.hover(); p.wait_for_timeout(300)
     pointed = p.evaluate(BARE)

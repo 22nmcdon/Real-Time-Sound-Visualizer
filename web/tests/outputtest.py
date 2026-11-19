@@ -199,7 +199,7 @@ with sync_playwright() as pw:
     check("the morph does not walk the Output, and does walk Level (the null)", not morph["output"] and morph["amp"], str(morph))
     # Undo: a real key on the Output, held still past the 400 ms, is no step;
     # the same key on Level is one.
-    p.evaluate("() => { setBenchTab('play'); undoHistory.undo.length = 0; undoHistory.redo.length = 0; }")
+    p.evaluate("() => { setBenchTab('play'); setFigSub('wave'); undoHistory.undo.length = 0; undoHistory.redo.length = 0; }")
     p.wait_for_timeout(600)
     def steps_after(selector):
         before = p.evaluate("() => undoHistory.undo.length")

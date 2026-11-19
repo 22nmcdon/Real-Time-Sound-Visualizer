@@ -17898,9 +17898,10 @@ const CHAIN_SVG = [
     + '<path d="M6 2.5H4a2.5 2.5 0 0 0 0 5h2M10 2.5h2a2.5 2.5 0 0 1 0 5h-2M7.2 1 6.6 0M8.8 9l.6 1"/></svg>',
 ];
 const linkButton = (sec) => document.getElementById("link" + sec[0].toUpperCase() + sec.slice(1));
-/* Every pill a section has: the Generator's is in two places since Play's figures (18 Nov), after its
-   name in the settings row and at the end of Wave's header, since Wave is the generator's too. The
-   second is a button of its own (linkGenWave), not a copy of the first's id. */
+/* Every pill a section has. The Generator's was in two places from 18 Nov, after its name in the
+   settings row and at the end of Wave's header (linkGenWave, a button of its own, not a copy of the
+   first's id). Since 19 Nov the Generator is Wave's header and its own pill is the one seen; the
+   second is kept, painted and out of sight, for the checks that read it. */
 const linkButtons = (sec) => [linkButton(sec), ...(sec === "gen" ? [el.linkGenWave] : [])].filter(Boolean);
 function paintHandLinks() {
   const on = layersOn(), hand = editLayer();
@@ -24429,7 +24430,9 @@ function settingsGroups() {
    button, `textContent` includes the dots and the rail starts naming sections
    "Filter\u22ef". */
 function groupTitle(group) {
-  const title = group.querySelector(".menu-title");
+  /* Its own title first: since 19 Nov the Generator's section is moved into the Wave view as its header
+     (play-band.md), so the first title anywhere inside Wave is the Generator's. */
+  const title = group.querySelector(":scope > .menu-title") || group.querySelector(".menu-title");
   if (!title) return "Settings";
   for (const node of title.childNodes) {
     if (node.nodeType === 3 && node.textContent.trim()) return node.textContent.trim();
@@ -27405,6 +27408,8 @@ function searchEntries() {
   const out = [];
   for (const group of settingsGroups()) {
     for (const row of group.querySelectorAll(".menu-row, label.check")) {
+      // A section moved inside another (the Generator in Wave) is its own entry, not the other's.
+      if (row.closest(".menu-group") !== group) continue;
       // In the rack, the module's name after the section's (F5): Effects > Delay.
       const module = row.closest(".fx-module");
       const section = groupTitle(group) + (module ? " \u203a " + module.querySelector(".fx-name").textContent.split(" \u00b7")[0] : "");
@@ -27888,7 +27893,8 @@ window.addEventListener("keydown", (event) => {
    be. Nothing is lost; it is one press away, anchored to the section it
    explains. */
 function groupExtras(group) {
-  const all = Array.from(group.querySelectorAll(".menu-note, [data-more]"));
+  // Its own: not a section's moved inside it (the Generator in Wave, since 19 Nov).
+  const all = Array.from(group.querySelectorAll(".menu-note, [data-more]")).filter((node) => node.closest(".menu-group") === group);
   // Not what is inside a block the current mode has switched off, and not a
   // node already travelling inside another one.
   return all.filter((node) =>

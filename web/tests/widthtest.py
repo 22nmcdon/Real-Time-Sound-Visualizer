@@ -259,7 +259,7 @@ with sync_playwright() as pw:
     check("null: the same preset moves Level, which is the setup's", setup["afterPreset"][2] == str(setup["presetAmp"]), str(setup))
     morph = p.evaluate("() => ({ width: MORPH_IDS.includes('stereoWidth'), amp: MORPH_IDS.includes('amp') })")
     check("the morph does not walk the Width, and does walk Level (the null)", not morph["width"] and morph["amp"], str(morph))
-    p.evaluate("() => { setBenchTab('play'); undoHistory.undo.length = 0; undoHistory.redo.length = 0; }")
+    p.evaluate("() => { setBenchTab('play'); setFigSub('wave'); undoHistory.undo.length = 0; undoHistory.redo.length = 0; }")
     p.wait_for_timeout(600)
     def steps_after(selector):
         before = p.evaluate("() => undoHistory.undo.length")

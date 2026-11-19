@@ -126,7 +126,8 @@ with sync_playwright() as pw:
     def info():
         ev("() => openInfoCard(el.pictureAmount)")
     def control_editor():
-        ev("""() => { const row = Array.from(document.querySelectorAll('[data-mod-dest]'))
+        # The Generator's Level, on Wave since 19 Nov (play-band.md), as it was on Play's face before.
+        ev("""() => { setBenchTab('play'); setFigSub('wave'); const row = Array.from(document.querySelectorAll('[data-mod-dest]'))
                         .find((r) => r.querySelector('input[type=range]') && r.getClientRects().length);
                       openModEditor(row.dataset.modDest, row); }""")
     SURFACES = [

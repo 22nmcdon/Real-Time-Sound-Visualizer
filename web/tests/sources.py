@@ -46,7 +46,7 @@ with sync_playwright() as pw:
     to_inputs()
 
     def tone_visible():
-        p.evaluate("() => { setMenuOpen(false); setBenchTab('play'); }"); p.wait_for_timeout(100)
+        p.evaluate("() => { setMenuOpen(false); setBenchTab('play'); setFigSub('wave'); }"); p.wait_for_timeout(100)
         # The Shape menu, the generator's first row since G2 took Kind.
         seen = p.locator("#shape").is_visible()
         to_inputs()

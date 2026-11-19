@@ -156,7 +156,7 @@ with sync_playwright() as pw:
 
     print("\n--- with the on-screen keys open, a focused menu ---")
     p.locator("#benchTab-play").click(); p.wait_for_timeout(200)
-    ev("() => setScreenKeys(true)"); p.wait_for_timeout(200)
+    ev("() => { setScreenKeys(true); setFigSub('wave'); }"); p.wait_for_timeout(200)
     ev("() => { el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change', { bubbles: true })); }")
     p.wait_for_timeout(150)
     ev("() => el.shape.focus()")

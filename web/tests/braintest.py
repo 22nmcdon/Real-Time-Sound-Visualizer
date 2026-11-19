@@ -139,7 +139,7 @@ with sync_playwright() as pw:
     # The page opens on Harmonic tone, whose timebase is 3 where the default's is 4.
     check("and the instrument was made on the setup the page opened on, not on the defaults",
           first["timebase"] == 3, str(first["timebase"]))
-    p.evaluate("() => { setView('bench'); setBenchTab('play'); }")
+    p.evaluate("() => { setView('bench'); setBenchTab('play'); setFigSub('wave'); }")
     p.wait_for_timeout(300)
     # Frequency on Ink since G3: looked for on its own tab, then back to Play's
     # Shape (its Kind until G2 took the drawings, and the menu with them).

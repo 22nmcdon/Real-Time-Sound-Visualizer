@@ -453,8 +453,8 @@ with sync_playwright() as pw:
     # drawing as its kind puts the waveform's shape back and no kind at all.
     gen = p.evaluate("""async (code) => {
       const t = window.__hostTest, out = {};
-      // Shape on Play and Frequency on Ink, each on its own tab since G3.
-      setView('bench'); setBenchTab('play');
+      // Shape on Play (on Wave, whose header is the Generator since 19 Nov) and Frequency on Ink.
+      setView('bench'); setBenchTab('play'); setFigSub('wave');
       await new Promise((r) => setTimeout(r, 200));
       const shapeShown = el.shape.offsetParent !== null;
       setBenchTab('ink'); await new Promise((r) => setTimeout(r, 100));
@@ -612,7 +612,7 @@ with sync_playwright() as pw:
     check("null: the shape is told from a drag with no begin, one ended twice, one begun twice and one with no value",
           not shaped("vvve") and not shaped("bvvee") and not shaped("bbvve") and not shaped("be") and shaped("bvve")
           and balanced("bvebve") == 2 and balanced("bvbvee") == -1 and balanced("bvv") == -1)
-    p.evaluate("() => { closeOverlay(); setBenchTab('play'); }")
+    p.evaluate("() => { closeOverlay(); setBenchTab('play'); setFigSub('wave'); }")
     p.wait_for_timeout(300)
     def face(sid):
         box = p.locator("#%s" % sid).locator("xpath=..").locator(".knob-face").bounding_box()
@@ -663,7 +663,8 @@ with sync_playwright() as pw:
           shaped(letters(attack, "envAttack")) and [c[0] for c in attack if c[0] == "scopeGesture"] == ["scopeGesture"] * 2,
           letters(attack, "envAttack") + " " + str(attack[:3]))
     def keys():
-        p.evaluate("() => el.amp.focus()")
+        # Level on Wave again after the attack's Amp (showControl chooses the subtab the Generator is in).
+        p.evaluate("() => { showControl('amp'); el.amp.focus(); }")
         for _ in range(3): p.keyboard.press("ArrowUp")
     keyed = logged(keys, 800)
     check("three arrow keys on it are one gesture, ended once they have stopped", letters(keyed, "amp") == "bvvve",
@@ -695,7 +696,7 @@ with sync_playwright() as pw:
                             p.mouse.move(centre(p.locator("#morphPos").bounding_box())[0] + 40, centre(p.locator("#morphPos").bounding_box())[1], steps=5),
                             p.mouse.up(), p.keyboard.press("Escape")))
     check("the morph's fader, a plain slider, dragged is one gesture too", shaped(letters(morph, "morphPos")), letters(morph, "morphPos"))
-    p.evaluate("() => { closeOverlay(); setBenchTab('play'); }")
+    p.evaluate("() => { closeOverlay(); setBenchTab('play'); setFigSub('wave'); }")
     automated = p.evaluate("""async (code) => {
       const t = window.__hostTest;
       t.log.length = 0;

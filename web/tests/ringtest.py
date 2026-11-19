@@ -78,6 +78,8 @@ def centre(box): return (box["x"] + box["width"] / 2, box["y"] + box["height"] /
 def fresh(p, tab="ink"):
     p.evaluate("""(tab) => { closeOverlay(); closeModCard(); setRoutingsOpen(false);
       state.modRoutings = []; held.clear(); focusSource = null; setBenchTab(tab);
+      // Play's Generator is Wave's header since 19 Nov (play-band.md): Level and Shape are shown there.
+      if (tab === 'play') setFigSub('wave');
       el.freq.value = '220'; el.freq.dispatchEvent(new Event('input', { bubbles: true }));
       el.amp.value = '55'; el.amp.dispatchEvent(new Event('input', { bubbles: true })); touchRoutings(); }""", tab)
     p.wait_for_timeout(250)
@@ -354,7 +356,7 @@ with sync_playwright() as pw:
     p.keyboard.press("Escape"); p.wait_for_timeout(200)
 
     # A menu: no modulation, and on a split, Copy to the other layer.
-    p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(200)
+    p.evaluate("() => { setBenchTab('play'); setFigSub('wave'); }"); p.wait_for_timeout(200)
     p.locator("#shape").click(button="right"); p.wait_for_timeout(250)
     menu_only = p.evaluate(MENU)
     check("a menu's own has no modulation: Reset, naming where it starts, and What is this?",
@@ -383,7 +385,7 @@ with sync_playwright() as pw:
     p.wait_for_timeout(200)
 
     # The keyboard's way: Shift+F10 with the knob focused.
-    p.evaluate("() => { closeOverlay(); el.amp.focus(); }")
+    p.evaluate("() => { closeOverlay(); setBenchTab('play'); setFigSub('wave'); el.amp.focus(); }")
     p.keyboard.press("Shift+F10"); p.wait_for_timeout(250)
     kb = p.evaluate(MENU)
     check("Shift+F10 with the knob focused opens its menu, the first item focused", kb and kb["title"] == "Level" and kb["focus"] is not None, str(kb))
@@ -457,7 +459,7 @@ with sync_playwright() as pw:
     tbad = []
     t.on("pageerror", lambda e: tbad.append(str(e)))
     t.goto(f"file://{ART}/scope.html"); t.wait_for_timeout(2000)
-    t.evaluate("() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close(); setView('bench'); setBenchTab('play'); state.modRoutings = []; touchRoutings(); }")
+    t.evaluate("() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close(); setView('bench'); setBenchTab('play'); setFigSub('wave'); state.modRoutings = []; touchRoutings(); }")
     t.wait_for_timeout(300)
     tb = t.locator(FACE % "gen.amp").bounding_box(); tx, ty = centre(tb)
     cdp = tctx.new_cdp_session(t)

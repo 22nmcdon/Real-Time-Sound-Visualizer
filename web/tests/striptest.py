@@ -227,6 +227,7 @@ with sync_playwright() as pw:
           and [x["disc"] for x in low["notes"]] == [True, True, False, False]
           and all(x["ink"] == low["lowInk"] for x in low["notes"][:2]), str(low["notes"]))
     check("and the dashed rule at the first uncounted note's edge, between G3 and E4", low["rule"] is not None and abs(low["rule"] - low["e64"][0]) < 0.01, str((low["rule"], low["e64"])))
+    null("and that reading tells keys apart: the rule is not at the counted G3's left edge", low["rule"] is not None and abs(low["rule"] - low["e55"][0]) > 0.01, str(low["e55"]))
     check("counted from the top, 1 the highest, the highest 2 on discs", [x["place"] for x in top["notes"]] == [4, 3, 2, 1]
           and [x["disc"] for x in top["notes"]] == [False, False, True, True], str(top["notes"]))
     check("and the rule at the right edge of the first uncounted, G3", top["rule"] is not None and abs(top["rule"] - top["e55"][1]) < 0.01, str((top["rule"], top["e55"])))

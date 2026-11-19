@@ -439,7 +439,7 @@ with sync_playwright() as pw:
     print("    the point's send cut %s; both cut %s" % ({k: alone[k] for k in ("point", "a", "b")}, {k: null[k] for k in ("point", "a", "b")}))
     check("the split point is learned from the next key, which still plays",
           learn["asking"] == "now play a key" and learn["point"] == 55 and not learn["learning"]
-          and learn["said"].startswith("G3 and up: the upper hand.") and learn["played"] == [55] and learn["kind"] == "host", str(learn))
+          and "G3 and up the upper." in learn["said"] and learn["played"] == [55] and learn["kind"] == "host", str(learn))
     check("the instrument splits at the learned point: A3 over a learned G3 is in B's lanes",
           learn["b"] > 10 * learn["a"] and learn["b"] > 1e-3, "A %.5f B %.5f" % (learn["a"], learn["b"]))
     check("... and the instrument keeps it, a hand its state carries for a project reopened",
