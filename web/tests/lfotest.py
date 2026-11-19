@@ -84,6 +84,12 @@ def centre(p, sel):
     box = p.locator(sel).bounding_box()
     return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
 
+# A point of the drawing by its index, from the drawing's own geometry in one evaluation: the
+# handles are made again when the drawing is, so a locator found and then measured can miss.
+def point(p, k):
+    return p.evaluate("""(k) => { const s = document.getElementById('lfoPlot'), d = s._drawn, r = s.getBoundingClientRect(), z = pageZoom || 1;
+      return [r.left + d.xs[k] * z, r.top + d.ys[k] * z]; }""", k)
+
 # Where a point of the cycle is on the screen: u across, v up, in the drawing's own geometry.
 AT = "([u, v]) => { const s = document.getElementById('lfoPlot'), g = s._g, r = s.getBoundingClientRect(), z = pageZoom || 1; return [r.left + g.x(u) * z, r.top + g.y(v) * z]; }"
 SHAPE = "(i) => ({ shape: lfos[i].shape, drawn: lfos[i].drawn, menu: document.getElementById('lfoShape' + i) && document.getElementById('lfoShape' + i).value })"
@@ -156,7 +162,7 @@ with sync_playwright() as pw:
     null("before any edit the shape is today's sine, and the setup names no drawing, Phase or start", before["shape"] == "sine"
          and snap0 == ["sine", False, False, False], str((before, snap0)))
     steps0 = p.evaluate(UNDO)
-    x, y = centre(p, '#lfoPlot [data-lpt="0"]')
+    x, y = point(p, 0)
     p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x + 3, y + 20, steps=3); p.mouse.move(x + 6, y + 40, steps=3); p.mouse.up()
     p.wait_for_timeout(900)
     after = p.evaluate(SHAPE, 0)
@@ -168,10 +174,10 @@ with sync_playwright() as pw:
     check("and the instrument plays the drawing: it serves a drawn shape's line and the point's new level", served[0] >= 0 and abs(served[1] - pts[0]["y"]) < 1e-9, str(served))
     check("as one step of undo", p.evaluate(UNDO) == steps0 + 1, "%d then %d" % (steps0, p.evaluate(UNDO)))
     # Shift frees the Grid.
-    x, y = centre(p, '#lfoPlot [data-lpt="0"]')
+    x, y = point(p, 0)
     p.keyboard.down("Shift"); p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x + 7, y, steps=4); p.mouse.up(); p.keyboard.up("Shift"); p.wait_for_timeout(300)
     free = p.evaluate("() => lfoParse(lfos[0].drawn)[0].x")
-    x, y = centre(p, '#lfoPlot [data-lpt="0"]')
+    x, y = point(p, 0)
     p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x - 2, y, steps=3); p.mouse.up(); p.wait_for_timeout(300)
     snapped = p.evaluate("() => lfoParse(lfos[0].drawn)[0].x")
     check("Shift drags off the Grid; without it the point lands on an eighth", abs(free * 8 - round(free * 8)) > 0.01 and snapped * 8 == round(snapped * 8),
@@ -187,7 +193,7 @@ with sync_playwright() as pw:
     level_after = p.evaluate("() => { const pts = lfoParse(lfos[0].drawn); return [0.3, 0.375, 0.45].map((u) => lfoLevelAt(pts, pts.map((q) => q.y), u)); }")
     check("the line pressed twice adds a point there, at the line's level", len(three) == 3 and three[1]["x"] == 0.375
           and abs(three[1]["y"] - round(lv, 2)) < 1e-9 and abs(level_after[1] - level_before[1]) < 0.006, str(three))
-    x, y = centre(p, '#lfoPlot [data-lpt="1"]')
+    x, y = point(p, 1)
     p.mouse.click(x, y); p.wait_for_timeout(60); p.mouse.click(x, y); p.wait_for_timeout(400)
     check("and that point pressed twice takes it away", len(p.evaluate("() => lfoParse(lfos[0].drawn)")) == 2)
     # A bend dragged.
@@ -219,7 +225,7 @@ with sync_playwright() as pw:
           opened and rnd["r"] and rnd["y"] > 0, str(rnd))
     shown = p.evaluate("() => !!document.querySelector('#lfoPlot [data-lpt=\"1\"] rect') && document.querySelectorAll('#lfoPlot [data-reach=\"1\"]').length === 2")
     check("a random point is drawn as a diamond with its reach marked either way of nought", shown)
-    x, y = centre(p, '#lfoPlot [data-lpt="1"]')
+    x, y = point(p, 1)
     reach0 = rnd["y"]
     p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x, y + 400, steps=6); p.mouse.up(); p.wait_for_timeout(300)
     reach = p.evaluate("() => lfoParse(lfos[0].drawn)[1].y")

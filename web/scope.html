@@ -18717,7 +18717,11 @@ function drawLfoEditor(force) {
   const g = lfoGeo(svg);
   if (!g) return;
   const lfo = lfos[i], pts = lfoPoints(lfo), shown = lfoShown(i, pts), ink = "var(--ch" + (i + 1) + ")";
-  const key = JSON.stringify([lfo.shape, lfo.drawn, shown, g.W, g.H, lfoEd.sel, lfoEd.grid[i], lfoCycleWords(lfo)]);
+  /* Drawn again only when what it shows changes. The line the dot is on matters to the drawing only
+     while a random point's level can differ from its drawing; otherwise every point's handle was
+     replaced each time the dot passed a point, under a hand (or a suite) reaching for it. */
+  const random = pts.some((p) => p.r);
+  const key = JSON.stringify([lfo.shape, lfo.drawn, random ? shown : null, g.W, g.H, lfoEd.sel, lfoEd.grid[i], lfoCycleWords(lfo)]);
   if (force || key !== lfoEd.said) {
     lfoEd.said = key;
     svg.setAttribute("viewBox", "0 0 " + g.W + " " + g.H);
