@@ -313,8 +313,9 @@ with sync_playwright() as pw:
       return { rest, one, two, none };
     }""")
     print("    %s" % opens)
-    check("at rest none is open; an on module shows its knobs and an off one folds to its line, arrow and all",
-          opens["rest"] == {"open": [], "delayMain": True, "chorusMain": False, "chorusArrow": False}, str(opens["rest"]))
+    # Its arrow stays since 19 Nov (a review of testing): an off module's settings can be looked at before it is on.
+    check("at rest none is open; an on module shows its knobs and an off one folds to its line, keeping its arrow",
+          opens["rest"] == {"open": [], "delayMain": True, "chorusMain": False, "chorusArrow": True}, str(opens["rest"]))
     check("an arrow opens its module", opens["one"] == {"open": ["delay"], "expanded": "true"}, str(opens["one"]))
     check("opening another closes the first, and an off module opened shows its knobs",
           opens["two"] == {"open": ["chorus"], "chorusMain": True, "delayExpanded": "false"}, str(opens["two"]))
@@ -558,6 +559,59 @@ with sync_playwright() as pw:
     halved = [abs(b["drawn"] - b["served"] / 2) for b in bars if b["served"] and b["served"] > 0.12]
     check("null: against the push at half the depth the same comparison goes red", bool(halved) and max(halved) >= 0.05,
           str(halved[:4]))
+
+    print("\n--- every module's arrow, whatever its switch says ---")
+    # From a review of testing (19 Nov): only the EQ's arrow showed while its module was off, so a player could
+    # not look at a module's settings before switching it on. Each module off: its arrow seen and the thing
+    # under the pointer at its middle, a real click opens its rest and leaves it off, and the arrow stands where
+    # it stands with the module on. The null is one arrow hidden, as testing had it.
+    ARROWS = """() => { const out = {};
+      for (const m of document.querySelectorAll('.fx-module[data-fx]')) {
+        const a = m.querySelector('.fx-open'), r = a.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const hit = document.elementFromPoint(cx, cy);
+        out[m.dataset.fx] = { seen: r.width > 0 && r.height > 0 && getComputedStyle(a).visibility === 'visible',
+          top: !!hit && (hit === a || a.contains(hit)), on: fxOn(m.dataset.fx),
+          // Across: a module's line grows with its knobs when on, and everything on it is centred on the line.
+          box: [r.left, r.width].map((v) => Math.round(v * 10) / 10),
+          module: [m.getBoundingClientRect().top, m.getBoundingClientRect().height].map((v) => Math.round(v * 10) / 10) };
+      }
+      return out; }"""
+    p.evaluate("""() => { closeOverlay(); restore(BASE_SETUP); setBenchTab('space'); openFx(null); fxOpen = null;
+      for (const m of document.querySelectorAll('.fx-module[data-fx]')) { const rest = m.querySelector('.fx-rest'); if (rest) rest.hidden = true; delete m.dataset.open; }
+      paintRack(); }""")
+    p.wait_for_timeout(300)
+    off = p.evaluate(ARROWS)
+    print("    off: %s" % {k: (v["seen"], v["top"], v["on"]) for k, v in off.items()})
+    check("every module off, its arrow seen and the thing at its middle: %s" % ", ".join(off),
+          len(off) == 6 and all(v["seen"] and v["top"] and not v["on"] for v in off.values()), str(off))
+    opened = {}
+    for fx in [k for k in off if k != "eq"]:
+        p.locator('.fx-open[data-fx-open="%s"]' % fx).click(); p.wait_for_timeout(200)
+        opened[fx] = p.evaluate("""(fx) => { const m = document.querySelector('.fx-module[data-fx="' + fx + '"]'), rest = m.querySelector('.fx-rest');
+          return { open: !!rest && !rest.hidden && m.dataset.open === '1', on: fxOn(fx), main: m.querySelector('.fx-main').getClientRects().length > 0 }; }""", fx)
+        p.locator('.fx-open[data-fx-open="%s"]' % fx).click(); p.wait_for_timeout(150)
+    print("    opened off: %s" % opened)
+    check("a press on each module's arrow, the module off, opens its settings and leaves it off (the switch is a view over values)",
+          all(v["open"] and not v["on"] and v["main"] for v in opened.values()) and len(opened) == 5, str(opened))
+    p.evaluate("() => { for (const fx of ['phaser', 'chorus', 'delay', 'reverb']) switchFx(fx); paintRack(); }"); p.wait_for_timeout(300)
+    on = p.evaluate(ARROWS)
+    p.evaluate("() => { restore(BASE_SETUP); paintRack(); }"); p.wait_for_timeout(200)
+    moved = [fx for fx in ("phaser", "chorus", "delay", "reverb") if on[fx]["box"] != off[fx]["box"] or not on[fx]["on"]]
+    check("and each arrow stands where it stood across its line with the module switched on", not moved, str([(fx, off[fx]["box"], on[fx]["box"]) for fx in moved]))
+    # Showing the arrows moves nothing: every module's box, off, as it is with testing's rule that hid them.
+    p.evaluate("""() => { const st = document.createElement('style'); st.id = 'hideArrows';
+      st.textContent = '.fx-module[data-on="0"]:not([data-open]):not(#eqModule) .fx-open { display: none; }'; document.head.appendChild(st); }""")
+    p.wait_for_timeout(150)
+    hidden = p.evaluate(ARROWS)
+    p.evaluate("() => document.getElementById('hideArrows').remove()"); p.wait_for_timeout(150)
+    check("and the arrows shown move nothing: every module off stands as it did with them hidden, as testing had them",
+          all(hidden[fx]["module"] == off[fx]["module"] for fx in off), str([(fx, off[fx]["module"], hidden[fx]["module"]) for fx in off if hidden[fx]["module"] != off[fx]["module"]]))
+    check("null: and with them hidden the reading sees them gone", not any(hidden[fx]["seen"] for fx in off if fx != "eq"), str({k: v["seen"] for k, v in hidden.items()}))
+    p.evaluate("() => document.querySelector('.fx-open[data-fx-open=\"delay\"]').style.display = 'none'"); p.wait_for_timeout(100)
+    hid = p.evaluate(ARROWS)
+    p.evaluate("() => document.querySelector('.fx-open[data-fx-open=\"delay\"]').style.display = ''")
+    check("null: the Delay's arrow hidden, as testing hid it while off, is seen not to be there",
+          not (hid["delay"]["seen"] and hid["delay"]["top"]), str(hid["delay"]))
 
     p.evaluate("() => { setBenchTab('space'); openFx('plane', true); }"); p.wait_for_timeout(200)
     os.makedirs(os.path.join(HERE, "shots"), exist_ok=True)

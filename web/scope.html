@@ -1535,8 +1535,10 @@ span.fx-handle { visibility: hidden; }
 
 .fx-rest { border-top: 1px dashed var(--line); padding: 4px 14px 8px 66px; }
 .fx-rest[hidden] { display: none; }
-/* Off: folded to its line, the icon and the name quieter. */
-.fx-module[data-on="0"]:not([data-open]):not(#eqModule) .fx-main, .fx-module[data-on="0"]:not([data-open]):not(#eqModule) .fx-open { display: none; }
+/* Off: folded to its line, the icon and the name quieter. Its arrow stays (19 Nov, from a review of
+   testing): only the EQ's showed while off, so a module's settings could not be looked at before it was
+   switched on. Opening never switches it on - the switch is a view over values, and the arrow is not one. */
+.fx-module[data-on="0"]:not([data-open]):not(#eqModule) .fx-main { display: none; }
 /* And while one module is open, the others fold to their line too, switch and
    summary still there - only when the tab has no room for their knobs (F8,
    fitRack). F5 folded them always: with all four on and Plane open the tab
@@ -3198,7 +3200,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 title="Whether modulation eases in and out: a routing you patch or take off, and each step of the keyboard's sources - a note struck, a note let go, the pedal. A preset still lands at once."></select></div>
             </div>
             <div class="fade-env">
-              <svg id="fadeEnv" viewBox="0 0 240 70" role="group" aria-label="The fade's envelope: drag the ends of the stretches for their times, the corner for the decay and the sustain, the middle of each slope for its shape"></svg>
+              <!-- env-draw (19 Nov): the drawing's rules were scoped to it on 17 Nov, when the knobs' envelopes
+                   took them, and this one was left without it - its labels at the page's 16 px and its handles
+                   grey discs with no line between them. -->
+              <svg id="fadeEnv" class="env-draw" viewBox="0 0 240 70" role="group" aria-label="The fade's envelope: drag the ends of the stretches for their times, the corner for the decay and the sustain, the middle of each slope for its shape"></svg>
               <div class="fade-opts">
                 <span class="fade-layers" id="fadeLayers" hidden>
                   <button type="button" class="link-btn caps" id="fadeEditA" aria-pressed="true" title="Draw and shape layer A's envelope">A</button>
@@ -15638,12 +15643,19 @@ function drawXY(frame, fit, elapsed) {
   ctx.font = "10px " + getComputedStyle(document.body).fontFamily;
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   const axisName = (which) => figures.map((pair) => laneName(pair[which])).join(", ");
-  ctx.fillText(axisName(0) + " \u2192", cx, plot.y + size + 6);
+  /* Each name inside the canvas, 2 px clear of its edge and a pixel for its smoothing, by its own glyphs' measure (19 Nov, from a
+     review of testing): the plot is 16 px in, so the vertical name 10 px left of it, 10 px tall, ran
+     4 px off the canvas at every window. The plot is left where it is - the picture and what Scan
+     reads do not move for a label - and the name comes in towards it when there is no room. */
+  const xName = axisName(0) + " \u2192", yName = axisName(1) + " \u2192";
+  const xm = ctx.measureText(xName);
+  ctx.fillText(xName, cx, Math.min(plot.y + size + 6, h - 3 - Math.ceil(xm.actualBoundingBoxDescent || 10)));
   ctx.save();
-  ctx.translate(plot.x - 10, cy);
-  ctx.rotate(-Math.PI / 2);
   ctx.textBaseline = "bottom";
-  ctx.fillText(axisName(1) + " \u2192", 0, 0);
+  const ym = ctx.measureText(yName);
+  ctx.translate(Math.max(plot.x - 10, 3 + Math.ceil(ym.actualBoundingBoxAscent || 10)), cy);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText(yName, 0, 0);
   ctx.restore();
 }
 

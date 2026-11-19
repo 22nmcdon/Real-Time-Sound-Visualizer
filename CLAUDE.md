@@ -389,8 +389,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   is the screen's rotation), the EQ (17 Nov: three bands, the same on both
   channels, its place fixed), Phaser, Chorus, Delay, then the Reverb (9
   Nov; a dashed slot until then) - each a line of icon, name, switch, what it is doing and its
-  main knobs, Mix first. Its arrow opens the rest under it, one module at a
-  time, and while one is open the others fold to their lines only if the
+  main knobs, Mix first. Its arrow, shown whether the module is on or off
+  (19 Nov: off, only the EQ's showed), opens the rest under it, one module at a
+  time, and never switches it on; and while one is open the others fold to their lines only if the
   tab would scroll with their knobs showing (`fitRack`, F8): with every
   effect on they fold at 1400x900 too since the EQ's line (17 Nov; they kept
   their knobs there until then), and folded so their lines are tighter. Decided by room,

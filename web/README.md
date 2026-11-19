@@ -7446,3 +7446,23 @@ place (what will). The two can differ for a Chord window while a chord lands; th
 `patchtest.py` holds every box on Play across the band's states, and in each the line on one line,
 the split row uncut and nothing over the keys, with testing's ways as its nulls; `striptest.py`
 the places, the numbers on their keys and the rule.
+
+## Three faults from a review of testing (19 Nov)
+
+- **A rule rescoped is a rule some element lost.** On 17 Nov the fade's envelope rules went from
+  `.fade-env …` to `.env-draw …` when the knobs' envelopes took them, and the three new drawings got
+  the class; the fade's own `<svg>` in Routings did not. Its words stood at the page's 16 px
+  ("held" and "out" ran together), its points were grey discs and its line had no stroke, and no
+  check looked at it as drawn. It has the class; `fadetest.py` reads its rendered boxes (words
+  small, apart and inside; points inside; the line stroked), with the class taken away as its null.
+  When a selector's scope changes, grep for every element that matched the old one.
+- **A name drawn beside a plot needs the room it takes.** The X-Y screen's vertical name was
+  drawn 10 px left of a plot 16 px in, and 10 px tall, so 4 px of it were off the canvas at every
+  window. The plot stays where it is (the picture and what Scan reads do not move for a label); the
+  name comes in by its own glyphs' measure. `windowtest.py` reads the screen's pixels: ink beside
+  the plot, none in the canvas's first two columns or last two rows, with the old place as its null.
+- **An off module hid its arrow.** `.fx-module[data-on="0"] .fx-open { display: none }` folded the
+  arrow with the knobs, so only the EQ (exempted) could be opened while off. The arrow fits the
+  folded line without growing it, so showing it moves nothing; opening never switches a module on.
+  `racktest.py` holds every arrow seen, on top and opening its module off, and the rack's boxes as
+  they were with the arrows hidden.
