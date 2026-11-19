@@ -130,14 +130,18 @@ with sync_playwright() as pw:
     # oscillator's run.
     # Since 18 Nov (play-figures.md) Glide and Level are fields of Play's settings row: the name in small
     # type over the knob and its reading on one line, as tall as the menus' fields beside them.
-    p.evaluate("() => setBenchTab('play')"); p.wait_for_timeout(200)
+    # Measured in Wave, where the Generator is Wave's header since 19 Nov: with Amp shown it measured nought.
+    p.evaluate("() => { setBenchTab('play'); setFigSub('wave'); }"); p.wait_for_timeout(200)
     lone = p.evaluate("""() => { const r = el.glide.closest('.menu-row'), f = el.glideValue.getBoundingClientRect(), k = r.querySelector('.knob-face').getBoundingClientRect();
       return { h: r.offsetHeight, w: r.offsetWidth, menu: el.shape.closest('.menu-row').offsetHeight, oneLine: Math.abs((f.top + f.bottom) / 2 - (k.top + k.bottom) / 2) < 3 }; }""")
     p.evaluate("() => setBenchTab('ink')"); p.wait_for_timeout(200)
     cell = p.evaluate("() => { const r = el.oscFm.closest('.menu-row'); return { h: r.offsetHeight, w: r.offsetWidth }; }")
     print("    alone %s, in a run %s" % (lone, cell))
     check("a knob alone is one line, no taller than a menu's field beside it", lone["h"] <= lone["menu"] + 1 and lone["oneLine"], str(lone))
-    null("a knob in a run is a cell, taller and narrow", cell["h"] > 56 and cell["w"] < 90, str(cell))
+    # Ink's run is a figure's row since 19 Nov (ink-figures.md), its cells Play's figures' size: taller than
+    # the lone knob's line by half again, and narrow.
+    check("a knob alone was measured, not hidden", lone["h"] > 0 and lone["w"] > 0, str(lone))
+    null("a knob in a run is a cell, taller and narrow", cell["h"] > lone["h"] * 1.5 and cell["w"] < 90, str(cell))
 
     print("\n--- the face points where the value says ---")
     p.evaluate("() => showControl('oscFm')"); p.wait_for_timeout(250)
@@ -294,8 +298,9 @@ with sync_playwright() as pw:
     print("    on the knob: scrolled %s -> %s, value %s" % (s0, s1, v1))
     check("a finger dragged up a knob turns it", v1 > 10, str(v1))
     check("and the page under it stays where it was", s1 == s0, "%s -> %s" % (s0, s1))
-    # The same swipe off any knob, on the section's own title: the page scrolls.
-    tx, ty = m.evaluate("""() => { const t = el.oscFm.closest('.menu-group').querySelector('.menu-title').getBoundingClientRect();
+    # The same swipe off any knob, on the section's own words over its drawing (its title, since 19 Nov, is only
+    # its pill and dots): the page scrolls.
+    tx, ty = m.evaluate("""() => { const t = el.oscSay.getBoundingClientRect();
       return [t.x + 20, t.y + t.height / 2]; }""")
     swipe(tx, ty, -60)
     s2 = scrolled()

@@ -1897,6 +1897,10 @@ body[data-compact] .bench-body { row-gap: 10px; }
 .bench-body .fig-view .ink-knobs > .menu-row:not(.knob-row) > .grow { display: flex; flex: 0 0 auto; min-width: 0; }
 .bench-body .fig-view .ink-knobs select { width: 100%; min-width: 0; height: 23px; font-size: 12px; padding: 1px 3px; }
 [data-compact] .bench-body .fig-view .ink-knobs select { height: 21px; font-size: 11px; padding: 0 2px; }
+/* On a phone the bench is as tall as what it holds and the page scrolls, so a figure area that fills
+   the rest has no rest to fill: there it is a height of its own, enough for the drawing and its row. */
+@media (max-width: 760px) { #benchBody.is-ink { overflow: visible; } #benchBody.is-ink > .ink-figs { flex: 0 0 auto; height: 560px; }
+  .bench-body .fig-view .ink-knobs { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; row-gap: 4px; } }
 /* A knob between two menus (Spread) is a cell like its neighbours here, not the one-line knob it is among menu rows. */
 .bench-body .fig-view .ink-knobs > .menu-row.knob-row.knob-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "value" "face" "name" "extra";
   justify-items: center; align-items: start; column-gap: 0; margin-top: 0; }
@@ -4101,7 +4105,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               <i>Sub</i> mixes in a square or a sine an octave or two down. <i>Unison</i> stacks
               detuned copies, and the figure thickens and shimmers in place: the copies are not
               spread across left and right, because in X&ndash;Y that would smear one axis into the
-              other. Behind the &ctdot;, the spread and the sub's octave and shape.
+              other. Behind the &ctdot;, the sub's octave and shape.
               <br><br>
               With a split or a layer, this is the layer being edited, like the shape. While
               sync is on, the voice is one sample late.</p>
@@ -5505,7 +5509,12 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         resonant trace can be loud: it is kept under full scale, not evened out.</span></li>
 
       <li><b>The voice: a second oscillator inside it</b>
-        <span>Under <i>Oscillator</i>, on the Ink tab. A second oscillator runs at
+        <span><i>Oscillator</i>, on the Ink tab, draws what it does: both channels over the voice's
+        whole pattern, the left bold, the right in slate, and the plain shape dashed behind, so what
+        the controls add is the difference you see. <i>Wave &middot; Figure</i> draws the figure the
+        two channels make instead, a look this browser remembers. Unison is drawn still, its copies
+        faint and what you hear bold; hold <i>Hold to watch it drift</i> to see them beat. The
+        drawing changes only when a control does. A second oscillator runs at
         <i>Ratio</i> times the note, and <i>FM</i> swings the voice's phase with it: pure at
         nought, then brighter, then bells and clangour. A 3:2 ratio sounds harmonic for the same
         reason a 3:2 figure closes. <i>Ring</i> multiplies by it instead and takes the note
@@ -5538,7 +5547,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         a phone a finger on the figure bends it rather than scrolling the page.</span></li>
 
       <li><b>Shaping: drive, fold and crush, in every note</b>
-        <span>Under <i>Shaping</i>, on the Ink tab. <i>Drive</i> pushes the wave into a soft
+        <span><i>Shaping</i>, on the Ink tab, draws the shaper's curve, what comes out for each level
+        that goes in, with Crush's steps on it, and two cycles of the oscillator before and after,
+        with Rate's holds. <i>Drive</i> pushes the wave into a soft
         ceiling, so a sine rounds towards a square; the reading is how much the quiet parts
         are lifted. <i>Fold</i> bends the wave back on itself each time it would pass full
         scale: the peaks fold into the wave, and in X&ndash;Y the figure grows petals. Put an
@@ -27417,6 +27428,9 @@ function setBenchTab(id) {
        unfolded and over - 4 px at 1400x900 and 12 at 1100x860 once the EQ's
        line was in - until the tab lines' next paint a quarter second later. */
     if (fxOpen && fitRack()) layoutBenchBody();
+    /* Ink's drawings fitted again once the cards are built (19 Nov): the chosen card stands taller and the
+       fit made under the old ones left Ink 9 px over at 1440x900 until the observer's next frame. */
+    if (benchTab === "ink") paintInk();
     requestAnimationFrame(paintRoutings);
   }
 }
@@ -28543,7 +28557,7 @@ const CONTROL_WORDS = {
   "mod-card": ["A modulation card", "Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on."],
   "route-switch": ["A source’s switch in Routings", "Off silences every routing from this source and keeps them; on puts them back as they were. A silence is kept with the sound."],
   "tab-play": ["The Play tab", "What you play: the keyboard and its expression, the generator and its envelope, the voice filter."],
-  "tab-ink": ["The Ink tab", "What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle."],
+  "tab-ink": ["The Ink tab", "What gives the figure its character, drawn: the oscillator's pattern and the shaper's curve, each with its controls under it."],
   "tab-space": ["The Space & Memory tab", "What happens to the drawing after it is made: the Plane, the EQ, the phaser, chorus and delay, and the reverb, in that order."],
   "mod-depth": ["A source’s depth", "How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same."],
   "mod-depth-typed": ["A depth, typed", "The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further."],
@@ -28645,12 +28659,18 @@ const CONTROL_WORDS = {
   "oscSpread": ["Spread", "How far apart Unison's copies are tuned, in cents either way. Wider beats faster and smears the figure further. Idle while Unison is off."],
   "oscSubOct": ["Sub octave", "Whether the sub sits one octave or two under the note. Idle while Sub is off."],
   "oscSubShape": ["Sub shape", "The sub's wave: a square fills out the bottom with a buzz, a sine is a plain deep tone. Idle while Sub is off."],
+  "oscWave": ["The pattern", "The left channel bold, the right in slate, the plain shape dashed: what the oscillator adds is the difference. Unison is drawn still."],
+  "oscXY": ["The figure", "The figure the two channels draw, left against right: the same as the screen's, at rest. At Phase 0° it is a line whatever the oscillator does."],
+  "inkDraws": ["Wave · Figure", "Whether Ink draws the oscillator's pattern or the figure it makes. Only the look: never in the sound or the setup, and kept by this browser."],
+  "inkDrift": ["Hold to watch it drift", "Unison's copies drawn running on while it is held, so you can see how fast they beat. Let go and the drawing is still again."],
   "linkShp": ["Shaping’s link", "Whether the shaping is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it."],
   "shpDrive": ["Drive", "Pushes the wave into a soft ceiling: a sine rounds towards a square, and so does its figure. The reading is how much quiet parts are lifted."],
   "shpFold": ["Fold", "Bends the wave back each time it would pass full scale: on Y–T the peaks fold inward, and in X–Y the figure grows petals."],
   "shpBits": ["Crush", "Fewer levels for each sample, the stepped grit of a bitcrusher: the trace turns to a staircase. Off keeps every level."],
   "shpRate": ["Rate", "Holds each sample longer, as a lower sample rate would, for the folded-back whine of a lo-fi sampler. Off is the full rate."],
   "shpOS": ["Oversampling", "How finely Drive and Fold are worked. Four times is cleaner for a hard drive on a high note and costs twice as much for every voice."],
+  "shpCurve": ["The curve", "What comes out for each level that goes in, the straight line dashed behind it. Crush's bits are the steps it takes."],
+  "shpCycle": ["Two cycles", "Two cycles of the oscillator before (dashed) and after the shaper and the crush, with Rate's holds at the note's frequency."],
   "fxOrder": ["Rack order", "Which of the phaser, chorus and delay comes first. Drag a module by its handle, or the arrow keys; the Plane and EQ stay first, the Reverb last."],
   "linkPlane": ["Plane’s link", "Whether the Plane is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it."],
   "planeTwist": ["Twist", "Turns each point by more the further it is from the middle, so loud parts swirl and the quiet centre stays still: a stereo turn that follows level."],
@@ -28782,6 +28802,8 @@ const CONTROL_WORDS = {
   "figTab-amp": ["Amp", "The amp envelope, drawn the figure area's width with its six knobs. Its summary is the attack, decay, sustain and release."],
   "figTab-filter": ["Filter", "The voice filter's response and its envelope, with their ten knobs. Its summary is the type, the cutoff and the sweep."],
   "figTab-wave": ["Wave", "One cycle of what the generator plays, with the shape's own controls under it: the pulse's width, the morph, the drawbars."],
+  "inkTab-osc": ["Oscillator", "Both channels over the voice's whole pattern, with its controls in one row. Its summary is the ratio and whatever is turned."],
+  "inkTab-shp": ["Shaping", "The shaper's curve and two cycles through it, with Drive, Fold, Crush and Rate. Its summary is whatever is turned, or clean."],
   "keysDown": ["Down an octave", "Moves the on-screen keys down an octave; Z does the same from the computer keyboard."],
   "keysUp": ["Up an octave", "Moves the on-screen keys up an octave; X does the same from the computer keyboard."],
   "keysLatch": ["Tap to hold", "Each tap holds its note until you tap it again, so a mouse can hold a chord. Unticking lets go of every note it held."],

@@ -369,15 +369,16 @@ with sync_playwright() as pw:
     steady = p.evaluate("""() => {
       setBenchTab('ink');
       const cols = document.querySelectorAll('.bench-col').length;
-      const where = () => Array.from(document.querySelectorAll('.bench-col'))
+      // Ink is a figure area since 19 Nov (ink-figures.md): what is compared is where its views are.
+      const where = () => Array.from(document.querySelectorAll('.bench-col, .ink-figs .fig-views'))
         .map((c) => Array.from(c.children).map((g) => groupTitle(g)).join(',')).join('|');
       const before = where();
       const x = () => Math.round(document.getElementById('oscFm').closest('.menu-row').getBoundingClientRect().x);
       const xBefore = x();
       addRouting('lfo1', 'gen.fm');
-      return { cols, before, after: where(), xBefore, xAfter: x() };
+      return { cols, before, after: where(), xBefore, xAfter: x(), figs: !!document.querySelector('#benchBody > .ink-figs') };
     }"""); p.wait_for_timeout(300)
-    check("the body is in real columns", steady["cols"] >= 2, str(steady["cols"]))
+    check("Ink is its figure area, not dealt into columns", steady["cols"] == 0 and steady["figs"] and steady["before"] == "Oscillator,Shaping", str(steady))
     check("a patch does not re-deal the sections", steady["before"] == steady["after"], steady["after"])
     check("and does not move the control being patched", steady["xBefore"] == steady["xAfter"],
           "%d -> %d" % (steady["xBefore"], steady["xAfter"]))
@@ -577,9 +578,8 @@ with sync_playwright() as pw:
     # in the order the sound goes through it, which three columns would deal
     # out of order. The null is all three tabs at three.
     # Play is no columns since 18 Nov: the band, the settings row and the figures, a column of three.
-    # And Ink two: its two sections since the Drawbars and the Drawn cycle went to Play's Wave, and never
-    # more columns than a tab has sections.
-    want_cols = {"play": 0, "ink": 2, "space": 1}
+    # And Ink none since 19 Nov (web/docs/ink-figures.md): a figure area, Oscillator and Shaping as its subtabs.
+    want_cols = {"play": 0, "ink": 0, "space": 1}
     fits = lambda w: all(wide["cols"][t][0] == n and wide["cols"][t][1] <= 0 for t, n in w.items())
     check("and every tab is the columns it is meant to have, and fits", fits(want_cols), str(wide["cols"]))
     check("null: three columns everywhere is not what is there",

@@ -140,7 +140,7 @@ with sync_playwright() as pw:
       setBenchTab('ink');
       const W = el.benchBody.clientWidth;
       const out = { dealt: Array.from(el.benchBody.querySelectorAll(':scope > .bench-col')).filter((c) => c.children.length).length,
-               full: Math.floor((W + BENCH_GAP) / (BENCH_COL + BENCH_GAP)), W, play };
+               ink: [...el.benchBody.children].map((c) => c.className).join(','), shown: [el.oscGroup.hidden, el.shpGroup.hidden], full: Math.floor((W + BENCH_GAP) / (BENCH_COL + BENCH_GAP)), W, play };
       setBenchTab('play'); return out; }"""
     ctx = b.new_context()
     for w, h in [(960, 600), (1100, 680)]:
@@ -150,7 +150,9 @@ with sync_playwright() as pw:
         # cannot tell; this is what holds the drawing.
         # Play was dealt in three here until 18 Nov; Ink holds two sections since, side by side.
         check("at %dx%d Play is its band, its settings row and its figures, a column" % (w, h), r["play"] == "bench-band,play-set,play-figs", r["play"])
-        check("and Ink's two sections are side by side, a column each", r["dealt"] == 2, str(r))
+        # Ink since 19 Nov (ink-figures.md): a figure area, its two sections the views under its subtabs.
+        check("and Ink is its figure area, the Oscillator shown and Shaping under its subtab", r["dealt"] == 0 and r["ink"] == "play-figs ink-figs"
+              and r["shown"] == [False, True], str(r))
         if (w, h) == (960, 600):
             k = p.evaluate("""async () => { setScreenKeys(true); await new Promise((r) => setTimeout(r, 250));
               const keys = document.querySelector('.screen-keys').getBoundingClientRect();

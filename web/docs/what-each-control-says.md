@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-376 controls: 376 lines, none marked as removed by a later stage, 89 wanting a paragraph
+385 controls: 385 lines, none marked as removed by a later stage, 90 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -33,7 +33,8 @@ and the Envelope card's Shape, Loop and Hold a note, with *Its envelope* gone in
 again on 18 Nov, painting's Paint, a fourth place in the display switch; and again on 18 Nov, Play's figures: the blocks, the
 editor beside them and the Ink tab's ways to the cycle and the drawbars gone, the Amp, Filter and Wave
 subtabs, each figure's drawing, Shape, Loop and Hold a note, the cycle drawn on, and the Generator's
-second link on Wave).
+second link on Wave; and on 19 Nov, Ink's figures: its two subtabs, the Oscillator's pattern and figure,
+Wave · Figure and Hold to watch it drift, and Shaping's curve and two cycles).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -93,7 +94,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | mod-card | A modulation card | Drag it onto a knob to move that knob with this source; press it to open its editor and show its ring on every knob it is on. | 125 |
 | route-switch | A source’s switch in Routings | Off silences every routing from this source and keeps them; on puts them back as they were. A silence is kept with the sound. | 125 |
 | tab-play | The Play tab | What you play: the keyboard and its expression, the generator and its envelope, the voice filter. | 97 |
-| tab-ink | The Ink tab | What the beam draws with: the oscillator, the shaping, the drawbars and a drawn cycle. | 86 |
+| tab-ink | The Ink tab | What gives the figure its character, drawn: the oscillator's pattern and the shaper's curve, each with its controls under it. | 125 |
 | tab-space | The Space & Memory tab | What happens to the drawing after it is made: the Plane, the EQ, the phaser, chorus and delay, and the reverb, in that order. | 125 |
 | mod-depth | A source’s depth | How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same. | 142 |
 | mod-depth-typed | A depth, typed | The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further. | 135 |
@@ -239,6 +240,10 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | oscSpread | Spread | How far apart Unison's copies are tuned, in cents either way. Wider beats faster and smears the figure further. Idle while Unison is off. | 137 | - |
 | oscSubOct | Sub octave | Whether the sub sits one octave or two under the note. Idle while Sub is off. | 77 | - |
 | oscSubShape | Sub shape | The sub's wave: a square fills out the bottom with a buzz, a sine is a plain deep tone. Idle while Sub is off. | 110 | - |
+| oscWave | The pattern | The left channel bold, the right in slate, the plain shape dashed: what the oscillator adds is the difference. Unison is drawn still. | 133 | yes: the span is as many of the note's cycles as it takes to repeat; Unison's copies faint and their average bold, 4.33 of the note's cycles in, so the fan grows with Spread |
+| oscXY | The figure | The figure the two channels draw, left against right: the same as the screen's, at rest. At Phase 0° it is a line whatever the oscillator does. | 143 | - |
+| inkDraws | Wave · Figure | Whether Ink draws the oscillator's pattern or the figure it makes. Only the look: never in the sound or the setup, and kept by this browser. | 140 | - |
+| inkDrift | Hold to watch it drift | Unison's copies drawn running on while it is held, so you can see how fast they beat. Let go and the drawing is still again. | 124 | - |
 
 ### Shaping
 
@@ -250,6 +255,8 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | shpBits | Crush | Fewer levels for each sample, the stepped grit of a bitcrusher: the trace turns to a staircase. Off keeps every level. | 118 | - |
 | shpRate | Rate | Holds each sample longer, as a lower sample rate would, for the folded-back whine of a lo-fi sampler. Off is the full rate. | 123 | - |
 | shpOS | Oversampling | How finely Drive and Fold are worked. Four times is cleaner for a hard drive on a high note and costs twice as much for every voice. | 132 | yes: a chord too big for four times is worked at twice anyway, which the readout says; a shaped voice is 0.7 ms later either way |
+| shpCurve | The curve | What comes out for each level that goes in, the straight line dashed behind it. Crush's bits are the steps it takes. | 116 | - |
+| shpCycle | Two cycles | Two cycles of the oscillator before (dashed) and after the shaper and the crush, with Rate's holds at the note's frequency. | 123 | - |
 
 ## Space & Memory
 
@@ -487,6 +494,13 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | figTab-amp | Amp | The amp envelope, drawn the figure area's width with its six knobs. Its summary is the attack, decay, sustain and release. | 121 | - |
 | figTab-filter | Filter | The voice filter's response and its envelope, with their ten knobs. Its summary is the type, the cutoff and the sweep. | 117 | - |
 | figTab-wave | Wave | One cycle of what the generator plays, with the shape's own controls under it: the pulse's width, the morph, the drawbars. | 121 | - |
+
+### Ink's figures
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| inkTab-osc | Oscillator | Both channels over the voice's whole pattern, with its controls in one row. Its summary is the ratio and whatever is turned. | 124 | - |
+| inkTab-shp | Shaping | The shaper's curve and two cycles through it, with Drive, Fold, Crush and Rate. Its summary is whatever is turned, or clean. | 124 | - |
 
 ### The on-screen keyboard
 
