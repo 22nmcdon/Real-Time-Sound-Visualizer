@@ -7,6 +7,7 @@ seen to fail, as CLAUDE.md asks of every new assertion.
   shape, with a note held and a phrase played;
 - the core: today's five shapes run sample by sample through lfo.h's own
   arithmetic (lfoStep, waveAt, the core's Random) beside their drawn twins
+  (Random's twin one random point at full reach, the owner's call of 19 Nov)
   through the proposed engine, at three rates and two sample rates. Sine
   within 1e-12 at every sample, and at 200 001 phases read directly; saw up,
   square and Random equal to the bit (Random from one seed each, so the drawn
@@ -112,7 +113,16 @@ with sync_playwright() as pw:
     results["sineGrid"] = worst
     o = {"rate": 0.37, "sr": 48000, "seconds": 12, "seed": 11}
     r = E(PAIR, ["sine", "triangle", o]); null(r["worst"] <= 1e-12, f"the sine drawn with straight lines differs from lfo.h ({r['worst']:.3f})")
-    early = [{"x": 0, "y": 0, "law": "l", "m": 0.5, "r": True}]
+    # Reach (decided 19 Nov): full reach is today's Random to the bit at every rate above; a reach of
+    # 0.3 is today's levels times 0.3 exactly; a reach of nought, the null, is still.
+    for reach in (1, 0.3):
+        pts_r = [{"x": 0, "y": reach, "law": "h", "m": 0.5, "r": True}]
+        r = E("""([pts, o, reach]) => { const L = window.__lfo, a = { shape: "random", rate: o.rate, phase: 0, held: 0 }, ra = L.CoreRandom(o.seed);
+          const b = { drawn: pts, rate: o.rate, phase: 0, phase0: 0 }, rb = L.CoreRandom(o.seed); L.drawnInit(b); let w = 0, most = 0;
+          for (let s = 0; s < o.sr * o.seconds; s++) { const va = L.coreLfoStep(a, o.sr, ra) * reach, vb = L.drawnStep(b, o.sr, rb); w = Math.max(w, Math.abs(va - vb)); most = Math.max(most, Math.abs(vb)); } return { w, most }; }""", [pts_r, o, reach])
+        check(r["w"] == 0 and r["most"] <= reach, f"a random point of reach {reach} is today's Random times {reach}, to the bit (worst {r['w']:.3g}), and never past ±{reach} (most {r['most']:.3f})")
+    r = E(PAIR, ["random", [{"x": 0, "y": 0, "law": "h", "m": 0.5, "r": True}], o]); null(r["worst"] == 0, f"a random point of reach nought is still, and differs from today's Random ({r['worst']:.3f})")
+    early = [{"x": 0, "y": 1, "law": "l", "m": 0.5, "r": True}]
     r = E(PAIR, ["random", early, o]); null(r["worst"] == 0, f"a random point rolled a line early differs from today's Random ({r['worst']:.3f})")
     r = E(PAIR, ["sine", "sine", dict(o, phase0=0.25)]); null(r["worst"] <= 1e-12, f"a phase of a quarter is read ({r['worst']:.3f} off)")
 

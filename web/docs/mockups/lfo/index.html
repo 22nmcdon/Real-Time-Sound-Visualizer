@@ -729,12 +729,15 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-lin
   </ul>
   <p>Null: a reading sized to its words moves the description when the rate goes to tempo.</p>
 
+  <h2>Decided (19 Nov, the owner)</h2>
+  <ul>
+    <li><b>Random has a reach.</b> A random point’s drawn height is how far it may land, either way of nought: a dashed upright with a tick at each end. Drag the point up or down to set it. At a reach of 1 it is today’s Random to the bit, which the checks hold. A reach of 0.2 is a gentle wander. The null is a reach of nought, which is still and differs.</li>
+    <li><b>The square stays at ±0.9</b>, today’s.</li>
+    <li><b>The S-curve stays a law of its own</b> (half a cosine), beside the envelopes’ curve.</li>
+  </ul>
   <h2>What I would change my mind on</h2>
   <ul>
-    <li><b>Random as points.</b> A point marked random lands anywhere from −1 to +1, a new place each pass. One such point, held, is today’s Random to the bit. That costs the editor nothing new, but there is no <i>how far</i>: a random point always uses the full range. A range per point (its drawn level as the reach) is the obvious next step if the owner wants gentler randomness.</li>
-    <li><b>Today’s square is ±0.9</b>, from the generator’s headroom, and its drawn twin keeps that so nothing changes. A new drawn square could go to ±1. It is the owner’s call whether the preset should.</li>
-    <li><b>The S-curve is a new line law</b> (half a cosine), added because no curve of the envelopes’ one-pole law makes a sine. Two of the three curve laws are then the envelopes’ and one is the LFOs’ own.</li>
-    <li><b>Smooth random starts flat</b>: its first pass glides from the drawn level, because nothing is drawn before the first point is reached.</li>
+    <li><b>Smooth random starts flat</b>: its first pass glides from nought, because nothing is drawn before the first point is reached.</li>
   </ul>
 
 </div>
@@ -2745,7 +2748,9 @@ function coreLfoStep(l, sr, rnd) {
    next point - l straight, s the S of a sine (half a cosine), h held until the next point, or m a
    curve by its midpoint (the envelopes' one-pole law, mseg_shape.h's msegRho). The shape repeats, so
    the last point's line runs on to the first one of the next pass: two points at one x are a jump.
-   A point marked random (r) takes a new level, anywhere from -1 to +1, each pass. */
+   A point marked random (r) takes a new level each pass, anywhere within its reach: its drawn level,
+   taken either way of nought (the owner's call, 19 Nov), so a reach of 1 is today's full range and a
+   reach of 0.2 a gentle wander. It sits at nought until its first level is drawn, as today's does. */
 const P = (x, y, law, r, m) => ({ x, y, law, m: m == null ? 0.5 : m, r: !!r });
 const PRESETS = {
   sine: () => [P(0.25, 1, "s"), P(0.75, -1, "s")],
@@ -2753,8 +2758,8 @@ const PRESETS = {
   ramp: () => [P(0, -1, "l"), P(1, 1, "l")],
   rampdown: () => [P(0, 1, "l"), P(1, -1, "l")],
   square: () => [P(0, 0.9, "l"), P(0.5, 0.9, "l"), P(0.5, -0.9, "l"), P(1, -0.9, "l")],
-  random: () => [P(0, 0, "h", true)],
-  smooth: () => [P(0, 0, "s", true)],
+  random: () => [P(0, 1, "h", true)],
+  smooth: () => [P(0, 1, "s", true)],
 };
 /* The seven starting points, in the editor's order. The first five are today's five shapes and load
    as they are (l0s names them and the core plays them through waveAt, to the bit); the drawing is their
@@ -2797,19 +2802,22 @@ function levelOf(pts, lv, u, a, iKnown) {
    lfoStep does, from the same stream: the two are equal to the bit (the checks). */
 function drawnInit(l) {
   const pts = l.drawn;
-  l.lv = pts.map((p) => p.y);
+  l.lv = pts.map((p) => (p.r ? 0 : p.y));
   const u = readU(l), i = segAt(pts, u);
   l.segI = i; l.segA = l.lv[i];
 }
 // Where the shape is read: the core's cycleOf, moved on by the Phase knob. Not ((t + p) % 1 + 1) % 1,
 // which adds 1 and so loses a small t's low bits: the saw's twin was 2.2e-16 off lfo.h that way.
 const readU = (l) => { const u = cycleOf(l.phase) + (l.phase0 || 0); return u >= 1 ? u - 1 : u; };
+/* A random point's new level, within its reach. The draw is lfoStep's (random() * 2 - 1) and the
+   reach multiplies it after, so a reach of 1 is today's Random to the bit (times one is exact). */
+const landing = (p, rnd) => (rnd.next() * 2 - 1) * Math.abs(p.y);
 function crossPoint(l, k, rnd) {
   const pts = l.drawn, n = pts.length, before = (k - 1 + n) % n;
-  if (pts[k].r && (pts[before].law === "h" || segLen(pts, before) <= 0)) l.lv[k] = rnd.next() * 2 - 1;
+  if (pts[k].r && (pts[before].law === "h" || segLen(pts, before) <= 0)) l.lv[k] = landing(pts[k], rnd);
   l.segI = k; l.segA = l.lv[k];
   const j = (k + 1) % n;
-  if (pts[j].r && pts[k].law !== "h" && segLen(pts, k) > 0) l.lv[j] = rnd.next() * 2 - 1;
+  if (pts[j].r && pts[k].law !== "h" && segLen(pts, k) > 0) l.lv[j] = landing(pts[j], rnd);
 }
 function drawnStep(l, sr, rnd) {
   const u0 = readU(l);
@@ -2881,7 +2889,7 @@ function editShape(l, fn) {
   fn(l.drawn);
   l.drawn.sort((a, b) => a.x - b.x);
   const keep = l.lv || [];
-  l.lv = l.drawn.map((p, k) => (p.r && keep[k] != null ? keep[k] : p.y));
+  l.lv = l.drawn.map((p, k) => (p.r ? clamp(keep[k] != null ? keep[k] : 0, -Math.abs(p.y), Math.abs(p.y)) : p.y));
   const i = segAt(l.drawn, readU(l)); l.segI = i; l.segA = l.lv[i];
   paintLfo();
 }
@@ -2953,8 +2961,10 @@ function drawLfoEditor(svg, l) {
   const s = LFO_SYNC_IDS.find(([id]) => id === l.sync), per = 1 / lfoRate(l);
   const foot = [[0, "0"], [0.25, "¼"], [0.5, "½"], [0.75, "¾"], [1, s ? "one cycle · " + s[1] : "one cycle · " + (per >= 10 ? per.toFixed(0) : per.toFixed(per >= 1 ? 1 : 2)) + " s"]];
   for (const [u, t] of foot) { const n = el("text", { x: g.x(u), y: g.B + 13, "text-anchor": u === 0 ? "start" : u === 1 ? "end" : "middle", "font-size": 8.5, fill: "var(--text-soft)" }, grid); n.textContent = t; }
-  // Random points: where they may land, a dashed upright from -1 to +1.
-  pts.forEach((p, k) => { if (p.r) el("line", { x1: g.x(p.x % 1), x2: g.x(p.x % 1), y1: g.y(1), y2: g.y(-1), stroke: ink, "stroke-width": 1, "stroke-dasharray": "2 3", opacity: 0.5, "data-range": k }, svg); });
+  // Random points: where they may land, a dashed upright across their reach, with a tick at each end.
+  pts.forEach((p, k) => { if (!p.r) return; const x = g.x(p.x >= 1 ? 1 : p.x), r = Math.abs(p.y);
+    el("line", { x1: x, x2: x, y1: g.y(r), y2: g.y(-r), stroke: ink, "stroke-width": 1, "stroke-dasharray": "2 3", opacity: 0.6, "data-range": k }, svg);
+    for (const e of [r, -r]) el("line", { x1: x - 5, x2: x + 5, y1: g.y(e), y2: g.y(e), stroke: ink, "stroke-width": 1.2, opacity: 0.7, "data-reach": k }, svg); });
   const segI = l.drawn ? l.segI : null, segA = l.drawn ? l.segA : null;
   const d = cyclePath(g, pts, lv, segA, segI);
   el("path", { d: d + "L" + g.x(1).toFixed(2) + " " + g.y(0) + "L" + g.x(0).toFixed(2) + " " + g.y(0) + "Z", fill: "var(--blush)", opacity: 0.16, "data-fill": 1 }, svg);
@@ -2975,7 +2985,7 @@ function drawLfoEditor(svg, l) {
   pts.forEach((p, k) => {
     const x = g.x(p.x >= 1 ? 1 : p.x), y = g.y(lv[k]), on = S.lfoSel && S.lfoSel.pt === k;
     const grp = el("g", { class: "lpt", tabindex: 0, role: "slider", "data-lpt": k, "aria-label": (p.r ? "A random point" : "A point") + ": drag it; right-click for more",
-      "aria-valuetext": Math.round(p.x * 100) / 100 + " of the cycle, " + (p.r ? "a new level each pass" : (p.y >= 0 ? "+" : "") + p.y.toFixed(2)) }, svg);
+      "aria-valuetext": Math.round(p.x * 100) / 100 + " of the cycle, " + (p.r ? "a new level each pass, within ±" + Math.abs(p.y).toFixed(2) : (p.y >= 0 ? "+" : "") + p.y.toFixed(2)) }, svg);
     el("circle", { cx: x, cy: y, r: 12, fill: "transparent" }, grp);
     if (p.r) el("rect", { x: x - 4.2, y: y - 4.2, width: 8.4, height: 8.4, transform: "rotate(45 " + x + " " + y + ")", fill: on ? "var(--blush-deep)" : "var(--paper)", stroke: "var(--charcoal)", "stroke-width": 1.4, class: "ring" }, grp);
     else el("circle", { cx: x, cy: y, r: 4.5, fill: on ? "var(--blush-deep)" : ink, stroke: on ? "var(--blush-deep)" : "var(--charcoal)", "stroke-width": 1.4, class: "ring" }, grp);
@@ -3142,7 +3152,9 @@ function wireLfoPlot(svg) {
       editShape(L, (pts) => {
         const p = pts[drag.k], lo = drag.k > 0 ? pts[drag.k - 1].x : 0, hi = drag.k + 1 < pts.length ? pts[drag.k + 1].x : 1;
         p.x = clamp(snapX(L, g.u(at.x), ev.shiftKey), lo, hi);
-        if (!p.r) p.y = clamp(Math.round(g.v(at.y) * (ev.shiftKey ? 1000 : 100)) / (ev.shiftKey ? 1000 : 100), -1, 1);
+        const v = clamp(Math.round(g.v(at.y) * (ev.shiftKey ? 1000 : 100)) / (ev.shiftKey ? 1000 : 100), -1, 1);
+        // A random point's height is its reach, either way of nought.
+        p.y = p.r ? Math.abs(v) : v;
       });
       // Sorting keeps the index: x is held between the neighbours.
       showLfoReadout(svg, drag.k);
@@ -3187,7 +3199,7 @@ function showLfoReadout(svg, k) {
   const L = S.lfo[+svg.dataset.lfo], p = L.drawn[k], r = document.getElementById("readout");
   if (!p) return;
   const s = LFO_SYNC_IDS.find(([id]) => id === L.sync);
-  r.textContent = (s ? Math.round(p.x * s[2] * 4 * 100) / 100 + " sixteenths" : Math.round(p.x * 1000) / 10 + "% of the cycle") + " · " + (p.r ? "random" : (p.y >= 0 ? "+" : "−") + Math.abs(p.y).toFixed(2));
+  r.textContent = (s ? Math.round(p.x * s[2] * 4 * 100) / 100 + " sixteenths" : Math.round(p.x * 1000) / 10 + "% of the cycle") + " · " + (p.r ? "random within ±" + Math.abs(p.y).toFixed(2) : (p.y >= 0 ? "+" : "−") + Math.abs(p.y).toFixed(2));
   const n = svg.querySelector('[data-lpt="' + k + '"] .ring');
   if (n) placeNear(r, n);
   r.hidden = false;
@@ -3198,7 +3210,7 @@ function openLfoPointMenu(L, k, cx, cy) {
     + '<div class="type"><span>Its line</span><span class="switch caps" role="radiogroup" aria-label="The line to the next point">' + ["l", "m", "s", "h"].map((w) => '<button type="button" data-law="' + w + '" aria-pressed="' + (p.law === w) + '">' + LAW_NAMES[w] + '</button>').join("") + '</span></div>'
     + '<button type="button" data-act="rand" role="menuitemcheckbox" aria-checked="' + p.r + '">' + (p.r ? "✓ " : "") + 'A new level each pass</button>'
     + '<button type="button" data-act="del"' + (shapeOf(L).length > 1 ? "" : " disabled") + '>Remove the point</button>'
-    + '<div class="info"><b>A point</b>Drag it; the line to the next one is straight, curved, an S like a sine’s, or held. A random point lands anywhere from −1 to +1, a new place each pass.</div>';
+    + '<div class="info"><b>A point</b>Drag it; the line to the next one is straight, curved, an S like a sine’s, or held. A random point lands anywhere within its reach, a new place each pass: drag it up or down to set how far.</div>';
   m.onclick = (ev) => {
     const lw = ev.target.closest("[data-law]"), act = ev.target.closest("[data-act]");
     if (lw) { editShape(L, (pts) => { pts[k].law = lw.dataset.law; if (lw.dataset.law === "m") pts[k].m = 0.75; }); hideMenu(); }

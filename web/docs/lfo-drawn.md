@@ -74,7 +74,9 @@ editors are now alike.
   it. It is read from the instrument's served phase and value, as the cards
   read them today (`lfosServed`).
 - **Points** are round, filled in the ink. A random point is a hollow diamond
-  at this pass's level, with a dashed upright showing where it may land.
+  at this pass's level. A dashed upright with a tick at each end shows its
+  reach, the range it may land in, and dragging the point up or down sets the
+  reach (decided, below).
 - **Bends** are a hollow round half-way along each line that is not held or
   flat.
 
@@ -120,8 +122,8 @@ Saw down and Smooth random are new, and are drawn from the start.
 | Saw up | `1;0,-1,l;1,1,l` | 0 |
 | Saw down | `1;0,1,l;1,-1,l` | new |
 | Square | `1;0,.9,l;.5,.9,l;.5,-.9,l;1,-.9,l` (±0.9, as `waveAt`'s square) | 0 |
-| Random steps | `1;0,0,h,r` (one random point, held) | 0, from the same Random stream |
-| Smooth random | `1;0,0,s,r` | new |
+| Random steps | `1;0,1,h,r` (one random point at full reach, held) | 0, from the same Random stream |
+| Smooth random | `1;0,1,s,r` | new |
 
 ### The knobs and switches
 
@@ -223,7 +225,8 @@ cycle:
 - Version first.
 - Then a point at a time, sorted by `x`, each with three or four fields:
   - `x`, 0 to 1, as a share of the cycle;
-  - `level`, −1 to 1, five significant figures;
+  - `level`, −1 to 1, five significant figures. For a random point it is the
+    reach, 0 to 1;
   - the law of the line to the next point;
   - `r` if the point is random.
 - The laws:
@@ -271,7 +274,10 @@ Each sample:
 1. Find the points passed since the last sample. Across the wrap, that is
    those after the old `u` and then those up to the new one.
 2. For each point passed, in order:
-   - a random point **after a hold or a jump** takes its new level now;
+   - a random point **after a hold or a jump** takes its new level now:
+     `(random() * 2 - 1) * reach`. The draw is `lfoStep`'s and the reach
+     multiplies it after, so at a reach of 1 it is exact. A random point sits
+     at nought until its first level is drawn, as today's `held` does;
    - the line from the point starts at the point's level (`segA`);
    - if the next point is random and the line to it is a curve or straight,
      the next point takes its new level now, so the line aims at where it will
@@ -280,7 +286,9 @@ Each sample:
 
 Under this rule one random point, held, draws from `Random` at the same sample
 as `lfoStep` draws `held`. So a drawn Random steps is today's Random to the
-bit. Rolling one line early is the null, and differs by 0.16.
+bit. Rolling one line early is the null, and differs by 0.16. A reach of 0.3
+is today's levels times 0.3, to the bit, and never past ±0.3. A reach of
+nought, the null, is still.
 
 **Cost.** A segment change costs a short scan of at most 32 points. A read
 costs one `cos`, for an S, or one `exp` (`pow`), for a curve. That is per
@@ -365,12 +373,20 @@ through `what-each-control-says.md` and `write_words.py`.
 No new colour token: the mockup uses the inks, gold, blush and the line, as
 they are.
 
+## Decided (19 Nov, the owner)
+
+The build follows these:
+
+1. **Random has a reach.** A random point's drawn height sets how far it may
+   land, either way of nought. A reach of 0.2 is a gentle wander.
+   - Full reach must reproduce today's Random to the bit. The mockup's checks
+     hold it, from the same seed at three rates and two sample rates, with a
+     reach of nought as the null.
+   - The build's `pieces/lfo_drawn.py` keeps that check.
+2. **The square stays at ±0.9**, today's, as preset and twin.
+3. **The S-curve stays a law of its own** (half a cosine), beside the
+   envelopes' one-pole curve. It is not moved into the envelopes.
+
 ## Open for the owner
 
-1. **Random's reach.** A random point lands anywhere from −1 to +1. A reach
-   per point (its drawn level as the limit) would allow gentler randomness.
-2. **Today's square is ±0.9.** The twin keeps it, so nothing changes. Should a
-   new drawn square go to ±1?
-3. **LFO 1's Rate as a host knob.**
-4. **One S law or two.** The S-curve is the LFOs' own; the envelopes might
-   take it too.
+1. **LFO 1's Rate as a host knob.**
