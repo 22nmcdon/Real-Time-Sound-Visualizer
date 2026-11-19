@@ -3807,6 +3807,8 @@ int main() {
         (() => {
           const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
           closeOverlay();
+          // Level is in Wave's header since 19 Nov (web/docs/play-band.md): shown there first.
+          setBenchTab('play'); setFigSub('wave');
           const r = document.querySelector('[data-mod-dest="gen.amp"] .knob-face').getBoundingClientRect();
           const x = r.left + r.width / 2, y = r.top + r.height / 2, at = document.elementFromPoint(x, y);
           const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true, button: 2, buttons: 2,
