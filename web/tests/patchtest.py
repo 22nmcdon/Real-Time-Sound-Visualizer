@@ -532,33 +532,80 @@ with sync_playwright() as pw:
         q.locator('#ampPlot [data-handle="%s"]' % key).click(button="right"); q.wait_for_timeout(200)
         q.locator('.ctx-item[data-item="%s"]' % item).click(); q.wait_for_timeout(150)
     HANDS = "(two) => { if ((midi.layers.mode !== 'off') !== two) el.midiTwoHands.click(); }"
+    CHORD = "() => { for (const n of [48, 55, 64, 67, 71, 76, 79]) midiNoteOn(n, 100); }"
+    UNCHORD = "() => { for (const n of [48, 55, 64, 67, 71, 76, 79]) midiNoteOff(n); }"
+    COUNT = "(c) => { el.midiSplitCount.value = String(c); el.midiSplitCount.dispatchEvent(new Event('change', { bubbles: true })); syncMidi(); }"
+    # Within each state, besides where its boxes are (19 Nov, play-band.md): the line's sentence on one line,
+    # nothing in the split row cut by its right edge or laid over the next thing, and nothing over the keys.
+    FIT = """() => {
+      const z = pageZoom || 1, R = (n) => n.getBoundingClientRect(), row = el.midiKindsRow, keys = R(el.midiStrip.closest('.kb-box'));
+      const kids = [...row.querySelectorAll(':scope > .switch, :scope > .kb-own:not([hidden]) > *:not([hidden])')].filter((n) => n.getClientRects().length);
+      let cut = 0, overlap = 0;
+      kids.forEach((n, i) => { cut = Math.max(cut, (R(n).right - R(row).right) / z); if (i) overlap = Math.max(overlap, (R(kids[i - 1]).right - R(n).left) / z); });
+      const line = el.midiStripLine;
+      const over = [...el.midiGroup.querySelectorAll('.kb-split, .kb-split *, .kb-line, .kb-line *')].filter((n) => n.getClientRects().length)
+        .some((n) => R(n).bottom > keys.top + 0.5 && R(n).top < keys.bottom - 0.5);
+      return { cut, overlap, line: line.scrollWidth - line.clientWidth, words: line.textContent, over, spare: (R(row).right - Math.max(...kids.map((n) => R(n).right))) / z };
+    }"""
+    def fits(f):
+        return f["cut"] <= 0.5 and f["overlap"] <= 0.5 and f["line"] <= 0 and not f["over"]
     for w, h in PF.SIZES:
         q, qbad = play_page(w, h)
         tag = "%dx%d" % (w, h)
         base = boxes(q)
-        out = []
+        out, unfit = [], []
+        def state(what, js, against, wait=200):
+            bx = boxes(q, js, wait)
+            ok, moved, nk = PF.same(against, bx)
+            out.append((what, ok, moved, nk))
+            f = q.evaluate(FIT)
+            if not fits(f): unfit.append((what, f))
+            return bx
         for mode in ("poly", "dyad", "mono"):
             for two in (False, True):
                 if two and mode != "poly": continue
-                bx = boxes(q, "() => { setMidiMode('%s'); (%s)(%s); }" % (mode, HANDS, "true" if two else "false"), 250)
-                ok, moved, nk = PF.same(base, bx)
-                out.append(("%s, %s" % (mode.capitalize(), "two hands" if two else "one hand"), ok, moved, nk))
-                if two:
-                    # Each way of sharing the notes, and by notes its count and its counted end: there the octave
-                    # buttons give way to low and high, each keeping its place unseen, so the keys stay.
-                    for what, js in (("Notes", "() => el.midiKindNotes.click()"),
-                                     ("Notes, three counted", "() => { el.midiSplitCount.value = '3'; el.midiSplitCount.dispatchEvent(new Event('change', { bubbles: true })); }"),
-                                     ("Notes, from the top", "() => el.midiEndHigh.click()"),
-                                     ("Notes, from the bottom", "() => el.midiEndLow.click()"),
-                                     ("Layer", "() => el.midiKindLayer.click()"), ("Key", "() => el.midiKindKey.click()")):
-                        bx = boxes(q, js, 200)
-                        ok, moved, nk = PF.same(base, bx)
-                        out.append(("Poly, two hands, %s" % what, ok, moved, nk))
-                    bx = boxes(q, "() => (%s)(false)" % HANDS, 200)
-        bx = boxes(q, "() => setMidiMode('dyad')"); ok, moved, nk = PF.same(base, bx); out.append(("Dyad after two hands", ok, moved, nk))
+                state("%s, %s" % (mode.capitalize(), "two hands" if two else "one hand"),
+                      "() => { setMidiMode('%s'); (%s)(%s); }" % (mode, HANDS, "true" if two else "false"), base, 250)
+                if not two: continue
+                # Each way of sharing the notes, and all that the way chosen lays out in the split row.
+                for kind in ("Notes", "Layer", "Key"):
+                    state("Poly, two hands, %s" % kind, "() => el.midiKind%s.click()" % kind, base)
+                # Key: the split moved to a name of another width (C#4), and Learn waiting: in the mockup Learn
+                # moved with the split point's name until its reading was one width.
+                kb = boxes(q, "() => el.midiKindKey.click()")
+                for what, js in (("the split at C#4", "() => stripSplitAt(61)"), ("the split at C4 again", "() => stripSplitAt(60)"),
+                                 ("Learn waiting", "() => el.midiSplitLearn.click()"), ("Learn let go", "() => el.midiSplitLearn.click()"),
+                                 ("a chord held", CHORD), ("the strip an octave up", "() => el.midiStripUp.click()"),
+                                 ("and down again", "() => el.midiStripDown.click()"), ("nothing held", UNCHORD)):
+                    state("Poly, Key, " + what, js, kb)
+                # Notes: each count from either end, a chord held and none.
+                nb = boxes(q, "() => { el.midiKindNotes.click(); el.midiEndLow.click(); (%s)(1); }" % COUNT, 250)
+                for end in ("Low", "High"):
+                    for held in (False, True):
+                        q.evaluate(CHORD if held else UNCHORD)
+                        for c in range(1, 7):
+                            state("Poly, Notes, %s, %d counted, %s" % ("from the bottom" if end == "Low" else "from the top", c, "a chord held" if held else "nothing held"),
+                                  "() => { el.midiEnd%s.click(); (%s)(%d); }" % (end, COUNT, c), nb, 120)
+                q.evaluate(UNCHORD)
+                state("Poly, Notes, the strip an octave up", "() => el.midiStripUp.click()", nb)
+                q.evaluate("() => { el.midiStripDown.click(); (%s)(1); el.midiEndLow.click(); el.midiKindKey.click(); }" % COUNT)
+                state("Poly, one hand again", "() => (%s)(false)" % HANDS, base)
+        state("Dyad after two hands", "() => setMidiMode('dyad')", base)
         q.evaluate("() => setMidiMode('poly')")
-        for what, ok, moved, nk in out:
-            check("%s: %s: all %d boxes on Play where they were in Poly with one hand %s" % (tag, what, nk, moved or ""), ok)
+        bad = [(what, moved, nk) for what, ok, moved, nk in out if not ok]
+        check("%s: every box on Play where it was across %d states of the band (modes, one hand and two, Key, Notes and Layer, the split moved, Learn, "
+              "each count from either end with a chord and without, an octave up) %s" % (tag, len(out), bad[:2] or ""), not bad)
+        check("%s: and in each of them the line's sentence on one line, nothing in the split row cut or overlapping, nothing over the keys %s"
+              % (tag, [(u, {k: v for k, v in f.items() if k != "words"}, f["words"]) for u, f in unfit[:2]] or ""), not unfit)
+        # Wave: each of the fourteen shapes, with the Generator as its header (19 Nov), moves nothing on Play.
+        wb = boxes(q, "() => { setFigSub('wave'); el.shape.value = 'sine'; el.shape.dispatchEvent(new Event('change', { bubbles: true })); }", 300)
+        shapes = q.evaluate("() => Array.from(el.shape.options).map((o) => o.value)")
+        moved_w = []
+        for sh in shapes:
+            ok, moved, nk = PF.same(wb, boxes(q, "() => { el.shape.value = '%s'; el.shape.dispatchEvent(new Event('change', { bubbles: true })); }" % sh, 200))
+            if not ok: moved_w.append((sh, moved))
+        q.evaluate("() => { el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change', { bubbles: true })); setFigSub('amp'); }")
+        check("%s: Wave with each of the %d shapes, the Generator its header: all %d boxes on Play where they were %s" % (tag, len(shapes), nk, moved_w[:2] or ""), not moved_w)
         # The amp's view.
         base = boxes(q, "() => setFigSub('amp')")
         bx = boxes(q, "() => el.ampLoop.click()"); ok, moved, nk = PF.same(base, bx)
@@ -574,7 +621,7 @@ with sync_playwright() as pw:
         check("%s: a note held: all %d boxes where they were %s" % (tag, nk, moved or ""), ok)
         # The link pills: with two hands, each section's own and linked.
         q.evaluate("() => { (" + HANDS + ")(true); }")
-        for sub, link in (("amp", "linkAmpEnv"), ("filter", "linkVcf"), ("wave", "linkGenWave")):
+        for sub, link in (("amp", "linkAmpEnv"), ("filter", "linkVcf"), ("wave", "linkGen")):
             a2 = boxes(q, "() => setFigSub('%s')" % sub, 250)
             b2 = boxes(q, "() => document.getElementById('%s').click()" % link, 200)
             ok, moved, nk = PF.same(a2, b2)
@@ -605,14 +652,46 @@ with sync_playwright() as pw:
             ok, moved, nk = PF.same(a2, grown)
             null("the band 6 px taller with two hands, as testing had it, is seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
             q.evaluate("() => { el.midiGroup.style.height = ''; }")
-            # And low and high taking room only by notes, as before 18 Nov: the keys move.
-            a2 = boxes(q, "() => el.midiKindKey.click()", 200)
-            st = "() => { const st = document.createElement('style'); st.id = 'nullEnds'; st.textContent = '.kb-band .kb-ends[hidden], .kb-band .kb-oct[hidden] { display: none !important; }'; document.head.appendChild(st); }"
-            a2 = boxes(q, st, 200)
-            notes = boxes(q, "() => el.midiKindNotes.click()", 200)
-            ok, moved, nk = PF.same(a2, notes)
-            null("low and high taking room only by notes, as before, are seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
-            q.evaluate("() => { document.getElementById('nullEnds').remove(); el.midiKindKey.click(); (" + HANDS + ")(false); }")
+            STYLE = "(css) => { const st = document.createElement('style'); st.id = 'nullStyle'; st.textContent = css; document.head.appendChild(st); }"
+            UNSTYLE = "() => { const st = document.getElementById('nullStyle'); if (st) st.remove(); }"
+            # The octave buttons taken out by notes, as testing did for low and high: the line moves.
+            a2 = boxes(q, "() => { (" + HANDS + ")(true); el.midiKindKey.click(); }", 250)
+            q.evaluate(STYLE, "body:has(#midiKindNotes[aria-checked=true]) .kb-octs { display: none; }")
+            ok, moved, nk = PF.same(a2, boxes(q, "() => el.midiKindNotes.click()", 200))
+            null("the octave buttons taken out by notes, as testing did for low and high, are seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate(UNSTYLE)
+            # Key, Notes, Layer on the keys' top edge, as testing had it: seen to lie over the keys.
+            q.evaluate(STYLE, "#midiKindsRow { grid-row: 2; align-self: start; z-index: 1; }"); q.wait_for_timeout(150)
+            f = q.evaluate(FIT)
+            null("Key, Notes, Layer on the keys' top edge, as testing had it, is seen to lie over the keys", f["over"])
+            q.evaluate(UNSTYLE)
+            # The split row narrower than what it holds: seen to be cut.
+            q.evaluate(STYLE, "#midiKindsRow { width: 260px; justify-self: start; }"); q.wait_for_timeout(150)
+            f = q.evaluate(FIT)
+            null("a split row narrower than what it holds is seen to be cut (%.1f px)" % f["cut"], f["cut"] > 0.5)
+            q.evaluate(UNSTYLE)
+            # Testing's line put back, its sentence and the Chord window's in one line: seen not to fit.
+            q.evaluate("() => say(el.midiStripLine, 'Lowest 2: the lower hand. Press a place for how many. Chord window: 10 ms, in Settings, and a word or two more than there is room for')")
+            f = q.evaluate(FIT)
+            null("testing's line put back is seen not to fit on one line (%d px over)" % f["line"], f["line"] > 0)
+            q.evaluate("() => { el.midiKindKey.click(); }"); q.wait_for_timeout(150)
+            # The split point's reading at its own width: Learn moves with the name, as in the mockup.
+            q.evaluate(STYLE, "#midiSplitAtRead { width: auto !important; }")
+            a2 = boxes(q, "() => stripSplitAt(60)", 200)
+            ok, moved, nk = PF.same(a2, boxes(q, "() => stripSplitAt(61)", 200))
+            null("the split point's reading at its own width is seen to move %s with C#4" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate(UNSTYLE); q.evaluate("() => { stripSplitAt(60); (" + HANDS + ")(false); }")
+            # Wave: a band sized to its shape, and the Generator's names over their controls.
+            a2 = boxes(q, "() => { setFigSub('wave'); el.shape.value = 'drawbars'; el.shape.dispatchEvent(new Event('change', { bubbles: true })); }", 250)
+            q.evaluate(STYLE, ".bench-body .wave-band { height: auto !important; }")
+            ok, moved, nk = PF.same(a2, boxes(q, "() => { el.shape.value = 'pulse'; el.shape.dispatchEvent(new Event('change', { bubbles: true })); }", 250))
+            null("a Wave band sized to its shape is seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate(UNSTYLE)
+            a2 = boxes(q, None, 200)
+            q.evaluate(STYLE, ".bench-body #toneRows > .menu-row:not([data-more]) { flex-direction: column !important; display: flex !important; }")
+            ok, moved, nk = PF.same(a2, boxes(q, None, 250))
+            null("the Generator's names over their controls are seen to move %s" % (moved[0][0] if moved else "nothing"), not ok)
+            q.evaluate(UNSTYLE); q.evaluate("() => { el.shape.value = 'harmonic'; el.shape.dispatchEvent(new Event('change', { bubbles: true })); setFigSub('amp'); }")
             a2 = boxes(q, None, 200)
             first = boxes(q, "() => { const t = el.ampEnvGroup.querySelector('.fig-tools'); t.prepend(el.linkAmpEnv); }", 200)
             ok, moved, nk = PF.same(a2, first)

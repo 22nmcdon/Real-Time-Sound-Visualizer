@@ -239,9 +239,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   input, so a value written from code turns the face with no event. Knobs
   that come together are cells read down - setting, knob, name - and a knob
   alone among menu rows is one line, since as a cell it stood taller than the
-  slider it replaced (Play's settings row, since 18 Nov, has the name in small
-  type over the knob and its reading, one field as tall as the menus beside
-  it). The drawbars (upright, under Play's Wave), the setup morph's crossfader, the strip
+  slider it replaced (Wave's header, since 19 Nov the Generator, has the name,
+  a small knob and its reading on one line, as tall as the menus beside it). The drawbars (upright, under Play's Wave), the setup morph's crossfader, the strip
   under the screen and the editor's depths stay sliders. `knobtest.py` holds it.
 - **No Bench tab may scroll.** The Bench is three tabs along the loop - Play,
   Ink, Space & Memory, in the order the sound goes round it (the Picture tab
@@ -578,62 +577,82 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Additive throughout, no version bump. `handstest.py` holds it, the core's tests the
   core.
 - **The Keyboard is a band across Play** (17 Nov, `web/docs/play-redesign.md`,
-  the owner's G after five rounds of mockups). A row of its own across Play's
-  top (`data-band`, `.bench-band`, not dealt), one height in every mode and
-  hands state (122 px, 117 compact; since 18 Nov): the room is reserved, not
-  laid over the strip - Key · Notes · Layer sit in a margin over the strip
-  that is there either way, and the line under it always has two lines' room,
-  a blank second line with one sound being the cost. Its left: the name with the *Two
-  hands* pill in it (seen in Poly on the generator only, and in Dyad and Mono
-  keeping its place unseen, so the heading never reflows), Dyad · Mono · Poly, and under them
-  only what the mode uses of how the notes are drawn - Hold in Dyad, a line in
-  Mono, Outline, Tune a chord and with two hands the pairing in Poly. Its
-  right: the strip, three octaves with its own octave buttons (a view, never
-  stored), Key · Notes · Layer centred on its top edge with Two hands on, a key
-  pressed to split there (Learn stays as *learn from a key*, the plugin's way
-  from a host's note), by notes six places for how many and *low · high* at the
-  counted edge (since 18 Nov in the room the octave buttons and they each keep
-  unseen while the other shows, so the keys never move), and a line under it that names the Chord window, which is
-  Settings' (MIDI), with the on-screen keys beside it. The menus that hold the
-  values (`midiLayers`, `midiSplitBy`, `midiSplitEnd`, `midiSplitCount`) are
-  kept out of sight and the switches drive them by their change events, so the
-  plugin, undo and the setup hear what they always heard. The on-screen keys open with **M** and
-  are the site's only: in the plugin their row is hidden and M does nothing,
-  since a host has its own keys and musical typing. `striptest.py`,
-  `fittest.py` and the plugin's shell test hold it.
-- **Play is the band, a settings row and its figures** (18 Nov,
-  `web/docs/play-figures.md`, the owner's). A column of three, nothing dealt,
-  so nothing can stretch between them. Under the band, one row: Expression's
-  four menus and the Generator's Shape, Glide, Interval and Level, each name
-  in small type over its control, the menus' values shortened to fit at
-  960x600 (*±2 st*, *Level + strike*, *Sine + 3rd*, *Maj 3rd 5:4*) with the
-  full name each option's title and the menu's own while chosen, and still
-  the name in the info line and the search. Then the figure area, the rest of
-  the tab, with three subtabs, each its name and a summary that shortens only
-  where it must (`figSummaries`): *Amp* (the drawing and six knobs), *Filter*
-  (the type as a switch driving the hidden menu, the response with four
-  knobs and the envelope with six, side by side or stacked when each drawing
-  would still be 120 px tall - by room, as the rack folds, `fitFilter`) and
-  *Wave* (one cycle of what the generator plays, `paintCycle`, drawn on with
-  the Drawn cycle and the Wavetable, and under it a band one height for every
-  shape, the drawbars' 78 px: Width, Morph, Position and its slots, the Drawn
-  cycle's Sine, Smooth and Grab, the nine drawbars upright, or the shape's
-  one line). The Drawn cycle and the Drawbars were Ink's sections until then;
-  they moved here, ids and all, and Tuning went behind the Generator's dots.
-  The Generator's link is in two places, after its name and at the end of
-  Wave's header (`linkGenWave`, painted by `linkButtons`). The subtab chosen
-  is a view, never stored; `showControl` chooses it. **Nothing moves when
-  something is chosen** (the owner's general rule): the pills are one width
-  at the right of each header, the words that change keep their boxes, the
-  chosen subtab covers the bar's rule with a shadow (a negative margin moved
-  both by a pixel), a pressed link button keeps its height, the filter's
-  envelope keeps its knobs while it is off, and the info line's menu note
-  and More sit in a column of their own, so pressing a control and changing
-  the line moves neither. `patchtest.py` measures every box on Play to half
-  a pixel across the modes and two hands (Key, Layer, and Notes with its count
-  and its end), Loop, Sustain here, No sustain, a
-  note held, every filter type, the link pills, the subtabs and the
-  Envelope's editor at six windows, with its nulls; `msegtest.py` the
+  the owner's G after five rounds of mockups; with room since 19 Nov,
+  `web/docs/play-band.md`, the owner's "much much better"). A row of its own
+  across Play's top (`data-band`, `.bench-band`, not dealt), a grid of two
+  columns and three rows at one height in every mode and hands state (140 px,
+  120 compact; the owner's lean was 10 px under the mockup's, which leaves the
+  stacked filter 8 px over its floor at 1660x1050). Its left column: the name
+  with the *Two hands* pill in it (seen in Poly on the generator only, and in
+  Dyad and Mono keeping its place unseen, so the heading never reflows) and the
+  dots, then Dyad · Mono · Poly, and under them only what the mode uses of how
+  the notes are drawn - Hold in Dyad, a line in Mono, Outline, Tune a chord and
+  with two hands the pairing (*each*, *A vs B*) in Poly. Its right column: the
+  **split row**, kept unseen with one hand so choosing Two hands moves nothing,
+  holding Key · Notes · Layer and then that way's own: by key *Split at C4* in
+  a reading of one width (the mockup found Learn moving when the name changed
+  width) and *learn from a key* (the plugin's way from a host's note, one width
+  waiting or not); by notes *Lowest · Highest*, six numbered places for how
+  many, and *Chord window 10 ms*, which is Settings' (MIDI) and goes there; by
+  layer its line. Then **the keys**, three octaves (thirty-six keys, C3 to B5
+  to begin with) taking the rest of the height and the column's whole width in
+  every way of sharing: by notes they stay (they were eight places until 19
+  Nov, and the owner could not see which hand a note went to), each held note
+  in its hand's ink and numbered on its own key from the counted end, the
+  counted ones on a paper disc, a dashed rule at the first uncounted note's
+  edge. Then **one line**: one sentence that fits at every window, and the
+  strip's octave buttons and span (a view, never stored) at its end, in every
+  way. Nothing is laid over the keys; nothing in the split row shrinks, so
+  what does not fit is seen not to. The menus that hold the values
+  (`midiLayers`, `midiSplitBy`, `midiSplitEnd`, `midiSplitCount`) are kept out
+  of sight and the switches drive them by their change events, so the plugin,
+  undo and the setup hear what they always heard. The on-screen keys, beside
+  the Chord window in Settings' MIDI, open with **M** and are the site's only:
+  in the plugin their row is hidden and M does nothing, since a host has its
+  own keys and musical typing. `striptest.py`, `patchtest.py`, `fittest.py`
+  and the plugin's shell test hold it.
+- **Play is the band, Expression and its figures** (18 Nov,
+  `web/docs/play-figures.md`, the owner's; Expression alone and the Generator
+  in Wave since 19 Nov, `play-band.md`). A column of three, nothing dealt, so
+  nothing can stretch between them. Under the band, one row: Expression, its
+  title and a line of what it is in the band's left column and its four menus
+  across the rest, each name in small type over its control (47 px, 40
+  compact). The menus' values are shortened to fit at 960x600 (*±2 st*,
+  *Level + strike*, *Sine + 3rd*, *Maj 3rd 5:4*) with the full name each
+  option's title and the menu's own while chosen, and still the name in the
+  info line and the search. Then the figure area, the rest of the tab, with
+  three subtabs, each its name and a summary that shortens only where it must
+  (`figSummaries`): *Amp* (the drawing and six knobs), *Filter* (the type as a
+  switch driving the hidden menu, the response with four knobs and the
+  envelope with six, side by side or stacked when each drawing would still be
+  120 px tall - by room, as the rack folds, `fitFilter`) and *Wave*, whose
+  header is **the Generator**: Shape, Glide, Interval and Level on one line,
+  each name beside its control, the readings in boxes of one width, the link
+  pill and the dots (Tuning, and what the Wave figure's dots said) at its end.
+  The Generator stays a section of its own, moved into the Wave view as Play
+  is laid out (`data-play="head"`, `data-fig="wave"`), never copied, so
+  `showControl` on Shape chooses Wave; Wave's own tools and title stand aside
+  for it (`linkGenWave` is kept, unseen, for the checks that read it). Under
+  the header, one cycle of what the generator plays (`paintCycle`), drawn on
+  with the Drawn cycle and the Wavetable, and under it a band one height for
+  every shape, the drawbars' 78 px: Width, Morph, Position and its slots, the
+  Drawn cycle's Sine, Smooth and Grab, the nine drawbars upright, or the
+  shape's one line. The Drawn cycle and the Drawbars were Ink's sections until
+  18 Nov; they moved here, ids and all. The subtab chosen is a view, never
+  stored; `showControl` chooses it. **Nothing moves when something is
+  chosen** (the owner's general rule): the pills are one width at the right of
+  each header, the words that change keep their boxes, the chosen subtab
+  covers the bar's rule with a shadow (a negative margin moved both by a
+  pixel), a pressed link button keeps its height, the filter's envelope keeps
+  its knobs while it is off, and the info line's menu note and More sit in a
+  column of their own, so pressing a control and changing the line moves
+  neither. `patchtest.py` measures every box on Play to half a pixel across
+  the modes, one hand and two, Key, Notes and Layer, the split moved, Learn
+  waiting, each count from either end with a chord held and without, an octave
+  up, every Wave shape, Loop, Sustain here, No sustain, a note held, every
+  filter type, the link pills, the subtabs and the Envelope's editor at six
+  windows, and in each state of the band the line on one line, the split row
+  uncut and nothing over the keys, with its nulls; `msegtest.py` the
   summaries, the fit, the knobs' homes, `showControl` and Wave across all
   fourteen shapes; `fittest.py` and `striptest.py` the fit and the band.
 - **Trace · Paint, and the painting's own Persistence** (painting, step 2, 18 Nov;

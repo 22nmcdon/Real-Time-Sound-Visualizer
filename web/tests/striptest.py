@@ -13,9 +13,13 @@ same reading fed a value it must reject:
   played must sound in the upper hand's lanes, as Learn's G3 does (layertest).
   The null: the same press with one sound, which sets nothing, so A3 is in
   the lower hand's lanes - the instrument's own C4 split, as it was;
-- a press on a place not being the count, and low and high not the end: read
-  from the menus and the setup. The null: the seventh place, which is not a
-  count (one to six), leaves it;
+- a press on a place not being the count, and Lowest and Highest not the end:
+  read from the menus and the setup. The null: a key pressed by notes, which
+  is not a count, leaves it;
+- by notes, the keys not saying which hand a note goes to (the owner's note,
+  19 Nov): each held note numbered on its own key from the counted end, and
+  the dashed rule after the last counted. The nulls: a number drawn off its
+  key, and the order from the other end;
 - the octave buttons moving the sound rather than the view, or not marking a
   note out of view: the range moves, the split point and the held notes do
   not, and a gold mark says which way a held note is;
@@ -104,8 +108,9 @@ with sync_playwright() as pw:
 
     print("\n--- the pill in the heading, and the band one height (18 Nov, play-figures.md) ---")
     # Two hands is the pill in the Keyboard's heading, unseen in Dyad and Mono but keeping its place, so
-    # the heading never reflows; and the band is one height (122 px, 117 compact) in every mode, with one
+    # the heading never reflows; and the band is one height (140 px, 120 compact) in every mode, with one
     # hand or two and each of Key, Notes and Layer, its content inside it. Measured at the six windows.
+    # 140 px (120 compact) since 19 Nov (play-band.md): the keys take the room, about 74 px (65).
     BAND = """async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms)), z = pageZoom || 1;
       const box = (n) => { const r = n.getBoundingClientRect(); return [r.left / z, r.top / z, r.width / z, r.height / z].map((v) => Math.round(v * 10) / 10); };
@@ -131,7 +136,7 @@ with sync_playwright() as pw:
         q.evaluate("() => { setView('bench'); setBenchTab('play'); }"); q.wait_for_timeout(200)
         states = q.evaluate(BAND)
         first = states[0]
-        tall = 117 if w < 1100 or h < 860 else 122
+        tall = 120 if w < 1100 or h < 860 else 140
         check("%dx%d: the band %d px in Dyad, Mono, Poly, with two hands and each of Key, Notes and Layer, the settings row under it unmoved"
               % (w, h, tall), all(abs(s_["band"][3] - tall) <= 0.5 and s_["band"] == first["band"] and s_["under"] == first["under"] for s_ in states),
               str([(s_["what"], s_["band"][3], s_["under"][1]) for s_ in states if s_["band"] != first["band"] or s_["under"] != first["under"]] or first["band"]))
@@ -175,24 +180,63 @@ with sync_playwright() as pw:
     null("a split at a key is not what it came back as", seen["key"]["layers"] == "split" and seen["again"]["layers"] != "split", str(seen["key"]))
 
     print("\n--- the places and the ends, by notes ---")
+    # Six places in the split row since 19 Nov (play-band.md), so the count can be chosen with nothing held;
+    # the keys stay under them, and a key pressed by notes is not a count.
     p.click("#midiKindNotes"); p.wait_for_timeout(250)
-    places = p.evaluate("""() => [...el.midiStrip.querySelectorAll('[data-count]')].map((r) => r.dataset.count)""")
+    places = p.evaluate("""() => [...el.midiCountPlaces.querySelectorAll('[data-count]')].map((r) => r.dataset.count)""")
     def press_place(count):
-        xy = p.evaluate("""(c) => { const r = el.midiStrip.querySelector('[data-count="' + c + '"]').getBoundingClientRect();
-          return [r.x + r.width / 2, r.y + r.height / 2]; }""", count)
-        p.mouse.click(*xy); p.wait_for_timeout(200)
+        p.click('#midiCountPlaces [data-count="%s"]' % count); p.wait_for_timeout(200)
     press_place("3"); three = p.evaluate(READ)
-    seventh = p.evaluate("""() => { const svg = el.midiStrip.querySelector('svg'), r = svg.getBoundingClientRect(), w = r.width / 8;
-      return [r.x + w * 6.5, r.y + r.height / 2]; }""")
-    p.mouse.click(*seventh); p.wait_for_timeout(200); still = p.evaluate(READ)
+    p.mouse.click(*key_on_strip(p, 64)); p.wait_for_timeout(200); still = p.evaluate(READ)
     p.click("#midiEndHigh"); p.wait_for_timeout(200); high = p.evaluate(READ)
+    lit = p.evaluate("() => [...el.midiCountPlaces.children].filter((b) => b.getAttribute('aria-checked') === 'true').map((b) => b.dataset.count)")
     p.click("#midiEndLow"); p.wait_for_timeout(200)
     press_place("1")
-    print("    places %s; the third %s; the seventh %s; high %s" % (places, three["count"], still["count"], high["end"]))
-    check("six places are counts, one to six", places == ["1", "2", "3", "4", "5", "6"], str(places))
-    check("a press on the third place is a count of three, in the menu and the setup", three["count"] == "3" and three["code"].endswith("lower 3"), str(three))
-    null("the seventh place is not a count, and leaves three", still["count"] == "3", str(still))
-    check("high counts from the top, in the menu and the setup", high["end"] == "upper" and high["code"].endswith("upper 3"), str(high))
+    print("    places %s; the third %s; a key pressed %s; high %s; lit %s" % (places, three["count"], still["count"], high["end"], lit))
+    check("six places are counts, one to six, in the split row", places == ["1", "2", "3", "4", "5", "6"], str(places))
+    check("a press on the third place is a count of three, in the menu and the setup, and the third lit", three["count"] == "3" and three["code"].endswith("lower 3") and lit == ["3"], str(three))
+    null("a key pressed on the strip by notes is not a count, and leaves three", still["count"] == "3", str(still))
+    check("Highest counts from the top, in the menu and the setup", high["end"] == "upper" and high["code"].endswith("upper 3"), str(high))
+
+    print("\n--- by notes the keys stay, each held note numbered on its own key ---")
+    # What the owner could not see on testing (19 Nov): which hand each note of a chord goes to. Each held note
+    # is in its hand's ink on its own key, numbered from the counted end, the counted ones on a paper disc,
+    # and a dashed rule at the first uncounted note's edge. Read off the drawing: each number's disc inside
+    # its own key, the numbers in order from the counted end, the counted ones the lower hand's when the
+    # lowest are counted, and the rule between the last counted key and the first not.
+    NUMBERS = """() => {
+      const svg = el.midiStrip.querySelector('svg'), out = [];
+      for (const g of svg.querySelectorAll('[data-place]')) {
+        const n = Number(g.dataset.placedNote), c = g.querySelector('circle'), key = svg.querySelector('[data-note="' + n + '"]');
+        const cx = Number(c.getAttribute('cx')), kx = Number(key.getAttribute('x')), kw = Number(key.getAttribute('width'));
+        out.push({ n, place: Number(g.dataset.place), on: cx > kx && cx < kx + kw, disc: c.style.fill === 'var(--paper)', ink: g.querySelector('text').style.fill });
+      }
+      const rule = svg.querySelector('[data-deal]'), x = rule ? Number(rule.getAttribute('x1')) : null;
+      const edge = (n) => { const k = svg.querySelector('[data-note="' + n + '"]'); return [Number(k.getAttribute('x')), Number(k.getAttribute('x')) + Number(k.getAttribute('width'))]; };
+      return { lowInk: stripInk(0, true), notes: out.sort((a, b) => a.n - b.n), rule: x, keys: svg.querySelectorAll('rect.k').length, e55: edge(55), e64: edge(64) };
+    }"""
+    p.evaluate("() => { el.midiSplitCount.value = '2'; el.midiSplitCount.dispatchEvent(new Event('change', { bubbles: true })); syncMidi(); for (const n of [48, 55, 64, 67]) midiNoteOn(n, 100); }")
+    p.wait_for_timeout(400)
+    low = p.evaluate(NUMBERS)
+    p.click("#midiEndHigh"); p.wait_for_timeout(400)
+    top = p.evaluate(NUMBERS)
+    print("    lowest 2: %s, rule %s; highest 2: %s" % ([(x["n"], x["place"], x["disc"]) for x in low["notes"]], low["rule"], [(x["n"], x["place"], x["disc"]) for x in top["notes"]]))
+    check("by notes the keys stay: the strip draws its 36 keys", low["keys"] == 36, str(low["keys"]))
+    check("each held note numbered on its own key, 1 the lowest, the lowest 2 on paper discs in the lower hand's ink",
+          [x["place"] for x in low["notes"]] == [1, 2, 3, 4] and all(x["on"] for x in low["notes"])
+          and [x["disc"] for x in low["notes"]] == [True, True, False, False]
+          and all(x["ink"] == low["lowInk"] for x in low["notes"][:2]), str(low["notes"]))
+    check("and the dashed rule at the first uncounted note's edge, between G3 and E4", low["rule"] is not None and abs(low["rule"] - low["e64"][0]) < 0.01, str((low["rule"], low["e64"])))
+    check("counted from the top, 1 the highest, the highest 2 on discs", [x["place"] for x in top["notes"]] == [4, 3, 2, 1]
+          and [x["disc"] for x in top["notes"]] == [False, False, True, True], str(top["notes"]))
+    check("and the rule at the right edge of the first uncounted, G3", top["rule"] is not None and abs(top["rule"] - top["e55"][1]) < 0.01, str((top["rule"], top["e55"])))
+    # Nulls: a number drawn a key to the right is seen off its key; and the order read from the other end is not this one.
+    off = p.evaluate("() => { const c = el.midiStrip.querySelector('[data-place=\"1\"] circle'); c.setAttribute('cx', Number(c.getAttribute('cx')) + 40); }")
+    moved = p.evaluate(NUMBERS)
+    null("a number drawn a key to the right is seen off its key", not all(x["on"] for x in moved["notes"]), str(moved["notes"]))
+    null("the places read from the other end are not the ones drawn", [x["place"] for x in top["notes"]] != [1, 2, 3, 4])
+    p.evaluate("() => { for (const n of [48, 55, 64, 67]) midiNoteOff(n); }")
+    p.click("#midiEndLow"); p.wait_for_timeout(200)
     p.close()
 
     print("\n--- a key pressed on the strip is the split point, on the instrument ---")
@@ -213,7 +257,7 @@ with sync_playwright() as pw:
         return out
     pressed, unpressed = strip_split(False), strip_split(True)
     print("    pressed %s; with one sound %s" % (pressed, unpressed))
-    check("G3 pressed on the strip is the point, named on the line", pressed["point"] == 55 and pressed["line"].startswith("G3 and up"), str(pressed))
+    check("G3 pressed on the strip is the point, named on the line", pressed["point"] == 55 and "G3 and up" in pressed["line"], str(pressed))
     check("and the instrument splits there: A3 is in the upper hand's lanes", pressed["b"] > 10 * pressed["a"] and pressed["b"] > 1e-3, str(pressed))
     null("pressed with one sound it sets nothing, and A3 is the lower hand's at C4", unpressed["point"] == 60
          and unpressed["a"] > 10 * unpressed["b"], str(unpressed))
@@ -226,7 +270,7 @@ with sync_playwright() as pw:
     p.click("#midiStripUp"); p.wait_for_timeout(200)
     after = p.evaluate("() => ({ base: strip.base, up: el.midiStripUp.hasAttribute('data-beyond'), held: midi.notes.map((n) => n.note), point: midi.layers.point, lit: !!el.midiStrip.querySelector('[data-note=\"86\"]') })")
     print("    before %s, after %s" % (before, after))
-    check("D6 held above C3-C6's view is marked on the up button, and the strip draws 37 keys", before["up"] and not before["down"] and before["keys"] == 37, str(before))
+    check("D6 held above C3-B5's view is marked on the up button, and the strip draws its 36 keys", before["up"] and not before["down"] and before["keys"] == 36, str(before))
     check("up an octave moves the view and not the note or the split point", after["base"] == before["base"] + 12 and after["held"] == [86]
           and after["point"] == 60 and after["lit"] and not after["up"], str(after))
     null("the mark is not on the button whose way the note is not", not before["down"])

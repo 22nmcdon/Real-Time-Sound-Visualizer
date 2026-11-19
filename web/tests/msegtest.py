@@ -216,6 +216,9 @@ with sync_playwright() as pw:
             check(tag + ": every knob row and settings row one row, the drawings %s" % PF.plots_said(m), j["one"] and j["wide"], str((m["knobRows"], m["setRows"])))
             if sub == "amp":
                 check(tag + ": the summaries fit their labels", j["fits"], str(m["labels"]))
+            # The shortened menus on Wave, where Expression's four and the Generator's Shape and Interval (Wave's
+            # header since 19 Nov, play-band.md) are all on show.
+            if sub == "wave":
                 tight = min(m["menus"], key=lambda x: x["room"] - x["widest"])
                 check("%dx%d: every value of the settings row's menus fits its menu, in its own font (tightest %s, %r, %.1f of %.1f px)"
                       % (w, h, tight["menu"], tight["text"], tight["widest"], tight["room"]), all(x["fits"] for x in m["menus"]))
@@ -329,7 +332,7 @@ with sync_playwright() as pw:
     check("the cycles are the shapes' own: a sine's quarter at its peak, a square high then low, a pulse of a quarter high only for a quarter",
           abs(cyc["sine"] - 1) < 1e-6 and cyc["square"][0] > 0.5 and cyc["square"][1] < -0.5 and cyc["pulse"][0] > 0 and cyc["pulse"][1] < 0 and cyc["tri"] > 0.9, str(cyc))
     null("the saw is not the sine: a quarter in it is not at its peak", abs(cyc["saw"] - 1) > 0.1, str(cyc["saw"]))
-    tuning = p.evaluate("""() => { closeModCard(); closeOverlay(); setBenchTab('play'); setFigSub('amp'); const onFace = el.tuneJust.offsetParent !== null;
+    tuning = p.evaluate("""() => { closeModCard(); closeOverlay(); setBenchTab('play'); setFigSub('wave'); const onFace = el.tuneJust.offsetParent !== null;
       openGroupDetail(el.toneRows, el.toneRows.querySelector('.more-dots')); const inMenu = !!document.querySelector('.over') && document.querySelector('.over').contains(el.tuneJust) && el.tuneJust.offsetParent !== null;
       closeOverlay(); return { onFace, inMenu }; }""")
     check("Tuning is in the Generator's dots menu and not on the face", tuning == {"onFace": False, "inMenu": True}, str(tuning))

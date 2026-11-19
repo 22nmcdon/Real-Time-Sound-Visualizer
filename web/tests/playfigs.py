@@ -25,10 +25,19 @@ BOXES = """() => {
   put('band:modes', el.midiDyad.parentElement);
   put('band:strip', el.midiStrip);
   put('band:box', el.midiStrip.closest('.kb-box'));
-  put('band:line', el.midiStrip.closest('.kb-right').querySelector('.kb-line'));
+  put('band:line', el.midiGroup.querySelector('.kb-line'));
+  put('band:lineWords', el.midiStripLine);
+  put('band:octDown', el.midiStripDown); put('band:octSpan', el.midiStripSpan); put('band:octUp', el.midiStripUp);
+  // The split row (19 Nov, play-band.md) and each thing in it, unseen or not: kept with one hand, so it is
+  // measured with one hand too, and only what the way chosen lays out is compared across ways.
+  put('band:split', el.midiKindsRow);
+  put('band:kinds', el.midiKindKey.parentElement);
+  for (const n of el.midiKindsRow.querySelectorAll('.kb-own > *, .kb-own .switch > button, #midiWindowGo'))
+    put('band:split:' + (n.id || n.closest('.kb-own').id + ':' + (n.dataset.count || n.className.split(' ')[0])), n);
   put('set', document.querySelector('.play-set'));
-  for (const g of [el.expressionGroup, el.toneRows]) {
+  for (const g of [el.expressionGroup]) {
     put('set:' + g.id + ':title', g.querySelector(':scope > .menu-title'));
+    put('set:' + g.id + ':say', g.querySelector(':scope > .set-say'));
     for (const row of g.querySelectorAll(':scope > .menu-row')) {
       const c = row.querySelector('select, input');
       if (!c) continue;
@@ -44,6 +53,17 @@ BOXES = """() => {
     view.querySelectorAll('.fig-tools > *, .fig-tools .switch > button, :scope > .menu-title > *, .fig-plot, .fig-pane, .fig-sub, .fig-sub > *, .fig-foot, .wave-band')
       .forEach((n, i) => put('view:' + view.id + ':' + (n.id || (n.dataset.type !== undefined ? 'type' + n.dataset.type : n.className.split(' ')[0] + i)), n));
     for (const input of view.querySelectorAll('.mseg-knobs .knob-row input')) put('view:knob:' + input.id, input.closest('.knob-row'));
+    // Wave's header is the Generator (19 Nov): each field, its control and its reading, and its title's pill and dots.
+    if (view.contains(el.toneRows)) {
+      for (const row of el.toneRows.querySelectorAll(':scope > .menu-row')) {
+        const c = row.querySelector('select, input');
+        if (!c) continue;
+        put('view:gen:field:' + c.id, row);
+        put('view:gen:control:' + c.id, row.querySelector('select, .knob-face'));
+        put('view:gen:reading:' + c.id, row.querySelector('.reading'));
+      }
+      for (const n of el.toneRows.querySelectorAll(':scope > .menu-title > *')) put('view:gen:title:' + (n.id || n.className.split(' ')[0]), n);
+    }
   }
   return out;
 }"""
@@ -56,7 +76,10 @@ MEASURE = """() => {
   const shown = (n) => n && n.getClientRects().length;
   const tops = (nodes) => new Set([...nodes].filter(shown).map((n) => Math.round(R(n).top / z))).size;
   const knobRows = view ? [...view.querySelectorAll('.mseg-knobs')].filter(shown).map((k) => tops(k.querySelectorAll('.knob-row'))) : [];
-  const setRows = [el.expressionGroup, el.toneRows].map((g) => tops(g.querySelectorAll(':scope > .menu-row:not([data-more])')));
+  // One line each: Expression's four fields, and the Generator's four in Wave's header while it is shown. Judged
+  // by the fields' centres, since a menu 23 px tall and a knob's row 22 px stand on one line a pixel apart.
+  const lines = (nodes) => { const c = [...nodes].filter(shown).map((n) => (R(n).top + R(n).height / 2) / z); return !c.length ? 0 : Math.max(...c) - Math.min(...c) <= 2 ? 1 : 2; };
+  const setRows = [el.expressionGroup, el.toneRows].filter(shown).map((g) => lines(g.querySelectorAll(':scope > .menu-row:not([data-more])')));
   const plotOf = (n, what) => { const r = R(n); return { what, w: Math.round(r.width / z), h: Math.round(r.height / z), aspect: r.width / Math.max(1, r.height) }; };
   const plots = !view ? [] : view === el.ampEnvGroup ? [plotOf(el.ampPlot, 'amp')]
     : view === el.vcfGroup ? [plotOf(el.vcfResp, 'response'), plotOf(el.fenvPlot, 'fenv')] : [plotOf(el.cycleCanvas, 'wave')];
@@ -71,7 +94,7 @@ MEASURE = """() => {
   }
   // Each settings menu's widest value in its own font, against its width less 20 px for the arrow.
   const g = document.createElement('canvas').getContext('2d');
-  const menus = SHORT_MENUS.map((id) => document.getElementById(id)).filter((m) => m && m.closest('.play-set')).map((m) => {
+  const menus = SHORT_MENUS.map((id) => document.getElementById(id)).filter((m) => m && m.closest('.play-set, #toneRows') && shown(m)).map((m) => {
     const cs = getComputedStyle(m); g.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
     const room = R(m).width / z - 20;
     const shortW = [...m.options].map((o) => [g.measureText(o.textContent).width, o.textContent]);

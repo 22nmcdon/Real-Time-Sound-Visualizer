@@ -4043,14 +4043,19 @@ int main() {
                      " strip: !!el.midiStrip && el.midiStrip.closest('[data-band]') === el.midiGroup }); })()", 2000).toStdString();
       /* Play in the plugin's face (18 Nov, web/docs/play-figures.md): the band, the settings row and the
          figures, a column; Amp, Filter and Wave along the figures' top; the amp envelope drawn with its
-         points to take hold of and its six knobs in their row; and Two hands keeping its place in Dyad. */
+         points to take hold of and its six knobs in their row; and Two hands keeping its place in Dyad.
+         Since 19 Nov (web/docs/play-band.md) the band is 140 px (120 compact) with the split row over the
+         keys and nothing on them, and Wave's header is the Generator, moved there, not copied. */
       out.play = ask("(() => { setView('bench'); setBenchTab('play'); setFigSub('amp'); paintFigs(true); setMidiMode('poly');"
                      " const pill = () => { const r = el.midiTwoHands.getBoundingClientRect(); return Math.round(r.left) + ',' + Math.round(r.top); };"
                      " const poly = pill(); setMidiMode('dyad'); const dyad = pill(); setMidiMode('poly');"
                      " return JSON.stringify({ column: [...el.benchBody.children].map((c) => c.className.split(' ')[0]).join(','),"
                      " tabs: [...document.querySelectorAll('#figBar [role=tab]')].map((t) => t.dataset.sub).join(','),"
                      " points: el.ampPlot.querySelectorAll('[data-handle]').length > 3, knobs: el.ampKnobs.querySelectorAll('.knob-row').length,"
-                     " pill: poly === dyad, scroll: el.benchBody.scrollHeight - el.benchBody.clientHeight <= 1 }); })()", 3000).toStdString();
+                     " pill: poly === dyad, scroll: el.benchBody.scrollHeight - el.benchBody.clientHeight <= 1,"
+                     " band: Math.round(el.midiGroup.getBoundingClientRect().height / (pageZoom || 1)) === (document.body.dataset.compact !== undefined ? 120 : 140),"
+                     " clear: el.midiKindsRow.getBoundingClientRect().bottom <= el.midiStrip.closest('.kb-box').getBoundingClientRect().top + 0.5,"
+                     " gen: el.toneRows.parentElement === el.waveGroup && document.querySelectorAll('#shape').length === 1 }); })()", 3000).toStdString();
       ask(juce::String("(() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();")
           + (told ? "" : " window.hostSendLearn = () => {};")
           // In Poly, where a split is (17 Nov: the strip's line names the point there, and only there).
@@ -4085,8 +4090,10 @@ int main() {
       check("in the plugin the on-screen keys' row is hidden and M opens nothing, and the Keyboard's strip is on Play",
             told.keys == "{\"row\":true,\"open\":false,\"strip\":true}", told.keys);
       check("Play in the plugin is the band, the settings row and the figures, Amp, Filter and Wave, the amp envelope drawn with its six knobs, "
-            "Two hands in one place in Poly and Dyad, and nothing scrolled",
-            told.play == "{\"column\":\"bench-band,play-set,play-figs\",\"tabs\":\"amp,filter,wave\",\"points\":true,\"knobs\":6,\"pill\":true,\"scroll\":true}",
+            "Two hands in one place in Poly and Dyad, nothing scrolled, the band its one height with the split row clear of the keys, "
+            "and the Generator Wave's header",
+            told.play == "{\"column\":\"bench-band,play-set,play-figs\",\"tabs\":\"amp,filter,wave\",\"points\":true,\"knobs\":6,\"pill\":true,\"scroll\":true,"
+                         "\"band\":true,\"clear\":true,\"gen\":true}",
             told.play);
       check("null: the instrument never told Learn is armed learns nothing from the host's note, and the face still waits for a key",
             !untold.kept && untold.shown.find("\"point\":60") != std::string::npos && untold.shown.find("\"learning\":true") != std::string::npos,

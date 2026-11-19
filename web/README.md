@@ -7371,3 +7371,39 @@ and the owner's rule has no exceptions, so each keeps its place unseen while the
 in every split; `patchtest.py` holds Notes, its count and its counted end, with the old way as its
 null. Measured and left: Wave's drawing at 960x600 is 121 px, a pixel over the rule, where the
 mockup had 124.
+
+## The Keyboard band with room, and the Generator as Wave's header (19 Nov)
+
+`web/docs/play-band.md`, built from the mockup the owner approved. The band is a grid of two
+columns and three rows at one height (140 px, 120 compact): the split row over the keys, the keys,
+one line. Measured in the brand's webfonts, two hands by notes with a chord held: the keys 596x74 at
+1400x900 and 1660x1050 (498x65 at 960x600, from testing's 44 and 36 tall); the split row's tightest
+spare 9.6 px at 1100x860; the stacked filter's two drawings 128 px at 1660x1050, 8 over the floor.
+What was learned on the way:
+
+- **The mockup's words were mixed case and the page's switches were capitals.** The split row
+  measured 13 px wider on the page than in the mockup, enough to cut it at 1100x860: `.caps`
+  sets both the capitals and the weight. Key · Notes · Layer and Lowest · Highest are mixed case,
+  as mocked, with the weight set on the row. Compare a mockup's widths with the page's before
+  trusting its spare room.
+- **A compact rule on `.grow` gave Expression's fields 90 px of height.** `[data-compact]
+  .bench-body .menu-row .grow { flex-basis: 90px }` is a width in a row and a height in a column;
+  in the new Expression row each field is a column, so the menus rose 50 px over the band's line.
+  The play row's own rule says `flex: 0 0 auto` at a specificity that wins.
+- **A flex column squeezes its children before it overflows.** The pairing menu's long names
+  wrapped *Tune a chord* onto two lines in the 196 px compact column, and the column shrank the
+  mode switch to fit. The menu says *each* and *A vs B* (the full names its options' titles, as
+  the other shortened menus), and nothing in the band's left column shrinks, so what does not fit
+  is seen to.
+- **A section moved into a figure's view is still a section.** The Generator is moved into the
+  Wave view as its header (`data-play="head"`, `data-fig="wave"`) rather than nested in the
+  markup, so `benchGroupsAll`, the store and the morph's markup order are untouched, and
+  `showControl` chooses Wave from the section's own `data-fig`. What the Wave figure's dots said
+  went into the Generator's notes, since its dots are the ones at the header's end now.
+
+By notes the keys stay and say which hand each note goes to: numbered on its own key from the
+counted end, the ink the hand it was dealt to (`layerHandOf`, what plays), the number its pitch's
+place (what will). The two can differ for a Chord window while a chord lands; that is accepted.
+`patchtest.py` holds every box on Play across the band's states, and in each the line on one line,
+the split row uncut and nothing over the keys, with testing's ways as its nulls; `striptest.py`
+the places, the numbers on their keys and the rule.
