@@ -625,6 +625,8 @@ EXPORT(brain_readings) double* brainReadings() {
   for (const double v : instrument->faceServed()) brainRead.push_back(v);
   // Last, the drawn envelopes' places (18 Nov, Instrument::envelopePlaces), so nothing before them moves.
   for (const double v : instrument->envelopePlaces()) brainRead.push_back(v);
+  // And each LFO's drawn levels this pass (19 Nov, Instrument::lfoLevels), after them for the same reason.
+  for (const double v : instrument->lfoLevels()) brainRead.push_back(v);
   return brainRead.data();
 }
 /* The table layer `layer`'s voice is playing - the one it fades to at each

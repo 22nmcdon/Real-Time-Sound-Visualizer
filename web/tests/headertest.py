@@ -343,7 +343,7 @@ with sync_playwright() as pw:
     # there and not marked here fails.
     src = open(os.path.join(os.path.dirname(ART), "plugin", "src", "PluginProcessor.h")).read()
     src = src[src.index("kKnobs {"):]
-    plugin = re.findall(r'\{ "[a-z]+", "[A-Za-z ]+", "([A-Za-z0-9]+)", \d, (?:true|false) \}', src[:src.index("} };")])
+    plugin = re.findall(r'\{ "[a-z0-9]+", "[A-Za-z0-9 ]+", "([A-Za-z0-9]+)", \d, (?:true|false) \}', src[:src.index("} };")])
     marks = p.evaluate("""() => ({
       list: HOST_PARAMS,
       marked: Array.from(document.querySelectorAll('.host-param')).map((r) => r.querySelector('input[type=range]').id),
@@ -354,8 +354,9 @@ with sync_playwright() as pw:
     # Fourteen since G7 added the master Output, in Level's old corner; fifteen
     # since the Width after it (12 Nov).
     # Seventeen since 18 Nov: the amp envelope's Attack and Release, appended after the morph.
-    check("the page's host parameters are the plugin's kKnobs, in its order", marks["list"] == plugin and len(plugin) == 17
-          and plugin[-3:] == ["morphPos", "envAttack", "envRelease"]
+    # Eighteen since 19 Nov: LFO 1's Rate, appended after them (lfo-drawn.md), made with LFO 1's editor.
+    check("the page's host parameters are the plugin's kKnobs, in its order", marks["list"] == plugin and len(plugin) == 18
+          and plugin[-4:] == ["morphPos", "envAttack", "envRelease", "lfoRate0"]
           and plugin[5:7] == ["output", "stereoWidth"],
           str((marks["list"], plugin)))
     check("every one, and only those, is marked on the face", sorted(marks["marked"]) == sorted(plugin), str(marks["marked"]))

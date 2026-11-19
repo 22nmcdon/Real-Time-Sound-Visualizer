@@ -136,7 +136,12 @@ COVER = """(fields) => {
   planeB.own = true;
   const route = { sourceId: "lfo1", destId: "gen.fm", amount: 0.4, amountB: -0.2 };
   state.modRoutings.push(route);
+  /* And each LFO drawn, phased and starting again (19 Nov): their three
+     fields are written only away from their defaults, as B's are. */
+  const lfoWas = lfos.map((l) => [l.drawn, l.phaseDeg, l.starts]);
+  lfos.forEach((l) => { l.drawn = "1;0,1,h,r"; l.phaseDeg = 90; l.starts = "n"; });
   const snap = snapshot();
+  lfos.forEach((l, i) => { [l.drawn, l.phaseDeg, l.starts] = lfoWas[i]; });
   state.modRoutings.splice(state.modRoutings.indexOf(route), 1);
   Object.assign(handLinks, was);
   planeB.own = !linked("plane");

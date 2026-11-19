@@ -44,6 +44,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "glide", 0, 500, 1, 0 },
   { "morphPos", 0, 100, 1, 0 },
   { "lfoRate0", 1, 800, 1, 20 },
+  // Where in the cycle LFO 1's shape is read (19 Nov), in degrees.
+  { "lfoPhase0", 0, 355, 5, 0 },
   { "quantiseGlide", 0, 300, 1, 0 },
   { "tempo", 30, 300, 1, 120 },
   { "ch1Scale", 0, 8, 1, 0 },
@@ -177,9 +179,13 @@ inline constexpr SelectSpec kSelects[] = {
   { "shape", "harmonic" "\x1f" "sine" "\x1f" "square" "\x1f" "pulse" "\x1f" "triangle" "\x1f" "ramp" "\x1f" "drawbars" "\x1f" "morph" "\x1f" "drawn" "\x1f" "wavetable" "\x1f" "noise" "\x1f" "pink" "\x1f" "brown" "\x1f" "stepped", "harmonic" },
   { "interval", "0" "\x1f" "1" "\x1f" "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6" "\x1f" "7" "\x1f" "8" "\x1f" "9" "\x1f" "10" "\x1f" "11" "\x1f" "12", "0" },
   { "fadeMode", "off" "\x1f" "in" "\x1f" "out" "\x1f" "both", "off" },
-  { "lfoShape0", "sine" "\x1f" "triangle" "\x1f" "ramp" "\x1f" "square" "\x1f" "random", "sine" },
+  { "lfoShape0", "sine" "\x1f" "triangle" "\x1f" "ramp" "\x1f" "square" "\x1f" "random" "\x1f" "drawn", "sine" },
+  // When LFO 1 starts again (19 Nov): free, each note, each phrase.
+  { "lfoStarts0", "" "\x1f" "n" "\x1f" "p", "" },
+  // The Grid a dragged point snaps to (19 Nov): the editor's view, which nothing in the sound reads.
+  { "lfoGrid", "4" "\x1f" "8" "\x1f" "16" "\x1f" "32", "8" },
   { "lfoSync0", "" "\x1f" "4" "\x1f" "2" "\x1f" "1" "\x1f" "1/2" "\x1f" "1/4" "\x1f" "1/8" "\x1f" "1/16" "\x1f" "1/4t" "\x1f" "1/8t", "" },
-  { "srcDetail-add", "" "\x1f" "gen.freq" "\x1f" "gen.amp" "\x1f" "gen.phase" "\x1f" "gen.ratio" "\x1f" "gen.bar0" "\x1f" "gen.bar1" "\x1f" "gen.bar2" "\x1f" "gen.bar3" "\x1f" "gen.bar4" "\x1f" "gen.bar5" "\x1f" "gen.bar6" "\x1f" "gen.bar7" "\x1f" "gen.bar8" "\x1f" "gen.morph" "\x1f" "gen.radius" "\x1f" "gen.twist" "\x1f" "gen.fm" "\x1f" "gen.sync" "\x1f" "gen.drive" "\x1f" "gen.fold" "\x1f" "gen.vcf" "\x1f" "gen.echo" "\x1f" "gen.echoTime" "\x1f" "gen.width" "\x1f" "gen.table" "\x1f" "gen.turn" "\x1f" "gen.bend" "\x1f" "gen.bendAt" "\x1f" "gen.phaser" "\x1f" "gen.delayTone" "\x1f" "gen.reverb" "\x1f" "gen.reverbSize" "\x1f" "gen.reverbTone" "\x1f" "view.rotate" "\x1f" "view.lag" "\x1f" "filter.cutoff" "\x1f" "filter.res" "\x1f" "view.zoom" "\x1f" "trig.position" "\x1f" "morph.pos" "\x1f" "view.scale1" "\x1f" "view.scale2", "" },
+  { "srcDetail-add", "" "\x1f" "gen.amp" "\x1f" "gen.ratio" "\x1f" "gen.bar0" "\x1f" "gen.bar1" "\x1f" "gen.bar2" "\x1f" "gen.bar3" "\x1f" "gen.bar4" "\x1f" "gen.bar5" "\x1f" "gen.bar6" "\x1f" "gen.bar7" "\x1f" "gen.bar8" "\x1f" "gen.morph" "\x1f" "gen.vcf" "\x1f" "gen.width" "\x1f" "gen.table" "\x1f" "gen.freq" "\x1f" "gen.phase" "\x1f" "gen.fm" "\x1f" "gen.sync" "\x1f" "gen.drive" "\x1f" "gen.fold" "\x1f" "gen.bend" "\x1f" "gen.bendAt" "\x1f" "gen.radius" "\x1f" "gen.twist" "\x1f" "gen.echo" "\x1f" "gen.echoTime" "\x1f" "gen.turn" "\x1f" "gen.phaser" "\x1f" "gen.delayTone" "\x1f" "gen.reverb" "\x1f" "gen.reverbSize" "\x1f" "gen.reverbTone" "\x1f" "view.rotate" "\x1f" "view.lag" "\x1f" "filter.cutoff" "\x1f" "filter.res" "\x1f" "trig.position" "\x1f" "morph.pos" "\x1f" "view.zoom" "\x1f" "view.scale1" "\x1f" "view.scale2", "" },
   { "keyRoot", "0" "\x1f" "1" "\x1f" "2" "\x1f" "3" "\x1f" "4" "\x1f" "5" "\x1f" "6" "\x1f" "7" "\x1f" "8" "\x1f" "9" "\x1f" "10" "\x1f" "11", "0" },
   { "keyScale", "chromatic" "\x1f" "major" "\x1f" "minor" "\x1f" "dorian" "\x1f" "phrygian" "\x1f" "lydian" "\x1f" "mixolydian" "\x1f" "locrian" "\x1f" "harmonic" "\x1f" "pentatonic" "\x1f" "minorpent" "\x1f" "blues" "\x1f" "whole", "chromatic" },
   { "oscRatio", "0.5" "\x1f" "1" "\x1f" "1.25" "\x1f" "1.3333333333333333" "\x1f" "1.5" "\x1f" "1.6666666666666667" "\x1f" "2" "\x1f" "2.5" "\x1f" "3" "\x1f" "3.5" "\x1f" "4" "\x1f" "5" "\x1f" "7", "1" },

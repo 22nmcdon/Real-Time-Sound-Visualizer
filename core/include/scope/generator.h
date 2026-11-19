@@ -328,6 +328,13 @@ class Generator {
     menv_.gate(true, 1);
   }
 
+  /* A key gone down, for the LFOs (19 Nov): Each note starts one again on
+     every key, Each phrase on a key struck with no other down, as the
+     Envelope's Each phrase reckons it. */
+  void lfoStrike(bool fresh) {
+    for (Lfo& l : lfos_) if (l.starts == 'n' || (l.starts == 'p' && fresh)) lfoRestart(l);
+  }
+
   void setGated(bool on) {
     if (on == gated_) return;
     gated_ = on;

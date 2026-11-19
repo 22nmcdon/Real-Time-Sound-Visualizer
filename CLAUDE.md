@@ -334,6 +334,21 @@ Do not re-litigate these without a reason; each replaced something that failed.
   into it while it is open, so their ids resolve from the start for the
   plugin's panel and the morph. Envelope's ink is sage since G5b, as drawn: on
   slate it was LFO 2's, and a ring and a tick in one ink cannot be told apart.
+  An LFO's shape is drawn since 19 Nov (`web/docs/lfo-drawn.md`): its editor is
+  one column, as the Envelope's - the seven starting shapes, what the shape is,
+  the Grid and Hold a note; one cycle from -1 to +1 the editor's width at 2.4:1,
+  shortened only as far as *Where it goes* needs for three routings and Add
+  (`fitLfoEditor`); Rate on a log knob that turns through the note values in
+  Tempo, Phase, *Rate in* and *Starts again*; and *Where it goes* with Silence
+  and Add by tab. Today's five shapes still take the core's own `lfoStep` path,
+  so an old setup plays to the bit; the first edit adopts the shape's drawn
+  twin, writing the text (`lfoDrawn<i>`) before the shape menu says `drawn`.
+  Storage is additive (`l<i>s` gains `drawn`; `l<i>m` the text, `l<i>p` Phase,
+  `l<i>t` the start, each written only away from its default). The menus the
+  instrument hears - Shape, Sync, Starts - are kept out of sight and driven by
+  the switches; the cards draw the real shape and the face a random point where
+  the core serves it (`Instrument::lfoLevels`). LFO 1's Rate is the last host
+  parameter. `lfotest.py` and the core's `pieces/lfo_drawn.py` hold it.
   This replaced the drawer
   (*Advanced*, P3 to F3, which hid the routing matrix and every tab that was
   not the loop) and the Sources tab, which showed six families one at a time

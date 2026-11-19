@@ -4413,7 +4413,7 @@ morph_count = len(re.findall(r'"([A-Za-z0-9]+)"', _ids[_ids.index("kMorphIds[]")
 # added there (the phaser's, in P8) is one this has to walk too.
 _knobs = open(os.path.join(os.path.dirname(CORE), "plugin", "src", "PluginProcessor.h")).read()
 _knobs = _knobs[_knobs.index("kKnobs {"):]
-host_sliders = re.findall(r'\{ "[a-z]+", "[A-Za-z ]+", "([A-Za-z0-9]+)", \d, (?:true|false) \}', _knobs[:_knobs.index("} };")])
+host_sliders = re.findall(r'\{ "[a-z0-9]+", "[A-Za-z0-9 ]+", "([A-Za-z0-9]+)", \d, (?:true|false) \}', _knobs[:_knobs.index("} };")])
 host_walked = [r[0][len("host:"):] for r in walked if r[0].startswith("host:")]
 check("the morph's walk over each of its %d sliders, all of them together, and the host's %d parameters allocate nothing"
       % (len(walked) - len(host_walked) - 1, len(host_walked)),

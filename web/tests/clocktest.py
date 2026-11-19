@@ -72,14 +72,18 @@ with sync_playwright() as pw:
     lock = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const fire = (id, v, kind) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event(kind)); };
-      const reading = () => document.getElementById('lfoRateValue0').textContent;
+      /* The editor's head reads what the instrument runs at since 19 Nov (the
+         drawn LFOs, lfo-drawn.md): the Rate knob's own reading is the free
+         rate it keeps, and in tempo the knob gives way to the note value's. */
+      const reading = () => el.srcDetailReading.textContent;
+      const hzAside = () => document.getElementById('lfoRate0').closest('.menu-row').hidden;
       showControl('tempo'); fire('tempo', '120', 'input');
       openModCard('lfo1');
       fire('lfoRate0', '37', 'input');       // 0.37 Hz, free
       fire('lfoSync0', '1/4', 'change');
       await wait(400);
       const out = { host: state.source.kind, served: !!instrumentClock(), reading: reading(),
-                    disabled: document.getElementById('lfoRate0').disabled };
+                    disabled: hzAside() };
       /* The null: the page's own clock told a tempo the instrument is not
          (setTempo, no input event, so no message), and the page's oscillator
          the rate its lock would have there, 1.00 Hz at 60. The face says what
@@ -91,7 +95,7 @@ with sync_playwright() as pw:
       out.at90 = reading();
       openModCard('lfo1'); fire('lfoSync0', '', 'change'); await wait(400);
       out.readingFree = reading();
-      out.enabled = !document.getElementById('lfoRate0').disabled;
+      out.enabled = !hzAside() && document.getElementById('lfoRateValue0').textContent === '0.37 Hz';
       showControl('tempo'); fire('tempo', '120', 'input');
       return out;
     }""")
@@ -99,14 +103,14 @@ with sync_playwright() as pw:
     check("the default page plays the instrument, and the face has its clock", lock["host"] == "host" and lock["served"], str(lock))
     # Was, on ?brain=js, the page's own lfos[0] (lfoRateReading). The rate's
     # number is the instrument's own now (core/tests/pieces/clock.py has it).
-    check("the reading says so, and the Rate slider stands aside while it is locked",
+    check("the reading says so, and the Rate knob in hertz stands aside for the note value's while it is locked",
           lock["reading"] == "2.00 Hz · 1/4" and lock["disabled"], str(lock))
     check("null: a tempo told to the page's clock alone moves the page's and not the reading",
           lock["pageAlone"]["pageBpm"] == 60 and lock["pageAlone"]["pageRate"] == 1
           and lock["pageAlone"]["reading"] == "2.00 Hz · 1/4", str(lock["pageAlone"]))
     check("and the tempo slider, which the instrument hears, does: 1/4 at 90 is 1.50 Hz",
           lock["at90"] == "1.50 Hz · 1/4", lock["at90"])
-    check("and let go, the Rate slider is back and reads the slider's 0.37 Hz",
+    check("and let go, the Rate knob in hertz is back and reads its 0.37 Hz",
           lock["enabled"] and lock["readingFree"].startswith("0.37 Hz"), str(lock))
 
     # Tap tempo was four checks here on ?brain=js, the page's clockTap at
