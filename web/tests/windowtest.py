@@ -277,6 +277,37 @@ with sync_playwright() as pw:
               not r["closed"]["tight"] and all(r["closed"]["knobs"]), str(r["closed"]))
         p.close()
     ctx.close()
+
+    print("\n--- the screen's axis names inside it ---")
+    # From a review of testing (19 Nov): the X-Y screen's vertical name ("Right ->") ran 4 px off the canvas's
+    # left edge at every window, the plot being 16 px in and the name 10 px left of it. Read off the screen's
+    # own pixels, beside the plot: ink left of the plot (the name is drawn), and none in the canvas's first two
+    # columns or last two rows (nothing of it cut off). The null draws the name where it was, on the canvas,
+    # and reads it the same way.
+    SIDE = """(redraw) => {
+      const c = el.trace, g = c.getContext('2d'), k = c.width / c.getBoundingClientRect().width * (pageZoom || 1);
+      if (redraw) { g.save(); g.setTransform(k, 0, 0, k, 0, 0); g.fillStyle = ink['text-soft']; g.font = '10px ' + getComputedStyle(document.body).fontFamily;
+        g.textAlign = 'center'; g.translate(plot.x - 10, plot.y + plot.h / 2); g.rotate(-Math.PI / 2); g.textBaseline = 'bottom'; g.fillText('Right \u2192', 0, 0); g.restore(); }
+      const W = c.width, H = c.height, d = g.getImageData(0, 0, W, H).data, bg = [d[0], d[1], d[2]];
+      const inked = (x, y) => { const i = (y * W + x) * 4; return Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 60; };
+      const left = Math.floor(plot.x * k) - 1, y0 = Math.floor((plot.y + plot.h * 0.25) * k), y1 = Math.floor((plot.y + plot.h * 0.75) * k);
+      let drawn = 0, edge = 0, foot = 0;
+      for (let y = y0; y < y1; y++) for (let x = 0; x < left; x++) if (inked(x, y)) { drawn++; if (x < Math.floor(2 * k)) edge++; }
+      for (let y = H - Math.floor(2 * k); y < H; y++) for (let x = 0; x < W; x++) if (inked(x, y)) foot++;
+      return { drawn, edge, foot, plotX: plot.x };
+    }"""
+    ctx = b.new_context()
+    for w, h in [(1660, 1050), (1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600)]:
+        p = open_page(ctx, w, h)
+        p.evaluate("() => { el.dispXY.click(); }"); p.wait_for_timeout(500)
+        r = p.evaluate(SIDE, False)
+        check("at %dx%d the X-Y screen's names are drawn inside it: ink beside the plot, none at the canvas's left edge or foot" % (w, h),
+              r["drawn"] > 20 and r["edge"] == 0 and r["foot"] == 0, str(r))
+        if (w, h) == (1400, 900):
+            n = p.evaluate(SIDE, True)
+            null("the name drawn where testing drew it is seen at the canvas's edge (%d px of ink there)" % n["edge"], n["edge"] == 0)
+        p.close()
+    ctx.close()
     b.close()
 
 if bad:

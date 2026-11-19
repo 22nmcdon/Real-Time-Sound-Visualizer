@@ -245,6 +245,37 @@ with sync_playwright() as pw:
           and moved["attackMid"] > 0.6 and moved["releaseMid"] > 0.6, str(moved))
     check("and the arrow keys move a handle: the end a tenth longer", abs(moved["release"] - 1.1) < 1e-6, str(moved))
 
+    # As drawn (19 Nov, from a review of testing): its rules were scoped to `.env-draw` on 17 Nov and the
+    # drawing never had the class, so its words stood at the page's 16 px and ran together ("heldout") and
+    # its points were grey discs with no line between them. Read off the rendered boxes: every shown word
+    # and point inside the drawing, the words apart from each other and small, the line drawn. The null is
+    # the class taken away, as it was.
+    SEEN = """() => { const svg = el.fadeEnv, R = (n) => n.getBoundingClientRect(), box = R(svg);
+      const shown = (n) => n.getAttribute('visibility') !== 'hidden' && getComputedStyle(n).display !== 'none';
+      const words = [...svg.querySelectorAll('.env-label')].filter(shown).map((t) => ({ t: t.textContent, r: R(t) }));
+      const points = [...svg.querySelectorAll('.env-handle')].filter(shown).map(R);
+      const inside = (r) => r.left >= box.left - 0.5 && r.right <= box.right + 0.5 && r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5;
+      let overlap = [];
+      for (let i = 0; i < words.length; i++) for (let j = i + 1; j < words.length; j++) {
+        const a = words[i].r, b = words[j].r;
+        if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) overlap.push(words[i].t + '/' + words[j].t);
+      }
+      const line = svg.querySelector('.env-line:not(.off)') || svg.querySelector('.env-line'), cs = getComputedStyle(line);
+      return { words: words.map((w) => w.t), overlap, out: words.filter((w) => !inside(w.r)).map((w) => w.t).concat(points.filter((r) => !inside(r)).map(() => 'a point')),
+               tall: Math.max(0, ...words.map((w) => w.r.height)), stroke: cs.stroke, strokeW: parseFloat(cs.strokeWidth), fill: cs.fill }; }"""
+    p.evaluate("() => { setFade('both'); setFadeEnvelope({ delay: 0, attack: 2, decay: 0.5, sustain: 1, release: 2, attackMid: 0.5, decayMid: 0.5, releaseMid: 0.5 }, 0); drawFadeEnvelope(); }")
+    p.wait_for_timeout(200)
+    seen = p.evaluate(SEEN)
+    print("    as drawn: %s" % seen)
+    check("the fade's drawing as drawn: its words (%s) small, apart and inside it, every point inside it, and its line stroked"
+          % ", ".join(seen["words"]), len(seen["words"]) >= 3 and not seen["overlap"] and not seen["out"] and seen["tall"] <= 12
+          and seen["stroke"] not in ("none", "") and seen["strokeW"] > 0 and seen["fill"] == "none", str(seen))
+    p.evaluate("() => el.fadeEnv.classList.remove('env-draw')"); p.wait_for_timeout(100)
+    bare = p.evaluate(SEEN)
+    p.evaluate("() => { el.fadeEnv.classList.add('env-draw'); setFade('off'); }")
+    check("null: without its class, as testing had it, the words are seen to run together or stand too tall (%s, %.1f px)" % (bare["overlap"], bare["tall"]),
+         bool(bare["overlap"]) or bare["tall"] > 12, str(bare))
+
     ui = run(p, """
       setFade('off'); restore({ midiMode: 'poly', layers: 'layer' }); await wait(200);
       setFade('both'); await wait(100);
