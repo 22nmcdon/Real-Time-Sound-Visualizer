@@ -7466,7 +7466,7 @@ the places, the numbers on their keys and the rule.
   folded line without growing it, so showing it moves nothing; opening never switches a module on.
   `racktest.py` holds every arrow seen, on top and opening its module off, and the rack's boxes as
   they were with the arrows hidden.
-## The LFOs drawn, and five traps on the way (19 Nov)
+## The LFOs drawn, and six traps on the way (19 Nov)
 
 `web/docs/lfo-drawn.md`. An LFO's shape is one cycle of points (`scope/lfo_shape.h`), drawn in its
 card's editor, which is one column now as the Envelope's is. Today's five shapes still take
@@ -7496,6 +7496,12 @@ the way:
   today*, *Drawn · 5 points, 1 random*) takes the room up to the Grid; the head's reading and an
   LFO card's are boxes of one width, the card's saying the note value's short name (*1/4t*); and
   *Hold a note* and *Silence* are held to one height pressed or not, as Play's figures' links are.
+
+- **What the instrument serves is a frame behind an edit.** The drawing took every point's level
+  from the levels the instrument serves, which after an edit are still the old shape's: a point
+  just added was drawn where the old shape had a point at that index. The next frame hid it until
+  the handles were drawn again only when what they show changes; then it stayed. Only a random
+  point's level is the instrument's (`lfoShown`); the rest are the drawing's own.
 
 The face draws a random point where the core says it will land: the instrument serves each
 LFO's line and its points' levels this pass after the envelopes' places (`Instrument::lfoLevels`,
