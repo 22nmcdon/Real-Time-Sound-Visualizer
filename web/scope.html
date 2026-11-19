@@ -18645,8 +18645,11 @@ function lfoReadU(lfo) {
    land. Today's shapes are their twins' drawn levels, Random's its held one. */
 function lfoShown(i, pts) {
   const lfo = lfos[i], src = state.source, all = src && src.lfoLevels, at = i * (1 + 32);
+  /* Only a random point's level is the instrument's: the rest are the drawing's own. The instrument's
+     are a frame behind an edit, and still the shape before it - a point added was drawn at the level
+     the old shape had in its place until the next frame. */
   if (lfo.shape === "drawn" && all && all[at] >= 0 && all[at] < pts.length)
-    return { lv: Array.from({ length: pts.length }, (_, k) => all[at + 1 + k]), segI: all[at] };
+    return { lv: pts.map((p, k) => (p.r ? all[at + 1 + k] : p.y)), segI: all[at] };
   const lv = pts.map((p) => (p.r ? (lfo.shape === "random" ? lfo.value : 0) : p.y));
   return { lv, segI: null };
 }
