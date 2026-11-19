@@ -114,3 +114,40 @@ back; places drawn off their keys; a Wave band sized to its shape; Wave's names 
 `striptest.py`, `patchtest.py`, `fittest.py` and `msegtest.py` take the same: the keys shown by
 notes and numbered on held keys; the split row and the line not cut; the band's one height; Wave's
 header holding the Generator.
+
+## As built (19 Nov)
+
+Built as the mockup shows, with the owner's three leans: the keys 10 px shorter than mocked (a band of
+140 px, 120 compact), the six numbered places, and the Chord window in the split row by Notes.
+Measured on the page in the brand's webfonts, two hands by notes with a chord held:
+
+| Window | Band | Keys | Split row spare | Line spare | Expression | Figure area | Amp | Filter's two | Wave's cycle |
+|---|---|---|---|---|---|---|---|---|---|
+| 1660x1050 | 140 | 596x74 | 97.6 | 194.7 | 47 | 830x503 | 802x375 | stacked 802x128, 802x128 | 802x350 |
+| 1400x900 | 140 | 596x74 | 97.6 | 194.7 | 47 | 830x353 | 802x225 | 384x197, 384x197 | 802x200 |
+| 1100x860 | 140 | 508x74 | 9.6 | 106.7 | 47 | 742x369 | 714x241 | 340x213, 340x213 | 714x216 |
+| 1200x680 | 120 | 620x65 | 155.2 | 248.8 | 40 | 830x295 | 810x186 | 394x158, 394x154 | 810x155 |
+| 1100x680 | 120 | 532x65 | 67.2 | 160.8 | 40 | 742x295 | 722x186 | 350x158, 350x154 | 722x155 |
+| 960x600 | 120 | 498x65 | 33.7 | 99.0 | 40 | 709x281 | 688x171 | 333x143, 333x139 | 688x140 |
+
+So the 10 px bought the stacked filter back 8 px over its 120 px floor at 1660x1050, and every other
+drawing 10 px; the keys are 74 tall (65 compact), from testing's 44 (36). Play does not scroll at any
+window. Where the build differs from the mockup, and why:
+
+- **The keys are C3 to B5**, thirty-six, as mocked; testing drew the C above as well.
+- **Key · Notes · Layer and Lowest · Highest are mixed case**, as mocked. In the page's capitals the
+  split row was 13 px wider and cut at 1100x860.
+- **The pairing menu says *each* and *A vs B*** (its options' titles the full names), as mocked; its
+  long names wrapped *Tune a chord* in the compact left column.
+- **The Generator is moved into the Wave view, not rewritten into it.** It keeps its section, its
+  title (words unseen), its link and its dots; the Wave figure's own title and its second link
+  (`linkGenWave`) stand aside, and what its dots said is in the Generator's.
+- **The numbers on the keys are each note's place by pitch, in the ink of the hand it was dealt
+  to.** The two agree once a chord has landed; for a Chord window while it lands they can differ.
+
+`patchtest.py` holds every box on Play to half a pixel across 42 states of the band at each of the
+six windows, and in each the line on one line, the split row uncut and nothing over the keys, with
+testing's ways as its nulls (the octave buttons taken out by notes, Key · Notes · Layer on the keys'
+edge, the split row narrower than it holds, testing's line, the split point's reading at its own
+width, a Wave band sized to its shape, the Generator's names over their controls); and every Wave
+shape. `striptest.py` holds the places, the numbers on their keys and the rule, with theirs.
