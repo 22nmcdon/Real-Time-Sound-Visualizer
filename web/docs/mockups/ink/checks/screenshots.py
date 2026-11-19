@@ -20,7 +20,7 @@ SHOTS = [
     ("04-oscillator-ring-at-1100x860", "size=1100x860", {"oscRing": 70, "oscRatio": 2}),
     ("05-oscillator-sync-saw-at-1200x680", "size=1200x680&gen=ramp", {"oscSync": 260}),
     ("06-oscillator-sub-at-960x600", "size=960x600", {"oscSub": 60}),
-    ("07-oscillator-unison-at-1100x680", "size=1100x680&t=0.3", {"oscUnison": 5, "oscSpread": 20}),
+    ("07-oscillator-unison-at-1100x680", "size=1100x680", {"oscUnison": 5, "oscSpread": 20}),
     ("08-shaping-drive-and-4-bits-at-1400x900", "size=1400x900&sub=shp", {"shpDrive": 45, "shpBits": 4}),
     ("09-shaping-fold-and-2-khz-at-960x600", "size=960x600&sub=shp", {"shpFold": 35, "shpRate": 2000}),
     ("10-shaping-at-1660x1050", "size=1660x1050&sub=shp", {"shpDrive": 30, "shpFold": 15}),

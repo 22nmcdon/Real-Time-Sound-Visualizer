@@ -1,7 +1,7 @@
 // The core's own oscillator and shaper, run for the Ink mockup's checks: the drawings are compared
 // with what these print. Built against core/include, nothing copied:
 //   g++ -std=c++17 -O2 -I core/include web/docs/mockups/ink/checks/core_ref.cpp -o core_ref
-// Usage: core_ref osc shape fm ratio warp warpAt ring sync sub subOct subSine unison cents offsetDeg cycles points
+// Usage: core_ref osc shape fm ratio warp warpAt ring sync sub subOct subSine unison cents offsetDeg cycles points [settleSeconds]
 //        core_ref shaper drive fold bits      (x from -1 to 1, 2001 points: shapeSample, then crushStep's quantiser)
 #include <cstdio>
 #include <cstdlib>
@@ -43,7 +43,10 @@ int main(int argc, char** argv) {
   x.dcK = poleFor(1000 / (kTwoPi * kBendDcHz), rate);
   Osc o;
   const WaveTables bars;
-  const long settle = static_cast<long>(rate * 2 / (4096 * cycles)) * static_cast<long>(4096 * cycles);   // whole patterns
+  // Whole patterns of about two seconds, or, given an 18th argument, that many seconds exactly (for
+  // unison's still, where the copies' own phases are what is read and the note's base does not matter).
+  long settle = static_cast<long>(rate * 2 / (4096 * cycles)) * static_cast<long>(4096 * cycles);
+  if (argc > 17) settle = std::lround(std::atof(argv[17]) * rate);
   const long per = static_cast<long>(4096 * cycles);
   double base = 0;
   const double step = kTwoPi * hz / rate;

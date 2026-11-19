@@ -31,7 +31,29 @@ The span is as many of the note's cycles as it takes to repeat. That is the
 Ratio's denominator while FM or Ring is on, times the sub's octave, at most 8.
 The foot says so: *2 cycles: the pattern repeats every 2 · 9.1 ms*.
 
-Unison is drawn as its copies drift, while the clock runs.
+**Unison is drawn still** (decided, below):
+
+- each copy faint, in the left channel's ink;
+- their average, what is heard, bold over them;
+- the plain shape at the same moment, so it sits under the middle copy.
+
+The moment is **4.33 of the note's cycles in** (19.7 ms at 220 Hz). That is a
+quarter of the way through the beat between the outer copies at the widest
+Spread, 50 cents. It was chosen for three reasons:
+
+- At nought seconds every copy coincides and the fan cannot be seen.
+- A quarter of a beat at the *current* Spread is always 90 degrees, so the fan
+  would not change as Spread turns.
+- Counted in cycles of the note, not seconds, the fan is the same at any
+  note. It grows with Spread (the outer copies 0.18, 0.71 and 1.58 apart at
+  5, 20 and 50 cents) and never folds back.
+
+**Hold to watch it drift** sits in the Oscillator's header. It runs the copies
+on from the still while held, and only then. Let go and the drawing is the
+very same still. It keeps its place unseen while Unison is off, so nothing
+moves when it appears. It earns its place because the still shows how far the
+copies spread but not how fast they beat. The drift shows that, and it is
+only ever asked for.
 
 **The controls**, in one row under the drawing: Frequency, Phase, Ratio
 (menu), FM, Warp, Warp at, Ring, Sync, Sub, Unison (menu) and Spread.
@@ -78,6 +100,20 @@ modulation row.
 nine settings, five shapes and both subtabs (outside the view). The check
 found one real shift: the key over the wave named the plain shape and changed
 width. It is one width now.
+
+## Decided (19 Nov, the owner)
+
+**Ink draws the settings, still, never live by default.** A drawing changes
+when a control changes and at no other time:
+
+- there is no clock-driven redraw;
+- Unison is a still (above);
+- the only motion is *Hold to watch it drift*, while it is held.
+
+The owner found the drifting copies made the Oscillator look as if notes were
+being played. The checks hold the rule. With Unison on and nothing touched,
+neither the wave nor the screen redraws over 1.5 s. The null is the old
+clock put back, which is seen to move the wave.
 
 ## The wave, not the figure
 
@@ -142,6 +178,9 @@ The drawing leaves three things out, each under a pixel:
 shaper. `checks/ink_checks.py` compares each drawing with it, 512 points a
 pattern:
 
+- Unison's still, at 3, 5 and 7 copies: the bold line is `oscStep`'s output
+  at that moment, the core run exactly that long, within 1e-12 (null: the
+  still drawn at nought seconds, 1.69 off);
 - FM (left and right), Ring, Warp on the sine, Unison and the harmonic at 7:2
   agree within 1e-9;
 - Sync and the square agree within 0.0013 away from their edges;
@@ -166,7 +205,9 @@ The build's face suite (`web/tests/`) should keep three things:
   binary;
 - the fit at the six windows, with its nulls (a row given the whole view runs
   over; a control row 300 px wide wraps);
-- the no-shift check, with its null (the key sized to its words).
+- the no-shift check, with its null (the key sized to its words);
+- the stillness check, with its null (the clock put back), and that letting
+  go of the drift returns the very same still.
 
 `fittest.py` and `patchtest.py` take Ink as they took Play.
 

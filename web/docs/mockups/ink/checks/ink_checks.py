@@ -8,6 +8,9 @@ seen to fail, as CLAUDE.md asks of every new assertion.
   core/include and runs the real oscStep (osc.h) and shapeSample, setShaping
   and the crush's quantiser (voice.h). The mockup's drawing of each case is
   compared with it, point for point:
+  * Unison's still, the copies' average 4.33 of the note's cycles in, at
+    3, 5 and 7 copies, within 1e-6 of oscStep run that long (null: the still
+    drawn at nought seconds); and the fan grows with Spread;
   * the smooth cases (FM, Ring, Warp on the sine, Unison, the harmonic at
     7:2) within 1e-6; a sine sub within 1e-3, since the core's sub steps
     before it reads and so runs one sample ahead of the note;
@@ -35,6 +38,10 @@ seen to fail, as CLAUDE.md asks of every new assertion.
 - nothing moves: every box on Ink the same to half a pixel across nine
   settings, five shapes and both subtabs (outside the view). Null: the key
   over the wave sized to its words changes its box when the shape is renamed;
+- Ink draws the settings, still: with Unison on and no control moving,
+  neither the wave nor the screen redraws over 1.5 s. Null: the clock-driven
+  redraw this replaced, put back, moves the wave. Hold to watch it drift moves
+  the copies while held and lets go to the same still;
 - no console errors through every window, subtab and setting;
 - a phone's width has no horizontal page scroll.
 
@@ -67,7 +74,7 @@ subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(ROOT, "core", "in
 def core_osc(c):
     args = [exe, "osc", c["shape"], str(c.get("fm", 0)), str(c.get("ratio", 1)), str(c.get("warp", 0)), str(c.get("warpAt", 0.25)), str(c.get("ring", 0)),
             str(c.get("sync", 1)), str(c.get("sub", 0)), str(c.get("subOct", 1)), str(c.get("subSine", 0)), str(c.get("unison", 1)), str(c.get("cents", 12)),
-            str(c.get("offset", 0)), str(c["cycles"]), str(c["points"])]
+            str(c.get("offset", 0)), str(c["cycles"]), str(c["points"])] + ([str(c["settle"])] if "settle" in c else [])
     return [float(x) for x in subprocess.run(args, capture_output=True, text=True, check=True).stdout.split()]
 def core_shaper(d, f, bits):
     return [float(x) for x in subprocess.run([exe, "shaper", str(d), str(f), str(bits)], capture_output=True, text=True, check=True).stdout.split()]
@@ -126,6 +133,22 @@ with sync_playwright() as pw:
         rows.append({"case": name, "worst": w, "tolerance": tol})
         check(w <= tol, f"{name}: the drawing is oscStep's output within {tol:g} (worst {w:.3g})")
     results["core"] = rows
+    # Unison's still: the bold line, the copies' average at the moment drawn (4.33 of the note's cycles
+    # in), is oscStep's output at that moment. The core is run that long exactly.
+    still = E("() => window.__ink.STILL_CYCLES") / 220
+    for n_, cents in ((3, 12), (5, 20), (7, 50)):
+        # The core runs whole samples, so both are read at the sample nearest the still.
+        at = round(still * 220 * 4096) / (220 * 4096)
+        c = dict(shape="sine", unison=n_, cents=cents, cycles=1, t=at, settle=at)
+        w = compare(core_osc(dict(c, points=512)), E(JS, [c, 512]), False)
+        check(w <= 1e-6, f"Unison {n_} at {cents} cents, the still ({still * 1000:.2f} ms in): the bold line is oscStep's average within 1e-6 (worst {w:.3g})")
+    c = dict(shape="sine", unison=5, cents=20, cycles=1, t=0, settle=round(still * 220 * 4096) / (220 * 4096))
+    w = compare(core_osc(dict(c, points=512)), E(JS, [c, 512]), False)
+    null(w <= 1e-6, f"the still drawn at nought seconds against oscStep at the still's moment ({w:.3f} off)")
+    fan = E("""() => { const I = window.__ink, out = []; for (const cents of [5, 20, 50]) { const T = I.toneOf(Object.assign({}, I.INK_START, { oscUnison: 5, oscSpread: cents })); T.hz = 220;
+      const t = I.stillT(T), lo = I.channel(Object.assign({}, T, { only: 0 }), 0, 400, t).v, hi = I.channel(Object.assign({}, T, { only: 4 }), 0, 400, t).v;
+      out.push(Math.max(...lo.map((x, i) => Math.abs(x - hi[i])))); } return out; }""")
+    check(fan[0] < fan[1] < fan[2] and fan[0] > 0.05, f"the still's fan grows with Spread: the outer copies apart by {fan[0]:.2f}, {fan[1]:.2f}, {fan[2]:.2f} at 5, 20 and 50 cents")
     c = CASES[0][1]
     w = compare(core_osc(dict(c, fm=0, points=512)), E(JS, [c, 512]), False)
     null(w <= 1e-6, f"the FM drawing against the core with FM off ({w:.2f} off)")
@@ -179,7 +202,7 @@ with sync_playwright() as pw:
     null(all(r == 1 for r in wrap["knobRows"]), f"a control row 300 px wide wraps into {wrap['knobRows']} rows")
 
     # ---- nothing moves ----
-    SETTINGS = [{}, {"oscFm": 20, "oscRatio": 1.5}, {"oscBend": 60}, {"oscRing": 70, "oscRatio": 2}, {"oscSync": 260}, {"oscSub": 60}, {"oscUnison": 5, "oscSpread": 20},
+    SETTINGS = [{}, {"oscUnison": 3}, {"oscFm": 20, "oscRatio": 1.5}, {"oscBend": 60}, {"oscRing": 70, "oscRatio": 2}, {"oscSync": 260}, {"oscSub": 60}, {"oscUnison": 5, "oscSpread": 20},
                 {"shpDrive": 45, "shpBits": 4}, {"shpFold": 35, "shpRate": 2000}]
     STATE = """([size, sub, set, shape]) => { const I = window.__ink, S = I.S; S.size = size; S.inkSub = sub; S.inkShows = "wave"; S.genShape = shape; Object.assign(S.ink, I.INK_START, set); I.render(); return I.inkBoxes(); }"""
     def moved(a, bb):
@@ -200,6 +223,24 @@ with sync_playwright() as pw:
     a = E(STATE, ["1400x900", "osc", {}, "sine"]); bb = E(STATE, ["1400x900", "osc", {}, "triangle"])
     E("() => document.getElementById('nullKey').remove()")
     null(not moved(a, bb), "the key sized to its words changes " + ", ".join(moved(a, bb)[:3]) + " when the shape goes from sine to triangle")
+
+    # ---- nothing redraws by itself ----
+    STILLNESS = """(live) => new Promise((done) => { const I = window.__ink, S = I.S; document.body.classList.remove("shot"); S.size = "1400x900"; S.inkSub = "osc";
+      Object.assign(S.ink, I.INK_START, { oscUnison: 5, oscSpread: 20 }); S.liveNull = live; S.nullT = 0; I.render();
+      const d0 = document.querySelector('[data-ink-plot="wave"] [data-left]').getAttribute("d"), s0 = document.getElementById("screen").toDataURL();
+      setTimeout(() => { const d1 = document.querySelector('[data-ink-plot="wave"] [data-left]').getAttribute("d"), s1 = document.getElementById("screen").toDataURL();
+        S.liveNull = false; document.body.classList.add("shot"); done({ wave: d0 === d1, screen: s0 === s1 }); }, 1500); })"""
+    r = E(STILLNESS, False)
+    check(r["wave"] and r["screen"], "with Unison on and no control moving, nothing on Ink redraws over 1.5 s (the wave and the screen)")
+    r = E(STILLNESS, True)
+    null(r["wave"], "the clock-driven redraw put back moves the wave within 1.5 s")
+    drift = E("""() => new Promise((done) => { const I = window.__ink, S = I.S; Object.assign(S.ink, I.INK_START, { oscUnison: 5, oscSpread: 20 }); I.render();
+      const b = document.querySelector("[data-drift]"), r = b.getBoundingClientRect(), d0 = document.querySelector('[data-ink-plot="wave"] [data-left]').getAttribute("d");
+      b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerId: 1, clientX: r.left + 4, clientY: r.top + 4 }));
+      setTimeout(() => { const d1 = document.querySelector('[data-ink-plot="wave"] [data-left]').getAttribute("d");
+        document.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
+        const d2 = document.querySelector('[data-ink-plot="wave"] [data-left]').getAttribute("d"); done({ held: d1 !== d0, after: d2 === d0 }); }, 600); })""")
+    check(drift["held"] and drift["after"], "Hold to watch it drift moves the copies while held, and lets go back to the very same still")
 
     check(not errs, "no console errors through every window, subtab and setting" + (": " + "; ".join(errs[:3]) if errs else ""))
     ph = b.new_page(viewport={"width": 430, "height": 900}); webfonts.route(ph)
