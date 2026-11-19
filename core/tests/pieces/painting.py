@@ -156,6 +156,52 @@ def run(kit):
     check("Dyad paints both notes of its pair, each on its own ring", dyad_a > 0.3 and dyad_e > 0.3 and dyad_table == 1,
           "%.0f%% on A3's ring, %.0f%% on E4's" % (100 * dyad_a, 100 * dyad_e))
 
+    # --- paint width (18 Nov): a melody is one stroke, so a run is a line, not beads ---
+    covered, longest, arc, dip, strokes = nums("chain", "1", "1")
+    check("a run on Tine piano's envelope, each note struck alone and still sounding at the next, paints one unbroken line",
+          strokes == 1 and covered > 0.9 and longest <= 2 and dip > 0.3,
+          "%d stroke, %.0f%% of %d degrees, longest gap %d, thinnest tenth %.2f of the median" % (strokes, 100 * covered, arc, longest, dip))
+    _, _, _, _, apart = nums("chain", "0", "1")
+    null("each note a stroke of its own (step 2's) is eleven strokes", apart == 11, "%d" % apart)
+
+    # --- the join (19 Nov, the owner's): a note goes on with the last one's stroke while that one still sounds, or under
+    # the pedal; by the sound, not the clock ---
+    pluck, gone = nums("join", "pluck", "1")
+    check("a pluck's slow melody, a note a second, is a stroke a note: each is silent by the next strike", pluck == 6,
+          "%d strokes, the last note at %.3f of its peak at a strike" % (pluck, gone))
+    quick, at = nums("join", "pluck", "0.111")
+    null("the same pluck nine notes a second, its tails meeting the next strike, is one stroke", quick == 1,
+         "%d strokes, the last note at %.2f of its peak" % (quick, at))
+    pad, still = nums("join", "pad", "1")
+    check("a pad's slow melody, a note a second, is one stroke: each note still sounding at the next (above -24 dB of its peak)",
+          pad == 1 and still > 0.063, "%d stroke, the last note at %.2f of its peak" % (pad, still))
+    pad3, still3 = nums("join", "pad", "3")
+    check("and three seconds apart, which no rule by the clock that joins a run would join, still one", pad3 == 1,
+          "%d stroke, at %.2f" % (pad3, still3))
+    split, _ = nums("join", "pad", "1", "1.01")
+    null("the pad at a floor above where it sounds splits a stroke a note: the join is its level's", split == 6, "%d strokes" % split)
+    held, _ = nums("join", "pluck", "1", "0.063", "1")
+    check("the pluck's slow melody under the sustain pedal is one stroke", held == 1, "%d stroke" % held)
+    null("and without the pedal, a stroke a note (above)", pluck == 6 and held != pluck)
+
+    # --- paint width: the map holds the stroke's real width ---
+    # A held note's paint across its ring, as an RMS about the ring, against the core's own contact half-width: the
+    # brush's edge (1 - |u/hw|^4) has an RMS of 0.488 of its half-width, and a cell's own width adds a twelfth of a
+    # cell squared, so a map that holds the width reads sqrt((0.488 hw)^2 + 1/12).
+    spreads = {}
+    for width in ("1", "2", "3.5"):
+        spread, hw, _ = nums("width", width)
+        want = math.sqrt((0.488 * hw) ** 2 + 1 / 12)
+        spreads[width] = (spread, hw, want)
+        check("at base width %s the map holds the stroke's width: its spread across the ring is the brush's own" % width,
+              abs(spread / want - 1) < 0.1, "%.3f cells against %.3f from a half-width of %.2f" % (spread, want, hw))
+    s1, hw1, _ = spreads["1"]
+    s35, hw35, want35 = spreads["3.5"]
+    null("the wide brush's map read against today's brush's width is not it", abs(s35 / math.sqrt((0.488 * hw1) ** 2 + 1 / 12) - 1) > 0.5,
+         "%.3f against %.3f" % (s35, math.sqrt((0.488 * hw1) ** 2 + 1 / 12)))
+    check("and the width is the brush's: three and a half times as wide, three and a half times the half-width",
+          abs(hw35 / hw1 - 3.5) < 0.05, "%.2f over %.2f" % (hw35, hw1))
+
     # --- step 2: the strokes the face is served ---
     count, last, served, err, none = nums("served")
     check("the face is served every stamp the painter lays: the ring's newest are the last frame's", served == last > 0 and err == 0,

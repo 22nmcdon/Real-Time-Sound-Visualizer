@@ -7372,6 +7372,45 @@ in every split; `patchtest.py` holds Notes, its count and its counted end, with 
 null. Measured and left: Wave's drawing at 960x600 is 121 px, a pixel over the rule, where the
 mockup had 124.
 
+## Paint width, and three traps on the way (18 Nov)
+
+Three base brush widths for the owner to choose between (`PaintParams::width`, internal; the
+page `web/docs/listening/paint-width/`), the beads in a run, and the look drawn on the core's
+own footprint (`painting-design.md`, *What paint width built*).
+
+- **The beads were the brushwork, not the frame rate.** The core lays its stamps at sixty a
+  second of audio time whatever the face does, so the face's frame rate only batches them;
+  a phrase's stamps painted at 60 and at 4 frames a second are the same picture. Look at the
+  stamps (`render.cpp` there writes every one) before blaming the renderer. A run was beads
+  because each short note was a brush of its own; a melody is one stroke now (`join`) while
+  the last note still sounds at the strike, by its own envelope, or under the pedal. The
+  first rule was 0.45 s by the clock, the study's, and it was the wrong question: a pad's
+  slow melody split and a quick pluck's joined. Ask the sound. Under the pedal the brush it
+  takes up may already have lifted, so the hand's last stroke is kept as it lifts
+  (`lifted_`), and goes on from its pitch where the turn is now, not from where it stopped -
+  from there it would draw a chord across the canvas.
+- **A check calibrated at one width fails at another for reasons of its own.** Mono's and
+  Dyad's checks count the paint within a cell and a half of a ring, and E4's ring is three
+  cells from A3's: at width 2 a brush reaches across both. They run at width 1
+  (`setPaintWidth`), since where a line paints is the question, not how wide. The page's
+  `painttest.py` fell into it three more times when medium became the default (19 Nov): Mono's
+  band of 1.5 cells caught 70 per cent of a stroke twice as wide (it is 3 now, with a null an
+  octave up); the run's null, one stamp in eight, drew a whole stroke with a brush whose
+  stamps overlap that far (one in 24 now); and the run's arc ran to its last stamp, so the
+  last note's release, tapering to nothing as a sound does, read as a break (it ends at the
+  last note's let-go). When a width changes, rerun every check that counts cells.
+- **A look that draws its own footprint is a look that lies.** The face computed the stamp's
+  tip from its pixels (`max(1.2, 0.15 w)`) while the core's is `max(0.75 cells, 0.15 w)`: a
+  shorter tip with the core's deposit per length laid about half the paint, which was the
+  faint wires. The shader now takes the core's half width and tip in its cells (`uCell`), and
+  `painttest.py` holds the look's stroke to the map's width, with the null drawn twice as wide.
+- **A test that records what the face is served must not record its own replay.**
+  `painttest.py` wraps `paintView.take` to keep the strokes, then paints them again through
+  `take`: the first version replayed through the wrapper, so the second replay painted the
+  first's stamps too and the 4 fps picture had twice the 60's. It replays through the
+  original now. And a run timed by the page's `setTimeout` under SwiftShader bunched its notes
+  into chords; the run is played by a core of its own, block by block (`makeWasmBrain`).
+
 ## The Keyboard band with room, and the Generator as Wave's header (19 Nov)
 
 `web/docs/play-band.md`, built from the mockup the owner approved. The band is a grid of two

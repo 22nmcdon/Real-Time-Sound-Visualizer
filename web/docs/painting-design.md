@@ -187,7 +187,9 @@ Step 2 put the painting live on the page, behind *Trace · Paint*.
   retention with Paint shown.
 - **Mono and Dyad paint.** A brush for the lower note and, while the pair is apart, one for
   the upper, each a stroke like any note's; a note struck again is a new brush, so a line's
-  notes are strokes of their own rather than one bent through them. The generator plays one
+  notes are strokes of their own rather than one bent through them. (Since paint width, a
+  note struck alone takes up the last one's stroke, below; Dyad's pair is struck together, so
+  its notes stay strokes of their own.) The generator plays one
   table for the line or the pair, so it is read off the lower note's ring, the one its phase
   runs at.
 - **The face is served every stamp** the core lays, twenty floats each - where, which way,
@@ -234,6 +236,65 @@ Step 2 put the painting live on the page, behind *Trace · Paint*.
 - **Known limits.** The photocell and the score still read the trace's grid in Paint, which
   goes on underneath (the info line on Paint and the cheat sheet say so). The look's drying times are the owner's defaults written into the shader, not read from the
   core, since they are not settings yet.
+
+## What paint width built (18 Nov)
+
+The owner saw step 2 live and found thin wires breaking into beads. **The rule they set:
+the picture must be true to the sound.** The look and the map are the same strokes, the same
+positions and widths; the look may render them finer, with texture and light, never wider or
+narrower. So a wider brush is wider for the sound too.
+
+- **The beads were the brushwork.** The core lays its stamps at sixty a second of audio
+  time, 1.2 to 1.9 px apart at 768 against a footprint 13 px across, so the face's frame
+  rate only batches them; painted from the same stamps at 60 and at 4 frames a second the
+  look is the same picture. A run was beads because each short note was a brush of its own,
+  a dab with a wide head where the strike widened it 80 per cent for 60 ms. **A melody is one
+  stroke when the sound joins it** (`PaintParams::join`, the owner's rule of 19 Nov: "only if
+  their tail ends meaningfully interact, or if the sustain is held"): a hand's next note
+  struck alone takes up the stroke of the note it struck last when that note still sounds at
+  the strike - its own amp envelope as the instrument plays it above -24 dB of the peak it
+  reached (`joinFloor`), key down or in its release - or while the sustain pedal is down,
+  when a stroke already lifted is taken up too. It is dipped again by less than a first dip
+  and glides to its pitch over 40 ms, at the louder of the two notes while both sound. A
+  chord's notes, struck in one frame, are strokes of their own. The strike presses as the
+  study's did, rising over 15 ms and falling over 60, widening 6 per cent. The first rule was
+  a fixed 0.45 s from strike to strike (18 Nov), the study's; it split a pad's slow melody and
+  would have joined a quick pluck's, so it went for the sound's own level. -24 dB is the middle
+  of the owner's range, and the sounds fall far apart at the next strike, so nothing rendered
+  sits near it: at a note a second a pad's last note is at -3 dB, Tine piano's at -14, a
+  pluck's silent; a Tine piano note is at -23 dB three seconds on, the line. Under the pedal a
+  pluck still dies to silence in a quarter second, and a brush lays nothing where nothing
+  sounds, so its slow melody is one stroke drawn as nine marks; the brush staying on the
+  canvas through the pedal is step 3's. Painting is off in the recordings, which are unchanged.
+- **The look draws the core's footprint**, its half width and tip in the core's cells
+  (`uCell`), where before it computed a shorter tip of its own that laid about half the paint
+  per length. Finer than the map, the look's only: four bristles to each of the core's eight
+  groups, loaded unevenly (a mean of one, so the paint is the map's); ragged outer bristles;
+  wet paint that is not the brush's own ploughed from its leading half into a bank past the
+  flank, as the core shoves it; a brush's own stroke kept by its slot (`B.z`), the core's
+  owner rule. `painttest.py` holds the look's width to the map's (at the medium width, look
+  1.30 cells of spread against the map's 1.29; the null, drawn twice as wide, 2.54) and a run
+  continuous at 60 and 4 frames a second up to its last note's release, the null 23 stamps in
+  24 dropped (one in eight, the null at width 1, still drew a whole stroke with the medium
+  brush, since its stamps overlap three times as far).
+- **Three base widths** (`PaintParams::width`: 1, step 2's; 2; 3.5, near the study's),
+  rendered for the owner at `web/docs/listening/paint-width/`, sound, live look, map and
+  measures. **The owner chose 2 (19 Nov), the default since**: a brush, not a wire, and each
+  register keeps its own paint (a ring shares 0.22 of its paint with the ring a fifth away in
+  a melody, against 0.06 at 1 and about half at 3.5, where the run's tone dulls from a
+  centroid of 3.2 to 1.9). **Motion's full scale grows with the width** (`motionFull` times
+  the width), since the paint a stroke lays per length does: over the four phrases width 2's
+  Motion medians come back to width 1's (0.38, 0.15, 0.68 and 0.56 against 0.38, 0.15, 0.68
+  and 0.52), where before they were 0.75, 0.28, 0.94 and 1.00 and 3.5 pinned at full on three.
+  `pieces/painting.py`'s Mono and Dyad checks run at width 1, where the rings they tell apart
+  are three cells apart; the rest at the default.
+- **The map stays 128 square.** It holds every width: a held note's spread across its ring
+  is the brush's own within 4 per cent, a cell's size adding a twelfth of a cell squared
+  (`pieces/painting.py`). A wider brush needs less resolution, not more, so 256 was not built.
+  Width costs nothing measurable: natively 0.17 to 0.21 s a second for sixteen voices painting
+  at any of the three, as WebAssembly 0.51 to 0.58 ms a block of 128 for eight, within a
+  shared machine's noise of each other; the ring reads are most of the cost and do not
+  depend on width.
 
 Still open, for when the first build is seen: the drying time (the study used 1.2 s; the
 owner wanted it slower, drying smoothly from thin to thick), whether a dark ground is

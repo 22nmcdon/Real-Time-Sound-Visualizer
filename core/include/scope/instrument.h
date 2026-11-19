@@ -766,6 +766,14 @@ class Instrument {
     setDraws(*brain_, on ? "paint" : "trace");
     if (on) switchPaint(true);
   }
+  /* The brush's base width (PaintParams::width, paint-width, 18 Nov): internal,
+     for the owner to judge three widths by; nothing stores it. Keeps the
+     painting, so it may be set while playing. */
+  void setPaintWidth(double width) {
+    if (!(std::isfinite(width) && width > 0)) return;
+    paintParams_.width = width;
+    painter_->setWidth(width);
+  }
   const Painter* painter() const { return paintOn_ ? painter_.get() : nullptr; }
   Painter* painter() { return paintOn_ ? painter_.get() : nullptr; }
   bool painting() const { return paintOn_; }
@@ -1533,8 +1541,9 @@ class Instrument {
     } else {
       /* Mono's line or Dyad's pair (step 2): a brush for the lower note and,
          while the pair is apart, one for the upper, each a stroke like any
-         note's; a note struck again is a new brush (lineId_), so a line's
-         notes are strokes of their own rather than one bent through them. */
+         note's; a note struck again is a new brush (lineId_), which the
+         painter joins to the line's stroke when it is struck alone soon
+         enough (PaintParams::chain), so a melody is one stroke. */
       const double hz = core_->pitch(), level = core_->lineLevel(), ratio = core_->lineRatio();
       const auto noteOf = [](double f) { return f > 0 ? static_cast<int>(std::lround(69 + 12 * std::log2(f / 440))) : 0; };
       if (hz > 0 && level > 0) {
@@ -1542,6 +1551,7 @@ class Instrument {
         if (ratio != 1) paintNotes_[n++] = { 0, -2 - 2 * lineId_, noteOf(hz * ratio), hz * ratio, std::clamp(level, 0.0, 1.0), core_->gated() };
       }
     }
+    painter_->setPedal(keyboard_->sustain());
     painter_->frame(paintNotes_.data(), n, nowMs_, pictureRun_->elapsed());
     publishPaint();
   }
