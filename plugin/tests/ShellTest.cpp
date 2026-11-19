@@ -2542,9 +2542,10 @@ int main() {
     ScopeProcessor osc;
     osc.prepareToPlay(rate, block);
     juce::AudioBuffer<float> buf(2, block);
-    // Ten, then since 5b the clock's twelve and the face's picture, and since 18 Nov the drawn envelopes' five places, read below.
+    // Ten, then since 5b the clock's twelve and the face's picture, and since 18 Nov the drawn envelopes' five places, read below;
+    // since 19 Nov each LFO's drawn levels after them (Instrument::lfoLevels), read at the end of this block.
     constexpr std::size_t kPlacesAt = 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed;
-    constexpr std::size_t kLfosBin = (kPlacesAt + 5) * sizeof(double);
+    constexpr std::size_t kLfosBin = (kPlacesAt + 5 + scope::Instrument::kLfoLevels) * sizeof(double);
     const auto placesServed = [&] {
       const auto r = scopeResource("/lfos.bin", osc);
       std::array<double, 5> v {};
@@ -2671,6 +2672,18 @@ int main() {
           + ", hold " + num(tail[f + 8]));
     check("null: read one place off, the rates are a rate and a tempo",
           !(tail[c + 1] == osc.lfoRate(0) && tail[c + 2] == osc.lfoRate(1)), num(tail[c + 1]) + " " + num(tail[c + 2]));
+    /* And last (19 Nov) each LFO's drawn levels, the line it is on and its
+       points' levels this pass (Instrument::lfoLevels), for the editor's random
+       points: here neither LFO is drawn, so each says -1 for its line. The
+       null: read five places early, where the envelopes' places are, they are
+       not the levels. */
+    const auto levelsNow = osc.lfoLevels();
+    const std::size_t l = kPlacesAt + 5;
+    const bool levelsIn = std::equal(levelsNow.begin(), levelsNow.end(), tail.begin() + static_cast<std::ptrdiff_t>(l));
+    check("and after the envelopes' places each LFO's drawn levels, neither drawn here",
+          levelsIn && tail[l] == -1 && tail[l + 33] == -1, num(tail[l]) + " " + num(tail[l + 33]));
+    check("null: read five places early, the levels are not there",
+          !std::equal(levelsNow.begin(), levelsNow.end(), tail.begin() + static_cast<std::ptrdiff_t>(l - 5)));
   }
 
   std::printf("\n--- the picture's grid and the fade's gains (5b's second half) ---\n");
