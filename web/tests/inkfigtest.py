@@ -62,7 +62,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 ROOT = os.path.dirname(ART)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
-PAGE = "file://" + os.path.join(ART, "scope.html")
+# INK_PAGE: another copy of the page, for a mutation pass.
+PAGE = "file://" + (os.environ.get("INK_PAGE") or os.path.join(ART, "scope.html"))
 
 fails = []
 def check(name, ok, detail=""):
