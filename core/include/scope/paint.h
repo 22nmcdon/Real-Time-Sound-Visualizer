@@ -74,22 +74,33 @@ struct PaintParams {
   double thick = 1;         // the thickness that dries as thick (a loud, loaded stroke lays about this)
   double fade = 16;         // the paint's half-life, seconds: two turns
   double wetRead = 0.4;     // how much stronger fully wet paint reads than dry
-  // How fast paint laid is a full Motion: thickness per cell of the canvas per second.
+  /* How fast paint laid is a full Motion: thickness per cell of the canvas
+     per second, for a brush of width one; it is out of this times the width
+     (the paint a stroke lays per length grows with its width), so Motion
+     reads the playing alike at any width rather than pinning at full on a
+     wide brush (19 Nov; the listening page measures it). */
   double motionFull = 0.012;
   /* The brush's base width, over today's (paint-width, 18 Nov): one is the
      width step 2 shipped, a brush one to four cells across by its pressure.
      Internal, for the owner to choose between by ear and eye
      (web/docs/listening/paint-width/); the look draws whatever the stamps
      say, so a wider brush is wider for the sound and the picture alike. */
-  double width = 1;
-  /* A melody is one stroke (the study's rule, paint.phrases): a hand's next
-     note struck alone within this many seconds of its last strike takes up
-     that note's brush where it is - the same stroke, dipped again by the
-     strike - so a run is a line in and out across the turn rather than a
-     row of dabs, one a note, which is what the owner saw as beads (18 Nov).
-     Nought: every note a stroke of its own, as step 2 painted. A chord's
-     notes, struck together, are strokes of their own either way. */
-  double chain = 0.45;
+  double width = 2;
+  /* When a note goes on with the last one's stroke (the owner, 19 Nov: "only
+     if their tail ends meaningfully interact, or if the sustain is held").
+     A hand's next note struck alone takes up the brush of the note it struck
+     last - the same stroke, dipped again, gliding to the new pitch - when
+     that note still sounds at the strike, its own amp envelope as the
+     instrument plays it above `joinFloor` of the peak it reached (key down
+     or in its release alike), or while the sustain pedal is down. So a run
+     is one line, a long pad's slow melody is one line, and a pluck's is a
+     stroke a note, by the sound rather than by the clock. It replaced a
+     fixed 0.45 s from strike to strike (18 Nov), which split a pad's slow
+     melody and would have joined a quick pluck's. A chord's notes, struck
+     together, are strokes of their own either way. `join` false: every note
+     a stroke of its own, as step 2 painted (for the renders' comparison). */
+  bool join = true;
+  double joinFloor = 0.063;  // -24 dB: web/docs/listening/paint-width/ says how it was chosen
 };
 
 // ---- The layout -------------------------------------------------------------
@@ -208,10 +219,10 @@ struct PaintBrush {
   // Wet paint picked up off the canvas, on the bristles' tips, laid on further along whatever the brush's own load.
   std::array<double, kPaintBins> carry {};
   std::size_t slot = 0;              // its table slot
-  // Its stroke taken up by a later note (PaintParams::chain): it lays no more, and goes on reading its ring.
+  // Its stroke taken up by a later note (PaintParams::join): it lays no more, and goes on reading its ring.
   bool handed = false;
   int from = -1;                     // the brush whose stroke it took up, while that one sounds
-  double level = 0;                  // its voice's level at its last frame
+  double level = 0, peak = 0;        // its voice's level at its last frame, and the most it has reached
   double hz = 0;                     // the pitch it is at: a stroke taken up glides to its new note's
 };
 
@@ -292,7 +303,7 @@ class Painter {
     // Brushes whose voices are gone let go of their slots.
     for (auto& b : brushes_) {
       if (b.live || !b.serial) continue;
-      // The hand's latest stroke, kept as it lifts, so a note struck soon after takes it up (PaintParams::chain).
+      // The hand's latest stroke, kept as it lifts, so a note struck under the pedal takes it up (PaintParams::join).
       if (!b.handed && b.layer >= 0 && b.layer < 2) {
         PaintBrush& kept = lifted_[static_cast<std::size_t>(b.layer)];
         if (!kept.serial || b.bornAt >= kept.bornAt) { kept = b; kept.from = -1; }
@@ -334,6 +345,9 @@ class Painter {
 
   // The base width (PaintParams::width), internal: the owner's three to choose between.
   void setWidth(double width) { if (std::isfinite(width) && width > 0) p_.width = width; }
+
+  // The sustain pedal, down or up, as the keyboard has it this frame: a note struck under it goes on with the last one's stroke.
+  void setPedal(bool down) { pedal_ = down; }
 
   // The fade, a half-life in seconds, as the setup's paintPersistence sets it (step 2).
   void setFade(double seconds) { if (std::isfinite(seconds) && seconds > 0) p_.fade = seconds; }
@@ -458,19 +472,24 @@ class Painter {
     std::size_t slot = kPaintBrushes;
     for (std::size_t s = 0; s < kPaintBrushes; s++) if (!slots_[s].owner) { slot = s; break; }
     if (slot == kPaintBrushes) return nullptr;
-    // The hand's last strike, if this note is struck alone soon enough after it to go on with its stroke.
-    // Its brush may still be sounding, or have lifted already (a short note), which is kept for the purpose.
+    /* The hand's last strike, if this note is struck alone and that note still
+       sounds - or the pedal is down, when its brush may have lifted already
+       (a pluck's under the pedal), which is kept for the purpose
+       (PaintParams::join). */
     PaintBrush* live = nullptr;
     const PaintBrush* from = nullptr;
-    if (alone && p_.chain > 0 && layer >= 0 && layer < 2) {
+    if (alone && p_.join && layer >= 0 && layer < 2) {
       for (auto& c : brushes_)
         if (c.serial && &c != b && c.layer == layer && !c.handed && c.placed && (!live || c.bornAt > live->bornAt)) live = &c;
       const PaintBrush& lifted = lifted_[static_cast<std::size_t>(layer)];
       from = live;
       if (lifted.serial && (!from || lifted.bornAt > from->bornAt)) { from = &lifted; live = nullptr; }
-      if (from && !(t - from->bornAt >= kChordSeconds && t - from->bornAt <= p_.chain)) from = live = nullptr;
+      const bool sounding = live && live->peak > 0 && live->level > p_.joinFloor * live->peak;
+      if (from && !(t - from->bornAt >= kChordSeconds && (sounding || pedal_))) from = live = nullptr;
     }
-    const PaintBrush was = from ? *from : PaintBrush {};
+    PaintBrush was = from ? *from : PaintBrush {};
+    // A lifted stroke stopped where its note did: it goes on from its pitch where the turn is now.
+    if (from && !live) { const PaintPoint at = layout_->at(t, was.hz); was.x = at.x * kPaintN; was.y = at.y * kPaintN; }
     *b = {};
     b->serial = ++serials_;
     if (from) {
@@ -513,6 +532,7 @@ class Painter {
      as step 2 had, read as a notch cut in the stroke, and a run as beads). */
   void stroke(PaintBrush& b, const PaintNote& v, double t, double dt) {
     b.level = std::clamp(v.level, 0.0, 1.0);
+    b.peak = std::max(b.peak, b.level);
     double level = b.level;
     if (b.from >= 0) {
       const PaintBrush& f = brushes_[static_cast<std::size_t>(b.from)];
@@ -701,7 +721,7 @@ class Painter {
     reads_.cover = std::min(1.0, 4 * wetCover / cells);
     reads_.covered = covered / cells;
     const double rate = dt > 0 ? reads_.laid / cells / dt : 0;
-    reads_.moved = std::clamp(rate / p_.motionFull, 0.0, 1.0);
+    reads_.moved = std::clamp(rate / (p_.motionFull * p_.width), 0.0, 1.0);
     reads_.repaint = reads_.laid > 1e-9 ? (reads_.intoWet + reads_.ontoDry) / reads_.laid : 0;
   }
 
@@ -721,6 +741,7 @@ class Painter {
   PaintReads reads_, acc_;  // the last frame's reads, and what is being laid towards the next
   std::array<PaintBrush, kPaintBrushes> brushes_ {};
   std::array<PaintBrush, 2> lifted_ {};  // each hand's last stroke as it lifted
+  bool pedal_ = false;
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;

@@ -6,10 +6,12 @@
 // render.cpp; a script in the format core/tests/tools/instrument_cpp.cpp
 // reads ("make", "midi" and "block"), then:
 //
-//   render <script> <out prefix> <width> [<chain>]
+//   render <script> <out prefix> <width> [<join>]
 //
-// <chain> is PaintParams::chain, the seconds within which a note struck alone
-// takes up the last one's stroke (0: every note a stroke of its own).
+// <join> is PaintParams::join: 1 (the default) a note struck alone goes on
+// with the last one's stroke while that one sounds or the pedal is down, 0
+// every note a stroke of its own. The script's setup is a code, or a JSON
+// setup (starting with a brace), which is encoded here.
 //
 // Out, beside the prefix, as painting-step1's (.f32, .reads, .tables, .maps,
 // .cost), and:
@@ -40,7 +42,7 @@ int main(int argc, char** argv) {
   const bool paint = true;
   scope::PaintParams params;
   params.width = std::atof(argv[3]);
-  if (argc > 4) params.chain = std::atof(argv[4]);
+  if (argc > 4) params.join = std::atof(argv[4]) != 0;
   std::ifstream file(argv[1]);
   std::FILE* audio = std::fopen((prefix + ".f32").c_str(), "wb");
   std::FILE* reads = std::fopen((prefix + ".reads").c_str(), "w");
@@ -61,7 +63,9 @@ int main(int argc, char** argv) {
     const std::string cmd = text(a[0]);
     if (cmd == "make") {
       rate = a[1].n;
-      const auto setup = scope::Instrument::setup(text(a[3]));
+      std::string given = text(a[3]);
+      if (!given.empty() && given[0] == '{') given = *scope::encodeSetup(*scope::jsonParse(scope::utf8To16(given)));
+      const auto setup = scope::Instrument::setup(given);
       if (!setup) { std::fprintf(stderr, "setup refused\n"); return 2; }
       instrument.prepare(rate, static_cast<int>(a[2].n), *setup->setup);
       instrument.setPainting(true, params);

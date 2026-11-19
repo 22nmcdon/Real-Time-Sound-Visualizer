@@ -1551,6 +1551,7 @@ class Instrument {
         if (ratio != 1) paintNotes_[n++] = { 0, -2 - 2 * lineId_, noteOf(hz * ratio), hz * ratio, std::clamp(level, 0.0, 1.0), core_->gated() };
       }
     }
+    painter_->setPedal(keyboard_->sustain());
     painter_->frame(paintNotes_.data(), n, nowMs_, pictureRun_->elapsed());
     publishPaint();
   }

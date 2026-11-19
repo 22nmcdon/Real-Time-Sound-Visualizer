@@ -7,10 +7,10 @@
    "glow_p90": 0.64,
    "into_wet": 0.393,
    "memory": 0.315,
-   "motion": 0.998,
+   "motion": 0.56,
    "onto_bare": 0.59,
    "onto_dry": 0.017,
-   "realtime": 0.0695,
+   "realtime": 0.1057,
    "scan": {
     "centroid": 1.8,
     "centroid_p10": 1.38,
@@ -37,7 +37,7 @@
    "motion": 0.517,
    "onto_bare": 0.788,
    "onto_dry": 0.013,
-   "realtime": 0.1054,
+   "realtime": 0.1055,
    "scan": {
     "centroid": 1.89,
     "centroid_p10": 1.46,
@@ -61,10 +61,10 @@
    "glow_p90": 0.723,
    "into_wet": 0.459,
    "memory": 0.383,
-   "motion": 1.0,
+   "motion": 0.75,
    "onto_bare": 0.529,
    "onto_dry": 0.012,
-   "realtime": 0.0958,
+   "realtime": 0.1034,
    "scan": {
     "centroid": 1.63,
     "centroid_p10": 1.33,
@@ -119,10 +119,10 @@
    "glow_p90": 0.571,
    "into_wet": 0.068,
    "memory": 0.092,
-   "motion": 0.284,
+   "motion": 0.145,
    "onto_bare": 0.921,
    "onto_dry": 0.011,
-   "realtime": 0.1635,
+   "realtime": 0.1951,
    "scan": {
     "centroid": 2.12,
     "centroid_p10": 1.45,
@@ -139,33 +139,6 @@
    },
    "strokes": 9
   },
-  "medium-separate": {
-   "brush_cells": 5.08,
-   "covered_p90": 0.109,
-   "glow": 0.258,
-   "glow_p90": 0.518,
-   "into_wet": 0.176,
-   "memory": 0.161,
-   "motion": 0.271,
-   "onto_bare": 0.807,
-   "onto_dry": 0.017,
-   "realtime": 0.1714,
-   "scan": {
-    "centroid": 2.12,
-    "centroid_p10": 1.45,
-    "centroid_p90": 3.25,
-    "high": 0.002,
-    "movement": 0.0052,
-    "movement_p90": 0.0113,
-    "readings": 3275,
-    "sine": 0.512
-   },
-   "shares": {
-    "fifth": 0.213,
-    "semitone": 0.815
-   },
-   "strokes": 46
-  },
   "today": {
    "brush_cells": 2.54,
    "covered_p90": 0.067,
@@ -176,7 +149,7 @@
    "motion": 0.15,
    "onto_bare": 0.993,
    "onto_dry": 0.006,
-   "realtime": 0.168,
+   "realtime": 0.202,
    "scan": {
     "centroid": 2.1,
     "centroid_p10": 1.47,
@@ -200,10 +173,10 @@
    "glow_p90": 0.689,
    "into_wet": 0.181,
    "memory": 0.237,
-   "motion": 0.536,
+   "motion": 0.164,
    "onto_bare": 0.805,
    "onto_dry": 0.014,
-   "realtime": 0.1744,
+   "realtime": 0.1864,
    "scan": {
     "centroid": 1.68,
     "centroid_p10": 1.3,
@@ -229,10 +202,10 @@
    "glow_p90": 0.681,
    "into_wet": 0.303,
    "memory": 0.259,
-   "motion": 0.752,
+   "motion": 0.376,
    "onto_bare": 0.681,
    "onto_dry": 0.016,
-   "realtime": 0.1348,
+   "realtime": 0.1514,
    "scan": {
     "centroid": 1.65,
     "centroid_p10": 1.43,
@@ -259,7 +232,7 @@
    "motion": 0.379,
    "onto_bare": 0.873,
    "onto_dry": 0.014,
-   "realtime": 0.1423,
+   "realtime": 0.15,
    "scan": {
     "centroid": 1.77,
     "centroid_p10": 1.47,
@@ -283,10 +256,10 @@
    "glow_p90": 0.767,
    "into_wet": 0.441,
    "memory": 0.364,
-   "motion": 1.0,
+   "motion": 0.558,
    "onto_bare": 0.548,
    "onto_dry": 0.011,
-   "realtime": 0.1196,
+   "realtime": 0.1642,
    "scan": {
     "centroid": 1.54,
     "centroid_p10": 1.36,
@@ -312,10 +285,10 @@
    "glow_p90": 0.59,
    "into_wet": 0.0,
    "memory": 0.0,
-   "motion": 0.943,
+   "motion": 0.683,
    "onto_bare": 1.0,
    "onto_dry": 0.0,
-   "realtime": 0.0755,
+   "realtime": 0.0898,
    "scan": {
     "centroid": 2.66,
     "centroid_p10": 1.63,
@@ -339,10 +312,10 @@
    "glow_p90": 0.567,
    "into_wet": 0.414,
    "memory": 0.227,
-   "motion": 0.817,
+   "motion": 0.525,
    "onto_bare": 0.586,
    "onto_dry": 0.0,
-   "realtime": 0.0894,
+   "realtime": 0.0991,
    "scan": {
     "centroid": 2.77,
     "centroid_p10": 1.79,
@@ -369,7 +342,7 @@
    "motion": 0.679,
    "onto_bare": 1.0,
    "onto_dry": 0.0,
-   "realtime": 0.0705,
+   "realtime": 0.0932,
    "scan": {
     "centroid": 3.22,
     "centroid_p10": 2.4,
@@ -393,10 +366,10 @@
    "glow_p90": 0.716,
    "into_wet": 0.0,
    "memory": 0.0,
-   "motion": 0.998,
+   "motion": 0.689,
    "onto_bare": 1.0,
    "onto_dry": 0.0,
-   "realtime": 0.0698,
+   "realtime": 0.0956,
    "scan": {
     "centroid": 1.89,
     "centroid_p10": 1.38,
@@ -414,33 +387,201 @@
    "strokes": 1
   }
  },
- "slow": {
+ "slow-pad": {
   "medium": {
-   "brush_cells": 4.07,
-   "covered_p90": 0.031,
-   "glow": 0.226,
-   "glow_p90": 0.304,
-   "into_wet": 0.04,
-   "memory": 0.013,
-   "motion": 0.253,
-   "onto_bare": 0.953,
-   "onto_dry": 0.007,
-   "realtime": 0.0457,
+   "brush_cells": 5.86,
+   "covered_p90": 0.056,
+   "glow": 0.321,
+   "glow_p90": 0.402,
+   "into_wet": 0.0,
+   "memory": 0.0,
+   "motion": 0.141,
+   "onto_bare": 0.992,
+   "onto_dry": 0.008,
+   "realtime": 0.1097,
    "scan": {
-    "centroid": 2.98,
-    "centroid_p10": 2.42,
-    "centroid_p90": 3.73,
-    "high": 0.026,
-    "movement": 0.0043,
-    "movement_p90": 0.0196,
-    "readings": 783,
-    "sine": 0.421
+    "centroid": 1.75,
+    "centroid_p10": 1.23,
+    "centroid_p90": 2.44,
+    "high": 0.005,
+    "movement": 0.004,
+    "movement_p90": 0.0098,
+    "readings": 1277,
+    "sine": 0.591
    },
    "shares": {
-    "fifth": 0.122,
-    "semitone": 0.78
+    "fifth": 0.144,
+    "semitone": 0.805
+   },
+   "strokes": 1
+  },
+  "medium-separate": {
+   "brush_cells": 4.82,
+   "covered_p90": 0.055,
+   "glow": 0.316,
+   "glow_p90": 0.398,
+   "into_wet": 0.197,
+   "memory": 0.118,
+   "motion": 0.141,
+   "onto_bare": 0.793,
+   "onto_dry": 0.009,
+   "realtime": 0.1127,
+   "scan": {
+    "centroid": 1.83,
+    "centroid_p10": 1.31,
+    "centroid_p90": 2.45,
+    "high": 0.005,
+    "movement": 0.0041,
+    "movement_p90": 0.0098,
+    "readings": 1277,
+    "sine": 0.58
+   },
+   "shares": {
+    "fifth": 0.158,
+    "semitone": 0.801
    },
    "strokes": 9
+  }
+ },
+ "slow-pluck": {
+  "medium": {
+   "brush_cells": 3.94,
+   "covered_p90": 0.005,
+   "glow": 0.007,
+   "glow_p90": 0.027,
+   "into_wet": 0.0,
+   "memory": 0.0,
+   "motion": 0.034,
+   "onto_bare": 0.994,
+   "onto_dry": 0.006,
+   "realtime": 0.0398,
+   "scan": {
+    "centroid": 4.34,
+    "centroid_p10": 3.84,
+    "centroid_p90": 4.93,
+    "high": 0.071,
+    "movement": 0.0003,
+    "movement_p90": 0.0069,
+    "readings": 513,
+    "sine": 0.267
+   },
+   "shares": {
+    "fifth": 0.095,
+    "semitone": 0.782
+   },
+   "strokes": 9
+  },
+  "medium-separate": {
+   "brush_cells": 3.94,
+   "covered_p90": 0.005,
+   "glow": 0.007,
+   "glow_p90": 0.027,
+   "into_wet": 0.0,
+   "memory": 0.0,
+   "motion": 0.034,
+   "onto_bare": 0.994,
+   "onto_dry": 0.006,
+   "realtime": 0.0391,
+   "scan": {
+    "centroid": 4.34,
+    "centroid_p10": 3.84,
+    "centroid_p90": 4.93,
+    "high": 0.071,
+    "movement": 0.0003,
+    "movement_p90": 0.0069,
+    "readings": 513,
+    "sine": 0.267
+   },
+   "shares": {
+    "fifth": 0.095,
+    "semitone": 0.782
+   },
+   "strokes": 9
+  }
+ },
+ "slow-pluck-pedal": {
+  "medium": {
+   "brush_cells": 3.94,
+   "covered_p90": 0.006,
+   "glow": 0.041,
+   "glow_p90": 0.106,
+   "into_wet": 0.0,
+   "memory": 0.0,
+   "motion": 0.055,
+   "onto_bare": 1.0,
+   "onto_dry": 0.0,
+   "realtime": 0.087,
+   "scan": {
+    "centroid": 4.24,
+    "centroid_p10": 3.71,
+    "centroid_p90": 4.73,
+    "high": 0.079,
+    "movement": 0.0001,
+    "movement_p90": 0.0004,
+    "readings": 2472,
+    "sine": 0.322
+   },
+   "shares": {
+    "fifth": 0.07,
+    "semitone": 0.75
+   },
+   "strokes": 1
+  },
+  "medium-separate": {
+   "brush_cells": 3.94,
+   "covered_p90": 0.004,
+   "glow": 0.003,
+   "glow_p90": 0.027,
+   "into_wet": 0.0,
+   "memory": 0.0,
+   "motion": 0.024,
+   "onto_bare": 1.0,
+   "onto_dry": 0.0,
+   "realtime": 0.0864,
+   "scan": {
+    "centroid": 4.35,
+    "centroid_p10": 3.73,
+    "centroid_p90": 4.56,
+    "high": 0.084,
+    "movement": 0.0001,
+    "movement_p90": 0.0007,
+    "readings": 2472,
+    "sine": 0.344
+   },
+   "shares": {
+    "fifth": 0.088,
+    "semitone": 0.785
+   },
+   "strokes": 6
+  }
+ },
+ "slow-tine": {
+  "medium": {
+   "brush_cells": 4.5,
+   "covered_p90": 0.039,
+   "glow": 0.286,
+   "glow_p90": 0.35,
+   "into_wet": 0.0,
+   "memory": 0.0,
+   "motion": 0.234,
+   "onto_bare": 0.989,
+   "onto_dry": 0.011,
+   "realtime": 0.0499,
+   "scan": {
+    "centroid": 2.93,
+    "centroid_p10": 2.42,
+    "centroid_p90": 3.59,
+    "high": 0.029,
+    "movement": 0.004,
+    "movement_p90": 0.019,
+    "readings": 783,
+    "sine": 0.409
+   },
+   "shares": {
+    "fifth": 0.115,
+    "semitone": 0.783
+   },
+   "strokes": 1
   },
   "medium-separate": {
    "brush_cells": 4.07,
@@ -449,10 +590,10 @@
    "glow_p90": 0.304,
    "into_wet": 0.04,
    "memory": 0.013,
-   "motion": 0.253,
+   "motion": 0.126,
    "onto_bare": 0.953,
    "onto_dry": 0.007,
-   "realtime": 0.0413,
+   "realtime": 0.0467,
    "scan": {
     "centroid": 2.98,
     "centroid_p10": 2.42,

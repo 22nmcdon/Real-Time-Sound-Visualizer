@@ -107,15 +107,16 @@ REPLAY = """({ fps, every, widen, cells }) => {
            at: kept.map((s) => [s[0], s[1]]), cells: cells || 128 };
 }"""
 
-# A run of eleven notes, a ninth of a second apart and each held 60 ms, struck alone, painted by a core of its own.
+# A run of eleven notes, a ninth of a second apart and each held 150 ms, struck alone, painted by a core of its own:
+# each note still sounds at the next strike, so the core joins them into one stroke (PaintParams::join).
 PLAY_RUN = """() => {
   const code = encodeSetup(Object.assign({}, decodeSetup(encodeSetup(snapshot())),
-    { midiMode: 'poly', oscScan: 60, screenDraws: 'paint', rel: 30 }));
+    { midiMode: 'poly', oscScan: 60, screenDraws: 'paint' }));
   const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
   const l = new Float32Array(128), r = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
   const run = [60, 62, 64, 65, 67, 69, 71, 72, 71, 69, 67], at = (s) => Math.round(s * 48000 / 128);
   for (let k = 0; k < at(1.6); k++) {
-    run.forEach((n, i) => { if (k === at(i / 9)) brain.midi([0x90, n, 100], -1); if (k === at(i / 9 + 0.06)) brain.midi([0x80, n, 0], -1); });
+    run.forEach((n, i) => { if (k === at(i / 9)) brain.midi([0x90, n, 100], -1); if (k === at(i / 9 + 0.15)) brain.midi([0x80, n, 0], -1); });
     brain.block(128, l, r, pics, null);
     const p = brain.readings().paint;
     if (p && p.on && p.stamps && p.count) window.__served.push(p.stamps.slice(0, p.count * 20));

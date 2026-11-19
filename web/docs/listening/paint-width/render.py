@@ -7,14 +7,13 @@ the look may render them finer, with texture and light, but never wider or
 narrower. So a wider brush is wider for the sound too: neighbouring notes share
 more paint, and a note's tone is coloured by its register.
 
-The widths are PaintParams::width, an internal parameter over the brush step 2
-shipped (a brush one to four of the map's 128 cells across by its pressure):
+The widths are PaintParams::width over the brush step 2 shipped (a brush one
+to four of the map's 128 cells across by its pressure); the owner chose
+medium (19 Nov), now the default:
 
   today    1     as step 2 painted
-  medium   2
-  wide     3.5   near the study's physical brush, whose strokes were fitted
-                 per phrase (the study's pad: about 7 per cent of the canvas
-                 across); here one width for any phrase on the round canvas
+  medium   2     the default since 19 Nov
+  wide     3.5   near the study's physical brush
 
 The phrases are painting-step1's (the study's), played by render.cpp beside
 this file, the instrument itself. For each phrase and width this writes:
@@ -33,12 +32,12 @@ this file, the instrument itself. For each phrase and width this writes:
 and, for the run at today's width, the look painted at four frames a second
 from the same stamps, to show the strokes hold together at any frame rate.
 
-A melody is one stroke (PaintParams::chain, 0.45 s): a note struck alone that
-soon after the hand's last takes up its stroke. Since that changes how a run
-sounds, the run and Crossed hands are rendered at the width picked both ways,
-"-separate" being every note a stroke of its own as step 2 painted; and a slow
-melody, a note a second, is rendered both ways at that width, to hear what the
-threshold does to a melody slower than it.
+A note struck alone goes on with the last one's stroke while that one still
+sounds above -24 dB of its peak, or while the sustain pedal is down
+(PaintParams::join, the owner's rule of 19 Nov). Since that changes what Scan
+reads, the fast run and a slow melody - on Tine piano, a long pad, a short
+pluck, and the pluck under the pedal - are rendered at medium both ways,
+"-separate" being every note a stroke of its own as step 2 painted.
 
     CHROME=/opt/pw-browsers/chromium python3 web/docs/listening/paint-width/render.py [NAME ...]
 """
@@ -64,21 +63,40 @@ WIDTHS = {"today": 1.0, "medium": 2.0, "wide": 3.5}
 
 
 def slow_melody():
-    """A melody at one note a second, legato (each held 0.95 s): slower than
-    the 0.45 s within which a note struck alone takes up the last one's
-    stroke, to hear and see what that threshold does to it."""
+    """A melody at one note a second, legato (each held 0.95 s): the case the
+    join's rule is about - joined while a note still sounds at the next
+    strike, or under the pedal, and not by the clock."""
     notes = [(0.3 + k, n, 80, 0.95) for k, n in enumerate((60, 64, 67, 72, 71, 67, 64, 62, 60))]
     return notes, 10.0
 
 
-PHRASES = dict(step1.PHRASES, slow=("Slow melody", "Tine piano", slow_melody))
-# What is rendered: each of the study's phrases at the three widths with a melody one stroke (the default), and
-# at the width picked with every note a stroke of its own (chain 0, as step 2 painted), for the phrases with a
-# melody in them; the slow melody at the width picked, both ways.
+# A short pluck: Tine piano's settings with its envelope cut to a quarter-second decay to nothing.
+PLUCK = {"shape": "sine", "midiMode": "poly", "oscScan": 50, "pictureAmount": 0, "atk": 1, "dec": 250, "sus": 0, "rel": 150}
+
+# Each phrase: its title, what it plays on (a preset's name, or a setup), how its notes go, and whether the pedal is down.
+PHRASES = {k: (title, preset, make, False) for k, (title, preset, make) in step1.PHRASES.items()}
+PHRASES.update({
+    "slow-tine": ("Slow melody, Tine piano", "Tine piano", slow_melody, False),
+    "slow-pad": ("Slow melody, Slow pad", "Slow pad", slow_melody, False),
+    "slow-pluck": ("Slow melody, a short pluck", PLUCK, slow_melody, False),
+    "slow-pluck-pedal": ("Slow melody, the pluck under the pedal", PLUCK, slow_melody, True),
+})
+# What is rendered: the study's four phrases at the three widths, joined as the instrument now joins; and at the
+# width chosen, joined against separate ("-separate", every note a stroke of its own as step 2 painted), the fast run
+# and the slow melody on Tine piano, a long pad, a short pluck, and the pluck under the pedal.
 PICK = "medium"
 JOBS = [(name, w, WIDTHS[w], None) for name in step1.PHRASES for w in WIDTHS]
-JOBS += [(name, PICK + "-separate", WIDTHS[PICK], 0.0) for name in ("crossed", "run")]
-JOBS += [("slow", PICK, WIDTHS[PICK], None), ("slow", PICK + "-separate", WIDTHS[PICK], 0.0)]
+JOBS += [("run", PICK + "-separate", WIDTHS[PICK], 0)]
+for name in ("slow-tine", "slow-pad", "slow-pluck", "slow-pluck-pedal"):
+    JOBS += [(name, PICK, WIDTHS[PICK], None), (name, PICK + "-separate", WIDTHS[PICK], 0)]
+
+
+def script(code, notes, length, pedal):
+    """painting-step1's script, and the sustain pedal down from the start to the end if asked."""
+    text = step1.script(code, notes, length)
+    if not pedal: return text
+    lines = text.splitlines()
+    return "\n".join(lines[:1] + ['["midi",176,64,127]'] + lines[1:]) + "\n"
 
 
 def build():
@@ -95,14 +113,14 @@ def preset_code(name):
                           check=True).stdout.strip()
 
 
-def render(name, key, width, chain):
-    _, preset, make = PHRASES[name]
-    code = step1.CROSSED if preset is None else preset_code(preset)
+def render(name, key, width, join):
+    _, preset, make, pedal = PHRASES[name]
+    code = step1.CROSSED if preset is None else json.dumps(preset) if isinstance(preset, dict) else preset_code(preset)
     notes, length = make()
     path = os.path.join(BUILD, name + ".script")
-    with open(path, "w") as f: f.write(step1.script(code, notes, length))
+    with open(path, "w") as f: f.write(script(code, notes, length, pedal))
     prefix = os.path.join(BUILD, "%s-%s" % (name, key))
-    subprocess.run([os.path.join(BUILD, "render"), path, prefix, str(width)] + ([] if chain is None else [str(chain)]), check=True)
+    subprocess.run([os.path.join(BUILD, "render"), path, prefix, str(width)] + ([] if join is None else [str(join)]), check=True)
     return prefix, length, sorted({n for _, n, _, _ in notes})
 
 
@@ -208,9 +226,9 @@ def main(names):
     results = json.load(open(path)) if os.path.exists(path) else {}
     looks = Looks()
     try:
-        for name, key, width, chain in JOBS:
+        for name, key, width, join in JOBS:
             if name not in names: continue
-            prefix, length, notes = render(name, key, width, chain)
+            prefix, length, notes = render(name, key, width, join)
             m = step1.measures(prefix)
             r = step1.reads_of(prefix)
             spent, samples = map(float, open(prefix + ".cost").read().split())

@@ -31,10 +31,13 @@
 //   line MODE              A3 held in Mono, or A3 and E4 in Dyad, painting: the paint's radius
 //                          and how much lies within a cell of each note's ring, and whether
 //                          the layer plays a painted table
-//   chain [SECONDS [WIDTH]]  a run of eleven short notes struck alone, painting, with a melody's notes one stroke
-//                          if struck within SECONDS (PaintParams::chain; 0 each its own stroke): how much of the
+//   chain [JOIN [WIDTH]]   a run of eleven short notes struck alone on Tine piano's envelope, painting, a note
+//                          joining the last one's stroke while it sounds (PaintParams::join; 0 each its own): how much of the
 //                          run's arc has paint, the longest stretch without (degrees), the arc's degrees, and
-//                          its thinnest tenth over its median (how deep it dips between notes)
+//                          its thinnest tenth over its median (how deep it dips between notes), and how many strokes
+//   join SOUND GAP [FLOOR [PEDAL]]  six notes struck alone GAP s apart on a pluck, a pad or Tine piano's
+//                          envelope, at a join floor, the pedal down if PEDAL: how many strokes, and the
+//                          quietest the last note was over its peak at a strike
 //   width WIDTH            A3 held at a base width: the map's spread across its ring and the core's own contact
 //                          half-width at the last stamp, both in cells, and the ring's radius
 //   served                 the strokes the face is served: the count, the last frame's stamps
@@ -402,6 +405,9 @@ int main(int argc, char** argv) {
     const std::string mode = argc > 2 ? argv[2] : "mono";
     const std::string json = R"({"shape":"sine","oscScan":60,"atk":2,"sus":80,"screenDraws":"paint","midiMode":")" + mode + R"("})";
     Player p(json.c_str(), false);
+    // At today's narrow brush (width one), where A3's and E4's rings, seven semitones apart, are three cells apart
+    // and a brush lays within a cell and a half of its own: what is held is where the line paints, not how wide.
+    p.in.setPaintWidth(1);
     // A fifth held in Dyad, its two keys; the lower alone in Mono.
     if (mode == "dyad") p.blocks(1.5, { { 0x90, 57, 100 }, { 0x90, 64, 100 } });
     else p.blocks(1.5, { { 0x90, 57, 100 } });
@@ -422,17 +428,24 @@ int main(int argc, char** argv) {
     std::printf("%d %.4f %.4f %.4f %d\n", p.in.painting() ? 1 : 0, radiusOfMap(p.in.painter()->map()), near(hz), near(fifth),
                 p.in.generator().scanTable(0) ? 1 : 0);
   } else if (cmd == "chain") {
-    // A run of short notes in Poly, each struck alone a ninth of a second after the last, painting; chain on (1) or off (0).
+    // A run of short notes in Poly, each struck alone a ninth of a second after the last, painting; joined (1) or not (0).
     PaintParams params;
-    params.chain = argc > 2 ? std::atof(argv[2]) : params.chain;
+    params.join = argc > 2 ? std::atof(argv[2]) != 0 : params.join;
     params.width = argc > 3 ? std::atof(argv[3]) : 1;
-    // Plucked: a short release, so a note's own stroke ends soon after its key, as Tine piano's does.
-    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"pictureAmount":50,"atk":2,"dec":300,"sus":60,"rel":30})", true, params);
+    // Tine piano's envelope: each note still sounding at the next strike, its own stroke ending well after its key.
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"pictureAmount":50,"atk":1,"dec":1000,"sus":25,"rel":500})", true, params);
     const int scale[] = { 60, 62, 64, 65, 67, 69, 71, 72, 71, 69, 67 };
     const double t0 = 0;
+    std::vector<std::int32_t> strokes;
+    const auto look = [&]() {
+      for (const auto& b : p.in.painter()->brushes())
+        if (b.serial && std::find(strokes.begin(), strokes.end(), b.serial) == strokes.end()) strokes.push_back(b.serial);
+    };
     for (const int n : scale) {
       p.blocks(0.06, { { 0x90, static_cast<std::uint8_t>(n), 100 } });
+      look();
       p.blocks(1.0 / 9 - 0.06, { { 0x80, static_cast<std::uint8_t>(n), 0 } });
+      look();
     }
     p.blocks(0.05, { { 0x80, 67, 0 } });
     const double t1 = 11.0 / 9;
@@ -460,8 +473,45 @@ int main(int argc, char** argv) {
       if (v > 0.2 * median) { covered++; gap = 0; } else longest = std::max(longest, ++gap);
     }
     // And how deep the stroke dips between notes: its thinnest tenth over its median.
-    std::printf("%.4f %d %d %.4f\n", static_cast<double>(covered) / static_cast<double>(most.size()), longest, static_cast<int>(most.size()),
-                median > 0 ? sorted[sorted.size() / 10] / median : 0);
+    std::printf("%.4f %d %d %.4f %zu\n", static_cast<double>(covered) / static_cast<double>(most.size()), longest, static_cast<int>(most.size()),
+                median > 0 ? sorted[sorted.size() / 10] / median : 0, strokes.size());
+  } else if (cmd == "join") {
+    /* Six notes struck alone, GAP seconds apart and each held nine tenths of
+       that, on SOUND - "pluck" (gone in a quarter second), "pad" (a long
+       release) or "tine" (Tine piano's) - at a join floor FLOOR (of the
+       peak), with the sustain pedal down throughout if PEDAL is 1: how many
+       strokes the phrase is, and the quietest the hand's last note was, over
+       its peak, at a strike. */
+    const std::string sound = argc > 2 ? argv[2] : "pluck";
+    const double gap = arg(3, 1), floor = arg(4, PaintParams {}.joinFloor);
+    const bool pedal = arg(5, 0) != 0;
+    PaintParams params;
+    params.joinFloor = floor;
+    const char* json = sound == "pad" ? R"({"shape":"ramp","midiMode":"poly","oscScan":60,"atk":200,"dec":800,"sus":80,"rel":1500})"
+                     : sound == "tine" ? R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":1,"dec":1000,"sus":25,"rel":500})"
+                                       : R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":1,"dec":250,"sus":0,"rel":150})";
+    Player p(json, true, params);
+    std::vector<std::int32_t> strokes;
+    double quietest = 1e9;
+    const auto look = [&]() {
+      for (const auto& b : p.in.painter()->brushes())
+        if (b.serial && std::find(strokes.begin(), strokes.end(), b.serial) == strokes.end()) strokes.push_back(b.serial);
+    };
+    if (pedal) p.blocks(0.05, { { 0xB0, 64, 127 } });
+    const int melody[] = { 60, 64, 67, 72, 67, 64 };
+    for (int k = 0; k < 6; k++) {
+      if (k > 0) {
+        // The hand's last note, just before this strike: its level over its peak.
+        const PaintBrush* last = nullptr;
+        for (const auto& b : p.in.painter()->brushes()) if (b.serial && !b.handed && (!last || b.bornAt > last->bornAt)) last = &b;
+        quietest = std::min(quietest, last && last->peak > 0 ? last->level / last->peak : 0.0);
+      }
+      const int steps = std::max(1, static_cast<int>(std::round(gap * 0.9 / 0.05)));
+      for (int s = 0; s < steps; s++) { p.blocks(0.05, s == 0 ? std::vector<std::vector<std::uint8_t>> { { 0x90, static_cast<std::uint8_t>(melody[k]), 100 } } : std::vector<std::vector<std::uint8_t>> {}); look(); }
+      const int rest = std::max(1, static_cast<int>(std::round(gap * 0.1 / 0.01)));
+      for (int s = 0; s < rest; s++) { p.blocks(0.01, s == 0 ? std::vector<std::vector<std::uint8_t>> { { 0x80, static_cast<std::uint8_t>(melody[k]), 0 } } : std::vector<std::vector<std::uint8_t>> {}); look(); }
+    }
+    std::printf("%zu %.5f\n", strokes.size(), quietest > 1e8 ? 0.0 : quietest);
   } else if (cmd == "width") {
     // A3 held, painting at a base width: the map's spread across its ring (the thickness-weighted RMS of the
     // radius about its mean, in cells), and the core's own contact half-width at the last stamp, in cells.

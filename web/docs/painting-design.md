@@ -249,19 +249,23 @@ narrower. So a wider brush is wider for the sound too.
   rate only batches them; painted from the same stamps at 60 and at 4 frames a second the
   look is the same picture. A run was beads because each short note was a brush of its own,
   a dab with a wide head where the strike widened it 80 per cent for 60 ms. **A melody is one
-  stroke now** (`PaintParams::chain`, the study's rule): a hand's next note struck alone
-  within 0.45 s of its last strike takes up that stroke where it is, whether its note still
-  sounds or has lifted, dipped again by less than a first dip, gliding to its pitch over
-  40 ms, at the louder of the two notes while both sound. A chord's notes, struck in one
-  frame, are strokes of their own. The strike presses as the study's did, rising over 15 ms
-  and falling over 60, widening 6 per cent. It changes what a run sounds like at every width,
-  since Scan reads the joined line; painting is off in the recordings, which are unchanged.
-  Heard at width 2 both ways: the run's tone moves a little (centroid 2.66 joined, 2.77
-  separate) and Crossed hands not at all. A melody at a note a second does not join - each
-  note is struck past the 0.45 s - and reads as a row of strokes, each heavy where it is
-  struck and dry where its note decays; not beads, since each paints the second it sounds.
-  Joining a note struck while the last one's key is still down, whatever the time, would make
-  a slow legato line one stroke too; that is the owner's to decide.
+  stroke when the sound joins it** (`PaintParams::join`, the owner's rule of 19 Nov: "only if
+  their tail ends meaningfully interact, or if the sustain is held"): a hand's next note
+  struck alone takes up the stroke of the note it struck last when that note still sounds at
+  the strike - its own amp envelope as the instrument plays it above -24 dB of the peak it
+  reached (`joinFloor`), key down or in its release - or while the sustain pedal is down,
+  when a stroke already lifted is taken up too. It is dipped again by less than a first dip
+  and glides to its pitch over 40 ms, at the louder of the two notes while both sound. A
+  chord's notes, struck in one frame, are strokes of their own. The strike presses as the
+  study's did, rising over 15 ms and falling over 60, widening 6 per cent. The first rule was
+  a fixed 0.45 s from strike to strike (18 Nov), the study's; it split a pad's slow melody and
+  would have joined a quick pluck's, so it went for the sound's own level. -24 dB is the middle
+  of the owner's range, and the sounds fall far apart at the next strike, so nothing rendered
+  sits near it: at a note a second a pad's last note is at -3 dB, Tine piano's at -14, a
+  pluck's silent; a Tine piano note is at -23 dB three seconds on, the line. Under the pedal a
+  pluck still dies to silence in a quarter second, and a brush lays nothing where nothing
+  sounds, so its slow melody is one stroke drawn as nine marks; the brush staying on the
+  canvas through the pedal is step 3's. Painting is off in the recordings, which are unchanged.
 - **The look draws the core's footprint**, its half width and tip in the core's cells
   (`uCell`), where before it computed a shorter tip of its own that laid about half the paint
   per length. Finer than the map, the look's only: four bristles to each of the core's eight
@@ -271,14 +275,17 @@ narrower. So a wider brush is wider for the sound too.
   owner rule. `painttest.py` holds the look's width to the map's (look 0.71 cells of spread
   against the map's 0.67; the null, drawn twice as wide, 1.31) and a run continuous at 60
   and 4 frames a second, the null seven stamps in eight dropped.
-- **Three base widths** (`PaintParams::width`: 1, today's; 2; 3.5, near the study's),
-  internal, rendered for the owner at `web/docs/listening/paint-width/`, sound, live look,
-  map and measures. Testing still paints at 1 until the owner chooses. The lean is 2: a
-  brush, not a wire, and each register keeps its own paint (a ring shares 0.22 of its paint
-  with the ring a fifth away in a melody, against 0.06 today and about half at 3.5, where the
-  run's tone dulls from a centroid of 3.2 to 1.9). Above today's width Motion's full scale
-  (`motionFull`) should grow with the width: at 3.5 Motion is pinned at full on three of the
-  four phrases.
+- **Three base widths** (`PaintParams::width`: 1, step 2's; 2; 3.5, near the study's),
+  rendered for the owner at `web/docs/listening/paint-width/`, sound, live look, map and
+  measures. **The owner chose 2 (19 Nov), the default since**: a brush, not a wire, and each
+  register keeps its own paint (a ring shares 0.22 of its paint with the ring a fifth away in
+  a melody, against 0.06 at 1 and about half at 3.5, where the run's tone dulls from a
+  centroid of 3.2 to 1.9). **Motion's full scale grows with the width** (`motionFull` times
+  the width), since the paint a stroke lays per length does: over the four phrases width 2's
+  Motion medians come back to width 1's (0.38, 0.15, 0.68 and 0.56 against 0.38, 0.15, 0.68
+  and 0.52), where before they were 0.75, 0.28, 0.94 and 1.00 and 3.5 pinned at full on three.
+  `pieces/painting.py`'s Mono and Dyad checks run at width 1, where the rings they tell apart
+  are three cells apart; the rest at the default.
 - **The map stays 128 square.** It holds every width: a held note's spread across its ring
   is the brush's own within 4 per cent, a cell's size adding a twelfth of a cell squared
   (`pieces/painting.py`). A wider brush needs less resolution, not more, so 256 was not built.

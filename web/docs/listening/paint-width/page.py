@@ -38,7 +38,7 @@ def column(key, w, label, sub, row):
 def pair(key, name, about, res):
     """A phrase at the width picked, joined and separate, side by side."""
     cols = "".join(column(key, k, label, sub, res[key][k]) for k, label, sub in
-                   (("medium", "One stroke", "a melody joined, as now"), ("medium-separate", "Separate", "every note its own, as step 2")))
+                   (("medium", "Joined", "as the instrument now paints"), ("medium-separate", "Separate", "every note its own, as step 2")))
     j, sep = res[key]["medium"], res[key]["medium-separate"]
     return ('<section><h3>%s</h3><p class=soft>%s %d strokes joined against %d separate.</p><div class=cols>%s</div></section>'
             % (name, html.escape(about), j["strokes"], sep["strokes"], cols))
@@ -56,23 +56,15 @@ def main():
         % (label, c[w]["native_trace"], c[w]["native_paint"], c[w]["wasm_trace_ms"], c[w]["wasm_paint_ms"], c[w]["map_spread"],
            c[w]["brush_spread"]) for w, label, _ in WIDTHS)
     joined = "".join(pair(k, n, a, res) for k, n, a in (
-        ("run", "Fast run", "Nine notes a second."),
-        ("crossed", "Crossed hands", "The right hand's run, joined; the left hand's chords are strokes of their own either way."),
-        ("slow", "Slow melody", "Tine piano, a note a second held 0.95 s each: C E G C B G E D C. Slower than the 0.45 s threshold.")))
-    page = TEMPLATE.replace("{{SECTIONS}}", "\n".join(out)).replace("{{JOINED}}", joined).replace("{{SLOW}}", SLOW).replace("{{COST}}", cost_rows)
+        ("run", "Fast run, Tine piano", "Nine notes a second: each note still sounding at the next strike, so it joins."),
+        ("slow-tine", "Slow melody, Tine piano", "A note a second, held 0.95 s each: C E G C B G E D C. Each note is about "
+         "-14 dB of its peak at the next strike, above the floor, so it joins."),
+        ("slow-pad", "Slow melody, Slow pad", "The same melody on a long pad: each note at about -3 dB at the next strike. It joins."),
+        ("slow-pluck", "Slow melody, a short pluck", "The same melody on Tine piano's settings with the decay cut to a quarter "
+         "second: each note silent long before the next. It does not join."),
+        ("slow-pluck-pedal", "Slow melody, the pluck under the sustain pedal", "The pedal down throughout. It joins.")))
+    page = TEMPLATE.replace("{{SECTIONS}}", "\n".join(out)).replace("{{JOINED}}", joined).replace("{{COST}}", cost_rows)
     with open(os.path.join(HERE, "index.html"), "w") as f: f.write(page)
-
-
-SLOW = ("At nine notes a second the difference is mostly in the look. Separate, the run is overlapping scales, one a "
-        "note; joined, it is one line. Scan&rsquo;s tone moves only a little (centroid 2.66 joined against 2.77 separate). "
-        "Crossed hands sounds the same both ways (2.12): its run is slower, its notes&rsquo; scales already touch, and "
-        "its left-hand chords are strokes of their own either way. "
-        "<b>A melody at one note a second does not join.</b> Each note is struck a second after the last, past the "
-        "0.45 s. The two renders are the same to the bit, nine strokes either way. It does not go back to beads, "
-        "because each note paints for the whole second it sounds. But it reads as nine strokes, not one line: each has "
-        "a heavy head where the strike loads the brush and a dry, feathered tail as the Tine piano decays. A slow "
-        "legato line could be joined too, by also joining a note struck while the last one&rsquo;s key is still down, "
-        "whatever the time between. I haven&rsquo;t made that change; it is yours to decide.")
 
 
 TEMPLATE = """<!doctype html>
@@ -120,16 +112,14 @@ TEMPLATE = """<!doctype html>
     on its register.</p>
 
   <div class="pick">
-    <p><b>My pick: Medium.</b> It reads as a brush rather than a wire, and each register still keeps its own paint. In
-      the two melodies, a note&rsquo;s ring shares about a fifth of its paint with the ring a fifth away (0.22 on the
-      run and on Crossed hands). Today that is 0.06, and wide it is about half (0.57 and 0.46). The pad and the
-      chords can&rsquo;t show this, because their own notes are a fifth apart. Scan&rsquo;s tone stays near today&rsquo;s brightness, apart
-      from the run, which goes from a reedy 3.2 to 2.7.</p>
-    <p><b>Wide</b> looks most like the study, but the sound pays for it. The pad and the chords become one broad band
-      that every note reads nearly alike. The run&rsquo;s tone dulls from 3.2 to 1.9, close to a sine. Motion is pinned
-      at full on three of the four phrases, because the Picture amount&rsquo;s Motion was scaled for today&rsquo;s brush
-      and a wider one lays more paint. Whichever width you choose above today&rsquo;s, Motion&rsquo;s full scale should
-      grow with it. That is a separate change, not made here.</p>
+    <p><b>Your choice, 19 Nov: Medium (2&times;) is the default.</b> It reads as a brush rather than a wire, and each
+      register keeps its own paint: in the two melodies a note&rsquo;s ring shares about a fifth of its paint with the
+      ring a fifth away (0.22), against 0.06 today and about half wide.</p>
+    <p><b>Motion now grows with the width.</b> Its full scale is today&rsquo;s times the base width, since the paint a
+      stroke lays per length grows with its width. Measured over the four phrases, medium&rsquo;s Motion medians come
+      back to today&rsquo;s: the pad 0.38 against 0.38, Crossed hands 0.15 against 0.15, the run 0.68 against 0.68 and
+      the chords 0.56 against 0.52. Before the change medium read 0.75, 0.28, 0.94 and 1.00, and wide pinned at full on
+      three phrases. Wide now reads 0.56 to 0.75.</p>
   </div>
 
   <h2>What else changed: the beads</h2>
@@ -137,11 +127,10 @@ TEMPLATE = """<!doctype html>
     apart on the 768 canvas, against a brush 13 px across. The look painted from the same strokes at 60 and at 4
     frames a second is the same picture (below). They came from the brushwork. Each note was a brush of its own, so a
     run of short notes was a row of dabs, each with a wide head where a hard strike jumped the width up for 60 ms.</p>
-  <p>Now a melody is one stroke, by the study&rsquo;s rule. A hand&rsquo;s next note struck alone within 0.45 s takes
-    up its last note&rsquo;s brush where it is, dips it again, and glides to the new pitch over 40 ms. A chord&rsquo;s
-    notes stay strokes of their own. A strike presses the brush as the study&rsquo;s did, rising and falling smoothly.
-    It is on at every width here, so it changes how a run sounds today too. Scan reads the joined line rather than the
-    dabs.</p>
+  <p>Now a melody is one stroke when the sound joins it (your rule, 19 Nov). A hand&rsquo;s next note struck alone
+    takes up the last note&rsquo;s brush when that note still sounds at the strike, or when the sustain pedal is down.
+    The brush is dipped again, and glides to the new pitch over 40 ms. A chord&rsquo;s notes stay strokes of their
+    own. A strike presses the brush as the study&rsquo;s did, rising and falling smoothly.</p>
   <div class="pair">
     <figure><img src="pictures/run-today-look.jpg" width="768" height="768" loading="lazy" alt="The run painted at 60 frames a second">
       <figcaption>The run, today&rsquo;s width, the look painted at 60 frames a second.</figcaption></figure>
@@ -150,9 +139,23 @@ TEMPLATE = """<!doctype html>
   </div>
 
   <h2>Joined or separate, heard</h2>
-  <p>Joining a melody into one stroke changes what Scan reads, so here it is both ways at the width I&rsquo;d pick.
-    <b>Separate</b> is step 2&rsquo;s rule, where every note is a stroke of its own. A note joins the last one&rsquo;s
-    stroke only when it is struck within 0.45 s of the hand&rsquo;s last strike. {{SLOW}}</p>
+  <p><b>The rule.</b> A note struck alone goes on with the last note&rsquo;s stroke when that note&rsquo;s own amp
+    envelope, as the instrument plays it, is still above <b>&minus;24 dB of the peak it reached</b>. That holds whether
+    its key is down or it is in its release. A note also joins whenever the sustain pedal is down. The core decides,
+    so the map and the look agree. <b>Separate</b> below is step 2&rsquo;s rule, where every note is a stroke of its
+    own.</p>
+  <p><b>Why &minus;24 dB.</b> It sits in the middle of the range you gave. The sounds fall far apart at the next
+    strike, so the line can be anywhere in that range without changing any of these renders. At a note a second the
+    pad&rsquo;s last note is at about &minus;3 dB, the Tine piano&rsquo;s at about &minus;14 dB, and the pluck&rsquo;s
+    is silent. Even three seconds apart a pad note is at &minus;6 dB, and joins. A Tine piano note is at &minus;18 dB
+    two seconds on, joining, and at &minus;23 dB three seconds on, right at the line. At &minus;20 dB the Tine
+    piano&rsquo;s slow melodies would break a second sooner; at &minus;30 dB a fading note would hold its stroke for
+    longer than you hear it in a texture.</p>
+  <p><b>The pluck under the pedal is one stroke, but you still see marks.</b> The pedal joins the stroke: one brush,
+    carrying its colour on. The pluck still dies to silence within a quarter second with the pedal down, though, and a
+    brush lays no paint where there is no sound. So the picture is nine marks of one stroke, true to what you hear.
+    Keeping the brush on the canvas while the pedal is down, laying paint through the silence, is the pedal&rsquo;s
+    item in step 3 (the controllers on the brush). It isn&rsquo;t made here.</p>
 {{JOINED}}
 
   <h2>The look</h2>

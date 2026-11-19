@@ -7382,9 +7382,17 @@ own footprint (`painting-design.md`, *What paint width built*).
   second of audio time whatever the face does, so the face's frame rate only batches them;
   a phrase's stamps painted at 60 and at 4 frames a second are the same picture. Look at the
   stamps (`render.cpp` there writes every one) before blaming the renderer. A run was beads
-  because each short note was a brush of its own; a melody is one stroke now (`chain`), and
-  the brush it takes up may already have lifted, so the hand's last stroke is kept as it
-  lifts (`lifted_`).
+  because each short note was a brush of its own; a melody is one stroke now (`join`) while
+  the last note still sounds at the strike, by its own envelope, or under the pedal. The
+  first rule was 0.45 s by the clock, the study's, and it was the wrong question: a pad's
+  slow melody split and a quick pluck's joined. Ask the sound. Under the pedal the brush it
+  takes up may already have lifted, so the hand's last stroke is kept as it lifts
+  (`lifted_`), and goes on from its pitch where the turn is now, not from where it stopped -
+  from there it would draw a chord across the canvas.
+- **A check calibrated at one width fails at another for reasons of its own.** Mono's and
+  Dyad's checks count the paint within a cell and a half of a ring, and E4's ring is three
+  cells from A3's: at width 2 a brush reaches across both. They run at width 1
+  (`setPaintWidth`), since where a line paints is the question, not how wide.
 - **A look that draws its own footprint is a look that lies.** The face computed the stamp's
   tip from its pixels (`max(1.2, 0.15 w)`) while the core's is `max(0.75 cells, 0.15 w)`: a
   shorter tip with the core's deposit per length laid about half the paint, which was the
