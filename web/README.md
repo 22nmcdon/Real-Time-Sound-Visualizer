@@ -7392,7 +7392,13 @@ own footprint (`painting-design.md`, *What paint width built*).
 - **A check calibrated at one width fails at another for reasons of its own.** Mono's and
   Dyad's checks count the paint within a cell and a half of a ring, and E4's ring is three
   cells from A3's: at width 2 a brush reaches across both. They run at width 1
-  (`setPaintWidth`), since where a line paints is the question, not how wide.
+  (`setPaintWidth`), since where a line paints is the question, not how wide. The page's
+  `painttest.py` fell into it three more times when medium became the default (19 Nov): Mono's
+  band of 1.5 cells caught 70 per cent of a stroke twice as wide (it is 3 now, with a null an
+  octave up); the run's null, one stamp in eight, drew a whole stroke with a brush whose
+  stamps overlap that far (one in 24 now); and the run's arc ran to its last stamp, so the
+  last note's release, tapering to nothing as a sound does, read as a break (it ends at the
+  last note's let-go). When a width changes, rerun every check that counts cells.
 - **A look that draws its own footprint is a look that lies.** The face computed the stamp's
   tip from its pixels (`max(1.2, 0.15 w)`) while the core's is `max(0.75 cells, 0.15 w)`: a
   shorter tip with the core's deposit per length laid about half the paint, which was the

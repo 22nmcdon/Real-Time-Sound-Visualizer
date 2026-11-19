@@ -104,7 +104,7 @@ REPLAY = """({ fps, every, widen, cells }) => {
   }
   const look = paintView.sample(cells || 128), coarse = cells ? paintView.sample() : null;
   return { look: look ? Array.from(look) : null, coarse: coarse ? Array.from(coarse) : null, stamps: kept.length,
-           at: kept.map((s) => [s[0], s[1]]), cells: cells || 128 };
+           at: kept.map((s) => [s[0], s[1]]), t: kept.map((s) => s[6] - t0), cells: cells || 128 };
 }"""
 
 # A run of eleven notes, a ninth of a second apart and each held 150 ms, struck alone, painted by a core of its own:
@@ -123,6 +123,9 @@ PLAY_RUN = """() => {
   }
 }"""
 
+# The run's last note lets go 10/9 + 0.15 s after its first strike: past that the stroke is the release.
+HELD = 10 / 9 + 0.15
+
 def spread(g, n=128):
     # The paint's RMS radius about its mean, in the map's cells: how wide a ring's stroke is.
     s = sr = srr = 0.0
@@ -136,12 +139,15 @@ def spread(g, n=128):
     m = sr / s
     return math.sqrt(max(0.0, srr / s - m * m))
 
-def along(run):
-    """Along the run's own arc, from its first stamp's angle to its last's, in half degrees: the share with
-    paint at a fifth of the median's most, the longest stretch without, and the thinnest tenth over the median."""
+def along(run, until=None):
+    """Along the run's own arc, from its first stamp's angle to its last's (or its last before `until` seconds of
+    the run, so that the last note's release, which tapers to nothing as it should, is not read as a break), in
+    half degrees: the share with paint at a fifth of the median's most, the longest stretch without, and the
+    thinnest tenth over the median."""
     n = run["cells"]; g = run["look"]
     ang = lambda x, y: math.degrees(math.atan2(x - 0.5, -(y - 0.5))) % 360
-    a0, a1 = ang(*run["at"][0]), ang(*run["at"][-1])
+    last = max(k for k, t in enumerate(run["t"]) if until is None or t <= until)
+    a0, a1 = ang(*run["at"][0]), ang(*run["at"][last])
     bins = max(1, int((a1 - a0) % 360 * 2))
     most = [0.0] * bins
     for y in range(n):
@@ -265,13 +271,18 @@ with sync_playwright() as pw:
     p.click("#drawPaint"); p.wait_for_timeout(300)
     p.evaluate("() => { el.oscScan.value = '60'; el.oscScan.dispatchEvent(new Event('input')); el.midiMono.click(); }"); p.wait_for_timeout(300)
     p.evaluate("() => midiNoteOn(57, 110)"); p.wait_for_timeout(2500)
-    ring = p.evaluate("""() => { const m = paintView.map; if (!m) return null;
-      const r = 0.47 * (1 / 3 + 2 / 3 * Math.log2(220 / 27.5) / Math.log2(4186.009044809578 / 27.5)) * 128;
+    # The band is three cells either side of the ring: the medium brush (19 Nov) spreads its paint over about
+    # twice the 1.5 cells the width-1 brush did, and 1.5 caught 70 per cent of it.
+    RING = """(hz) => { const m = paintView.map; if (!m) return null;
+      const r = 0.47 * (1 / 3 + 2 / 3 * Math.log2(hz / 27.5) / Math.log2(4186.009044809578 / 27.5)) * 128;
       let on = 0, all = 0;
       for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) { const a = m[y * 128 + x]; all += a;
-        if (Math.abs(Math.hypot(x + 0.5 - 64, y + 0.5 - 64) - r) < 1.5) on += a; }
-      return { on, all }; }""")
+        if (Math.abs(Math.hypot(x + 0.5 - 64, y + 0.5 - 64) - r) < 3) on += a; }
+      return { on, all }; }"""
+    ring = p.evaluate(RING, 220)
     check("a note in Mono paints its own ring", ring and ring["all"] > 0.5 and ring["on"] / ring["all"] > 0.8, str(ring))
+    other = p.evaluate(RING, 440)
+    null("the same band an octave up holds none of it", other and other["on"] / max(other["all"], 1e-9) < 0.2, str(other))
     p.close()
 
     # --- paint width (18 Nov): the look draws the stroke the sound reads, and draws it whole ---
@@ -303,17 +314,19 @@ with sync_playwright() as pw:
     p.evaluate(RECORD)
     p.evaluate(PLAY_RUN)
     runs = {}
-    for name, fps, every in (("60", 60, 1), ("4", 4, 1), ("thinned", 60, 8)):
+    # The null thins the stamps to one in 24: a third of a second's stamps at the medium brush's spacing lies
+    # under one stamp's length, so one in eight (the null at width 1) still drew a whole stroke at width 2.
+    for name, fps, every in (("60", 60, 1), ("4", 4, 1), ("thinned", 60, 24)):
         runs[name] = p.evaluate(REPLAY, {"fps": fps, "every": every, "widen": 1, "cells": 768})
     if runs["60"]["look"]:
         for name in ("60", "4"):
-            cov, gap, dip = along(runs[name])
+            cov, gap, dip = along(runs[name], HELD)
             check("the run's look is one unbroken stroke painted at %s frames a second" % name, cov > 0.9 and gap <= 2,
                   "%.0f%% of the arc, longest gap %d half-degrees, %d stamps" % (100 * cov, gap, runs[name]["stamps"]))
         c = corr(runs["60"]["coarse"], runs["4"]["coarse"])
         check("and the same picture at either rate (correlation over 128 cells)", c > 0.95, "%.3f" % c)
-        cov, gap, _ = along(runs["thinned"])
-        null("the same strokes with seven stamps in eight dropped break into beads, and the check sees it", gap > 2 or cov < 0.8,
+        cov, gap, _ = along(runs["thinned"], HELD)
+        null("the same strokes with 23 stamps in 24 dropped break into beads, and the check sees it", gap > 2 or cov < 0.8,
              "%.0f%% of the arc, longest gap %d half-degrees" % (100 * cov, gap))
     else:
         check("the run's look is painted", False, str(runs["60"].get("stamps")))

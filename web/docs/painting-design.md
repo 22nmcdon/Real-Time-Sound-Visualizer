@@ -272,9 +272,11 @@ narrower. So a wider brush is wider for the sound too.
   groups, loaded unevenly (a mean of one, so the paint is the map's); ragged outer bristles;
   wet paint that is not the brush's own ploughed from its leading half into a bank past the
   flank, as the core shoves it; a brush's own stroke kept by its slot (`B.z`), the core's
-  owner rule. `painttest.py` holds the look's width to the map's (look 0.71 cells of spread
-  against the map's 0.67; the null, drawn twice as wide, 1.31) and a run continuous at 60
-  and 4 frames a second, the null seven stamps in eight dropped.
+  owner rule. `painttest.py` holds the look's width to the map's (at the medium width, look
+  1.30 cells of spread against the map's 1.29; the null, drawn twice as wide, 2.54) and a run
+  continuous at 60 and 4 frames a second up to its last note's release, the null 23 stamps in
+  24 dropped (one in eight, the null at width 1, still drew a whole stroke with the medium
+  brush, since its stamps overlap three times as far).
 - **Three base widths** (`PaintParams::width`: 1, step 2's; 2; 3.5, near the study's),
   rendered for the owner at `web/docs/listening/paint-width/`, sound, live look, map and
   measures. **The owner chose 2 (19 Nov), the default since**: a brush, not a wire, and each
