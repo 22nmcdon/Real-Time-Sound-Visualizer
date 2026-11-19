@@ -401,3 +401,59 @@ The build follows these:
      order) gain it, with the gold dot before its name in the editor.
 
 Nothing is left open in this note.
+
+## As built (19 Nov)
+
+Built as decided, on `claude/lfo-drawn`. Where the build differs from the note, or says more:
+
+- **The core.** `scope/lfo_shape.h` reads and writes the text and holds the laws; `lfo.h` keeps
+  `lfoStep`'s old body as it was, run whenever no shape is drawn, and a drawn shape takes
+  `lfoDrawnStep` from the same phase. `Lfo::setShape("drawn")` plays the drawing only once a text
+  that reads has arrived; until then, and for a text that does not read, it plays the sine. The
+  page writes the text first and the shape menu after, and `restoreSetup` does the same.
+- **A random point's sign is kept in the text.** The note says a random point's level is its
+  reach, 0 to 1, but its own example writes `-.8,h,r`. The build reads and writes the level as
+  given and uses its size as the reach, so a text reads back as itself; a hand dragging a random
+  point always leaves a positive height.
+- **Adopting today's Random** keeps the level it holds on the point it is on, so the twin takes
+  over where today's left off rather than at nought (`pieces/lfo_drawn.py` holds it at 7.9 Hz,
+  where Random has drawn a dozen levels before the swap).
+- **Starts again** is told by the keyboard (`NoteTarget::lfoStrike`) on every struck key, with
+  whether another was down, whether or not the generator waits for notes. A lock to the tempo
+  restarts a drawn shape from its drawn levels too (`lfoRestart`).
+- **The face draws a random point where it will land.** The instrument serves each LFO's line
+  and its points' levels this pass after the envelopes' places (`Instrument::lfoLevels`, 66
+  numbers), in the site's `brain_readings` and the plugin's `lfos.bin`, so nothing served before
+  them moved.
+- **The controls.** The menus the instrument hears are kept, out of sight: `lfoShape<i>` (with
+  `drawn`), `lfoSync<i>`, and new `lfoStarts<i>` and the text box `lfoDrawn<i>`; `lfoPhase<i>` is a
+  slider, 0 to 355 in fives. The Rate knob in tempo is a second knob with no id, a view over
+  `lfoSync<i>`, turning through the note values slowest first (4 bars to 1/16, the triplets in
+  their places), since `LFO_SYNC`'s own order is not by length. The Grid is the editor's view,
+  never stored, and the core's panel holds its menu only because it holds every menu the page has.
+- **The head** has the reading, the instrument's rate and the note value, in a box of one width,
+  and the name in one too. **The cards** say the hertz and the note value's short name (*1/4t*) in
+  a box of one width; a chip says one or the other.
+- **Add a destination** is grouped by where each control is: Play, Ink, Space & Memory, Scope &
+  measure, and two the note did not name, the Picture (its section along the bottom) and
+  Elsewhere. Pressing a row's name does not `showControl` it, as in the mockup.
+- **Where it goes** scrolls its rows in a list of their own, so Add stays in sight under them.
+  The fit, measured with eight routings: 838x780 at 1660x1050 with the drawing 800x333 (2.4:1)
+  and seven rows in sight; 838x630 at 1400x900, 800x300 (2.7:1); 750x646 at 1100x860, 712x296;
+  838x509 at 1200x680, 808x195; 750x509 at 1100x680, 720x195; and 717x495 at 960x600, 686x183 -
+  three rows and Add in sight at each but the largest. The rows stand a little taller than the
+  mockup's, so it showed six where the build shows three.
+- **Esc** shuts a point's menu and leaves the editor open; until this build one Esc over any
+  card's editor shut both, the Envelope's included.
+
+Not built, and why:
+
+- **The morph** walks neither Phase nor the shapes. Its sliders are read once from the markup
+  as the page opens (`MORPH_IDS`), and an LFO's controls are made with its editor, as its Rate
+  always was, which the morph has never walked either. A morph between two setups with different
+  LFOs leaves the LFOs as they are.
+- **No new golden recording.** The note asks for one scenario, a drawn LFO with a random point on
+  a routing, recorded with `--because`. Recording it rewrites the recordings from the core, which
+  this change was not to do for anything that exists; `pieces/lfo_drawn.py` holds the drawn
+  engine and its random points on the core by their own numbers instead, deterministically from
+  one seed. Every existing recording is unchanged.

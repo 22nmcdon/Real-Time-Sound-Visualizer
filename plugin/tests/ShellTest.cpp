@@ -1328,10 +1328,13 @@ int main() {
     // P9 added the reverb's mix, version 4, before the morph; G7 the master Output, version 5, before the level;
     // and 12 Nov the Width, version 6, after the Output.
     // 18 Nov: the amp envelope's Attack and Release, version 7, appended after the morph so no index before them moved.
-    check("the host's parameters are the loop's fourteen, the morph, then the amp envelope's two, each one of the panel's sliders, read back from the setup",
-          p.getParameters().size() == 17
-          && names == "Picture, Scan, Strike, Softness, Persistence, Output, Width, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph, Attack, Release"
+    // 19 Nov: LFO 1's Rate, version 8, appended after them, in a group of its own (lfo-drawn.md).
+    check("the host's parameters are the loop's fourteen, the morph, the amp envelope's two, then LFO 1's Rate, each one of the panel's sliders, read back from the setup",
+          p.getParameters().size() == 18
+          && names == "Picture, Scan, Strike, Softness, Persistence, Output, Width, Level, Cutoff, Warp, Twist, Delay mix, Phaser mix, Reverb mix, Morph, Attack, Release, LFO 1 rate"
           && p.knob("attack")->get() == 8 && p.knob("release")->get() == 180
+          // The base's LFO 1 at 0.2 Hz, its free rate in hundredths, as the panel's slider holds it.
+          && p.knob("lfo1rate")->get() == 20 && p.slider("lfoRate0") == 20
           && p.knob("phaser")->get() == 0 && p.knob("reverb")->get() == 0
           // The Output at unity, its slider's top, which no setup moves.
           && p.knob("output")->get() == 100 && p.slider("output") == 100
@@ -1346,12 +1349,13 @@ int main() {
           names + "; echo " + num(p.knob("echo")->get()) + ", level " + num(p.knob("level")->get()) + ", cutoff "
           + num(p.knob("cutoff")->get()) + ", picture " + num(p.knob("picture")->get()));
     check("the morph is in a group of its own after the bank, and no macro is a parameter any more",
-          grouped == "Instrument: Picture Scan Strike Softness Persistence Output Width Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph; Amp envelope: Attack Release"
+          grouped == "Instrument: Picture Scan Strike Softness Persistence Output Width Level Cutoff Warp Twist Delay mix Phaser mix Reverb mix; Setups: Morph; Amp envelope: Attack Release; LFO 1: LFO 1 rate"
           && p.knob("output") == p.getParameters()[5] && p.knob("width") == p.getParameters()[6] && p.knob("level") == p.getParameters()[7]
           && p.knob("phaser") == p.getParameters()[12] && p.knob("reverb") == p.getParameters()[13]
           && p.knob("morph") == p.getParameters()[14] && p.knob("attack") == p.getParameters()[15] && p.knob("release") == p.getParameters()[16]
+          && p.knob("lfo1rate") == p.getParameters()[17]
           && ids.find("macro") == std::string::npos
-          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 output:5 width:6 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1 attack:7 release:7",
+          && ids == "picture:2 scan:2 strike:3 softness:3 persistence:2 output:5 width:6 level:1 cutoff:1 bend:2 twist:3 echo:1 phaser:2 reverb:4 morph:1 attack:7 release:7 lfo1rate:8",
           grouped + " | " + ids);
   }
   /* Every preset this file opens on by name is in the old library it reads
@@ -1917,6 +1921,39 @@ int main() {
           apart(heardA, heardB, 0, heardA.size()) == 0 && apart(heardA, heardNone, 0, heardA.size()) > 0.02 && b.tone().shapeName == "square"
           && b.tone().delayPingPong && !b.tone().just,
           "apart by " + num(apart(heardA, heardB, 0, heardA.size())) + ", from one without it by " + num(apart(heardA, heardNone, 0, heardA.size())));
+  }
+  {
+    /* LFO 1's Rate as a host knob (19 Nov, lfo-drawn.md, the owner's): the
+       host moves the free rate, which plays while the LFO runs in hertz and
+       is kept while it follows the tempo, taking over when it is let go, as
+       the face's Rate knob does; on that knob's log law, so half the host's
+       travel is the geometric middle of 0.01 and 8 Hz, not 4 Hz; and read
+       back from a setup that names another rate. The null: the tempo's rate,
+       not the knob's, is what plays while it is locked. */
+    ScopeProcessor p;
+    p.prepareToPlay(rate, block);
+    juce::AudioBuffer<float> buf(2, block);
+    juce::MidiBuffer none;
+    auto* k = p.knob("lfo1rate");
+    k->setValueNotifyingHost(k->convertTo0to1(300));
+    p.processBlock(buf, none);
+    const double free = p.lfoRate(0);
+    const float middle = k->convertFrom0to1(0.5f);
+    p.pageControl("lfoSync0", scope::Json::string(std::string_view("1/4")));
+    p.processBlock(buf, none);
+    k->setValueNotifyingHost(k->convertTo0to1(150));
+    p.processBlock(buf, none);
+    const double locked = p.lfoRate(0);
+    p.pageControl("lfoSync0", scope::Json::string(std::string_view("")));
+    p.processBlock(buf, none);
+    const double back = p.lfoRate(0);
+    scope::Json named = scope::baseSetup();
+    named.set(u"l0r", scope::Json::number(37));
+    if (const auto code = scope::encodeSetup(named)) p.pageSetup(*code);
+    p.processBlock(buf, none);
+    check("LFO 1's Rate, the host's: it moves the free rate, kept while the LFO follows the tempo and back when let go, on the log law, read back from a setup",
+          free == 3 && locked != 1.5 && locked > 0 && back == 1.5 && std::fabs(middle - std::sqrt(800.0f)) < 1 && k->get() == 37 && p.lfoRate(0) == 0.37,
+          "free " + num(free) + ", locked " + num(locked) + ", let go " + num(back) + ", the middle " + num(middle) + ", read back " + num(k->get()));
   }
   {
     /* A control moved twice is kept once, at its latest. But LFO 1's rate

@@ -3318,7 +3318,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               two notes does not flicker. <i>Glide</i> slides between the steps. Chromatic, the
               default, quantises to the nearest semitone.
               <br><br>
-              An LFO's <i>Sync</i>, in its card's editor along the modulation row, locks its rate
+              An LFO's <i>Rate in Tempo</i>, in its card's editor along the modulation row, locks its rate
               to the tempo in note values. <i>Tap</i> sets the tempo from your taps and starts the locked oscillators on
               the last one. Where the tempo comes from and where the bar is are in the
               <i>Clock</i> section beside this one.</p>
@@ -6030,8 +6030,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         oscillator's wave, the Envelope's curve, the Photocell's last four seconds &mdash; says
         its rate or reading, and counts the controls it is on; in a small window it is a chip
         with a small drawing. Press it and its editor opens over the tabs, beside the screen so
-        the picture stays in view: the source drawn large (an oscillator's wave with the dot
-        at its phase and its shape, sync and rate under it; the Envelope's shape, drawn as the amp
+        the picture stays in view: the source drawn large (an oscillator's shape, below);
+        the Envelope's shape, drawn as the amp
         envelope's is on Play and the editor's width, Play's dashed while it follows the amp envelope,
         with its six knobs under it and <i>Where it goes</i> under them, its dot riding the shape as the
         phrase plays it; what the Photocell sees around its
@@ -6041,6 +6041,26 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         photocell moves a control at most half way, as the picture's sources do.
         <i>Close</i>, <b>Esc</b>, the card again or a tab puts it away. Pressing a card also
         selects it: every control it is on draws its ring, and <b>Alt</b>-drag moves its depth.
+        <br><br>
+        An oscillator's editor draws one cycle of its shape, from &minus;1 to +1, with a gold dot
+        where it is now: nought is the control as you set it, and the shape moves it both ways
+        round there. Along the top, seven shapes to start from &mdash; <i>Sine</i>,
+        <i>Triangle</i>, <i>Saw up</i>, <i>Saw down</i>, <i>Square</i>, <i>Random steps</i> and
+        <i>Smooth random</i> &mdash; then what the shape is, the <i>Grid</i> a dragged point snaps
+        to (<b>Shift</b> places it freely) and <i>Hold a note</i>. Drag a point; press the line
+        twice to add one, a point twice to take it away; drag the hollow round half-way along a
+        line to bend it; the arrows move a focused point and <b>Delete</b> takes it away.
+        Right-click a point for its line &mdash; <i>Straight</i>, <i>Curve</i>, <i>S-curve</i> or
+        <i>Hold</i> &mdash; and <i>A new level each pass</i>: a random point lands somewhere new
+        each cycle, as far either way of nought as it is drawn high, so a low one is a gentle
+        wander. The first five shapes play as they always have until you change them; the first
+        edit draws them, and nothing jumps. Under the drawing, <i>Rate</i> (0.01 to 8 cycles a
+        second, or in <i>Tempo</i> a note value, starting on the beat), <i>Phase</i> (where in
+        the cycle the shape is read from, so where a restart begins and how far one oscillator
+        sits from the other) and <i>Starts again</i>: <i>Free</i>, <i>Each note</i> or <i>Each
+        phrase</i>, the first key with none held. <i>Where it goes</i> has <i>Silence</i>, the
+        Routings switch for it, and <i>Add a destination</i> by tab. In a host LFO 1's
+        <i>Rate</i> is a parameter, the last.
         <br><br>
         <i>Routings</i>, in the row's corner, is every routing in one place, by source or by
         destination, each with its depth and a cross, and a switch per source that silences
@@ -6122,7 +6142,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         forty times a second, so a pitch resting between two notes does not flicker.
         <i>Glide</i>, behind the section's &ctdot;, slides between steps.
         <br><br>
-        An oscillator's <i>Sync</i> locks its rate to the tempo in note values, from four bars to
+        An oscillator's <i>Rate in Tempo</i> locks its rate to the tempo in note values, from four bars to
         a semiquaver, with triplets. <i>Tap</i> sets the tempo from the last four taps and starts
         the locked oscillators on the beat you tapped. A keyboard or sequencer sending MIDI clock
         sets the tempo while it runs, and hands it back half a second after it stops. Its

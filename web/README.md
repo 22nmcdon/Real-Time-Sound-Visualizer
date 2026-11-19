@@ -7446,3 +7446,38 @@ place (what will). The two can differ for a Chord window while a chord lands; th
 `patchtest.py` holds every box on Play across the band's states, and in each the line on one line,
 the split row uncut and nothing over the keys, with testing's ways as its nulls; `striptest.py`
 the places, the numbers on their keys and the rule.
+
+## The LFOs drawn, and five traps on the way (19 Nov)
+
+`web/docs/lfo-drawn.md`. An LFO's shape is one cycle of points (`scope/lfo_shape.h`), drawn in its
+card's editor, which is one column now as the Envelope's is. Today's five shapes still take
+`lfoStep`'s own path in the core, untouched while no shape is drawn, so every setup that exists
+plays as it did; each has a drawn twin, and the first edit adopts it. The core's
+`pieces/lfo_drawn.py` holds the twins to that path at three rates and two sample rates (the saws,
+the square and Random to the bit; the sine 7e-16; the triangle 3e-11), and `lfotest.py` the
+editor by real mouse, its fit at six windows and 43 boxes that must not move. What was learned on
+the way:
+
+- **Write the text before the shape.** The first edit writes the twin's text into the hidden
+  `lfoDrawn<i>` box and then sets the shape menu to `drawn`, each by its change event, so the
+  instrument has the points when it is told to play them. The other way round, the core is
+  told to play a drawing it has not got, and plays its fallback, the sine, for a frame. The core's
+  `restoreSetup` follows the same order for a setup.
+- **A mutant that does not compile reads as no failures.** The piece's runner counts the lines
+  that say FAIL; a mutation that left a parameter unused failed `-Werror` and printed none, which
+  looked like a survivor. Mutate so the code still compiles (`fresh || true`), and read the
+  return code as well as the count.
+- **A check that never reaches the event it is about.** The adoption check swapped the twin in
+  at 0.37 Hz after half a second, before Random had wrapped once, so it held nought on both sides
+  and passed with the held level thrown away. It runs at 7.9 Hz now, a dozen levels in.
+- **One Esc shut a point's menu and the editor under it.** The editor's Esc listener was added
+  before the overlay's and did not ask whether a menu was open; it was so over the Envelope's
+  editor too. Esc shuts a menu first now (`overlay`), the editor only when none is open.
+- **Words that change width, and links that grow when pressed.** The shape's name (*Sine · as
+  today*, *Drawn · 5 points, 1 random*) takes the room up to the Grid; the head's reading and an
+  LFO card's are boxes of one width, the card's saying the note value's short name (*1/4t*); and
+  *Hold a note* and *Silence* are held to one height pressed or not, as Play's figures' links are.
+
+The face draws a random point where the core says it will land: the instrument serves each
+LFO's line and its points' levels this pass after the envelopes' places (`Instrument::lfoLevels`,
+on the site in `brain_readings` and in the plugin's `lfos.bin`), so nothing before them moved.
