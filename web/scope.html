@@ -27325,8 +27325,8 @@ function paintInk(force) {
   const sizes = ["oscWave", "oscXY", "shpCurve", "shpCycle"].map((id) => el[id].clientWidth + "x" + el[id].clientHeight).join(",");
   const key = [JSON.stringify(Object.assign({}, T, { t: undefined, at: undefined })), T.t.cycle ? JSON.stringify(T.t.cycle).length : 0,
     inkShapeCache.key, sizes, inkDraws, inkFigs.sub, inkLeftInk(), inkFigs.drift !== null ? performance.now() : 0, inkFigs.nullT].join("|");
-  if (!force && key === inkFigs.said) return;
-  if (key === inkFigs.said && force !== "always") return;
+  // Forced or not, a drawing already of this is not drawn again: that is what keeps Ink still.
+  if (key === inkFigs.said) return;
   inkFigs.said = key;
   inkFigs.draws = (inkFigs.draws || 0) + 1;
   if (!el.oscGroup.hidden) { if (inkDraws === "figure") drawInkXY(el.oscXY, T); else drawInkWave(el.oscWave, T); }
