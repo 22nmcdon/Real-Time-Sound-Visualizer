@@ -1,54 +1,82 @@
 {
  "bend": {
+  "first": {
+   "brush_cells": 5.3,
+   "brush_p90": 5.46,
+   "drops": 0,
+   "glow": 0.341,
+   "memory": 0.033,
+   "motion": 0.092,
+   "paint": 228.7,
+   "pulls": 0,
+   "scan": {
+    "centroid": 2.23,
+    "centroid_p10": 1.74,
+    "centroid_p90": 3.71,
+    "high": 0.008,
+    "movement": 0.0062,
+    "movement_p90": 0.0111,
+    "readings": 906,
+    "sine": 0.37
+   },
+   "stamps": 1830,
+   "wet": 0.08
+  },
   "with": {
    "brush_cells": 5.3,
    "brush_p90": 5.46,
-   "glow": 0.356,
-   "memory": 0.039,
-   "motion": 0.099,
-   "paint": 236.3,
+   "drops": 2,
+   "glow": 0.342,
+   "memory": 0.038,
+   "motion": 0.092,
+   "paint": 224.0,
+   "pulls": 332,
    "scan": {
-    "centroid": 2.37,
-    "centroid_p10": 1.78,
-    "centroid_p90": 3.3,
-    "high": 0.008,
-    "movement": 0.0071,
-    "movement_p90": 0.0234,
+    "centroid": 2.23,
+    "centroid_p10": 1.7,
+    "centroid_p90": 3.79,
+    "high": 0.006,
+    "movement": 0.0062,
+    "movement_p90": 0.011,
     "readings": 906,
-    "sine": 0.332
+    "sine": 0.383
    },
-   "stamps": 1830,
+   "stamps": 2156,
    "wet": 0.08
   },
   "without": {
    "brush_cells": 5.3,
    "brush_p90": 5.46,
-   "glow": 0.34,
+   "drops": 2,
+   "glow": 0.338,
    "memory": 0.037,
-   "motion": 0.092,
-   "paint": 228.5,
+   "motion": 0.091,
+   "paint": 223.6,
+   "pulls": 0,
    "scan": {
-    "centroid": 2.12,
-    "centroid_p10": 1.82,
-    "centroid_p90": 3.78,
-    "high": 0.007,
-    "movement": 0.0062,
-    "movement_p90": 0.0105,
+    "centroid": 2.05,
+    "centroid_p10": 1.69,
+    "centroid_p90": 3.73,
+    "high": 0.006,
+    "movement": 0.0061,
+    "movement_p90": 0.0102,
     "readings": 906,
-    "sine": 0.439
+    "sine": 0.457
    },
-   "stamps": 1830,
+   "stamps": 1824,
    "wet": 0.08
   }
  },
  "lean": {
-  "with": {
+  "first": {
    "brush_cells": 6.39,
    "brush_p90": 12.0,
+   "drops": 0,
    "glow": 0.634,
    "memory": 0.251,
    "motion": 0.604,
    "paint": 1727.8,
+   "pulls": 0,
    "scan": {
     "centroid": 1.71,
     "centroid_p10": 1.22,
@@ -62,35 +90,61 @@
    "stamps": 2637,
    "wet": 0.22
   },
-  "without": {
-   "brush_cells": 6.03,
-   "brush_p90": 6.08,
-   "glow": 0.538,
-   "memory": 0.186,
-   "motion": 0.306,
-   "paint": 619.9,
+  "with": {
+   "brush_cells": 6.4,
+   "brush_p90": 12.0,
+   "drops": 3,
+   "glow": 0.634,
+   "memory": 0.251,
+   "motion": 0.604,
+   "paint": 1719.6,
+   "pulls": 0,
    "scan": {
-    "centroid": 1.72,
-    "centroid_p10": 1.48,
-    "centroid_p90": 2.67,
-    "high": 0.003,
-    "movement": 0.0053,
+    "centroid": 1.71,
+    "centroid_p10": 1.21,
+    "centroid_p90": 2.76,
+    "high": 0.002,
+    "movement": 0.0026,
     "movement_p90": 0.0071,
     "readings": 1305,
-    "sine": 0.585
+    "sine": 0.629
    },
-   "stamps": 2637,
+   "stamps": 2628,
+   "wet": 0.22
+  },
+  "without": {
+   "brush_cells": 6.03,
+   "brush_p90": 6.09,
+   "drops": 3,
+   "glow": 0.536,
+   "memory": 0.186,
+   "motion": 0.306,
+   "paint": 611.9,
+   "pulls": 0,
+   "scan": {
+    "centroid": 1.71,
+    "centroid_p10": 1.48,
+    "centroid_p90": 2.76,
+    "high": 0.003,
+    "movement": 0.0052,
+    "movement_p90": 0.007,
+    "readings": 1305,
+    "sine": 0.59
+   },
+   "stamps": 2628,
    "wet": 0.14
   }
  },
  "pedal": {
-  "with": {
+  "first": {
    "brush_cells": 3.8,
    "brush_p90": 3.81,
+   "drops": 0,
    "glow": 0.357,
    "memory": 0.0,
    "motion": 0.088,
    "paint": 91.6,
+   "pulls": 0,
    "scan": {
     "centroid": 3.04,
     "centroid_p10": 2.78,
@@ -104,35 +158,61 @@
    "stamps": 1135,
    "wet": 0.68
   },
-  "without": {
-   "brush_cells": 3.69,
-   "brush_p90": 5.61,
-   "glow": 0.024,
+  "with": {
+   "brush_cells": 3.94,
+   "brush_p90": 5.99,
+   "drops": 0,
+   "glow": 0.041,
    "memory": 0.0,
-   "motion": 0.05,
-   "paint": 31.0,
+   "motion": 0.055,
+   "paint": 46.3,
+   "pulls": 0,
    "scan": {
-    "centroid": 4.41,
-    "centroid_p10": 3.73,
-    "centroid_p90": 4.94,
-    "high": 0.089,
-    "movement": 0.0002,
-    "movement_p90": 0.0007,
+    "centroid": 4.23,
+    "centroid_p10": 3.71,
+    "centroid_p90": 4.73,
+    "high": 0.082,
+    "movement": 0.0001,
+    "movement_p90": 0.0005,
     "readings": 2256,
-    "sine": 0.395
+    "sine": 0.336
    },
-   "stamps": 198,
-   "wet": 0.05
+   "stamps": 187,
+   "wet": 0.14
+  },
+  "without": {
+   "brush_cells": 3.94,
+   "brush_p90": 5.88,
+   "drops": 0,
+   "glow": 0.003,
+   "memory": 0.0,
+   "motion": 0.024,
+   "paint": 15.4,
+   "pulls": 0,
+   "scan": {
+    "centroid": 4.15,
+    "centroid_p10": 3.73,
+    "centroid_p90": 4.56,
+    "high": 0.084,
+    "movement": 0.0001,
+    "movement_p90": 0.0008,
+    "readings": 2256,
+    "sine": 0.344
+   },
+   "stamps": 174,
+   "wet": 0.03
   }
  },
  "strikes": {
-  "with": {
+  "first": {
    "brush_cells": 3.8,
    "brush_p90": 6.7,
+   "drops": 0,
    "glow": 0.418,
    "memory": 0.0,
    "motion": 0.345,
    "paint": 340.4,
+   "pulls": 0,
    "scan": {
     "centroid": 3.0,
     "centroid_p10": 2.79,
@@ -146,13 +226,37 @@
    "stamps": 706,
    "wet": 0.32
   },
+  "with": {
+   "brush_cells": 4.1,
+   "brush_p90": 6.84,
+   "drops": 284,
+   "glow": 0.485,
+   "memory": 0.002,
+   "motion": 0.338,
+   "paint": 452.8,
+   "pulls": 0,
+   "scan": {
+    "centroid": 3.04,
+    "centroid_p10": 2.8,
+    "centroid_p90": 3.52,
+    "high": 0.011,
+    "movement": 0.0027,
+    "movement_p90": 0.0087,
+    "readings": 431,
+    "sine": 0.435
+   },
+   "stamps": 902,
+   "wet": 0.32
+  },
   "without": {
    "brush_cells": 4.1,
    "brush_p90": 6.84,
+   "drops": 0,
    "glow": 0.373,
    "memory": 0.0,
    "motion": 0.318,
    "paint": 271.9,
+   "pulls": 0,
    "scan": {
     "centroid": 3.15,
     "centroid_p10": 2.96,
@@ -168,45 +272,71 @@
   }
  },
  "wheel": {
-  "with": {
-   "brush_cells": 5.39,
-   "brush_p90": 7.79,
-   "glow": 0.507,
-   "memory": 0.099,
-   "motion": 0.259,
-   "paint": 776.6,
+  "first": {
+   "brush_cells": 5.59,
+   "brush_p90": 9.05,
+   "drops": 0,
+   "glow": 0.545,
+   "memory": 0.16,
+   "motion": 0.39,
+   "paint": 1492.7,
+   "pulls": 0,
    "scan": {
-    "centroid": 1.64,
-    "centroid_p10": 1.33,
-    "centroid_p90": 2.28,
+    "centroid": 1.4,
+    "centroid_p10": 1.05,
+    "centroid_p90": 2.17,
     "high": 0.001,
-    "movement": 0.0033,
-    "movement_p90": 0.007,
-    "readings": 1665,
-    "sine": 0.602
+    "movement": 0.0022,
+    "movement_p90": 0.0054,
+    "readings": 1755,
+    "sine": 0.75
    },
-   "stamps": 3357,
-   "wet": 0.09
+   "stamps": 3537,
+   "wet": 0.1
+  },
+  "with": {
+   "brush_cells": 7.9,
+   "brush_p90": 10.86,
+   "drops": 3,
+   "glow": 0.631,
+   "memory": 0.267,
+   "motion": 0.861,
+   "paint": 2718.2,
+   "pulls": 0,
+   "scan": {
+    "centroid": 1.4,
+    "centroid_p10": 1.03,
+    "centroid_p90": 2.24,
+    "high": 0.001,
+    "movement": 0.0017,
+    "movement_p90": 0.0055,
+    "readings": 1755,
+    "sine": 0.765
+   },
+   "stamps": 3528,
+   "wet": 0.14
   },
   "without": {
    "brush_cells": 6.03,
    "brush_p90": 6.03,
-   "glow": 0.477,
-   "memory": 0.102,
+   "drops": 3,
+   "glow": 0.463,
+   "memory": 0.105,
    "motion": 0.264,
-   "paint": 649.9,
+   "paint": 639.4,
+   "pulls": 0,
    "scan": {
-    "centroid": 1.65,
+    "centroid": 1.63,
     "centroid_p10": 1.39,
-    "centroid_p90": 3.13,
+    "centroid_p90": 3.07,
     "high": 0.002,
-    "movement": 0.0055,
-    "movement_p90": 0.0093,
-    "readings": 1665,
-    "sine": 0.653
+    "movement": 0.0053,
+    "movement_p90": 0.0088,
+    "readings": 1755,
+    "sine": 0.627
    },
-   "stamps": 3357,
-   "wet": 0.09
+   "stamps": 3528,
+   "wet": 0.08
   }
  }
 }

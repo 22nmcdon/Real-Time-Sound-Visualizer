@@ -16,8 +16,9 @@
 // .cost), and:
 //
 //   .stamps  a record a picture frame: int32 the frame, int32 how many
-//            stamps, then that many stamps of twenty float32, as the face is
-//            served them (Instrument::publishPaint's row)
+//            stamps, then that many stamps of twenty-three float32, as the
+//            face is served them (Instrument::publishPaint's row: since the
+//            revision of 20 Nov, a stamp's kind and its two numbers last)
 //
 // It reads nothing the instrument does not hold and changes nothing in it
 // but the internal switch and the width, so what it writes is what the core
@@ -105,9 +106,10 @@ int main(int argc, char** argv) {
         const std::int32_t head[2] = { frame, static_cast<std::int32_t>(sts.size()) };
         std::fwrite(head, sizeof(head), 1, stamps);
         for (const scope::PaintStamp& st : sts) {
-          const float row[20] = { st.x, st.y, st.dx, st.dy, st.w, st.p, st.t, st.per,
+          const float row[23] = { st.x, st.y, st.dx, st.dy, st.w, st.p, st.t, st.per,
                                   st.load[0], st.load[1], st.load[2], st.load[3], st.load[4], st.load[5], st.load[6], st.load[7],
-                                  static_cast<float>(st.serial), static_cast<float>(st.hand), static_cast<float>(st.ink), static_cast<float>(st.note) };
+                                  static_cast<float>(st.serial), static_cast<float>(st.hand), static_cast<float>(st.ink), static_cast<float>(st.note),
+                                  static_cast<float>(st.kind), st.a, st.b };
           std::fwrite(row, sizeof(row), 1, stamps);
         }
       }
