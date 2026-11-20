@@ -878,6 +878,38 @@ with sync_playwright() as pw:
           at120["ms"] is not None and at100["ms"] is not None and abs(at120["ms"] - 250) <= 8 and abs(at100["ms"] - 300) <= 8
           and at120["from"] == "midi", "%s and %s ms" % (at120["ms"], at100["ms"]))
     check("and fails against the other tempo's time", not (at100["ms"] is not None and abs(at100["ms"] - 250) <= 8))
+    # A chord struck in one turn reaches the worklet as one message (20 Nov):
+    # each message is a task on the worklet's thread, and a busy one ran
+    # blocks between them, dealing the first note of a chord a hand of its
+    # own (layertest). Every post to the worklet's port is counted here, and
+    # the null is the same three notes with a turn ending between them, which
+    # are three posts. The worklet is the only receiver of the outbox: the
+    # stand-in is told a message at a time, and the plugin's bridge is JUCE's,
+    # an event a call, never batched.
+    turn = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const posts = [], realPost = MessagePort.prototype.postMessage;
+      MessagePort.prototype.postMessage = function (m, ...rest) {
+        if (m && (m.batch || m.op === 'midi')) posts.push(m.batch ? m.batch.filter((x) => x.op === 'midi').length : 1);
+        return realPost.call(this, m, ...rest);
+      };
+      try {
+        setScreenKeys(true); await wait(200);
+        posts.length = 0;
+        for (const n of [55, 52, 48]) midiNoteOn(n, 100);
+        await wait(100);
+        const once = posts.slice();
+        for (const n of [55, 52, 48]) midiNoteOff(n);
+        await wait(100); posts.length = 0;
+        for (const n of [55, 52, 48]) { midiNoteOn(n, 100); await wait(0); }
+        await wait(100);
+        const apart = posts.slice();
+        for (const n of [55, 52, 48]) midiNoteOff(n);
+        return { once, apart };
+      } finally { MessagePort.prototype.postMessage = realPost; setScreenKeys(false); }
+    }""")
+    check("G3 E3 C3 played in one turn reach the worklet in one post, the three notes in it", turn["once"] == [3], str(turn))
+    check("null: a turn ending between them, they are three posts of a note each", turn["apart"] == [1, 1, 1], str(turn))
     check("no page errors under the clock", not errors, "; ".join(errors[:3]))
     p.close()
     b.close()
