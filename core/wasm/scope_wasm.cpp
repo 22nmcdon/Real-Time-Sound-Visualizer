@@ -649,7 +649,7 @@ EXPORT(brain_fade_gains) int brainFadeGains() { return static_cast<int>(instrume
 EXPORT(brain_fade_gains_out) const char* brainFadeGainsOut() { return fadeCopy.data(); }
 /* The painting (step 2), as the plugin serves it to its page: whether the
    core is painting; the strokes laid since the count the page last had
-   (Instrument::paintServed), twenty floats a stamp, how many, and the count
+   (Instrument::paintServed), kStampFloats floats a stamp, how many, and the count
    the first of them is; and the map, thickness then wetness, for a face that
    draws it plain. */
 std::array<float, scope::Instrument::kPaintServed * scope::Instrument::kStampFloats> paintCopy {};

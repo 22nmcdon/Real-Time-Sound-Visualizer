@@ -124,14 +124,16 @@ def render(name, key, width, join):
     return prefix, length, sorted({n for _, n, _, _ in notes})
 
 
-def stamps_of(prefix):
+def stamps_of(prefix, floats=20):
+    """A render's stamps: `floats` a row, twenty as this page's render.cpp writes them (step 2), twenty-three as
+    the instrument serves them since step 3's drops and pull (the controllers' render.cpp)."""
     raw = open(prefix + ".stamps", "rb").read()
     frames, rows, i = [], [], 0
     while i < len(raw):
         f, n = np.frombuffer(raw[i:i + 8], np.int32); i += 8
-        rows.append(np.frombuffer(raw[i:i + n * 80], np.float32).reshape(n, 20)); i += n * 80
+        rows.append(np.frombuffer(raw[i:i + n * 4 * floats], np.float32).reshape(n, floats)); i += n * 4 * floats
         frames += [f] * n
-    return np.array(frames, np.int32), (np.concatenate(rows) if rows else np.zeros((0, 20), np.float32))
+    return np.array(frames, np.int32), (np.concatenate(rows) if rows else np.zeros((0, floats), np.float32))
 
 
 def radius_cells(note):
@@ -192,8 +194,10 @@ class Looks:
         self.pw = sync_playwright().start()
         self.browser = self.pw.chromium.launch(executable_path=CHROME, args=GL)
 
-    def look(self, prefix, out, fps=60):
-        frames, S = stamps_of(prefix)
+    def look(self, prefix, out, fps=60, floats=20, crop=None):
+        frames, S = stamps_of(prefix, floats)
+        # The page takes its own width of row (PAINT_STAMP): a narrower render's rows are widened with noughts, a brush's kind.
+        S = np.pad(S, ((0, 0), (0, max(0, 23 - S.shape[1]))))
         p = self.browser.new_page(viewport={"width": 1400, "height": 900})
         p.goto("file://" + PAGE); p.wait_for_timeout(1500); p.keyboard.press("Escape")
         p.evaluate("(b64) => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);"
@@ -206,7 +210,7 @@ class Looks:
             bounds.append((i, j, (f0 + per) * 1000 / 60)); i = j
         url = p.evaluate("""(bounds) => { paintView.setOn(true); paintView.clear();
           for (const [a, b, ms] of bounds) {
-            if (b > a) paintView.take({ on: true, from: a, count: b - a, stamps: window.__stamps.subarray(a * 20, b * 20) });
+            if (b > a) paintView.take({ on: true, from: a, count: b - a, stamps: window.__stamps.subarray(a * 23, b * 23) });
             paintView.draw(ms);
           }
           return { mode: paintView.mode, url: paintView.canvas.toDataURL('image/png') }; }""", bounds)
@@ -214,6 +218,11 @@ class Looks:
         if url["mode"] != "gpu": raise SystemExit("the look needs WebGL 2: " + url["mode"])
         img = Image.open(io.BytesIO(base64.b64decode(url["url"].split(",")[1]))).convert("RGB")
         img.save(out, quality=88)
+        # And a close-up, `crop` a box in the canvas's unit square (left, top, right, bottom), at the look's own pixels doubled.
+        if crop:
+            n = img.size[0]
+            box = tuple(int(round(v * n)) for v in crop[0])
+            img.crop(box).resize(((box[2] - box[0]) * 2, (box[3] - box[1]) * 2), Image.NEAREST).save(crop[1], quality=92)
 
     def close(self):
         self.browser.close(); self.pw.stop()

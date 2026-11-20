@@ -42,14 +42,19 @@ What would go wrong, and what is checked for it, each with its null:
   the toolbar, which moves its neighbours, read the same way;
 - the toolbar one row at 1400x900 with Paint in the display switch, as it
   was with three; the null is the plugin's 960x600, where it is two;
-- the player's controllers not reaching the brush from the page (step 3):
-  the mod wheel, aftertouch and a bend sent as a port's bytes through
-  midiBytes, each held A3's width or radius in the core's map against the
-  same note at rest, and the look's width against the map's in each - the
-  null the heavy brush's look against the resting map; velocity's spatter,
-  soft against hard, off the note's ring; and the sustain pedal as a port's
-  controller 64, the brush laying through a pluck's silences and the paint
-  staying wet, against the same phrase without it.
+- the player's controllers not reaching the brush from the page (step 3,
+  as revised on 20 Nov): the mod wheel, aftertouch and a bend sent as a
+  port's bytes through midiBytes, each held A3's width or radius in the
+  core's map against the same note at rest, and the look's width against
+  the map's in each - the null the heavy brush's look against the resting
+  map; a quick bend's pull, the paint dragged past the stroke's band in the
+  map and in the look alike, against the same note unbent; velocity's
+  spatter, soft against hard, off the note's ring, and the look's drops
+  where the map's are, the null the soft strike's look against the hard
+  strike's map; and the sustain pedal as a port's controller 64, the brush
+  laying nothing through a pluck's silences, as without it, and the paint
+  drying - the null the same notes held, which lay through the seconds'
+  second halves.
 
 Parallel: no clock is judged; the frames are waited for, and every reading is
 a value.
@@ -102,18 +107,18 @@ def knob_to(p, value):
 # Every stroke the face is served, kept as served, so a test can paint them again (paint width, 18 Nov).
 RECORD = """() => { window.__served = []; const take = window.__take = paintView.take.bind(paintView);
   paintView.take = (paint) => { if (paint && paint.on && paint.stamps && paint.count)
-    window.__served.push(paint.stamps.slice(0, paint.count * 20)); take(paint); }; }"""
+    window.__served.push(paint.stamps.slice(0, paint.count * PAINT_STAMP)); take(paint); }; }"""
 # The kept strokes painted again on a cleared canvas, a batch per 1/fps of their own time, every `every`th
 # stamp, `widen` times their width: the look's paint as 128 cells, and at `cells` if asked, with where the stamps went.
 REPLAY = """({ fps, every, widen, cells }) => {
-  const all = []; for (const b of window.__served) for (let k = 0; k < b.length / 20; k++) all.push(b.subarray(k * 20, k * 20 + 20));
+  const all = []; for (const b of window.__served) for (let k = 0; k < b.length / PAINT_STAMP; k++) all.push(b.subarray(k * PAINT_STAMP, (k + 1) * PAINT_STAMP));
   const kept = all.filter((_, k) => k % every === 0).map((s) => { const c = Float32Array.from(s); c[4] *= widen; return c; });
   paintView.clear();
   let from = paintView.since + 1, i = 0;
   const t0 = kept.length ? kept[0][6] : 0, step = 1 / fps;
   for (let edge = t0 + step; i < kept.length; edge += step) {
     const batch = []; while (i < kept.length && kept[i][6] < edge) batch.push(kept[i++]);
-    if (batch.length) { const f = new Float32Array(batch.length * 20); batch.forEach((s, k) => f.set(s, k * 20));
+    if (batch.length) { const f = new Float32Array(batch.length * PAINT_STAMP); batch.forEach((s, k) => f.set(s, k * PAINT_STAMP));
       window.__take({ on: true, from, count: batch.length, stamps: f }); from += batch.length; }
     paintView.draw(edge * 1000);
   }
@@ -134,7 +139,7 @@ PLAY_RUN = """() => {
     run.forEach((n, i) => { if (k === at(i / 9)) brain.midi([0x90, n, 100], -1); if (k === at(i / 9 + 0.15)) brain.midi([0x80, n, 0], -1); });
     brain.block(128, l, r, pics, null);
     const p = brain.readings().paint;
-    if (p && p.on && p.stamps && p.count) window.__served.push(p.stamps.slice(0, p.count * 20));
+    if (p && p.on && p.stamps && p.count) window.__served.push(p.stamps.slice(0, p.count * PAINT_STAMP));
   }
 }"""
 
@@ -362,7 +367,7 @@ with sync_playwright() as pw:
     def ring_radius(semis):
         hz = 220 * 2 ** (semis / 12)
         return 0.47 * (1 / 3 + 2 / 3 * math.log2(hz / 27.5) / math.log2(4186.009044809578 / 27.5)) * 128
-    def held(before=(), during=(), strike=50, vel=110):
+    def held(before=(), during=(), strike=50, vel=110, gap=300):
         p = open_page(b)
         p.click("#drawPaint"); p.wait_for_timeout(300)
         p.evaluate("(st) => { el.oscScan.value = '60'; el.oscScan.dispatchEvent(new Event('input'));"
@@ -371,14 +376,15 @@ with sync_playwright() as pw:
         for m in before: p.evaluate("(m) => midiBytes(m)", list(m))
         p.wait_for_timeout(200)
         p.evaluate("(v) => midiBytes([0x90, 57, v])", vel)
-        p.wait_for_timeout(300)
-        for m in during: p.evaluate("(m) => midiBytes(m)", list(m))
+        p.wait_for_timeout(gap)
+        for m in during: p.evaluate("(m) => midiBytes(m)", list(m)); p.wait_for_timeout(8 if len(during) > 1 else 0)
         p.wait_for_timeout(1700)
         p.evaluate("() => midiBytes([0x80, 57, 0])"); p.wait_for_timeout(1500)
         got = p.evaluate(MEASURE)
         p.close()
         if not (got["map"] and got["look"]): return None
-        return {"map": spread(got["map"]), "look": spread(got["look"]), "radius": mean_radius(got["map"]), "cells": got["map"]}
+        return {"map": spread(got["map"]), "look": spread(got["look"]), "radius": mean_radius(got["map"]), "cells": got["map"],
+                "lookCells": got["look"]}
     rest = held()
     heavy = held(before=[(0xB0, 1, 127)])
     leaned = held(during=[(0xD0, 127)])
@@ -401,7 +407,32 @@ with sync_playwright() as pw:
     else:
         check("the controllers' cases paint", False, "rest %s, heavy %s, leaned %s, bent %s" % tuple(bool(x) for x in (rest, heavy, leaned, bent)))
 
-    # Velocity's spatter: soft and hard strikes, at Strike 100, and the paint lying well off the note's ring.
+    # The bend's pull (20 Nov): a quick bend up two semitones, as a wheel sends it, drags the wet paint outward past the
+    # stroke's band, in the map and in the look alike (the look draws the core's pull stamps by the same sum).
+    def beyond(g, inner, n=128):
+        """The share of the paint lying further out than `inner` cells from the centre."""
+        tot = out = 0.0
+        for y in range(n):
+            for x in range(n):
+                a = g[y * n + x]
+                if a <= 0: continue
+                tot += a
+                if math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) * 128 / n > inner: out += a
+        return out / tot if tot > 0 else 0.0
+    sweep = [(0xE0, (8192 + round(8191 * k / 20)) & 127, (8192 + round(8191 * k / 20)) >> 7) for k in range(1, 21)]
+    pulled = held(during=sweep, gap=800)
+    if pulled and rest:
+        edge = ring_radius(2) + 3.6
+        pm, pl, rm = beyond(pulled["cells"], edge), beyond(pulled["lookCells"], edge), beyond(rest["cells"], edge)
+        check("a quick bend of two semitones, as a port sends it, drags paint out past the stroke in the core's map", pm > 0.004 and pm > 4 * rm,
+              "%.2f%% of the paint past %.1f cells, %.2f%% unbent" % (100 * pm, edge, 100 * rm))
+        check("and the look draws the same pull", abs(pl / pm - 1) < 0.35 if pm > 0 else False, "look %.2f%%, map %.2f%%" % (100 * pl, 100 * pm))
+        null("the unbent note's map against the bent look is not it", abs(pl / max(rm, 1e-9) - 1) > 0.35, "%.2f%% against %.2f%%" % (100 * pl, 100 * rm))
+    else:
+        check("the bend's pull paints", False)
+
+    # Velocity's spatter: soft and hard strikes, at Strike 100, and the paint lying well off the note's ring - drops,
+    # which the look draws where the map lays them.
     def off_ring(g, n=128):
         r0 = ring_radius(0)
         return sum(g[y * n + x] for y in range(n) for x in range(n) if abs(math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) - r0) > 5)
@@ -411,12 +442,17 @@ with sync_playwright() as pw:
         check("a hard strike spatters paint off its ring and a soft one does not", ho > 1 and so < 0.1 * ho, "%.2f against %.2f" % (ho, so))
         null("the hard strike's paint on its own ring outweighs its spatter, so the reading is of the spatter",
              sum(hard["cells"]) > 3 * ho, "%.1f in all" % sum(hard["cells"]))
+        # The look's cells are its pixels summed (36 a cell): shares of each one's own paint compare them.
+        hs, ls, ss = ho / sum(hard["cells"]), off_ring(hard["lookCells"]) / sum(hard["lookCells"]), off_ring(soft["lookCells"]) / sum(soft["lookCells"])
+        check("the look's drops lie where the map's do: the same share of the paint off the ring", abs(ls / hs - 1) < 0.3,
+              "look %.2f%%, map %.2f%%" % (100 * ls, 100 * hs))
+        null("the soft strike's look against the hard strike's map is not it", abs(ss / hs - 1) > 0.3, "%.2f%% against %.2f%%" % (100 * ss, 100 * hs))
 
     # The pedal, by the page's own module as the worklet runs it (the timing the instrument's to the block): a pluck's
     # three notes a second apart under it, and the paint's wetness and the arc it lays, with it down and not.
-    PEDAL = """(down) => {
+    PEDAL = """([down, sus]) => {
       const code = encodeSetup(Object.assign({}, decodeSetup(encodeSetup(snapshot())),
-        { midiMode: 'poly', oscScan: 60, screenDraws: 'paint', atk: 1, dec: 250, sus: 0, rel: 150 }));
+        { midiMode: 'poly', oscScan: 60, screenDraws: 'paint', atk: 1, dec: 250, sus, rel: 150 }));
       const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
       const l = new Float32Array(128), r = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
       const at = (s) => Math.round(s * 48000 / 128);
@@ -435,12 +471,15 @@ with sync_playwright() as pw:
       return { laid, quiet, wet: s > 0 ? w / s : 0 };
     }"""
     p = open_page(b)
-    down, up = p.evaluate(PEDAL, True), p.evaluate(PEDAL, False)
+    down, up, sounding = p.evaluate(PEDAL, [True, 0]), p.evaluate(PEDAL, [False, 0]), p.evaluate(PEDAL, [True, 80])
     p.close()
-    check("under the sustain pedal, sent as a port's controller 64, the brush lays through a pluck's silences and the paint stays wet",
-          down["quiet"] > 100 and down["wet"] > 0.9, "%d stamps in the silences, %.2f wet" % (down["quiet"], down["wet"]))
-    null("without it the brush lays nothing in the silences and the paint dries", up["quiet"] < 0.1 * down["quiet"] and up["wet"] < 0.6,
-         "%d stamps, %.2f wet" % (up["quiet"], up["wet"]))
+    # Revised 20 Nov (the owner, of the pluck: "the only one that matches the sound"): the pedal joins notes and does not
+    # keep the brush on the canvas or the paint wet, so a pluck under it is painted as it sounds.
+    check("under the sustain pedal, sent as a port's controller 64, the brush lays nothing through a pluck's silences, as without it, and the paint dries",
+          down["quiet"] <= up["quiet"] + 10 and down["wet"] < 0.6 and up["wet"] < 0.6,
+          "%d stamps in the silences (%d without), %.2f wet (%.2f)" % (down["quiet"], up["quiet"], down["wet"], up["wet"]))
+    null("the same notes held through, sounding, lay in those halves of the seconds", sounding["quiet"] > 100 + down["quiet"],
+         "%d stamps" % sounding["quiet"])
 
     # --- switching moves nothing on the face ---
     SNAP = """() => { const out = {};

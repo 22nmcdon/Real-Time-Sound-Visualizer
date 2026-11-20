@@ -7547,19 +7547,42 @@ Wave · Figure is kept by the browser as `scope.inkDraws`, under the testing pag
 Painting, step 3 (`web/docs/painting-design.md`): the pedal, the mod wheel, the bend, velocity's
 spatter and aftertouch act on the brush in the core, so the look and the map are the same stamps.
 
-- **A stamp's time is the paint's clock, not the performance's.** The look works out how wet a
-  pixel is each frame from its stamp's time against the newest stamp's, so to keep the look wet
-  under the pedal the core's drying clock (`Painter::wetClock`) stands still while it is down and
-  the stamps carry that clock. Without the pedal it is the performance's time to the bit. Anything
-  that wants to know *when* a stamp was laid in seconds of audio cannot read `t` for it any more.
+- **A stamp's time was the paint's clock, for a day.** As first built the pedal stopped the
+  drying clock and the stamps carried it; the owner heard that as untrue to a pluck, and the
+  revision of 20 Nov took it out (`Painter::wetClock` went). A stamp's `t` is the performance's
+  time again, pedal or not.
 - **Spatter thrown in the canvas's own x and y broke the turned-layout check** (a second layout
   must move only where paint lands): drops fly in the layout's terms - along the time and across
   the pitch - and the layout says where that is. Anything new the brush lays off its own path
-  wants the same.
+  wants the same. It happened twice: the revision's blot, a ragged drop, had its edge turned to
+  the canvas's x, and the same check (tables apart 0.0105 against a bound of 0.01, 0.0038 as
+  first built) found it; it is turned to the way the stroke goes now.
 - **The pieces' kit appends a scenario file to every tool's arguments.** A `paint_cpp` command with
   an optional trailing number reads that path as one (`atof`, nought) when the check leaves the
   number out: the spatter check passed its nulls and failed its check for no reason until it
   passed `-1` explicitly. Give every optional argument a value from the piece.
+
+## The controllers revised: drops, the pull and a wider stamp (20 Nov)
+
+The owner listened to step 3 and asked for the pedal to stop holding the paint, a wheel that rests
+at the bottom and loads the brush plainly, a bend that can be seen at two semitones, and spatter
+that is drops of paint rather than small strokes. Three things the revision learned:
+
+- **A stamp is twenty-three floats now** (`Instrument::kStampFloats`, `PAINT_STAMP`): its kind - a
+  brush's, a drop, the bend's pull - and two numbers. Every place that cut the face's rows at a
+  literal twenty went wrong silently: `painttest.py`'s capture and replay sliced rows at 20, so the
+  replayed look was rows misaligned by three floats and painted nothing, which surfaced as "the
+  run's look is one unbroken stroke" failing at 0 per cent. Read the width from `PAINT_STAMP`,
+  never a literal; renders that write the old twenty (`paint-width`'s) are widened with noughts,
+  which is a brush's kind.
+- **The look draws what the core lays, so change both or the check goes red.** The pull was first
+  built as paint lifted and set down further on; turned into a smear in the core (spread evenly
+  over the distance, `kPullSamples`), the shader was left lifting it, and the look showed four
+  times the map's pull past the stroke (0.63 per cent against 0.17). `painttest.py`'s look-equals-
+  map checks for the pull and the drops are what found it; a new kind of stamp wants one.
+- **A drop's shape is one function in two languages** (`paintDropIn` in `paint.h`, `dropIn` in the
+  shader), the same hash, and the map samples each cell at the look's six by six pixel centres, so
+  a drop lands the same paint in both. Keep them line for line.
 
 ## The suite's signal restored (20 Nov)
 

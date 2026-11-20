@@ -47,22 +47,32 @@
 //
 // Step 3, the player's controllers on the brush; HEARS is PaintParams::hears (15 all, a bit off a null's). The kit
 // appends a scenario path after every command's numbers, so a piece passes each optional number explicitly:
-//   pedal HEARS            a pluck's slow melody, six notes a second apart, under the sustain pedal, then the pedal
+//   pedal HEARS [SUS]      a pluck's slow melody, six notes a second apart, under the sustain pedal, then the pedal
 //                          let go: how much of its arc has paint and the longest stretch without (degrees), the paint's
-//                          mean wetness as the pedal goes up, two seconds later, and the stamps the last frame laid
+//                          mean wetness as the pedal goes up, two seconds later, the stamps the last frame laid, and
+//                          how many strokes (serials) it laid; SUS 1 the same notes held at a sustain of 80
 //   wheel WHEEL HEARS      A3 held, the mod wheel at WHEEL (below nought: never moved): the map's spread across the
 //                          ring and the last stamp's half-width (cells), the paint laid in all, the mean bristle load
-//                          at the last stamp, and the map's thickness summed to nine figures
+//                          at the last stamp, the map's thickness summed to nine figures, and the median half-width
+//                          of every stamp it laid (cells)
+//   pull SEMIS SECS HEARS  A3 held a second, bent up SEMIS (of two) over SECS, held a second more: of the paint laid
+//                          on the arc the bend went round, the share lying outside the stroke's own band on the way
+//                          the pitch went and on the other way, the paint in all, and the pull stamps laid
 //   bend HEARS             A3 held, the bend wheel swept to the top over a second: the brush's radius before and at the
 //                          end, where the layout puts A3 two semitones up, the largest step from frame to frame, and
 //                          how many frames it went back
 //   spatter VEL [AT]       a note struck at VEL (or every strike spattered at impact AT): the paint more than five cells
-//                          off its ring (past the widest stroke), and the farthest any lies off it (cells)
+//                          off its ring (past the widest stroke), the farthest any lies off it (cells), how many drops,
+//                          the blot's radius and the stroke's half-width (cells), the drops' median and largest radius,
+//                          the share drawn out into a tail and of those how many point away from the blot, the brush
+//                          stamps laid off the ring, and the drops' median radius nearer and further than their median
+//                          distance (cells)
 //   lean PRESSURE HEARS    A3 held and leaned on at PRESSURE: the map's spread and the last stamp's half-width, as width's
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -84,12 +94,15 @@ struct Player {
     in.prepare(kRate, kBlock, *Instrument::setup(code(json))->setup);
     if (paint) in.setPainting(true, p);
   }
-  void blocks(double seconds, std::vector<std::vector<std::uint8_t>> midi = {}) {
+  // `frame` is called after each picture frame the painter steps, with its stamps (the step 3 checks read them all).
+  void blocks(double seconds, std::vector<std::vector<std::uint8_t>> midi = {}, const std::function<void()>& frame = nullptr) {
     const int n = static_cast<int>(std::round(seconds * kRate / kBlock));
     for (int b = 0; b < n; b++) {
       std::vector<Instrument::Event> ev;
       if (b == 0) for (auto& m : midi) ev.push_back({ 0, m.data(), m.size() });
+      const std::uint64_t before = in.paintCount();
       in.block(l.data(), r.data(), kBlock, ev.data(), ev.size(), nullptr, nullptr, 0, nullptr);
+      if (frame && in.paintCount() != before) frame();
     }
   }
 };
@@ -600,7 +613,9 @@ int main(int argc, char** argv) {
     for (std::size_t k = 0; k < n && k < last.size(); k++) {
       const float* row = &out[k * Instrument::kStampFloats];
       err = std::max({ err, std::fabs(static_cast<double>(row[0] - last[k].x)), std::fabs(static_cast<double>(row[4] - last[k].w)),
-                       std::fabs(static_cast<double>(row[16] - static_cast<float>(last[k].serial))) });
+                       std::fabs(static_cast<double>(row[16] - static_cast<float>(last[k].serial))),
+                       std::fabs(static_cast<double>(row[20] - static_cast<float>(last[k].kind))), std::fabs(static_cast<double>(row[21] - last[k].a)),
+                       std::fabs(static_cast<double>(row[22] - last[k].b)) });
     }
     std::uint64_t at = 0;
     const std::size_t none = p.in.paintServed(count, out.data(), Instrument::kPaintServed, at);
@@ -632,31 +647,44 @@ int main(int argc, char** argv) {
   } else if (cmd == "pedal") {
     PaintParams params;
     params.hears = static_cast<unsigned>(arg(2, 15));
-    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":1,"dec":250,"sus":0,"rel":150})", true, params);
+    params.spatterAt = 0;
+    const bool held = arg(3, 0) == 1;
+    Player p(held ? R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":1,"dec":250,"sus":80,"rel":150})"
+                  : R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":1,"dec":250,"sus":0,"rel":150})", true, params);
+    std::vector<std::int32_t> serials;
+    const auto note = [&]() {
+      for (const auto& st : p.in.painter()->stamps())
+        if (std::find(serials.begin(), serials.end(), st.serial) == serials.end()) serials.push_back(st.serial);
+    };
     p.blocks(0.05, { { 0xB0, 64, 127 } });
     const int melody[] = { 60, 64, 67, 72, 67, 64 };
     for (const int n : melody) {
-      p.blocks(0.9, { { 0x90, static_cast<std::uint8_t>(n), 100 } });
-      p.blocks(0.1, { { 0x80, static_cast<std::uint8_t>(n), 0 } });
+      p.blocks(0.9, { { 0x90, static_cast<std::uint8_t>(n), 100 } }, note);
+      p.blocks(0.1, { { 0x80, static_cast<std::uint8_t>(n), 0 } }, note);
     }
     const auto [covered, longest] = arcCover(p.in.painter()->map(), p.in.painter()->params().turn, 0.1, 6.0);
     const double wetDown = meanWet(p.in.painter()->map());
     p.blocks(2.0, { { 0xB0, 64, 0 } });
-    std::printf("%.4f %d %.4f %.4f %zu\n", covered, longest, wetDown, meanWet(p.in.painter()->map()), p.in.painter()->stamps().size());
+    std::printf("%.4f %d %.4f %.4f %zu %zu\n", covered, longest, wetDown, meanWet(p.in.painter()->map()), p.in.painter()->stamps().size(),
+                serials.size());
   } else if (cmd == "wheel") {
     const double wheel = arg(2, -1);
     PaintParams params;
     params.hears = static_cast<unsigned>(arg(3, 15));
     params.spatterAt = 0;  // the stroke alone
     Player p(kSine, true, params);
-    if (wheel >= 0) p.blocks(0.05, { { 0xB0, 1, static_cast<std::uint8_t>(std::lround(wheel * 127)) } });
-    p.blocks(1.5, { { 0x90, 57, 100 } });
+    // A twentieth of a second first either way, so the note is struck at the same moment whether the wheel moved or not.
+    if (wheel >= 0) p.blocks(0.05, { { 0xB0, 1, static_cast<std::uint8_t>(std::lround(wheel * 127)) } }); else p.blocks(0.05);
+    std::vector<double> widths;
+    p.blocks(1.5, { { 0x90, 57, 100 } }, [&]() { for (const auto& s : p.in.painter()->stamps()) widths.push_back(halfWidthOf(s)); });
     const auto& m = p.in.painter()->map();
     const auto& st = p.in.painter()->stamps();
     double laid = 0, load = 0;
     for (std::size_t q = 0; q < PaintMap::kCells; q++) laid += m.thick[q];
     if (!st.empty()) for (const float v : st.back().load) load += v / kPaintBins;
-    std::printf("%.4f %.4f %.5f %.4f %.9g\n", spreadOf(m).first, st.empty() ? 0.0 : halfWidthOf(st.back()), laid, load, laid);
+    std::sort(widths.begin(), widths.end());
+    std::printf("%.4f %.4f %.5f %.4f %.9g %.4f\n", spreadOf(m).first, st.empty() ? 0.0 : halfWidthOf(st.back()), laid, load, laid,
+                widths.empty() ? 0.0 : widths[widths.size() / 2]);
   } else if (cmd == "bend") {
     PaintParams params;
     params.hears = static_cast<unsigned>(arg(2, 15));
@@ -689,13 +717,66 @@ int main(int argc, char** argv) {
     }
     const RoundLayout round;
     std::printf("%.4f %.4f %.4f %.4f %d\n", before, last, round.radius(hzOf(59)) * kPaintN, step, back);
+  } else if (cmd == "pull") {
+    const double semis = arg(2, 2), secs = arg(3, 0.4);
+    PaintParams params;
+    params.hears = static_cast<unsigned>(arg(4, 15));
+    params.spatterAt = 0;
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":2,"dec":300,"sus":80,"rel":400})", true, params);
+    std::vector<double> widths;
+    int pulls = 0;
+    const auto seen = [&]() {
+      for (const auto& s : p.in.painter()->stamps()) {
+        if (s.kind == kPaintStampPull) pulls++; else if (s.kind == kPaintStampBrush) widths.push_back(halfWidthOf(s));
+      }
+    };
+    p.blocks(1.0, { { 0x90, 57, 100 } }, seen);
+    const double t0 = 1.0;
+    const int steps = std::max(1, static_cast<int>(std::lround(secs / 0.01)));
+    for (int k = 1; k <= steps; k++) {
+      const int v = 8192 + static_cast<int>(std::lround(8191.0 * semis / 2 * k / steps));
+      p.blocks(secs / steps, { { 0xE0, static_cast<std::uint8_t>(v & 127), static_cast<std::uint8_t>(v >> 7) } }, seen);
+    }
+    p.blocks(1.0, {}, seen);
+    std::sort(widths.begin(), widths.end());
+    const double hw = widths.empty() ? 0 : widths[widths.size() / 2];
+    const RoundLayout round;
+    const double lo = round.radius(hzOf(57)) * kPaintN, hi = round.radius(hzOf(57) * std::exp2(semis / 12)) * kPaintN;
+    // The arc the bend went round, a little either side, on the turn's clock (clockwise from the top, at t from the start).
+    const double turn = p.in.painter()->params().turn, a0 = 360 * (t0 - 0.05) / turn, a1 = 360 * (t0 + secs + 0.15) / turn;
+    double out = 0, in = 0, all = 0, total = 0;
+    const auto& m = p.in.painter()->map();
+    for (int y = 0; y < kPaintN; y++)
+      for (int x = 0; x < kPaintN; x++) {
+        const double a = m.thick[static_cast<std::size_t>(y * kPaintN + x)];
+        total += a;
+        double deg = std::atan2(x + 0.5 - kPaintN / 2.0, -(y + 0.5 - kPaintN / 2.0)) * 180 / kPi;
+        if (deg < 0) deg += 360;
+        if (deg < a0 || deg > a1) continue;
+        const double r = std::hypot(x + 0.5 - kPaintN / 2.0, y + 0.5 - kPaintN / 2.0);
+        all += a;
+        if (r > hi + hw + 1) out += a;
+        if (r < lo - hw - 1) in += a;
+      }
+    std::printf("%.5f %.5f %.5f %d %.4f\n", all > 0 ? out / all : 0, all > 0 ? in / all : 0, total, pulls, hw);
   } else if (cmd == "spatter") {
     const int vel = static_cast<int>(arg(2, 100));
     PaintParams params;
     params.spatterAt = arg(3, -1);
     Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"scanStrike":100,"atk":2,"dec":300,"sus":80,"rel":400})", true, params);
-    p.blocks(0.3, { { 0x90, 57, static_cast<std::uint8_t>(vel) } });
+    std::vector<PaintStamp> drops;
+    std::vector<double> widths;
+    int strayed = 0;
     const double ring = RoundLayout().radius(hzOf(57)) * kPaintN;
+    p.blocks(0.3, { { 0x90, 57, static_cast<std::uint8_t>(vel) } }, [&]() {
+      for (const auto& s : p.in.painter()->stamps()) {
+        if (s.kind == kPaintStampDrop) drops.push_back(s);
+        else if (s.kind == kPaintStampBrush) {
+          widths.push_back(halfWidthOf(s));
+          if (std::fabs(std::hypot(s.x * kPaintN - kPaintN / 2.0, s.y * kPaintN - kPaintN / 2.0) - ring) > 5) strayed++;
+        }
+      }
+    });
     const auto& m = p.in.painter()->map();
     double off = 0, far = 0;
     for (int y = 0; y < kPaintN; y++)
@@ -705,7 +786,37 @@ int main(int argc, char** argv) {
         if (d > 5) off += a;
         if (a > 1e-3) far = std::max(far, d);
       }
-    std::printf("%.5f %.3f\n", off, far);
+    // The blot is the first drop, where the brush landed; the rest are thrown.
+    double blot = 0, rmed = 0, rmax = 0, nearR = 0, farR = 0;
+    int longer = 0, away = 0;
+    if (!drops.empty()) {
+      const PaintStamp b = drops.front();
+      blot = b.w * kPaintN / 2;
+      std::vector<double> radii, dist;
+      for (std::size_t k = 1; k < drops.size(); k++) {
+        const PaintStamp& d = drops[k];
+        radii.push_back(d.w * kPaintN / 2);
+        const double ox = (d.x - b.x) * kPaintN, oy = (d.y - b.y) * kPaintN;
+        dist.push_back(std::hypot(ox, oy));
+        if (d.a > 1.05) { longer++; if (ox * d.dx + oy * d.dy > 0) away++; }
+      }
+      if (!radii.empty()) {
+        std::vector<double> sorted = radii, ds = dist;
+        std::sort(sorted.begin(), sorted.end()); std::sort(ds.begin(), ds.end());
+        rmed = sorted[sorted.size() / 2]; rmax = sorted.back();
+        // Medians, not means: off a heavy tail one large drop carries a mean wherever it falls.
+        const double dm = ds[ds.size() / 2];
+        std::vector<double> nr, fr;
+        for (std::size_t k = 0; k < radii.size(); k++) (dist[k] <= dm ? nr : fr).push_back(radii[k]);
+        std::sort(nr.begin(), nr.end()); std::sort(fr.begin(), fr.end());
+        nearR = nr.empty() ? 0 : nr[nr.size() / 2]; farR = fr.empty() ? 0 : fr[fr.size() / 2];
+      }
+    }
+    std::sort(widths.begin(), widths.end());
+    const double hw = widths.empty() ? 0 : widths[widths.size() / 2];
+    const int thrown = drops.empty() ? 0 : static_cast<int>(drops.size()) - 1;
+    std::printf("%.5f %.3f %zu %.4f %.4f %.4f %.4f %.4f %d %d %.4f %.4f\n", off, far, drops.size(), blot, hw, rmed, rmax,
+                thrown > 0 ? static_cast<double>(longer) / thrown : 0.0, away, strayed, nearR, farR);
   } else if (cmd == "lean") {
     const double lean = arg(2, 1);
     PaintParams params;

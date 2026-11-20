@@ -110,20 +110,22 @@ struct PaintParams {
   double spatterAt = -1;
 };
 
-/* The player's controllers on the brush (step 3, the owner's table of 16 Nov):
-   the pedal keeps it on the canvas and the paint wet, the wheel is its load,
-   the bend moves its radius with the pitch, and aftertouch presses it in. A
-   strike's velocity is its spatter, through the impact `strike` is handed. */
+/* The player's controllers on the brush (step 3, the owner's table of 16 Nov,
+   revised after listening on 20 Nov): the pedal joins a hand's notes into one
+   stroke and does nothing else, the wheel loads the brush from its bottom, the
+   bend moves its radius with the pitch and pulls the wet paint the way the
+   pitch goes, and aftertouch presses it in. A strike's velocity is its
+   spatter, drops thrown off the brush, through the impact `strike` is handed. */
 constexpr unsigned kPaintHearsPedal = 1, kPaintHearsWheel = 2, kPaintHearsBend = 4, kPaintHearsPressure = 8;
 struct PaintControls {
   bool pedal = false;
   /* The mod wheel, nought to one, or below nought while it has not moved
-     since the instrument was made: the brush is today's then, and at the
-     wheel's middle, so a session that never touches the wheel paints as
-     step 2 did, to the bit. Up from the middle the brush is loaded heavier
-     and pressed harder, down from it drier and lighter, to a scratchy dry
-     brush at the bottom (the dry-brush rule below catches it on the weave
-     of what is already there). */
+     since the instrument was made. It rests at the bottom, as a wheel does
+     (the owner, 20 Nov): at nought, or never moved, the brush is step 2's to
+     the bit, and up from there it only adds - more paint on it, laid
+     heavier, pressed harder and wider, spent more slowly - so at the top it
+     is plainly a loaded brush against a dry one. Read from its middle, as
+     first built, a wheel let fall back to rest painted dry. */
   double wheel = -1;
   double pressure = 0;  // channel pressure, nought to one: the stroke widens and presses in while a key is leaned on
   double bend = 1;      // the pitch bend as a ratio of frequency, as the generator has glided it: Poly's voices' pitches do not carry it
@@ -274,7 +276,36 @@ struct PaintStamp {
   std::array<float, kPaintBins> load {};
   std::int32_t serial = 0;
   std::uint8_t hand = 0, ink = 0, note = 0;
+  /* What it is (step 3): a brush's (kPaintStampBrush), a drop of spatter
+     (kPaintStampDrop: `w` its diameter, `dx, dy` the way it flew, `a` its
+     length over its width, `b` the seed of its edge, `load` its thickness),
+     or the bend's pull (kPaintStampPull: `w, p` the brush's, `dx, dy` the
+     way the pitch went, `a` how far the wet paint is drawn in the canvas's
+     widths, `b` how much of it). The look draws each kind by the same
+     arithmetic the map lays it with. */
+  std::uint8_t kind = 0;
+  float a = 0, b = 0;
 };
+constexpr std::uint8_t kPaintStampBrush = 0, kPaintStampDrop = 1, kPaintStampPull = 2;
+
+/* A drop's shape, in units of its radius: `v` along the way it flew, `u`
+   across. A round head with a ragged edge (three harmonics, their phases
+   from the seed), and, longer than one, a tail tapering away from where it
+   was thrown from, as a drop that lands at a slant draws one. The look's
+   shader (scope.html's paintView, dropIn) is this, line for line, and the
+   map lays it sampled as the look's pixels fall in a cell. */
+inline bool paintDropIn(double u, double v, double longer, std::uint32_t seed, double rough) {
+  const double r = std::sqrt(u * u + v * v), th = std::atan2(u, v);
+  const double p1 = 2 * kPi * paintHash(seed * 7u + 1u), p2 = 2 * kPi * paintHash(seed * 7u + 2u), p3 = 2 * kPi * paintHash(seed * 7u + 3u);
+  const double p4 = 2 * kPi * paintHash(seed * 7u + 4u), p5 = 2 * kPi * paintHash(seed * 7u + 5u);
+  const double edge = 1 + rough * (0.09 * std::cos(2 * th + p1) + 0.07 * std::cos(3 * th + p2) + 0.06 * std::cos(5 * th + p3) +
+                                   0.06 * std::cos(9 * th + p4) + 0.05 * std::cos(14 * th + p5));
+  if (r < edge) return true;
+  if (longer <= 1.05 || v <= 0) return false;
+  const double tail = 2 * (longer - 1) + 0.6;
+  if (v >= tail) return false;
+  return std::fabs(u) < 0.55 * std::pow(1 - v / tail, 1.5);
+}
 
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
    picture frame. Made off the audio thread (its map and its tables are a few
@@ -312,13 +343,16 @@ class Painter {
     const double t = nowMs / 1000, dt = std::max(0.0, elapsedMs) / 1000;
     stamps_.clear();
     dropped_ = 0;
-    /* Under the sustain pedal the paint stays wet (step 3): its clock stands
-       still, for the drying and for whose fresh stroke a cell is, and the
-       stamps carry it to the look, which dries by it too. Without the pedal
-       it is the performance's own, to the bit. */
-    if (pedal_) paused_ += dt;
-    wetClock_ = t - paused_;
-    age(dt, pedal_ ? 0.0 : dt);
+    /* The paint dries by the performance's clock, pedal or not (20 Nov): as
+       first built the pedal stopped it, and the brush laid on through a
+       pluck's silences, which the owner heard as untrue to the sound - the
+       paint has to say what was heard, and under the pedal a pluck still
+       dies away. The pedal joins its notes into one stroke (brushOf), and
+       that is all it does. */
+    age(dt, dt);
+    // How far the bend has moved since the last frame, in octaves: its pull on the wet paint (stroke).
+    bendStep_ = std::log2(controls_.bend / lastBend_);
+    lastBend_ = controls_.bend;
     // The lowest note sounding, either hand, which the inks' harmony is judged against (look only).
     int low = 1000;
     for (std::size_t i = 0; i < count; i++) if (notes[i].level > 0) low = std::min(low, notes[i].note);
@@ -342,19 +376,6 @@ class Painter {
         if (!kept.serial || b.bornAt >= kept.bornAt) { kept = b; kept.from = -1; }
       }
       slots_[b.slot].owner = 0; b.serial = 0;
-    }
-    /* And under the pedal a stroke that has lifted stays on the canvas (step
-       3): it goes on round at its pitch, laying what it still holds, so a
-       pluck's slow melody under the pedal is one mark and not a mark a note -
-       the gap paint width left, where a brush laid only while there was
-       sound. Let the pedal go and it lifts. */
-    if (pedal_) {
-      for (int h = 0; h < 2; h++) {
-        PaintBrush& kept = lifted_[static_cast<std::size_t>(h)];
-        if (!kept.serial || kept.handed) continue;
-        const PaintNote still { h, kept.born, kept.note, kept.hz, 0.0, false };
-        stroke(kept, still, t, dt);
-      }
     }
     measure(dt);
   }
@@ -408,8 +429,6 @@ class Painter {
     pedal_ = controls_.pedal;
   }
   const PaintControls& controls() const { return controls_; }
-  // The clock paint dries by, in seconds: the performance's, held still while the pedal is down (step 3).
-  double wetClock() const { return wetClock_; }
 
   // The fade, a half-life in seconds, as the setup's paintPersistence sets it (step 2).
   void setFade(double seconds) { if (std::isfinite(seconds) && seconds > 0) p_.fade = seconds; }
@@ -581,7 +600,7 @@ class Painter {
       const auto ki = static_cast<std::size_t>(k);
       b->share[ki] = 0.45 + 0.55 * paintHash(static_cast<std::uint32_t>(b->serial) * 977u + static_cast<std::uint32_t>(k) * 31u + 7u);
       // Dipped again, a stroke going on keeps what it held (the study's: dipping does not wipe the brush).
-      b->load[ki] = std::min(kLoadMost, (from ? b->load[ki] : 0) + dip * b->share[ki]);
+      b->load[ki] = std::min(loadMost(), (from ? b->load[ki] : 0) + dip * b->share[ki]);
     }
     return b;
   }
@@ -627,63 +646,214 @@ class Painter {
     const double since = std::max(0.0, t - b.bornAt);
     const double bump = (1 - std::exp(-since / kImpactRise)) * std::exp(-since / kImpactFall) * b.impact * 1.6;
     const double bulge = 1 + kImpactPress * bump;
-    /* The player's hands on it (step 3). Under the pedal it stays on the
-       canvas: it presses at least kPedalFloor, so it lays while it holds
-       paint, through the silence between notes, rather than only while
-       there is sound. The wheel presses it harder or lighter and wider or
-       narrower with its load; pressure on a held key presses it in, wider
-       and harder, which shoves more wet paint aside (the smear: kPush is by
-       the pressure). All of it reaches the stamp's width and pressure, so
-       the look draws what the map holds. At rest every factor is one. */
-    if (pedal_ && !b.handed) p = std::max(p, kPedalFloor);
-    const double s = wheelSwing(), lean = v.held ? controls_.pressure : 0.0;
+    /* The player's hands on it (step 3). The wheel, up from its rest at the
+       bottom, presses it harder and wider as it loads it (wheelLoad, and the
+       spend in stamp); pressure on a held key presses it in, wider and
+       harder, which shoves more wet paint aside (the smear: kPush is by the
+       pressure). All of it reaches the stamp's width and pressure, so the
+       look draws what the map holds. At rest every factor is one. */
+    const double s = wheelUp(), lean = v.held ? controls_.pressure : 0.0;
     p = std::min(1.0, p * (1 + kWheelPress * s) * (1 + kLeanPress * lean));
     const double w = (kWidthLeast + kWidthPress * p) * (1 + kImpactWiden * bump) * p_.width * (1 + kWheelWiden * s) * (1 + kLeanWiden * lean);
     if (!(p > 0.02) || b.handed) { b.x = x; b.y = y; return; }
+    /* The bend's pull (20 Nov): a brush pressed into wet paint and moved
+       across the radius by the pitch drags the paint with it, the way the
+       pitch went. Where the stroke sits stays the pitch's - the look is the
+       map, and pitch is the radius - but two semitones move it under a cell,
+       which nobody can see under a stroke five wide; the paint it drags is
+       drawn a brush's half-width on (kPullShift), as much of it as the
+       brush moved over its own half-width, times kPullGain, so a quick flick
+       smears hard in a short stretch and a slow bend pulls gently along a
+       long one, and the same bend moves the same paint either way. */
+    if (bendStep_ != 0 && b.placed) {
+      const PaintPoint was = layout_->at(t, b.hz * std::exp2(-bendStep_));
+      const double mx = x - was.x * kPaintN, my = y - was.y * kPaintN, moved = std::hypot(mx, my);
+      const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
+      if (moved > 1e-9) pull(b, b.x, b.y, mx / moved, my / moved, w, p, kPullShift * hw, std::min(0.5, kPullGain * moved / hw), t);
+    }
     const int steps = std::max(1, static_cast<int>(std::ceil(len / kSpacing)));
     const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
     for (int s = 1; s <= steps; s++) {
       const double f = static_cast<double>(s) / steps;
-      stamp(b, b.x + dx * f, b.y + dy * f, ux, uy, w, std::min(1.0, p * bulge), wetClock_, len / steps);
+      stamp(b, b.x + dx * f, b.y + dy * f, ux, uy, w, std::min(1.0, p * bulge), t, len / steps);
     }
     b.x = x; b.y = y;
   }
 
-  // The wheel from its middle, minus one to one, nought while it has not moved (PaintControls::wheel).
-  double wheelSwing() const { return controls_.wheel < 0 ? 0.0 : std::clamp(2 * controls_.wheel - 1, -1.0, 1.0); }
-  // What it does to the brush's load: a dip and a feed twice as heavy at the top, 0.6 of it at the bottom, where the
-  // dry-brush rule already starves a group under half a load (lighter, it laid a twentieth of the paint: no stroke at all).
-  double wheelLoad() const { const double s = wheelSwing(); return std::exp2((s < 0 ? kWheelDry : kWheelLoad) * s); }
+  // The wheel up from its rest at the bottom, nought to one; nought while it has not moved (PaintControls::wheel).
+  double wheelUp() const { return std::clamp(controls_.wheel, 0.0, 1.0); }
+  // What it does to the brush's load: the dip and the feed, and the most a brush holds, heavier up to kWheelLoad times at the top.
+  double wheelLoad() const { return 1 + (kWheelLoad - 1) * wheelUp(); }
+  double loadMost() const { return kLoadMost * wheelLoad(); }
 
   /* A strike's spatter (step 3, the owner's: velocity is impact, "spatter,
-     and how far it flies"): drops thrown off the brush where it lands, more
-     of them and further the harder the strike - the impact, velocity times
-     the hand's Strike, as the dip's. Each is a small dab, a stamp like any
-     other (so the look draws it where the map has it, the same width), its
-     direction, distance, size and load from the stroke's own hash, so the
-     same performance spatters alike. A drop that flies across the radius
-     lands on another register's ring, which that note then reads. It flies
-     in the layout's own terms - a little earlier or later along the time,
-     a little up or down in pitch - and the layout says where that is, so a
-     layout that is not round spatters as it lays (the pieces' turned
-     layout holds it). */
+     and how far it flies"; rebuilt on 20 Nov, when the owner saw it drawn
+     as a scatter of small rectangles alike - "it should be splattered paint
+     in general"). Drops, not strokes: a ragged blot where the brush lands,
+     larger than the stroke, and around it drops whose sizes fall off a
+     heavy tail (many fine specks, a few large ones, from a Pareto law), more
+     of them and thrown further the harder the strike, smaller and fewer the
+     further they fly, and some of the far ones drawn out into a tail that
+     points away from the blot, as a drop landing at a slant is. Below
+     kSpatterFrom of a full impact a strike throws nothing, so a soft touch
+     and Strike at nought are clean.
+     Every drop is from the stroke's own hash, so the same performance
+     spatters alike, and each lands where the layout puts a moment a little
+     earlier or later and a pitch a little up or down - the layout's terms,
+     so a layout that is not round spatters as it lays (the pieces' turned
+     layout holds it); only the drop's own shape is drawn in the canvas's.
+     Each is a stamp of its own kind, which the look draws by the same
+     shape (paintDropIn), and a drop that lands across the radius lies on
+     another register's ring, which that note then reads. */
   void spatter(const PaintBrush& b, double x, double y, double t) {
     const double impact = std::clamp(p_.spatterAt >= 0 ? p_.spatterAt : b.impact, 0.0, 1.0);
-    const int n = static_cast<int>(std::lround(kSpatterMost * std::pow(impact, 1.5)));
-    if (n <= 0) return;
-    PaintBrush drop = b;
-    drop.carry.fill(0);
-    for (int k = 0; k < n; k++) {
-      const auto seed = static_cast<std::uint32_t>(b.serial) * 7919u + static_cast<std::uint32_t>(b.born) * 131u + static_cast<std::uint32_t>(k) * 977u;
-      const double th = 2 * kPi * paintHash(seed + 1u), far = paintHash(seed + 2u), size = paintHash(seed + 3u);
-      const double flies = impact * p_.width * (0.3 + 0.7 * far);
-      const PaintPoint at = layout_->at(t + std::cos(th) * flies * kSpatterSeconds, b.hz * std::exp2(std::sin(th) * flies * kSpatterOctaves));
-      const double dx = at.x * kPaintN - x, dy = at.y * kPaintN - y, len = std::hypot(dx, dy);
-      const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
-      const double w = kSpatterSize * (0.6 + 0.8 * size) * p_.width;
-      drop.load.fill(kSpatterLoad * (0.5 + paintHash(seed + 4u)));
-      stamp(drop, at.x * kPaintN, at.y * kPaintN, ux, uy, w, 1.0, wetClock_, 1.4 * std::max(0.75, 0.15 * w));
+    const double k = std::clamp((impact - kSpatterFrom) / (1 - kSpatterFrom), 0.0, 1.0);
+    if (!(k > 0)) return;
+    const double g = (0.35 + 0.65 * k) * p_.width / 2;  // how far, in the layout's terms; and how large, in cells
+    const auto base = static_cast<std::uint32_t>(b.serial) * 7919u + static_cast<std::uint32_t>(b.born) * 131u;
+    const auto h = [&](std::uint32_t j, std::uint32_t i) { return paintHash(base + j * 977u + i * 7u + 11u); };
+    /* The blot where it lands, ragged, its edge turned to the way the stroke goes (the layout's: a moment on at the same
+       pitch), so the same strike lands the same blot on any layout - turned in the canvas's own x, a turned layout's
+       blots were not the round one's turned, which the pieces' layout check found. */
+    const PaintPoint on = layout_->at(t + 0.05, b.hz);
+    const double gx = on.x * kPaintN - x, gy = on.y * kPaintN - y, gl = std::hypot(gx, gy);
+    // It grows from nothing at the threshold, so a strike just over it is not a blot of a size out of nowhere.
+    drop(b, x, y, gl > 1e-9 ? gx / gl : 1, gl > 1e-9 ? gy / gl : 0, kSpatterBlotMost * std::sqrt(k) * p_.width / 2, 1, base, kSpatterBlot, kDropThick, t);
+    const int n = static_cast<int>(std::lround(kSpatterMost * std::pow(k, 1.2)));
+    for (int j = 0; j < n; j++) {
+      const auto jj = static_cast<std::uint32_t>(j) + 1u;
+      const double th = 2 * kPi * h(jj, 1);
+      const double far = std::min(1.0, -std::log(1 - 0.95 * h(jj, 2)) / 2.2), d = 0.15 + 0.85 * far;
+      const PaintPoint at = layout_->at(t + std::cos(th) * d * kSpatterSeconds * g, b.hz * std::exp2(std::sin(th) * d * kSpatterOctaves * g));
+      const double ax = at.x * kPaintN, ay = at.y * kPaintN, ox = ax - x, oy = ay - y, off = std::hypot(ox, oy);
+      const double r = kDropLeast * std::pow(1 - 0.985 * h(jj, 3), -0.6) * (0.7 + 0.6 * k) * (1 - 0.75 * far) * p_.width / 2;
+      const double longer = h(jj, 4) < 0.4 ? 1 + (0.4 + 2.2 * h(jj, 5)) * far : 1.0;
+      const double thick = kDropThick * (0.6 + 0.4 * std::min(1.0, r / 0.6)) * (0.8 + 0.4 * h(jj, 6));
+      drop(b, ax, ay, off > 1e-9 ? ox / off : 1, off > 1e-9 ? oy / off : 0, r, longer, base + jj * 104729u, 1.0, thick, t);
     }
+  }
+
+  /* One drop, in cells: where, the way it flew, its radius, its length over
+     its width, its edge's seed and raggedness, and its thickness. It lays as
+     a stamp does over what is there (mixing into wet paint, covering dry by
+     its opacity), but neither picks up nor ploughs: it lands from the air.
+     Each cell takes the share of the look's six by six pixels inside it that
+     the shape covers, so the map holds what the look draws. */
+  void drop(const PaintBrush& b, double x, double y, double dx, double dy, double r, double longer, std::uint32_t seed,
+            double rough, double thick, double t) {
+    constexpr int N = kPaintN, S = kDropSamples;
+    if (!(r > 0)) return;
+    if (stamps_.size() < kPaintStampsMost) {
+      PaintStamp st;
+      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(dx); st.dy = static_cast<float>(dy);
+      st.w = static_cast<float>(2 * r / N); st.p = static_cast<float>(rough); st.t = static_cast<float>(t); st.per = 1;
+      st.load.fill(static_cast<float>(thick));
+      st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
+      st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
+      st.kind = kPaintStampDrop; st.a = static_cast<float>(longer); st.b = static_cast<float>(seed & 0xffffffu);
+      stamps_.push_back(st);
+    } else { dropped_++; }
+    seed &= 0xffffffu;
+    const double reach = r * std::max(1 + 0.33 * rough, longer > 1.05 ? 2 * (longer - 1) + 0.6 : 0.0) + 1;  // the edge's harmonics add to under a third
+    const int x0 = std::max(0, static_cast<int>(std::floor(x - reach))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + reach)));
+    const int y0 = std::max(0, static_cast<int>(std::floor(y - reach))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + reach)));
+    const double nx = -dy, ny = dx;
+    for (int yy = y0; yy <= y1; yy++)
+      for (int xx = x0; xx <= x1; xx++) {
+        int in = 0;
+        for (int j = 0; j < S; j++)
+          for (int i = 0; i < S; i++) {
+            const double rx = xx + (i + 0.5) / S - x, ry = yy + (j + 0.5) / S - y;
+            if (paintDropIn((rx * nx + ry * ny) / r, (rx * dx + ry * dy) / r, longer, seed, rough)) in++;
+          }
+        if (!in) continue;
+        const double d = thick * in / (S * S);
+        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
+        const double before = map_.thick[q], wetBefore = map_.wet[q];
+        if (before < 1e-4) acc_.ontoBare += d; else if (wetBefore > 0.3) acc_.intoWet += d; else acc_.ontoDry += d;
+        acc_.laid += d;
+        const double hide = (1 - std::exp(-d / kPaintHide)) * (1 - wetBefore);
+        const double kept = before * (1 - hide), after = kept + d;
+        map_.wet[q] = static_cast<float>(after > 0 ? (wetBefore * kept + d) / after : 0);
+        map_.thick[q] = static_cast<float>(after);
+        map_.owner[q] = b.serial;
+        map_.laidAt[q] = static_cast<float>(t);
+      }
+  }
+
+  /* The bend's pull, in cells: under a brush at (x, y) of width `w` and
+     pressure `p`, a share `f` of the wet paint (by its wetness, and by how
+     near the brush's middle it lies) is dragged out the way (ux, uy), spread
+     evenly over the `shift` cells ahead of where it lay - a smear, not the
+     paint lifted and set down again further on, which drew a ghost of the
+     stroke beside it. Each cell keeps what it does not give and takes what
+     the cells up to `shift` behind it gave (kPullSamples points along the
+     way), read from the paint as it stood before the pull, as the look reads
+     its canvas from before its batch: so nothing is made or lost but at the
+     canvas's edge, and the look does the same sum per pixel. */
+  void pull(const PaintBrush& b, double x, double y, double ux, double uy, double w, double p, double shift, double f, double t) {
+    (void)t;
+    constexpr int N = kPaintN;
+    if (!(f > 0) || !(shift > 0)) return;
+    const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
+    if (stamps_.size() < kPaintStampsMost) {
+      PaintStamp st;
+      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(ux); st.dy = static_cast<float>(uy);
+      st.w = static_cast<float>(w / N); st.p = static_cast<float>(p); st.t = static_cast<float>(t); st.per = 1;
+      st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
+      st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
+      st.kind = kPaintStampPull; st.a = static_cast<float>(shift / N); st.b = static_cast<float>(f);
+      stamps_.push_back(st);
+    } else { dropped_++; }
+    // The box the pull reads and writes: the brush and the brush moved on by the shift, a cell either side.
+    const double reach = hw + shift + 2;
+    const int x0 = std::max(0, static_cast<int>(std::floor(x - reach))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + reach)));
+    const int y0 = std::max(0, static_cast<int>(std::floor(y - reach))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + reach)));
+    const int bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    if (bw <= 0 || bh <= 0 || bw > kPullBox || bh > kPullBox) return;
+    const auto foot = [&](double cx, double cy) {
+      const double r = std::hypot(cx - x, cy - y) / hw;
+      return r < 1 ? 1 - r * r * r * r : 0.0;
+    };
+    // What each cell gives: its paint times the share, and that paint's wetness, as it stands now.
+    for (int yy = 0; yy < bh; yy++)
+      for (int xx = 0; xx < bw; xx++) {
+        const std::size_t q = static_cast<std::size_t>(y0 + yy) * N + static_cast<std::size_t>(x0 + xx);
+        const double m = f * map_.wet[q] * foot(x0 + xx + 0.5, y0 + yy + 0.5);
+        const std::size_t k = static_cast<std::size_t>(yy * kPullBox + xx);
+        give_[k] = map_.thick[q] * m; giveWet_[k] = map_.thick[q] * m * map_.wet[q]; keep_[k] = 1 - m;
+      }
+    const auto at = [&](const std::array<double, kPullBox * kPullBox>& g, double cx, double cy) {
+      // Bilinear over the box's cell centres, nought outside it.
+      const double fx = cx - x0 - 0.5, fy = cy - y0 - 0.5;
+      const int ix = static_cast<int>(std::floor(fx)), iy = static_cast<int>(std::floor(fy));
+      const double ax = fx - ix, ay = fy - iy;
+      double v = 0;
+      for (int j = 0; j < 2; j++)
+        for (int i = 0; i < 2; i++) {
+          const int gx = ix + i, gy = iy + j;
+          if (gx < 0 || gy < 0 || gx >= bw || gy >= bh) continue;
+          v += (i ? ax : 1 - ax) * (j ? ay : 1 - ay) * g[static_cast<std::size_t>(gy * kPullBox + gx)];
+        }
+      return v;
+    };
+    for (int yy = 0; yy < bh; yy++)
+      for (int xx = 0; xx < bw; xx++) {
+        const std::size_t q = static_cast<std::size_t>(y0 + yy) * N + static_cast<std::size_t>(x0 + xx);
+        const std::size_t k = static_cast<std::size_t>(yy * kPullBox + xx);
+        const double cx = x0 + xx + 0.5, cy = y0 + yy + 0.5;
+        double in = 0, inWet = 0;
+        for (int j = 0; j < kPullSamples; j++) {
+          const double back = shift * (j + 0.5) / kPullSamples;
+          in += at(give_, cx - ux * back, cy - uy * back) / kPullSamples;
+          inWet += at(giveWet_, cx - ux * back, cy - uy * back) / kPullSamples;
+        }
+        if (keep_[k] >= 1 && in <= 0) continue;
+        const double kept = map_.thick[q] * keep_[k], after = kept + in;
+        const double wet = after > 0 ? (map_.wet[q] * kept + inWet) / after : 0;
+        map_.thick[q] = static_cast<float>(after);
+        map_.wet[q] = static_cast<float>(std::clamp(wet, 0.0, 1.0));
+      }
   }
 
   /* One stamp, the study's oil paint (painting-study/tools/oilpaint.cpp) kept
@@ -791,7 +961,8 @@ class Painter {
         map_.laidAt[q] = static_cast<float>(t);
       }
     for (std::size_t k = 0; k < static_cast<std::size_t>(kPaintBins); k++) {
-      if (spent[k] > 0) b.load[k] *= std::exp(-moved / (kReach * w) * p);
+      // A loaded brush spends its paint more slowly (the wheel, step 3): it lays further on what it holds.
+      if (spent[k] > 0) b.load[k] *= std::exp(-moved / (kReach * (1 + (kWheelReach - 1) * wheelUp()) * w) * p);
       if (smeared[k] > 0) b.carry[k] *= std::exp(-moved / (kCarryReach * w) * p);
       // What was picked up goes onto the tips, to be laid further on: the pick-up.
       if (picked[k] > 0) b.carry[k] = std::min(kLoadMost, b.carry[k] + kCarry * picked[k]);
@@ -848,12 +1019,22 @@ class Painter {
   static constexpr double kChordSeconds = 0.04, kGlideSeconds = 0.04;  // strikes closer than this are one chord (the study's)
   static constexpr double kImpactRise = 0.015, kImpactFall = 0.06, kImpactPress = 0.6, kImpactWiden = 0.06, kOwnSeconds = 1.5;
   static constexpr int kDrySteps = 32;
-  // The controllers' (step 3): the pedal's least pressure; the wheel's load (in octaves), press and widening at its
-  // top; a key leaned on's press and widening; the spatter's most drops, reach (cells at width one), size and load.
-  static constexpr double kPedalFloor = 0.3, kWheelLoad = 1.0, kWheelDry = 0.737, kWheelPress = 0.3, kWheelWiden = 0.25, kLeanPress = 0.5, kLeanWiden = 0.5;
-  // The reach is in the layout's terms, at a full impact and width one: a fifth of a second along the time and an octave
-  // in pitch (on the round layout at A3 about seven cells along and six across).
-  static constexpr double kSpatterMost = 20, kSpatterSeconds = 0.2, kSpatterOctaves = 1.0, kSpatterSize = 0.6, kSpatterLoad = 1.2;
+  // The controllers' (step 3). The wheel at its top: the load (the dip, the feed and the most a brush holds) times
+  // kWheelLoad, its spend kWheelReach times as slow, pressed kWheelPress harder and kWheelWiden wider - chosen by
+  // measuring against the mark set for them on 20 Nov, at the top 1.8 times as wide and 2.5 times the paint as at rest
+  // (got 2.09 and 5.3; core/tests/pieces/painting.py, web/docs/listening/paint-controllers/). A key leaned on's press
+  // and widening.
+  static constexpr double kWheelLoad = 2.0, kWheelReach = 1.5, kWheelPress = 0.3, kWheelWiden = 0.5, kLeanPress = 0.5, kLeanWiden = 0.5;
+  // The bend's pull: how far the wet paint is drawn, over the brush's half-width, and how much, over what the brush moved.
+  static constexpr double kPullShift = 2.0, kPullGain = 12;
+  static constexpr int kPullBox = 96, kPullSamples = 8;
+  /* The spatter: nothing under kSpatterFrom of a full impact; at a full one kSpatterMost drops, thrown as far as
+     kSpatterSeconds along the time and kSpatterOctaves in pitch at width two (the round layout's A3: about nine cells
+     along and eight across), the least drop kDropLeast cells across its radius, the blot's edge kSpatterBlot as
+     ragged as a drop's, and a drop's thickness about kDropThick (a heavy stroke's). */
+  static constexpr double kSpatterFrom = 0.35, kSpatterMost = 70, kSpatterSeconds = 0.6, kSpatterOctaves = 2.5;
+  static constexpr double kDropLeast = 0.18, kSpatterBlot = 1.8, kSpatterBlotMost = 4.2, kDropThick = 0.5;
+  static constexpr int kDropSamples = 6;  // the look's pixels across a cell: PAINT_SIZE / PAINT_CELLS
 
   PaintParams p_;
   std::unique_ptr<PaintLayout> layout_;
@@ -864,7 +1045,8 @@ class Painter {
   std::array<PaintBrush, 2> lifted_ {};  // each hand's last stroke as it lifted
   bool pedal_ = false;
   PaintControls controls_ {};
-  double paused_ = 0, wetClock_ = 0;  // the time the pedal has held the paint wet, and the clock it dries by
+  double lastBend_ = 1, bendStep_ = 0;  // the bend at the last frame, and how far it has moved since, in octaves
+  std::array<double, kPullBox * kPullBox> give_ {}, giveWet_ {}, keep_ {};  // the pull's box (pull)
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;

@@ -222,7 +222,7 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
   /* The painting's strokes since the count in the name (step 2), as the
      site's brain_paint serves them: a little-endian float64 header - whether
      the core is painting, the count the first stamp is, how many - and then
-     twenty float32s a stamp (Instrument::paintServed). The count is in the
+     twenty-three float32s a stamp (Instrument::paintServed, kStampFloats). The count is in the
      path rather than a query, which not every platform's web view hands a
      resource provider. */
   if (path.startsWith("/paint/") && path.endsWith(".bin")) {

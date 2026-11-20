@@ -893,12 +893,12 @@ class Instrument {
   /* The painting's strokes for the face (painting, step 2): every stamp the
      painter lays, twenty floats each - where, which way, its width and
      pressure, when, how far it went, its eight bristle groups' loads, and
-     its brush, hand, ink and note (PaintStamp) - into a ring of the last
+     its brush, hand, ink and note, and its kind with its two numbers (PaintStamp) - into a ring of the last
      kPaintServed, counted from the first. The face asks for those after the
      count it last had, and paints the look from them on the graphics card;
      the site's page through brain_paint, the plugin's through paint/N.bin. A
      face that falls more than the ring behind takes what is left. */
-  static constexpr std::size_t kPaintServed = 4096, kStampFloats = 20;
+  static constexpr std::size_t kPaintServed = 4096, kStampFloats = 23;
   std::uint64_t paintCount() const { return paintCount_.load(std::memory_order_acquire); }
   /* The stamps from `since` (or the oldest still kept) to now into `out`,
      room for `room` stamps of kStampFloats; how many, and where they began. */
@@ -1549,12 +1549,14 @@ class Instrument {
     /* The player's controllers on the brush (step 3): the pedal, the wheel,
        pressure and the bend, read in Paint whatever Expression's menus give
        the wheel and pressure to, so in Paint they do both. Mono's and Dyad's
-       pitch is the generator's own, the bend in it already. */
+       pitch is the generator's own, the bend in it already; the painter is
+       told the bend in every mode all the same, for its pull on the paint,
+       and moves only Poly's voices by it. */
     PaintControls hands;
     hands.pedal = keyboard_->sustain();
     hands.wheel = keyboard_->wheel();
     hands.pressure = keyboard_->pressureNow();
-    hands.bend = core_->polyVoices() ? std::exp2(core_->bendNow() / 12) : 1.0;
+    hands.bend = std::exp2(core_->bendNow() / 12);
     painter_->setControls(hands);
     std::size_t n = 0;
     if (core_->polyVoices()) {
@@ -1584,7 +1586,8 @@ class Instrument {
       const std::size_t at = static_cast<std::size_t>(count % kPaintServed) * kStampFloats;
       const float row[kStampFloats] = { st.x, st.y, st.dx, st.dy, st.w, st.p, st.t, st.per,
                                         st.load[0], st.load[1], st.load[2], st.load[3], st.load[4], st.load[5], st.load[6], st.load[7],
-                                        static_cast<float>(st.serial), static_cast<float>(st.hand), static_cast<float>(st.ink), static_cast<float>(st.note) };
+                                        static_cast<float>(st.serial), static_cast<float>(st.hand), static_cast<float>(st.ink), static_cast<float>(st.note),
+                                        static_cast<float>(st.kind), st.a, st.b };
       for (std::size_t f = 0; f < kStampFloats; f++) paintRing_[at + f].store(row[f], std::memory_order_relaxed);
       count++;
     }

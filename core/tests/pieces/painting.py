@@ -210,51 +210,88 @@ def run(kit):
         # The map holds the stroke's width (paint width's measure, above): what the look draws is the stamp's.
         return abs(spread / math.sqrt((0.488 * hw) ** 2 + 1 / 12) - 1) < 0.1
 
-    # The pedal: the brush stays on the canvas through the silence between a pluck's notes, and the paint stays wet.
-    covered, gap, wet_down, wet_after, last = nums("pedal", str(ALL))
-    d_covered, d_gap, d_wet, _, _ = nums("pedal", str(ALL - PEDAL))
-    check("under the pedal a pluck's slow melody is one mark: the brush lays through the silence between notes",
-          covered > 0.6 and gap <= 10, "%.0f%% of its arc painted, the longest stretch without %d degrees" % (100 * covered, gap))
-    null("the brush deaf to the pedal lays only while there is sound", d_covered < 0.3 and d_gap > 60,
-         "%.0f%%, a gap of %d degrees" % (100 * d_covered, d_gap))
-    check("and the paint stays wet under the pedal, then dries and the brush lifts once it is let go",
-          wet_down > 0.95 and wet_after < 0.5 and last == 0, "%.2f wet with it down, %.2f two seconds after, %d stamps then" % (wet_down, wet_after, last))
-    null("the brush deaf to the pedal lets six seconds of paint dry", d_wet < 0.5, "%.2f wet" % d_wet)
+    # The pedal (revised 20 Nov, the owner: "the only one that matches the sound properly for pluck"): it joins a hand's
+    # notes into one stroke and nothing else - the brush lays only while there is sound and the paint dries as it would.
+    covered, gap, wet_down, wet_after, last, strokes = nums("pedal", str(ALL))
+    d_covered, d_gap, d_wet, _, _, d_strokes = nums("pedal", str(ALL - PEDAL))
+    check("under the pedal a pluck's slow melody is painted as it sounds: the brush lays nothing through the silences",
+          covered < d_covered + 0.05 and gap >= d_gap - 5 and gap > 60,
+          "%.0f%% of its arc painted, the longest stretch without %d degrees (deaf to the pedal %.0f%%, %d)" % (100 * covered, gap, 100 * d_covered, d_gap))
+    h_covered, h_gap, _, _, _, _ = nums("pedal", str(ALL), "1")
+    null("the same melody held, sounding through, covers its arc, so the measure can read a brush laying", h_covered > 0.6 and h_gap <= 10,
+         "%.0f%%, a gap of %d degrees" % (100 * h_covered, h_gap))
+    check("and the paint dries under the pedal as it does without it", wet_down < 0.5 and wet_after < 0.5 and last == 0,
+          "%.2f wet with it down, %.2f two seconds after, %d stamps then" % (wet_down, wet_after, last))
+    null("a drying read that cannot go red: fresh paint is read wet", nums("pedal", str(ALL), "1")[2] > wet_down,
+         "%.2f wet held" % nums("pedal", str(ALL), "1")[2])
+    check("and it still joins the notes into one stroke", strokes < d_strokes, "%d strokes, %d deaf to it" % (strokes, d_strokes))
+    null("deaf to the pedal they are more strokes than one", d_strokes > 1, "%d" % d_strokes)
 
-    # The mod wheel: the brush's load and pressure, dry and scratchy at the bottom, heavy at the top.
+    # The mod wheel (revised 20 Nov): it rests at the bottom, where the brush is step 2's to the bit, and up it only adds -
+    # at the top plainly a loaded brush. The owner's mark: at the top, the median width at least 1.8 times rest's and
+    # the paint laid at least 2.5 times.
     rest = nums("wheel", "-1", str(ALL))
+    bottom = nums("wheel", "0", str(ALL))
     deaf_rest = nums("wheel", "-1", str(ALL - WHEEL))
-    check("a wheel that has not moved paints step 2's brush, to the bit", rest[4] == deaf_rest[4], "%.9g against %.9g" % (rest[4], deaf_rest[4]))
-    dry, heavy = nums("wheel", "0", str(ALL)), nums("wheel", "1", str(ALL))
+    check("a wheel that has not moved, and a wheel at the bottom, paint step 2's brush, to the bit",
+          rest[4] == deaf_rest[4] and bottom[4] == deaf_rest[4], "%.9g, %.9g against %.9g" % (rest[4], bottom[4], deaf_rest[4]))
+    heavy, half = nums("wheel", "1", str(ALL)), nums("wheel", "0.5", str(ALL))
     null("the same comparison against the wheel at the top is not to the bit", rest[4] != heavy[4], "%.9g" % heavy[4])
-    check("the wheel at the top loads the brush heavier, wider and thicker; at the bottom it is dry and thin",
-          heavy[1] > 1.5 * rest[1] and heavy[2] > 3 * rest[2] and dry[1] < 0.6 * rest[1] and dry[2] < 0.25 * rest[2] and heavy[3] > 1.8 * rest[3] and rest[3] > dry[3],
-          "half-width %.2f, %.2f, %.2f cells; paint %.1f, %.1f, %.1f; load %.2f, %.2f, %.2f (bottom, rest, top)"
-          % (dry[1], rest[1], heavy[1], dry[2], rest[2], heavy[2], dry[3], rest[3], heavy[3]))
+    def loaded(top, base):
+        return top[5] >= 1.8 * base[5] and top[2] >= 2.5 * base[2]
+    check("the wheel at the top is a loaded brush: at least 1.8 times as wide and 2.5 times the paint, and half-way between",
+          loaded(heavy, rest) and rest[5] < half[5] < heavy[5] and rest[2] < half[2] < heavy[2] and heavy[3] > 1.8 * rest[3],
+          "median half-width %.2f, %.2f, %.2f cells; paint %.1f, %.1f, %.1f; load %.2f, %.2f (rest, half-way, top)"
+          % (rest[5], half[5], heavy[5], rest[2], half[2], heavy[2], rest[3], heavy[3]))
+    null("the wheel at the bottom does not pass the loaded brush's mark", not loaded(bottom, rest),
+         "%.2f cells, paint %.1f" % (bottom[5], bottom[2]))
     deaf_top = nums("wheel", "1", str(ALL - WHEEL))
-    null("the brush deaf to the wheel paints the same at the top as at rest", abs(deaf_top[1] - rest[1]) < 1e-9 and abs(deaf_top[2] / rest[2] - 1) < 0.01,
+    null("the brush deaf to the wheel paints the same at the top as at rest", deaf_top[4] == bottom[4],
          "half-width %.2f, paint %.1f" % (deaf_top[1], deaf_top[2]))
-    check("and at either end the map holds the stamp's width, which the look draws", holds(heavy[0], heavy[1]) and holds(dry[0], dry[1]),
-          "spread %.2f for a half-width of %.2f, %.2f for %.2f" % (heavy[0], heavy[1], dry[0], dry[1]))
+    check("and at the top the map holds the stamp's width, which the look draws", holds(heavy[0], heavy[1]),
+          "spread %.2f for a half-width of %.2f" % (heavy[0], heavy[1]))
     null("the heavy brush's map read against the resting brush's width is not it", not holds(heavy[0], rest[1]))
 
-    # The pitch wheel: the stroke bends with the pitch, continuously.
+    # The pitch wheel: the stroke bends with the pitch, continuously...
     before, after, want, step, back = nums("bend", str(ALL))
     check("a bend to the top moves the brush's radius to the pitch two semitones up, smoothly", abs(after - want) < 0.05 and step < 0.1 and back == 0,
           "%.2f to %.2f cells (the layout's %.2f), at most %.3f a frame, never back" % (before, after, want, step))
     d_before, d_after, _, _, _ = nums("bend", str(ALL - BEND))
     null("the brush deaf to the bend stays on its note's radius", abs(d_after - d_before) < 1e-9, "%.2f to %.2f" % (d_before, d_after))
+    # ...and (20 Nov) drags the wet paint the way the pitch went, so a bend at its usual two semitones is seen: a share of
+    # the paint on the arc it went round lies out past the stroke's own band on that side, and none on the other.
+    up_out, up_in, up_all, pulls, _ = nums("pull", "2", "0.4", str(ALL))
+    dn_out, dn_in, _, _, _ = nums("pull", "-2", "0.4", str(ALL))
+    deaf_out, deaf_in, deaf_all, deaf_pulls, _ = nums("pull", "2", "0.4", str(ALL - BEND))
+    check("a quick bend of two semitones up pulls paint out past the stroke, and one down pulls it in",
+          up_out > 0.015 and up_in < 1e-3 and dn_in > 0.015 and dn_out < 1e-3 and pulls > 0,
+          "%.1f%% out, %.1f%% in going up; %.1f%% in, %.1f%% out going down; %d pulls" % (100 * up_out, 100 * up_in, 100 * dn_in, 100 * dn_out, pulls))
+    null("deaf to the bend no paint lies past the band", deaf_out < 1e-3 and deaf_pulls == 0, "%.2f%%" % (100 * deaf_out))
+    check("and the pull moves paint, it does not make it", abs(up_all / deaf_all - 1) < 0.03, "%.1f against %.1f" % (up_all, deaf_all))
+    slow_out = nums("pull", "2", "1.5", str(ALL))[0]
+    check("a slow bend pulls too, more gently", 0.003 < slow_out < up_out, "%.2f%% over 1.5 s against %.2f%% over 0.4" % (100 * slow_out, 100 * up_out))
 
-    # Velocity: the strike's spatter, more of it and further the harder.
-    soft, soft_far = nums("spatter", "40", "-1")
-    mid, mid_far = nums("spatter", "80", "-1")
-    hard, hard_far = nums("spatter", "127", "-1")
-    check("a harder strike spatters more paint, further off its ring", hard > 3 * mid > 0 and soft < mid and hard_far > mid_far > soft_far,
-          "%.2f, %.2f and %.2f off the ring, the farthest %.1f, %.1f and %.1f cells (velocity 40, 80, 127)" % (soft, mid, hard, soft_far, mid_far, hard_far))
-    f_soft, f_soft_far = nums("spatter", "40", "0.6")
-    f_hard, f_hard_far = nums("spatter", "127", "0.6")
-    null("spatter fixed whatever the strike is the same soft and hard", f_soft == f_hard and f_soft_far == f_hard_far,
-         "%.2f and %.2f" % (f_soft, f_hard))
+    # Velocity: the strike's spatter (rebuilt 20 Nov, the owner: "splattered paint", not small strokes all alike): drops,
+    # a blot where the brush lands, larger than the stroke, sizes off a heavy tail, further and more the harder, smaller
+    # the further they fly, some drawn out pointing away from the blot; none from a soft strike or at Strike nought.
+    sp = {v: nums("spatter", str(v), "-1") for v in (40, 80, 127)}
+    off, far, n, blot, hw, rmed, rmax, longer, away, strayed, near_r, far_r = sp[127]
+    check("a hard strike throws drops, not strokes: a blot larger than the stroke and the rest round it, no brush stamp off its ring",
+          n > 30 and blot > 1.05 * hw and strayed == 0, "%d drops, the blot %.2f cells across its radius, the stroke %.2f; %d stray brush stamps" % (n, blot, hw, strayed))
+    check("the drops' sizes are off a heavy tail: the largest four times the median", rmax > 4 * rmed > 0, "median %.2f, largest %.2f cells" % (rmed, rmax))
+    null("a tail that is not there fails it: the median against itself", not (rmed > 4 * rmed > 0))
+    check("they are smaller the further they fly", far_r < 0.8 * near_r, "median %.2f cells nearer the blot, %.2f further" % (near_r, far_r))
+    check("some, not all, are drawn out, every one pointing away from the blot", 0.15 < longer < 0.6 and away == round(longer * (n - 1)),
+          "%.0f%% drawn out, %d of them away" % (100 * longer, away))
+    check("a harder strike throws more, further", sp[127][2] > sp[80][2] > 0 and sp[127][1] > sp[80][1] and sp[127][0] > sp[80][0],
+          "%d and %d drops, the farthest %.1f and %.1f cells (velocity 80, 127)" % (sp[80][2], sp[127][2], sp[80][1], sp[127][1]))
+    check("a soft strike throws nothing", sp[40][2] == 0 and sp[40][0] == 0, "%d drops at velocity 40" % sp[40][2])
+    null("the soft check reads drops: the same strike spattered as a hard one throws them", nums("spatter", "40", "1")[2] > 30)
+    f_soft = nums("spatter", "40", "0.8")
+    f_hard = nums("spatter", "127", "0.8")
+    null("spatter fixed whatever the strike is the same soft and hard", f_soft[2] == f_hard[2] and f_soft[0] == f_hard[0],
+         "%d and %d drops" % (f_soft[2], f_hard[2]))
+    check("and Strike at nought throws none", nums("spatter", "127", "0")[2] == 0)
 
     # Aftertouch: the stroke widens and presses in while the key is leaned on.
     leaned, lean_hw = nums("lean", "1", str(ALL))
