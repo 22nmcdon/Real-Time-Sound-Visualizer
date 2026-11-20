@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Slow pad's breath</title>
+<!-- The Slow pad under Breathing's floor (20 Nov): as shipped against two
+     one-field re-voicings, rendered offline by the core and judged as
+     honestytest.py judges the bank. Nothing here is in the bank: the
+     owner chooses by ear. render.py makes results.json and the WAVs. -->
+<style>
+  :root { --cream: #faf6f0; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
+          --line: #e4d9cc; --blush-deep: #c07f79; --gold: #b08d57; --sage: #6f7f63; --rust: #a4553f; }
+  body { background: var(--cream); color: var(--text); font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { color: var(--charcoal); font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { color: var(--charcoal); font-size: 1.15rem; margin: 28px 0 8px; }
+  p { margin: 8px 0; }
+  .soft { color: var(--text-soft); }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .cand { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .cand h3 { margin: 0 0 4px; font-size: 1rem; color: var(--charcoal); }
+  .chosen { border-color: var(--gold); }
+  .tag { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); }
+  .out { color: var(--rust); }
+  .keeps { color: var(--sage); }
+  table { border-collapse: collapse; width: 100%; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  th { font-weight: 600; color: var(--charcoal); font-size: 0.9rem; }
+  audio { width: 100%; min-width: 150px; height: 32px; }
+  .scroll { overflow-x: auto; }
+  code { font-size: 0.9em; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .under { color: var(--rust); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The Slow pad's breath</h1>
+  <p class="soft">20 Nov. The suite now judges every preset offline, with the key at five moments after the
+    preset loads, by its worst moment against its heading. The Slow pad, as shipped, breathes too little late in a
+    held note when the key lands 1.0 s after the load: 0.019 against Breathing's floor of 0.02. Before, the page
+    measured it wherever its timing put the key, so it passed or failed by lot. Two re-voicings, each one field,
+    each a touch more of what already makes it breathe. <b>Nothing is changed in the bank</b>: choose by ear, or
+    keep it as it is and the heading's check stays red.</p>
+
+  <h2>The two</h2>
+  <div class="cands">
+    <div class="cand"><h3>Swell on</h3>
+      <p>The picture's push breathes at the Persistence's period while the chord is held, as the Bass under the
+        pad's does. The turning-over stays; a slow rise and fall comes under it.</p>
+      <p class="keeps">Late 0.036 at its least, every moment Breathing.</p></div>
+    <div class="cand"><h3>Scan 75 (from 60)</h3>
+      <p>More of the wave read back off its own figure: the loop the pad already turns over by, a quarter
+        deeper. Its own character, more of it, and brighter as the figure opens.</p>
+      <p class="keeps">Late 0.052 at its least, every moment Breathing.</p></div>
+  </div>
+
+  <h2>Listen</h2>
+  <p class="soft">C4 held 10 s and 4.5 s after, the key at 0.9 s, all three at one gain. 48 kHz, 16-bit,
+    rendered by <code>render.py --wav</code> beside this page.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>As shipped</th><th>Swell on</th><th>Scan 75</th></tr></thead>
+    <tbody><tr>
+      <td><audio controls preload="none" src="slow-pad-shipped.wav"></audio></td>
+      <td><audio controls preload="none" src="slow-pad-swell.wav"></audio></td>
+      <td><audio controls preload="none" src="slow-pad-scan.wav"></audio></td>
+    </tr></tbody>
+  </table>
+  </div>
+
+  <h2>Late: how much a held note still moves, 7 to 10 s in</h2>
+  <p class="soft">Breathing needs at least 0.02 at every moment the key can land. Under it in rust.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Key at</th><th>0.90 s</th><th>1.00 s</th><th>1.25 s</th><th>1.50 s</th><th>2.00 s</th><th>Least</th><th>Heading met</th></tr></thead>
+    <tbody>
+      <tr><th>As shipped</th><td class="num">0.023</td><td class="num under">0.019</td><td class="num">0.026</td><td class="num">0.028</td><td class="num">0.034</td><td class="num">0.019</td><td><span class="out">none</span></td></tr>
+      <tr><th>Swell on</th><td class="num">0.044</td><td class="num">0.059</td><td class="num">0.035</td><td class="num">0.046</td><td class="num">0.045</td><td class="num">0.035</td><td>Breathing</td></tr>
+      <tr><th>Scan 75</th><td class="num">0.066</td><td class="num">0.065</td><td class="num">0.068</td><td class="num">0.051</td><td class="num">0.058</td><td class="num">0.051</td><td>Breathing</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Early: how much it moves in its first two seconds</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Key at</th><th>0.90 s</th><th>1.00 s</th><th>1.25 s</th><th>1.50 s</th><th>2.00 s</th></tr></thead>
+    <tbody>
+      <tr><th>As shipped</th><td class="num">0.342</td><td class="num">0.265</td><td class="num">0.237</td><td class="num">0.172</td><td class="num">0.175</td></tr>
+      <tr><th>Swell on</th><td class="num">0.316</td><td class="num">0.152</td><td class="num">0.243</td><td class="num">0.123</td><td class="num">0.193</td></tr>
+      <tr><th>Scan 75</th><td class="num">0.161</td><td class="num">0.204</td><td class="num">0.378</td><td class="num">0.123</td><td class="num">0.239</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="soft">All three silent after the key comes up (RMS under 0.0001) and the limiter's chord at
+    -0.7, -0.7 and -0.7 dB. Every number is in
+    <code>results.json</code>.</p>
+</main>
+</body>
+</html>
