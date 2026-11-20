@@ -76,8 +76,10 @@ with sync_playwright() as pw:
     # F1 (redesigning-the-face.md): the scope's own tools are Scope & measure's,
     # a panel over the screen in either view - the null is the P8 drawer's tab.
     measured = sorted(g["title"] for g in homes["bench"] if g["inMeasure"])
-    check("Scope & measure holds the scope's tools: lanes, vertical, filter, trigger and measure",
-          measured == ["Filter", "Lanes", "Measure", "Trigger", "Vertical"], str(measured))
+    # Since the UI review (20 Nov) the old Vertical section is three, the lanes, From the keys and
+    # the lag, so each sits in the subtab whose subject it is, and the filter is the trace filter.
+    check("Scope & measure holds the scope's tools: lanes, vertical, the keys, the lag, the trace filter, trigger and measure",
+          measured == ["From the keys", "Lag X\u2013Y", "Lanes", "Measure", "Trace filter", "Trigger", "Vertical"], str(measured))
     # F2: what Scan reads and the score behind the Picture's Advanced.
     pictured = p.evaluate("""() => settingsGroups().filter((g) => g.closest('#picturePanel')).map(groupTitle).sort()""")
     # And the beam's ink since F7b, as only the look.

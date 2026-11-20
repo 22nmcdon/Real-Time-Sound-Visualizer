@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-391 controls: 391 lines, none marked as removed by a later stage, 90 wanting a paragraph
+399 controls: 399 lines, none marked as removed by a later stage, 90 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -36,7 +36,10 @@ subtabs, each figure's drawing, Shape, Loop and Hold a note, the cycle drawn on,
 second link on Wave; and on 19 Nov, the drawn LFOs: the LFO card's editor's Phase, Starts again, the drawn
 shape's text, the Grid, Hold a note and Silence, with Shape and Sync out of sight behind its seven shapes and
 Rate in, and the Rate knob's new words; and again on 19 Nov, Ink's figures: its two subtabs, the Oscillator's
-pattern and figure, Wave · Figure and Hold to watch it drift, and Shaping's curve and two cycles).
+pattern and figure, Wave · Figure and Hold to watch it drift, and Shaping's curve and two cycles;
+and on 20 Nov, the UI review: Scope & measure's four subtabs, the Picture strip's Draw width, the one control for what the Width applies to;
+Perform's names - Pattern, Step, Octaves, Start · stop, Quantise pitch, Store A and B - and the clock's three
+parts; and Scope & measure's Pitch and Timebase from the keys and Readouts).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -390,6 +393,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | output | Output | How loud you hear it, after everything, and nothing else: the picture, Scan and the loop are the same at any setting. No preset changes it. | 139 | yes — both hands’, on what is heard alone, like a monitor’s volume; −6 dB at 71, −12 dB at 50, unity at the top; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it; its meter is what is heard |
 | stereoWidth | Width | How wide each note is heard: at nought every note the same in both ears, at a hundred each its own ring. No note moves as others join it. | 137 | yes — both hands’, on what is heard alone, before the Output; every note in both ears whatever else is held, its left behind its right by up to a quarter of its own cycle, so a hundred is a lone note as it always was, fifty an eighth and nought mono; the rack's modules come after it, so a delay's or a reverb's own spread is theirs; the picture, Scan and the loop are the same to the bit at any setting; the input is heard as it comes; no preset, code, undo step or morph moves it; this browser remembers it, and in the plugin the project keeps it and a host can automate it; while the Width is on what's drawn too it is put away, and the sound's own Width takes its place |
 | soundWidth | Width | The sound's own Width, saved with it, while the Width is on what's drawn too: the screen draws every note at it, and you hear what's drawn. | 139 | yes - the ring before its name says it is the sound's, as a gold dot says the host can move one; in the setup as soundWidth, so a preset, a code, undo and the morph move it, where the Width on what you hear is the player's and none of theirs; nought draws and plays every note the same on both sides, a hundred each its own ring |
+| widthDraw | Draw width | On, the Width is the sound's and drawn too: Scan reads it and the setup keeps it. Off, it is only how wide you hear, and the screen never sees it. | 146 | - |
 | widthHeard | Heard | The Width is yours and only how wide you hear: the screen draws the notes against each other, and the picture and Scan never hear it. | 133 | - |
 | widthDrawn | Drawn too | The Width is the sound's: the screen draws every note at it, so the speakers are the screen again, Scan reads it, and the setup keeps it. | 137 | yes: what it costs - the figure of two notes drawn against each other goes, the notes' rings summed instead, so Scan and the picture read another figure and the sound changes; the effects run once rather than twice; a preset made on what you hear plays differently here |
 
@@ -551,23 +555,26 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| arpMode | Arp | Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it. | 117 | yes — in the dyad each step pairs your lowest note with the next; switching off with keys down gives the generator the chord; its notes go out through MIDI out |
-| arpRate | Arp step | How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t). | 107 | - |
-| arpOctaves | Arp octaves | How many octaves the arpeggio spreads the chord over, from one to three. | 72 | - |
+| arpMode | Pattern | Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it. | 117 | yes — in the dyad each step pairs your lowest note with the next; switching off with keys down gives the generator the chord; its notes go out through MIDI out |
+| arpRate | Step | How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t). | 107 | - |
+| arpOctaves | Octaves | How many octaves the arpeggio spreads the chord over, from one to three. | 72 | - |
 
 ### Perform › Clock
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| transportPlay | Bar | Stops the bar and silences the score; pressed again, starts it from the one and restarts the synced oscillators with it. | 120 | yes — the bar counts in fours and the score reads its columns from it; a device’s MIDI clock, Start, Stop and Continue drive it; the arpeggiator does not follow it |
+| transportPlay | Start · stop | Stops the bar and silences the score; pressed again, starts it from the one and restarts the synced oscillators with it. | 120 | yes — the bar counts in fours and the score reads its columns from it; a device’s MIDI clock, Start, Stop and Continue drive it; the arpeggiator does not follow it |
+| clockFrom | Clock | Where the beat comes from: the page’s own clock, a device’s MIDI clock, or the host’s while the plugin plays in a project. | 122 | - |
+| transportAt | Position | Where the clock is, by the bar and the beat, counted in fours from the one. Start begins it again from the one. | 111 | - |
+| transportState | Clock | Whether the clock is running. Stopped, the score is silent and the bar stands where it was; the arpeggiator follows your hands. | 127 | - |
 
 ### Perform › Morph
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| morphStoreA | Morph · store A | Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide. | 126 | - |
+| morphStoreA | Store A | Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide. | 126 | - |
 | morphPos | Morph | Slides the whole sound between the two stored ends: pitch by octaves, every other knob in a straight line. Menus, switches and the scope’s view stay. | 149 | yes — a knob turned by hand keeps its place until the fader moves; an LFO on it moves the whole sound; the ends are part of the setup code; the timebase, the zoom and the trigger are the view and stay where the player set them, the tempo is heard and slides (G8) |
-| morphStoreB | Morph · store B | Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear. | 104 | - |
+| morphStoreB | Store B | Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear. | 104 | - |
 
 ### Perform › Key and tempo
 
@@ -575,7 +582,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 |---|---|---|---|---|
 | keyRoot | Key | The page’s one key, which the quantiser and the score play in. | 62 | - |
 | keyScale | Scale | Which notes of the key count: Chromatic (every semitone), major, minor or one of the modes. The quantiser and the score use it. | 127 | - |
-| quantise | Quantise | Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody. | 134 | yes — a key played outside the scale moves too; it waits a tenth of a semitone past half-way and steps at most forty times a second, so a resting pitch does not flicker |
+| quantise | Quantise pitch | Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody. | 134 | yes — a key played outside the scale moves too; it waits a tenth of a semitone past half-way and steps at most forty times a second, so a resting pitch does not flicker |
 | quantiseGlide | Glide | How long the quantised pitch takes to slide to each new note, up to 300 ms; off, it steps. Only while Quantise is on. | 117 | - |
 | tempo | Tempo | The page’s one tempo, 30 to 300 BPM: the arpeggiator, the score and every synced LFO or delay play at it. | 105 | yes — a device sending MIDI clock sets it while the clock runs and hands it back half a second after it stops |
 | tempoTap | Tap tempo | Sets the tempo from your last four taps, and starts the synced oscillators on the beat you tapped. | 98 | - |
@@ -663,6 +670,10 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
+| mtab-trigger | Trigger | Where the trace starts: the edge, the source lane, the level, the position and the holdoff, drawn on a trace. Its summary is the four. | 134 | - |
+| mtab-time | Time | How much time the screen holds and the slice Zoom keeps, the keys' pitch, and the lag. Its summary is the timebase and the zoom. | 128 | - |
+| mtab-vertical | Vertical | Each lane's scale and offset, AC and mid / side, and the trace filter with its response. Its summary is the lanes shown and the filter. | 135 | - |
+| mtab-measure | Measure | The readouts under the screen, the cursors, what the numbers read and a saved reference. Its summary is whether each shows. | 123 | - |
 | run | Stop | Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent. | 144 | - |
 | modeAuto | Auto | Draws whatever arrives, triggered or not, so the trace never stops and Scan reads it all. A grey trace is free-running, not a fault. | 132 | - |
 | modeNormal | Normal | Holds the last triggered picture while nothing crosses the level, rather than drawing an untriggered one. Scan reads the held picture. | 134 | - |
@@ -728,15 +739,15 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | lagManual | Delay | Holds the delay where its knob puts it, whatever the note. Scan reads the loop it draws, so the sound changes too. | 114 | - |
 | lag | Delay | How far behind the delayed copy is, 0.1 to 40 ms; Scan reads the loop it draws. Only on Set; on Auto it shows what the lock found. | 130 | - |
 | lagMix | Heard | How much of the delayed copy reaches the right speaker when the speakers get Shaped: a comb that follows the pitch. Up to 50%. | 126 | yes — 20% is mostly width; in headphones the top of the knob takes some harmonics out of the right ear entirely, on purpose |
-| midiTruth | Lag and tuner from the note | Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound. | 112 | - |
-| midiFollow | … and the timebase | Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play. | 121 | - |
+| midiTruth | Pitch from the keys | Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound. | 112 | - |
+| midiFollow | Timebase from the keys | Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play. | 121 | - |
 | acCorner | AC corner | Where AC coupling starts taking things away, 0.5 to 20 Hz, in what Scan reads too. Ten removes a drift; twenty thins a bass note’s bottom. | 138 | yes — at one hertz an asymmetric signal can read a third higher, which is AC coupling, not a fault; the corner reaches the speakers on Shaped |
 
 ### Scope & measure › Measure
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| readoutsOn | Readouts under the screen | Shows the numbers under the screen, a row per lane: peak, RMS, frequency, the nearest note, THD. Off to start. | 110 | yes — what each number means; the frequency is the sound’s period, and shows a dash rather than a guess |
+| readoutsOn | Readouts | Shows the numbers under the screen, a row per lane: peak, RMS, frequency, the nearest note, THD. Off to start. | 110 | yes — what each number means; the frequency is the sound’s period, and shows a dash rather than a guess |
 | cursorsOn | Cursors | Two time and two level cursors to drag on the Y–T screen; the readout gives each pair’s difference, and Δt as a frequency. | 122 | - |
 | measurePre | Numbers read | The numbers read the signal as it arrived, before the Plane’s Turn. | 67 | - |
 | measurePost | Numbers read | The numbers read the signal after the Plane’s Turn, as the screen shows it. The level meter and Clipping stay on the signal. | 124 | - |

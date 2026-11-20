@@ -169,12 +169,12 @@ with sync_playwright() as pw:
           # About 120: a page's timers land ticks on a 4 ms grid, so the clock's
           # own reading of 120 is core/tests/pieces/clock.py's, to the tick.
           r["disabled"] and r["from"] == "midi" and abs(r["inst"] - 120) < 12
-          and r["reading"] == "%d BPM" % round(r["inst"]) and r["clock"] == "from MIDI clock", str(r))
+          and r["reading"] == "%d BPM" % round(r["inst"]) and r["clock"] == "MIDI clock", str(r))
     s_ = midiclock["stopped"]
     check("half a second after the last tick the slider is back and the row says internal, at the slider's 90",
-          s_ == {"disabled": False, "reading": "90 BPM", "clock": "internal", "from": "internal"}, str(s_))
+          s_ == {"disabled": False, "reading": "90 BPM", "clock": "Internal", "from": "internal"}, str(s_))
     check("null: the page's own transport put on a clock at 200 leaves the row the instrument's",
-          midiclock["pageAlone"] == {"disabled": False, "reading": "90 BPM", "clock": "internal"}, str(midiclock["pageAlone"]))
+          midiclock["pageAlone"] == {"disabled": False, "reading": "90 BPM", "clock": "Internal"}, str(midiclock["pageAlone"]))
 
     print("\n--- the Bar row ---")
     # The bar's Start and Stop reach the instrument since 5b (HOST_CLICKS'
@@ -191,20 +191,21 @@ with sync_playwright() as pw:
       if (instrumentClock().running) { el.transportPlay.click(); await wait(200); }
       el.transportPlay.click(); await wait(1100);
       el.transportPlay.click(); await wait(150);
-      const stopped = [el.transportPlay.textContent, el.transportAt.textContent, instrumentClock().running, transport.running];
+      const stopped = [el.transportPlay.textContent, el.transportAt.textContent, instrumentClock().running, transport.running, el.transportState.textContent];
       await wait(600);
       const stillStopped = el.transportAt.textContent;
       restore(snapshot()); hostSendSetup(); await wait(300);
       const afterRestore = instrumentClock().running;
       el.transportPlay.click(); await wait(1150);
-      const running = [el.transportPlay.textContent, el.transportAt.textContent, instrumentClock().running];
+      const running = [el.transportPlay.textContent, el.transportAt.textContent, instrumentClock().running, el.transportState.textContent];
       return { shown, stopped, stillStopped, afterRestore, running };
     }""")
     print("    %s" % panel)
-    check("the Bar row's button stops the instrument's bar, and the reading says where it stood",
-          panel["shown"] and panel["stopped"][0] == "Start" and panel["stopped"][1].startswith("stopped at ")
+    # The clock is one sentence since the UI review (20 Nov): "Internal · bar 1, beat 3 · Stopped".
+    check("the clock's button stops the instrument's bar, and the sentence says where it stood and that it stopped",
+          panel["shown"] and panel["stopped"][0] == "Start" and panel["stopped"][4] == "Stopped"
           and panel["stopped"][2] is False and panel["stillStopped"] == panel["stopped"][1]
-          and panel["stopped"][1] == "stopped at 1.3", str(panel))
+          and panel["stopped"][1] == "bar 1, beat 3", str(panel))
     # The page's own transport was never told, and runs on: a face that read
     # it would say Stop, and a bar moving.
     check("null: the page's own transport is still running under a row that says stopped",
@@ -212,7 +213,7 @@ with sync_playwright() as pw:
     check("loading a setup code leaves the bar stopped: the transport is playing, not the patch",
           panel["afterRestore"] is False, str(panel["afterRestore"]))
     check("and started again, it runs from the one: a little over a second at 120 is bar 1, beat 3",
-          panel["running"][0] == "Stop" and panel["running"][1] == "1.3" and panel["running"][2] is True,
+          panel["running"][0] == "Stop" and panel["running"][1] == "bar 1, beat 3" and panel["running"][2] is True and panel["running"][3] == "Running",
           str(panel["running"]))
 
     print("\n--- the score's playhead ---")

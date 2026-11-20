@@ -97,6 +97,7 @@ Needs Playwright with a Chromium, and node for the one non-browser suite. Set
 | `stagetest.py` | the picture stage, and the plan's first-minute test: a chord held on the site as it opens, its timbre moved by the picture within ten seconds, against the same chord with the stage at nought |
 | `fittest.py` | no Bench tab scrolls in any combination: every tab on the tone and the band split, keyboard and Photocell on and off, the waveform (every kind until G2), ten learned controllers; with the modulation row in place across the window (G5a), cards at 1400x900 and chips at the four smaller windows, and the null that the cards' row puts Ink over at 1100x860 |
 | `modrowtest.py` | the modulation row (G5a): four cards across the window under the screen and the tabs, Routings in the corner; each card's drawing read off its canvas, its dot moving; the Photocell dragged from its card onto a knob with it off, switched on and turning the screen, and nothing in the dark; each editor's drawing - the LFO's wave at its shape's height, the Envelope's curve following Play's attack or its own, the photocell's crop against the trace and its four seconds; Routings by source and by destination, a silence that stills a control and keeps its routing in the setup, kept by a restore since G5b (forgotten until then) and undone by patching; the fade from Routings; chips under 900 tall, each with its null |
+| `uireviewtest.py` | the UI review's three builds (20 Nov): Scope & measure by subject - every id with its type, range and options against testing's, the fourteen ranges as knobs, the head, the bar and the views' box unmoved across the subtabs and every control of a view across its values, the panel one height above the Picture strip with nothing cut at six windows, labels of three words or fewer on one line, `showControl` choosing the subtab, the trigger's crossing, free run, Zoom's slice and the filter's cutoff read from the values; the Picture strip the window's width, its reads drawn as the stage's, nothing in it moving; Perform's menus named over their values, the arpeggiator's order over a bar, the clock's sentence and its button kept still, Glide greyed with Quantise off, the morph's position read; each with its null |
 | `ringtest.py` | modulation on a knob (G5b): the selected source's ring and its direction on an asymmetric pair (+40% and -25% on the Frequency), the others' ticks, the dot as the sum; Alt-drag and Shift+Alt with real keys, the ring's handle; the editor named for the knob, its bar's bands, a typed depth; the right-click menu with and without sources and on a menu, Reset, Type a value, Copy to the other hand (on a section each hand has its own of, since G6), What is this?, Esc, a click away, the arrows, Shift+F10, a long press, the browser's own menu prevented and left to a text box; the info line's right-click; the silence stored, restored, through a code and through the plugin's text, each with its null |
 | `budgettest.py` | S10, the voice budget: the worst case under half of real time, the cost model against the machine, the order things are given up in, a governed 2x that really runs at 2x, caps that do not creep, a cut that fades, the readout, no preset governed |
 | `presettest.py` | the preset library and its browser: every field a preset names comes back out of the setup it makes, every generator preset sounds, sections, search across sections, the arrows and Enter, saved setups, Custom, where a preset lands |
@@ -7629,3 +7630,43 @@ cause, and what it says about writing the next check:
 - **Serial means alone on the machine.** Some of these flakes were serial suites run while
   another session's `core_tests.py` or a proof render loaded the container. `run.py` cannot see
   another process; don't start one beside it.
+
+## The UI review's three builds, and seven traps on the way (20 Nov)
+
+The owner reviewed three mockups (`web/docs/scope-measure.md`, `picture-strip.md`,
+`perform.md`) and they are built: Scope & measure by subject, four subtabs in one box; the
+Picture strip the window's width with the info line's whole sentence; Perform with every
+control named, the arpeggiator drawn and the clock a sentence. `uireviewtest.py` holds all
+three. What was learned:
+
+- **The knob layout's parent rule outranks a one-class layout rule.** `:has(> .menu-row.knob-row)`
+  gives every other child of a parent of knobs a line of its own, and `:has()` takes its
+  argument's specificity, so `:has(> .menu-row.knob-row) > :not(.knob-row)` is three classes. A
+  row of a switch and two knobs (`.perform-knobs`) laid out with one class wrapped the switch onto
+  a line of its own and stretched it across the panel. The panels' rules are written under the
+  panel's id or two classes deep; the Picture strip had already found this.
+- **Under the page's zoom, a rectangle is the window's and a style is the page's.** At 960x600
+  the page is zoomed to 90 per cent (F8), `getBoundingClientRect` answers in the window's pixels
+  and `style.top` is read in the page's, so a panel placed from the toolbar's rectangle sat 10
+  per cent off. `placeMeasure` divides by `pageZoom` before it compares a rectangle with a style.
+  The other panels' placement was not changed; it is a candidate for the same fix.
+- **A setter defined before the knobs' constant is in its dead zone.** The morph's reading
+  follows its fader through the input's own `value` setter, as a knob's face does; written with
+  the knobs' `RANGE_VALUE`, declared 22,000 lines further down, it threw at load. It takes the
+  prototype's descriptor itself.
+- **A line that may wrap must not set the height of the strip it is in.** Four lines of the info
+  line are 86 px and the strip's content box is 68: in flow it made the strip 112 px at 1100x860.
+  The line is laid over the strip's own height, reaching into its padding, so the strip is 90 px
+  (80 compact) whatever it says, and the check is that every line in `CONTROL_WORDS` fits whole.
+- **A null that cannot fail at a wide window.** The first null for "every line fits whole" was
+  the old clamp of two lines; at 1660x1050 the full-width line fits every one of them in two, so
+  the null passed nothing. It is each line said three times over now, which is cut everywhere.
+- **A class name already taken.** The lane rows' name span was first `.lane-name`, which the
+  Lanes rack's rows already style (`flex: 1 1 auto`, ellipsis); it is `.lane-word`. Grep the
+  stylesheet for a class before giving it.
+- **A control the instrument hears by its click stays a button.** The Width's switch became one
+  checkbox, Draw width, at the owner's word. `widthHeard` and `widthDrawn` are what the core's
+  restore and the plugin's panel post (`HOST_CLICKS`), so they are kept, out of sight, and the
+  checkbox clicks the one it stands for; the setup, the plugin and the core hear what they
+  heard, and `setWidthTo` ticks the box from whatever moved the value. Moving every reader to a
+  new id would have meant a new host click in the core for a change of look.

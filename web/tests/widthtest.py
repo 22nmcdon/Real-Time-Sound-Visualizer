@@ -366,10 +366,13 @@ with sync_playwright() as pw:
       const code = encodeSetup(snap);
       out.decoded = (({ widthDrawn, soundWidth }) => ({ widthDrawn, soundWidth }))(decodeSetup(code));
       out.ring = getComputedStyle(el.soundWidthRow.querySelector('.menu-label'), '::before').borderTopWidth;
+      out.boxDrawn = el.widthDraw.checked;
       el.presetNew.click();
       out.afterNew = [genSettings().widthDrawn, el.soundWidth.value, el.stereoWidth.value, el.soundWidthRow.hidden];
+      out.boxNew = el.widthDraw.checked;
       loadCode(code);
       out.loaded = [genSettings().widthDrawn, genSettings().drawnWidth, el.soundWidth.value, el.soundWidthRow.hidden, el.stereoWidth.value];
+      out.boxLoaded = el.widthDraw.checked;
       out.morph = MORPH_IDS.includes('soundWidth');
       return out;
     }""")
@@ -381,17 +384,30 @@ with sync_playwright() as pw:
     check("a code made Drawn too loads Drawn too at its own Width; New goes back to Heard and fifty, the default",
           sw["loaded"][:4] == [True, 0.3, "30", False] and sw["afterNew"][:2] == [False, "50"], str((sw["loaded"], sw["afterNew"])))
     check("and the morph walks the sound's Width, which is the setup's", sw["morph"], str(sw["morph"]))
+    # The face's one control since the UI review (20 Nov), Draw width, follows the value however it is set.
+    check("Draw width is ticked while the Width is drawn too - by the switch and by a loaded code - and not after New",
+          sw["boxDrawn"] is True and sw["boxLoaded"] is True and sw["boxNew"] is False, str(sw))
+    check("null: the box after New is not the box after a load, so the check can tell them apart", sw["boxNew"] != sw["boxLoaded"])
     check("null: the player's Width is none of it - 70 through the switch, the code, New and the load",
           sw["drawn"][6:] == ["70", 0.7] and sw["afterNew"][2] == "70" and sw["loaded"][4] == "70", str(sw))
     p.evaluate("() => { el.presetNew.click(); setBenchTab('play'); undoHistory.undo.length = 0; undoHistory.redo.length = 0; }")
     p.wait_for_timeout(600)
     before = p.evaluate("() => undoHistory.undo.length")
-    p.click("#widthDrawn"); p.wait_for_timeout(900)
-    stepped = p.evaluate("() => [undoHistory.undo.length, genSettings().widthDrawn]")
+    # By the face's own control, with the real mouse: the checkbox clicks the kept button the instrument hears.
+    p.evaluate("() => { window.__clicked = []; for (const id of ['widthHeard', 'widthDrawn']) el[id].addEventListener('click', () => __clicked.push(id)); }")
+    p.click("#widthToRow label.check-switch"); p.wait_for_timeout(900)
+    stepped = p.evaluate("() => [undoHistory.undo.length, genSettings().widthDrawn, el.widthDrawn.getAttribute('aria-checked'), el.widthDraw.checked]")
     p.keyboard.press("Control+z"); p.wait_for_timeout(500)
-    undone = p.evaluate("() => [genSettings().widthDrawn, el.soundWidthRow.hidden]")
-    check("undo steps the switch, as a part of the sound: one step, and undone it is back on Heard",
-          stepped == [before + 1, True] and undone == [False, True], "%s, %s" % (stepped, undone))
+    undone = p.evaluate("() => [genSettings().widthDrawn, el.soundWidthRow.hidden, el.widthDraw.checked]")
+    check("undo steps Draw width, as a part of the sound: one step, and undone it is back on only heard, the box unticked",
+          stepped == [before + 1, True, "true", True] and undone == [False, True, False], "%s, %s" % (stepped, undone))
+    p.evaluate("() => { __clicked.length = 0; }")
+    p.click("#widthToRow label.check-switch"); p.wait_for_timeout(300)
+    p.click("#widthToRow label.check-switch"); p.wait_for_timeout(300)
+    clicked = p.evaluate("() => [__clicked, genSettings().widthDrawn]")
+    check("ticked and unticked by hand, it clicks Drawn too and then Heard, the buttons the plugin's core hears",
+          clicked == [["widthDrawn", "widthHeard"], False], str(clicked))
+    check("null: the order of the clicks is read, not only that there were two", clicked[0] != ["widthHeard", "widthDrawn"], str(clicked))
     check("no page errors", not errors, "; ".join(errors[:3]))
     p.close()
     # The compiled instrument the page carries, given a code made Drawn too: what it hears is what it draws.

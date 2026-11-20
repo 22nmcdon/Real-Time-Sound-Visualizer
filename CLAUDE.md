@@ -714,6 +714,26 @@ Do not re-litigate these without a reason; each replaced something that failed.
   face draws the core's map plain. *Which hands* is hidden in Paint. Each note reads the ring
   at its own pitch; Mono and Dyad read the lower note's. `painttest.py`, `paintcosttest.py`,
   `core/tests/pieces/painting.py` and the plugin's shell test hold it.
+- **Scope & measure, the Picture strip and Perform as the UI review built them** (20 Nov,
+  `web/docs/scope-measure.md`, `picture-strip.md`, `perform.md`, the owner's verdicts).
+  Scope & measure: a head that never changes (Run, Auto · Normal · Single, Autoset), four
+  subtabs in the figure-area bar - Trigger, Time, Vertical, Measure - and one box of one
+  height (`placeMeasure`: 520 px, less where the Picture strip is nearer, over the toolbar
+  only where that would leave it under 460) with the views laid in it, each a drawing and its
+  controls; the old Vertical section is three (Vertical, From the keys, Lag X-Y) so the lag
+  and the keys are Time's, and the trace filter is Vertical's. Every range a knob, every
+  checkbox drawn as a switch and still a checkbox (`.check-switch`), every label three words
+  or fewer on one line, the long sentences the info line's. The subtab is a view, never
+  stored; `showControl` chooses it (`setMeasureView`). The Picture strip runs the window's
+  width; its info line is a top row (the host's dot, the name, the value, More) over the
+  control's whole line, four lines at most, laid over the strip's height; More is the one way
+  to more; Glow, Motion and Memory are rows with per cent. The Width's two-way switch is one
+  checkbox, *Draw width* (the owner: the switch "feels off"), which clicks the kept, unseen
+  `widthHeard` and `widthDrawn` the instrument hears. Perform: Pattern, Step and Octaves named
+  over their menus under a bar of what a held chord plays (`drawArp`, the core's order), the
+  clock one sentence (`clockFrom`, `transportAt`, `transportState`) with Start or Stop on a
+  row of its own, Glide and Tempo knobs, the morph still a crossfader with its ends named.
+  `uireviewtest.py` holds all three.
 - **Controls are moved, never copied.** Between a tab and the hidden store,
   into a section's detail overlay and back, and the screen, its toolbar and
   the dock into Enlarge's frame and back. Two elements with one id is how the

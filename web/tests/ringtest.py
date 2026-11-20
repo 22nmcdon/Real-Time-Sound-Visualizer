@@ -408,17 +408,25 @@ with sync_playwright() as pw:
     p.keyboard.press("Escape"); p.evaluate("() => { closeOverlay(); typeof closePresets === 'function' && closePresets(); }")
     p.wait_for_timeout(200)
 
-    print("\n--- the info line names the right-click ---")
+    print("\n--- the right-click, said once: More's title, not the strip ---")
+    # Since the UI review (20 Nov) More is the one way to more on the strip: the line's
+    # "Right-click for more" went, and More's title says a control has a menu.
     fresh(p, "play")
-    def rest_on(sel):
-        p.mouse.move(5, 5); p.wait_for_timeout(100)
-        bb = p.locator(sel).first.bounding_box(); p.mouse.move(*centre(bb)); p.wait_for_timeout(600)
-        return p.evaluate("() => ({ name: el.infoName.textContent, menu: el.infoMenu.classList.contains('is-unseen') ? null : el.infoMenu.textContent })")
-    on_knob, on_menu, on_button = rest_on(FACE % "gen.amp"), rest_on("#shape"), rest_on("#clearButton")
-    print("    %s / %s / %s" % (on_knob, on_menu, on_button))
-    check("on a knob that takes a source: Right-click: modulation, more", on_knob["menu"] == "Right-click: modulation, more", str(on_knob))
-    check("on a menu: Right-click for more", on_menu["menu"] == "Right-click for more", str(on_menu))
-    null("on a button, which has no menu, nothing", on_button["name"] and on_button["menu"] is None, str(on_button))
+    p.mouse.move(5, 5); p.wait_for_timeout(100)
+    bb = p.locator(FACE % "gen.amp").first.bounding_box(); p.mouse.move(*centre(bb)); p.wait_for_timeout(600)
+    said = p.evaluate("""() => { const seen = (n) => n.offsetParent !== null && getComputedStyle(n).visibility !== 'hidden';
+      const strip = [...el.pictureBar.querySelectorAll('*')].filter((n) => seen(n) && !n.children.length).map((n) => n.textContent).join(' ');
+      return { name: el.infoName.textContent, more: seen(el.infoMore), title: el.infoMore.title, strip,
+               gone: !document.getElementById('infoMenu') }; }""")
+    print("    %s" % {k: v for k, v in said.items() if k != "strip"})
+    check("resting on a knob, the line names it", bool(said["name"]), str(said["name"]))
+    check("More shows, and its title names the right-click", said["more"] and "right-click" in said["title"].lower(), said["title"])
+    check("the strip says right-click nowhere, and the old note is gone", "right-click" not in said["strip"].lower() and said["gone"], said["strip"][:200])
+    planted = p.evaluate("""() => { const s = document.createElement('span'); s.textContent = 'Right-click for more';
+      el.infoLine.querySelector('.info-top').appendChild(s);
+      const t = [...el.pictureBar.querySelectorAll('*')].filter((n) => n.offsetParent !== null && !n.children.length).map((n) => n.textContent).join(' ');
+      s.remove(); return t.toLowerCase().includes('right-click'); }""")
+    null("the old note planted back on the line is found by the same read", planted is True, str(planted))
 
     print("\n--- the Routings silence, stored ---")
     fresh(p, "play")

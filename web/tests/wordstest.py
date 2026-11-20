@@ -21,7 +21,9 @@ What would go wrong, and what is checked for it:
   steps going to the next control in the section;
 - the switch in This window hiding the line, and the browser remembering it;
 - where it sits: the Picture section's free middle at every size, taking no
-  height, two lines at most, the three reads still in the window.
+  height, the three reads still in the window; and since the UI review (20 Nov)
+  every line in CONTROL_WORDS whole, in four lines at most (three compact), at
+  the six windows. The null: each line said three times over is found cut.
 
 Serial: the rest is a third of a second of real time, and a busy machine
 stretches a sweep that has to be quicker than it.
@@ -269,33 +271,49 @@ with sync_playwright() as pw:
     on = p.evaluate("() => el.infoLine.offsetParent !== null")
     null("on, it is shown", on is True)
 
-    print("\n--- where it sits ---")
-    # In the Picture section's free middle at every size, so it takes no
-    # height: two lines at most, the three reads still in the window, and the
-    # section no taller than without it. Measured at the full face, the
-    # plugin's opening size and its minimum (960x600 at Auto's 90 per cent).
+    print("\n--- where it sits, and every line whole ---")
+    # In the Picture section's free middle at every size, taking no height. Since the UI
+    # review (20 Nov) the strip runs the window's width and the line has a row of its own
+    # under the name, four lines at most (three compact): every one of CONTROL_WORDS must
+    # fit whole, set in turn, at the six windows fittest.py measures (960x600 at Auto's 90).
     sit = {}
-    for w, h in ((1400, 900), (1200, 680), (1067, 667)):
+    for w, h in ((1660, 1050), (1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600)):
         p.set_viewport_size({"width": w, "height": h}); p.wait_for_timeout(500)
         p.mouse.move(*centre(p, face_of("scanStrike"))); p.wait_for_timeout(500)
         sit[(w, h)] = p.evaluate("""() => {
-          const wrap = el.infoLine.querySelector('.info-wrap'), lh = parseFloat(getComputedStyle(wrap).lineHeight);
+          const wrap = el.infoLine.querySelector('.info-wrap'), t = el.infoText, lh = parseFloat(getComputedStyle(t).lineHeight);
           const bar = el.pictureBar.getBoundingClientRect(), reads = el.pictureBar.querySelector('.picture-meters').getBoundingClientRect();
           const hid = el.infoLine.hidden; el.infoLine.hidden = true; const without = el.pictureBar.getBoundingClientRect().height;
           el.infoLine.hidden = hid;
+          const keep = [el.infoName.textContent, el.infoValue.textContent, t.textContent];
+          // Whole: not cut by its clamp, and its last line inside the box that shows it.
+          const whole = (times) => {
+            const cut = [];
+            let most = 0;
+            for (const [k, [name, line]] of Object.entries(CONTROL_WORDS)) {
+              el.infoName.textContent = name; el.infoValue.textContent = '-12.0 dB'; t.textContent = Array(times || 1).fill(line).join(' ');
+              const box = wrap.getBoundingClientRect(), tb = t.getBoundingClientRect();
+              most = Math.max(most, Math.round(t.scrollHeight / lh));
+              if (t.scrollHeight > t.clientHeight + 1 || tb.bottom > box.bottom + 0.5) cut.push(k);
+            }
+            return { cut, most };
+          };
+          const now = whole(), old = whole(3);
+          el.infoName.textContent = keep[0]; el.infoValue.textContent = keep[1]; t.textContent = keep[2];
           return { inBar: el.infoLine.parentElement === el.pictureBar.querySelector('.picture-wrap'), said: infoAt && infoAt.id,
-                   lines: Math.round(wrap.getBoundingClientRect().height / lh), readsIn: reads.right <= window.innerWidth + 1,
-                   taller: Math.round(bar.height - without) }; }""")
-    print("    " + "; ".join("%dx%d %s" % (w, h, v) for (w, h), v in sit.items()))
-    check("in the Picture section at every size, two lines at most, the reads in the window and the section no taller",
-          all(v["inBar"] and v["said"] == "scanStrike" and 1 <= v["lines"] <= 2 and v["readsIn"] and v["taller"] <= 0
+                   compact: document.body.dataset.compact !== undefined, n: Object.keys(CONTROL_WORDS).length,
+                   cut: now.cut.slice(0, 4), cuts: now.cut.length, most: now.most, oldCuts: old.cut.length,
+                   readsIn: reads.right <= window.innerWidth + 1, taller: Math.round(bar.height - without),
+                   height: Math.round(bar.height / (parseFloat(getComputedStyle(document.documentElement).zoom) || 1)) }; }""")
+    print("    " + "\n    ".join("%dx%d %s" % (w, h, v) for (w, h), v in sit.items()))
+    check("in the Picture section at every size, the reads in the window and the strip no taller for the line: 90 px, 80 compact",
+          all(v["inBar"] and v["said"] == "scanStrike" and v["readsIn"] and v["taller"] <= 0 and v["height"] == (80 if v["compact"] else 90)
               for v in sit.values()), str(sit))
-    # The limit is on the words since 18 Nov, which the menu's note and More sit beside in a column of their own.
-    unclamped = p.evaluate("""() => { const wrap = el.infoLine.querySelector('.info-wrap'), words = wrap.querySelector('.info-words'), t = el.infoText.textContent;
-      words.style.webkitLineClamp = 'unset'; el.infoText.textContent = t + ' ' + t + ' ' + t;
-      const n = Math.round(wrap.getBoundingClientRect().height / parseFloat(getComputedStyle(wrap).lineHeight));
-      words.style.webkitLineClamp = ''; el.infoText.textContent = t; return n; }""")
-    null("three times the words with the limit off run past two lines, so the count can fail", unclamped > 2, str(unclamped))
+    check("every one of the page's lines fits whole at every window, in four lines at most (three compact)",
+          all(v["n"] > 300 and v["cuts"] == 0 and v["most"] <= (3 if v["compact"] else 4) for v in sit.values()),
+          str({k: (v["cuts"], v["cut"], v["most"]) for k, v in sit.items()}))
+    null("each line said three times over, the same count finds most of them cut at every window", all(v["oldCuts"] > v["n"] / 2 for v in sit.values()),
+         str({k: v["oldCuts"] for k, v in sit.items()}))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
 
     check("no page errors", not bad, "; ".join(bad[:3]))
