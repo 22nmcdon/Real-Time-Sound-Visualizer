@@ -108,10 +108,6 @@ struct PaintParams {
   unsigned hears = 0xf;
   // A null too: every strike spatters as one at this impact, whatever its velocity (below nought: by the strike's own).
   double spatterAt = -1;
-  // How far the bend's knife pushes, over its default (kKnifeReach): internal, for the owner to choose between by eye.
-  double pullReach = 1;
-  // How wide the knife's swath is, over the strokes' full width: under one a strip of the stroke survives each side.
-  double knifeWidth = 1;
 };
 
 /* The player's controllers on the brush (step 3, the owner's table of 16 Nov,
@@ -872,8 +868,7 @@ class Painter {
      slab's even plane (paintKnifeProfile), a thin patchy film behind it and
      one lip ahead - the strip's own paint, conserved, so the stroke shears
      out to the side and its grooves are gone. The push is kKnifeReach of
-     the brush's half-widths at a whole tone and a flick (PaintParams::
-     pullReach times), by the eased bend speed, so the swath grows in and
+     the brush's half-widths at a whole tone and a flick, by the eased bend speed, so the swath grows in and
      out along the stroke; a flick pushes further with a sharper lip, a slow
      bend shorter with a broader one.
      The strip is in polar terms about the centre of the ring the brush is on
@@ -892,7 +887,7 @@ class Painter {
     (void)speed;
     const double sharp = std::clamp(knifeRate_ / kKnifeFull, 0.0, 1.0);
     const double semis = std::min(2.0, std::fabs(12 * std::log2(controls_.bend)));
-    double push = kKnifeReach * p_.pullReach * hw * std::sqrt(std::clamp(knifeRate_ / kKnifeFull, 0.0, 1.0)) *
+    double push = kKnifeReach * hw * std::sqrt(std::clamp(knifeRate_ / kKnifeFull, 0.0, 1.0)) *
                         (0.6 + 0.4 * sharp) * (0.35 + 0.65 * semis / 2);
     const PaintRing ring = layout_->ring(b.hz);
     const double ox = ring.cx * N, oy = ring.cy * N;
@@ -946,7 +941,9 @@ class Painter {
     /* The swath: the strokes' dense middle, not their feathered edges and banks - levelling over those as well spread
        the paint too thin, and the slab came out paler than the stroke it was made from - and a lip that takes less of
        it for the same reason, broad enough that the shading draws it as one roll (narrow, it drew teeth). */
-    const double c = ((hi - lo) / 2 + hw * 0.95) * p_.knifeWidth, lipw = kKnifeLipWidth, lip = kKnifeLip, film = kKnifeFilm;
+    /* The full width of the strokes (the owner chose it, 20 Nov, over seven tenths of it, which left a strip of the
+       striated stroke along each side: "this feels like a good starting point; it can get fine tuned later"). */
+    const double c = (hi - lo) / 2 + hw * 0.95, lipw = kKnifeLipWidth, lip = kKnifeLip, film = kKnifeFilm;
     const double most = std::max(push, push0);
     const double inner = radius - c - (way < 0 ? most + 3 * lipw : 0) - 1, outer = radius + c + (way > 0 ? most + 3 * lipw : 0) + 1;
     // The box over the strip's ring sector: its corners, and the outer arc's extremes are near enough for a span this short.

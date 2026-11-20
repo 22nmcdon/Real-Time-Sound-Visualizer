@@ -328,15 +328,25 @@ reads it. **Revised the same day** after the owner listened to the first build
   glided bend (Mono's and Dyad's line had it already): a sweep to the top moves A3's brush 0.92
   cells out, smoothly. That is all the first build did, and at two semitones nobody could see
   it. Where the stroke sits stays the pitch's - the look is the map, and pitch is the radius -
-  so the revision added **the pull**: a brush pressed into wet paint and moved across the
-  radius drags the paint with it. Each frame the bend moves, a share of the wet paint under the
-  brush (`kPullGain` times what the brush moved over its half-width, at most half) is smeared
-  evenly over the twice its half-width ahead, the way the pitch went (`kPullShift`), conserving
-  it. A stamp of its own kind carries it, and the look does the same sum per pixel. A quick
-  bend of two semitones up leaves 7 per cent of the paint on its arc out past the stroke's band
-  and none inside it, down the other way round; a slow one 3 per cent, gentler along a longer
-  stretch. Scan reads it, so a bend is heard in the paint (Scan's centroid 2.23 against 2.05 deaf
-  to it, on the listening page).
+  so a bend away from rest is **a palette knife** (the owner's, after five designs; the full-width
+  one at a710a49: "a good starting point; it can get fine tuned later"). Not a deposit but a
+  displacement: each frame the bend moves away, on the strip of stroke laid since the last frame
+  (two cells behind the brush, past the reach of its own stamps), every point takes the colour of
+  the paint from where the blade came and stands at one even thickness - the stroke's own paint,
+  shearing out the way the pitch went as a slab with its grooves gone - with a thin patchy film
+  where the blade started and one lip along the far edge (`knife`, `paintKnifeProfile`, the
+  shader's `knifeProfile`). The strips are polar about the ring's centre, each starting where the
+  last ended, so they tile the stroke; one knife a hand a frame spans its strokes; the push is
+  four of the brush's half-widths at a whole tone, by the eased bend speed, smoothed strip to
+  strip; the levelling ramps in over a stroke's width and out as the bend eases; and the plane
+  stands as thick as hides the ground as the stroke did (paint's cover saturates, so a ridged
+  stroke is darker than a flat plane of the same paint), a little more paint than was there - two
+  per cent over the listening page's phrase. The bend back to rest cuts nothing. A quick bend up
+  of a whole tone leaves 38 per cent of the paint on its arc past the stroke's band, a slow one
+  16; Scan reads it (centroid 2.30 against 2.05 deaf to it, on the listening page).
+  Tried first, each in the history and on the owner's pictures: a gathered smear (b0c1db9), bristle
+  streaks (2b1d4ae), a soft band (0ad2682), wandering trails (the lab), a sheet laid beside the
+  stroke (2da8bfd), the first displacement (5ece483), and a swath seven tenths wide (a710a49).
 - **Velocity throws drops of paint.** As first built, spatter was up to twenty small dabs, each a
   brush stamp, all alike: "a bunch of really small strokes", rectangles. Rebuilt as drops, a
   stamp kind of their own with one shape function in the core and the shader (`paintDropCover`,

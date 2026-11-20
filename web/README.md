@@ -7580,6 +7580,15 @@ that is drops of paint rather than small strokes. Three things the revision lear
   over the distance, `kPullSamples`), the shader was left lifting it, and the look showed four
   times the map's pull past the stroke (0.63 per cent against 0.17). `painttest.py`'s look-equals-
   map checks for the pull and the drops are what found it; a new kind of stamp wants one.
+- **The bend's knife, and what its pictures taught** (20 Nov). A displacement that tiles the stroke in
+  strips has four ways to draw lines that are not there, each found on a picture before any check:
+  straight strips on a curved stroke leave a wedge between each pair (they are polar about the
+  ring's centre now); the brush's own stamps reach a cell and a half behind it, over a strip just
+  levelled (the strip starts two cells back); a chord's brushes each cutting a swath overlap in
+  staggered slices (one knife a hand); and a quantity worked out a frame at a time - the push -
+  jitters with the MIDI messages' arrival, which the map's cells hide and the look's pixels draw
+  as a saw (it is smoothed strip to strip). `pieces/painting.py`'s knife checks read the far
+  edge's roughness and the plane's tone because of these; the unsmoothed push is their mutant.
 - **The splayed strike was tried three ways and parked** (20 Nov). The owner asked for a hard strike
   to look like a hard-pressed brush whose bristles splay. Three designs, each in the history: a fan
   of straight clumped fingers with the stroke after running as separate tracks (bb419d6: "the

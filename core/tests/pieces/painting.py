@@ -258,18 +258,39 @@ def run(kit):
           "%.2f to %.2f cells (the layout's %.2f), at most %.3f a frame, never back" % (before, after, want, step))
     d_before, d_after, _, _, _ = nums("bend", str(ALL - BEND))
     null("the brush deaf to the bend stays on its note's radius", abs(d_after - d_before) < 1e-9, "%.2f to %.2f" % (d_before, d_after))
-    # ...and (20 Nov) drags the wet paint the way the pitch went, so a bend at its usual two semitones is seen: a share of
-    # the paint on the arc it went round lies out past the stroke's own band on that side, and none on the other.
+    # ...and (20 Nov, the owner's palette knife, a710a49) pushes the stroke's own paint aside the way the pitch went, as a
+    # flat blade does, so a bend at its usual two semitones is seen: a share of the paint on the arc it went round lies out
+    # past the stroke's own band on that side, and none on the other.
     up_out, up_in, up_all, pulls, _ = nums("pull", "2", "0.4", str(ALL))
     dn_out, dn_in, _, _, _ = nums("pull", "-2", "0.4", str(ALL))
     deaf_out, deaf_in, deaf_all, deaf_pulls, _ = nums("pull", "2", "0.4", str(ALL - BEND))
-    check("a quick bend of two semitones up pulls paint out past the stroke, and one down pulls it in",
-          up_out > 0.015 and up_in < 1e-3 and dn_in > 0.015 and dn_out < 1e-3 and pulls > 0,
-          "%.1f%% out, %.1f%% in going up; %.1f%% in, %.1f%% out going down; %d pulls" % (100 * up_out, 100 * up_in, 100 * dn_in, 100 * dn_out, pulls))
+    check("a quick bend of two semitones up pushes paint out past the stroke, and one down pushes it in",
+          up_out > 0.1 and up_in < 1e-3 and dn_in > 0.1 and dn_out < 1e-3 and pulls > 0,
+          "%.1f%% out, %.1f%% in going up; %.1f%% in, %.1f%% out going down; %d strips" % (100 * up_out, 100 * up_in, 100 * dn_in, 100 * dn_out, pulls))
     null("deaf to the bend no paint lies past the band", deaf_out < 1e-3 and deaf_pulls == 0, "%.2f%%" % (100 * deaf_out))
-    check("and the pull moves paint, it does not make it", abs(up_all / deaf_all - 1) < 0.03, "%.1f against %.1f" % (up_all, deaf_all))
+    check("and the knife moves the stroke's paint, adding no more than keeps its tone", abs(up_all / deaf_all - 1) < 0.03,
+          "%.1f against %.1f" % (up_all, deaf_all))
     slow_out = nums("pull", "2", "1.5", str(ALL))[0]
-    check("a slow bend pulls too, more gently", 0.003 < slow_out < up_out, "%.2f%% over 1.5 s against %.2f%% over 0.4" % (100 * slow_out, 100 * up_out))
+    check("a slow bend pushes too, less far", 0.03 < slow_out < up_out, "%.2f%% over 1.5 s against %.2f%% over 0.4" % (100 * slow_out, 100 * up_out))
+    # Only a bend away from rest cuts: the wheel springing back is no knife stroke (the owner: too much of the ring was
+    # flattened when every return cut a swath of its own).
+    k_quick = nums("knife", "0.3", str(ALL))
+    k_slow = nums("knife", "1.0", str(ALL))
+    check("the knife cuts as the bend goes away from rest and not as it comes back", k_quick[0] > 10 and k_quick[1] == 0 and k_slow[0] > 10 and k_slow[1] == 0,
+          "%d strips away and %d back, quickly; %d and %d slowly" % (k_quick[0], k_quick[1], k_slow[0], k_slow[1]))
+    k_deaf = nums("knife", "0.3", str(ALL - BEND))
+    null("deaf to the bend it cuts nothing either way, so the count can read nought where nought is right", k_deaf[0] == 0 and k_deaf[1] == 0,
+         "%d and %d" % (k_deaf[0], k_deaf[1]))
+    # The levelled plane keeps the stroke's tone (the owner: "A knife levels the paint, it doesn't thin the colour"): its
+    # cover over the stroke's, which 5ece483's wider swath and larger lip left at 0.59 and 0.71 (the mutation pass).
+    check("the levelled plane keeps the stroke's tone", k_quick[2] > 0.68 and k_slow[2] > 0.77,
+          "its cover %.2f of the stroke's after a quick bend, %.2f after a slow one" % (k_quick[2], k_slow[2]))
+    null("the same measure reads the thin film behind the blade as pale, so the bound can fail", not (k_quick[5] > 0.68) and not (k_slow[5] > 0.77),
+         "the film's cover %.2f and %.2f of the stroke's" % (k_quick[5], k_slow[5]))
+    # The far edge is one line along the swath (its lip), not a saw: the RMS of the second difference of where it stands,
+    # strip to strip, which a push worked out a frame at a time, unsmoothed, left at 0.19 cells (the mutation pass).
+    check("the swath's far edge, and its lip, run as one line along the stroke", k_quick[3] < 0.16 and k_slow[3] < 0.16,
+          "roughness %.3f cells quickly, %.3f slowly" % (k_quick[3], k_slow[3]))
 
     # Velocity: the strike's spatter (rebuilt 20 Nov, the owner: "splattered paint", not small strokes all alike): drops,
     # a blot where the brush lands, larger than the stroke, sizes off a heavy tail, further and more the harder, smaller

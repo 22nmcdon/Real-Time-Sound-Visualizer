@@ -27,10 +27,12 @@ PHRASES = [
      "A fifth, A3 and E4, held seven seconds on a plain tone, the bend at its usual two semitones. Up quickly (a quarter "
      "second) and back, then down slowly (a second) and back.",
      "Two semitones move the stroke under one of the map&rsquo;s cells, which nobody can see under a stroke five wide, "
-     "and where the stroke sits stays the pitch&rsquo;s. So now the bend also drags the wet paint the way the pitch "
-     "went: outward for up, inward for down, a smear past the stroke&rsquo;s edge where the bend happened. A quick flick "
-     "smears hard in a short stretch, a slow bend gently along a long one. It is in the map too, so Scan hears it. "
-     "<b>As first built</b> the stroke moved its cell and nothing else."),
+     "and where the stroke sits stays the pitch&rsquo;s. So a bend away from rest is a palette knife, the one you chose: "
+     "it pushes the stroke&rsquo;s own paint aside the way the pitch went - outward for up, inward for down - as one "
+     "flat, levelled slab the stroke&rsquo;s width, its grooves gone, at the stroke&rsquo;s tone, with a thin patchy film "
+     "where the blade started and one lip along its far edge, easing in and out along the stroke. The bend back to rest "
+     "cuts nothing. A quick flick pushes further and sharper, a slow bend shorter and broader. It is in the map too, so "
+     "Scan hears it. <b>As first built</b> the stroke moved its cell and nothing else."),
     ("strikes", "Soft against hard strikes",
      "C D E F G F E D, a note every 0.6 s, alternating velocity 30 and 127, at Strike 100 so a hard strike&rsquo;s "
      "impact is full.",
@@ -121,8 +123,8 @@ TEMPLATE = """<!doctype html>
 <main>
   <h1>Controllers on the brush</h1>
   <p class="soft">20 Nov, revised the same day after you listened. Painting, step 3: the pedal now only joins notes,
-    as the pluck sounds; the mod wheel rests at the bottom and loads the brush going up, plainly; the pitch wheel drags
-    the wet paint the way the pitch goes; a hard strike throws drops of paint; aftertouch is as it was. Every one of them
+    as the pluck sounds; the mod wheel rests at the bottom and loads the brush going up, plainly; a bend away from rest
+    is a palette knife through the wet stroke; a hard strike throws drops of paint; aftertouch is as it was. Every one of them
     changes the strokes themselves, so the look draws what the map holds and Scan hears it. Expression (CC 11) is still
     the Picture amount.</p>
   <p class="soft">Each phrase below is one performance painted three times: with the brush hearing the controller as
@@ -132,9 +134,13 @@ TEMPLATE = """<!doctype html>
 
   <div class="ask">
     <p><b>Things to decide.</b></p>
-    <p><b>How hard the bend pulls.</b> Where the stroke sits is the pitch&rsquo;s, and two semitones move it under a
-      cell, so what you see of a bend is the paint it drags. The smear reaches twice the brush&rsquo;s half-width past
-      where the paint lay. It could reach further, or pull more of the paint; both are one number each.</p>
+    <p><b>The knife, fine-tuned later.</b> You chose the full-width knife as a starting point. How far it pushes (four of
+      the brush&rsquo;s half-widths at a whole tone), the lip&rsquo;s height and the film&rsquo;s thinness are one number
+      each.</p>
+    <p><b>The splayed strike is parked.</b> It was tried three ways (a fan of fingers with separate tracks, a flare
+      closing into the stroke, and a lab of knobs) and you went back to the drops below: &ldquo;the closest one
+      we&rsquo;ve had, and we can get this right later&rdquo;. The strike lab (<code>web/docs/labs/strike-lab/</code>) is
+      where to resume: it paints with this page&rsquo;s own look from stamps the core already lays.</p>
     <p><b>Where spatter starts.</b> Nothing under about a third of a full impact (velocity times Strike). At the default
       Strike of 50 that is a velocity of about 90 before the first drop; at Strike 100, about 45.</p>
     <p><b>The wheel and pressure still do two things.</b> In Paint the brush reads them as well as whatever

@@ -61,6 +61,11 @@
 //   bend HEARS             A3 held, the bend wheel swept to the top over a second: the brush's radius before and at the
 //                          end, where the layout puts A3 two semitones up, the largest step from frame to frame, and
 //                          how many frames it went back
+//   knife SECS HEARS       the bend's palette knife: A3 held a second, bent up a whole tone over SECS, held, bent back
+//                          to rest over SECS, held: the knife's strips laid while it bent away and while it came back,
+//                          the levelled plane's cover over the stroke's (its tone), the roughness of the swath's far edge
+//                          along it (the RMS of its second difference, cells), the paint in all, and the film's cover
+//                          behind the blade over the stroke's
 //   spatter VEL [AT]       a note struck at VEL (or every strike spattered at impact AT): the paint more than five cells
 //                          off its ring (past the widest stroke), the farthest any lies off it (cells), how many drops,
 //                          the blot's radius and the stroke's half-width (cells), the drops' median and largest radius,
@@ -759,6 +764,94 @@ int main(int argc, char** argv) {
         if (r < lo - hw - 1) in += a;
       }
     std::printf("%.5f %.5f %.5f %d %.4f\n", all > 0 ? out / all : 0, all > 0 ? in / all : 0, total, pulls, hw);
+  } else if (cmd == "knife") {
+    const double secs = arg(2, 0.3);
+    PaintParams params;
+    params.hears = static_cast<unsigned>(arg(3, 15));
+    params.spatterAt = 0;
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":2,"dec":300,"sus":80,"rel":400})", true, params);
+    std::vector<PaintStamp> away, back, strokes;
+    int phase = 0;
+    const auto seen = [&]() {
+      for (const auto& st : p.in.painter()->stamps()) {
+        if (st.kind == kPaintStampPull) (phase == 1 ? away : back).push_back(st);
+        else if (st.kind == kPaintStampBrush && phase == 0) strokes.push_back(st);
+      }
+    };
+    const auto sweep = [&](double from, double to) {
+      const int steps = std::max(1, static_cast<int>(std::lround(secs / 0.01)));
+      for (int k = 1; k <= steps; k++) {
+        const double b = from + (to - from) * k / steps;
+        const int v = 8192 + static_cast<int>(std::lround(8191.0 * b));
+        p.blocks(secs / steps, { { 0xE0, static_cast<std::uint8_t>(v & 127), static_cast<std::uint8_t>(v >> 7) } }, seen);
+      }
+    };
+    p.blocks(1.0, { { 0x90, 57, 100 } }, seen);
+    phase = 1;
+    sweep(0, 1);
+    p.blocks(0.6, {}, seen);
+    // The swath as the bend away left it, before the return: its tone against the stroke's, and its far edge.
+    const PaintMap m = p.in.painter()->map();
+    phase = 2;
+    sweep(1, 0);
+    p.blocks(0.8, {}, seen);
+    const auto at = [&](double x, double y) {
+      const int ix = static_cast<int>(std::floor(x - 0.5)), iy = static_cast<int>(std::floor(y - 0.5));
+      const double fx = x - 0.5 - ix, fy = y - 0.5 - iy;
+      double v = 0;
+      for (int j = 0; j < 2; j++)
+        for (int i = 0; i < 2; i++) {
+          const int gx = std::clamp(ix + i, 0, kPaintN - 1), gy = std::clamp(iy + j, 0, kPaintN - 1);
+          v += (i ? fx : 1 - fx) * (j ? fy : 1 - fy) * m.thick[static_cast<std::size_t>(gy * kPaintN + gx)];
+        }
+      return v;
+    };
+    const PaintCover cover;
+    double tone = 0, rough = 0, film = 0;
+    // The swath where it is fully cut: the strips laid at full blend, each read along its own middle at its own push.
+    std::vector<const PaintStamp*> full;
+    for (const auto& st : away) if (st.load[7] >= 0.95) full.push_back(&st);
+    if (full.size() > 4) {
+      double sum = 0, fsum = 0; int n = 0, fn = 0;
+      std::vector<double> edge;
+      for (std::size_t i = full.size() / 5; i < full.size() * 4 / 5; i++) {
+        const PaintStamp& st = *full[i];
+        const double way = st.load[5], radius = st.load[4], c = st.load[1], push = st.a;
+        const double a = std::atan2(st.dy * way, st.dx * way);
+        // The plane: from a cell inside its near edge to a cell inside its far edge.
+        for (double sv = push - c + 1; sv <= c + push - 1; sv += 0.25) {
+          const double r = radius + way * sv;
+          sum += cover(at(64 + std::cos(a) * r, 64 + std::sin(a) * r)); n++;
+        }
+        // The film behind the blade, where the push left the stroke's own place (the same measure, for a null).
+        for (double sv = -c + 0.5; sv <= push - c - 0.5; sv += 0.25) {
+          const double r = radius + way * sv;
+          fsum += cover(at(64 + std::cos(a) * r, 64 + std::sin(a) * r)); fn++;
+        }
+        // The far edge: the furthest the paint stands at half the plane's thickness or more.
+        const double plane = at(64 + std::cos(a) * (radius + way * push), 64 + std::sin(a) * (radius + way * push));
+        double e = 0;
+        for (double sv = 0; sv <= c + push + 6; sv += 0.05)
+          if (at(64 + std::cos(a) * (radius + way * sv), 64 + std::sin(a) * (radius + way * sv)) >= 0.5 * plane) e = sv;
+        edge.push_back(e);
+      }
+      // The stroke as laid before the bend: its middle, its own width, at the same pitch.
+      double ssum = 0; int sn = 0;
+      for (const auto& st : strokes) {
+        if (st.t < 0.4f || st.t > 0.9f) continue;
+        const double a = std::atan2(st.y * kPaintN - 64, st.x * kPaintN - 64), r = std::hypot(st.x * kPaintN - 64, st.y * kPaintN - 64);
+        const double hw = halfWidthOf(st);
+        for (double sv = -hw * 0.8; sv <= hw * 0.8; sv += 0.25) { ssum += cover(at(64 + std::cos(a) * (r + sv), 64 + std::sin(a) * (r + sv))); sn++; }
+      }
+      tone = (n && sn && ssum > 0) ? (sum / n) / (ssum / sn) : 0;
+      film = (fn && sn && ssum > 0) ? (fsum / fn) / (ssum / sn) : 0;
+      double sq = 0; int sk = 0;
+      for (std::size_t i = 1; i + 1 < edge.size(); i++) { const double d2 = edge[i + 1] - 2 * edge[i] + edge[i - 1]; sq += d2 * d2; sk++; }
+      rough = sk ? std::sqrt(sq / sk) : 0;
+    }
+    double total = 0;
+    for (std::size_t q = 0; q < PaintMap::kCells; q++) total += p.in.painter()->map().thick[q];
+    std::printf("%zu %zu %.4f %.4f %.5f %.4f\n", away.size(), back.size(), tone, rough, total, film);
   } else if (cmd == "spatter") {
     const int vel = static_cast<int>(arg(2, 100));
     PaintParams params;

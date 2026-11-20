@@ -26,22 +26,22 @@
    "brush_cells": 5.3,
    "brush_p90": 5.46,
    "drops": 2,
-   "glow": 0.342,
-   "memory": 0.038,
+   "glow": 0.345,
+   "memory": 0.033,
    "motion": 0.092,
-   "paint": 224.0,
-   "pulls": 332,
+   "paint": 225.2,
+   "pulls": 106,
    "scan": {
-    "centroid": 2.23,
-    "centroid_p10": 1.7,
-    "centroid_p90": 3.79,
-    "high": 0.006,
-    "movement": 0.0062,
-    "movement_p90": 0.011,
+    "centroid": 2.3,
+    "centroid_p10": 1.81,
+    "centroid_p90": 3.64,
+    "high": 0.004,
+    "movement": 0.0061,
+    "movement_p90": 0.0105,
     "readings": 906,
-    "sine": 0.383
+    "sine": 0.366
    },
-   "stamps": 2156,
+   "stamps": 1930,
    "wet": 0.08
   },
   "without": {
@@ -119,7 +119,7 @@
    "glow": 0.536,
    "memory": 0.186,
    "motion": 0.306,
-   "paint": 611.9,
+   "paint": 612.0,
    "pulls": 0,
    "scan": {
     "centroid": 1.71,
@@ -323,7 +323,7 @@
    "glow": 0.463,
    "memory": 0.105,
    "motion": 0.264,
-   "paint": 639.4,
+   "paint": 639.5,
    "pulls": 0,
    "scan": {
     "centroid": 1.63,
@@ -333,7 +333,7 @@
     "movement": 0.0053,
     "movement_p90": 0.0088,
     "readings": 1755,
-    "sine": 0.627
+    "sine": 0.628
    },
    "stamps": 3528,
    "wet": 0.08

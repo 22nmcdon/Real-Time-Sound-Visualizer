@@ -46,8 +46,8 @@ def main():
     with open(path, "w") as f: f.write(ctl.script(json.dumps(setup), notes, events, length))
     out = lambda n: os.path.join(HERE, n)
     # The swath the strokes' full width, and seven tenths of it so a strip of the stroke survives each side.
-    ways = [("knife-full", "render", ("2", "15", "0", "1", "1")), ("knife-70", "render", ("2", "15", "0", "1", "0.7")),
-            ("without", "render", ("2", "11", "0"))]
+    # The full-width knife the owner chose at a710a49; its seven-tenths variant went from the build after (the pictures stay).
+    ways = [("knife-full", "render", ("2", "15", "0")), ("without", "render", ("2", "11", "0"))]
     # 5ece483's knife is not rendered here: its stamps mean something else to today's shader. Its own pictures, from
     # that commit, are kept beside these as bend-5ece483*.jpg and 5ece483-flick-large.jpg.
     looks = pw.Looks()
