@@ -7591,12 +7591,41 @@ cause, and what it says about writing the next check:
   clock, best of five; under sustained load every second was preempted somewhere, unevenly by
   case, and morph x7 read 1.54 of the median against 1.34 alone (bound 1.6). On
   `CLOCK_THREAD_CPUTIME_ID` the loaded run reads as alone.
-- **Measured offline, a borderline verdict can be the sound's own.** Two checks that looked like
-  noise were not, and are the owner's to decide rather than a test's to absorb.
-  `responsetest.py`'s Swell-off chord at Picture 100 rises 2.01 dB against nought - deterministic,
-  offline - but the rise is the nought reference falling (the chord's own equal-tempered beat,
-  0.31 Hz, swinging it 3.6 dB) while the Picture's own level falls; it crept past 1.5 over three
-  sound changes from 13 Nov. And the Slow pad's late movement, rendered offline with the key at
-  0.9 to 2.0 s after the preset loads, is 0.0195 to 0.034: Breathing's 0.02 floor sits inside what
-  the preset does as shipped, and load only moves where the key lands. Before calling a check
-  flaky, render it offline and move the one thing load moves.
+- **A measurement against a reference is only as still as the reference.** `responsetest.py`'s
+  Swell-off chord at Picture 100 rose 2.01 dB against nought - deterministic, offline - and the
+  rise was the reference's dip: the owner's code the test plays carries a phaser, a delay at 47
+  feedback and a reverb, whose LFO and feedback moved the nought reference 3.6 dB by themselves
+  while the Picture's own level fell. It had crept past 1.5 over three sound changes from 13 Nov.
+  It was first put down to the chord's equal-tempered beat, and that was wrong: just intonation and
+  a single note swung the same, which a beat cannot do. The chords are now held dry (those three
+  mixes at nought, which the Picture still reaches into), the reference is still (0.23 and 0.92
+  dB), and the measure, window and bound are unchanged. Before subtracting a reference, measure
+  the reference alone - and test a diagnosis with a fixture that cannot have the cause.
+- **A verdict must not depend on where a note lands.** The Slow pad's late movement, rendered
+  offline with the key at 0.9 to 2.0 s after the preset loads and nothing else changed, is 0.0195
+  to 0.034: Breathing's 0.02 floor sits inside what the preset does as shipped, and on the page,
+  where the key landed wherever the timing put it, the heading passed or failed by lot. Load only
+  reshuffled the lot. `honestytest.py` now has the page load each preset and hand over its setup
+  code, renders every probe offline at five key moments with `render_cpp`, and judges each by its
+  worst moment (its null: every Settled preset judged as Breathing, red). It runs in three minutes
+  and in the pool. The Slow pad fails as shipped; its re-voicing is the owner's, and two
+  candidates are on `web/docs/listening/slow-pad/`. Before calling a check flaky, render it
+  offline and move the one thing load moves.
+- **Which suites take the GL switches, and what they get.** Only `washtest`, `painttest` and
+  `paintcosttest` ask for them. The paint suites need WebGL 2, which Playwright's own
+  `--use-angle=swiftshader-webgl` gives them whether or not the switches are kept; kept, the
+  whole compositor goes onto SwiftShader, the face draws at 2 fps rather than 13 and
+  `paintcosttest` fails on its frame count, while the core's own costs do not move (0.337 and
+  0.339 ms a block). So `CHROMIUM_KEEP_GL_SWITCHES=1` is set on washtest's one accelerated
+  browser, where the 2D canvas is the thing under test, and nowhere else; painttest requires the
+  face to paint on the graphics card, and paintcosttest's cost now does too.
+- **A batch has one receiver.** The outbox is the site host's (`makeBrainHost`), and only the
+  worklet's port is sent `{ batch }`, which `BrainProcessor.hand` unpacks before the compiled core
+  sees a message. The stand-in on the page's thread is told a message at a time, the plugin's
+  bridge is JUCE's (an event a call), and core_tests drives `makeWasmBrain` directly, so none of
+  them meets one. `braintest.py` holds a chord played in one turn to one post of three notes,
+  with a turn between them (three posts) as its null; the page with the old post-each put back
+  reads three posts, red.
+- **Serial means alone on the machine.** Some of these flakes were serial suites run while
+  another session's `core_tests.py` or a proof render loaded the container. `run.py` cannot see
+  another process; don't start one beside it.
