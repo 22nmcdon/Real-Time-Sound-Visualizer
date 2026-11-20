@@ -14618,6 +14618,7 @@ void main() {
     float w = s1.x, p = s1.y, per = s1.z, t = s1.w;
     int slot = int(s2.x), pig = int(s2.y);
     int kind = int(s5.x + 0.5);
+#if KIND != 0
     /* A drop of spatter (step 3): its shape at this pixel's centre, as the core samples a cell at the
        look's six pixels across it, laid as the core lays it - into wet paint mixed, over dry covering by
        its opacity - in its hand's ink, with nothing picked up or ploughed. */
@@ -14638,6 +14639,8 @@ void main() {
       B.z = float(slot + 1);
       continue;
     }
+#endif
+#if KIND != 0
     /* The bend's palette knife (step 3, 20 Nov): on one strip of the stroke - in polar terms about the ring's
        centre, its span an angle (w), radius s4.x, the way it pushes out or in s4.y and the way the brush turns per -
        the paint is displaced the way the pitch went by s5.y cells and levelled: each pixel takes the colour of the
@@ -14676,6 +14679,8 @@ void main() {
       B.w = mix(B.w, t, k);
       continue;
     }
+#endif
+    if (kind != 0) continue;
     float hw = hwOf(w, p), hl = hlOf(w);
     vec2 rel = pos - s0.xy;
     float u = dot(rel, n), v = dot(rel, d);
@@ -14845,7 +14850,7 @@ void main() {
     if (gl.getExtension("EXT_color_buffer_float")) FLOAT = { internal: gl.RGBA32F, wetStart: -1e9 };
     else if (gl.getExtension("EXT_color_buffer_half_float")) FLOAT = { internal: gl.RGBA16F, wetStart: -1000 };
     else { why = "no float render target"; gl = null; return false; }
-    progs = { weave: program(WEAVE), carry: program(CARRY), paint: program(PAINT), render: program(RENDER), rescale: program(RESCALE) };
+    progs = { weave: program(WEAVE), carry: program(CARRY), paint: [0, 1].map((k) => program(PAINT.replace("#version 300 es\n", "#version 300 es\n#define KIND " + k + "\n"))), render: program(RENDER), rescale: program(RESCALE) };
     quad = gl.createVertexArray(); gl.bindVertexArray(quad);
     const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
@@ -14903,6 +14908,13 @@ void main() {
   function paintStamps() {
     while (queue.length) {
       const n = Math.min(PAINT_STEPS_MOST, queue.length);
+      /* A batch of brush stamps alone is painted by a program with the brush's code only (KIND 0), one holding a drop
+         or a knife by the whole one (KIND 1). One program for every batch cost each brush stamp the drop's and the
+         knife's code too, since SwiftShader runs a branch not taken (20 Nov: the look's frame rate halved, which
+         paintcosttest saw). The batches are as they were, so the look is the same to the bit; splitting them by
+         kind instead moved the knife's reads a batch on, and painttest's pull went from 1.34 times the map's to 1.38. */
+      let whole = 0;
+      for (let i = 0; i < n; i++) if (queue[i][20]) { whole = 1; break; }
       const scale = PAINT_SIZE;
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i < n; i++) {
@@ -14937,7 +14949,7 @@ void main() {
       const bx = Math.max(0, Math.floor(x0)), by = Math.max(0, Math.floor(y0));
       const bw = Math.min(PAINT_SIZE, Math.ceil(x1)) - bx, bh = Math.min(PAINT_SIZE, Math.ceil(y1)) - by;
       if (bw > 0 && bh > 0) {
-        const P = progs.paint, cc = carry[carryCur];
+        const P = progs.paint[whole], cc = carry[carryCur];
         gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb); gl.viewport(0, 0, PAINT_SIZE, PAINT_SIZE);
         gl.enable(gl.SCISSOR_TEST); gl.scissor(bx, by, bw, bh);
         gl.useProgram(P.p);
