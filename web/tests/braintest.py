@@ -715,12 +715,25 @@ with sync_playwright() as pw:
         let sab = 0, saa = 0, sbb = 0;
         for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
         return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : 0; };
+      /* Each reading in a frame of its own, straight after the page's: the
+         position is written once a frame (applyModMatrix) and the picture a
+         chunk at a time, and read on a timer of its own, as this was until 20
+         Nov, a busy page let chunks in between the two and r fell to 0.84.
+         Read in a frame callback, both are what that frame drew from. At
+         least every 60 ms and fifty of them, as before. */
       const watch = async () => {
         const peaks = [], pos = [], t0 = performance.now();
-        for (let i = 0; i < 50; i++) {
-          await wait(60);
-          peaks.push(Math.max(...state.source.getLatestWindow(1024)[0].map(Math.abs))); pos.push(state.positionMod);
-        }
+        let last = -Infinity;
+        await new Promise((done) => {
+          const step = (now) => {
+            if (now - last >= 60) {
+              last = now;
+              peaks.push(Math.max(...state.source.getLatestWindow(1024)[0].map(Math.abs))); pos.push(state.positionMod);
+            }
+            if (peaks.length < 50) requestAnimationFrame(step); else done();
+          };
+          requestAnimationFrame(step);
+        });
         // How many samples a quarter of LFO 1's second is, as they came: four at 60 ms, fewer on a loaded machine.
         const quarter = Math.max(1, Math.round(250 / ((performance.now() - t0) / 50)));
         return { peaks, pos, quarter };
@@ -770,6 +783,16 @@ with sync_playwright() as pw:
     # under a sixteenth's delay all wet: the pitch of the repeats over two
     # seconds may not move. The null is the same with the times kept from the
     # instrument, which is the old bridge and must warble.
+    #
+    # Read off the samples, not the clock (20 Nov). This read "the latest
+    # window" a wall-clock wait after the key, and under load the wait ran
+    # long: the window slid past the note, onto its release (Free's repeats
+    # "warbled" 5 to 27 cents beside three other suites, where the delay has
+    # no clock to warble by), and off the front of a short note, which left
+    # one rise and an eighth's repeat of None. Now every chunk the worklet
+    # hands back is recorded from just before the key, the note's start is
+    # found in those samples, and each reading is taken at a place in them:
+    # the same samples whenever the page gets round to looking (README).
     p, errors = opened(b, "")
     CLOCKED = """async ([sync, timed, bpm, held]) => {
       const wait = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -787,14 +810,35 @@ with sync_playwright() as pw:
         set('delayMs', 400); set('delayFeedback', 0); set('delayMix', 100);
         set('delaySync', sync, 'change');
         setScreenKeys(true); await wait(600);
-        const rate = state.source.sampleRate;
-        midiNoteOn(57, 110); await wait(held);
-        midiNoteOff(57); await wait(held >= 1000 ? 300 : 900);
-        const [l] = state.source.getLatestWindow(Math.round(rate * (held >= 1000 ? 1.9 : 1.2)));
+        const src = state.source, rate = src.sampleRate, real = src.absorb, chunks = [];
+        let got = 0;
+        src.absorb = function (lanes, readings) { chunks.push(Float32Array.from(lanes[0])); got += lanes[0].length; return real.call(this, lanes, readings); };
+        /* Until this many samples have come back since the key, however long
+           the page takes: under load a headless browser's audio can run
+           behind the wall clock, so even the note is held by its samples. */
+        const until = async (n) => { for (let w = 0; got < n && w < 6000; w++) await wait(5); };
+        let l;
+        try {
+          midiNoteOn(57, 110); await until(Math.round(rate * held / 1000));
+          midiNoteOff(57);
+          await until(Math.round(rate * (held >= 1000 ? held / 1000 + 0.5 : 1.3)));
+        } finally { src.absorb = real; }
+        l = new Float32Array(got);
+        for (let c = 0, o = 0; c < chunks.length; o += chunks[c].length, c++) l.set(chunks[c], o);
+        // Where the note starts in them: the first sample a twentieth of the loudest.
+        let peak = 0; for (const v of l) peak = Math.max(peak, Math.abs(v));
+        let start = 0; while (start < l.length && Math.abs(l[start]) < peak * 0.05) start++;
         if (held >= 1000) {
-          // The pitch of each 20 ms of the held note and its repeats, from rising zero crossings.
-          const F = Math.round(rate * 0.02), hz = [];
-          for (let i = 0; i + F <= l.length - Math.round(rate * 0.35); i += F) {
+          /* The pitch of each 20 ms of the held note and its repeats, from
+             rising zero crossings, from 0.5 s after the key to 0.05 s before
+             it comes up. Not from 0.4 s, where the wall-clock window began:
+             that is where Free's 400 ms repeat comes in, and the 20 ms that
+             holds its attack reads 20 cents flat of the rest, so the window
+             failed Free whenever it happened to open there. */
+          const F = Math.round(rate * 0.02), hz = [], from = start + Math.round(rate * 0.5),
+                to = start + Math.round(rate * (held / 1000 + 0.3 - 0.35));
+          if (to > l.length) return { cents: NaN, frames: 0, short: l.length };
+          for (let i = from; i + F <= to; i += F) {
             const ups = [];
             for (let j = i + 1; j < i + F; j++) if (l[j - 1] < 0 && l[j] >= 0) ups.push(j - l[j - 1] / (l[j] - l[j - 1]));
             if (ups.length > 2) hz.push(rate * (ups.length - 1) / (ups[ups.length - 1] - ups[0]));
@@ -812,7 +856,7 @@ with sync_playwright() as pw:
           if (en[j] < top * 0.05) quiet = true;
           else if (quiet && en[j] > top * 0.3) { rises.push(j); quiet = false; }
         }
-        return { ms: rises.length < 2 ? null : (rises[1] - rises[0]) * 2, from: transport.from };
+        return { ms: rises.length < 2 ? null : (rises[1] - rises[0]) * 2, from: transport.from, start };
       } finally {
         clearInterval(ticker); scopeHost.midi = send; setScreenKeys(false); set('delaySync', '', 'change');
       }
