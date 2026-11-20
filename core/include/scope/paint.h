@@ -108,6 +108,8 @@ struct PaintParams {
   unsigned hears = 0xf;
   // A null too: every strike spatters as one at this impact, whatever its velocity (below nought: by the strike's own).
   double spatterAt = -1;
+  // How far the bend's knife pushes, over its default (kKnifeReach): internal, for the owner to choose between by eye.
+  double pullReach = 1;
 };
 
 /* The player's controllers on the brush (step 3, the owner's table of 16 Nov,
@@ -315,6 +317,28 @@ inline double paintDropCover(double u, double v, double longer, std::uint32_t se
   return c;
 }
 
+/* The bend's palette knife (20 Nov; the owner, of a smear drawn as bristle
+   streaks and then as wandering trails: "it should be more like a flat tool
+   smearing it to the side"): how much of the sheet of paint the knife lays
+   at a pixel of side `px`, nought to one plus the ridge - `s` outward from
+   where the sheet starts, `l` along the stroke, both in the sheet's
+   half-length along the stroke, `len` how far it is pushed in the same. One
+   flat, smooth sheet, no striations: its sides soft, widening a little as it
+   goes, sweeping back along the stroke as `bend` says, thinning smoothly
+   outward, and at its far edge, where the knife stops, piled into a soft
+   ridge (`ridge` of the sheet's own thickness more). The look's shader
+   (knifeCover) is this, line for line. */
+inline double paintKnifeCover(double l, double s, double len, double bend, double ridge, double px) {
+  if (s < -0.5 || s > len * 1.2) return 0;
+  const auto smooth = [](double c) { c = std::clamp(c, 0.0, 1.0); return c * c * (3 - 2 * c); };
+  const double x = std::clamp(s / len, 0.0, 1.0), lat = l - bend * x * x * len;
+  const double half = 1 + 0.25 * x;
+  const double side = smooth((half - std::fabs(lat)) / (0.35 * half + px));
+  const double start = smooth((s + 0.5) / 0.5), end = smooth((1.08 - s / len) / 0.12);
+  const double r = (s / len - 0.93) / 0.07;
+  return side * start * end * ((1 - 0.75 * x) + ridge * std::exp(-r * r));
+}
+
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
    picture frame. Made off the audio thread (its map and its tables are a few
    megabytes), then nothing allocates. */
@@ -361,6 +385,15 @@ class Painter {
     // How far the bend has moved since the last frame, in octaves: its pull on the wet paint (stroke).
     bendStep_ = std::log2(controls_.bend / lastBend_);
     lastBend_ = controls_.bend;
+    /* The knife's push, eased: it rises with the bend's speed over kKnifeRise and dies away over kKnifeEase once
+       the bend stops, so the smear grows in and fades out along the stroke rather than starting and stopping at an
+       edge. Its way is the bend's last. */
+    if (bendStep_ != 0) knifeWay_ = bendStep_ > 0 ? 1 : -1;
+    {
+      const double want = std::fabs(bendStep_), k = want > knifeRate_ ? 1 - std::exp(-dt / kKnifeRise) : 1 - std::exp(-dt / kKnifeEase);
+      knifeRate_ += (want - knifeRate_) * k;
+      if (knifeRate_ < 1e-7) knifeRate_ = 0;
+    }
     // The lowest note sounding, either hand, which the inks' harmony is judged against (look only).
     int low = 1000;
     for (std::size_t i = 0; i < count; i++) if (notes[i].level > 0) low = std::min(low, notes[i].note);
@@ -664,20 +697,19 @@ class Painter {
     p = std::min(1.0, p * (1 + kWheelPress * s) * (1 + kLeanPress * lean));
     const double w = (kWidthLeast + kWidthPress * p) * (1 + kImpactWiden * bump) * p_.width * (1 + kWheelWiden * s) * (1 + kLeanWiden * lean);
     if (!(p > 0.02) || b.handed) { b.x = x; b.y = y; return; }
-    /* The bend's pull (20 Nov): a brush pressed into wet paint and moved
-       across the radius by the pitch drags the paint with it, the way the
-       pitch went. Where the stroke sits stays the pitch's - the look is the
-       map, and pitch is the radius - but two semitones move it under a cell,
-       which nobody can see under a stroke five wide; the paint it drags is
-       drawn a brush's half-width on (kPullShift), as much of it as the
-       brush moved over its own half-width, times kPullGain, so a quick flick
-       smears hard in a short stretch and a slow bend pulls gently along a
-       long one, and the same bend moves the same paint either way. */
-    if (bendStep_ != 0 && b.placed) {
-      const PaintPoint was = layout_->at(t, b.hz * std::exp2(-bendStep_));
+    /* The bend's knife (20 Nov): where the stroke sits stays the pitch's -
+       the look is the map, and pitch is the radius - but two semitones move
+       it under a cell, which nobody sees under a stroke five wide. So a bend
+       is also a palette knife: the paint under the brush is pushed to the
+       side the pitch went as one flat sheet (knife). */
+    if (knifeRate_ > 0 && b.placed && dt > 0) {
+      const PaintPoint was = layout_->at(t, b.hz * std::exp2(-knifeWay_ * knifeRate_)), on = layout_->at(t + 0.05, b.hz);
       const double mx = x - was.x * kPaintN, my = y - was.y * kPaintN, moved = std::hypot(mx, my);
       const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
-      if (moved > 1e-9) pull(b, b.x, b.y, mx / moved, my / moved, w, p, kPullShift * hw, std::min(0.5, kPullGain * moved / hw), t);
+      double fx = on.x * kPaintN - x, fy = on.y * kPaintN - y;
+      const double fl = std::hypot(fx, fy);
+      fx = fl > 1e-9 ? fx / fl : 1; fy = fl > 1e-9 ? fy / fl : 0;
+      if (moved > 1e-9) knife(b, b.x, b.y, mx / moved, my / moved, fx, fy, hw, moved, moved / dt, len, t);
     }
     const int steps = std::max(1, static_cast<int>(std::ceil(len / kSpacing)));
     const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
@@ -791,79 +823,101 @@ class Painter {
       }
   }
 
-  /* The bend's pull, in cells: under a brush at (x, y) of width `w` and
-     pressure `p`, a share `f` of the wet paint (by its wetness, and by how
-     near the brush's middle it lies) is dragged out the way (ux, uy), spread
-     evenly over the `shift` cells ahead of where it lay - a smear, not the
-     paint lifted and set down again further on, which drew a ghost of the
-     stroke beside it. Each cell keeps what it does not give and takes what
-     the cells up to `shift` behind it gave (kPullSamples points along the
-     way), read from the paint as it stood before the pull, as the look reads
-     its canvas from before its batch: so nothing is made or lost but at the
-     canvas's edge, and the look does the same sum per pixel. */
-  void pull(const PaintBrush& b, double x, double y, double ux, double uy, double w, double p, double shift, double f, double t) {
-    (void)t;
-    constexpr int N = kPaintN;
-    if (!(f > 0) || !(shift > 0)) return;
-    const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
+  /* The knife, in cells: under a brush at (x, y), half-width `hw`, moving
+     the way (fx, fy) by `travel` this frame, the bend having moved it
+     `moved` across the way (ux, uy) at `speed` cells a second. It scrapes a
+     share of the wet paint off the stroke there - by how far the bend moved
+     over the brush's half-width (kKnifeTake), at most half, so the stroke is
+     scraped thinner and lighter, never to a hole (at most 0.6 a frame) - and pushes it out as one
+     sheet starting just inside the stroke's edge (paintKnifeCover), a
+     little back along the stroke (kKnifeAlong) as the brush moves on. The
+     sheet reaches kKnifeReach of the brush's half-widths at a whole tone
+     (PaintParams::pullReach times), shorter while the bend is short of it
+     and for a slow bend, which also piles a lower ridge than a flick. It
+     lays what it scraped (the stamp carries the thickness), so nothing is
+     made, and the look does the same per pixel. */
+  void knife(const PaintBrush& b, double x, double y, double ux, double uy, double fx, double fy, double hw, double moved,
+             double speed, double travel, double t) {
+    constexpr int N = kPaintN, S = kDropSamples;
+    const double sharp = std::clamp(speed / kKnifeFlick, 0.0, 1.0);
+    const double semis = std::min(2.0, std::fabs(12 * std::log2(controls_.bend)));
+    double kx = ux - fx * kKnifeAlong, ky = uy - fy * kKnifeAlong;
+    const double kl = std::hypot(kx, ky);
+    kx /= kl; ky /= kl;
+    const double nx = -ky, ny = kx;  // along the sheet's width, the stroke's way
+    // The sheet's half-length along the stroke: long enough that each frame's overlaps the next ones' and they read as one.
+    const double h = std::max(kKnifeLength * hw, travel * 1.5);
+    const double reach = kKnifeReach * p_.pullReach * hw * (0.6 + 0.4 * sharp) * (0.35 + 0.65 * semis / 2);
+    const double f = std::min(0.6, kKnifeTake * moved / hw), ridge = 0.5 + 0.9 * sharp;
+    const double bend = -(fx * nx + fy * ny) * kKnifeSweep, start = 0.7 * hw;
+    // The scrape: a share of the wet paint within the brush's width and the sheet's length, its edges soft.
+    double took = 0;
+    const double rr = hw + h + 1;
+    const int x0 = std::max(0, static_cast<int>(std::floor(x - rr))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + rr)));
+    const int y0 = std::max(0, static_cast<int>(std::floor(y - rr))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + rr)));
+    for (int yy = y0; yy <= y1; yy++)
+      for (int xx = x0; xx <= x1; xx++) {
+        const double rx = xx + 0.5 - x, ry = yy + 0.5 - y;
+        const double c = knifeScrape((rx * nx + ry * ny) / h, (rx * kx + ry * ky) / h, hw / h);
+        if (c <= 0) continue;
+        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
+        const double tk = map_.thick[q] * f * map_.wet[q] * c;
+        map_.thick[q] = static_cast<float>(map_.thick[q] - tk);
+        took += tk;
+      }
+    if (!(took > 1e-7)) return;
+    // The sheet: its shape over the cells at the look's pixels, then scaled so it lays what was scraped.
+    const double far = start + reach + h * (2 + std::fabs(bend) * reach / h);
+    const double ex = x + kx * far, ey = y + ky * far;
+    const int sx0 = std::max(0, static_cast<int>(std::floor(std::min(x, ex) - far * 0.5 - h - 1)));
+    const int sx1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(x, ex) + far * 0.5 + h + 1)));
+    const int sy0 = std::max(0, static_cast<int>(std::floor(std::min(y, ey) - far * 0.5 - h - 1)));
+    const int sy1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(y, ey) + far * 0.5 + h + 1)));
+    const int bw = sx1 - sx0 + 1, bh = sy1 - sy0 + 1;
+    if (bw <= 0 || bh <= 0 || bw * bh > kKnifeCells) return;
+    double sum = 0;
+    for (int yy = sy0; yy <= sy1; yy++)
+      for (int xx = sx0; xx <= sx1; xx++) {
+        double in = 0;
+        for (int j = 0; j < S; j++)
+          for (int i = 0; i < S; i++) {
+            const double rx = xx + (i + 0.5) / S - x, ry = yy + (j + 0.5) / S - y;
+            in += paintKnifeCover((rx * nx + ry * ny) / h, ((rx * kx + ry * ky) - start) / h, reach / h, bend, ridge, 1.0 / (S * h));
+          }
+        sheet_[static_cast<std::size_t>((yy - sy0) * bw + (xx - sx0))] = in / (S * S);
+        sum += in / (S * S);
+      }
+    if (!(sum > 1e-9)) return;
+    const double thick = took / sum;
     if (stamps_.size() < kPaintStampsMost) {
       PaintStamp st;
-      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(ux); st.dy = static_cast<float>(uy);
-      st.w = static_cast<float>(w / N); st.p = static_cast<float>(p); st.t = static_cast<float>(t); st.per = 1;
+      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(kx); st.dy = static_cast<float>(ky);
+      st.w = static_cast<float>(2 * h / N); st.p = static_cast<float>(f); st.t = static_cast<float>(t); st.per = static_cast<float>(bend);
+      st.load[0] = static_cast<float>(thick); st.load[1] = static_cast<float>(ridge); st.load[2] = static_cast<float>(hw / h);
       st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
       st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
-      st.kind = kPaintStampPull; st.a = static_cast<float>(shift / N); st.b = static_cast<float>(f);
+      st.kind = kPaintStampPull; st.a = static_cast<float>(reach / h);
       stamps_.push_back(st);
     } else { dropped_++; }
-    // The box the pull reads and writes: the brush and the brush moved on by the shift, a cell either side.
-    const double reach = hw + shift + 2;
-    const int x0 = std::max(0, static_cast<int>(std::floor(x - reach))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + reach)));
-    const int y0 = std::max(0, static_cast<int>(std::floor(y - reach))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + reach)));
-    const int bw = x1 - x0 + 1, bh = y1 - y0 + 1;
-    if (bw <= 0 || bh <= 0 || bw > kPullBox || bh > kPullBox) return;
-    const auto foot = [&](double cx, double cy) {
-      const double r = std::hypot(cx - x, cy - y) / hw;
-      return r < 1 ? 1 - r * r * r * r : 0.0;
-    };
-    // What each cell gives: its paint times the share, and that paint's wetness, as it stands now.
-    for (int yy = 0; yy < bh; yy++)
-      for (int xx = 0; xx < bw; xx++) {
-        const std::size_t q = static_cast<std::size_t>(y0 + yy) * N + static_cast<std::size_t>(x0 + xx);
-        const double m = f * map_.wet[q] * foot(x0 + xx + 0.5, y0 + yy + 0.5);
-        const std::size_t k = static_cast<std::size_t>(yy * kPullBox + xx);
-        give_[k] = map_.thick[q] * m; giveWet_[k] = map_.thick[q] * m * map_.wet[q]; keep_[k] = 1 - m;
-      }
-    const auto at = [&](const std::array<double, kPullBox * kPullBox>& g, double cx, double cy) {
-      // Bilinear over the box's cell centres, nought outside it.
-      const double fx = cx - x0 - 0.5, fy = cy - y0 - 0.5;
-      const int ix = static_cast<int>(std::floor(fx)), iy = static_cast<int>(std::floor(fy));
-      const double ax = fx - ix, ay = fy - iy;
-      double v = 0;
-      for (int j = 0; j < 2; j++)
-        for (int i = 0; i < 2; i++) {
-          const int gx = ix + i, gy = iy + j;
-          if (gx < 0 || gy < 0 || gx >= bw || gy >= bh) continue;
-          v += (i ? ax : 1 - ax) * (j ? ay : 1 - ay) * g[static_cast<std::size_t>(gy * kPullBox + gx)];
-        }
-      return v;
-    };
-    for (int yy = 0; yy < bh; yy++)
-      for (int xx = 0; xx < bw; xx++) {
-        const std::size_t q = static_cast<std::size_t>(y0 + yy) * N + static_cast<std::size_t>(x0 + xx);
-        const std::size_t k = static_cast<std::size_t>(yy * kPullBox + xx);
-        const double cx = x0 + xx + 0.5, cy = y0 + yy + 0.5;
-        double in = 0, inWet = 0;
-        for (int j = 0; j < kPullSamples; j++) {
-          const double back = shift * (j + 0.5) / kPullSamples;
-          in += at(give_, cx - ux * back, cy - uy * back) / kPullSamples;
-          inWet += at(giveWet_, cx - ux * back, cy - uy * back) / kPullSamples;
-        }
-        if (keep_[k] >= 1 && in <= 0) continue;
-        const double kept = map_.thick[q] * keep_[k], after = kept + in;
-        const double wet = after > 0 ? (map_.wet[q] * kept + inWet) / after : 0;
+    for (int yy = sy0; yy <= sy1; yy++)
+      for (int xx = sx0; xx <= sx1; xx++) {
+        const double c = sheet_[static_cast<std::size_t>((yy - sy0) * bw + (xx - sx0))];
+        if (!(c > 0)) continue;
+        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
+        const double d = thick * c, before = map_.thick[q], wetBefore = map_.wet[q];
+        if (before < 1e-4) acc_.ontoBare += d; else if (wetBefore > 0.3) acc_.intoWet += d; else acc_.ontoDry += d;
+        acc_.laid += d;
+        const double hide = (1 - std::exp(-d / kPaintHide)) * (1 - wetBefore);
+        const double kept = before * (1 - hide), after = kept + d;
+        map_.wet[q] = static_cast<float>(after > 0 ? (wetBefore * kept + d) / after : 0);
         map_.thick[q] = static_cast<float>(after);
-        map_.wet[q] = static_cast<float>(std::clamp(wet, 0.0, 1.0));
       }
+  }
+  // Where the knife scrapes, nought to one: within the brush's width across the stroke (`half`, in the sheet's
+  // half-lengths) and the sheet's length along it, soft at both. The look's shader (knifeScrape) is this.
+  static double knifeScrape(double l, double s, double half) {
+    const double a = std::clamp((1 - std::fabs(l)) / 0.3, 0.0, 1.0), c = std::clamp((half - std::fabs(s)) / (0.3 * half), 0.0, 1.0);
+    return a * c;
   }
 
   /* One stamp, the study's oil paint (painting-study/tools/oilpaint.cpp) kept
@@ -1036,8 +1090,12 @@ class Painter {
   // and widening.
   static constexpr double kWheelLoad = 2.0, kWheelReach = 1.5, kWheelPress = 0.3, kWheelWiden = 0.5, kLeanPress = 0.5, kLeanWiden = 0.5;
   // The bend's pull: how far the wet paint is drawn, over the brush's half-width, and how much, over what the brush moved.
-  static constexpr double kPullShift = 2.0, kPullGain = 12;
-  static constexpr int kPullBox = 96, kPullSamples = 8;
+  /* The knife: how far it pushes (the brush's half-widths, at a whole tone and a flick), how much it scrapes (over what
+     the bend moved, against the brush's half-width), how fast it rises and dies away (seconds), the cells a second of
+     bend movement that are a flick, how far back along the stroke the push leans, and how much the sheet sweeps. */
+  static constexpr double kKnifeReach = 6, kKnifeTake = 25, kKnifeRise = 0.03, kKnifeEase = 0.12, kKnifeFlick = 6, kKnifeLength = 1.0;
+  static constexpr double kKnifeAlong = 0.25, kKnifeSweep = 0.3;
+  static constexpr int kKnifeCells = 8192;
   /* The spatter: nothing under kSpatterFrom of a full impact; at a full one kSpatterMost drops, thrown as far as
      kSpatterSeconds along the time and kSpatterOctaves in pitch at width two (the round layout's A3: about nine cells
      along and eight across), the least drop kDropLeast cells across its radius, the blot's edge kSpatterBlot as
@@ -1056,7 +1114,8 @@ class Painter {
   bool pedal_ = false;
   PaintControls controls_ {};
   double lastBend_ = 1, bendStep_ = 0;  // the bend at the last frame, and how far it has moved since, in octaves
-  std::array<double, kPullBox * kPullBox> give_ {}, giveWet_ {}, keep_ {};  // the pull's box (pull)
+  double knifeRate_ = 0, knifeWay_ = 1;  // the knife's push, eased (octaves a frame), and which way the bend went last
+  std::array<double, kKnifeCells> sheet_ {};  // the knife's sheet over its box (knife)
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;
