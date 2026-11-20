@@ -5,7 +5,7 @@
 // Scan reads. A script in the format core/tests/tools/instrument_cpp.cpp
 // reads ("make", "midi" and "block"), then:
 //
-//   render <script> <out prefix> <width> <hears> [<spatter at> [<knife reach>]]
+//   render <script> <out prefix> <width> <hears> [<spatter at> [<knife reach> [<knife width>]]]
 //
 // <hears> is PaintParams::hears (15: the pedal, the wheel, the bend and
 // pressure; a bit off, deaf to that one); <spatter at>, PaintParams::
@@ -37,7 +37,7 @@ std::string text(const scope::Json& v) { return v.type == scope::Json::Type::Str
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc < 5) { std::fprintf(stderr, "usage: render <script> <prefix> <width> <hears> [<spatter at> [<knife reach>]]\n"); return 2; }
+  if (argc < 5) { std::fprintf(stderr, "usage: render <script> <prefix> <width> <hears> [<spatter at> [<knife reach> [<knife width>]]]\n"); return 2; }
   const std::string prefix = argv[2];
   const bool paint = true;
   scope::PaintParams params;
@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
   params.hears = static_cast<unsigned>(std::atoi(argv[4]));
   if (argc > 5) params.spatterAt = std::atof(argv[5]);
   if (argc > 6) params.pullReach = std::atof(argv[6]);  // the bend's knife's reach, over its default, for the owner to choose
+  if (argc > 7) params.knifeWidth = std::atof(argv[7]);  // the knife's swath, over the strokes' width, for the owner to choose
   std::ifstream file(argv[1]);
   std::FILE* audio = std::fopen((prefix + ".f32").c_str(), "wb");
   std::FILE* reads = std::fopen((prefix + ".reads").c_str(), "w");

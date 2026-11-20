@@ -45,10 +45,11 @@ def main():
     path = os.path.join(BUILD, "bend.script")
     with open(path, "w") as f: f.write(ctl.script(json.dumps(setup), notes, events, length))
     out = lambda n: os.path.join(HERE, n)
-    ways = [("knife-1.0", "render", ("2", "15", "0", "1")), ("knife-1.5", "render", ("2", "15", "0", "1.5")),
+    # The swath the strokes' full width, and seven tenths of it so a strip of the stroke survives each side.
+    ways = [("knife-full", "render", ("2", "15", "0", "1", "1")), ("knife-70", "render", ("2", "15", "0", "1", "0.7")),
             ("without", "render", ("2", "11", "0"))]
-    # 2da8bfd's knife is not rendered here: its smear stamps mean something else to today's shader. Its own pictures,
-    # from that commit, are copied in beside these as bend-sheet*.jpg.
+    # 5ece483's knife is not rendered here: its stamps mean something else to today's shader. Its own pictures, from
+    # that commit, are kept beside these as bend-5ece483*.jpg and 5ece483-flick-large.jpg.
     looks = pw.Looks()
     boxes = None
     try:
@@ -65,24 +66,24 @@ def main():
                     return (float(np.median(q[:, 0])), float(np.median(q[:, 1]))) if len(q) else (0.5, 0.5)
                 boxes = {"flick": box(*at(1.0, 1.5), 0.14), "slow": box(*at(3.8, 5.0), 0.17)}
             crops = [(boxes[k], out("bend-%s-%s.jpg" % (way, k))) for k in ("flick", "slow")]
-            if way == "knife-1.0":
+            if way.startswith("knife"):
                 # The flick at three times: its own box, a little tighter, upscaled from the whole look after.
                 fb = boxes["flick"]
                 cxy = ((fb[0] + fb[2]) / 2, (fb[1] + fb[3]) / 2)
                 large = box(cxy[0], cxy[1], 0.09)
             looks.look(prefix, out("bend-%s.jpg" % way), floats=23, crop=crops)
-            if way == "knife-1.0":
+            if way.startswith("knife"):
                 img = Image.open(out("bend-%s.jpg" % way))
                 n = img.size[0]
                 px = tuple(int(round(v * n)) for v in large)
-                img.crop(px).resize(((px[2] - px[0]) * 3, (px[3] - px[1]) * 3), Image.LANCZOS).save(out("flick-large.jpg"), quality=92)
-            if way == "knife-1.0":
+                img.crop(px).resize(((px[2] - px[0]) * 3, (px[3] - px[1]) * 3), Image.LANCZOS).save(out("%s-flick-large.jpg" % way), quality=92)
+            if way == "knife-full":
                 _, thick, wet = step1.maps_of(prefix)
                 m = step1.picture(thick[-1], wet[-1], size=768)
-                m.save(out("bend-knife-1.0-map.png"), optimize=True)
+                m.save(out("bend-knife-full-map.png"), optimize=True)
                 for k in ("flick", "slow"):
                     px = tuple(int(round(v * 768)) for v in boxes[k])
-                    m.crop(px).resize(((px[2] - px[0]) * 2, (px[3] - px[1]) * 2), Image.NEAREST).save(out("bend-knife-1.0-%s-map.png" % k), optimize=True)
+                    m.crop(px).resize(((px[2] - px[0]) * 2, (px[3] - px[1]) * 2), Image.NEAREST).save(out("bend-knife-full-%s-map.png" % k), optimize=True)
     finally:
         looks.close()
 
