@@ -258,8 +258,9 @@ struct PaintBrush {
   double level = 0, peak = 0;        // its voice's level at its last frame, and the most it has reached
   double hz = 0;                     // the pitch it is at: a stroke taken up glides to its new note's
   bool spattered = false;            // its strike's mark laid (step 3), once, the frame it is placed
-  // The strike's splay (paintSplay): how far it opened, how fast it regathers, its seed and its clumps; and where it is now.
-  double splay = 0, regather = 1, splayNow = 0;
+  // The strike's flare (paintFlareAt): how far it opened, the length of stroke it closes over (cells), how far the brush
+  // has gone since it landed, its seed and its clumps; and where it is now.
+  double splay = 0, regather = 1, splayNow = 0, travelled = 0;
   std::uint32_t splaySeed = 0;
   unsigned clumps = 0x7f;
 };
@@ -324,39 +325,64 @@ inline double paintDropCover(double u, double v, double longer, std::uint32_t se
   return c;
 }
 
-/* A hard strike splays the brush (the owner, 20 Nov: "brush stroke lines from
-   the paintbrush being splayed outward, and every one wouldn't look exactly
-   the same but would look similar"). The eight bristle groups clump - paint
-   makes bristles stick together - into four to eight clumps (`mask`, a bit a
-   boundary between groups that is cut, chosen from the stroke's seed), and
-   while splayed by `a` (nought: the brush as it always was) the clumps run
-   apart, each a track of its own groups side by side, jittered a little and
-   wandering slowly with time `t` so the outer tracks are not ruler-straight.
-   Each group's centre and its clump's span, across the brush in units of its
-   half-width. The look's shader (paintSplay) is this, line for line, so its
-   32 bristles follow their group's track and the map holds the same tracks. */
-struct PaintSplay {
-  std::array<double, kPaintBins> c {}, lo {}, hi {};
+/* A hard strike flares the brush (the owner, 20 Nov, after the splay as a
+   fan and separate tracks: "When you press into it and then drag the
+   stroke, the bristles all follow their lines and then line up again; the
+   paint all joins up together and is seamless ... the splays aren't as
+   uniform ... the centre of the splay should cascade outward and thin out").
+   Flared by `a` (nought: the brush as it always was), the eight bristle
+   groups widen from the centre outward - each wider the further out it
+   sits, a little irregularly from the seed - and stay side by side, so the
+   paint is one mark; inside each group its four bristles take a share of
+   their lanes that falls outward (`phi`), so the centre is solid and the
+   edges break into separate bristle lines that carry less; and on each side
+   one stray bristle reaches past the rest, coming in more slowly (by the
+   square root of `a`). Where across the brush `uh` (its half-widths) falls:
+   which group, which of its bristles, and how much paint it lays there,
+   with a ramp `px` wide at every bristle's edge so the look draws it smooth.
+   The look's shader (flareAt) is this, line for line, and the map samples
+   it at points in each cell, so both lay the same flare. */
+struct PaintFlare {
+  int k = -1, bristle = 0;
+  double weight = 0, extent = 1;
 };
-inline void paintSplay(double a, std::uint32_t seed, unsigned mask, float t, PaintSplay& out) {
-  int s = 0;
-  for (int k = 0; k < kPaintBins; k++) {
-    if (k < kPaintBins - 1 && !(mask & (1u << k))) continue;  // the clump goes on into the next group
-    const int e = k;
-    const double u0c = ((2.0 * s - 7) / 8 + (2.0 * e - 7) / 8) / 2;
-    const auto ci = static_cast<std::uint32_t>(s);
-    const double jit = paintHash(seed * 31u + ci + 1u) * 2 - 1;
-    const double f = 1.5 + 2.5 * paintHash(seed * 37u + ci + 1u), ph = paintHash(seed * 41u + ci + 1u);
-    const double wan = std::sin(2 * kPi * (f * static_cast<double>(t) + ph));
-    const double uc = u0c * (1 + a) + a * (0.12 * jit + 0.05 * wan);
-    for (int j = s; j <= e; j++) {
-      const auto jj = static_cast<std::size_t>(j);
-      out.c[jj] = uc + (2.0 * j - 7) / 8 - u0c;
-      out.lo[jj] = uc + (2.0 * s - 7) / 8 - u0c - 0.125;
-      out.hi[jj] = uc + (2.0 * e - 7) / 8 - u0c + 0.125;
+inline PaintFlare paintFlareAt(double uh, double a, std::uint32_t seed, double px) {
+  PaintFlare out;
+  const bool right = uh >= 0;
+  const double x = std::fabs(uh);
+  double at = 0, outerS = 0;
+  for (int i = 0; i < 4; i++) {
+    const int k = right ? 4 + i : 3 - i;
+    const double x0 = (2.0 * i + 1) / 8;
+    const double s = 2.6 * std::pow(x0, 1.6) * (1 + 0.35 * (paintHash(seed * 29u + static_cast<std::uint32_t>(k) + 1u) * 2 - 1));
+    const double h = 0.125 * (1 + a * s);
+    if (out.k < 0 && x < at + 2 * h) {
+      const double l = (x - at) / h - 1;  // -1 to 1 across the group, outward
+      const double lane = (l + 1) / 2 * 4;
+      const int j = std::clamp(static_cast<int>(std::floor(lane)), 0, 3);
+      const double phi = 1 / (1 + 1.2 * a * s), pl = px / (h / 4);
+      // Each bristle its own: thicker or thinner, and off the middle of its lane, as far as its lane's room allows.
+      const auto bj = static_cast<std::uint32_t>(k * 4 + j);
+      const double pj = std::min(1.0, phi * (0.6 + 0.8 * paintHash(seed * 53u + bj + 7u)));
+      const double off = (paintHash(seed * 59u + bj + 13u) - 0.5) * (1 - pj);
+      const double cover = std::clamp(0.5 - (std::fabs((lane - j) * 2 - 1 - off) - pj) / pl, 0.0, 1.0);
+      out.k = k; out.bristle = right ? j : 3 - j; out.weight = cover / std::sqrt(phi);
     }
-    s = k + 1;
+    at += 2 * h;
+    outerS = s;
   }
+  out.extent = at;
+  if (out.k < 0 && a > 0) {
+    // The stray: past the edge by the square root of the flare, one bristle wide.
+    const auto side = static_cast<std::uint32_t>(right ? 1 : 0);
+    const double r = paintHash(seed * 43u + side + 3u);
+    const double centre = at + std::sqrt(a) * 0.35 * (0.4 + 0.6 * r) * (0.5 + 0.5 * outerS);
+    const double half = 0.025 * (1 + a);
+    const double cover = r < 0.75 ? std::clamp(0.5 - (std::fabs(x - centre) - half) / px, 0.0, 1.0) : 0.0;
+    if (cover > 0) { out.k = right ? 7 : 0; out.bristle = right ? 3 : 0; out.weight = 0.7 * cover; }
+    out.extent = centre + half;
+  }
+  return out;
 }
 
 /* A finger of the strike's fan, how much of a pixel of side `px` it covers
@@ -738,9 +764,7 @@ class Painter {
     // Its strike's mark, once, from where it lands (step 3): the splayed brush's fan.
     if (!b.spattered) { b.spattered = true; if (!b.handed) strikeMark(b, x, y, t); }
     const double since = std::max(0.0, t - b.bornAt);
-    // The splay regathers: quickly after a medium strike, more slowly after a hard one.
-    b.splayNow = b.splay > 0 ? b.splay * std::exp(-since / b.regather) : 0.0;
-    if (b.splayNow < 0.005) b.splayNow = 0;
+    (void)since;
     const double bump = (1 - std::exp(-since / kImpactRise)) * std::exp(-since / kImpactFall) * b.impact * 1.6;
     const double bulge = 1 + kImpactPress * bump;
     /* The player's hands on it (step 3). The wheel, up from its rest at the
@@ -776,8 +800,17 @@ class Painter {
     const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
     for (int s = 1; s <= steps; s++) {
       const double f = static_cast<double>(s) / steps;
+      /* The flare closes over the stroke's length, not its time: the bristles follow their paths back in over
+         `regather` cells of travel, smoothly, and then it is the ordinary stroke. */
+      const double gone = b.travelled + len * f;
+      if (b.splay > 0 && gone < b.regather) {
+        const double c = gone / b.regather;
+        b.splayNow = b.splay * (1 - c * c * (3 - 2 * c));
+      } else { b.splayNow = 0; b.splay = 0; }
+      if (b.splayNow < 0.005) b.splayNow = 0;
       stamp(b, b.x + dx * f, b.y + dy * f, ux, uy, w, std::min(1.0, p * bulge), t, len / steps);
     }
+    b.travelled += len;
     b.x = x; b.y = y;
   }
 
@@ -787,91 +820,36 @@ class Painter {
   double wheelLoad() const { return 1 + (kWheelLoad - 1) * wheelUp(); }
   double loadMost() const { return kLoadMost * wheelLoad(); }
 
-  /* A strike's mark (step 3; the owner, 20 Nov, of the drops that came
-     before it: "It doesn't look like a hard pressed paint brush. It would
-     have brush stroke lines from the paintbrush being splayed outward, and
-     every one wouldn't look exactly the same but would look similar"). A
-     brush slammed onto the canvas compresses and its bristles fan out from
-     where it lands (Baxter and Lin's brush model, 2004, draws this splay and
-     the plasticity after it): a heavy core at the heel where the belly
-     squeezes its paint out, and from it the clumps of bristles as fingers,
-     one a clump (paintSplay's), ordered across the way the brush travels as
-     the clumps are across the brush, opening forward and to both sides - a
-     fan of about 50 degrees at half an impact and 170 at a full one - with
-     their angles, lengths and widths jittered from the stroke's seed, a
-     finger or two now and then kicked back behind, and a few stray bristles
-     further out as thin lines. Everything grows with the impact to the 1.5
-     from nothing, so a soft strike barely marks and Strike at nought never
-     does. The squeeze leaves the brush leaner, the outer groups most, so the
-     stroke after runs dry sooner; and the brush stays splayed (`splay`),
-     regathering over 0.15 s plus half a second times the impact.
-     With `flecks` (PaintParams, for the owner to choose) the hardest strikes
-     flick a few flecks off the fingers' tips. */
+  /* A strike's mark (step 3). The owner, 20 Nov, of the drops: "It doesn't
+     look like a hard pressed paint brush"; and of the splay drawn next, as
+     a fan of fingers and separate tracks: "It splays at the start, but then
+     it continues into a more normal stroke". A brush slammed onto the canvas
+     flares: its bristles spread as it lands, densely in the middle and
+     further apart outward (paintFlareAt), and as it drags on each follows
+     its own path back in, over 1.5 to 3 of its widths of travel by the
+     impact, until it is the ordinary stroke - one seamless mark, the
+     bristles' lines texture inside it. Where it lands, a small rounded heel
+     of the paint the press squeezes out, just behind; the squeeze leaves the
+     brush a little leaner. All of it grows with the impact to the 1.5 from
+     nothing, so a soft strike barely flares and Strike at nought never does.
+     Seeded from the stroke, so every strike is like the others and none the
+     same. Tried and gone: drops of spatter, then a fan of straight fingers
+     with the stroke after as separate tracks over bare canvas. */
   void strikeMark(PaintBrush& b, double x, double y, double t) {
     const double impact = std::clamp(p_.spatterAt >= 0 ? p_.spatterAt : b.impact, 0.0, 1.0);
     const double k = std::pow(impact, 1.5);
     if (!(k > 0.002)) return;
-    const auto seed = (static_cast<std::uint32_t>(b.serial) * 7919u + static_cast<std::uint32_t>(b.born) * 131u) & 0xffffu;
-    const auto h = [&](std::uint32_t j, std::uint32_t i) { return paintHash(seed * 977u + j * 131u + i * 7u + 3u); };
-    // The clumps: four to eight, the boundaries cut those whose hashes are least.
-    const int clumps = 4 + std::min(4, static_cast<int>(5 * h(0, 1)));
-    unsigned mask = 0;
-    for (int j = 0; j < kPaintBins - 1; j++) {
-      int below = 0;
-      for (int i = 0; i < kPaintBins - 1; i++) if (h(1, static_cast<std::uint32_t>(i)) < h(1, static_cast<std::uint32_t>(j))) below++;
-      if (below < clumps - 1) mask |= 1u << j;
-    }
-    b.splay = kSplayMost * k; b.regather = kRegather + kRegatherHard * impact; b.splaySeed = seed; b.clumps = mask;
-    // Where it travels: the layout's, a moment on at the same pitch.
-    const PaintPoint on = layout_->at(t + 0.05, b.hz);
-    double fx = on.x * kPaintN - x, fy = on.y * kPaintN - y;
-    const double fl = std::hypot(fx, fy);
-    fx = fl > 1e-9 ? fx / fl : 1; fy = fl > 1e-9 ? fy / fl : 0;
-    const double nx = -fy, ny = fx;
-    const double hw = kMarkHalfWidth * p_.width / 2, open = (kFanLeast + (kFanMost - kFanLeast) * k) * kPi / 180;
-    const double thick = kFingerThick;
-    /* The heel is the brush's own first moments, pressed by the strike's swell into the splayed tracks (stroke): a
-       drop laid for it here drew a black disc that no brush leaves. */
-    double meanLen = 0;
-    int c = 0;
-    for (int g = 0; g < kPaintBins; c++) {
-      int e = g;
-      while (e < kPaintBins - 1 && !(mask & (1u << e))) e++;
-      const double across = ((2.0 * g - 7) / 8 + (2.0 * e - 7) / 8) / 2;  // where the clump sits across the brush, -1 to 1
-      const auto cu = static_cast<std::uint32_t>(c);
-      const double th = across / 0.875 * open / 2 + (h(2, cu) * 2 - 1) * kFanJitter * kPi / 180;
-      const double len = (0.8 + 1.8 * k) * hw * (1 + 0.35 * (h(3, cu) * 2 - 1));
-      const double base = (e - g + 1) / 8.0 * hw * (1 + 0.5 * k) * (1 + 0.4 * (h(4, cu) * 2 - 1));
-      const double ux = fx * std::cos(th) + nx * std::sin(th), uy = fy * std::cos(th) + ny * std::sin(th);
-      finger(b, x + nx * across * hw * 0.9, y + ny * across * hw * 0.9, ux, uy, base, len, seed * 5u + cu, thick, t);
-      meanLen += len;
-      if (p_.flecks && impact > 0.8) {
-        const int n = static_cast<int>(std::floor(h(5, cu) * 1.6 * (impact - 0.8) / 0.2));
-        for (int f = 0; f < n; f++) {
-          const double far = len * (1.05 + 0.4 * h(6, cu * 4u + static_cast<std::uint32_t>(f)));
-          drop(b, x + ux * far, y + uy * far, ux, uy, 0.15 + 0.2 * h(7, cu * 4u + static_cast<std::uint32_t>(f)), 1.6, seed * 11u + cu * 4u + static_cast<std::uint32_t>(f), 0.5, thick * 0.8, t);
-        }
-      }
-      g = e + 1;
-    }
-    meanLen /= std::max(1, c);
-    // Now and then a finger kicked back behind where it lands.
-    const int back = h(8, 1) < 0.45 * k ? (h(8, 2) < 0.3 ? 2 : 1) : 0;
-    for (int j = 0; j < back; j++) {
-      const auto ju = static_cast<std::uint32_t>(j);
-      const double th = kPi + (h(9, ju) * 2 - 1) * 25 * kPi / 180;
-      const double ux = fx * std::cos(th) + nx * std::sin(th), uy = fy * std::cos(th) + ny * std::sin(th);
-      finger(b, x, y, ux, uy, hw * 0.2 * (0.7 + 0.6 * h(10, ju)), meanLen * (0.35 + 0.25 * h(11, ju)), seed * 13u + ju, thick, t);
-    }
-    // And a few stray bristles, thin lines further out.
-    const int strays = static_cast<int>(std::lround(k * (1 + 3 * h(12, 1))));
-    for (int j = 0; j < strays; j++) {
-      const auto ju = static_cast<std::uint32_t>(j);
-      const double th = (h(13, ju) * 2 - 1) * open / 2 * 1.1;
-      const double ux = fx * std::cos(th) + nx * std::sin(th), uy = fy * std::cos(th) + ny * std::sin(th);
-      finger(b, x, y, ux, uy, 0.09, meanLen * (1.1 + 0.5 * h(14, ju)), seed * 17u + ju, thick * 0.8, t);
-    }
-    // The squeeze: what went into the mark left the brush, the outer groups most.
+    const auto seed = (static_cast<std::uint32_t>(b.serial) * 7919u + static_cast<std::uint32_t>(b.born) * 131u +
+                       static_cast<std::uint32_t>(std::lround(t * 1000)) * 31u) & 0xffffu;
+    const double hw = kMarkHalfWidth * p_.width / 2;
+    b.splay = kFlareMost * k; b.regather = (kCloseLeast + kCloseHard * k) * 2 * hw; b.splaySeed = seed; b.travelled = 0;
+    // The heel: rounded, a little behind where it lands (the layout's way, a moment back at the same pitch).
+    const PaintPoint back = layout_->at(t - 0.05, b.hz);
+    double bx = back.x * kPaintN - x, by = back.y * kPaintN - y;
+    const double bl = std::hypot(bx, by);
+    bx = bl > 1e-9 ? bx / bl : -1; by = bl > 1e-9 ? by / bl : 0;
+    const double r = kHeel * hw * std::sqrt(k);
+    drop(b, x + bx * 0.4 * r, y + by * 0.4 * r, -bx, -by, r, 1, seed * 3u + 1u, 0.5, kHeelThick, t);
     for (int g = 0; g < kPaintBins; g++)
       b.load[static_cast<std::size_t>(g)] *= 1 - kSqueeze * k * (0.6 + 0.4 * std::fabs((2.0 * g - 7) / 7));
   }
@@ -1078,7 +1056,7 @@ class Painter {
       st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
       st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
       // Splayed (the strike's), how far, and its seed and clumps: the look lays its bristles along the same tracks.
-      if (b.splayNow > 0) { st.a = static_cast<float>(b.splayNow); st.b = static_cast<float>((b.clumps & 0x7fu) * 65536u + (b.splaySeed & 0xffffu)); }
+      if (b.splayNow > 0) { st.a = static_cast<float>(b.splayNow); st.b = static_cast<float>(b.splaySeed & 0xffffu); }
       stamps_.push_back(st);
     } else dropped_++;
     if (b.splayNow > 0) { stampSplayed(b, x, y, dx, dy, w, p, t, moved, hw, hl, per); return; }
@@ -1170,20 +1148,21 @@ class Painter {
     }
   }
 
-  /* A stamp of a splayed brush (the strike's, regathering): the eight
-     groups each lay along their own track (paintSplay), the clumps apart
-     with bare canvas between, each clump's edge its own; the outer groups
-     touch lighter. Each cell takes the mean over three by three points in
-     it, since a track is narrower than a cell, so the map holds the paint
-     the look's pixels lay. The pick-up, the push to a clump's flank, the
-     feathering and the dry brush are the plain stamp's. */
+  /* A stamp of a flared brush (the strike's, closing as it travels): the
+     eight groups each lay in their own widened place side by side, their
+     bristles by their share of their lanes (paintFlareAt), and the flare's
+     whole width falls off at its edge as the plain stamp's does. Each cell
+     takes the mean over three by three points in it, since a bristle line
+     is narrower than a cell, so the map holds the paint the look's pixels
+     lay. The pick-up, the push past the flare's flank, the feathering and
+     the dry brush are the plain stamp's. */
   void stampSplayed(PaintBrush& b, double x, double y, double dx, double dy, double w, double p, double t, double moved, double hw, double hl,
                     double per) {
     constexpr int N = kPaintN, S = 3;
-    const double a = b.splayNow, nx = -dy, ny = dx, blend = std::min(1.0, 4 * a);
-    PaintSplay sp;
-    paintSplay(a, b.splaySeed & 0xffffu, b.clumps, static_cast<float>(t), sp);
-    const double hwE = hw * (1 + 1.3 * a);
+    const double a = b.splayNow, nx = -dy, ny = dx;
+    const auto seed = b.splaySeed & 0xffffu;
+    const double extent = paintFlareAt(0, a, seed, 0).extent;
+    const double hwE = hw * (extent + 0.6 * std::sqrt(a) + 0.1);
     const int x0 = std::max(0, static_cast<int>(std::floor(x - hwE - hl - 1))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + hwE + hl + 1)));
     const int y0 = std::max(0, static_cast<int>(std::floor(y - hwE - hl - 1))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + hwE + hl + 1)));
     if (x0 > x1 || y0 > y1) return;
@@ -1196,19 +1175,13 @@ class Painter {
         firmN++;
       }
     const double firmMean = firmN ? firmSum / firmN : 0;
-    // Where across the brush (in its half-widths) falls in which group, and how firmly: its clump's edge, blended
-    // from the whole brush's as the splay closes, so a brush regathered lays as the plain stamp does.
+    const double px = 1.0 / (S * hw);
+    // Which group, and how much paint, across the brush (its half-widths): the flare's, under its whole width's edge.
     const auto at = [&](double uh, int& k) {
-      for (int g = 0; g < kPaintBins; g++) {
-        const auto gi = static_cast<std::size_t>(g);
-        if (std::fabs(uh - sp.c[gi]) > 0.125) continue;
-        k = g;
-        const double mid = (sp.lo[gi] + sp.hi[gi]) / 2, half = (sp.hi[gi] - sp.lo[gi]) / 2;
-        const double whole = std::max(0.0, 1 - std::pow(std::fabs(uh) / (1 + a), 4.0)), own = std::max(0.0, 1 - std::pow(std::fabs(uh - mid) / half, 4.0));
-        return whole + (own - whole) * blend;
-      }
-      k = -1;
-      return 0.0;
+      const PaintFlare f = paintFlareAt(uh, a, seed, px);
+      k = f.k;
+      if (k < 0) return 0.0;
+      return f.weight * std::max(0.0, 1 - std::pow(std::fabs(uh) / extent, 4.0) * 0.6);
     };
     std::array<double, kPaintBins> picked {}, spent {}, smeared {}, wk {};
     for (int yy = y0; yy <= y1; yy++)
@@ -1223,7 +1196,7 @@ class Painter {
             if (tip <= 0) continue;
             int k = -1;
             const double edge = at(u / hw, k);
-            if (k < 0) continue;
+            if (k < 0 || edge <= 0) continue;
             const double e = edge * tip / (S * S);
             wk[static_cast<std::size_t>(k)] += e;
             core += e;
@@ -1243,9 +1216,8 @@ class Painter {
           for (int g = 0; g < kPaintBins; g++) picked[static_cast<std::size_t>(g)] += tk * wk[static_cast<std::size_t>(g)] / core;
           map_.thick[q] = static_cast<float>(a0 - tk - ps);
           if (ps > 0) {
-            const auto ki = static_cast<std::size_t>(k);
-            const double mid = (sp.lo[ki] + sp.hi[ki]) / 2;
-            const double off = (u / hw >= mid ? sp.hi[ki] : sp.lo[ki]) * hw * 1.05 + (u / hw >= mid ? 0.5 : -0.5);
+            // Past the flare's flank on the cell's side, as the plain stamp pushes past the brush's.
+            const double off = (u >= 0 ? 1 : -1) * (extent * hw * 1.05 + 0.5);
             const int ex = static_cast<int>(std::floor(x + nx * off + dx * v)), ey = static_cast<int>(std::floor(y + ny * off + dy * v));
             if (ex >= 0 && ey >= 0 && ex < N && ey < N) {
               const std::size_t e = static_cast<std::size_t>(ey) * N + static_cast<std::size_t>(ex);
@@ -1259,9 +1231,8 @@ class Painter {
         for (int g = 0; g < kPaintBins; g++) {
           const auto gi = static_cast<std::size_t>(g);
           if (wk[gi] <= 0) continue;
-          const double outer = 1 - kSplayLight * a / (1 + a) * std::fabs((2.0 * g - 7) / 7);
-          double d = kDeposit * p * b.load[gi] * wk[gi] * per * outer;
-          double c = kDeposit * p * b.carry[gi] * wk[gi] * per * outer;
+          double d = kDeposit * p * b.load[gi] * wk[gi] * per;
+          double c = kDeposit * p * b.carry[gi] * wk[gi] * per;
           if (p < 0.5) {
             const float touch = paintHash(static_cast<std::uint32_t>(xx) * 73856093u ^ static_cast<std::uint32_t>(yy) * 19349663u ^ static_cast<std::uint32_t>(g) * 83492791u);
             const double feather = std::clamp((p * 2.2 - touch) / 0.25, 0.0, 1.0) * (p * 2);
@@ -1360,13 +1331,12 @@ class Painter {
      kSpatterSeconds along the time and kSpatterOctaves in pitch at width two (the round layout's A3: about nine cells
      along and eight across), the least drop kDropLeast cells across its radius, the blot's edge kSpatterBlot as
      ragged as a drop's, and a drop's thickness about kDropThick (a heavy stroke's). */
-  /* The strike's mark and splay: the brush's half-width it is drawn for (cells at width two), the fan's opening in
-     degrees from a touch to a full impact and its fingers' jitter, how far the brush splays at a full impact (the
-     clumps run apart to that many times the half-width again), how fast it regathers (seconds, and more per impact),
-     and the share of the load the squeeze takes at a full impact. Chosen by looking (web/docs/listening/
-     paint-controllers/strike/). */
-  static constexpr double kMarkHalfWidth = 3.0, kFanLeast = 20, kFanMost = 120, kFanJitter = 10, kSplayMost = 1.4, kFingerThick = 0.3;
-  static constexpr double kRegather = 0.15, kRegatherHard = 0.5, kSqueeze = 0.45, kSplayLight = 0.5;
+  /* The strike's flare: the brush's half-width it is drawn for (cells at width two), how far it flares at a full impact
+     (the outermost groups widen by about that times 2.6 of their own width), over how many of its widths of travel it
+     closes (from a touch to a full impact, by the impact to the 1.5), the heel's radius over the half-width, and the
+     share of the load the squeeze takes. Chosen by looking (web/docs/listening/paint-controllers/strike/). */
+  static constexpr double kMarkHalfWidth = 3.0, kFlareMost = 1.5, kCloseLeast = 1.5, kCloseHard = 1.5, kHeel = 0.28, kHeelThick = 0.3;
+  static constexpr double kSqueeze = 0.25, kFingerThick = 0.3;
   static constexpr double kSpatterFrom = 0.35, kSpatterMost = 70, kSpatterSeconds = 0.6, kSpatterOctaves = 2.5;
   static constexpr double kDropLeast = 0.18, kSpatterBlot = 1.5, kSpatterBlotMost = 4.2, kDropThick = 0.5;
   static constexpr int kDropSamples = 6;  // the look's pixels across a cell: PAINT_SIZE / PAINT_CELLS

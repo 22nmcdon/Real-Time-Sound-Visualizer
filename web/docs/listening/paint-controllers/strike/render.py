@@ -1,17 +1,22 @@
-"""The hard strike, second design (20 Nov): a prototype for the owner to look at
-before its checks are finished. A brush slammed onto the canvas splays - a fan
-of clumped bristles from a heavy heel, then the stroke after running as
-separate tracks that regather - in place of the drops of spatter. Pictures
-only, beside the paint-controllers page:
+"""The hard strike, third design (20 Nov): a prototype for the owner to look at
+before its checks are finished. A brush slammed onto the canvas flares - its
+bristles spread where it lands, densely in the middle and thinning outward,
+and follow their own paths back in over the stroke's first widths until it is
+the ordinary stroke, one seamless mark - in place of the drops of spatter and
+then of a fan of fingers with separate tracks (bb419d6). Pictures only,
+beside the paint-controllers page:
 
   sheet-N.jpg          (a) six hard strikes (velocity 127, Strike 100) on different notes, each with about a second
                        of the stroke after: similar, never the same
   ladder-VEL.jpg       (b) velocity 30, 60, 90, 110 and 127 at Strike 100, each with its stroke after
-  phrase-WAY.jpg       (c) the listening page's strikes phrase: `splay` (this design), `flecks` (the same with the
-                       hardest strikes flicking a few flecks off the fingers), `drops` (b0c1db9), `first` (7389e9c)
-                       and `without` (no mark at all); a close-up round its first hard strike each, and the whole look
+  phrase-WAY.jpg       (c) the listening page's strikes phrase: `flare` (this design), `fan` (bb419d6's fingers and
+                       tracks) and `without` (no mark at all); a close-up round its first hard strike each, and the
+                       whole look (the bb419d6 batch's `splay`, `flecks`, `drops` and `first` pictures are left as they
+                       were, for comparison)
   single-look.jpg      (d) one strike close up, and single-map.png the core's map of the same box
   single-map.png
+  large.jpg            (f) one hard strike large, at three times the look's pixels: the whole flare and a couple of
+                       stroke widths after it
   bend-WAY.jpg         (e) the bend phrase (a whole tone up in a quarter second and back, then down slowly over a
                        second and back): `pull` (the redesigned pull), `pull-short` and `pull-long` (its reach at 0.6
                        and 1.6 times), `without`, and `smear` (b0c1db9's); bend-WAY-flick.jpg and bend-WAY-slow.jpg
@@ -20,7 +25,7 @@ only, beside the paint-controllers page:
 switch-play-*.png, from switch-mock.py beside this file, are where the wheel's and pressure's Sound / Brush / Both
 switch would go on Play, mocked into the page for the picture only (nothing of it is built).
 
-    CHROME=/opt/pw-browsers/chromium FIRST=/path/to/7389e9c DROPS=/path/to/b0c1db9 \\
+    CHROME=/opt/pw-browsers/chromium FIRST=/path/to/7389e9c DROPS=/path/to/b0c1db9 FAN=/path/to/bb419d6 \\
         python3 web/docs/listening/paint-controllers/strike/render.py
 
 FIRST and DROPS are those commits' core/include and the paint-controllers render.cpp, unpacked
@@ -38,6 +43,7 @@ _spec.loader.exec_module(ctl)
 pw, step1 = ctl.pw, ctl.step1
 BUILD = os.path.join(ctl.BUILD, "strike")
 DROPS = os.environ.get("DROPS", "")
+FAN = os.environ.get("FAN", "")
 
 STRUCK = dict(ctl.STRUCK, sus=70)  # a held tone, so the stroke after the strike goes on a second
 
@@ -49,6 +55,10 @@ def build():
     subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(DROPS, "core", "include"),
                     os.path.join(DROPS, "web", "docs", "listening", "paint-controllers", "render.cpp"), "-o",
                     os.path.join(BUILD, "render-drops")], check=True)
+    if FAN:
+        subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(FAN, "core", "include"),
+                        os.path.join(FAN, "web", "docs", "listening", "paint-controllers", "render.cpp"), "-o",
+                        os.path.join(BUILD, "render-fan")], check=True)
 
 
 def run(name, setup, notes, length, tool="render", args=("2", "15", "-1")):
@@ -61,15 +71,9 @@ def run(name, setup, notes, length, tool="render", args=("2", "15", "-1")):
 
 
 def heels(prefix):
-    """Where each hard strike landed: each serial that laid a mark (a finger, kind 3), its first brush stamp, in the
-    unit square, in time order."""
+    """Where each strike landed: its heel (a drop, kind 1, one a strike), in the unit square, in time order."""
     _, S = pw.stamps_of(prefix, 23)
-    marked = {int(r[16]) for r in S if r[20] == 3}
-    seen, out = set(), []
-    for r in S:
-        if r[20] == 0 and int(r[16]) in marked and int(r[16]) not in seen:
-            seen.add(int(r[16])); out.append((float(r[0]), float(r[1])))
-    return out
+    return [(float(r[0]), float(r[1])) for r in S if r[20] == 1]
 
 
 def box(x, y, h=0.1):
@@ -105,22 +109,33 @@ def main(parts):
         # (c) the strikes phrase, five ways, cropped alike round its first hard strike.
         _, setup, make, _ = ctl.PHRASES["strikes"]
         notes, _, length = make()
-        ways = [("splay", "render", ("2", "15", "-1"), 23), ("flecks", "render", ("2", "15", "-1", "1"), 23),
-                ("drops", "render-drops", ("2", "15", "-1"), 23), ("first", "render-first", ("2", "15", "-1"), 20),
+        ways = [("flare", "render", ("2", "15", "-1"), 23), ("fan", "render-fan", ("2", "15", "-1"), 23),
                 ("without", "render", ("2", "15", "0"), 23)]
         first_box = None
         for way, tool, args, floats in ways:
+            if tool == "render-fan" and not FAN: continue
             pre = run("phrase-" + way, setup, notes, length, tool, args)
             if first_box is None:
-                # The first hard strike: where its longest finger is rooted (the phrase is one joined stroke, one serial,
-                # and every strike marks, the soft barely, so the longest finger is the hard strike's).
+                # The first hard strike: the largest heel (every strike lays one, the soft barely).
                 _, S = pw.stamps_of(pre, 23)
-                fingers = S[S[:, 20] == 3]
-                best = float((fingers[:, 4] * fingers[:, 21]).max())
-                r = next(r for r in fingers if float(r[4] * r[21]) >= 0.8 * best)
-                x, y = float(r[0]), float(r[1])
-                first_box = box(x, y, 0.11)
+                H = S[S[:, 20] == 1]
+                r = H[int(np.argmax(H[:, 4]))]
+                first_box = box(float(r[0]), float(r[1]), 0.11)
             looks.look(pre, out("phrase-%s.jpg" % way), floats=floats, crop=(first_box, out("phrase-%s-close.jpg" % way)))
+      if "f" in parts:
+        # (f) one hard strike large: the flared stamps' box and a couple of stroke widths on, at three times.
+        pre = run("large", STRUCK, [(0.2, 62, 127, 1.0)], 1.4)
+        _, S = pw.stamps_of(pre, 23)
+        F = S[(S[:, 20] == 0) & (S[:, 21] > 0)]
+        serial = int(F[0, 16])
+        B = S[(S[:, 20] == 0) & (S[:, 16] == serial)][: len(F) + 40]
+        m = 0.05
+        bx = (max(0, float(B[:, 0].min()) - m), max(0, float(B[:, 1].min()) - m), min(1, float(B[:, 0].max()) + m), min(1, float(B[:, 1].max()) + m))
+        looks.look(pre, out("large-full.jpg"), floats=23)
+        img = Image.open(out("large-full.jpg"))
+        n = img.size[0]
+        px = tuple(int(round(v * n)) for v in bx)
+        img.crop(px).resize(((px[2] - px[0]) * 3, (px[3] - px[1]) * 3), Image.LANCZOS).save(out("large.jpg"), quality=92)
       if "e" in parts:
         # (e) the bend phrase (up a whole tone in a quarter second and back, then down slowly over a second and back):
         # the redesigned pull at three reaches, without, and b0c1db9's smear; close-ups of the flick and the slow bend.
@@ -163,4 +178,4 @@ def main(parts):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or ["a", "b", "c", "d", "e"])
+    main(sys.argv[1:] or ["a", "b", "c", "d", "f"])
