@@ -29,17 +29,17 @@
    "glow": 0.345,
    "memory": 0.033,
    "motion": 0.092,
-   "paint": 225.2,
+   "paint": 225.5,
    "pulls": 106,
    "scan": {
-    "centroid": 2.3,
-    "centroid_p10": 1.81,
-    "centroid_p90": 3.64,
+    "centroid": 2.4,
+    "centroid_p10": 1.9,
+    "centroid_p90": 3.52,
     "high": 0.004,
     "movement": 0.0061,
-    "movement_p90": 0.0105,
+    "movement_p90": 0.0108,
     "readings": 906,
-    "sine": 0.366
+    "sine": 0.355
    },
    "stamps": 1930,
    "wet": 0.08

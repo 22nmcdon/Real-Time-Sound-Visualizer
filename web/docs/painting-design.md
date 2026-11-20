@@ -340,10 +340,13 @@ reads it. **Revised the same day** after the owner listened to the first build
   four of the brush's half-widths at a whole tone, by the eased bend speed, smoothed strip to
   strip; the levelling ramps in over a stroke's width and out as the bend eases; and the plane
   stands as thick as hides the ground as the stroke did (paint's cover saturates, so a ridged
-  stroke is darker than a flat plane of the same paint), a little more paint than was there - two
-  per cent over the listening page's phrase. The bend back to rest cuts nothing. A quick bend up
-  of a whole tone leaves 38 per cent of the paint on its arc past the stroke's band, a slow one
-  16; Scan reads it (centroid 2.30 against 2.05 deaf to it, on the listening page).
+  stroke is darker than a flat plane of the same paint), a little more paint than was there - under
+  one per cent over the listening page's phrase. The bend back to rest cuts nothing. A quick bend up
+  of a whole tone leaves 51 per cent of the paint on its arc past the stroke's band, a slow one
+  21; Scan reads it (centroid 2.40 against 2.05 deaf to it, on the listening page). Each run of the
+  knife keeps, per cell, how much of the cell it has levelled and what it laid there, so a strip
+  levels only what the run has not: a strip is narrower than a cell, and until 20 Nov each one wiped
+  its neighbour's slab in the cells they share, a quarter of what the knife lays past the stroke.
   Tried first, each in the history and on the owner's pictures: a gathered smear (b0c1db9), bristle
   streaks (2b1d4ae), a soft band (0ad2682), wandering trails (the lab), a sheet laid beside the
   stroke (2da8bfd), the first displacement (5ece483), and a swath seven tenths wide (a710a49).
