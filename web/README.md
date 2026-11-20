@@ -7631,7 +7631,7 @@ cause, and what it says about writing the next check:
   another session's `core_tests.py` or a proof render loaded the container. `run.py` cannot see
   another process; don't start one beside it.
 
-## The UI review's three builds, and eight traps on the way (20 Nov)
+## The UI review's three builds, and nine traps on the way (20 Nov)
 
 The owner reviewed three mockups (`web/docs/scope-measure.md`, `picture-strip.md`,
 `perform.md`) and they are built: Scope & measure by subject, four subtabs in one box; the
@@ -7675,3 +7675,10 @@ three. What was learned:
   view that slid the AC corner's knob 92 px left whenever the lag was switched. The switch keeps
   its `hidden` (regress.py reads it) and is drawn `visibility: hidden` - with `!important`, since
   the page's own `[hidden] { display: none !important }` outranks any rule without it.
+- **A section split in the markup can reorder the morph.** `MORPH_IDS` is every range in the
+  markup's order, and the core holds the same list (`kMorphIds`). Splitting the old Vertical
+  section put the lag and its Heard after the AC corner, and `core_tests.py` caught the order
+  (and the recorded morph and control runs, which are drawn from it) while every web suite was
+  green - the page agrees with itself. The two new sections are written before the lanes in the
+  markup and placed on Time by `data-place`, so the face is as built and the order is the old.
+  Run the core's tests after moving any slider in the markup, even between hidden homes.

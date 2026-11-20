@@ -3565,37 +3565,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               <i>Clock</i> section beside this one.</p>
           </div>
 
-          <!-- The lanes, in Scope & measure's Vertical view since the UI review (20 Nov): each
-               lane's ink and name, Show and AC, Full scale and Offset as knobs; Mid / side; and
-               the AC corner. The lag and From the keys went to Time, below: both are about the
-               window's time. -->
-          <div class="menu-group measure-quiet" id="verticalGroup" data-home="measure" data-place="measureBody">
-            <span class="menu-title">Vertical</span>
-            <span class="measure-sec">Lanes</span>
-            <div id="laneRows" data-more="1"></div>
-            <div class="measure-knobs">
-              <label class="check check-switch"><input type="checkbox" id="midSide"><span class="lamp" aria-hidden="true"></span>Mid / side</label>
-            <div class="menu-row" data-more="1">
-              <label class="menu-label" for="acCorner">AC corner</label>
-              <div class="grow">
-                <input type="range" id="acCorner" min="5" max="200" value="100">
-                <span class="reading" id="acCornerValue">10.0 Hz</span>
-              </div>
-            </div>
-            </div>
-            <p class="menu-note"><i>AC</i> blocks what is not moving, so a converter with a
-              DC offset does not push the trace off the screen. It is a one-pole high pass,
-              and its <i>corner</i> is where it starts to take things away: low and it only
-              removes a slow drift, high and it thins the bottom of the signal as well. Ten
-              hertz is where a bench scope's AC coupling usually sits. The same corner
-              reaches the speakers when they are on the shaped side, from one set of
-              numbers &mdash; the screen and the speakers cannot disagree about what AC
-              coupling is.
-              <br><br>
-              <i>Full scale</i> is the level that reaches the top of the graticule &mdash;
-              drop it to open up a quiet signal.</p>
-          </div>
-
+          <!-- Before the lanes in the markup though they show on Time: the morph reads its
+               sliders in the markup's order (MORPH_IDS, the core's kMorphIds), and that order is
+               the lag, its Heard, then the AC corner, as it was when they shared a section. -->
           <!-- From the Keyboard (G3): the note is the one pitch on the page
                that is not estimated, and these say what of the scope may
                take it as read - so they are the scope's, not the keyboard's.
@@ -3643,6 +3615,38 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               </div>
             </div>
           </div>
+
+          <!-- The lanes, in Scope & measure's Vertical view since the UI review (20 Nov): each
+               lane's ink and name, Show and AC, Full scale and Offset as knobs; Mid / side; and
+               the AC corner. The lag and From the keys went to Time, below: both are about the
+               window's time. -->
+          <div class="menu-group measure-quiet" id="verticalGroup" data-home="measure" data-place="measureBody">
+            <span class="menu-title">Vertical</span>
+            <span class="measure-sec">Lanes</span>
+            <div id="laneRows" data-more="1"></div>
+            <div class="measure-knobs">
+              <label class="check check-switch"><input type="checkbox" id="midSide"><span class="lamp" aria-hidden="true"></span>Mid / side</label>
+            <div class="menu-row" data-more="1">
+              <label class="menu-label" for="acCorner">AC corner</label>
+              <div class="grow">
+                <input type="range" id="acCorner" min="5" max="200" value="100">
+                <span class="reading" id="acCornerValue">10.0 Hz</span>
+              </div>
+            </div>
+            </div>
+            <p class="menu-note"><i>AC</i> blocks what is not moving, so a converter with a
+              DC offset does not push the trace off the screen. It is a one-pole high pass,
+              and its <i>corner</i> is where it starts to take things away: low and it only
+              removes a slow drift, high and it thins the bottom of the signal as well. Ten
+              hertz is where a bench scope's AC coupling usually sits. The same corner
+              reaches the speakers when they are on the shaped side, from one set of
+              numbers &mdash; the screen and the speakers cannot disagree about what AC
+              coupling is.
+              <br><br>
+              <i>Full scale</i> is the level that reaches the top of the graticule &mdash;
+              drop it to open up a quiet signal.</p>
+          </div>
+
 
           <!-- The rack (F5 of web/docs/redesigning-the-face.md): Space & Memory's
                effects as modules, top to bottom in the order the sound goes through
