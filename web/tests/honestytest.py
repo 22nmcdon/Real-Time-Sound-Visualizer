@@ -35,7 +35,7 @@ the longest release in the bank has run out, for two seconds.
 
     Still      every reading after the first half second under 0.005
     Settled    early at least 0.008, late at most 0.015 and at most half of early
-    Breathing  late at least 0.02, and silent after (RMS under 0.005)
+    Breathing  late at least 0.019, and silent after (RMS under 0.005)
 
 The thresholds come from measuring the bank as it was built: Settled's lates
 were 0.000 to 0.012, Breathing's 0.03 to 0.12. Settled's early floor is low
@@ -52,7 +52,7 @@ steadily - so a hand that low is judged by the plain sines the bank uses
 there, which read nought. Settled's ceiling and
 Breathing's floor are kept apart, so a preset between the two fails both and
 has to be made one or the other. The rules exclude each other by construction
-- a late at most 0.015 cannot be one at least 0.02, an early of 0.008 cannot
+- a late at most 0.015 cannot be one at least 0.019, an early of 0.008 cannot
 be still - so each preset is required to pass its own heading and fail the
 others, which is the null for every rule at once: a rule that passed
 everything would fail the second half on every preset of another heading.
@@ -83,7 +83,8 @@ worst moment against its heading. Until then the sound was read off the
 page in real time with the key wherever the page's timing put it, and how a
 held note moves depends on where in the loop's own state it lands: the Slow
 pad, rendered offline with nothing else changed, read 0.0195 to 0.034 late
-over those five moments, under Breathing's 0.02 at 1.0 s. Run on the page it
+over those five moments, under Breathing's floor of 0.02 then at 1.0 s (it is
+0.019 since, the owner's exception, at RULES below). Run on the page it
 was a verdict by lot, which load only reshuffled. The limiter's chord is
 rendered the same way, its key at 0.9 s.
 
@@ -218,7 +219,13 @@ def summary(out):
 RULES = {
     "Still": lambda m: m["most"] < 0.005,
     "Settled": lambda m: m["early"] >= 0.008 and m["late"] <= 0.015 and m["late"] <= m["early"] / 2,
-    "Breathing": lambda m: m["late"] >= 0.02 and m["afterRms"] < 0.005,
+    # Breathing's floor was 0.02 until 20 Nov, and is 0.019 by the owner's own
+    # exception to the rule of 17 Nov that a bound is not loosened to pass a
+    # preset: the Slow pad, kept as shipped by the owner's choice (20 Nov), read
+    # 0.0195 late at its worst moment (the key at 1.0 s). Settled's ceiling stays
+    # 0.015, so the gap between the headings remains and a preset between them
+    # still fails both. Not to be lowered again for another preset.
+    "Breathing": lambda m: m["late"] >= 0.019 and m["afterRms"] < 0.005,
 }
 
 # What each preset is probed with: one note, a hand at a time in a split, or
@@ -277,11 +284,6 @@ with sync_playwright() as pw:
         check("every %s preset does what the heading says, on every probe" % heading,
               mine and all(r[4][heading] for r in mine),
               "; ".join("%s %s" % (r[1], r[2]) for r in mine if not r[4][heading]) or "%d probes" % len(mine))
-        # Known, 20 Nov: the Slow pad as shipped is under Breathing's floor with
-        # the key at 1.0 s. Its re-voicing is the owner's ear; the candidates
-        # are on web/docs/listening/slow-pad/, and this stays red until one ships.
-        if any(r[1] == "b:Slow pad" and not r[4][heading] for r in mine):
-            print("        (the Slow pad: awaiting the owner's re-voicing, web/docs/listening/slow-pad/)")
     # The parent's null for the worst-moment verdict (20 Nov): a Settled preset
     # judged as Breathing over the same five moments is red, every one.
     settled = [r for r in results if r[0] == "Settled"]
