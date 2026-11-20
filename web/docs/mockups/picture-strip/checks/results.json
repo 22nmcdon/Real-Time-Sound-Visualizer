@@ -1,0 +1,103 @@
+{
+ "sizes": {
+  "1660x1050": {
+   "height": 90,
+   "infoWidth": 772,
+   "cut": [],
+   "moved": []
+  },
+  "1400x900": {
+   "height": 90,
+   "infoWidth": 512,
+   "cut": [],
+   "moved": []
+  },
+  "1100x860": {
+   "height": 90,
+   "infoWidth": 327,
+   "cut": [],
+   "moved": []
+  },
+  "1200x680": {
+   "height": 80,
+   "infoWidth": 376,
+   "cut": [],
+   "moved": []
+  },
+  "1100x680": {
+   "height": 80,
+   "infoWidth": 334,
+   "cut": [],
+   "moved": []
+  },
+  "960x600": {
+   "height": 80,
+   "infoWidth": 301,
+   "cut": [],
+   "moved": []
+  }
+ },
+ "testing": {
+  "reads": {
+   "bars": [
+    {
+     "w": 9,
+     "h": 40
+    },
+    {
+     "w": 9,
+     "h": 40
+    },
+    {
+     "w": 9,
+     "h": 40
+    }
+   ],
+   "size": 10.5,
+   "ink": "rgb(107, 97, 90)",
+   "info": {
+    "w": 202.390625,
+    "h": 85.1875
+   }
+  },
+  "more": {
+   "more": 2,
+   "right": 1
+  },
+  "linesCut": 389
+ },
+ "reads": {
+  "rows": [
+   {
+    "name": "Glow",
+    "size": 11,
+    "ink": "rgb(58, 51, 47)",
+    "len": 64,
+    "fill": "rgb(36, 31, 29)",
+    "track": "rgb(228, 217, 204)",
+    "value": "62%"
+   },
+   {
+    "name": "Motion",
+    "size": 11,
+    "ink": "rgb(58, 51, 47)",
+    "len": 64,
+    "fill": "rgb(36, 31, 29)",
+    "track": "rgb(228, 217, 204)",
+    "value": "18%"
+   },
+   {
+    "name": "Memory",
+    "size": 11,
+    "ink": "rgb(58, 51, 47)",
+    "len": 64,
+    "fill": "rgb(36, 31, 29)",
+    "track": "rgb(228, 217, 204)",
+    "value": "41%"
+   }
+  ],
+  "text": "#3a332f"
+ },
+ "checks": 32,
+ "failed": []
+}

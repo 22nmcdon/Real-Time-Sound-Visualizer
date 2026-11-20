@@ -140,7 +140,7 @@ function say(id) {
   if (!value && sel && sel.type === "checkbox") value = sel.checked ? "on" : "off";
   document.getElementById("infoName").textContent = (window.SAY_NAMES || {})[id] || w[0];
   document.getElementById("infoValue").textContent = value;
-  document.getElementById("infoHost").hidden = !(window.HOST_IDS || []).includes(id);
+  document.getElementById("infoHost").classList.toggle("unseen", !(window.HOST_IDS || []).includes(id));
   document.getElementById("infoText").textContent = w[1];
 }
 function sayFrom(e) { const t = e.target.closest && e.target.closest("[data-say]"); if (t) say(t.dataset.say); }
@@ -154,7 +154,7 @@ function picStrip() {
     + knob("scanSoft", "Softness", { host: true }) + knob("scanMemory", "Persistence", { host: true }) + knob("output", "Output", { host: true }) + knob("stereoWidth", "Width", { host: true }) + "</div>"
     + '<div class="pic-width" data-box="widthTo"><span class="fl" id="widthToLabel">Width is</span>' + sw("widthTo", [["widthHeard", "Only heard"], ["widthDrawn", "Drawn too"]], { label: "Width is" }) + "</div>"
     + '<span class="level-meter" id="levelMeter" role="img" aria-label="Output level"><i style="height:58%"></i></span>'
-    + '<div class="info" id="infoLine" aria-live="polite"><div class="info-top"><span class="info-name" id="infoName">Picture</span><span class="info-value" id="infoValue"></span><span class="info-host" id="infoHost" hidden></span>'
+    + '<div class="info" id="infoLine" aria-live="polite"><div class="info-top"><span class="info-host unseen" id="infoHost" title="A host can automate it"></span><span class="info-name" id="infoName">Picture</span><span class="info-value" id="infoValue"></span>'
     + '<button type="button" class="link-btn caps info-more" id="infoMore" title="The card: what it is, what is moving it, the controls either side. Right-click a control for its menu.">More</button></div>'
     + '<div class="info-text" id="infoText">Point at a control and this says what it does.</div></div>'
     + '<div class="reads" id="pictureReads" role="img" aria-label="The picture’s three reads">'
@@ -182,7 +182,7 @@ function frame(o) {
 /* The stage: the window at its own size, scaled to the column (or ?scale=1 for the checks). */
 function stage(wrap, size, html) {
   const z = SIZES[size];
-  wrap.innerHTML = '<div class="stage" id="stage"><div class="win' + (z.compact ? " compact" : "") + '" id="win" style="width:' + z.w + "px;height:" + z.h + 'px">' + html + "</div></div>";
+  wrap.innerHTML = '<div class="stage" id="stage"><div class="win' + (z.compact ? " compact" : "") + (z.w <= 1100 ? " narrow" : "") + '" id="win" style="width:' + z.w + "px;height:" + z.h + 'px">' + html + "</div></div>";
   const fit = () => {
     const q = new URLSearchParams(location.search).get("scale");
     document.body.classList.toggle("full", !!q);

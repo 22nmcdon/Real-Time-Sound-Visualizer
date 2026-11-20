@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Picture strip</title>
+<meta name="description" content="The Picture strip along the bottom, readable: the info line with room for every control's whole line, the Width switch labelled plainly, one way to more, and Glow, Motion and Memory as meters with names and readings.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="../ui-review/common.css">
+</head>
+<body>
+<main class="page">
+  <p class="eyebrow">UI review · 19 Nov · mockup 2 of 3</p>
+  <h1>The Picture strip</h1>
+  <p class="lede">The same height along the bottom, with room for the info line, a plain switch, one way to more, and meters you can read.</p>
+  <p class="small">Live: point at any knob in the strip and the info line says what it does, whole. The menu below puts any control’s line in it, among them the longest the page has. Turn the Glow, Motion and Memory reads with the last switch to see that nothing moves.</p>
+  <div class="bar"><span class="lbl">Window</span><span class="pg-switch" id="sizes"></span></div>
+  <div class="bar"><span class="lbl">The line for</span><select id="sayPick" style="max-width:100%;font-size:13px"></select>
+    <span class="lbl">Reads</span><span class="pg-switch" id="readsPick"><button type="button" data-r="low">Low</button><button type="button" data-r="mid" aria-pressed="true">As now</button><button type="button" data-r="full">Full</button></span></div>
+  <div class="stage-wrap" id="wrap"></div>
+  <h2>What changed</h2>
+  <dl class="verdict">
+    <dt>Same height</dt><dd>90 px, and 80 compact, as on testing. Nothing else in the window moves.</dd>
+    <dt>The whole window’s width</dt><dd>The strip used to stop at the page’s 1180 px measure (<code>.wrap</code>). Now it runs edge to edge, with the brand’s 24 px gutters, as the modulation row above it already does. At 1660 × 1050 that gives the info line 480 px more, and 220 px more at 1400 × 900.</dd>
+    <dt>The info line, whole</dt><dd>The name and the value go on one line, with <b>More</b> at its end. Under them is the control’s whole line, up to four lines of it, at 12.5 px, or 11.5 compact, in Jost 400. Every one of the page’s lines fits whole at all six windows. The check sets each one in turn: 391 lines, the longest 150 characters. On testing the sentence shared one line with the name and was cut after about 40 characters.</dd>
+    <dt>The switch, plainly</dt><dd>It reads <b>Width is</b> · <b>Only heard</b> · <b>Drawn too</b>, with the label over the switch. Testing had the label under the switch, as a caption that read like a third option (<i>Width on</i>). The ids are <code>widthHeard</code> and <code>widthDrawn</code>, as they were.</dd>
+    <dt>One way to more</dt><dd><b>More</b> (<code>infoMore</code>) opens the card, as it does now. <i>Right-click for more</i> is gone from the strip. Right-click still opens every control’s menu, and the More button’s title and the card both say so.</dd>
+    <dt>The three reads</dt><dd>Glow, Motion and Memory are each a row: the name in 11 px <code>--text</code>, a 64 px bar (52 compact) filled in charcoal, and the reading in per cent, in figures of one width. Testing drew them as three 7 px slivers in <code>--line</code>, with their names in 10 px under the slivers.</dd>
+    <dt>Not changed</dt><dd>The seven knobs, their order and their host dots, Advanced, and the output meter beside the line.</dd>
+  </dl>
+  <h2>Checks</h2>
+  <p class="small">Run <code>checks/strip_checks.py</code>; its results are in <code>checks/results.json</code>.</p>
+</main>
+<script src="../ui-review/data.js"></script>
+<script src="../ui-review/common.js"></script>
+<script>
+"use strict";
+const { SIZES, ORDER } = UI;
+const Q = new URLSearchParams(location.search);
+const S = { size: SIZES[Q.get("size")] ? Q.get("size") : "1400x900", say: "scanSoft", reads: [0.62, 0.18, 0.41] };
+window.HOST_IDS = ["pictureAmount", "oscScan", "scanStrike", "scanSoft", "scanMemory", "output", "stereoWidth"];
+window.EXTRA_WORDS = {};
+function setReads(r) {
+  S.reads = r;
+  const rows = document.querySelectorAll("#pictureReads .rb i"), vals = document.querySelectorAll("#pictureReads .rv");
+  r.forEach((v, i) => { rows[i].style.width = Math.round(v * 100) + "%"; vals[i].textContent = Math.round(v * 100) + "%"; });
+}
+function render() {
+  const win = UI.stage(document.getElementById("wrap"), S.size, UI.frame({ size: S.size }));
+  UI.bind(win, (id) => UI.say(id));
+  setReads(S.reads); UI.say(S.say);
+  for (const b of document.querySelectorAll("#sizes button")) b.setAttribute("aria-pressed", String(b.dataset.v === S.size));
+}
+document.getElementById("sizes").innerHTML = ORDER.map((k) => '<button type="button" data-v="' + k + '">' + SIZES[k].label + "</button>").join("");
+document.getElementById("sizes").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { S.size = b.dataset.v; render(); } });
+const pick = document.getElementById("sayPick");
+const ids = Object.keys(UI.D.words).sort((a, b) => UI.D.words[b][1].length - UI.D.words[a][1].length);
+pick.innerHTML = ids.map((id) => '<option value="' + id + '">' + UI.esc(UI.D.words[id][0]) + " (" + UI.D.words[id][1].length + " characters)</option>").join("");
+pick.value = S.say;
+pick.addEventListener("change", () => { S.say = pick.value; UI.say(S.say); });
+document.getElementById("readsPick").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  for (const x of document.querySelectorAll("#readsPick button")) x.setAttribute("aria-pressed", String(x === b));
+  setReads({ low: [0, 0.03, 0.07], mid: [0.62, 0.18, 0.41], full: [1, 1, 1] }[b.dataset.r]);
+});
+/* For the checks: any line, on any control, and the reads at any value. */
+window.__m = { S, render, setReads,
+  sayText(name, value, text) { document.getElementById("infoName").textContent = name; document.getElementById("infoValue").textContent = value; document.getElementById("infoText").textContent = text; } };
+render();
+</script>
+</body>
+</html>
