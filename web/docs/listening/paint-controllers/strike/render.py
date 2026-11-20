@@ -18,9 +18,10 @@ beside the paint-controllers page:
   large.jpg            (f) one hard strike large, at three times the look's pixels: the whole flare and a couple of
                        stroke widths after it
   bend-WAY.jpg         (e) the bend phrase (a whole tone up in a quarter second and back, then down slowly over a
-                       second and back): `pull` (the redesigned pull), `pull-short` and `pull-long` (its reach at 0.6
-                       and 1.6 times), `without`, and `smear` (b0c1db9's); bend-WAY-flick.jpg and bend-WAY-slow.jpg
-                       close-ups of the flick and the slow bend, and bend-pull-map.png the core's map
+                       second and back): `smear-1.6` (the pull as a smear, its default reach), `smear-1.0` and
+                       `smear-2.2` (at 1.0 and 2.2 times 2b1d4ae's reach), `lines` (2b1d4ae's pull, LINES=), `without`
+                       and `b0c1db9`; bend-WAY-flick.jpg and bend-WAY-slow.jpg close-ups of the flick and the slow
+                       bend, and bend-smear-map.png the core's map
 
 switch-play-*.png, from switch-mock.py beside this file, are where the wheel's and pressure's Sound / Brush / Both
 switch would go on Play, mocked into the page for the picture only (nothing of it is built).
@@ -44,6 +45,7 @@ pw, step1 = ctl.pw, ctl.step1
 BUILD = os.path.join(ctl.BUILD, "strike")
 DROPS = os.environ.get("DROPS", "")
 FAN = os.environ.get("FAN", "")
+LINES = os.environ.get("LINES", "")  # 2b1d4ae: the pull as fine lines, for the bend's comparison
 
 STRUCK = dict(ctl.STRUCK, sus=70)  # a held tone, so the stroke after the strike goes on a second
 
@@ -55,6 +57,10 @@ def build():
     subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(DROPS, "core", "include"),
                     os.path.join(DROPS, "web", "docs", "listening", "paint-controllers", "render.cpp"), "-o",
                     os.path.join(BUILD, "render-drops")], check=True)
+    if LINES:
+        subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(LINES, "core", "include"),
+                        os.path.join(LINES, "web", "docs", "listening", "paint-controllers", "render.cpp"), "-o",
+                        os.path.join(BUILD, "render-lines")], check=True)
     if FAN:
         subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(FAN, "core", "include"),
                         os.path.join(FAN, "web", "docs", "listening", "paint-controllers", "render.cpp"), "-o",
@@ -144,9 +150,11 @@ def main(parts):
         path = os.path.join(BUILD, "bend.script")
         with open(path, "w") as f: f.write(ctl.script(json.dumps(setup), notes, events, length))
         boxes = None
-        for way, tool, args in [("pull", "render", ("2", "15", "0", "0", "1")), ("pull-short", "render", ("2", "15", "0", "0", "0.6")),
-                                ("pull-long", "render", ("2", "15", "0", "0", "1.6")), ("without", "render", ("2", "11", "0")),
-                                ("smear", "render-drops", ("2", "15", "0"))]:
+        # The smear at 1.0, 1.6 (the default) and 2.2 times the lines' reach, 2b1d4ae's lines, none, and b0c1db9's.
+        for way, tool, args in [("smear-1.6", "render", ("2", "15", "0", "0", "1")), ("smear-1.0", "render", ("2", "15", "0", "0", "0.625")),
+                                ("smear-2.2", "render", ("2", "15", "0", "0", "1.375")), ("lines", "render-lines", ("2", "15", "0", "0", "1")),
+                                ("without", "render", ("2", "11", "0")), ("b0c1db9", "render-drops", ("2", "15", "0"))]:
+            if tool == "render-lines" and not LINES: continue
             prefix = os.path.join(BUILD, "bend-" + way)
             exe = os.path.join(ctl.BUILD, tool) if tool == "render" else os.path.join(BUILD, tool)
             subprocess.run([exe, path, prefix] + list(args), check=True)
@@ -160,9 +168,9 @@ def main(parts):
                 boxes = {"flick": box(*at(1.0, 1.3), 0.13), "slow": box(*at(3.8, 4.8), 0.16)}
             crops = [(boxes[k], out("bend-%s-%s.jpg" % (way, k))) for k in ("flick", "slow")]
             looks.look(prefix, out("bend-%s.jpg" % way), floats=23 if tool == "render" else 23, crop=crops)
-            if way == "pull":
+            if way == "smear-1.6":
                 _, thick, wet = step1.maps_of(prefix)
-                step1.picture(thick[-1], wet[-1]).save(out("bend-pull-map.png"), optimize=True)
+                step1.picture(thick[-1], wet[-1]).save(out("bend-smear-map.png"), optimize=True)
       if "d" in parts:
         # (d) one strike close up, beside the map of the same box.
         pre = run("single", STRUCK, [(0.2, 60, 127, 1.0)], 1.6)

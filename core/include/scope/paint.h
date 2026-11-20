@@ -404,27 +404,33 @@ inline double paintFingerCover(double u, double v, double len, std::uint32_t see
   return side * tip * (1 - 0.55 * x) * (0.7 + 0.6 * paintHash(seed * 13u + si + 17u));
 }
 
-/* One bristle group's streak of the bend's pull, how much of a pixel of
-   side `px` it covers times how much paint it lays there, nought to one:
-   `s` along the way the pitch went from the group's place on the brush, `l`
-   across, both in the group's half-widths, `len` the streak's length in the
-   same. Its four bristles each drag a line of paint (the look's four to a
-   group), thinning and tapering to their own lengths, the line curving
-   back the way the brush came as `bend` says (a moving brush's paint
-   trails it); `sharp` from nought (a slow bend: broad, soft lines run
-   together) to one (a flick: fine, distinct lines). The look's shader
-   (streakCover) is this, line for line. */
+/* One bristle group's smear of the bend's pull: how much paint it lays at a
+   pixel of side `px`, nought to one - `s` along the way the pitch went from
+   the group's place on the brush, `l` across, both in the group's
+   half-widths, `len` the smear's length in the same. The owner, 20 Nov, of
+   the pull drawn as fine radial lines: "more of a smear ... a little less
+   angular". So it is one band of paint with body, not a haze of lines: its
+   density falls smoothly along it, its sides are soft and curve back the way
+   the brush came as `bend` says (the brush moves along the ring while it
+   pulls, so the smear sweeps), and its far edge feathers out raggedly, each
+   of its four bristles' lanes reaching its own length; the bristles are a
+   texture inside it, a little more or less paint each. `sharp` from nought
+   (a slow bend: wider, softer) to one (a flick: narrower, longer). The look's
+   shader (streakCover) is this, line for line. */
 inline double paintStreakCover(double l, double s, double len, double bend, double sharp, std::uint32_t seed, double px) {
-  if (s < -px || s > len + px) return 0;
+  if (s < -1 || s > len + 1) return 0;
   const double x = std::clamp(s / len, 0.0, 1.0), lat = l - bend * x * x * len;
   const int j = std::clamp(static_cast<int>(std::floor((lat + 1) / 2 * 4)), 0, 3);
   const auto ji = static_cast<std::uint32_t>(j);
-  const double reach = len * (0.55 + 0.45 * paintHash(seed * 7u + ji + 5u)), y = std::clamp(s / reach, 0.0, 1.0);
-  const double half = (0.14 + 0.24 * (1 - sharp)) * (1 - 0.6 * y);
-  const double centre = -0.75 + 0.5 * j + 0.08 * (paintHash(seed * 11u + ji + 9u) * 2 - 1);
-  const double side = std::clamp(0.5 - (std::fabs(lat - centre) - half) / px, 0.0, 1.0);
-  const double ends = std::clamp(0.5 + s / px, 0.0, 1.0) * std::clamp(0.5 - (s - reach) / px, 0.0, 1.0);
-  return side * ends * std::pow(1 - y, 0.7);
+  const double reach = len * (0.6 + 0.4 * paintHash(seed * 7u + ji + 5u)), y = s / reach;
+  // The band's half-width: the group's, a little wider for a slow bend, narrowing as the smear thins.
+  const double half = (1.05 + 0.25 * (1 - sharp)) * (1 - 0.45 * std::clamp(y, 0.0, 1.0));
+  const double edge = std::max(half * 0.35, px);
+  const double side = std::clamp((half - std::fabs(lat)) / edge, 0.0, 1.0);
+  const double start = std::clamp(0.5 + s / std::max(px, 0.3), 0.0, 1.0);
+  const double fade = y >= 1 ? 0.0 : std::pow(1 - y, 2.2);
+  const double texture = 0.75 + 0.5 * paintHash(seed * 11u + ji + 9u);
+  return side * side * (3 - 2 * side) * start * fade * texture;
 }
 
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
@@ -968,10 +974,10 @@ class Painter {
     const double semis = std::min(2.0, std::fabs(12 * std::log2(controls_.bend)));
     const double gw = hw / 8 * (1.3 + 1.2 * (1 - sharp));  // a group's half-width, broader for a slow bend
     const double len = kPullReach * p_.pullReach * hw * (0.45 + 0.55 * sharp) * (0.35 + 0.65 * semis / 2) / gw;  // in gw
-    const double f = std::min(0.6, kPullGain * moved / gw);
+    const double f = std::min(0.8, kPullGain * moved / gw);
     const double vx = -uy, vy = ux;  // across the streak
     // The paint trails the brush: the streak curves back against the way it travels.
-    const double bend = -(fx * vx + fy * vy) * 0.25;
+    const double bend = -(fx * vx + fy * vy) * 0.6;
     for (int g = 0; g < kPaintBins; g++) {
       const double across = (2.0 * g - 7) / 8 * hw;
       const double rx0 = x - fy * across, ry0 = y + fx * across;  // the group's place on the brush (across its travel)
@@ -1325,8 +1331,8 @@ class Painter {
   // and widening.
   static constexpr double kWheelLoad = 2.0, kWheelReach = 1.5, kWheelPress = 0.3, kWheelWiden = 0.5, kLeanPress = 0.5, kLeanWiden = 0.5;
   // The bend's pull: how far the wet paint is drawn, over the brush's half-width, and how much, over what the brush moved.
-  static constexpr double kPullReach = 12, kPullGain = 4.0, kPullFlick = 6, kPullTake = 2.2;
-  static constexpr int kStreakCells = 4096;
+  static constexpr double kPullReach = 19.2, kPullGain = 10.0, kPullFlick = 6, kPullTake = 3.0;
+  static constexpr int kStreakCells = 8192;
   /* The spatter: nothing under kSpatterFrom of a full impact; at a full one kSpatterMost drops, thrown as far as
      kSpatterSeconds along the time and kSpatterOctaves in pitch at width two (the round layout's A3: about nine cells
      along and eight across), the least drop kDropLeast cells across its radius, the blot's edge kSpatterBlot as
