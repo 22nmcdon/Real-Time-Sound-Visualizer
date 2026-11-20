@@ -111,6 +111,8 @@ struct PaintParams {
   /* The hardest strikes (over 0.8 of a full impact) flick a few flecks off the mark's fingers' tips: a variant for the
      owner to choose by eye (20 Nov), off until they do. */
   bool flecks = false;
+  // How far the bend's pull reaches, over its default (kPullReach): internal, for the owner to choose between by eye.
+  double pullReach = 1;
 };
 
 /* The player's controllers on the brush (step 3, the owner's table of 16 Nov,
@@ -374,6 +376,29 @@ inline double paintFingerCover(double u, double v, double len, std::uint32_t see
   const double reach = len * (0.65 + 0.35 * paintHash(seed * 7u + si + 11u));
   const double side = std::clamp(0.5 - (std::fabs(u) - h) / px, 0.0, 1.0), tip = std::clamp(0.5 - (v - reach) / px, 0.0, 1.0);
   return side * tip * (1 - 0.55 * x) * (0.7 + 0.6 * paintHash(seed * 13u + si + 17u));
+}
+
+/* One bristle group's streak of the bend's pull, how much of a pixel of
+   side `px` it covers times how much paint it lays there, nought to one:
+   `s` along the way the pitch went from the group's place on the brush, `l`
+   across, both in the group's half-widths, `len` the streak's length in the
+   same. Its four bristles each drag a line of paint (the look's four to a
+   group), thinning and tapering to their own lengths, the line curving
+   back the way the brush came as `bend` says (a moving brush's paint
+   trails it); `sharp` from nought (a slow bend: broad, soft lines run
+   together) to one (a flick: fine, distinct lines). The look's shader
+   (streakCover) is this, line for line. */
+inline double paintStreakCover(double l, double s, double len, double bend, double sharp, std::uint32_t seed, double px) {
+  if (s < -px || s > len + px) return 0;
+  const double x = std::clamp(s / len, 0.0, 1.0), lat = l - bend * x * x * len;
+  const int j = std::clamp(static_cast<int>(std::floor((lat + 1) / 2 * 4)), 0, 3);
+  const auto ji = static_cast<std::uint32_t>(j);
+  const double reach = len * (0.55 + 0.45 * paintHash(seed * 7u + ji + 5u)), y = std::clamp(s / reach, 0.0, 1.0);
+  const double half = (0.14 + 0.24 * (1 - sharp)) * (1 - 0.6 * y);
+  const double centre = -0.75 + 0.5 * j + 0.08 * (paintHash(seed * 11u + ji + 9u) * 2 - 1);
+  const double side = std::clamp(0.5 - (std::fabs(lat - centre) - half) / px, 0.0, 1.0);
+  const double ends = std::clamp(0.5 + s / px, 0.0, 1.0) * std::clamp(0.5 - (s - reach) / px, 0.0, 1.0);
+  return side * ends * std::pow(1 - y, 0.7);
 }
 
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
@@ -738,11 +763,14 @@ class Painter {
        brush moved over its own half-width, times kPullGain, so a quick flick
        smears hard in a short stretch and a slow bend pulls gently along a
        long one, and the same bend moves the same paint either way. */
-    if (bendStep_ != 0 && b.placed) {
-      const PaintPoint was = layout_->at(t, b.hz * std::exp2(-bendStep_));
+    if (bendStep_ != 0 && b.placed && dt > 0) {
+      const PaintPoint was = layout_->at(t, b.hz * std::exp2(-bendStep_)), on = layout_->at(t + 0.05, b.hz);
       const double mx = x - was.x * kPaintN, my = y - was.y * kPaintN, moved = std::hypot(mx, my);
       const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
-      if (moved > 1e-9) pull(b, b.x, b.y, mx / moved, my / moved, w, p, kPullShift * hw, std::min(0.5, kPullGain * moved / hw), t);
+      double fx = on.x * kPaintN - x, fy = on.y * kPaintN - y;
+      const double fl = std::hypot(fx, fy);
+      fx = fl > 1e-9 ? fx / fl : 1; fy = fl > 1e-9 ? fy / fl : 0;
+      if (moved > 1e-9) pull(b, b.x, b.y, mx / moved, my / moved, fx, fy, hw, moved, moved / dt, t);
     }
     const int steps = std::max(1, static_cast<int>(std::ceil(len / kSpacing)));
     const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
@@ -937,79 +965,93 @@ class Painter {
       }
   }
 
-  /* The bend's pull, in cells: under a brush at (x, y) of width `w` and
-     pressure `p`, a share `f` of the wet paint (by its wetness, and by how
-     near the brush's middle it lies) is dragged out the way (ux, uy), spread
-     evenly over the `shift` cells ahead of where it lay - a smear, not the
-     paint lifted and set down again further on, which drew a ghost of the
-     stroke beside it. Each cell keeps what it does not give and takes what
-     the cells up to `shift` behind it gave (kPullSamples points along the
-     way), read from the paint as it stood before the pull, as the look reads
-     its canvas from before its batch: so nothing is made or lost but at the
-     canvas's edge, and the look does the same sum per pixel. */
-  void pull(const PaintBrush& b, double x, double y, double ux, double uy, double w, double p, double shift, double f, double t) {
-    (void)t;
-    constexpr int N = kPaintN;
-    if (!(f > 0) || !(shift > 0)) return;
-    const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
-    if (stamps_.size() < kPaintStampsMost) {
-      PaintStamp st;
-      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(ux); st.dy = static_cast<float>(uy);
-      st.w = static_cast<float>(w / N); st.p = static_cast<float>(p); st.t = static_cast<float>(t); st.per = 1;
-      st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
-      st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
-      st.kind = kPaintStampPull; st.a = static_cast<float>(shift / N); st.b = static_cast<float>(f);
-      stamps_.push_back(st);
-    } else { dropped_++; }
-    // The box the pull reads and writes: the brush and the brush moved on by the shift, a cell either side.
-    const double reach = hw + shift + 2;
-    const int x0 = std::max(0, static_cast<int>(std::floor(x - reach))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + reach)));
-    const int y0 = std::max(0, static_cast<int>(std::floor(y - reach))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + reach)));
-    const int bw = x1 - x0 + 1, bh = y1 - y0 + 1;
-    if (bw <= 0 || bh <= 0 || bw > kPullBox || bh > kPullBox) return;
-    const auto foot = [&](double cx, double cy) {
-      const double r = std::hypot(cx - x, cy - y) / hw;
-      return r < 1 ? 1 - r * r * r * r : 0.0;
-    };
-    // What each cell gives: its paint times the share, and that paint's wetness, as it stands now.
-    for (int yy = 0; yy < bh; yy++)
-      for (int xx = 0; xx < bw; xx++) {
-        const std::size_t q = static_cast<std::size_t>(y0 + yy) * N + static_cast<std::size_t>(x0 + xx);
-        const double m = f * map_.wet[q] * foot(x0 + xx + 0.5, y0 + yy + 0.5);
-        const std::size_t k = static_cast<std::size_t>(yy * kPullBox + xx);
-        give_[k] = map_.thick[q] * m; giveWet_[k] = map_.thick[q] * m * map_.wet[q]; keep_[k] = 1 - m;
-      }
-    const auto at = [&](const std::array<double, kPullBox * kPullBox>& g, double cx, double cy) {
-      // Bilinear over the box's cell centres, nought outside it.
-      const double fx = cx - x0 - 0.5, fy = cy - y0 - 0.5;
-      const int ix = static_cast<int>(std::floor(fx)), iy = static_cast<int>(std::floor(fy));
-      const double ax = fx - ix, ay = fy - iy;
-      double v = 0;
-      for (int j = 0; j < 2; j++)
-        for (int i = 0; i < 2; i++) {
-          const int gx = ix + i, gy = iy + j;
-          if (gx < 0 || gy < 0 || gx >= bw || gy >= bh) continue;
-          v += (i ? ax : 1 - ax) * (j ? ay : 1 - ay) * g[static_cast<std::size_t>(gy * kPullBox + gx)];
+  /* The bend's pull (20 Nov, redesigned after the owner: "it still has
+     minimal effect, and the effect it does have is smearing a small blocky
+     spot ... The pitch bend should pull a lot more"). A brush pressed into
+     wet paint and moved across the radius by the pitch drags the paint with
+     it, as a loaded brush or a palette knife does: each of its eight bristle
+     groups takes a share of the wet paint under it and draws it out into a
+     streak of four bristle lines the way the pitch went, several stroke
+     widths long (`kPullReach` half-widths of the brush at a flick, by
+     PaintParams::pullReach), thinning and tapering to their ends and curving
+     back the way the brush came. The share is by how far the brush moved
+     over a group's width (`kPullGain`), so a bend moves the same paint
+     whatever its speed; its speed shapes the streaks - a flick (over
+     kPullFlick cells a second) fine, long and sharp, a slow bend broad, soft
+     and shorter - and how far the bend has gone (in semitones, a whole
+     tone the most) how long they are. What a group takes, it lays along its
+     streak (conserved), and the streak's stamp carries the thickness, so the
+     look lays the same lines from the same shape (paintStreakCover). Where
+     the stroke sits stays the pitch's. */
+  void pull(const PaintBrush& b, double x, double y, double ux, double uy, double fx, double fy, double hw, double moved,
+            double speed, double t) {
+    constexpr int N = kPaintN, S = kDropSamples;
+    const double sharp = std::clamp(speed / kPullFlick, 0.0, 1.0);
+    const double semis = std::min(2.0, std::fabs(12 * std::log2(controls_.bend)));
+    const double gw = hw / 8 * (1.3 + 1.2 * (1 - sharp));  // a group's half-width, broader for a slow bend
+    const double len = kPullReach * p_.pullReach * hw * (0.45 + 0.55 * sharp) * (0.35 + 0.65 * semis / 2) / gw;  // in gw
+    const double f = std::min(0.6, kPullGain * moved / gw);
+    const double vx = -uy, vy = ux;  // across the streak
+    // The paint trails the brush: the streak curves back against the way it travels.
+    const double bend = -(fx * vx + fy * vy) * 0.25;
+    for (int g = 0; g < kPaintBins; g++) {
+      const double across = (2.0 * g - 7) / 8 * hw;
+      const double rx0 = x - fy * across, ry0 = y + fx * across;  // the group's place on the brush (across its travel)
+      // What it takes: wet paint within kPullTake of its own half-width of where it is, by how near.
+      double took = 0;
+      const double tr = kPullTake * gw;
+      const int x0 = std::max(0, static_cast<int>(std::floor(rx0 - tr - 1))), x1 = std::min(N - 1, static_cast<int>(std::ceil(rx0 + tr + 1)));
+      const int y0 = std::max(0, static_cast<int>(std::floor(ry0 - tr - 1))), y1 = std::min(N - 1, static_cast<int>(std::ceil(ry0 + tr + 1)));
+      for (int yy = y0; yy <= y1; yy++)
+        for (int xx = x0; xx <= x1; xx++) {
+          const double r = std::hypot(xx + 0.5 - rx0, yy + 0.5 - ry0) / std::max(kPullTake * gw, 0.5);
+          if (r >= 1) continue;
+          const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
+          const double tk = map_.thick[q] * f * map_.wet[q] * (1 - r * r);
+          map_.thick[q] = static_cast<float>(map_.thick[q] - tk);
+          took += tk;
         }
-      return v;
-    };
-    for (int yy = 0; yy < bh; yy++)
-      for (int xx = 0; xx < bw; xx++) {
-        const std::size_t q = static_cast<std::size_t>(y0 + yy) * N + static_cast<std::size_t>(x0 + xx);
-        const std::size_t k = static_cast<std::size_t>(yy * kPullBox + xx);
-        const double cx = x0 + xx + 0.5, cy = y0 + yy + 0.5;
-        double in = 0, inWet = 0;
-        for (int j = 0; j < kPullSamples; j++) {
-          const double back = shift * (j + 0.5) / kPullSamples;
-          in += at(give_, cx - ux * back, cy - uy * back) / kPullSamples;
-          inWet += at(giveWet_, cx - ux * back, cy - uy * back) / kPullSamples;
+      if (!(took > 1e-7)) continue;
+      const auto seed = (static_cast<std::uint32_t>(b.serial) * 131u + static_cast<std::uint32_t>(g) * 977u +
+                         static_cast<std::uint32_t>(std::lround(t * 60)) * 7919u) & 0xffffffu;
+      // Where it lays it: the streak's shape over the cells, then scaled so it lays what was taken.
+      const double ext = len * gw;
+      const int sx0 = std::max(0, static_cast<int>(std::floor(std::min(rx0, rx0 + ux * ext) - gw * (2 + std::fabs(bend) * len) - 1)));
+      const int sx1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(rx0, rx0 + ux * ext) + gw * (2 + std::fabs(bend) * len) + 1)));
+      const int sy0 = std::max(0, static_cast<int>(std::floor(std::min(ry0, ry0 + uy * ext) - gw * (2 + std::fabs(bend) * len) - 1)));
+      const int sy1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(ry0, ry0 + uy * ext) + gw * (2 + std::fabs(bend) * len) + 1)));
+      const int bw = sx1 - sx0 + 1, bh = sy1 - sy0 + 1;
+      if (bw <= 0 || bh <= 0 || bw * bh > kStreakCells) continue;
+      double sum = 0;
+      for (int yy = sy0; yy <= sy1; yy++)
+        for (int xx = sx0; xx <= sx1; xx++) {
+          double in = 0;
+          for (int j = 0; j < S; j++)
+            for (int i = 0; i < S; i++) {
+              const double rx = xx + (i + 0.5) / S - rx0, ry = yy + (j + 0.5) / S - ry0;
+              in += paintStreakCover((rx * vx + ry * vy) / gw, (rx * ux + ry * uy) / gw, len, bend, sharp, seed, 1.0 / (S * gw));
+            }
+          streak_[static_cast<std::size_t>((yy - sy0) * bw + (xx - sx0))] = in / (S * S);
+          sum += in / (S * S);
         }
-        if (keep_[k] >= 1 && in <= 0) continue;
-        const double kept = map_.thick[q] * keep_[k], after = kept + in;
-        const double wet = after > 0 ? (map_.wet[q] * kept + inWet) / after : 0;
-        map_.thick[q] = static_cast<float>(after);
-        map_.wet[q] = static_cast<float>(std::clamp(wet, 0.0, 1.0));
-      }
+      if (!(sum > 1e-9)) continue;
+      const double thick = took / sum;
+      if (stamps_.size() < kPaintStampsMost) {
+        PaintStamp st;
+        st.x = static_cast<float>(rx0 / N); st.y = static_cast<float>(ry0 / N); st.dx = static_cast<float>(ux); st.dy = static_cast<float>(uy);
+        st.w = static_cast<float>(2 * gw / N); st.p = static_cast<float>(f); st.load[2] = static_cast<float>(kPullTake); st.t = static_cast<float>(t); st.per = static_cast<float>(bend);
+        st.load[0] = static_cast<float>(thick); st.load[1] = static_cast<float>(sharp);
+        st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
+        st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
+        st.kind = kPaintStampPull; st.a = static_cast<float>(len); st.b = static_cast<float>(seed);
+        stamps_.push_back(st);
+      } else { dropped_++; }
+      for (int yy = sy0; yy <= sy1; yy++)
+        for (int xx = sx0; xx <= sx1; xx++) {
+          const double c = streak_[static_cast<std::size_t>((yy - sy0) * bw + (xx - sx0))];
+          if (c > 0) layCell(b, static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx), thick * c, t);
+        }
+    }
   }
 
   /* One stamp, the study's oil paint (painting-study/tools/oilpaint.cpp) kept
@@ -1312,8 +1354,8 @@ class Painter {
   // and widening.
   static constexpr double kWheelLoad = 2.0, kWheelReach = 1.5, kWheelPress = 0.3, kWheelWiden = 0.5, kLeanPress = 0.5, kLeanWiden = 0.5;
   // The bend's pull: how far the wet paint is drawn, over the brush's half-width, and how much, over what the brush moved.
-  static constexpr double kPullShift = 2.0, kPullGain = 12;
-  static constexpr int kPullBox = 96, kPullSamples = 8;
+  static constexpr double kPullReach = 12, kPullGain = 4.0, kPullFlick = 6, kPullTake = 2.2;
+  static constexpr int kStreakCells = 4096;
   /* The spatter: nothing under kSpatterFrom of a full impact; at a full one kSpatterMost drops, thrown as far as
      kSpatterSeconds along the time and kSpatterOctaves in pitch at width two (the round layout's A3: about nine cells
      along and eight across), the least drop kDropLeast cells across its radius, the blot's edge kSpatterBlot as
@@ -1339,7 +1381,7 @@ class Painter {
   bool pedal_ = false;
   PaintControls controls_ {};
   double lastBend_ = 1, bendStep_ = 0;  // the bend at the last frame, and how far it has moved since, in octaves
-  std::array<double, kPullBox * kPullBox> give_ {}, giveWet_ {}, keep_ {};  // the pull's box (pull)
+  std::array<double, kStreakCells> streak_ {};  // a streak's cover over its box (pull)
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;

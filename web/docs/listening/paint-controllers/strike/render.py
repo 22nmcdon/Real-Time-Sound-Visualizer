@@ -12,6 +12,13 @@ only, beside the paint-controllers page:
                        and `without` (no mark at all); a close-up round its first hard strike each, and the whole look
   single-look.jpg      (d) one strike close up, and single-map.png the core's map of the same box
   single-map.png
+  bend-WAY.jpg         (e) the bend phrase (a whole tone up in a quarter second and back, then down slowly over a
+                       second and back): `pull` (the redesigned pull), `pull-short` and `pull-long` (its reach at 0.6
+                       and 1.6 times), `without`, and `smear` (b0c1db9's); bend-WAY-flick.jpg and bend-WAY-slow.jpg
+                       close-ups of the flick and the slow bend, and bend-pull-map.png the core's map
+
+switch-play-*.png, from switch-mock.py beside this file, are where the wheel's and pressure's Sound / Brush / Both
+switch would go on Play, mocked into the page for the picture only (nothing of it is built).
 
     CHROME=/opt/pw-browsers/chromium FIRST=/path/to/7389e9c DROPS=/path/to/b0c1db9 \\
         python3 web/docs/listening/paint-controllers/strike/render.py
@@ -114,6 +121,33 @@ def main(parts):
                 x, y = float(r[0]), float(r[1])
                 first_box = box(x, y, 0.11)
             looks.look(pre, out("phrase-%s.jpg" % way), floats=floats, crop=(first_box, out("phrase-%s-close.jpg" % way)))
+      if "e" in parts:
+        # (e) the bend phrase (up a whole tone in a quarter second and back, then down slowly over a second and back):
+        # the redesigned pull at three reaches, without, and b0c1db9's smear; close-ups of the flick and the slow bend.
+        _, setup, make, _ = ctl.PHRASES["bend"]
+        notes, events, length = make()
+        path = os.path.join(BUILD, "bend.script")
+        with open(path, "w") as f: f.write(ctl.script(json.dumps(setup), notes, events, length))
+        boxes = None
+        for way, tool, args in [("pull", "render", ("2", "15", "0", "0", "1")), ("pull-short", "render", ("2", "15", "0", "0", "0.6")),
+                                ("pull-long", "render", ("2", "15", "0", "0", "1.6")), ("without", "render", ("2", "11", "0")),
+                                ("smear", "render-drops", ("2", "15", "0"))]:
+            prefix = os.path.join(BUILD, "bend-" + way)
+            exe = os.path.join(ctl.BUILD, tool) if tool == "render" else os.path.join(BUILD, tool)
+            subprocess.run([exe, path, prefix] + list(args), check=True)
+            if boxes is None:
+                # Where the flick's streaks start and where the slow bend's do: the pull stamps in each window.
+                _, S = pw.stamps_of(prefix, 23)
+                P = S[S[:, 20] == 2]
+                def at(t0, t1):
+                    q = P[(P[:, 6] >= t0) & (P[:, 6] <= t1)]
+                    return (float(np.median(q[:, 0])), float(np.median(q[:, 1]))) if len(q) else (0.5, 0.5)
+                boxes = {"flick": box(*at(1.0, 1.3), 0.13), "slow": box(*at(3.8, 4.8), 0.16)}
+            crops = [(boxes[k], out("bend-%s-%s.jpg" % (way, k))) for k in ("flick", "slow")]
+            looks.look(prefix, out("bend-%s.jpg" % way), floats=23 if tool == "render" else 23, crop=crops)
+            if way == "pull":
+                _, thick, wet = step1.maps_of(prefix)
+                step1.picture(thick[-1], wet[-1]).save(out("bend-pull-map.png"), optimize=True)
       if "d" in parts:
         # (d) one strike close up, beside the map of the same box.
         pre = run("single", STRUCK, [(0.2, 60, 127, 1.0)], 1.6)
@@ -129,4 +163,4 @@ def main(parts):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or ["a", "b", "c", "d"])
+    main(sys.argv[1:] or ["a", "b", "c", "d", "e"])
