@@ -75,9 +75,22 @@ bound on the reverb, not on a heading: at its fullest - Mix, Spread and Size
 at the top - a held Settled note may breathe, as one at the Delay's full Mix
 may, but no more than 0.10 late, which is churn rather than breath.
 
-Serial: everything here is measured over real seconds.
+Offline, and at five moments (20 Nov). The page loads each preset as a
+player does and hands over the setup code it sends the instrument, and the
+instrument plays it on the core rendered offline (render_cpp), with the key
+at 0.9, 1.0, 1.25, 1.5 and 2.0 s after the load; a preset is judged by its
+worst moment against its heading. Until then the sound was read off the
+page in real time with the key wherever the page's timing put it, and how a
+held note moves depends on where in the loop's own state it lands: the Slow
+pad, rendered offline with nothing else changed, read 0.0195 to 0.034 late
+over those five moments, under Breathing's 0.02 at 1.0 s. Run on the page it
+was a verdict by lot, which load only reshuffled. The limiter's chord is
+rendered the same way, its key at 0.9 s.
+
+Parallel: offline renders; the browser only loads the presets.
 """
-import os, sys
+import json, math, os, subprocess, sys
+import numpy as np
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -100,9 +113,10 @@ HOLD, AFTER = 10.0, 4.5
 RESPONDS = os.environ.get("HONESTY_RESPONDS")
 def responding(wet): return dict(wet or {}, pictureResponds=RESPONDS) if RESPONDS else wet
 
-# Hold notes on a preset loaded as a player loads one, with the screen's keys
-# open so a note gates the sound as a keyboard's does, and read the sound.
-RUN = r"""async ([value, notes, hold, after, wet]) => {
+# A preset loaded as a player loads one, with the screen's keys open so a
+# note gates the sound as a keyboard's does: the setup code the instrument is
+# sent, which the renders below play.
+LOAD = r"""async ([value, wet]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   setScreenKeys(true);
   applyPreset(value);
@@ -122,83 +136,70 @@ RUN = r"""async ([value, notes, hold, after, wet]) => {
     if (id === 'pictureResponds') { el[id].value = v; el[id].dispatchEvent(new Event('change')); continue; }
     el[id].value = String(v); el[id].dispatchEvent(new Event('input'));
   }
-  await wait(900);
-  function spectrum(x) {
-    const n = x.length, re = new Float64Array(n), im = new Float64Array(n);
-    for (let i = 0; i < n; i++) re[i] = x[i] * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1)));
-    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
-      if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
-    for (let len = 2; len <= n; len <<= 1) { const a = -2 * Math.PI / len;
-      for (let i = 0; i < n; i += len) for (let k = 0; k < len / 2; k++) {
-        const c = Math.cos(a * k), s = Math.sin(a * k), u = i + k, v = u + len / 2;
-        const tr = re[v] * c - im[v] * s, ti = re[v] * s + im[v] * c;
-        re[v] = re[u] - tr; im[v] = im[u] - ti; re[u] += tr; im[u] += ti; } }
-    const bands = new Float64Array(48);
-    for (let k = 1; k < n / 2; k++) { const f = k * 44100 / n; if (f < 40) continue;
-      bands[Math.min(47, Math.floor(Math.log2(f / 40) * 5))] += re[k] * re[k] + im[k] * im[k]; }
-    let total = 0; for (const v of bands) total += v;
-    return Array.from(bands, (v) => total > 0 ? Math.sqrt(v / total) : 0);
-  }
-  /* Each reading is the movement over exactly a quarter second of the
-     sound, measured on its own samples: two windows a quarter second apart
-     in one stretch taken from the ring, rather than this window against the
-     one the last timer took. The timer is late under load - 252 to 340 ms
-     between reads, 268 to 285 on average, on a quiet machine on 11 Nov -
-     and a longer gap is more movement, so the reading moved with how busy
-     the machine was: the Bass under the tine piano's upper hand, with the
-     reverb on, read 0.0105 to 0.0175 late over eight runs this way, and
-     0.0100 to 0.0127 when the same sound was scored at exactly a quarter
-     second. The first reading still counts no movement, as it had no last,
-     so every window falls where it did.
-
-     Tried and not kept: the mean of five such pairs a reading, tiling the
-     stretch since the last. It steadied the late further, but its pairs
-     reach back in time, and on a strike that dies in half a second that
-     changed what early reads - the bass hand's fell from 0.047 to 0.022 -
-     which is a change to the rule, not to the measure. */
-  const out = [];
-  const rate = state.source.sampleRate || 44100, N = 4096, GAP = Math.round(rate / 4);
-  let first = true;
-  const read = (t, phase) => {
-    // A split hands back a pair a layer; heard, they are summed.
-    const w = state.source.getLatestWindow(N + GAP);
-    const l = w.length >= 4 ? w[0].map((x, i) => x + w[2][i]) : w[0];
-    let e = 0; for (let k = GAP; k < GAP + N; k++) e += l[k] * l[k];
-    let move = 0;
-    if (!first) {
-      const a = spectrum(l.subarray(0, N)), b = spectrum(l.subarray(GAP, GAP + N));
-      for (let k = 0; k < a.length; k++) move += (b[k] - a[k]) ** 2;
-      move = Math.sqrt(move);
-    }
-    first = false;
-    out.push({ t, phase, move, rms: Math.sqrt(e / N) });
-  };
-  for (const n of notes) midiBytes(new Uint8Array([0x90, n, 100]));
-  const t0 = performance.now();
-  while (performance.now() - t0 < hold * 1000) { await wait(250); read((performance.now() - t0) / 1000, 'held'); }
-  for (const n of notes) midiBytes(new Uint8Array([0x80, n, 0]));
-  const t1 = performance.now();
-  while (performance.now() - t1 < after * 1000) { await wait(250); read(hold + (performance.now() - t1) / 1000, 'after'); }
-  midiPanic();
-  return { out, latch: midi.latch, amount: Number(el.pictureAmount.value), pressed,
-           plane: Object.fromEntries(PLANE_SHAPING.filter(([id, rest]) => el[id].value !== rest).map(([id]) => [id, el[id].value])),
+  await wait(300);
+  return { code: encodeSetup(snapshot()), latch: midi.latch, amount: Number(el.pictureAmount.value), pressed,
            reverb: { mix: genSettings().reverbMix, spread: genSettings().reverbSpread, size: genSettings().reverbSize } };
 }"""
 
-# A chord, and the most the limiter took off while it sounded.
-CHORD = r"""async ([value, notes]) => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  setScreenKeys(true);
-  applyPreset(value);
-  await wait(900);
-  for (const n of notes) midiBytes(new Uint8Array([0x90, n, 110]));
-  let most = 0;
-  // The instrument's limiter, as it posts it (5a): the page's own went in stage 5's step 6.
-  for (let k = 0; k < 16; k++) { await wait(125); most = Math.min(most, state.source.limiting); }
-  for (const n of notes) midiBytes(new Uint8Array([0x80, n, 0]));
-  midiPanic();
-  return most;
-}"""
+HERE_ = os.path.dirname(os.path.abspath(__file__))
+CORE = os.path.join(os.path.dirname(os.path.dirname(HERE_)), "core")
+BUILD = os.path.join(CORE, "build", "honesty")
+os.makedirs(BUILD, exist_ok=True)
+RENDER = os.path.join(BUILD, "render_cpp")
+subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(CORE, "include"),
+                os.path.join(CORE, "tests", "tools", "render_cpp.cpp"), "-o", RENDER], check=True)
+RATE, N, GAP = 48000, 4096, 12000
+MOMENTS = (0.9, 1.0, 1.25, 1.5, 2.0)
+
+def render(lines, record=None):
+    """render_cpp on a script; its printed lines, and the six picture lanes if asked."""
+    tag = "%d-%d" % (os.getpid(), abs(hash(json.dumps(lines))) % 10**9)
+    script, lanes = os.path.join(BUILD, "s-%s.txt" % tag), os.path.join(BUILD, "l-%s.f32" % tag)
+    if record: lines = lines[:1] + [["record", "lanes", lanes]] + lines[1:] + [["record", "lanes"]]
+    with open(script, "w") as f: f.write("\n".join(json.dumps(l) for l in lines) + "\n")
+    out = subprocess.run([RENDER, script], check=True, capture_output=True, text=True).stdout
+    got = np.fromfile(lanes, dtype=np.float32).reshape(-1, 6) if record else None
+    for path in (script, lanes):
+        if os.path.exists(path): os.remove(path)
+    return out, got
+
+HANN = 0.5 - 0.5 * np.cos(2 * np.pi * np.arange(N) / (N - 1))
+# The page's forty-eight fifth-of-an-octave bands from 40 Hz, its bins labelled at 44.1 kHz as it labelled them.
+_f = np.arange(N // 2) * 44100 / N
+BAND = np.full(N // 2, -1)
+BAND[1:] = np.where(_f[1:] >= 40, np.minimum(47, np.floor(np.log2(np.maximum(_f[1:], 1e-9) / 40) * 5)), -1)
+def spectrum(x):
+    p = np.abs(np.fft.fft(x * HANN)[:N // 2]) ** 2
+    bands = np.bincount(BAND[BAND >= 0].astype(int), weights=p[BAND >= 0], minlength=48)
+    total = bands.sum()
+    return np.sqrt(bands / total) if total > 0 else bands
+
+def held_note(code, notes, at):
+    """The readings of notes held HOLD seconds from `at` and let go: every quarter second
+    of the sound after the key, the movement between a window and the one a quarter
+    second before it, and the window's RMS, as the page read them."""
+    _, lanes = render([["make", RATE, code], ["to", at]] + [["midi", 0x90, n, 100] for n in notes]
+                      + [["to", at + HOLD]] + [["midi", 0x80, n, 0] for n in notes] + [["to", at + HOLD + AFTER + 0.1]], record=True)
+    # A split hands back a pair a layer; heard, they are summed (the second pair is silence with one).
+    l = lanes[:, 0].astype(np.float64) + lanes[:, 2]
+    on, out = int(round(at * RATE)), []
+    for k in range(1, int(RATE * (HOLD + AFTER)) // GAP + 1):
+        end, t = on + k * GAP, k * GAP / RATE
+        w = l[end - N - GAP:end]
+        move = 0.0 if k == 1 else float(np.sqrt(((spectrum(w[GAP:]) - spectrum(w[:N])) ** 2).sum()))
+        out.append({"t": t, "phase": "held" if t <= HOLD else "after", "move": move, "rms": float(np.sqrt((w[GAP:] ** 2).mean()))})
+    return out
+
+def judged(code, notes):
+    """Each moment's summary, and the verdicts that hold at every one of them."""
+    ms = [summary(held_note(code, notes, at)) for at in MOMENTS]
+    return ms, {h: all(rule(m) for m in ms) for h, rule in RULES.items()}
+
+def limiter_on_chord(code, notes):
+    """The most the instrument's limiter took off a chord held two seconds, read every eighth."""
+    out, _ = render([["make", RATE, code], ["to", 0.9]] + [["midi", 0x90, n, 110] for n in notes]
+                    + [["every", 0.125, "limiter"], ["to", 2.9]])
+    return min([0.0] + [float(line.split()[2]) for line in out.split("\n") if line.startswith("limiter ")])
 
 def mean(xs): return sum(xs) / len(xs) if xs else 0.0
 
@@ -245,32 +246,47 @@ def open_page(pw):
 
 with sync_playwright() as pw:
     b, p, bad = open_page(pw)
+    errors = []
     bank = p.evaluate("() => PRESETS.map(([section, entries]) => [section, entries.map(([n, s]) => ['b:' + n, s])])")
     # The base, as New and the opening page load it, judged as Still.
     bank.append(p.evaluate("() => ['Still', [['n:' + BASE_NAME, BASE_SETUP]]]"))
     b.close()
+    # One page loads every preset, each from a fresh one so nothing carries over.
+    class Loader:
+        def evaluate(self, js, args):
+            b, p, bad = open_page(pw)
+            try: return p.evaluate(js, args)
+            finally: errors.extend(bad); b.close()
+    page = Loader()
+    moments = lambda ms, k: "/".join("%.3f" % m[k] for m in ms)
     print("\n--- each preset against its heading, by the sound ---")
-    results, errors = [], []
+    results = []
     for heading, entries in bank:
         for name, setup in entries:
+            run = page.evaluate(LOAD, [name, responding(None)])
+            limit = limiter_on_chord(run["code"], chord(setup))
             for notes in probes(name, setup):
-                b, p, bad = open_page(pw)
-                run = p.evaluate(RUN, [name, notes, HOLD, AFTER, responding(None)])
-                limit = p.evaluate(CHORD, [name, chord(setup)])
-                b.close()
-                errors += bad
-                m = summary(run["out"])
-                verdicts = {h: rule(m) for h, rule in RULES.items()}
-                results.append((heading, name, notes, m, verdicts, limit))
-                print("    %-10s %-24s %-9s early %.3f late %.3f most %.3f | after rms %.3f move %.3f | limiter %.1f dB | %s"
-                      % (heading, name, notes, m["early"], m["late"], m["most"], m["afterRms"], m["afterMove"], limit,
-                         ",".join(h for h, v in verdicts.items() if v) or "none"))
+                ms, verdicts = judged(run["code"], notes)
+                results.append((heading, name, notes, ms, verdicts, limit))
+                print("    %-10s %-24s %-9s early %s late %s | most %.3f | after rms %.3f | limiter %.1f dB | %s"
+                      % (heading, name, notes, moments(ms, "early"), moments(ms, "late"), max(m["most"] for m in ms),
+                         max(m["afterRms"] for m in ms), limit, ",".join(h for h, v in verdicts.items() if v) or "none"))
 
     for heading in [h for h, _ in bank]:
         mine = [r for r in results if r[0] == heading]
         check("every %s preset does what the heading says, on every probe" % heading,
               mine and all(r[4][heading] for r in mine),
               "; ".join("%s %s" % (r[1], r[2]) for r in mine if not r[4][heading]) or "%d probes" % len(mine))
+        # Known, 20 Nov: the Slow pad as shipped is under Breathing's floor with
+        # the key at 1.0 s. Its re-voicing is the owner's ear; the candidates
+        # are on web/docs/listening/slow-pad/, and this stays red until one ships.
+        if any(r[1] == "b:Slow pad" and not r[4][heading] for r in mine):
+            print("        (the Slow pad: awaiting the owner's re-voicing, web/docs/listening/slow-pad/)")
+    # The parent's null for the worst-moment verdict (20 Nov): a Settled preset
+    # judged as Breathing over the same five moments is red, every one.
+    settled = [r for r in results if r[0] == "Settled"]
+    null("every Settled preset judged as Breathing, at its worst moment, fails it",
+         settled and not any(r[4]["Breathing"] for r in settled), "%d probes" % len(settled))
     others = [(r[1], r[2], h) for r in results for h, v in r[4].items() if v and h != r[0]]
     check("and none does what another heading says, which every rule is made to fail on the rest",
           not others, str(others))
@@ -295,16 +311,12 @@ with sync_playwright() as pw:
         for heading, entries in bank:
             if heading not in headings: continue
             for name, setup in entries:
+                run = page.evaluate(LOAD, [name, responding(wet)])
                 for notes in probes(name, setup):
-                    b, p, bad = open_page(pw)
-                    run = p.evaluate(RUN, [name, notes, HOLD, AFTER, responding(wet)])
-                    b.close()
-                    errors.extend(bad)
-                    m = summary(run["out"])
-                    verdicts = {h: rule(m) for h, rule in RULES.items()}
-                    out.append((heading, name, notes, m, verdicts, run["reverb"], run))
-                    print("    %-10s %-28s %-9s early %.3f late %.3f most %.3f | after rms %.3f | reverb %s | %s"
-                          % (heading, name, notes, m["early"], m["late"], m["most"], m["afterRms"], run["reverb"],
+                    ms, verdicts = judged(run["code"], notes)
+                    out.append((heading, name, notes, ms, verdicts, run["reverb"], run))
+                    print("    %-10s %-28s %-9s early %s late %s | reverb %s | %s"
+                          % (heading, name, notes, moments(ms, "early"), moments(ms, "late"), run["reverb"],
                              ",".join(h for h, v in verdicts.items() if v) or "none"))
         return out
     # The cost, kept from growing: every Settled preset at
@@ -320,7 +332,8 @@ with sync_playwright() as pw:
     LATE_BOUND = 0.10
     within = lambda late: late < LATE_BOUND
     check("at full Mix, Spread and Size a held Settled note may go on moving, but no more than %.2f late" % LATE_BOUND,
-          full and all(within(r[3]["late"]) for r in full), ", ".join("%s %.3f" % (r[1][2:], r[3]["late"]) for r in full))
+          full and all(within(max(m["late"] for m in r[3])) for r in full),
+          ", ".join("%s %.3f" % (r[1][2:], max(m["late"] for m in r[3])) for r in full))
     null("the bound fails what a chorus at full does to the same notes (0.4 to 0.6 late)", not within(0.4))
     check("and each of those runs really had it at full", full and all(r[5] == {"mix": 1, "spread": 1, "size": 1} for r in full),
           str([r[5] for r in full][:2]))
