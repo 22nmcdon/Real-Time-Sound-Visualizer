@@ -41,7 +41,15 @@ What would go wrong, and what is checked for it, each with its null:
   its own between two readings a moment apart in Trace are left out first. The null: the Clear button taken out of
   the toolbar, which moves its neighbours, read the same way;
 - the toolbar one row at 1400x900 with Paint in the display switch, as it
-  was with three; the null is the plugin's 960x600, where it is two.
+  was with three; the null is the plugin's 960x600, where it is two;
+- the player's controllers not reaching the brush from the page (step 3):
+  the mod wheel, aftertouch and a bend sent as a port's bytes through
+  midiBytes, each held A3's width or radius in the core's map against the
+  same note at rest, and the look's width against the map's in each - the
+  null the heavy brush's look against the resting map; velocity's spatter,
+  soft against hard, off the note's ring; and the sustain pedal as a port's
+  controller 64, the brush laying through a pluck's silences and the paint
+  staying wet, against the same phrase without it.
 
 Parallel: no clock is judged; the frames are waited for, and every reading is
 a value.
@@ -331,6 +339,101 @@ with sync_playwright() as pw:
     else:
         check("the run's look is painted", False, str(runs["60"].get("stamps")))
     p.close()
+
+    # --- step 3: the player's controllers on the brush, through the page's MIDI path ---
+    # Each played as a port's bytes into midiBytes, which hands them to the instrument as a port's: a held A3 at a
+    # wheel, a lean or a bend, and the map's and the look's width and radius. A page a case, so nothing carries over.
+    MEASURE = """() => { const m = paintView.map, s = paintView.sample();
+      return { map: m ? Array.from(m.subarray(0, 128 * 128)) : null, look: s ? Array.from(s) : null }; }"""
+    def mean_radius(g, n=128):
+        s = sr = 0.0
+        for y in range(n):
+            for x in range(n):
+                a = g[y * n + x]
+                if a > 0: s += a; sr += a * math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) * 128 / n
+        return sr / s if s > 0 else 0.0
+    def ring_radius(semis):
+        hz = 220 * 2 ** (semis / 12)
+        return 0.47 * (1 / 3 + 2 / 3 * math.log2(hz / 27.5) / math.log2(4186.009044809578 / 27.5)) * 128
+    def held(before=(), during=(), strike=50, vel=110):
+        p = open_page(b)
+        p.click("#drawPaint"); p.wait_for_timeout(300)
+        p.evaluate("(st) => { el.oscScan.value = '60'; el.oscScan.dispatchEvent(new Event('input'));"
+                   " el.scanStrike.value = String(st); el.scanStrike.dispatchEvent(new Event('input')); }", strike)
+        p.wait_for_timeout(300)
+        for m in before: p.evaluate("(m) => midiBytes(m)", list(m))
+        p.wait_for_timeout(200)
+        p.evaluate("(v) => midiBytes([0x90, 57, v])", vel)
+        p.wait_for_timeout(300)
+        for m in during: p.evaluate("(m) => midiBytes(m)", list(m))
+        p.wait_for_timeout(1700)
+        p.evaluate("() => midiBytes([0x80, 57, 0])"); p.wait_for_timeout(1500)
+        got = p.evaluate(MEASURE)
+        p.close()
+        if not (got["map"] and got["look"]): return None
+        return {"map": spread(got["map"]), "look": spread(got["look"]), "radius": mean_radius(got["map"]), "cells": got["map"]}
+    rest = held()
+    heavy = held(before=[(0xB0, 1, 127)])
+    leaned = held(during=[(0xD0, 127)])
+    bent = held(before=[(0xE0, 127, 127)])
+    if rest and heavy and leaned and bent:
+        check("the mod wheel at the top, as a port sends it, loads the brush wider in the core", heavy["map"] > 1.4 * rest["map"],
+              "spread %.2f cells against %.2f at rest" % (heavy["map"], rest["map"]))
+        check("aftertouch, as a port sends it, widens the stroke in the core", leaned["map"] > 1.4 * rest["map"],
+              "spread %.2f cells against %.2f" % (leaned["map"], rest["map"]))
+        for name, got in (("at rest", rest), ("with the wheel at the top", heavy), ("leaned on", leaned)):
+            check("%s the look's stroke is the map's width" % name, abs(got["look"] / got["map"] - 1) < 0.12,
+                  "look %.2f cells, map %.2f" % (got["look"], got["map"]))
+        null("the heavy brush's look against the resting brush's map is not its width", abs(heavy["look"] / rest["map"] - 1) > 0.3,
+             "%.2f against %.2f" % (heavy["look"], rest["map"]))
+        want_up, want_a = ring_radius(2), ring_radius(0)
+        check("a bend to the top, as a port sends it, paints the note two semitones up", abs(bent["radius"] - want_up) < 0.35,
+              "radius %.2f cells, the layout's %.2f" % (bent["radius"], want_up))
+        null("unbent it paints on its own ring, where the bent check would fail", abs(rest["radius"] - want_a) < 0.35 and abs(rest["radius"] - want_up) > 0.5,
+             "%.2f against %.2f" % (rest["radius"], want_a))
+    else:
+        check("the controllers' cases paint", False, "rest %s, heavy %s, leaned %s, bent %s" % tuple(bool(x) for x in (rest, heavy, leaned, bent)))
+
+    # Velocity's spatter: soft and hard strikes, at Strike 100, and the paint lying well off the note's ring.
+    def off_ring(g, n=128):
+        r0 = ring_radius(0)
+        return sum(g[y * n + x] for y in range(n) for x in range(n) if abs(math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2) - r0) > 5)
+    soft, hard = held(strike=100, vel=30), held(strike=100, vel=127)
+    if soft and hard:
+        so, ho = off_ring(soft["cells"]), off_ring(hard["cells"])
+        check("a hard strike spatters paint off its ring and a soft one does not", ho > 1 and so < 0.1 * ho, "%.2f against %.2f" % (ho, so))
+        null("the hard strike's paint on its own ring outweighs its spatter, so the reading is of the spatter",
+             sum(hard["cells"]) > 3 * ho, "%.1f in all" % sum(hard["cells"]))
+
+    # The pedal, by the page's own module as the worklet runs it (the timing the instrument's to the block): a pluck's
+    # three notes a second apart under it, and the paint's wetness and the arc it lays, with it down and not.
+    PEDAL = """(down) => {
+      const code = encodeSetup(Object.assign({}, decodeSetup(encodeSetup(snapshot())),
+        { midiMode: 'poly', oscScan: 60, screenDraws: 'paint', atk: 1, dec: 250, sus: 0, rel: 150 }));
+      const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
+      const l = new Float32Array(128), r = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
+      const at = (s) => Math.round(s * 48000 / 128);
+      let laid = 0, quiet = 0, map = null;
+      if (down) brain.midi([0xB0, 64, 127], -1);
+      for (let k = 0; k < at(3.2); k++) {
+        [60, 64, 67].forEach((n, i) => { if (k === at(0.1 + i)) brain.midi([0x90, n, 100], -1); if (k === at(1 + i)) brain.midi([0x80, n, 0], -1); });
+        brain.block(128, l, r, pics, null);
+        const p = brain.readings().paint;
+        // Stamps laid in the second half of each second, where the pluck is silent.
+        const into = (k * 128 / 48000 - 0.1) % 1;
+        if (p && p.on && p.count) { laid += p.count; if (into > 0.5) quiet += p.count; }
+        if (p && p.map) map = p.map;
+      }
+      let s = 0, w = 0; if (map) for (let q = 0; q < 16384; q++) { s += map[q]; w += map[q] * map[16384 + q]; }
+      return { laid, quiet, wet: s > 0 ? w / s : 0 };
+    }"""
+    p = open_page(b)
+    down, up = p.evaluate(PEDAL, True), p.evaluate(PEDAL, False)
+    p.close()
+    check("under the sustain pedal, sent as a port's controller 64, the brush lays through a pluck's silences and the paint stays wet",
+          down["quiet"] > 100 and down["wet"] > 0.9, "%d stamps in the silences, %.2f wet" % (down["quiet"], down["wet"]))
+    null("without it the brush lays nothing in the silences and the paint dries", up["quiet"] < 0.1 * down["quiet"] and up["wet"] < 0.6,
+         "%d stamps, %.2f wet" % (up["quiet"], up["wet"]))
 
     # --- switching moves nothing on the face ---
     SNAP = """() => { const out = {};

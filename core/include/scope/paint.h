@@ -101,6 +101,32 @@ struct PaintParams {
      a stroke of its own, as step 2 painted (for the renders' comparison). */
   bool join = true;
   double joinFloor = 0.063;  // -24 dB: web/docs/listening/paint-width/ says how it was chosen
+  /* Which of the player's controllers the brush hears (step 3), a bit each
+     (kPaintHears...): all of them, always, in the instrument. A bit off is
+     a null for core/tests/pieces/painting.py - the same performance with
+     the brush deaf to that one controller - and nothing else sets it. */
+  unsigned hears = 0xf;
+  // A null too: every strike spatters as one at this impact, whatever its velocity (below nought: by the strike's own).
+  double spatterAt = -1;
+};
+
+/* The player's controllers on the brush (step 3, the owner's table of 16 Nov):
+   the pedal keeps it on the canvas and the paint wet, the wheel is its load,
+   the bend moves its radius with the pitch, and aftertouch presses it in. A
+   strike's velocity is its spatter, through the impact `strike` is handed. */
+constexpr unsigned kPaintHearsPedal = 1, kPaintHearsWheel = 2, kPaintHearsBend = 4, kPaintHearsPressure = 8;
+struct PaintControls {
+  bool pedal = false;
+  /* The mod wheel, nought to one, or below nought while it has not moved
+     since the instrument was made: the brush is today's then, and at the
+     wheel's middle, so a session that never touches the wheel paints as
+     step 2 did, to the bit. Up from the middle the brush is loaded heavier
+     and pressed harder, down from it drier and lighter, to a scratchy dry
+     brush at the bottom (the dry-brush rule below catches it on the weave
+     of what is already there). */
+  double wheel = -1;
+  double pressure = 0;  // channel pressure, nought to one: the stroke widens and presses in while a key is leaned on
+  double bend = 1;      // the pitch bend as a ratio of frequency, as the generator has glided it: Poly's voices' pitches do not carry it
 };
 
 // ---- The layout -------------------------------------------------------------
@@ -224,6 +250,7 @@ struct PaintBrush {
   int from = -1;                     // the brush whose stroke it took up, while that one sounds
   double level = 0, peak = 0;        // its voice's level at its last frame, and the most it has reached
   double hz = 0;                     // the pitch it is at: a stroke taken up glides to its new note's
+  bool spattered = false;            // its strike's spatter thrown (step 3), once, the frame it is placed
 };
 
 // What the map says this frame, for the picture stage.
@@ -285,7 +312,13 @@ class Painter {
     const double t = nowMs / 1000, dt = std::max(0.0, elapsedMs) / 1000;
     stamps_.clear();
     dropped_ = 0;
-    age(dt);
+    /* Under the sustain pedal the paint stays wet (step 3): its clock stands
+       still, for the drying and for whose fresh stroke a cell is, and the
+       stamps carry it to the look, which dries by it too. Without the pedal
+       it is the performance's own, to the bit. */
+    if (pedal_) paused_ += dt;
+    wetClock_ = t - paused_;
+    age(dt, pedal_ ? 0.0 : dt);
     // The lowest note sounding, either hand, which the inks' harmony is judged against (look only).
     int low = 1000;
     for (std::size_t i = 0; i < count; i++) if (notes[i].level > 0) low = std::min(low, notes[i].note);
@@ -310,17 +343,32 @@ class Painter {
       }
       slots_[b.slot].owner = 0; b.serial = 0;
     }
+    /* And under the pedal a stroke that has lifted stays on the canvas (step
+       3): it goes on round at its pitch, laying what it still holds, so a
+       pluck's slow melody under the pedal is one mark and not a mark a note -
+       the gap paint width left, where a brush laid only while there was
+       sound. Let the pedal go and it lifts. */
+    if (pedal_) {
+      for (int h = 0; h < 2; h++) {
+        PaintBrush& kept = lifted_[static_cast<std::size_t>(h)];
+        if (!kept.serial || kept.handed) continue;
+        const PaintNote still { h, kept.born, kept.note, kept.hz, 0.0, false };
+        stroke(kept, still, t, dt);
+      }
+    }
     measure(dt);
   }
 
   /* Poly's voices as the painter is handed them: every voice not gone, into
      `out`, which holds kPaintNotesMost; how many. */
-  static std::size_t notesOf(std::vector<Voice>* const voices[2], PaintNote* out, std::size_t room, std::size_t at = 0) {
+  static std::size_t notesOf(std::vector<Voice>* const voices[2], PaintNote* out, std::size_t room, std::size_t at = 0,
+                             double bend = 1) {
     for (int layer = 0; layer < 2; layer++) {
       if (!voices[layer]) continue;
       for (const auto& v : *voices[layer]) {
         if (v.gone || at >= room) continue;
-        out[at++] = { layer, v.born, v.note, v.hz > 0 ? v.hz : v.freq, std::clamp(v.env.level(), 0.0, 1.0), v.held };
+        // At the pitch it sounds: a voice's own is its note's, and the bend is the generator's on all of them (step 3).
+        out[at++] = { layer, v.born, v.note, (v.hz > 0 ? v.hz : v.freq) * bend, std::clamp(v.env.level(), 0.0, 1.0), v.held };
       }
     }
     return at;
@@ -348,6 +396,20 @@ class Painter {
 
   // The sustain pedal, down or up, as the keyboard has it this frame: a note struck under it goes on with the last one's stroke.
   void setPedal(bool down) { pedal_ = down; }
+  /* The player's controllers as the keyboard has them this frame (step 3):
+     each one the brush is not to hear (PaintParams::hears, a null's) is
+     left at rest. */
+  void setControls(const PaintControls& c) {
+    controls_ = {};
+    if (p_.hears & kPaintHearsPedal) controls_.pedal = c.pedal;
+    if (p_.hears & kPaintHearsWheel) controls_.wheel = c.wheel;
+    if (p_.hears & kPaintHearsPressure) controls_.pressure = std::clamp(c.pressure, 0.0, 1.0);
+    if ((p_.hears & kPaintHearsBend) && std::isfinite(c.bend) && c.bend > 0) controls_.bend = c.bend;
+    pedal_ = controls_.pedal;
+  }
+  const PaintControls& controls() const { return controls_; }
+  // The clock paint dries by, in seconds: the performance's, held still while the pedal is down (step 3).
+  double wetClock() const { return wetClock_; }
 
   // The fade, a half-life in seconds, as the setup's paintPersistence sets it (step 2).
   void setFade(double seconds) { if (std::isfinite(seconds) && seconds > 0) p_.fade = seconds; }
@@ -365,7 +427,8 @@ class Painter {
         if (!b) continue;
         v.painted = true;
         if (frozen) continue;
-        const double hz = v.hz > 0 ? v.hz : v.freq;
+        // The ring at the pitch it sounds, bent with the rest (step 3): the bend moves the brush and what it reads alike.
+        const double hz = (v.hz > 0 ? v.hz : v.freq) * controls_.bend;
         if (!readRing(layout_->ring(hz), soft, points_)) continue;
         CycleTables* into = slots_[b->slot].tables->fresh(v.paintTable, v.paintPrev, v.paintNext);
         if (into && scanTables(points_, *into)) v.paintTable = into;
@@ -450,7 +513,7 @@ class Painter {
     }
   }
   // And the map aged by hand.
-  void ageBy(double seconds) { age(seconds); }
+  void ageBy(double seconds) { age(seconds, seconds); }
   void measureNow(double seconds) { measure(seconds); }
 
  private:
@@ -511,8 +574,9 @@ class Painter {
     for (auto& s : struck_) {
       if (s.at >= 0 && s.note == v.note && (s.layers & (1 << layer))) { b->impact = s.impact; s.at = -1; break; }
     }
-    // A note going on with a stroke dips less than a stroke's first (the study's 0.4 of a first dip, before the strike's).
-    const double dip = kDipBase * (from ? 0.4 : 1.0) + kDipStrike * b->impact;
+    // A note going on with a stroke dips less than a stroke's first (the study's 0.4 of a first dip, before the strike's);
+    // the wheel loads it heavier or lighter (step 3).
+    const double dip = (kDipBase * (from ? 0.4 : 1.0) + kDipStrike * b->impact) * wheelLoad();
     for (int k = 0; k < kPaintBins; k++) {
       const auto ki = static_cast<std::size_t>(k);
       b->share[ki] = 0.45 + 0.55 * paintHash(static_cast<std::uint32_t>(b->serial) * 977u + static_cast<std::uint32_t>(k) * 31u + 7u);
@@ -538,12 +602,13 @@ class Painter {
       const PaintBrush& f = brushes_[static_cast<std::size_t>(b.from)];
       if (f.serial == b.serial && f.handed) level = std::max(level, f.level); else b.from = -1;
     }
-    const double p = std::pow(level, 0.7);
+    double p = std::pow(level, 0.7);
+    const double heavy = wheelLoad();
     if (v.held) {
       const double k = 1 - std::exp(-dt / kFeedTime);
       for (int i = 0; i < kPaintBins; i++) {
         const auto ii = static_cast<std::size_t>(i);
-        const double want = kFeed * p * b.share[ii];
+        const double want = kFeed * p * b.share[ii] * heavy;
         if (b.load[ii] < want) b.load[ii] += (want - b.load[ii]) * k;
       }
     }
@@ -557,18 +622,68 @@ class Painter {
     const double x = at.x * kPaintN, y = at.y * kPaintN;
     if (!b.placed) { b.x = x; b.y = y; b.placed = true; }
     const double dx = x - b.x, dy = y - b.y, len = std::hypot(dx, dy);
+    // Its strike's spatter, once, from where it lands (step 3).
+    if (!b.spattered) { b.spattered = true; if (!b.handed) spatter(b, x, y, t); }
     const double since = std::max(0.0, t - b.bornAt);
     const double bump = (1 - std::exp(-since / kImpactRise)) * std::exp(-since / kImpactFall) * b.impact * 1.6;
     const double bulge = 1 + kImpactPress * bump;
-    const double w = (kWidthLeast + kWidthPress * p) * (1 + kImpactWiden * bump) * p_.width;
+    /* The player's hands on it (step 3). Under the pedal it stays on the
+       canvas: it presses at least kPedalFloor, so it lays while it holds
+       paint, through the silence between notes, rather than only while
+       there is sound. The wheel presses it harder or lighter and wider or
+       narrower with its load; pressure on a held key presses it in, wider
+       and harder, which shoves more wet paint aside (the smear: kPush is by
+       the pressure). All of it reaches the stamp's width and pressure, so
+       the look draws what the map holds. At rest every factor is one. */
+    if (pedal_ && !b.handed) p = std::max(p, kPedalFloor);
+    const double s = wheelSwing(), lean = v.held ? controls_.pressure : 0.0;
+    p = std::min(1.0, p * (1 + kWheelPress * s) * (1 + kLeanPress * lean));
+    const double w = (kWidthLeast + kWidthPress * p) * (1 + kImpactWiden * bump) * p_.width * (1 + kWheelWiden * s) * (1 + kLeanWiden * lean);
     if (!(p > 0.02) || b.handed) { b.x = x; b.y = y; return; }
     const int steps = std::max(1, static_cast<int>(std::ceil(len / kSpacing)));
     const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
     for (int s = 1; s <= steps; s++) {
       const double f = static_cast<double>(s) / steps;
-      stamp(b, b.x + dx * f, b.y + dy * f, ux, uy, w, std::min(1.0, p * bulge), t, len / steps);
+      stamp(b, b.x + dx * f, b.y + dy * f, ux, uy, w, std::min(1.0, p * bulge), wetClock_, len / steps);
     }
     b.x = x; b.y = y;
+  }
+
+  // The wheel from its middle, minus one to one, nought while it has not moved (PaintControls::wheel).
+  double wheelSwing() const { return controls_.wheel < 0 ? 0.0 : std::clamp(2 * controls_.wheel - 1, -1.0, 1.0); }
+  // What it does to the brush's load: a dip and a feed twice as heavy at the top, 0.6 of it at the bottom, where the
+  // dry-brush rule already starves a group under half a load (lighter, it laid a twentieth of the paint: no stroke at all).
+  double wheelLoad() const { const double s = wheelSwing(); return std::exp2((s < 0 ? kWheelDry : kWheelLoad) * s); }
+
+  /* A strike's spatter (step 3, the owner's: velocity is impact, "spatter,
+     and how far it flies"): drops thrown off the brush where it lands, more
+     of them and further the harder the strike - the impact, velocity times
+     the hand's Strike, as the dip's. Each is a small dab, a stamp like any
+     other (so the look draws it where the map has it, the same width), its
+     direction, distance, size and load from the stroke's own hash, so the
+     same performance spatters alike. A drop that flies across the radius
+     lands on another register's ring, which that note then reads. It flies
+     in the layout's own terms - a little earlier or later along the time,
+     a little up or down in pitch - and the layout says where that is, so a
+     layout that is not round spatters as it lays (the pieces' turned
+     layout holds it). */
+  void spatter(const PaintBrush& b, double x, double y, double t) {
+    const double impact = std::clamp(p_.spatterAt >= 0 ? p_.spatterAt : b.impact, 0.0, 1.0);
+    const int n = static_cast<int>(std::lround(kSpatterMost * std::pow(impact, 1.5)));
+    if (n <= 0) return;
+    PaintBrush drop = b;
+    drop.carry.fill(0);
+    for (int k = 0; k < n; k++) {
+      const auto seed = static_cast<std::uint32_t>(b.serial) * 7919u + static_cast<std::uint32_t>(b.born) * 131u + static_cast<std::uint32_t>(k) * 977u;
+      const double th = 2 * kPi * paintHash(seed + 1u), far = paintHash(seed + 2u), size = paintHash(seed + 3u);
+      const double flies = impact * p_.width * (0.3 + 0.7 * far);
+      const PaintPoint at = layout_->at(t + std::cos(th) * flies * kSpatterSeconds, b.hz * std::exp2(std::sin(th) * flies * kSpatterOctaves));
+      const double dx = at.x * kPaintN - x, dy = at.y * kPaintN - y, len = std::hypot(dx, dy);
+      const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
+      const double w = kSpatterSize * (0.6 + 0.8 * size) * p_.width;
+      drop.load.fill(kSpatterLoad * (0.5 + paintHash(seed + 4u)));
+      stamp(drop, at.x * kPaintN, at.y * kPaintN, ux, uy, w, 1.0, wetClock_, 1.4 * std::max(0.75, 0.15 * w));
+    }
   }
 
   /* One stamp, the study's oil paint (painting-study/tools/oilpaint.cpp) kept
@@ -683,12 +798,12 @@ class Painter {
     }
   }
 
-  // The map over `dt`: each cell's wetness falls by its thickness's drying time, and its paint by the fade.
-  void age(double dt) {
+  // The map over `dt`: each cell's wetness falls by its thickness's drying time over `dryDt` (nought under the pedal), and its paint by the fade.
+  void age(double dt, double dryDt) {
     if (!(dt > 0)) return;
     const double keep = std::exp2(-dt / p_.fade);
     std::array<double, kDrySteps + 1> dry {};
-    for (int i = 0; i <= kDrySteps; i++) dry[static_cast<std::size_t>(i)] = std::pow(10.0, -dt / dryTime(p_.thick * i / kDrySteps));
+    for (int i = 0; i <= kDrySteps; i++) dry[static_cast<std::size_t>(i)] = std::pow(10.0, -dryDt / dryTime(p_.thick * i / kDrySteps));
     for (std::size_t q = 0; q < PaintMap::kCells; q++) {
       float& a = map_.thick[q];
       if (a == 0) continue;
@@ -733,6 +848,12 @@ class Painter {
   static constexpr double kChordSeconds = 0.04, kGlideSeconds = 0.04;  // strikes closer than this are one chord (the study's)
   static constexpr double kImpactRise = 0.015, kImpactFall = 0.06, kImpactPress = 0.6, kImpactWiden = 0.06, kOwnSeconds = 1.5;
   static constexpr int kDrySteps = 32;
+  // The controllers' (step 3): the pedal's least pressure; the wheel's load (in octaves), press and widening at its
+  // top; a key leaned on's press and widening; the spatter's most drops, reach (cells at width one), size and load.
+  static constexpr double kPedalFloor = 0.3, kWheelLoad = 1.0, kWheelDry = 0.737, kWheelPress = 0.3, kWheelWiden = 0.25, kLeanPress = 0.5, kLeanWiden = 0.5;
+  // The reach is in the layout's terms, at a full impact and width one: a fifth of a second along the time and an octave
+  // in pitch (on the round layout at A3 about seven cells along and six across).
+  static constexpr double kSpatterMost = 20, kSpatterSeconds = 0.2, kSpatterOctaves = 1.0, kSpatterSize = 0.6, kSpatterLoad = 1.2;
 
   PaintParams p_;
   std::unique_ptr<PaintLayout> layout_;
@@ -742,6 +863,8 @@ class Painter {
   std::array<PaintBrush, kPaintBrushes> brushes_ {};
   std::array<PaintBrush, 2> lifted_ {};  // each hand's last stroke as it lifted
   bool pedal_ = false;
+  PaintControls controls_ {};
+  double paused_ = 0, wetClock_ = 0;  // the time the pedal has held the paint wet, and the clock it dries by
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;

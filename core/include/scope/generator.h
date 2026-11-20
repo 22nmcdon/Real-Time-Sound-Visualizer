@@ -414,6 +414,8 @@ class Generator {
     return (shaped ? (32 * ctx_.shapeFactor - ctx_.shapeFactor) / ctx_.shapeFactor : 0) + plane_.nonlinearDelay();
   }
   double pitch() const { return lastHz_; }
+  // The pitch bend where its glide has got to, in semitones: Poly's voices' own pitches leave it out (the brush, step 3).
+  double bendNow() const { return bendNow_; }
   const std::vector<Voice>& voices() const { return voices_; }
   const std::vector<Voice>& voicesB() const { return voicesB_; }
   /* Painting (paint.h): the pools for the painter, which gives each voice

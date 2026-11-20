@@ -263,7 +263,7 @@ class Keyboard {
     // midiControl says why); whoever keeps the panel is told.
     if (number == 11 && onSwell_) onSwell_(raw / 127.0 * 100);
     // 1, the mod wheel, is what Expression's Wheel menu gives it to (6 Nov).
-    if (number == 1) express(wheelTo_, raw / 127.0);
+    if (number == 1) { wheel_ = raw / 127.0; express(wheelTo_, wheel_); }
   }
 
   /* Expression (6 Nov): the page's midiPitchBend, midiPressure and the
@@ -281,7 +281,7 @@ class Keyboard {
     bend_ = v / (v < 0 ? 8192.0 : 8191.0);
     t_.set("pitchBend", bend_ * bendRange_);
   }
-  void pressure(int raw) { express(pressureTo_, raw / 127.0); }
+  void pressure(int raw) { pressure_ = raw / 127.0; express(pressureTo_, pressure_); }
   /* midiExpress: vibrato is the generator's, set here as the page's genSet
      sets it; the Picture amount and Scan's depth are the panel's sliders,
      which whoever keeps the panel is told, as the expression pedal's is. */
@@ -297,6 +297,11 @@ class Keyboard {
   double bend() const { return bend_; }
   Express wheelTo() const { return wheelTo_; }
   Express pressureTo() const { return pressureTo_; }
+  /* Where the wheel and channel pressure are, nought to one, whatever their
+     menus give them to: the brush reads both in Paint (step 3), as well as
+     what Expression's menus say. The wheel is below nought until it moves. */
+  double wheel() const { return wheel_; }
+  double pressureNow() const { return pressure_; }
   void setExpress(std::function<void(Express, double)> f) { onExpress_ = std::move(f); }
 
   // midiBytes, with running status, and a real-time byte taken as a message of
@@ -998,6 +1003,7 @@ class Keyboard {
   double pedalTarget_ = 0;
   bool sustain_ = false;
   double bendRange_ = 2, bend_ = 0;  // Expression (6 Nov)
+  double wheel_ = -1, pressure_ = 0;  // as they were last moved, for the brush (step 3)
   Express wheelTo_ = Express::Vibrato, pressureTo_ = Express::Off;
   double key_ = 0, struck_ = 0;
   Interval interval_;

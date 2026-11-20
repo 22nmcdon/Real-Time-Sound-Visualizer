@@ -44,6 +44,20 @@
 //                          against the ring's newest, and a read from the count itself
 //   cost SECONDS [WIDTH]   a chord of sixteen held, trace and painting (at a base width), the best of three
 //                          runs: the instrument's seconds per second of audio
+//
+// Step 3, the player's controllers on the brush; HEARS is PaintParams::hears (15 all, a bit off a null's):
+//   pedal HEARS            a pluck's slow melody, six notes a second apart, under the sustain pedal, then the pedal
+//                          let go: how much of its arc has paint and the longest stretch without (degrees), the paint's
+//                          mean wetness as the pedal goes up, two seconds later, and the stamps the last frame laid
+//   wheel WHEEL HEARS      A3 held, the mod wheel at WHEEL (below nought: never moved): the map's spread across the
+//                          ring and the last stamp's half-width (cells), the paint laid in all, the mean bristle load
+//                          at the last stamp, and the map's thickness summed to nine figures
+//   bend HEARS             A3 held, the bend wheel swept to the top over a second: the brush's radius before and at the
+//                          end, where the layout puts A3 two semitones up, the largest step from frame to frame, and
+//                          how many frames it went back
+//   spatter VEL [AT]       a note struck at VEL (or every strike spattered at impact AT): the paint more than five cells
+//                          off its ring (past the widest stroke), and the farthest any lies off it (cells)
+//   lean PRESSURE HEARS    A3 held and leaned on at PRESSURE: the map's spread and the last stamp's half-width, as width's
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -220,8 +234,48 @@ double costOf(bool paint, double seconds, double width = 1) {
   }
   return best;
 }
+// The map's spread across the radius about its thickness-weighted mean, and that mean, in cells.
+std::pair<double, double> spreadOf(const PaintMap& m) {
+  double s = 0, sr = 0, srr = 0;
+  for (int y = 0; y < kPaintN; y++)
+    for (int x = 0; x < kPaintN; x++) {
+      const double a = m.thick[static_cast<std::size_t>(y * kPaintN + x)];
+      const double r = std::hypot(x + 0.5 - kPaintN / 2.0, y + 0.5 - kPaintN / 2.0);
+      s += a; sr += a * r; srr += a * r * r;
+    }
+  const double mean = s > 0 ? sr / s : 0;
+  return { s > 0 ? std::sqrt(std::max(0.0, srr / s - mean * mean)) : 0, mean };
+}
+// The core's contact half-width at a stamp, in cells (paint.h's stamp).
+double halfWidthOf(const PaintStamp& st) { return std::max(0.5, st.w * kPaintN * 0.5 * (0.4 + 0.6 * st.p)); }
+// Along an arc of the turn from t0 to t1 s, a degree at a time: the share of degrees whose most paint across the radius
+// is over a fifth of the median's, and the longest run of degrees that is not.
+std::pair<double, int> arcCover(const PaintMap& m, double turn, double t0, double t1) {
+  const int a0 = static_cast<int>(std::ceil(360 * t0 / turn)), a1 = static_cast<int>(std::floor(360 * t1 / turn));
+  std::vector<double> most(static_cast<std::size_t>(std::max(1, a1 - a0 + 1)), 0.0);
+  for (int y = 0; y < kPaintN; y++)
+    for (int x = 0; x < kPaintN; x++) {
+      double deg = std::atan2(x + 0.5 - kPaintN / 2.0, -(y + 0.5 - kPaintN / 2.0)) * 180 / kPi;
+      if (deg < 0) deg += 360;
+      const int bin = static_cast<int>(std::floor(deg));
+      if (bin < a0 || bin > a1) continue;
+      double& v = most[static_cast<std::size_t>(bin - a0)];
+      v = std::max(v, static_cast<double>(m.thick[static_cast<std::size_t>(y * kPaintN + x)]));
+    }
+  std::vector<double> sorted = most;
+  std::sort(sorted.begin(), sorted.end());
+  const double median = sorted[sorted.size() / 2];
+  int covered = 0, gap = 0, longest = 0;
+  for (const double v : most) { if (v > 0.2 * median && v > 1e-4) { covered++; gap = 0; } else longest = std::max(longest, ++gap); }
+  return { static_cast<double>(covered) / static_cast<double>(most.size()), longest };
+}
+double meanWet(const PaintMap& m) {
+  double s = 0, w = 0;
+  for (std::size_t q = 0; q < PaintMap::kCells; q++) { s += m.thick[q]; w += m.thick[q] * m.wet[q]; }
+  return s > 0 ? w / s : 0;
+}
+using Midi = std::vector<std::vector<std::uint8_t>>;
 }  // namespace
-
 int main(int argc, char** argv) {
   if (argc < 2) { std::fprintf(stderr, "usage: paint_cpp COMMAND ...\n"); return 2; }
   const std::string cmd = argv[1];
@@ -517,6 +571,7 @@ int main(int argc, char** argv) {
     // radius about its mean, in cells), and the core's own contact half-width at the last stamp, in cells.
     PaintParams params;
     params.width = argc > 2 ? std::atof(argv[2]) : 1;
+    params.spatterAt = 0;  // the stroke's width alone: its strike's spatter (step 3) lies off the ring
     Player p(kSine, true, params);
     p.blocks(1.5, { { 0x90, 57, 100 } });
     const auto& m = p.in.painter()->map();
@@ -573,6 +628,93 @@ int main(int argc, char** argv) {
     const double seconds = arg(2, 2);
     const double width = arg(3, 1);
     std::printf("%.5f %.5f\n", costOf(false, seconds), costOf(true, seconds, width));
+  } else if (cmd == "pedal") {
+    PaintParams params;
+    params.hears = static_cast<unsigned>(arg(2, 15));
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":1,"dec":250,"sus":0,"rel":150})", true, params);
+    p.blocks(0.05, { { 0xB0, 64, 127 } });
+    const int melody[] = { 60, 64, 67, 72, 67, 64 };
+    for (const int n : melody) {
+      p.blocks(0.9, { { 0x90, static_cast<std::uint8_t>(n), 100 } });
+      p.blocks(0.1, { { 0x80, static_cast<std::uint8_t>(n), 0 } });
+    }
+    const auto [covered, longest] = arcCover(p.in.painter()->map(), p.in.painter()->params().turn, 0.1, 6.0);
+    const double wetDown = meanWet(p.in.painter()->map());
+    p.blocks(2.0, { { 0xB0, 64, 0 } });
+    std::printf("%.4f %d %.4f %.4f %zu\n", covered, longest, wetDown, meanWet(p.in.painter()->map()), p.in.painter()->stamps().size());
+  } else if (cmd == "wheel") {
+    const double wheel = arg(2, -1);
+    PaintParams params;
+    params.hears = static_cast<unsigned>(arg(3, 15));
+    params.spatterAt = 0;  // the stroke alone
+    Player p(kSine, true, params);
+    if (wheel >= 0) p.blocks(0.05, { { 0xB0, 1, static_cast<std::uint8_t>(std::lround(wheel * 127)) } });
+    p.blocks(1.5, { { 0x90, 57, 100 } });
+    const auto& m = p.in.painter()->map();
+    const auto& st = p.in.painter()->stamps();
+    double laid = 0, load = 0;
+    for (std::size_t q = 0; q < PaintMap::kCells; q++) laid += m.thick[q];
+    if (!st.empty()) for (const float v : st.back().load) load += v / kPaintBins;
+    std::printf("%.4f %.4f %.5f %.4f %.9g\n", spreadOf(m).first, st.empty() ? 0.0 : halfWidthOf(st.back()), laid, load, laid);
+  } else if (cmd == "bend") {
+    PaintParams params;
+    params.hears = static_cast<unsigned>(arg(2, 15));
+    params.spatterAt = 0;
+    Player p(kSine, true, params);
+    p.blocks(0.5, { { 0x90, 57, 100 } });
+    const auto radiusNow = [&]() {
+      for (const auto& b : p.in.painter()->brushes())
+        if (b.serial && b.placed) return std::hypot(b.x - kPaintN / 2.0, b.y - kPaintN / 2.0);
+      return 0.0;
+    };
+    const double before = radiusNow();
+    double last = before, step = 0;
+    int back = 0;
+    // Up to the top over a second, a message every 20 ms, as a wheel sends them.
+    for (int k = 1; k <= 50; k++) {
+      const int v = 8192 + static_cast<int>(std::lround(8191.0 * k / 50));
+      p.blocks(0.02, { { 0xE0, static_cast<std::uint8_t>(v & 127), static_cast<std::uint8_t>(v >> 7) } });
+      const double r = radiusNow();
+      step = std::max(step, std::fabs(r - last));
+      if (r < last - 1e-9) back++;
+      last = r;
+    }
+    for (int k = 0; k < 25; k++) {
+      p.blocks(0.02);
+      const double r = radiusNow();
+      step = std::max(step, std::fabs(r - last));
+      if (r < last - 1e-9) back++;
+      last = r;
+    }
+    const RoundLayout round;
+    std::printf("%.4f %.4f %.4f %.4f %d\n", before, last, round.radius(hzOf(59)) * kPaintN, step, back);
+  } else if (cmd == "spatter") {
+    const int vel = static_cast<int>(arg(2, 100));
+    PaintParams params;
+    params.spatterAt = arg(3, -1);
+    Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"scanStrike":100,"atk":2,"dec":300,"sus":80,"rel":400})", true, params);
+    p.blocks(0.3, { { 0x90, 57, static_cast<std::uint8_t>(vel) } });
+    const double ring = RoundLayout().radius(hzOf(57)) * kPaintN;
+    const auto& m = p.in.painter()->map();
+    double off = 0, far = 0;
+    for (int y = 0; y < kPaintN; y++)
+      for (int x = 0; x < kPaintN; x++) {
+        const double a = m.thick[static_cast<std::size_t>(y * kPaintN + x)];
+        const double d = std::fabs(std::hypot(x + 0.5 - kPaintN / 2.0, y + 0.5 - kPaintN / 2.0) - ring);
+        if (d > 5) off += a;
+        if (a > 1e-3) far = std::max(far, d);
+      }
+    std::printf("%.5f %.3f\n", off, far);
+  } else if (cmd == "lean") {
+    const double lean = arg(2, 1);
+    PaintParams params;
+    params.hears = static_cast<unsigned>(arg(3, 15));
+    params.spatterAt = 0;
+    Player p(kSine, true, params);
+    p.blocks(0.05, { { 0xD0, static_cast<std::uint8_t>(std::lround(lean * 127)) } });
+    p.blocks(1.5, { { 0x90, 57, 100 } });
+    const auto& st = p.in.painter()->stamps();
+    std::printf("%.4f %.4f\n", spreadOf(p.in.painter()->map()).first, st.empty() ? 0.0 : halfWidthOf(st.back()));
   } else { std::fprintf(stderr, "unknown command %s\n", cmd.c_str()); return 2; }
   return 0;
 }

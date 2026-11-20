@@ -10,7 +10,9 @@ and plays a table of its own; wet paint reads stronger than dry; the
 Picture amount's three reads come off the map (Glow wet coverage, Motion
 paint being laid, Memory new paint on old) and through the stage as the
 trace's do; a second layout moves only where the paint lands; the same
-performance paints the same map to the bit; and what it costs.
+performance paints the same map to the bit; the player's controllers on the
+brush (step 3: the pedal, the wheel, the bend, velocity's spatter and
+aftertouch), each against the brush deaf to it; and what it costs.
 
 Nothing here touches the trace: with painting off nothing in paint.h runs,
 which core_tests.py's recordings hold to the bit.
@@ -201,6 +203,66 @@ def run(kit):
          "%.3f against %.3f" % (s35, math.sqrt((0.488 * hw1) ** 2 + 1 / 12)))
     check("and the width is the brush's: three and a half times as wide, three and a half times the half-width",
           abs(hw35 / hw1 - 3.5) < 0.05, "%.2f over %.2f" % (hw35, hw1))
+
+    # --- step 3: the player's controllers on the brush (the owner's table, 16 Nov) ---
+    ALL, PEDAL, WHEEL, BEND, PRESSURE = 15, 1, 2, 4, 8
+    def holds(spread, hw):
+        # The map holds the stroke's width (paint width's measure, above): what the look draws is the stamp's.
+        return abs(spread / math.sqrt((0.488 * hw) ** 2 + 1 / 12) - 1) < 0.1
+
+    # The pedal: the brush stays on the canvas through the silence between a pluck's notes, and the paint stays wet.
+    covered, gap, wet_down, wet_after, last = nums("pedal", str(ALL))
+    d_covered, d_gap, d_wet, _, _ = nums("pedal", str(ALL - PEDAL))
+    check("under the pedal a pluck's slow melody is one mark: the brush lays through the silence between notes",
+          covered > 0.6 and gap <= 10, "%.0f%% of its arc painted, the longest stretch without %d degrees" % (100 * covered, gap))
+    null("the brush deaf to the pedal lays only while there is sound", d_covered < 0.3 and d_gap > 60,
+         "%.0f%%, a gap of %d degrees" % (100 * d_covered, d_gap))
+    check("and the paint stays wet under the pedal, then dries and the brush lifts once it is let go",
+          wet_down > 0.95 and wet_after < 0.5 and last == 0, "%.2f wet with it down, %.2f two seconds after, %d stamps then" % (wet_down, wet_after, last))
+    null("the brush deaf to the pedal lets six seconds of paint dry", d_wet < 0.5, "%.2f wet" % d_wet)
+
+    # The mod wheel: the brush's load and pressure, dry and scratchy at the bottom, heavy at the top.
+    rest = nums("wheel", "-1", str(ALL))
+    deaf_rest = nums("wheel", "-1", str(ALL - WHEEL))
+    check("a wheel that has not moved paints step 2's brush, to the bit", rest[4] == deaf_rest[4], "%.9g against %.9g" % (rest[4], deaf_rest[4]))
+    dry, heavy = nums("wheel", "0", str(ALL)), nums("wheel", "1", str(ALL))
+    null("the same comparison against the wheel at the top is not to the bit", rest[4] != heavy[4], "%.9g" % heavy[4])
+    check("the wheel at the top loads the brush heavier, wider and thicker; at the bottom it is dry and thin",
+          heavy[1] > 1.5 * rest[1] and heavy[2] > 3 * rest[2] and dry[1] < 0.6 * rest[1] and dry[2] < 0.25 * rest[2] and heavy[3] > 1.8 * rest[3] and rest[3] > dry[3],
+          "half-width %.2f, %.2f, %.2f cells; paint %.1f, %.1f, %.1f; load %.2f, %.2f, %.2f (bottom, rest, top)"
+          % (dry[1], rest[1], heavy[1], dry[2], rest[2], heavy[2], dry[3], rest[3], heavy[3]))
+    deaf_top = nums("wheel", "1", str(ALL - WHEEL))
+    null("the brush deaf to the wheel paints the same at the top as at rest", abs(deaf_top[1] - rest[1]) < 1e-9 and abs(deaf_top[2] / rest[2] - 1) < 0.01,
+         "half-width %.2f, paint %.1f" % (deaf_top[1], deaf_top[2]))
+    check("and at either end the map holds the stamp's width, which the look draws", holds(heavy[0], heavy[1]) and holds(dry[0], dry[1]),
+          "spread %.2f for a half-width of %.2f, %.2f for %.2f" % (heavy[0], heavy[1], dry[0], dry[1]))
+    null("the heavy brush's map read against the resting brush's width is not it", not holds(heavy[0], rest[1]))
+
+    # The pitch wheel: the stroke bends with the pitch, continuously.
+    before, after, want, step, back = nums("bend", str(ALL))
+    check("a bend to the top moves the brush's radius to the pitch two semitones up, smoothly", abs(after - want) < 0.05 and step < 0.1 and back == 0,
+          "%.2f to %.2f cells (the layout's %.2f), at most %.3f a frame, never back" % (before, after, want, step))
+    d_before, d_after, _, _, _ = nums("bend", str(ALL - BEND))
+    null("the brush deaf to the bend stays on its note's radius", abs(d_after - d_before) < 1e-9, "%.2f to %.2f" % (d_before, d_after))
+
+    # Velocity: the strike's spatter, more of it and further the harder.
+    soft, soft_far = nums("spatter", "40", "-1")
+    mid, mid_far = nums("spatter", "80", "-1")
+    hard, hard_far = nums("spatter", "127", "-1")
+    check("a harder strike spatters more paint, further off its ring", hard > 3 * mid > 0 and soft < mid and hard_far > mid_far > soft_far,
+          "%.2f, %.2f and %.2f off the ring, the farthest %.1f, %.1f and %.1f cells (velocity 40, 80, 127)" % (soft, mid, hard, soft_far, mid_far, hard_far))
+    f_soft, f_soft_far = nums("spatter", "40", "0.6")
+    f_hard, f_hard_far = nums("spatter", "127", "0.6")
+    null("spatter fixed whatever the strike is the same soft and hard", f_soft == f_hard and f_soft_far == f_hard_far,
+         "%.2f and %.2f" % (f_soft, f_hard))
+
+    # Aftertouch: the stroke widens and presses in while the key is leaned on.
+    leaned, lean_hw = nums("lean", "1", str(ALL))
+    _, light_hw = nums("lean", "0", str(ALL))
+    check("leaning on the key widens the stroke, and the map holds the width the look draws",
+          lean_hw > 1.6 * light_hw and holds(leaned, lean_hw), "half-width %.2f against %.2f, spread %.2f" % (lean_hw, light_hw, leaned))
+    _, deaf_hw = nums("lean", "1", str(ALL - PRESSURE))
+    null("the brush deaf to pressure is as wide leaned on as not", deaf_hw == light_hw, "%.2f" % deaf_hw)
 
     # --- step 2: the strokes the face is served ---
     count, last, served, err, none = nums("served")

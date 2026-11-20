@@ -1546,10 +1546,20 @@ class Instrument {
      the map dried and faded, and the reads the stage takes measured. */
   void paintFrame() {
     painter_->setFade(brain_->paintPersistence);
+    /* The player's controllers on the brush (step 3): the pedal, the wheel,
+       pressure and the bend, read in Paint whatever Expression's menus give
+       the wheel and pressure to, so in Paint they do both. Mono's and Dyad's
+       pitch is the generator's own, the bend in it already. */
+    PaintControls hands;
+    hands.pedal = keyboard_->sustain();
+    hands.wheel = keyboard_->wheel();
+    hands.pressure = keyboard_->pressureNow();
+    hands.bend = core_->polyVoices() ? std::exp2(core_->bendNow() / 12) : 1.0;
+    painter_->setControls(hands);
     std::size_t n = 0;
     if (core_->polyVoices()) {
       std::vector<Voice>* pools[2] = { &core_->voicesOf(0), &core_->voicesOf(1) };
-      n = Painter::notesOf(pools, paintNotes_.data(), paintNotes_.size());
+      n = Painter::notesOf(pools, paintNotes_.data(), paintNotes_.size(), 0, painter_->controls().bend);
     } else {
       /* Mono's line or Dyad's pair (step 2): a brush for the lower note and,
          while the pair is apart, one for the upper, each a stroke like any
@@ -1563,7 +1573,6 @@ class Instrument {
         if (ratio != 1) paintNotes_[n++] = { 0, -2 - 2 * lineId_, noteOf(hz * ratio), hz * ratio, std::clamp(level, 0.0, 1.0), core_->gated() };
       }
     }
-    painter_->setPedal(keyboard_->sustain());
     painter_->frame(paintNotes_.data(), n, nowMs_, pictureRun_->elapsed());
     publishPaint();
   }
