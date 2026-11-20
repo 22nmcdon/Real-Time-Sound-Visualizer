@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strike lab</title>
+<!-- The strike lab and the bend lab (20 Nov): knobs for one hard strike and one bend's smear, painted live by the
+     instrument's own look (lifted from web/scope.html by make.py), from stamps of the kinds the core lays. -->
+<style>
+  :root { --cream: #faf6f0; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
+          --line: #e4d9cc; --gold: #b08d57;
+          --ch1: #241f1d; --ch2: #5c6488; --ch3: #4c4921; --ch4: #6f9169; --ch5: #72245e; --ch6: #a6552d; }
+  * { box-sizing: border-box; }
+  body { background: var(--cream); color: var(--text); font: 14px/1.4 system-ui, sans-serif; margin: 0; padding: 16px; }
+  h1 { color: var(--charcoal); font-size: 1.4rem; margin: 0 0 2px; }
+  .soft { color: var(--text-soft); }
+  .top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 10px; }
+  .tab { font: inherit; border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 4px 14px; cursor: pointer; }
+  .tab[aria-pressed="true"] { background: var(--charcoal); color: var(--paper); border-color: var(--charcoal); }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  .pictures { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; }
+  .frame { position: relative; width: 100%; aspect-ratio: 1; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .sheet { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  .sheet canvas.paint-view { position: absolute; background: var(--paper); }
+  #map { width: 100%; aspect-ratio: 1; image-rendering: pixelated; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+  .cap { font-size: 12px; color: var(--text-soft); margin: 4px 0 0; }
+  #knobs { display: grid; gap: 6px; }
+  .knob { display: grid; grid-template-columns: 130px minmax(0, 1fr) 54px; gap: 2px 8px; align-items: center; }
+  .knob .name { color: var(--charcoal); font-weight: 600; font-size: 13px; }
+  .knob .val { text-align: right; font-variant-numeric: tabular-nums; }
+  .knob .help { grid-column: 1 / -1; font-size: 11.5px; color: var(--text-soft); margin-top: -2px; }
+  .knob input { width: 100%; accent-color: var(--charcoal); }
+  .buttons { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  textarea { width: 100%; height: 110px; font: 12px/1.4 ui-monospace, monospace; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 6px; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <h1>Strike lab</h1>
+    <button class="tab" data-lab="strike" aria-pressed="true">Strike</button>
+    <button class="tab" data-lab="bend" aria-pressed="false">Bend</button>
+    <span class="soft" id="what"></span>
+  </div>
+  <div class="wrap">
+    <div>
+      <div class="pictures">
+        <div><div class="frame"><div class="sheet" id="sheet"><div id="trace" hidden></div></div></div>
+          <p class="cap">The look, as the face paints it: the instrument's own shader. <span id="count"></span></p></div>
+        <div><canvas id="map" width="128" height="128"></canvas>
+          <p class="cap">The map, at its own cells (128 across the canvas, the same view): the look's paint summed to the core's cells - what Scan reads.</p></div>
+      </div>
+      <p class="cap">Every mark here is made of the stamps the core already lays (brush stamps, drops and the bend's smear), written by
+        this page from the knobs. When you have the look, copy the settings and send them back: the instrument is then made to lay
+        the same stamps.</p>
+    </div>
+    <div>
+      <div class="buttons"><button id="reseed">Reseed</button><button id="reset">Reset this lab</button><button id="zoom">Whole canvas</button></div>
+      <div id="knobs"></div>
+      <p class="cap" style="margin-top:12px">Settings - copy these and send them back.</p>
+      <textarea id="copy" readonly></textarea>
+      <div class="buttons"><button id="copyBtn">Copy settings</button></div>
+    </div>
+  </div>
+<script>
+"use strict";
+// What the lifted paint view needs from the page it came from.
+const el = { trace: document.getElementById("trace"), traceSheet: document.getElementById("sheet") };
+const state = { paintPersistence: 16 };
+const PAINT_DEFAULT = 16;
+const PAINT_SIZE = 768, PAINT_CELLS = 128, PAINT_STAMP = 23, PAINT_STEPS_MOST = 256, PAINT_SLOTS = 64;
+const paintView = (() => {
+  let canvas = null, gl = null, fallback = null, mode = "none", why = "";
+  let queue = [], since = 0, clock = 0, clockAt = 0, lastDraw = 0, map = null, wantMap = false;
+  let progs = null, quad = null, pair = [], cur = 0, carry = [], carryCur = 0, weaveTex = null, stepTex = null, FLOAT = null;
+  let gain = 1;
+  const slots = new Map();   // a brush's serial to its row in the carry texture
+  let nextSlot = 0;
+  const stepData = new Float32Array(PAINT_STEPS_MOST * 6 * 4);
+  const timing = { frames: 0, ms: 0, worst: 0, stamps: 0 };
+
+  const COMMON = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+const float PI = 3.14159265;
+float hash(uint x) { x ^= x >> 16u; x *= 0x7feb352du; x ^= x >> 15u; x *= 0x846ca68bu; x ^= x >> 16u; return float(x & 0xffffffu) / 16777215.0; }
+uniform float uThin, uThickT, uThick, uGain;
+/* A flared brush (the strike's, step 3): where across it (its half-widths) falls in which group and bristle, how much
+   paint it lays there, and the flare's whole extent - the core's paintFlareAt (paint.h), line for line. */
+void flareAt(float uh, float a, uint seed, float px, out int K, out int BR, out float WT, out float EXT) {
+  K = -1; BR = 0; WT = 0.0;
+  bool right = uh >= 0.0;
+  float x = abs(uh), at = 0.0, outerS = 0.0;
+  for (int i = 0; i < 4; i++) {
+    int k = right ? 4 + i : 3 - i;
+    float x0 = (2.0 * float(i) + 1.0) / 8.0;
+    float s = 2.6 * pow(x0, 1.6) * (1.0 + 0.35 * (hash(seed * 29u + uint(k) + 1u) * 2.0 - 1.0));
+    float h = 0.125 * (1.0 + a * s);
+    if (K < 0 && x < at + 2.0 * h) {
+      float l = (x - at) / h - 1.0;
+      float lane = (l + 1.0) / 2.0 * 4.0;
+      int j = clamp(int(floor(lane)), 0, 3);
+      float phi = 1.0 / (1.0 + 1.2 * a * s), pl = px / (h / 4.0);
+      uint bj = uint(k * 4 + j);
+      float pj = min(1.0, phi * (0.6 + 0.8 * hash(seed * 53u + bj + 7u)));
+      float off = (hash(seed * 59u + bj + 13u) - 0.5) * (1.0 - pj);
+      float cover = clamp(0.5 - (abs((lane - float(j)) * 2.0 - 1.0 - off) - pj) / pl, 0.0, 1.0);
+      K = k; BR = right ? j : 3 - j; WT = cover / sqrt(phi);
+    }
+    at += 2.0 * h;
+    outerS = s;
+  }
+  EXT = at;
+  if (K < 0 && a > 0.0) {
+    uint side = right ? 1u : 0u;
+    float r = hash(seed * 43u + side + 3u);
+    float centre = at + sqrt(a) * 0.35 * (0.4 + 0.6 * r) * (0.5 + 0.5 * outerS);
+    float hf = 0.025 * (1.0 + a);
+    float cover = r < 0.75 ? clamp(0.5 - (abs(x - centre) - hf) / px, 0.0, 1.0) : 0.0;
+    if (cover > 0.0) { K = right ? 7 : 0; BR = right ? 3 : 0; WT = 0.7 * cover; }
+    EXT = centre + hf;
+  }
+}
+// Wetness by thickness, as the core dries it: to a tenth in uThin seconds thin and uThickT thick.
+float wetOf(float a, float age) {
+  if (a <= 1e-5) return 0.0;
+  float x = clamp(a / uThick, 0.0, 1.0);
+  float T = uThin + (uThickT - uThin) * x * x * (3.0 - 2.0 * x);
+  return pow(10.0, -max(age, 0.0) / T);
+}
+`;
+  const VERT = `#version 300 es
+in vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
+  // The canvas weave, the study's oilpaint.cpp's, made once.
+  const WEAVE = COMMON + `
+out vec4 o;
+float sn(float x, uint seed) { float i = floor(x); float f = x - i; float g = f * f * (3.0 - 2.0 * f);
+  uint ii = uint(int(i)); return hash(ii * 2654435761u + seed) * (1.0 - g) + hash((ii + 1u) * 2654435761u + seed) * g; }
+void main() {
+  float x = floor(gl_FragCoord.x), y = floor(gl_FragCoord.y);
+  float xw = x + 1.6 * sn(y / 23.0, 11u) + 0.7 * sn(y / 5.0, 12u);
+  float yw = y + 1.6 * sn(x / 23.0, 13u) + 0.7 * sn(x / 5.0, 14u);
+  int tx = int(floor(xw / 4.0)), ty = int(floor(yw / 4.0));
+  bool warp = ((tx + ty) % 2) == 0;
+  float th = 0.6 + 0.4 * hash(uint(warp ? tx * 7 + 1 : ty * 13 + 2));
+  float a = abs(sin(PI * (warp ? xw : yw) / 4.0)) * th;
+  float b = 0.3 * abs(sin(PI * (warp ? yw : xw) / 4.0));
+  o = vec4(0.6 * a + 0.2 * b + 0.25 * hash(uint(int(y) * 7919 + int(x) * 104729)), 0.0, 0.0, 1.0);
+}`;
+  /* The pick-up: each brush's eight bristle groups (a row each, in the carry
+     texture) take up some of the wet paint under where they pass, from the
+     canvas as it stood before the frame, and spend it as they go - the
+     colour they carry on, a frame behind at most. */
+  const CARRY = COMMON + `
+uniform sampler2D uA, uB, uSteps, uCA, uCB; uniform int uN; uniform float uCell;
+layout(location = 0) out vec4 oA; layout(location = 1) out vec4 oB;
+vec4 st(int i, int k) { return texelFetch(uSteps, ivec2(k, i), 0); }
+void main() {
+  ivec2 me = ivec2(gl_FragCoord.xy);
+  vec4 cA = texelFetch(uCA, me, 0), cB = texelFetch(uCB, me, 0);
+  ivec2 sz = textureSize(uA, 0);
+  for (int i = 0; i < uN; i++) {
+    vec4 s0 = st(i, 0), s1 = st(i, 1), s2 = st(i, 2);
+    if (int(s2.x) != me.y) continue;
+    if (s2.w > 0.5) { cA = vec4(0.0); cB = vec4(0.0); }
+    // A drop or a finger lands from the air and the bend's pull moves the canvas: none picks up nor spends.
+    vec4 s5 = st(i, 5);
+    if (s5.x > 0.5) continue;
+    vec2 d = s0.zw, n = vec2(-d.y, d.x);
+    float w = s1.x, p = s1.y, per = s1.z, t = s1.w;
+    float hw = max(0.5 * uCell, w * 0.5 * (0.4 + 0.6 * p));
+    float across = (float(me.x) + 0.5) / 8.0 * 2.0 - 1.0;
+    // A splayed brush's group picks up where its own track runs.
+    // A flared brush's group picks up from the middle of its own place.
+    if (s5.y > 0.0) {
+      float lo = 0.0, hi = 0.0, e; int K, BR; float WT;
+      for (int q2 = 0; q2 < 64; q2++) { float uh = -3.5 + 7.0 * (float(q2) + 0.5) / 64.0; flareAt(uh, s5.y, uint(s5.z + 0.5) & 0xffffu, 0.05, K, BR, WT, e);
+        if (K == me.x) { if (hi == lo) lo = uh; hi = uh; } }
+      if (hi != lo) across = (lo + hi) * 0.5;
+    }
+    vec2 at = s0.xy + n * across * hw * 0.9;
+    ivec2 q = clamp(ivec2(at), ivec2(0), sz - 1);
+    vec4 A = texelFetch(uA, q, 0) / uGain, B = texelFetch(uB, q, 0);
+    B.xy /= uGain;
+    float amount = A.x + A.y + A.z + A.w + B.x + B.y;
+    float wet = wetOf(amount, t - B.w);
+    if (wet > 0.01 && !(int(B.z + 0.5) == me.y + 1 && t - B.w <= 1.5)) { float take = 0.05 * wet * per; cA += 0.8 * take * A; cB.xy += 0.8 * take * B.xy; }
+    float f = exp(-s2.z / (3.0 * max(w, 1.0)) * p);
+    cA *= f; cB *= f;
+  }
+  oA = cA; oB = cB;
+}`;
+  /* Stamping, the study's, every pixel running the batch's stamps in order.
+     The footprint is the core's to the cell (paint.h's stamp: the same half
+     width and tip, in the core's cells of PAINT_SIZE / PAINT_CELLS pixels),
+     so the look lays the stroke the sound reads, no wider and no narrower -
+     the owner's rule of 18 Nov. Finer than the map, and the look's only: each
+     of the core's eight bristle groups is four bristles here, loaded
+     unevenly (the streaks), their outer ones ragged; wet paint the brush
+     crosses that is not its own stroke is ploughed from its leading half to
+     a bank just past its flank (the ridges, which the core's map holds as
+     well); and the dry brush catches on the weave. Each stamp's pixel keeps
+     the slot of the brush that laid it (B.z), so a brush does not plough its
+     own stroke, as the core's owner rule has it. */
+  const PAINT = COMMON + `
+uniform sampler2D uA, uB, uSteps, uWeave, uCA, uCB; uniform int uN; uniform float uCell;
+layout(location = 0) out vec4 oA; layout(location = 1) out vec4 oB;
+const float kDeposit = 0.6, kHide = 0.15, kPick = 0.05, kPush = 0.018;
+vec4 st(int i, int k) { return texelFetch(uSteps, ivec2(k, i), 0); }
+float hwOf(float w, float p) { return max(0.5 * uCell, w * 0.5 * (0.4 + 0.6 * p)); }
+float hlOf(float w) { return max(0.75 * uCell, 0.15 * w); }
+// A drop's cover of a pixel of side px, in units of its radius: the core's paintDropCover (paint.h), line for line.
+float dropCover(float u, float v, float longer, uint seed, float rough, float px) {
+  float r = sqrt(u * u + v * v), th = atan(u, v);
+  float p1 = 2.0 * PI * hash(seed * 7u + 1u), p2 = 2.0 * PI * hash(seed * 7u + 2u), p3 = 2.0 * PI * hash(seed * 7u + 3u);
+  float p4 = 2.0 * PI * hash(seed * 7u + 4u);
+  float edge = 1.0 + rough * (0.10 * cos(2.0 * th + p1) + 0.07 * cos(3.0 * th + p2) + 0.05 * cos(4.0 * th + p3) +
+                              0.04 * cos(5.0 * th + p4));
+  float c = clamp(0.5 - (r - edge) / px, 0.0, 1.0);
+  if (longer > 1.05 && v > 0.0) {
+    float tail = 2.5 * (longer - 1.0) + 0.8;
+    if (v < tail) c = max(c, clamp(0.5 - (abs(u) - 0.75 * pow(1.0 - v / tail, 1.3)) / px, 0.0, 1.0));
+  }
+  return c;
+}
+// A finger of the strike's fan: the core's paintFingerCover (paint.h), line for line.
+float fingerCover(float u, float v, float len, uint seed, float px) {
+  if (v < -0.3 || v > len + px) return 0.0;
+  if (v < 0.0) return clamp(0.5 - (abs(u) - 1.0) / px, 0.0, 1.0) * (1.0 + v / 0.3);
+  float x = min(1.0, v / len), h = 1.0 - 0.6 * pow(x, 1.2);
+  int strand = clamp(int(floor((u / h + 1.0) / 2.0 * 5.0)), 0, 4);
+  uint si = uint(strand);
+  float reach = len * (0.65 + 0.35 * hash(seed * 7u + si + 11u));
+  float side = clamp(0.5 - (abs(u) - h) / px, 0.0, 1.0), tip = clamp(0.5 - (v - reach) / px, 0.0, 1.0);
+  return side * tip * (1.0 - 0.55 * x) * (0.7 + 0.6 * hash(seed * 13u + si + 17u));
+}
+// A smear of the bend's pull: the core's paintStreakCover (paint.h), line for line.
+float streakCover(float l, float s, float len, float bend, float sharp, uint seed, float px) {
+  if (s < -1.0 || s > len + 1.0) return 0.0;
+  float x = clamp(s / len, 0.0, 1.0), lat = l - bend * x * x * len;
+  int j = clamp(int(floor((lat + 1.0) / 2.0 * 4.0)), 0, 3);
+  uint ji = uint(j);
+  float reach = len * (0.6 + 0.4 * hash(seed * 7u + ji + 5u)), y = s / reach;
+  float hf = (1.05 + 0.25 * (1.0 - sharp)) * (1.0 - 0.45 * clamp(y, 0.0, 1.0));
+  float edge = max(hf * 0.35, px);
+  float side = clamp((hf - abs(lat)) / edge, 0.0, 1.0);
+  float start = clamp(0.5 + s / max(px, 0.3), 0.0, 1.0);
+  float fade = y >= 1.0 ? 0.0 : pow(1.0 - y, 2.2);
+  float texture = 0.75 + 0.5 * hash(seed * 11u + ji + 9u);
+  return side * side * (3.0 - 2.0 * side) * start * fade * texture;
+}
+float footOf(vec2 rel, float hw) { float r = length(rel) / hw; return r < 1.0 ? 1.0 - r * r * r * r : 0.0; }
+void main() {
+  ivec2 ip = ivec2(gl_FragCoord.xy);
+  ivec2 sz = textureSize(uA, 0);
+  // The paint as it stands now, the stored amounts over the gain; written back grown again.
+  vec4 A = texelFetch(uA, ip, 0) / uGain, B = texelFetch(uB, ip, 0);
+  B.xy /= uGain;
+  vec2 pos = gl_FragCoord.xy;
+  float wv = texelFetch(uWeave, ip, 0).r;
+  for (int i = 0; i < uN; i++) {
+    vec4 s0 = st(i, 0), s1 = st(i, 1), s2 = st(i, 2), s3 = st(i, 3), s4 = st(i, 4), s5 = st(i, 5);
+    vec2 d = s0.zw, n = vec2(-d.y, d.x);
+    float w = s1.x, p = s1.y, per = s1.z, t = s1.w;
+    int slot = int(s2.x), pig = int(s2.y);
+    int kind = int(s5.x + 0.5);
+    /* A drop of spatter (step 3): its shape at this pixel's centre, as the core samples a cell at the
+       look's six pixels across it, laid as the core lays it - into wet paint mixed, over dry covering by
+       its opacity - in its hand's ink, with nothing picked up or ploughed. */
+    if (kind == 1 || kind == 3) {
+      float R = max(w * 0.5, 1e-3);
+      vec2 rel = pos - s0.xy;
+      // A finger of the strike's fan (kind 3) lays as a drop does, its shape its own.
+      float cover = kind == 1 ? dropCover(dot(rel, n) / R, dot(rel, d) / R, s5.y, uint(s5.z + 0.5), p, 1.0 / R)
+                              : fingerCover(dot(rel, n) / R, dot(rel, d) / R, s5.y, uint(s5.z + 0.5), 1.0 / R);
+      if (cover <= 0.0) continue;
+      float dep = s3.x * cover;
+      float amount = A.x + A.y + A.z + A.w + B.x + B.y;
+      float wet = wetOf(amount, t - B.w);
+      vec4 ownA = vec4(pig == 0 ? 1.0 : 0.0, pig == 1 ? 1.0 : 0.0, pig == 2 ? 1.0 : 0.0, pig == 3 ? 1.0 : 0.0);
+      vec2 ownB = vec2(pig == 4 ? 1.0 : 0.0, pig == 5 ? 1.0 : 0.0);
+      float hide = (1.0 - exp(-dep / kHide)) * (1.0 - wet);
+      A = A * (1.0 - hide) + dep * ownA;
+      B.xy = B.xy * (1.0 - hide) + dep * ownB;
+      B.w = wet > 0.01 ? mix(B.w, t, dep / (amount + dep)) : t;
+      B.z = float(slot + 1);
+      continue;
+    }
+    /* The bend's pull (step 3, redesigned 20 Nov): a bristle group takes a share (p) of the wet paint within its
+       width (w) of where it is on the brush and draws it out into a streak of four bristle lines the way the pitch
+       went, laid at the thickness the core worked out for what it took (s3.x): the core's pull and
+       paintStreakCover (paint.h), per pixel. */
+    if (kind == 2) {
+      float gw = max(w * 0.5, 1e-3);
+      vec2 rel = pos - s0.xy;
+      float amount = A.x + A.y + A.z + A.w + B.x + B.y;
+      float r = length(rel) / (gw * s3.z);  // what it takes, within s3.z of its half-width
+      if (r < 1.0) {
+        float m = p * wetOf(amount, t - B.w) * (1.0 - r * r);
+        A *= 1.0 - m; B.xy *= 1.0 - m;
+        amount *= 1.0 - m;
+      }
+      float cover = streakCover(dot(rel, n) / gw, dot(rel, d) / gw, s5.y, per, s3.y, uint(s5.z + 0.5), 1.0 / gw);
+      if (cover <= 0.0) continue;
+      float dep = s3.x * cover;
+      float wet = wetOf(amount, t - B.w);
+      vec4 ownA = vec4(pig == 0 ? 1.0 : 0.0, pig == 1 ? 1.0 : 0.0, pig == 2 ? 1.0 : 0.0, pig == 3 ? 1.0 : 0.0);
+      vec2 ownB = vec2(pig == 4 ? 1.0 : 0.0, pig == 5 ? 1.0 : 0.0);
+      float hide = (1.0 - exp(-dep / kHide)) * (1.0 - wet);
+      A = A * (1.0 - hide) + dep * ownA;
+      B.xy = B.xy * (1.0 - hide) + dep * ownB;
+      B.w = wet > 0.01 ? mix(B.w, t, dep / (amount + dep)) : t;
+      continue;
+    }
+    float hw = hwOf(w, p), hl = hlOf(w);
+    vec2 rel = pos - s0.xy;
+    float u = dot(rel, n), v = dot(rel, d);
+    float tip = max(0.0, 1.0 - (v * v) / (hl * hl * 1.6));
+    if (tip <= 0.0) continue;
+    /* A flared brush (the strike's, step 3): the pixel's group, bristle and share of paint are the core's
+       paintFlareAt's, under the flare's whole width's edge; flat (s5.y nought) it is the plain brush. */
+    float sa = s5.y, edgeS = -1.0, uc = u, hc = hw;
+    int kS = -1, subS = 0;
+    if (sa > 0.0) {
+      float WT, EXT; int K, BR;
+      float uh = u / hw;
+      flareAt(uh, sa, uint(s5.z + 0.5) & 0xffffu, 1.0 / hw, K, BR, WT, EXT);
+      hc = EXT * hw;
+      if (K >= 0) { kS = K; subS = BR; edgeS = WT * max(0.0, 1.0 - pow(abs(uh) / EXT, 4.0) * 0.6); }
+    }
+    // The bank past the flank: wet paint ploughed out from the core's leading half, as the core shoves it.
+    if (sa > 0.0 ? kS < 0 : abs(u) > hw) {
+      if (abs(uc) > hc * 1.3 + 1.0 || v <= 0.0) continue;
+      vec2 from = pos - n * uc * 0.45;
+      ivec2 q = clamp(ivec2(from), ivec2(0), sz - 1);
+      vec4 FA = texelFetch(uA, q, 0) / uGain, FB = texelFetch(uB, q, 0);
+      FB.xy /= uGain;
+      float fa = FA.x + FA.y + FA.z + FA.w + FB.x + FB.y;
+      bool fown = int(FB.z + 0.5) == slot + 1 && t - FB.w <= 1.5;
+      float fwet = wetOf(fa, t - FB.w);
+      if (fwet <= 0.01 || fown) continue;
+      float ue = abs(uc * 0.55) / hc;
+      float push = min(0.5, kPush * fwet * max(0.0, 1.0 - pow(ue, 4.0)) * tip * p * per) * 2.0;
+      A += FA * push; B.xy += FB.xy * push;
+      continue;
+    }
+    int kb = clamp(int((u / hw + 1.0) * 0.5 * 32.0), 0, 31), k = kb / 4;
+    if (kS >= 0) { k = kS; kb = k * 4 + subS; }
+    float load = k < 4 ? s3[k] : s4[k - 4];
+    // Each bristle's own share of its group's load, a mean of one, and the outer ones a little short.
+    float bristle = 0.55 + 0.9 * hash(uint(slot) * 7919u + uint(kb) * 131u + 3u);
+    float rag = 0.9 + 0.1 * hash(uint(slot) * 131u + uint(kb) * 17u);
+    float edge = max(0.0, 1.0 - pow(abs(u) / (hw * (abs(u) > 0.7 * hw ? rag : 1.0)), 4.0));
+    if (kS >= 0) edge = edgeS;
+    float amount = A.x + A.y + A.z + A.w + B.x + B.y;
+    float wet = wetOf(amount, t - B.w);
+    bool own = int(B.z + 0.5) == slot + 1 && t - B.w <= 1.5;
+    // What the brush picks up leaves the canvas (the carry pass has it); its leading half shoves some aside.
+    if (wet > 0.01 && !own) {
+      float core = edge * tip;
+      float take = clamp(kPick * wet * core * per, 0.0, 0.5);
+      float push = v > 0.0 ? min(0.5, kPush * wet * core * p * per) : 0.0;
+      A *= 1.0 - take - push; B.xy *= 1.0 - take - push;
+      amount = A.x + A.y + A.z + A.w + B.x + B.y;
+    }
+    float dep = kDeposit * p * load * edge * tip * per * bristle;
+    if (p < 0.5) {
+      float touch = hash((uint(ip.x / 2) * 73856093u) ^ (uint(ip.y / 2) * 19349663u) ^ (uint(kb) * 83492791u));
+      dep *= clamp((p * 2.2 - touch) / 0.25, 0.0, 1.0) * (p * 2.0);
+    }
+    if (load < 0.5) {
+      float relief = (wv - 0.5) * 0.15;
+      float need = 0.1 * (1.0 - load / 0.5) - 0.03;
+      dep *= clamp((relief - need) / 0.03, 0.0, 1.0);
+    }
+    if (dep <= 1e-6) continue;
+    // The colour: the brush's ink, and as much of what it carries as its load holds.
+    vec4 cA = texelFetch(uCA, ivec2(k, slot), 0), cB = texelFetch(uCB, ivec2(k, slot), 0);
+    float carried = cA.x + cA.y + cA.z + cA.w + cB.x + cB.y;
+    float c = carried > 1e-6 ? min(1.0, carried / max(load, 1e-3)) : 0.0;
+    vec4 ownA = vec4(pig == 0 ? 1.0 : 0.0, pig == 1 ? 1.0 : 0.0, pig == 2 ? 1.0 : 0.0, pig == 3 ? 1.0 : 0.0);
+    vec2 ownB = vec2(pig == 4 ? 1.0 : 0.0, pig == 5 ? 1.0 : 0.0);
+    vec4 mA = mix(ownA, cA / max(carried, 1e-6), c);
+    vec2 mB = mix(ownB, cB.xy / max(carried, 1e-6), c);
+    float hide = (1.0 - exp(-dep / kHide)) * (1.0 - wet);
+    A = A * (1.0 - hide) + dep * mA;
+    B.xy = B.xy * (1.0 - hide) + dep * mB;
+    float frac = dep / (amount + dep);
+    B.w = wet > 0.01 ? mix(B.w, t, frac) : t;
+    B.z = float(slot + 1);
+  }
+  B.xy *= uGain;
+  oA = A * uGain; oB = B;
+}`;
+  // The whole canvas divided back by the gain, now and then (above).
+  const RESCALE = COMMON + `
+uniform sampler2D uA, uB;
+layout(location = 0) out vec4 oA; layout(location = 1) out vec4 oB;
+void main() { ivec2 ip = ivec2(gl_FragCoord.xy); vec4 B = texelFetch(uB, ip, 0); B.xy /= uGain; oA = texelFetch(uA, ip, 0) / uGain; oB = B; }`;
+  // Mixing, light and gloss, to the screen: the study's, with six inks on the paper.
+  const RENDER = COMMON + `
+uniform sampler2D uA, uB, uWeave; uniform float uT; uniform vec3 uGround; uniform vec3 uKS[6];
+out vec4 o;
+const float kHide = 0.15;
+float amountAt(ivec2 q) { vec4 A = texelFetch(uA, q, 0), B = texelFetch(uB, q, 0); return (A.x + A.y + A.z + A.w + B.x + B.y) / uGain; }
+float heightAt(ivec2 q) { float a = amountAt(q); return texelFetch(uWeave, q, 0).r * 0.6 / (1.0 + a * 6.0) + a * 3.0; }
+float srgb(float c) { c = clamp(c, 0.0, 1.0); return c <= 0.0031308 ? 12.92 * c : 1.055 * pow(c, 1.0 / 2.4) - 0.055; }
+void main() {
+  ivec2 sz = textureSize(uA, 0);
+  ivec2 q = ivec2(int(gl_FragCoord.x), sz.y - 1 - int(gl_FragCoord.y));
+  vec4 A = texelFetch(uA, q, 0) / uGain, B = texelFetch(uB, q, 0);
+  B.xy /= uGain;
+  float P[6] = float[6](A.x, A.y, A.z, A.w, B.x, B.y);
+  float a = 0.0; for (int i = 0; i < 6; i++) a += P[i];
+  float cover = 1.0 - exp(-a / kHide);
+  vec3 col = uGround;
+  if (a > 1e-6) {
+    vec3 k = vec3(0.0); for (int i = 0; i < 6; i++) k += P[i] / a * uKS[i];
+    vec3 R = 1.0 + k - sqrt(k * k + 2.0 * k);
+    col = R * cover + uGround * (1.0 - cover);
+  }
+  ivec2 xp = ivec2(min(q.x + 1, sz.x - 1), q.y), xm = ivec2(max(q.x - 1, 0), q.y);
+  ivec2 yp = ivec2(q.x, min(q.y + 1, sz.y - 1)), ym = ivec2(q.x, max(q.y - 1, 0));
+  float hx = heightAt(xp) - heightAt(xm), hy = heightAt(yp) - heightAt(ym);
+  vec3 n = normalize(vec3(-hx * 0.5, -hy * 0.5, 1.0));
+  vec3 L = vec3(-0.55, -0.62, 0.56);
+  float shade = clamp(0.25 + 0.75 * dot(n, L) / L.z, 0.35, 1.6);
+  float wet = wetOf(a, uT - B.w);
+  vec3 hv = normalize(vec3(L.xy, L.z + 1.0));
+  float spec = pow(max(0.0, dot(n, hv)), 40.0) * (0.05 + 0.3 * wet) * cover;
+  vec3 c = col * shade + spec;
+  o = vec4(srgb(c.r), srgb(c.g), srgb(c.b), 1.0);
+}`;
+
+  function program(fs) {
+    const p = gl.createProgram();
+    for (const [type, src] of [[gl.VERTEX_SHADER, VERT], [gl.FRAGMENT_SHADER, fs]]) {
+      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      gl.attachShader(p, s);
+    }
+    gl.bindAttribLocation(p, 0, "p"); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) { const name = gl.getActiveUniform(p, i).name.replace(/\[0\]$/, ""); u[name] = gl.getUniformLocation(p, name); }
+    return { p, u };
+  }
+  function tex(w, h, internal) {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, internal, w, h);
+    for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST],
+                          [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+    return t;
+  }
+  function target(w, h, wetStart) {
+    const A = tex(w, h, FLOAT.internal), B = tex(w, h, FLOAT.internal);
+    const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, A, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, B, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error("the float target is incomplete");
+    gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 0]);
+    gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, wetStart]);
+    return { A, B, fb };
+  }
+  function clearTargets() {
+    gain = 1;
+    for (const t of pair) { gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb); gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 0]); gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, -1000]); }
+    for (const t of carry) { gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb); gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 0]); gl.clearBufferfv(gl.COLOR, 1, [0, 0, 0, 0]); }
+  }
+  function draw() { gl.bindVertexArray(quad); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+  function bind(unit, t, loc) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform1i(loc, unit); }
+
+  // The inks' Kubelka-Munk constants and the ground, from the lane inks and the paper.
+  function inks() {
+    const css = getComputedStyle(document.documentElement);
+    const lin = (hex) => {
+      const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+      const n = m ? parseInt(m[1], 16) : 0xfffcf7;
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+    };
+    // Lower hand: own, related, clash; then the upper's (the study's house palette).
+    const order = ["--ch1", "--ch2", "--ch6", "--ch3", "--ch4", "--ch5"];
+    const ks = new Float32Array(18);
+    order.forEach((name, i) => lin(css.getPropertyValue(name)).forEach((r, c) => {
+      r = Math.min(Math.max(r, 0.004), 0.995); ks[i * 3 + c] = (1 - r) * (1 - r) / (2 * r);
+    }));
+    return { ks, ground: new Float32Array(lin(css.getPropertyValue("--paper"))) };
+  }
+
+  function makeGl() {
+    gl = canvas.getContext("webgl2", { antialias: false, alpha: false, preserveDrawingBuffer: false });
+    if (!gl) { why = "no WebGL 2"; return false; }
+    if (gl.getExtension("EXT_color_buffer_float")) FLOAT = { internal: gl.RGBA32F, wetStart: -1e9 };
+    else if (gl.getExtension("EXT_color_buffer_half_float")) FLOAT = { internal: gl.RGBA16F, wetStart: -1000 };
+    else { why = "no float render target"; gl = null; return false; }
+    progs = { weave: program(WEAVE), carry: program(CARRY), paint: program(PAINT), render: program(RENDER), rescale: program(RESCALE) };
+    quad = gl.createVertexArray(); gl.bindVertexArray(quad);
+    const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    canvas.width = canvas.height = PAINT_SIZE;
+    pair = [target(PAINT_SIZE, PAINT_SIZE, FLOAT.wetStart), target(PAINT_SIZE, PAINT_SIZE, FLOAT.wetStart)];
+    carry = [target(8, PAINT_SLOTS, 0), target(8, PAINT_SLOTS, 0)];
+    clearTargets();
+    stepTex = tex(6, PAINT_STEPS_MOST, gl.RGBA32F);
+    weaveTex = tex(PAINT_SIZE, PAINT_SIZE, FLOAT.internal);
+    const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, weaveTex, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+    gl.viewport(0, 0, PAINT_SIZE, PAINT_SIZE); gl.useProgram(progs.weave.p); draw();
+    gl.deleteFramebuffer(fb);
+    return true;
+  }
+
+  function make() {
+    if (canvas) return;
+    canvas = document.createElement("canvas");
+    canvas.id = "paintCanvas";
+    canvas.className = "paint-view";
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", "The painting: the core's brushwork, which Scan and the Picture amount read");
+    canvas.hidden = true;
+    el.trace.after(canvas);
+    // ?paint=plain: the plain drawing a face without the graphics card gets, to see and to test it.
+    const plain = new URLSearchParams(location.search).get("paint") === "plain";
+    try { if (!plain && makeGl()) mode = "gpu"; } catch (error) { why = String(error && error.message || error); gl = null; }
+    if (mode !== "gpu") {
+      // A canvas that has had a WebGL context asked of it cannot give a 2D one: the plain drawing gets a fresh one.
+      if (gl === null && canvas.getContext("2d") === null) {
+        const fresh = canvas.cloneNode(false); canvas.replaceWith(fresh); canvas = fresh;
+      }
+      mode = "plain"; if (plain) why = "asked for plain";
+      canvas.width = canvas.height = PAINT_CELLS;
+      fallback = canvas.getContext("2d");
+      wantMap = true;
+    }
+  }
+
+  // Square, centred in the screen's sheet, as large as it allows.
+  function place() {
+    const box = el.traceSheet.getBoundingClientRect();
+    const side = Math.max(1, Math.floor(Math.min(box.width, box.height)));
+    const s = canvas.style;
+    s.width = side + "px"; s.height = side + "px";
+    s.left = Math.floor((box.width - side) / 2) + "px"; s.top = Math.floor((box.height - side) / 2) + "px";
+  }
+
+  /* The frame's stamps, in batches of PAINT_STEPS_MOST: the carry pass, then
+     the paint pass into the scratch target inside the batch's box, and the
+     box copied back, so `pair[0]` is always the painting. */
+  function paintStamps() {
+    while (queue.length) {
+      const n = Math.min(PAINT_STEPS_MOST, queue.length);
+      const scale = PAINT_SIZE;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i < n; i++) {
+        const s = queue[i], o = i * 24;
+        let slot = slots.get(s[16]), fresh = 0;
+        if (slot === undefined) {
+          slot = nextSlot; nextSlot = (nextSlot + 1) % PAINT_SLOTS; fresh = 1;
+          for (const [serial, at] of slots) if (at === slot) slots.delete(serial);
+          slots.set(s[16], slot);
+        }
+        const w = s[4] * scale, x = s[0] * scale, y = s[1] * scale;
+        stepData[o] = x; stepData[o + 1] = y; stepData[o + 2] = s[2]; stepData[o + 3] = s[3];
+        stepData[o + 4] = w; stepData[o + 5] = s[5]; stepData[o + 6] = s[7]; stepData[o + 7] = s[6];
+        stepData[o + 8] = slot; stepData[o + 9] = Math.min(5, s[17] * 3 + s[18]); stepData[o + 10] = s[7] * 1.4 * Math.max(0.75 * PAINT_SIZE / PAINT_CELLS, 0.15 * w);
+        stepData[o + 11] = fresh;
+        for (let k = 0; k < 8; k++) stepData[o + 12 + k] = s[8 + k];
+        // Its kind and two numbers (PaintStamp): a pull's reach in pixels, a drop's length over its width and its seed.
+        const kind = s[20] || 0;
+        stepData[o + 20] = kind; stepData[o + 21] = s[21] || 0; stepData[o + 22] = s[22] || 0; stepData[o + 23] = 0;
+        const r = (kind === 1 ? w * Math.max(1.6, 1.25 * (s[21] || 1) - 0.85) : kind === 2 ? w * 0.5 * ((s[21] || 0) * (1 + Math.abs(s[7] || 0)) + 4)
+          : kind === 3 ? w * 0.5 * ((s[21] || 0) + 2) : w * (1 + 1.3 * (s[21] || 0))) + PAINT_SIZE / PAINT_CELLS * 2 + 4;
+        x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r);
+      }
+      queue = queue.slice(n);
+      gl.bindTexture(gl.TEXTURE_2D, stepTex);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 6, n, gl.RGBA, gl.FLOAT, stepData.subarray(0, n * 24));
+      const src = pair[0], dst = pair[1];
+      const C = progs.carry, cs = carry[carryCur], cd = carry[1 - carryCur];
+      gl.bindFramebuffer(gl.FRAMEBUFFER, cd.fb); gl.viewport(0, 0, 8, PAINT_SLOTS); gl.useProgram(C.p);
+      bind(0, src.A, C.u.uA); bind(1, src.B, C.u.uB); bind(2, stepTex, C.u.uSteps); bind(3, cs.A, C.u.uCA); bind(4, cs.B, C.u.uCB);
+      gl.uniform1i(C.u.uN, n); dry(C);
+      draw(); carryCur = 1 - carryCur;
+      const bx = Math.max(0, Math.floor(x0)), by = Math.max(0, Math.floor(y0));
+      const bw = Math.min(PAINT_SIZE, Math.ceil(x1)) - bx, bh = Math.min(PAINT_SIZE, Math.ceil(y1)) - by;
+      if (bw > 0 && bh > 0) {
+        const P = progs.paint, cc = carry[carryCur];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb); gl.viewport(0, 0, PAINT_SIZE, PAINT_SIZE);
+        gl.enable(gl.SCISSOR_TEST); gl.scissor(bx, by, bw, bh);
+        gl.useProgram(P.p);
+        bind(0, src.A, P.u.uA); bind(1, src.B, P.u.uB); bind(2, stepTex, P.u.uSteps); bind(3, weaveTex, P.u.uWeave);
+        bind(4, cc.A, P.u.uCA); bind(5, cc.B, P.u.uCB);
+        gl.uniform1i(P.u.uN, n); dry(P);
+        draw();
+        gl.disable(gl.SCISSOR_TEST);
+        copyBox(dst, src, bx, by, bw, bh);
+      }
+      timing.stamps += n;
+    }
+  }
+  // A box of one target's two attachments into another's.
+  function copyBox(from, to, x, y, w, h) {
+    for (const k of [0, 1]) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, from.fb); gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, to.fb);
+      gl.drawBuffers(k === 0 ? [gl.COLOR_ATTACHMENT0, gl.NONE] : [gl.NONE, gl.COLOR_ATTACHMENT1]);
+      gl.blitFramebuffer(x, y, x + w, y + h, x, y, x + w, y + h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    }
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, to.fb); gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+  }
+  // The gain grown by the frame's time at the Persistence, and the canvas divided back once it is large.
+  function fadeBy(dt) {
+    gain *= Math.pow(2, dt / Math.max(1, state.paintPersistence || PAINT_DEFAULT));
+    if (gain < 1e6) return;
+    const R = progs.rescale;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pair[1].fb); gl.viewport(0, 0, PAINT_SIZE, PAINT_SIZE); gl.useProgram(R.p);
+    bind(0, pair[0].A, R.u.uA); bind(1, pair[0].B, R.u.uB); gl.uniform1f(R.u.uGain, gain);
+    draw();
+    pair.reverse();
+    gain = 1;
+  }
+  function dry(prog) {
+    gl.uniform1f(prog.u.uThin, 2); gl.uniform1f(prog.u.uThickT, 6); gl.uniform1f(prog.u.uThick, 1);
+    if (prog.u.uGain) gl.uniform1f(prog.u.uGain, gain);
+    if (prog.u.uCell) gl.uniform1f(prog.u.uCell, PAINT_SIZE / PAINT_CELLS);
+  }
+  let palette = null;
+  function render() {
+    if (!palette) palette = inks();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, PAINT_SIZE, PAINT_SIZE);
+    const R = progs.render; gl.useProgram(R.p);
+    bind(0, pair[0].A, R.u.uA); bind(1, pair[0].B, R.u.uB); bind(2, weaveTex, R.u.uWeave);
+    gl.uniform1f(R.u.uT, clock); gl.uniform3fv(R.u.uGround, palette.ground); gl.uniform3fv(R.u.uKS, palette.ks); dry(R);
+    draw();
+  }
+  // The core's map, plain: thickness in the charcoal ink on the paper, wet paint a little darker.
+  function plainDraw() {
+    if (!map || !fallback) return;
+    const img = fallback.createImageData(PAINT_CELLS, PAINT_CELLS), d = img.data, n = PAINT_CELLS * PAINT_CELLS;
+    const paper = [255, 252, 247], ink = [36, 31, 29];
+    for (let q = 0; q < n; q++) {
+      const a = map[q], wet = map[n + q];
+      const cover = Math.min(1, (1 - Math.exp(-a / 0.15)) * (0.75 + 0.25 * wet));
+      for (let c = 0; c < 3; c++) d[q * 4 + c] = Math.round(paper[c] + (ink[c] - paper[c]) * cover);
+      d[q * 4 + 3] = 255;
+    }
+    fallback.putImageData(img, 0, 0);
+  }
+
+  return {
+    get mode() { return mode; },
+    get why() { return why; },
+    get since() { return since; },
+    get wantsMap() { return wantMap; },
+    get timing() { return timing; },
+    get canvas() { return canvas; },
+    // The core's map as it was last served (thickness then wetness), or null.
+    get map() { return map; },
+    /* For a test: the look's paint, 128 square (or `cells` square, a divisor
+       of PAINT_SIZE: PAINT_SIZE for every pixel), each cell the summed amount
+       of its pixels as it stands now (over the gain); null with no graphics card. */
+    sample(cells) {
+      if (mode !== "gpu" || !gl) return null;
+      const C = cells || PAINT_CELLS;
+      const n = PAINT_SIZE, out = new Float32Array(C * C), per = n / C;
+      for (const k of [0, 1]) {
+        const buf = new Float32Array(n * n * 4);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, pair[0].fb); gl.readBuffer(gl.COLOR_ATTACHMENT0 + k);
+        gl.readPixels(0, 0, n, n, gl.RGBA, gl.FLOAT, buf);
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+          const i = (y * n + x) * 4, a = k === 0 ? buf[i] + buf[i + 1] + buf[i + 2] + buf[i + 3] : buf[i] + buf[i + 1];
+          out[Math.floor(y / per) * C + Math.floor(x / per)] += a / gain;
+        }
+      }
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+      return out;
+    },
+    /* What the instrument served: whether it is painting, the count its
+       stamps start at, how many, and the stamps; and the map, when it came. */
+    take(paint) {
+      if (!paint) return;
+      if (paint.map) map = paint.map;
+      if (!paint.on || !paint.stamps) return;
+      const from = paint.from, n = paint.count;
+      if (from + n <= since) return;
+      for (let k = Math.max(0, since - from); k < n; k++) {
+        const s = paint.stamps.subarray(k * PAINT_STAMP, (k + 1) * PAINT_STAMP);
+        queue.push(s);
+        clock = Math.max(clock, s[6]);
+      }
+      clockAt = performance.now();
+      since = from + n;
+      // A face far behind takes the newest only, rather than painting a backlog.
+      if (queue.length > 8 * PAINT_STEPS_MOST) queue = queue.slice(queue.length - 8 * PAINT_STEPS_MOST);
+    },
+    setOn(on) {
+      if (on) make();
+      if (canvas) canvas.hidden = !on;
+      if (!on) queue = [];
+    },
+    clear() {
+      queue = [];
+      if (mode === "gpu" && gl) clearTargets();
+      map = null;
+      if (fallback) fallback.clearRect(0, 0, PAINT_CELLS, PAINT_CELLS);
+    },
+    draw(now) {
+      if (!canvas || canvas.hidden) return;
+      place();
+      const began = performance.now();
+      const dt = lastDraw ? Math.min(0.25, (now - lastDraw) / 1000) : 0;
+      lastDraw = now;
+      if (mode === "gpu") {
+        // The look's own clock between servings, so the gloss dries smoothly.
+        const t = clock + (clockAt ? (began - clockAt) / 1000 : 0);
+        fadeBy(dt);
+        paintStamps();
+        const before = clock; clock = t; render(); clock = before;
+      } else {
+        queue = [];
+        plainDraw();
+      }
+      const ms = performance.now() - began;
+      timing.frames++; timing.ms += ms; timing.worst = Math.max(timing.worst, ms);
+    },
+  };
+})();
+/* The strike lab and the bend lab (20 Nov). The owner turns knobs and sees
+   one hard strike - and the stroke dragged out of it - or one bend's smear,
+   painted live by the instrument's own look (paintView, lifted unchanged out
+   of web/scope.html by make.py) from stamps of the kinds the core already
+   lays: brush stamps (kind 0), drops (1) and the bend's smear (2). So any look
+   found here is one the core can be made to lay, stamp for stamp, and the map
+   beside it is the look's paint summed to the core's 128 cells, which is what
+   the core's map holds when it lays the same stamps (the look equals the map).
+   The stamps here are written by this file, not by the core: it is the place
+   to find the settings, and the core is then made to match them. */
+"use strict";
+
+const N = PAINT_CELLS;  // cells across the canvas
+function rng(seed) {
+  let a = (seed >>> 0) || 1;
+  return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// One stamp's row, as the instrument serves it (Instrument::kStampFloats, PAINT_STAMP): positions and width in cells here.
+function stampRow(o) {
+  const r = new Float32Array(PAINT_STAMP);
+  r[0] = o.x / N; r[1] = o.y / N; r[2] = o.dx; r[3] = o.dy; r[4] = o.w / N; r[5] = o.p; r[6] = o.t; r[7] = o.per ?? 1;
+  for (let k = 0; k < 8; k++) r[8 + k] = o.load[k] ?? o.load[0];
+  r[16] = o.serial; r[17] = 0; r[18] = o.ink || 0; r[19] = 60; r[20] = o.kind || 0; r[21] = o.a || 0; r[22] = o.b || 0;
+  return r;
+}
+
+/* A brush dragged along a path of points (cells), a stamp every 0.35 of a cell
+   as the core's stroke stamps, its width, pressure and load a function of how
+   far along it is (0 to 1) - each stamp's `per` the core's, so the paint laid
+   per length does not depend on the spacing. */
+function drag(out, pts, f, serial, t0, t1) {
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  if (len <= 0) return;
+  let gone = 0, i = 1, carry = 0;
+  let px = pts[0].x, py = pts[0].y;
+  while (i < pts.length) {
+    const ax = pts[i - 1].x, ay = pts[i - 1].y, bx = pts[i].x, by = pts[i].y;
+    const seg = Math.hypot(bx - ax, by - ay);
+    if (seg <= 1e-9) { i++; continue; }
+    const dx = (bx - ax) / seg, dy = (by - ay) / seg;
+    let at = carry;
+    while (at <= seg) {
+      const x = ax + dx * at, y = ay + dy * at, s = (gone + at) / len;
+      const moved = Math.hypot(x - px, y - py) || 0.35;
+      const g = f(s);
+      if (g.p > 0.02) {
+        const w = g.w, hl = Math.max(0.75, 0.15 * w);
+        out.push(stampRow({ x, y, dx, dy, w, p: g.p, t: t0 + (t1 - t0) * s, per: clamp(moved / (1.4 * hl), 0.02, 1), load: g.load, serial, ink: g.ink || 0 }));
+      }
+      px = x; py = y;
+      at += 0.35;
+    }
+    carry = at - seg; gone += seg; i++;
+  }
+}
+
+/* A wandering path: from a point, heading `th`, `len` cells, the heading
+   swinging by a slow sway (amplitude `amp` radians, `freq` swings along it)
+   and kinking by a random walk (`kink`), and pulled towards `to` over its
+   last part when given - each bristle clump's own path, no two alike. */
+function wander(r, x, y, th, len, amp, freq, kink, to) {
+  const pts = [{ x, y }];
+  const ph = r() * Math.PI * 2, steps = Math.max(2, Math.ceil(len / 0.35));
+  let walk = 0;
+  for (let k = 1; k <= steps; k++) {
+    const s = k / steps;
+    walk += (r() - 0.5) * kink * 0.6 + (r() < 0.04 * kink ? (r() - 0.5) * kink * 2 : 0);
+    let h = th + amp * Math.sin(ph + 2 * Math.PI * freq * s) + walk;
+    if (to) {
+      // Drawn back in towards where the brush is going: the pull grows over the path's last two thirds.
+      const want = Math.atan2(to.y - y, to.x - x), pull = clamp((s - 0.15) / 0.85, 0, 1);
+      let d = want - h; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+      h += d * pull * pull;
+    }
+    x += Math.cos(h) * len / steps; y += Math.sin(h) * len / steps;
+    pts.push({ x, y });
+  }
+  return pts;
+}
+
+const STRIKE = [
+  // [key, label, min, max, step, default, what it does]
+  ["velocity", "Velocity", 1, 127, 1, 127, "How hard the key is struck, at Strike 100: everything below grows with it."],
+  ["seed", "Seed", 1, 9999, 1, 17, "Which strike: the same settings, another note."],
+  ["width", "Brush width", 2, 12, 0.1, 6, "The stroke's width after the burst, in the map's cells (128 across)."],
+  ["radius", "Burst radius", 2, 30, 0.5, 11, "How far the bristles splay out from where it lands, at a full strike (cells)."],
+  ["back", "Burst behind", 0, 1, 0.01, 0.25, "How much of the burst goes behind where it lands: nought, a fan forward; one, all round."],
+  ["clumps", "Bristle clumps", 4, 40, 1, 16, "How many clumps of bristles splay out."],
+  ["clumpWidth", "Clump width", 0.2, 3, 0.05, 1, "How wide each clump is, against the brush's share."],
+  ["amp", "Wander", 0, 1.5, 0.01, 0.35, "How far each clump's path sways off straight (radians)."],
+  ["freq", "Wander frequency", 0, 4, 0.05, 1.2, "How many sways along a path."],
+  ["kink", "Kinks", 0, 1, 0.01, 0.3, "Sudden turns and wobbles on the paths: crossings come from here."],
+  ["irregular", "Irregularity", 0, 1, 0.01, 0.5, "How much the clumps differ in length, width and angle."],
+  ["pool", "Pool at the centre", 0, 3, 0.05, 1, "The paint squeezed out where it lands: its size."],
+  ["paint", "Paint", 0.2, 3, 0.05, 1.4, "How much paint the burst lays: the harder, the more."],
+  ["impasto", "Thickness", 0.3, 3, 0.05, 1.4, "How thick the paint stands: the raised, shaded body."],
+  ["skips", "Skips", 0, 1, 0.01, 0.35, "How much the outer bristles run dry and skip on the weave."],
+  ["ragged", "Ragged ends", 0, 1, 0.01, 0.5, "How unevenly the clumps end: broken, feathered tips."],
+  ["trail", "Trails from the burst", 0, 1, 0.01, 0.6, "How much of each clump drags out of the burst into the stroke."],
+  ["close", "Closes over", 0.5, 8, 0.1, 2.5, "How many stroke widths the trails take to join the stroke."],
+  ["drag", "Drag shown", 10, 90, 1, 45, "How far the stroke is dragged out of the burst (cells)."],
+  ["curve", "Stroke curve", -0.02, 0.02, 0.0005, 0.006, "The stroke bends as the ring does."],
+];
+const BEND = [
+  ["seed", "Seed", 1, 9999, 1, 5, "Which bend: the same settings, another note."],
+  ["width", "Brush width", 2, 12, 0.1, 6, "The stroke's width (cells)."],
+  ["paint", "Stroke paint", 0.2, 2.5, 0.05, 1, "How much paint the stroke itself holds."],
+  ["speed", "Bend speed", 0, 1, 0.01, 1, "Nought a slow bend (broad, soft), one a flick (narrower, longer)."],
+  ["reach", "Reach", 3, 80, 1, 30, "How far the smear is dragged (cells)."],
+  ["take", "Take", 0.05, 0.95, 0.01, 0.5, "How much of the wet paint under the brush each step drags away."],
+  ["body", "Body", 0.05, 2, 0.01, 0.6, "How thick the smear's paint lies."],
+  ["sweep", "Sweep", 0, 1.5, 0.01, 0.6, "How much the smear curves back along the stroke as the brush moves on."],
+  ["groupWidth", "Smear width", 0.5, 4, 0.05, 1.6, "How wide each bristle group's smear is, against its share of the brush."],
+  ["steps", "Bend length", 3, 60, 1, 15, "How many frames the bend moves over: a few a flick, many a slow drag."],
+  ["dir", "Up or down", -1, 1, 2, 1, "Up pulls outward, down inward."],
+];
+
+function strikeStamps(P) {
+  const out = [], r = rng(P.seed * 7919 + 13);
+  const impact = clamp(P.velocity / 127, 0, 1), k = Math.pow(impact, 1.5);
+  const hw = P.width / 2, L = { x: 30, y: 60 };
+  const n = Math.round(P.clumps), R = P.radius * Math.max(0.05, k);
+  const along = (s) => ({ x: L.x + s, y: L.y + P.curve * s * s });  // the stroke's own path, gently bending
+  let serial = 2;
+  // The pool: what the press squeezes out, pooled at the centre and pushed into lumps round it.
+  if (P.pool > 0 && k > 0.01) {
+    const r0 = P.pool * hw * 0.6 * Math.sqrt(k);
+    out.push(stampRow({ x: L.x, y: L.y, dx: 1, dy: 0, w: 2 * r0, p: 1.2, t: 0, load: [0.35 * P.paint * P.impasto * (0.6 + k)], serial: 1, kind: 1, a: 1, b: (P.seed * 31) & 0xffffff }));
+    const lumps = 5 + Math.round(4 * r());
+    for (let j = 0; j < lumps; j++) {
+      const a = r() * Math.PI * 2, d = r0 * (0.7 + 0.6 * r());
+      out.push(stampRow({ x: L.x + Math.cos(a) * d, y: L.y + Math.sin(a) * d, dx: Math.cos(a), dy: Math.sin(a), w: 2 * r0 * (0.25 + 0.35 * r()), p: 0.8,
+        t: 0, load: [0.3 * P.paint * P.impasto * (0.6 + k)], serial: 1, kind: 1, a: 1 + r(), b: ((P.seed * 131 + j * 977) & 0xffffff) }));
+    }
+  }
+  // The burst: each clump pressed out from where it lands, along its own wandering path; then dragged after the brush.
+  for (let i = 0; i < n; i++) {
+    const u = ((i + 0.5) / n) * 2 - 1;                    // its place across the brush, -1 to 1
+    const irr = P.irregular;
+    // Its way out: the middle forward, the sides round to the sides and, as far as `back` says, behind.
+    const span = Math.PI * (0.5 + 0.5 * P.back);
+    const th = u * span + (r() - 0.5) * irr * 0.9;
+    const len = R * (1 - irr * 0.5 + irr * r()) * (1 - 0.25 * Math.abs(u) * P.back);
+    const wc = (2 * hw / n) * P.clumpWidth * (1 - irr * 0.45 + irr * 0.9 * r()) * (0.6 + 0.4 * Math.sqrt(k));
+    const ink = 0, outer = Math.abs(u);
+    const load0 = P.paint * P.impasto * (0.8 + 0.8 * k) * (1 - irr * 0.3 + irr * 0.6 * r());
+    const dry = 1 - P.skips * (0.3 + 0.7 * outer);
+    const end = 1 - P.ragged * 0.45 * r();
+    if (len > 0.3) {
+      const pts = wander(r, L.x, L.y, th, len * end, P.amp, P.freq, P.kink, null);
+      drag(out, pts, (s) => ({ w: wc * (1 - 0.35 * s), p: clamp(1.05 - 0.6 * s, 0, 1), load: [load0 * (1 - (1 - dry) * s * 1.4)], ink }), serial, 0.0, 0.04);
+    }
+    // Its trail: from part way out along the burst, dragged into its place in the brush as the stroke leaves.
+    if (P.trail > 0 && len > 0.3) {
+      const from = len * (1 - P.trail) * 0.9;
+      const fx = L.x + Math.cos(th) * from, fy = L.y + Math.sin(th) * from;
+      const join = P.close * P.width, to = along(join);
+      const target = { x: to.x, y: to.y + u * hw * 0.85 };
+      const dist = Math.hypot(target.x - fx, target.y - fy);
+      const pts = wander(r, fx, fy, Math.atan2(target.y - fy, target.x - fx) + (r() - 0.5) * 0.8, dist, P.amp * 0.6, P.freq, P.kink * 0.7, target);
+      drag(out, pts, (s) => ({ w: wc * (0.8 + 0.2 * s), p: 0.75 + 0.15 * s, load: [load0 * 0.7 * (dry + (1 - dry) * s)], ink }), serial, 0.04, 0.12);
+    }
+    serial++;
+  }
+  // The stroke: the brush gathered, dragged on from where the trails join it.
+  const start = P.trail > 0 ? P.close * P.width * 0.75 : 0;
+  const pts = [];
+  for (let s = start; s <= P.drag; s += 0.5) pts.push(along(s));
+  drag(out, pts, (s) => ({ w: P.width / (0.4 + 0.6 * 0.85), p: 0.85, load: [0.9, 1.0, 1.05, 1.1, 1.1, 1.05, 1.0, 0.9].map((v) => v * (1.1 - 0.4 * s) * (0.9 + 0.3 * k)) }), 1, 0.12, 0.12 + P.drag / 30);
+  return out;
+}
+
+/* One bend: a stroke along an arc of the ring, moving out (or in) by the
+   bend's few cells over `steps` frames, and each frame of the move the
+   brush's eight groups each drag a smear (kind 2) the way the pitch went, as
+   the core's pull lays them; the knobs set what the core will compute. */
+function bendStamps(P) {
+  const out = [], r = rng(P.seed * 104729 + 7);
+  const C = { x: 64, y: 64 }, R0 = 38, hw = P.width / 2;
+  const turn = 8, fps = 60, speed = 2 * Math.PI * R0 / turn;  // cells a second along the ring
+  const total = 2.2 * fps, b0 = Math.round(0.55 * fps), b1 = b0 + Math.round(P.steps);
+  const dr = 1.0 * P.dir;
+  const sharp = P.speed;
+  let prev = null;
+  for (let f = 0; f <= total; f++) {
+    const t = f / fps, th = -Math.PI * 0.8 + 2 * Math.PI * t / turn;
+    const q = f <= b0 ? 0 : f >= b1 ? 1 : (f - b0) / (b1 - b0);
+    const rad = R0 + dr * q * q * (3 - 2 * q);
+    const x = C.x + Math.cos(th) * rad, y = C.y + Math.sin(th) * rad;
+    if (prev) {
+      const dx = x - prev.x, dy = y - prev.y, len = Math.hypot(dx, dy);
+      const steps = Math.max(1, Math.ceil(len / 0.35));
+      for (let s = 1; s <= steps; s++) {
+        const sx = prev.x + dx * s / steps, sy = prev.y + dy * s / steps;
+        out.push(stampRow({ x: sx, y: sy, dx: dx / len, dy: dy / len, w: P.width / 0.91, p: 0.85, t, per: clamp((len / steps) / (1.4 * Math.max(0.75, 0.15 * P.width)), 0.02, 1),
+          load: [P.paint], serial: 1 }));
+      }
+      if (f > b0 && f <= b1) {
+        // The pull: radial, the way the pitch went; the groups across the way the brush travels.
+        const ux = Math.cos(th) * Math.sign(dr), uy = Math.sin(th) * Math.sign(dr);
+        const fx = -Math.sin(th), fy = Math.cos(th);  // travel
+        const vx = -uy, vy = ux;
+        const sweep = -(fx * vx + fy * vy) * P.sweep;
+        const gw = hw / 8 * P.groupWidth * (1 + 0.9 * (1 - sharp));
+        const len = P.reach * (0.45 + 0.55 * sharp) / gw;
+        for (let g = 0; g < 8; g++) {
+          const across = (2 * g - 7) / 8 * hw;
+          out.push(stampRow({ x: x - fy * across, y: y + fx * across, dx: ux, dy: uy, w: 2 * gw, p: P.take, t, per: sweep,
+            load: [P.body * (0.8 + 0.4 * r()), sharp, 3.0], serial: 1, kind: 2, a: len, b: (P.seed * 977 + f * 31 + g * 7) & 0xffffff }));
+        }
+      }
+    }
+    prev = { x, y };
+  }
+  return out;
+}
+
+// ---- the page -----------------------------------------------------------------
+/* Each lab's view: the window onto the 128-cell canvas it shows, its left, top and size in cells - the strike's a
+   close-up round where it lands (twice the look's pixels), the bend's the whole ring. Zoom flips to the whole canvas. */
+const labs = { strike: { knobs: STRIKE, make: strikeStamps, values: {}, view: [14, 30, 64] },
+               bend: { knobs: BEND, make: bendStamps, values: {}, view: [0, 0, 128] } };
+let whole = false;
+function view() { return whole ? [0, 0, 128] : labs[current].view; }
+// The look's canvas is the sheet's; the sheet is made as large as the view needs and slid so the view fills the frame.
+function frame() {
+  const [x, y, size] = view(), z = N / size, sheet = document.getElementById("sheet");
+  sheet.style.width = (z * 100) + "%"; sheet.style.height = (z * 100) + "%";
+  sheet.style.left = (-x / N * z * 100) + "%"; sheet.style.top = (-y / N * z * 100) + "%";
+}
+let current = "strike", pending = 0;
+
+function readStored() {
+  for (const [name, lab] of Object.entries(labs)) {
+    let kept = {};
+    try { kept = JSON.parse(localStorage.getItem("strikeLab." + name) || "{}"); } catch (e) { kept = {}; }
+    for (const [key, , , , , def] of lab.knobs) lab.values[key] = Number.isFinite(kept[key]) ? kept[key] : def;
+  }
+}
+function store() { try { localStorage.setItem("strikeLab." + current, JSON.stringify(labs[current].values)); } catch (e) { /* a private window */ } }
+
+function buildKnobs() {
+  const box = document.getElementById("knobs");
+  box.textContent = "";
+  const lab = labs[current];
+  for (const [key, label, min, max, step, , what] of lab.knobs) {
+    const row = document.createElement("label");
+    row.className = "knob"; row.title = what;
+    const name = document.createElement("span"); name.className = "name"; name.textContent = label;
+    const input = document.createElement("input"); input.type = "range"; input.min = min; input.max = max; input.step = step; input.value = lab.values[key];
+    const val = document.createElement("span"); val.className = "val"; val.textContent = String(lab.values[key]);
+    const help = document.createElement("span"); help.className = "help"; help.textContent = what;
+    input.addEventListener("input", () => { lab.values[key] = Number(input.value); val.textContent = input.value; store(); schedule(); });
+    row.append(name, input, val, help);
+    box.append(row);
+  }
+  writeCopy();
+}
+
+function writeCopy() {
+  document.getElementById("copy").value = JSON.stringify({ lab: current, settings: labs[current].values });
+}
+
+function schedule() { writeCopy(); clearTimeout(pending); pending = setTimeout(render, 60); }
+
+let base = 0;
+function render() {
+  const stamps = labs[current].make(labs[current].values);
+  // Stamps' times run on from the last render's, so the look's drying clock sees fresh paint each time.
+  base += 100;
+  for (const s of stamps) s[6] += base;
+  stamps.sort((a, b) => a[6] - b[6]);
+  paintView.clear();
+  let from = paintView.since + 1, i = 0, ms = base * 1000;
+  const step = 1 / 60;
+  const t0 = stamps.length ? stamps[0][6] : base;
+  for (let edge = t0 + step; i < stamps.length; edge += step) {
+    const batch = [];
+    while (i < stamps.length && stamps[i][6] < edge) batch.push(stamps[i++]);
+    if (batch.length) {
+      const f = new Float32Array(batch.length * PAINT_STAMP);
+      batch.forEach((s, k) => f.set(s, k * PAINT_STAMP));
+      paintView.take({ on: true, from, count: batch.length, stamps: f }); from += batch.length;
+    }
+    ms += 1000 / 60;
+    paintView.draw(ms);
+  }
+  paintView.draw(ms + 16);
+  drawMap();
+  document.getElementById("count").textContent = stamps.length + " stamps";
+}
+
+// The look's paint summed to the core's cells, as the core's map would hold it: thickness grey, a thick stroke black.
+function drawMap() {
+  const cv = document.getElementById("map"), g = cv.getContext("2d");
+  const cells = paintView.sample(N);
+  if (!cells) { g.fillStyle = "#fffcf7"; g.fillRect(0, 0, N, N); return; }
+  const per = (PAINT_SIZE / N) * (PAINT_SIZE / N);
+  const img = g.createImageData(N, N);
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++) {
+      const a = cells[y * N + x] / per;
+      const v = Math.pow(clamp(a / 1.2, 0, 1), 0.6), grey = Math.round(255 * (1 - 0.92 * v));
+      const o = (y * N + x) * 4;  // the look's row nought is the canvas's top, as its picture shows it
+      img.data[o] = grey; img.data[o + 1] = grey; img.data[o + 2] = grey; img.data[o + 3] = 255;
+    }
+  const full = document.createElement("canvas"); full.width = N; full.height = N;
+  full.getContext("2d").putImageData(img, 0, 0);
+  const [x, y, size] = view();
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#fffcf7"; g.fillRect(0, 0, N, N);
+  g.drawImage(full, x, y, size, size, 0, 0, N, N);
+}
+
+function show(name) {
+  current = name;
+  for (const b of document.querySelectorAll(".tab")) b.setAttribute("aria-pressed", String(b.dataset.lab === name));
+  document.getElementById("what").textContent = name === "strike"
+    ? "One hard strike at Strike 100, and the stroke dragged out of it. Turn the knobs; the look redraws."
+    : "One bend on the ring, and the smear it drags. Turn the knobs; the look redraws.";
+  buildKnobs(); frame(); render();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  readStored();
+  paintView.setOn(true);
+  document.getElementById("reseed").addEventListener("click", () => {
+    const lab = labs[current]; lab.values.seed = 1 + Math.floor(Math.random() * 9999); store(); buildKnobs(); render();
+  });
+  document.getElementById("reset").addEventListener("click", () => {
+    const lab = labs[current]; for (const [key, , , , , def] of lab.knobs) lab.values[key] = def; store(); buildKnobs(); render();
+  });
+  document.getElementById("copyBtn").addEventListener("click", () => {
+    const t = document.getElementById("copy"); t.select();
+    try { navigator.clipboard.writeText(t.value); } catch (e) { document.execCommand("copy"); }
+  });
+  for (const b of document.querySelectorAll(".tab")) b.addEventListener("click", () => show(b.dataset.lab));
+  document.getElementById("zoom").addEventListener("click", (e) => {
+    whole = !whole; e.target.textContent = whole ? "Close up" : "Whole canvas"; frame(); render();
+  });
+  if (paintView.mode !== "gpu") document.getElementById("count").textContent = "This page needs WebGL 2: " + paintView.why;
+  show("strike");
+});
+
+</script>
+</body>
+</html>
