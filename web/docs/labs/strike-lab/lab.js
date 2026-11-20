@@ -30,7 +30,7 @@ function stampRow(o) {
    as the core's stroke stamps, its width, pressure and load a function of how
    far along it is (0 to 1) - each stamp's `per` the core's, so the paint laid
    per length does not depend on the spacing. */
-function drag(out, pts, f, serial, t0, t1) {
+function drag(out, pts, f, serial, t0, t1, spacing = 0.35) {
   let len = 0;
   for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
   if (len <= 0) return;
@@ -51,7 +51,7 @@ function drag(out, pts, f, serial, t0, t1) {
         out.push(stampRow({ x, y, dx, dy, w, p: g.p, t: t0 + (t1 - t0) * s, per: clamp(moved / (1.4 * hl), 0.02, 1), load: g.load, serial, ink: g.ink || 0 }));
       }
       px = x; py = y;
-      at += 0.35;
+      at += spacing;
     }
     carry = at - seg; gone += seg; i++;
   }
@@ -111,11 +111,18 @@ const BEND = [
   ["speed", "Bend speed", 0, 1, 0.01, 1, "Nought a slow bend (broad, soft), one a flick (narrower, longer)."],
   ["reach", "Reach", 3, 80, 1, 30, "How far the smear is dragged (cells)."],
   ["take", "Take", 0.05, 0.95, 0.01, 0.5, "How much of the wet paint under the brush each step drags away."],
-  ["body", "Body", 0.05, 2, 0.01, 0.6, "How thick the smear's paint lies."],
+  ["body", "Body", 0.05, 3, 0.01, 1.5, "How thick the smear's paint lies: under about a half, trails run dry and skip on the weave."],
   ["sweep", "Sweep", 0, 1.5, 0.01, 0.6, "How much the smear curves back along the stroke as the brush moves on."],
   ["groupWidth", "Smear width", 0.5, 4, 0.05, 1.6, "How wide each bristle group's smear is, against its share of the brush."],
   ["steps", "Bend length", 3, 60, 1, 15, "How many frames the bend moves over: a few a flick, many a slow drag."],
   ["dir", "Up or down", -1, 1, 2, 1, "Up pulls outward, down inward."],
+  ["ease", "Grow in, fade out", 0, 60, 1, 20, "Frames the smear grows in before the bend's middle and fades after it: no edge where it starts or stops."],
+  ["along", "Along the stroke", 0, 1, 0.01, 0.45, "The smear's way: nought straight out the way the pitch went, one back along the stroke behind the brush."],
+  ["trails", "Drawn as trails", 0, 1, 1, 1, "One: the dragged paint is brush trails along wandering paths. Nought: the shader's smear, a straight band (0ad2682's)."],
+  ["amp", "Wander", 0, 1.5, 0.01, 0.4, "How far the dragged paint's paths sway (radians); trails only."],
+  ["freq", "Wander frequency", 0, 4, 0.05, 1.0, "How many sways along a path; trails only."],
+  ["kink", "Kinks", 0, 1, 0.01, 0.2, "Sudden turns on the paths; trails only."],
+  ["fade", "Thins along", 0.3, 4, 0.05, 1.3, "How quickly the dragged paint thins towards its end."],
 ];
 
 function strikeStamps(P) {
@@ -198,18 +205,41 @@ function bendStamps(P) {
         out.push(stampRow({ x: sx, y: sy, dx: dx / len, dy: dy / len, w: P.width / 0.91, p: 0.85, t, per: clamp((len / steps) / (1.4 * Math.max(0.75, 0.15 * P.width)), 0.02, 1),
           load: [P.paint], serial: 1 }));
       }
-      if (f > b0 && f <= b1) {
-        // The pull: radial, the way the pitch went; the groups across the way the brush travels.
-        const ux = Math.cos(th) * Math.sign(dr), uy = Math.sin(th) * Math.sign(dr);
+      /* The smear's strength this frame: up and down with the bend's own speed, spread over `ease` frames either side so
+         it grows in and fades out along the stroke, with no edge where the bend starts or stops. */
+      const mid = (b0 + b1) / 2, halfw = (b1 - b0) / 2 + P.ease;
+      const env = halfw > 0 ? Math.max(0, 1 - Math.pow(Math.abs(f - mid) / halfw, 2)) : 0;
+      const strength = env * env * (3 - 2 * env);
+      if (strength > 0.01) {
+        const rx = Math.cos(th) * Math.sign(dr || 1), ry = Math.sin(th) * Math.sign(dr || 1);  // radial, the way the pitch went
         const fx = -Math.sin(th), fy = Math.cos(th);  // travel
+        // The way it is dragged: radial blended into back along the stroke, behind the brush.
+        let ux = rx * (1 - P.along) - fx * P.along, uy = ry * (1 - P.along) - fy * P.along;
+        const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
         const vx = -uy, vy = ux;
         const sweep = -(fx * vx + fy * vy) * P.sweep;
         const gw = hw / 8 * P.groupWidth * (1 + 0.9 * (1 - sharp));
-        const len = P.reach * (0.45 + 0.55 * sharp) / gw;
+        const reach = P.reach * (0.45 + 0.55 * sharp) * (0.4 + 0.6 * strength);
         for (let g = 0; g < 8; g++) {
-          const across = (2 * g - 7) / 8 * hw;
-          out.push(stampRow({ x: x - fy * across, y: y + fx * across, dx: ux, dy: uy, w: 2 * gw, p: P.take, t, per: sweep,
-            load: [P.body * (0.8 + 0.4 * r()), sharp, 3.0], serial: 1, kind: 2, a: len, b: (P.seed * 977 + f * 31 + g * 7) & 0xffffff }));
+          const across = (2 * g - 7) / 8 * hw, gx = x - fy * across, gy = y + fx * across;
+          const seed = (P.seed * 977 + f * 31 + g * 7) & 0xffffff;
+          if (P.trails >= 0.5 && f % 3 !== 0) continue;  // trails every third frame: each is long, and they overlap
+          if (P.trails >= 0.5) {
+            // Take the paint (a smear stamp that lays nothing), then lay it along a wandering trail.
+            out.push(stampRow({ x: gx, y: gy, dx: ux, dy: uy, w: 2 * gw, p: P.take * strength, t, per: 0, load: [0, sharp, 3.0], serial: 1, kind: 2, a: 1, b: seed }));
+            const pts = wander(r, gx, gy, Math.atan2(uy, ux) + (r() - 0.5) * 0.3, reach * (0.7 + 0.6 * r()), P.amp, P.freq, P.kink, null);
+            // Bending back along the stroke as the brush moves on: each point pushed against the travel by its distance.
+            for (let q = 0; q < pts.length; q++) {
+              const d = q / Math.max(1, pts.length - 1);
+              pts[q].x += -fx * sweep * d * d * reach * 0.5; pts[q].y += -fy * sweep * d * d * reach * 0.5;
+            }
+            drag(out, pts, (s2) => ({ w: 2 * gw * (1.2 - 0.6 * s2), p: 0.75 - 0.35 * s2,
+              load: [P.body * strength * Math.pow(1 - s2, P.fade) * (0.75 + 0.5 * r())] }), 20 + g, t, t + 0.005, 0.7);
+          } else {
+            const len = reach / gw;
+            out.push(stampRow({ x: gx, y: gy, dx: ux, dy: uy, w: 2 * gw, p: P.take * strength, t, per: sweep,
+              load: [P.body * strength * (0.8 + 0.4 * r()), sharp, 3.0], serial: 1, kind: 2, a: len, b: seed }));
+          }
         }
       }
     }
