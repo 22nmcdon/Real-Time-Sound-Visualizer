@@ -7560,3 +7560,91 @@ spatter and aftertouch act on the brush in the core, so the look and the map are
   an optional trailing number reads that path as one (`atof`, nought) when the check leaves the
   number out: the spatter check passed its nulls and failed its check for no reason until it
   passed `-1` explicitly. Give every optional argument a value from the piece.
+
+## The suite's signal restored (20 Nov)
+
+For days every full run was red in the same places, which teaches everyone to ignore red. Each
+cause, and what it says about writing the next check:
+
+- **A null that cannot go red is a check the machine changed under you.** `washtest.py`'s pink
+  null puts the old fade back on an accelerated canvas and expects the screen to go pink; from 16
+  Nov it stayed the paper on every run. The fade was not in question: the container's Chromium
+  (153) starts through a wrapper that drops `--use-gl=angle` and `--use-angle=swiftshader` unless
+  `CHROMIUM_KEEP_GL_SWITCHES=1` is set, and without them the 2D canvas is software whatever the
+  other switches say, so the "accelerated" browser read the very canvas it was there to get away
+  from. With the variable, the old fade turns the screen (255, 236, 236), the owner's pink. The
+  section now asks `chrome://gpu` first whether its canvas is the GPU's, with the suites' own
+  browser (software) as that check's null. Any suite that depends on a launch switch should
+  check the switch took effect.
+- **"The latest window" after a wall-clock wait is a window anywhere.** `braintest.py`'s clock
+  checks and `layertest.py`'s ghost check slept for so many milliseconds after the key and read
+  the ring's latest samples. Under load the sleep runs long and the window slides off the note,
+  onto its release, or off the front of a short one. Recorded off the samples instead, every
+  chunk the worklet hands back, tapped through `state.source.absorb` from just before the key, and
+  read at a place in them found from the note's own onset, Free's "warble" turned out to be
+  20.2 cents every time in one frame: the window began 0.4 s after the key, exactly where Free's
+  400 ms repeat comes in, and that 20 ms holds its attack. The wall-clock window opened there
+  only sometimes. A flake that measures the same thing every time once timing is removed was a
+  fixture problem all along. And hold the note by its samples too: under load a headless
+  browser's audio runs behind the wall clock, so a 2000 ms `setTimeout` is less than two seconds
+  of note.
+- **A once-a-frame value and a once-a-chunk value are not read together by a timer.** The trigger
+  position an LFO moves is written in `applyModMatrix`, once a frame; the picture comes a chunk at
+  a time. Read on a timer of the test's own, a busy page let chunks in between the two and r fell
+  to 0.84. Read in a `requestAnimationFrame` callback, which runs straight after the page's own,
+  both are what that frame drew from.
+- **Time a slewed reading by the instrument's samples, not the page's frames.** `hearingtest.py`
+  traced the pitch's glide once a frame at the frame's time; beside other suites only 20 frames
+  came in 900 ms, and chunks arrive in bunches, so a frame's time is not the sound's. Traced per
+  chunk at each chunk's sample position it reads the slew limit itself, 4.00 a second. Its other
+  slewed readings (a held A4, the rotation routed from brightness) are asked until they arrive or
+  five seconds pass, as its plain pitch already was; a reading that never arrives still fails.
+- **One turn, one message.** The site's host gathered a turn's messages to the worklet so a chord
+  played in one turn would be struck at once, then posted them one `postMessage` each. Each is a
+  task on the worklet's thread, and a busy one can run blocks between them: once under load G3
+  of G3 E3 C3 was dealt a hand by itself. A turn now goes as `{ batch }`, unpacked in one task;
+  the suites that tap the port (`braintest`, `livetest`, `wheeltest`) unpack it too. This one
+  would not come again on demand - sixty chords under load each landed in one block - so its
+  evidence is the one failure's dealing, which only that ordering produces.
+- **A native timing ratio is on the thread's clock.** `budget_cpp` timed each case on the wall
+  clock, best of five; under sustained load every second was preempted somewhere, unevenly by
+  case, and morph x7 read 1.54 of the median against 1.34 alone (bound 1.6). On
+  `CLOCK_THREAD_CPUTIME_ID` the loaded run reads as alone.
+- **A measurement against a reference is only as still as the reference.** `responsetest.py`'s
+  Swell-off chord at Picture 100 rose 2.01 dB against nought - deterministic, offline - and the
+  rise was the reference's dip: the owner's code the test plays carries a phaser, a delay at 47
+  feedback and a reverb, whose LFO and feedback moved the nought reference 3.6 dB by themselves
+  while the Picture's own level fell. It had crept past 1.5 over three sound changes from 13 Nov.
+  It was first put down to the chord's equal-tempered beat, and that was wrong: just intonation and
+  a single note swung the same, which a beat cannot do. The chords are now held dry (those three
+  mixes at nought, which the Picture still reaches into), the reference is still (0.23 and 0.92
+  dB), and the measure, window and bound are unchanged. Before subtracting a reference, measure
+  the reference alone - and test a diagnosis with a fixture that cannot have the cause.
+- **A verdict must not depend on where a note lands.** The Slow pad's late movement, rendered
+  offline with the key at 0.9 to 2.0 s after the preset loads and nothing else changed, is 0.0195
+  to 0.034: Breathing's 0.02 floor sits inside what the preset does as shipped, and on the page,
+  where the key landed wherever the timing put it, the heading passed or failed by lot. Load only
+  reshuffled the lot. `honestytest.py` now has the page load each preset and hand over its setup
+  code, renders every probe offline at five key moments with `render_cpp`, and judges each by its
+  worst moment (its null: every Settled preset judged as Breathing, red). It runs in three minutes
+  and in the pool. The Slow pad fails as shipped; its re-voicing is the owner's, and two
+  candidates are on `web/docs/listening/slow-pad/`. Before calling a check flaky, render it
+  offline and move the one thing load moves.
+- **Which suites take the GL switches, and what they get.** Only `washtest`, `painttest` and
+  `paintcosttest` ask for them. The paint suites need WebGL 2, which Playwright's own
+  `--use-angle=swiftshader-webgl` gives them whether or not the switches are kept; kept, the
+  whole compositor goes onto SwiftShader, the face draws at 2 fps rather than 13 and
+  `paintcosttest` fails on its frame count, while the core's own costs do not move (0.337 and
+  0.339 ms a block). So `CHROMIUM_KEEP_GL_SWITCHES=1` is set on washtest's one accelerated
+  browser, where the 2D canvas is the thing under test, and nowhere else; painttest requires the
+  face to paint on the graphics card, and paintcosttest's cost now does too.
+- **A batch has one receiver.** The outbox is the site host's (`makeBrainHost`), and only the
+  worklet's port is sent `{ batch }`, which `BrainProcessor.hand` unpacks before the compiled core
+  sees a message. The stand-in on the page's thread is told a message at a time, the plugin's
+  bridge is JUCE's (an event a call), and core_tests drives `makeWasmBrain` directly, so none of
+  them meets one. `braintest.py` holds a chord played in one turn to one post of three notes,
+  with a turn between them (three posts) as its null; the page with the old post-each put back
+  reads three posts, red.
+- **Serial means alone on the machine.** Some of these flakes were serial suites run while
+  another session's `core_tests.py` or a proof render loaded the container. `run.py` cannot see
+  another process; don't start one beside it.

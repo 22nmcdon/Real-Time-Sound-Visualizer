@@ -29,7 +29,11 @@ So these read the canvas's own pixels, never the code's intentions:
   read by a screenshot rather than getImageData, since Chrome takes a canvas
   read back often enough off the GPU and the test would then be reading the
   software canvas again. The null: the fade as it was put back in that same
-  browser, which turns the screen pink, so the check can see it here.
+  browser, which turns the screen pink, so the check can see it here. And
+  first, chrome://gpu asked whether that canvas is the GPU's: from 16 Nov
+  the container's browser quietly dropped the switches that made it so, the
+  null stayed the paper, and the suite was red on every run for days with
+  the fade itself never in question.
 
 Serial: it waits on real seconds of fading.
 """
@@ -114,6 +118,30 @@ STRIP = """() => {
 # and cannot show what a player's screen does.
 ACCEL = ["--enable-gpu-rasterization", "--enable-accelerated-2d-canvas", "--ignore-gpu-blocklist",
          "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+# The cloud container's Chromium (153, 16 Nov) starts through a wrapper that
+# drops --use-gl=angle and --use-angle=swiftshader to save processor time,
+# unless this is set. Without them the 2D canvas is software, whatever the
+# other switches say, and this section read the software canvas it exists to
+# get away from: the null below stayed the paper on every run from then on
+# (README). Elsewhere the variable means nothing.
+ACCEL_ENV = {**os.environ, "CHROMIUM_KEEP_GL_SWITCHES": "1"}
+
+# What chrome://gpu says of the 2D canvas, read through its shadow roots.
+GPU_CANVAS = """() => {
+  const out = [];
+  const walk = (n) => { if (n.shadowRoot) walk(n.shadowRoot);
+    for (const c of n.childNodes) { if (c.nodeType === 3 && c.textContent.trim()) out.push(c.textContent.trim()); walk(c); } };
+  walk(document);
+  const at = out.indexOf("Canvas:");
+  return at < 0 ? "not listed" : out[at + 1];
+}"""
+
+def canvas_status(browser):
+    g = browser.new_page()
+    g.goto("chrome://gpu"); g.wait_for_timeout(1500)
+    said = g.evaluate(GPU_CANVAS)
+    g.close()
+    return said
 PAPER = (255, 252, 247)
 
 # This many frames drawn, counted, rather than a time: SwiftShader draws the
@@ -244,7 +272,17 @@ with sync_playwright() as pw:
     b.close()
 
     print("\n--- Crossed hands on an accelerated canvas ---")
-    accel = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"] + ACCEL)
+    accel = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"] + ACCEL, env=ACCEL_ENV)
+    # Everything below means something only if the canvas is the GPU's, and
+    # for days it was not, with nothing to say so but the null. The null of
+    # this one: the suites' own browser, launched as the rest of this file
+    # launches it, says its canvas is software.
+    accel_said = canvas_status(accel)
+    check("the accelerated browser's 2D canvas is the GPU's", accel_said.startswith("Hardware accelerated"), accel_said)
+    plain = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
+    plain_said = canvas_status(plain)
+    plain.close()
+    null("the suites' own browser's canvas is not", not plain_said.startswith("Hardware accelerated"), plain_said)
     q = accel.new_context(viewport={"width": 1400, "height": 900}, device_scale_factor=1).new_page()
     qbad = []
     q.on("pageerror", lambda e: qbad.append(str(e)))

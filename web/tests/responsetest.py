@@ -48,11 +48,13 @@ The checks, each with its null:
 - Change: the soft notes after the swell swell no more than the same soft
   notes from a fresh start (by half a decibel), and by no more than a decibel
   at all. Null: Level, where a lit screen is a drive, and both swell.
-- Swell off: a held chord alone does not swell - the most the level rises
-  above where it has been since six seconds in is under a decibel and a half
-  - in a split and in an unsplit sound, the unsplit at Picture 100, where the
-  loop's gain is highest. Null: Swell on, which breathes by design (today's
-  stage rose 4.5 to 6.7 dB here).
+- Swell off: a held chord alone, dry, does not swell - the most the level
+  rises above where it has been since six seconds in is under a decibel and a
+  half - in a split and in an unsplit sound, the unsplit at Picture 100, where
+  the loop's gain is highest. Dry: the phaser, delay and reverb at a Mix of
+  nought, whose own motion moved the reference (20 Nov, at the check). Nulls:
+  Swell on, which breathes by design (today's stage rose 4.5 to 6.7 dB here),
+  and the same chord read from its strike at 0.5 s, a rise that is no swell.
 - Swell on: the push breathes, its peaks evenly spaced, at the period the
   Persistence sets - and a longer Persistence breathes more slowly. Null: the
   same at the other Persistence's period.
@@ -252,14 +254,32 @@ null("Level, a drive the lit screen turns: the soft notes swell %+.2f in sequenc
      not (linseq <= lfresh + 0.5 and linseq <= 1.0))
 
 # --- Swell off and on, a chord held alone ----------------------------------------------
+# Held dry (20 Nov): the owner's code's phaser, delay and reverb at a Mix of
+# nought, the rest of it kept. Their LFO and feedback move the level whatever
+# the Picture does, and the reference at Picture nought with them on swung
+# 3.6 dB by itself (-15.5 to -11.9 dB unsplit), so a "rise" against it was its
+# dip: unsplit at 100 read 2.01 against 1.5, the Picture's own level falling
+# 0.8 dB while nought fell 2.8. Bisected, it crept there with three sound
+# changes (1.33 dB through b80562a, 1.65 at bbe3ebf, 1.82 at 37d65a5, 2.01 at
+# the Width at half). It was first put down to the chord's equal-tempered
+# beat, wrongly: just intonation and a single note swung the same, and with
+# the three mixes at nought the reference is still (its own rise 0.23 split,
+# 0.92 unsplit). The dry hold removes the effects' own motion, not the
+# Picture's reach into them: it still pushes the rack's mixes from nought (the
+# owner's, 17 Nov), and Swell on still rises 3.75 and 4.41 dB here.
+DRY = {"phaserMix": 0, "delayMix": 0, "reverbMix": 0}
 for name, patch, null_patch, today in (
-        ("in a split, at 75", responds("change", 75), None, TODAY["held"][0]),
-        ("unsplit, at 100", responds("change", 100, layers="off"), None, TODAY["held"][1])):
+        ("in a split, at 75", responds("change", 75, **DRY), None, TODAY["held"][0]),
+        ("unsplit, at 100", responds("change", 100, layers="off", **DRY), None, TODAY["held"][1])):
     a, z = render(*HELD, patch), render(*HELD, at(patch, pictureAmount=0))
     r = rise(a, z)
-    check("Swell off, a chord held alone %s does not swell: it rises %.2f dB at most (today's stage %.1f)" % (name, r, today), r < 1.5)
+    check("Swell off, a chord held alone and dry %s does not swell: it rises %.2f dB at most (today's stage %.1f)" % (name, r, today), r < 1.5)
     on_ = render(*HELD, at(patch, pictureSwell=True))
     null("Swell on, the same chord rises %.2f dB" % rise(on_, z), not (rise(on_, z) < 1.5))
+    # What the subtraction from nought stands guard against, a rise that is
+    # no swell: the chord's own strike flaring as it lands, read from 0.5 s.
+    flare = rise(a, z, 0.5)
+    null("read from the strike at 0.5 s, the same Swell-off chord rises %.2f dB as its strike flares" % flare, not (flare < 1.5))
 
 # Swell on: the breath's period follows the Persistence. Level, so the push
 # under the breath is steady and each peak is the breath's.

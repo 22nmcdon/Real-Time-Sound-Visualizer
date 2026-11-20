@@ -61,6 +61,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 # WebGL 2 in a headless browser is SwiftShader's, asked for by name.
+# The container's Chromium drops --use-gl=angle and --use-angle=swiftshader
+# unless CHROMIUM_KEEP_GL_SWITCHES=1 (20 Nov, README): what this suite gets is
+# Playwright's own --use-angle=swiftshader-webgl, WebGL 2 on SwiftShader with
+# the page composited in software, which is what it needs - the look is
+# WebGL's - and it checks the face says it paints on the graphics card. Not
+# kept on purpose: with the whole compositor on SwiftShader the face drew at
+# 2 fps, not 13, and the frame cost read 0.50 ms rather than 0.11.
 GL = ["--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
 
 fails = []

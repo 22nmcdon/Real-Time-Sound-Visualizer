@@ -11190,6 +11190,8 @@ function brainProcessor() {
         for (const buffer of m.recycle) if (buffer.byteLength === CHUNK * 4 && this.spare.length < 24) this.spare.push(new Float32Array(buffer));
         return;
       }
+      // A turn of the page's, handed over in one task so no block falls between its messages.
+      if (m && m.batch) { for (const one of m.batch) this.hand(one); return; }
       const b = this.brain;
       if (!b || !m) return;
       try { b.hand(m); } catch (error) { this.fail(error); }
@@ -11818,14 +11820,18 @@ function makeBrainHost() {
      one turn reached the instrument as far apart as the page's work on each
      note took - over 10 ms on a cold page, which is the split by notes'
      whole look-ahead, so the chord was dealt a note at a time (layertest).
-     A turn is one moment: a chord played in it is struck at once. The
-     stand-in on this thread is still told at once, since a caller may read
-     it straight after. */
+     A turn is one moment: a chord played in it is struck at once. And it
+     goes as one message, a batch, not one post each (20 Nov): each message
+     is a task of its own on the worklet's thread, and a busy one ran blocks
+     between them, so now and then the first note of a chord struck at once
+     was dealt a hand by itself (layertest's G3 E3 C3, G3 the lower hand's).
+     The stand-in on this thread is still told at once, since a caller may
+     read it straight after. */
   let outbox = [];
   const post = () => {
     const out = outbox;
     outbox = [];
-    for (const message of out) node.port.postMessage(message);
+    node.port.postMessage(out.length === 1 ? out[0] : { batch: out });
   };
   const send = (message) => {
     if (node) {

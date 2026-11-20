@@ -25,6 +25,13 @@ from playwright.sync_api import sync_playwright
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.dirname(HERE)
 CHROME = os.environ.get("CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
+# The container's Chromium drops --use-gl=angle and --use-angle=swiftshader
+# unless CHROMIUM_KEEP_GL_SWITCHES=1 (20 Nov, README): what this suite gets is
+# Playwright's own --use-angle=swiftshader-webgl, WebGL 2 on SwiftShader with
+# the page composited in software, which is what it needs - the look is
+# WebGL's - and it checks the face says it paints on the graphics card. Not
+# kept on purpose: with the whole compositor on SwiftShader the face drew at
+# 2 fps, not 13, and the frame cost read 0.50 ms rather than 0.11.
 GL = ["--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
 
 fails = []
@@ -74,7 +81,8 @@ with sync_playwright() as pw:
     mean = t["ms"] / max(1, t["frames"])
     print("  the face, painting the look (%s): %.3f ms a frame on the CPU, worst %.3f, %d frames, %.0f stamps a frame, %.0f fps under SwiftShader"
           % (t["mode"], mean, t["worst"], t["frames"], t["stamps"] / max(1, t["frames"]), t["fps"]))
-    check("the face paints the look in under 2 ms a frame of its own time", t["frames"] > 10 and mean < 2, "%.3f ms" % mean)
+    check("the face paints the look in under 2 ms a frame of its own time, on the graphics card", t["mode"] == "gpu" and t["frames"] > 10 and mean < 2,
+          "%.3f ms, %s" % (mean, t["mode"]))
     b.close()
 
 print()

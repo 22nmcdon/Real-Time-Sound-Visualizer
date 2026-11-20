@@ -52,7 +52,9 @@ INIT = """
   window.__posted = [];
   const realPost = MessagePort.prototype.postMessage;
   MessagePort.prototype.postMessage = function (message, ...rest) {
-    if (message && typeof message.op === 'string') window.__posted.push({ op: message.op, id: message.id, value: message.value });
+    // A turn's messages go as one batch (20 Nov): each of them counts.
+    for (const one of (message && message.batch) || [message])
+      if (one && typeof one.op === 'string') window.__posted.push({ op: one.op, id: one.id, value: one.value });
     return realPost.call(this, message, ...rest);
   };
 """

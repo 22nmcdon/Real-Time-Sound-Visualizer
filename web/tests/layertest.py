@@ -481,6 +481,19 @@ with sync_playwright() as pw:
       /* args.busy keeps the page busy that long after each note, as a cold
          page's work on a note can; args.turn lets a turn end between them. */
       const busy = (ms) => { const until = performance.now() + ms; while (performance.now() < until); };
+      /* A chord read soon after it is struck at once is read off its own
+         samples (20 Nov): every chunk the worklet hands back, recorded from
+         just before the first key. Read as the latest window a wall-clock
+         wait after the keys, a busy page put the window anywhere from the
+         onset on, and the leakage - which varies twofold with where the onset
+         falls in it, as below - with it. */
+      const src = state.source, rec = { lanes: [], got: 0, real: src.absorb };
+      const recording = !!(args.soon && !apart);
+      if (recording) src.absorb = function (lanes, readings) {
+        lanes.forEach((lane, c) => { (rec.lanes[c] = rec.lanes[c] || []).push([rec.got, Float32Array.from(lane)]); });
+        rec.got += lanes[0].length;
+        return rec.real.call(this, lanes, readings);
+      };
       for (const n of notes) {
         midiNoteOn(n, 100);
         if (args.busy) busy(args.busy);
@@ -492,7 +505,28 @@ with sync_playwright() as pw:
          note's energy in each hand's lanes over the last 4096 samples, read
          args.soon ms after the last note. */
       let soon = null;
-      if (args.soon) {
+      if (recording) {
+        /* The same moment in the notes' lives on any page: 70 ms after the
+           chord sounds, by notes 80 after the keys less its 10 ms look-ahead,
+           by key the 70 it was read at. The 4096 samples before it, as the
+           window held. */
+        const rate = src.sampleRate, after = Math.round(rate * (args.soon - (args.point ? 0 : 10)) / 1000);
+        for (let w = 0; rec.got < after + rate * 0.5 && w < 6000; w++) await wait(5);
+        src.absorb = rec.real;
+        const lanes = [0, 1, 2, 3].map((c) => {
+          const out = new Float32Array(rec.got);
+          for (const [at, part] of rec.lanes[c] || []) out.set(part, at);
+          return out;
+        });
+        let peak = 0; for (const l of lanes) for (const v of l) peak = Math.max(peak, Math.abs(v));
+        let onset = 0; while (onset < rec.got && !lanes.some((l) => Math.abs(l[onset]) > peak * 0.05)) onset++;
+        // Silence before the recording began, as before the keys: padded at the front, as the page's windows are.
+        const end = onset + after, take = (x) => { const w = new Float32Array(4096), from = Math.max(0, end - 4096); w.set(x.subarray(from, end), 4096 - (end - from)); return w; };
+        soon = lanes.map((x) => [45, 48, 52, 55].map((n) => window.__bin(take(x), 440 * Math.pow(2, (n - 69) / 12), rate)));
+      } else if (args.soon) {
+        /* 60 ms apart there is no one onset to read from, and this is the
+           null, which needs only E3 and G3 to be in the lower hand's lanes
+           at all: the latest window, as it was. */
         await wait(args.soon);
         const w = state.source.getLatestWindow(4096), rate = state.source.sampleRate;
         soon = w.map((x) => [45, 48, 52, 55].map((n) => window.__bin(x, 440 * Math.pow(2, (n - 69) / 12), rate)));

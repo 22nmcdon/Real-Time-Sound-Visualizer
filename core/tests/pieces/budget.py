@@ -36,11 +36,14 @@ and the filter cheaper. The pieces still time natively, the nearest they can;
 the terms are held below by what the governor reads, and the cost of the
 refit, a drawbar chord keeping fewer copies, by a chord.
 
-The timing checks are the only ones in the pieces that read a clock. Each
+The timing checks are the only ones in the pieces that read a clock - the
+thread's own processor time since 20 Nov, not the wall, so another process
+running meanwhile no longer counts as the instrument's cost. Each
 case is the best of five seconds (the worst case of three), and the bounds are
 wide (half of real time for a governed worst case that takes about a sixth);
-a loaded machine still moves the ratios by a tenth or two, which is why the
-page's run.py marked its twin of the relative-cost check as known to flake.
+on the wall clock a loaded machine moved the ratios by a tenth or two (morph
+x7 1.54 of the median beside six busy loops, 1.34 alone, against 1.6), and on
+the thread's own it reads as it does alone (README).
 """
 import json, math, os, subprocess
 

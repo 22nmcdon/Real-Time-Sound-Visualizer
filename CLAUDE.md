@@ -55,7 +55,12 @@ python3 web/tools/write_words.py                            # after any change t
 
 In a cloud session, set `CHROME=/opt/pw-browsers/chromium` for every browser
 suite and the core's tests: the path the suites default to does not exist there, and a
-run without it fails in a minute and a half. The cloud environment's setup
+run without it fails in a minute and a half. The container's Chromium also drops
+`--use-gl=angle` and `--use-angle=swiftshader` unless `CHROMIUM_KEEP_GL_SWITCHES=1`
+is in its environment, which leaves the 2D canvas software whatever else is asked;
+`washtest.py` sets it on its one accelerated browser and checks `chrome://gpu`, and a
+new suite that needs the canvas or the compositor on the GPU must do the same (the
+paint suites need only WebGL, which they get without it - web/README.md, 20 Nov). The cloud environment's setup
 script installs the plugin's WebKit and GTK headers and the compiled core's
 wasm32 toolchain, and clones JUCE at the plugin's tag into `/opt/juce-<tag>`,
 which `plugin/CMakeLists.txt` uses when no `SCOPE_JUCE_DIR` is given - so a
@@ -63,7 +68,9 @@ plugin build in a new session needs no fetch.
 
 Every suite in `run.py` says whether it is `parallel` or `serial - why`. The
 serial ones judge time and run first, alone; the rest run three at a time
-after. A new suite that measures anything over real seconds, a cost in
+after. Alone means alone on the machine: never run `core_tests.py`, a
+`render_cpp` proof or another session's suite beside `run.py`, which cannot see
+them - some of the serial suites' flakes until 20 Nov were exactly that. A new suite that measures anything over real seconds, a cost in
 milliseconds or a rate is serial; when in doubt, serial.
 
 `web/scope.html` is one file with the script inline. `extract.py` lifts the

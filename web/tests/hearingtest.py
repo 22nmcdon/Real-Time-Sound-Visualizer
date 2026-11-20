@@ -168,9 +168,24 @@ with sync_playwright() as pw:
     q.bring_to_front()
     turns = q.evaluate("""async () => {
       state.modRoutings = [{ sourceId: 'hear.bright', destId: 'view.rotate', amount: 0.5 }]; touchRoutings(); hostRoutings();
+      /* Read once the instrument's turn has stopped moving - two readings
+         100 ms apart within a ten-thousandth - or five seconds on (20 Nov).
+         Read at 1.5 s, a loaded machine's brightness was still slewing up to
+         4 kHz's, and the turn the face drew, one reading behind, was 0.421
+         against the instrument's 0.453. A turn that never follows still
+         never agrees. */
       const read = async (hz) => { __play(hz, 'same', 0.8); await __wait(1500);
-        return { bright: hearing.bright, turn: state.rotateMod, base: state.rotate,
-                 inst: state.source.face ? state.source.face.offsets['view.rotate'] : null }; };
+        const now = () => ({ bright: hearing.bright, turn: state.rotateMod, base: state.rotate,
+                             inst: state.source.face ? state.source.face.offsets['view.rotate'] : null });
+        let r = now();
+        for (let t = 0; t < 5000; t += 100) {
+          await __wait(100);
+          const next = now();
+          const still = r.inst !== null && next.inst !== null && Math.abs(next.inst - r.inst) < 1e-4;
+          r = next;
+          if (still) break;
+        }
+        return r; };
       return [await read(200), await read(4000)];
     }""")
     p.bring_to_front()
@@ -217,13 +232,18 @@ with sync_playwright() as pw:
           abs(quiet["pitch"] - PITCH(110)) < 0.005 and quiet["width"] > 0.98,
           "%.4f, width %.3f" % (quiet["pitch"], quiet["width"]))
     p.evaluate("() => midiConnect()"); p.wait_for_timeout(200)
-    held = p.evaluate("""async () => {
+    # Asked until each reading arrives or five seconds pass, as the pitch above
+    # is (20 Nov): read 700 ms after the key, a loaded machine's slew had not
+    # got there. A key the pitch ignores never reads A4, and one it never
+    # lets go of never gives the 110 back, so each still fails as it did.
+    held = p.evaluate("""async ([a4, low]) => {
+      const until = async (want) => { for (let t = 0; t < 5000 && !(Math.abs(hearing.pitch - want) < 0.005); t += 50) await __wait(50); return hearing.pitch; };
       __play(110, 'same', 0.8); await __wait(600);
-      __send([0x90, 69, 100]); await __wait(700);
-      const on = hearing.pitch;
-      __send([0x80, 69, 0]); await __wait(700);
-      return { on, off: hearing.pitch };
-    }""")
+      __send([0x90, 69, 100]); await __wait(300);
+      const on = await until(a4);
+      __send([0x80, 69, 0]); await __wait(300);
+      return { on, off: await until(low) };
+    }""", [PITCH(440), PITCH(110)])
     check("a held A4 over a 110 Hz input reads A4, and letting go gives the input back",
           abs(held["on"] - PITCH(440)) < 0.005 and abs(held["off"] - PITCH(110)) < 0.005, str(held))
 
@@ -336,13 +356,24 @@ with sync_playwright() as pw:
     print("\n--- continuity ---")
     glide = p.evaluate("""async () => {
       __play(110, 'same', 0.8); await __wait(1200);
-      const trace = [];
+      /* The instrument's own pitch as each chunk of its brings it, at that
+         chunk's place in its samples (20 Nov). Read once a page frame at the
+         frame's time, as this was, a loaded machine drew 20 frames in the
+         900 ms and failed for want of them, and a frame's time is not the
+         sound's: chunks arrive in bunches. Nine hundred milliseconds of the
+         instrument's samples, however long the page takes over them. */
+      const trace = [], src = state.source, real = src.absorb;
+      let samples = 0;
+      src.absorb = function (lanes, readings) {
+        const out = real.call(this, lanes, readings);
+        samples += lanes[0].length;
+        if (src.face) trace.push([samples / src.sampleRate * 1000, src.face.hearing.pitch]);
+        return out;
+      };
       __play(880, 'same', 0.8);
-      const t0 = performance.now();
-      await new Promise((done) => {
-        const tick = (t) => { trace.push([t, hearing.pitch]); if (t - t0 < 900) requestAnimationFrame(tick); else done(); };
-        requestAnimationFrame(tick);
-      });
+      try {
+        for (let w = 0; w < 400 && !(trace.length && trace[trace.length - 1][0] - trace[0][0] >= 900); w++) await __wait(25);
+      } finally { src.absorb = real; }
       /* Over a quarter of a second rather than frame to frame: the pitch is
          the instrument's since 5b's second half, which arrives as its
          readings do, so two of its frames can land in one of the page's and

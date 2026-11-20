@@ -22,6 +22,7 @@ Every change here is made with the real mouse and keyboard, since undo counts
 only what follows a trusted event: a knob turned by dispatchEvent is, rightly,
 no step at all, and is the null for that rule.
 """
+import time
 import os, re, sys
 from playwright.sync_api import sync_playwright
 
@@ -33,6 +34,13 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def moved(w, h, an, a, bn, b):
+    """Every header box that differs between two readings, with how long after opening each was read."""
+    print("      MOVED at %dx%d: %s read %.2f s after opening, %s %.2f s" % (w, h, an, a["since"], bn, b["since"]))
+    for k in sorted(set(a["boxes"]) | set(b["boxes"])):
+        if a["boxes"].get(k) != b["boxes"].get(k):
+            print("        %s: %s %s, %s %s" % (k, an, a["boxes"].get(k), bn, b["boxes"].get(k)))
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
@@ -380,17 +388,21 @@ with sync_playwright() as pw:
       const m = document.getElementById('testingMark');
       if (inflow) { m.style.position = 'static'; m.style.transform = 'none'; m.parentElement.style.flex = '0 0 auto'; }
       const box = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v * 100) / 100); };
-      const boxes = {};
-      document.querySelectorAll('.top-bar, .top-bar .head > *, .top-bar .preset-bar > *').forEach((e, i) => { boxes[i + ':' + (e.id || e.className)] = box(e); });
+      const all = () => { const o = {}; document.querySelectorAll('.top-bar, .top-bar .head > *, .top-bar .preset-bar > *').forEach((e, i) => { o[i + ':' + (e.id || e.className)] = box(e); }); return o; };
+      const boxes = all(), was = m.hidden;
+      // The same page with the mark taken away, read straight after: what the mark itself moves.
+      m.hidden = true; const bare = all(); m.hidden = was;
       const r = m.getBoundingClientRect(), g = m.parentElement.getBoundingClientRect();
-      return { boxes, shown: !m.hidden && r.width > 0, text: m.textContent,
+      return { boxes, bare, shown: !m.hidden && r.width > 0, text: m.textContent,
                inside: r.left >= g.left - 0.01 && r.right <= g.right + 0.01, ink: getComputedStyle(m).color };
     }"""
     def opened(where, w, h, inflow=False):
         q = b.new_page(viewport={"width": w, "height": h})
         q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        t0 = time.monotonic()
         q.goto("file://%s/%s" % (site, where)); q.wait_for_timeout(1200)
         got = q.evaluate(BOXES, inflow)
+        got["since"] = time.monotonic() - t0
         q.close()
         return got
     marked = []
@@ -398,14 +410,22 @@ with sync_playwright() as pw:
         root, testing = opened("scope.html", w, h), opened("testing/scope.html", w, h)
         marked.append((w, h, root, testing))
         print("    %dx%d: root shows %s; testing shows %s, inside the spacer %s, header %s"
-              % (w, h, root["shown"], testing["shown"], testing["inside"], "the same" if root["boxes"] == testing["boxes"] else "MOVED"))
+              % (w, h, root["shown"], testing["shown"], testing["inside"], "the same" if testing["bare"] == testing["boxes"] else "MOVED"))
+        if testing["bare"] != testing["boxes"]: moved(w, h, "without the mark", {"boxes": testing["bare"], "since": testing["since"]}, "with it", testing)
     check("under /testing/ the header says Testing, in the brand's secondary ink, at every window",
           all(t["shown"] and t["text"] == "Testing" and t["ink"] == "rgb(107, 97, 90)" for *_, t in marked), str([t["ink"] for *_, t in marked]))
     check("null: at the root it says nothing", not any(r["shown"] for _, _, r, _ in marked))
+    # In one page, with the mark and then without it (20 Nov). This compared
+    # the testing page's header with the root page's, two loads apart, and
+    # was red now and then at one window or another: a fresh load of the same
+    # page lays the title block out 167.781 or 167.875 px wide, one load in
+    # four, the same text in the same fonts, so two loads differed by a tenth
+    # of a pixel with no mark in either. The diagnostic print found it. Taking
+    # the mark away in the page that has it asks only what the mark moves.
     check("and the header is laid out the same to the hundredth of a pixel with it or without it, the mark inside its spacer",
-          all(r["boxes"] == t["boxes"] and t["inside"] for _, _, r, t in marked))
+          all(t["bare"] == t["boxes"] and t["inside"] for _, _, r, t in marked))
     flowed = opened("testing/scope.html", 1400, 900, inflow=True)
-    check("null: the mark put into the flow moves the header", flowed["boxes"] != marked[0][2]["boxes"])
+    check("null: the mark put into the flow moves the header", flowed["boxes"] != flowed["bare"])
     shutil.rmtree(site, ignore_errors=True)
 
     print("\n--- the edited mark moves nothing (15 Nov) ---")
@@ -426,12 +446,16 @@ with sync_playwright() as pw:
     def edited_at(w, h, inflow=False):
         q = b.new_page(viewport={"width": w, "height": h})
         q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        t0 = time.monotonic()
         q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(1200)
         got = q.evaluate(EDITED_BOXES, inflow)
+        got["since"] = time.monotonic() - t0
         q.close()
         return got
     eds = [(w, h, edited_at(w, h)) for w, h in ((1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600))]
-    for w, h, e in eds: print("    %dx%d: edited shown %s, inside the button %s, header %s" % (w, h, e["shown"], e["inside"], "the same" if e["plain"] == e["edited"] else "MOVED"))
+    for w, h, e in eds:
+        print("    %dx%d: edited shown %s, inside the button %s, header %s" % (w, h, e["shown"], e["inside"], "the same" if e["plain"] == e["edited"] else "MOVED"))
+        if e["plain"] != e["edited"]: moved(w, h, "plain", {"boxes": e["plain"], "since": e["since"]}, "edited", {"boxes": e["edited"], "since": e["since"]})
     check("with the edited mark the header is laid out the same to the hundredth of a pixel at every window, the mark inside the preset's button",
           all(e["shown"] and e["inside"] and e["plain"] == e["edited"] for *_, e in eds))
     flowed_e = edited_at(1400, 900, inflow=True)
