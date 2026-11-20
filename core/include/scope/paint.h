@@ -488,7 +488,7 @@ class Painter {
   }
 
   // Clear (step 2): the canvas wiped, as the trace's Clear wipes its grid; the brushes go on.
-  void clear() { map_.clear(); lifted_ = {}; }
+  void clear() { map_.clear(); lifted_ = {}; knifeRun_[0]++; knifeRun_[1]++; }
 
   // The base width (PaintParams::width), internal: the owner's three to choose between.
   void setWidth(double width) { if (std::isfinite(width) && width > 0) p_.width = width; }
@@ -904,7 +904,7 @@ class Painter {
     double& gone = knifeGone_[hand];
     double& peak = knifePeak_[hand];
     double& lastK = knifeK_[hand];
-    if (!on) { gone = 0; peak = 0; lastK = 0; }
+    if (!on) { gone = 0; peak = 0; lastK = 0; knifeRun_[hand]++; }
     if (!(push > 0.05) || !(radius > 2)) { on = false; smoothSlab = 0; lastPush = 0; return; }
     /* The push runs from the last strip's to this one's across the strip, so the swath's far edge and its lip are one
        line along the stroke; a push a strip drew them as a stair. */
@@ -957,6 +957,19 @@ class Painter {
     const int y0 = std::max(0, static_cast<int>(std::floor(by0)) - 1), y1 = std::min(N - 1, static_cast<int>(std::ceil(by1)) + 1);
     const int bw = x1 - x0 + 1, bh = y1 - y0 + 1;
     if (bw <= 0 || bh <= 0 || bw * bh > kKnifeCells) return;
+    /* What of each cell this run of the knife has levelled already, and what it laid there (knifeLevelled,
+       knifeLaid, by the run). A strip is narrower than a cell along the stroke - about 0.6 of one, a frame's travel -
+       so the cells along each seam are shared by two strips or three, and the next strip found its neighbour's fresh
+       slab in them: levelling the cell as though its paint were even across it wiped that share of the slab and laid
+       none of it back. The map lost a third of the paint the knife moves past the stroke (20 Nov, found by painttest's
+       look against the map, which the look, cutting each pixel once, did not lose). So a strip levels only the paint
+       the run has not, in the share of the cell it has not, and leaves the slab laid alone. */
+    const std::uint32_t run = knifeRun_[hand];
+    auto& levelled = knifeLevelled_[hand];
+    auto& laid = knifeLaid_[hand];
+    auto& ofRun = knifeOfRun_[hand];
+    const auto doneAt = [&](std::size_t q) { return ofRun[q] == run ? static_cast<double>(levelled[q]) : 0.0; };
+    const auto laidAt = [&](std::size_t q) { return ofRun[q] == run ? static_cast<double>(laid[q]) : 0.0; };
     double held = 0, shape = 0, coverSum = 0, coverN = 0;
     for (int yy = y0; yy <= y1; yy++)
       for (int xx = x0; xx <= x1; xx++) {
@@ -981,7 +994,9 @@ class Painter {
         }
         knifeIn_[k] = in / (S * S); knifePr_[k] = pr / (S * S) * knifeK2_[k];
         knifeThick_[k] = map_.thick[q]; knifeWet_[k] = map_.wet[q];
-        held += map_.thick[q] * knifeIn_[k] * knifeK2_[k];
+        // The share of the paint not yet levelled that this strip's part of the cell holds, and so takes.
+        knifeTake_[k] = std::min(1.0, knifeIn_[k] / std::max(1e-6, 1 - doneAt(q))) * knifeK2_[k];
+        held += std::max(0.0, map_.thick[q] - laidAt(q)) * knifeTake_[k];
         if (map_.thick[q] > 1e-3 && knifeIn_[k] > 0) { coverSum += cover_(map_.thick[q]) * knifeIn_[k]; coverN += knifeIn_[k]; }
         shape += knifePr_[k];
       }
@@ -1033,13 +1048,18 @@ class Painter {
         const auto k = static_cast<std::size_t>((yy - y0) * bw + (xx - x0));
         if (!(knifeIn_[k] > 0)) continue;
         const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
-        const double kept = knifeThick_[k] * (1 - knifeIn_[k] * knifeK2_[k]), put = slab * knifePr_[k], after = kept + put;
+        const double rest = std::max(0.0, knifeThick_[k] - laidAt(q));
+        const double kept = knifeThick_[k] - rest * knifeTake_[k], put = slab * knifePr_[k], after = kept + put;
         double cl, csv;
         paintKnifePolar(xx + 0.5 - ox, yy + 0.5 - oy, mid, turn, way, radius, cl, csv);
         const double dx = xx + 0.5 - ox, dy = yy + 0.5 - oy, r = std::hypot(dx, dy), back = r - way * pushAt(cl, span);
         const double wet = r > 1e-9 && back > 0 ? wetFrom(ox + dx / r * back, oy + dy / r * back) : 1.0;
         map_.wet[q] = static_cast<float>(after > 0 ? (knifeWet_[k] * kept + wet * put) / after : 0);
         map_.thick[q] = static_cast<float>(after);
+        const double done = doneAt(q), before = laidAt(q);
+        levelled[q] = static_cast<float>(std::min(1.0, done + knifeIn_[k]));
+        laid[q] = static_cast<float>(before + put);
+        ofRun[q] = run;
       }
   }
 
@@ -1247,7 +1267,13 @@ class Painter {
   // cut last frame, and its slab's thickness smoothed from strip to strip.
   std::array<bool, 2> knifeDone_ {}, knifeOn_ {};
   std::array<double, 2> knifeLo_ {}, knifeHi_ {}, knifeEdge_ {}, knifeSlab_ {}, knifePush_ {}, knifeGone_ {}, knifePeak_ {}, knifeK_ {};
-  std::array<double, kKnifeCells> knifeIn_ {}, knifePr_ {}, knifeThick_ {}, knifeWet_ {}, knifeK2_ {};  // the knife's strip as it stood (knife)
+  std::array<double, kKnifeCells> knifeIn_ {}, knifePr_ {}, knifeThick_ {}, knifeWet_ {}, knifeK2_ {}, knifeTake_ {};  // the knife's strip as it stood (knife)
+  // Each hand's run of the knife (a run while it cuts frame after frame), and what of each cell the run has levelled and
+  // laid; a cell another run touched last reads as untouched (knife).
+  std::array<std::uint32_t, 2> knifeRun_ {};
+  std::array<std::vector<float>, 2> knifeLevelled_ { std::vector<float>(kPaintN * kPaintN, 0.f), std::vector<float>(kPaintN * kPaintN, 0.f) };
+  std::array<std::vector<float>, 2> knifeLaid_ { std::vector<float>(kPaintN * kPaintN, 0.f), std::vector<float>(kPaintN * kPaintN, 0.f) };
+  std::array<std::vector<std::uint32_t>, 2> knifeOfRun_ { std::vector<std::uint32_t>(kPaintN * kPaintN, 0u), std::vector<std::uint32_t>(kPaintN * kPaintN, 0u) };
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;

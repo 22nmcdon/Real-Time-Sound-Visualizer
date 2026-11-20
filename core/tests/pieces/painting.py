@@ -291,6 +291,15 @@ def run(kit):
     # strip to strip, which a push worked out a frame at a time, unsmoothed, left at 0.19 cells (the mutation pass).
     check("the swath's far edge, and its lip, run as one line along the stroke", k_quick[3] < 0.16 and k_slow[3] < 0.16,
           "roughness %.3f cells quickly, %.3f slowly" % (k_quick[3], k_slow[3]))
+    # What the strips laid past the stroke is in the map, by their own stamps, each faded by its age (20 Nov): a strip is
+    # narrower than a cell along the stroke, and until then each one levelled the cells it shared with the last as though
+    # their paint were even across them, wiping that share of the last one's slab - the map kept 0.77 of what the strips
+    # laid past the band quickly and 0.76 slowly (the mutation pass), and the look, cutting each pixel once, drew about a
+    # third more there than the map held.
+    laid_ok = lambda q, s: 0.98 < q < 1.02 and 0.98 < s < 1.02
+    check("the map holds what the knife's strips laid past the stroke, by their own stamps", laid_ok(k_quick[6], k_slow[6]),
+          "%.3f of it after a quick bend, %.3f after a slow one" % (k_quick[6], k_slow[6]))
+    null("the same bound fails a map that kept three quarters of what was laid, as before the fix", not laid_ok(0.77 * k_quick[6], k_slow[6]))
 
     # Velocity: the strike's spatter (rebuilt 20 Nov, the owner: "splattered paint", not small strokes all alike): drops,
     # a blot where the brush lands, larger than the stroke, sizes off a heavy tail, further and more the harder, smaller

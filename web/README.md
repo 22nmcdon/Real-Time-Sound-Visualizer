@@ -7589,6 +7589,29 @@ that is drops of paint rather than small strokes. Three things the revision lear
   jitters with the MIDI messages' arrival, which the map's cells hide and the look's pixels draw
   as a saw (it is smoothed strip to strip). `pieces/painting.py`'s knife checks read the far
   edge's roughness and the plane's tone because of these; the unsmoothed push is their mutant.
+- **A cell is not a pixel when the thing laid is narrower than the cell** (20 Nov). A knife strip
+  is a frame's travel along the stroke, about 0.6 of a map cell, so the cells along every seam are
+  shared by two strips or three. The core levelled a cell as though its paint were even across it,
+  `thick * (1 - in * k)`, and so wiped the share of the last strip's fresh slab that sat in the
+  cell, laying none of it back: the map kept about three quarters of what the strips laid past the
+  stroke. The look cuts each pixel once and lost nothing, so it drew a third more paint past the
+  band than the map held - the same look-against-map check at 1.34 to 1.38 against a bound of
+  1.35, passing by lot. Found by replaying the core's own stamps a frame at a time beside its map
+  written every frame, then one strip alone, then per pixel against the formula: the look was the
+  formula to a millionth and the core was not. Now each run of the knife keeps, per cell, how much
+  of the cell it has levelled and what it laid there, and a strip levels only the rest
+  (`knifeLevelled_`, `knifeLaid_`). `pieces/painting.py` holds the map to what the strips' own
+  stamps say they laid past the stroke, each faded by its age, to two per cent; the old formula
+  reads 0.77. Anything else the core lays narrower than a cell at a time can fail the same way.
+- **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches
+  in the paint shader's loop over a batch's stamps, and every brush stamp paid for both: the
+  look's frame rate halved and `paintcosttest.py` went red, two commits after the change that
+  caused it (2326b26), because the suite was not run whole in between. A batch of brush stamps
+  alone is painted by a program compiled with the brush's code only (`#define KIND 0`), which
+  leaves the batches and so the look the same to the bit. Splitting batches by kind instead was
+  faster still but moved the knife's reads a batch on, and changed the look. A real graphics card
+  skips a branch every pixel agrees on; the software one in every cloud session and the plugin's
+  tests does not, so cost a shader by what it holds, not by what it takes.
 - **The splayed strike was tried three ways and parked** (20 Nov). The owner asked for a hard strike
   to look like a hard-pressed brush whose bristles splay. Three designs, each in the history: a fan
   of straight clumped fingers with the stroke after running as separate tracks (bb419d6: "the

@@ -772,8 +772,10 @@ int main(int argc, char** argv) {
     Player p(R"({"shape":"sine","midiMode":"poly","oscScan":60,"atk":2,"dec":300,"sus":80,"rel":400})", true, params);
     std::vector<PaintStamp> away, back, strokes;
     int phase = 0;
+    double lastT = 0;
     const auto seen = [&]() {
       for (const auto& st : p.in.painter()->stamps()) {
+        lastT = std::max(lastT, static_cast<double>(st.t));
         if (st.kind == kPaintStampPull) (phase == 1 ? away : back).push_back(st);
         else if (st.kind == kPaintStampBrush && phase == 0) strokes.push_back(st);
       }
@@ -792,6 +794,37 @@ int main(int argc, char** argv) {
     p.blocks(0.6, {}, seen);
     // The swath as the bend away left it, before the return: its tone against the stroke's, and its far edge.
     const PaintMap m = p.in.painter()->map();
+    /* What the strips laid past the stroke, by their own stamps, against what the map holds there (20 Nov): past the
+       furthest of the strokes' edges no paint lay before the knife, so the map there is the strips' slabs and films,
+       less the fading since each was laid (by the fade's half-life, as the map ages), unless a strip wiped its neighbour's slab in the cells they share along a seam. Both are
+       summed at the look's samples, six to a cell's side, the map's cell spread evenly over its own. */
+    double laidRatio = 0;
+    {
+      constexpr int S = 6;
+      double edgeR = 0;
+      for (const auto& st : away) edgeR = std::max(edgeR, static_cast<double>(st.load[4]) + st.load[1] + 0.5);
+      double want = 0, got = 0;
+      for (int yy = 0; yy < kPaintN; yy++)
+        for (int xx = 0; xx < kPaintN; xx++)
+          for (int j = 0; j < S; j++)
+            for (int i = 0; i < S; i++) {
+              const double wx = xx + (i + 0.5) / S, wy = yy + (j + 0.5) / S;
+              if (std::hypot(wx - 64, wy - 64) <= edgeR) continue;
+              got += m.thick[static_cast<std::size_t>(yy * kPaintN + xx)] / (S * S);
+              for (const auto& st : away) {
+                const double way = st.load[5], radius = st.load[4], c = st.load[1], push0 = st.load[6], push = st.a;
+                const double mid = std::atan2(st.dy * way, st.dx * way), span = st.w, turn = st.per;
+                const double ox = st.x * kPaintN - std::cos(mid) * radius, oy = st.y * kPaintN - std::sin(mid) * radius;
+                double l, sv;
+                paintKnifePolar(wx - ox, wy - oy, mid, turn, way, radius, l, sv);
+                const double f = std::clamp(l / span + 0.5, 0.0, 1.0), pl = push0 + (push - push0) * f;
+                if (l < -span / 2 || l >= span / 2 || sv < -c || sv > c + pl + 3 * st.load[2]) continue;
+                const double k = st.b + (st.load[7] - st.b) * f, aged = std::exp2(-(lastT - st.t) / params.fade);
+                want += st.load[0] * paintKnifeProfile(sv, c, pl, st.load[2], st.load[3], st.p, wx, wy, 1.0 / S) * k * aged / (S * S);
+              }
+            }
+      laidRatio = want > 0 ? got / want : 0;
+    }
     phase = 2;
     sweep(1, 0);
     p.blocks(0.8, {}, seen);
@@ -851,7 +884,7 @@ int main(int argc, char** argv) {
     }
     double total = 0;
     for (std::size_t q = 0; q < PaintMap::kCells; q++) total += p.in.painter()->map().thick[q];
-    std::printf("%zu %zu %.4f %.4f %.5f %.4f\n", away.size(), back.size(), tone, rough, total, film);
+    std::printf("%zu %zu %.4f %.4f %.5f %.4f %.4f\n", away.size(), back.size(), tone, rough, total, film, laidRatio);
   } else if (cmd == "spatter") {
     const int vel = static_cast<int>(arg(2, 100));
     PaintParams params;

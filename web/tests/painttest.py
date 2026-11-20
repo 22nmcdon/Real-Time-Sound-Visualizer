@@ -426,7 +426,12 @@ with sync_playwright() as pw:
         pm, pl, rm = beyond(pulled["cells"], edge), beyond(pulled["lookCells"], edge), beyond(rest["cells"], edge)
         check("a quick bend of two semitones, as a port sends it, drags paint out past the stroke in the core's map", pm > 0.004 and pm > 4 * rm,
               "%.2f%% of the paint past %.1f cells, %.2f%% unbent" % (100 * pm, edge, 100 * rm))
-        check("and the look draws the same pull", abs(pl / pm - 1) < 0.35 if pm > 0 else False, "look %.2f%%, map %.2f%%" % (100 * pl, 100 * pm))
+        # Within a twentieth since 20 Nov: until then the bound was 35 per cent, and the look sat at 1.34 to 1.38 times the
+        # map, passing on some runs - the core's knife wiped a share of each strip's slab in the cells it shared with the
+        # next (paint.h, knife), and the look, cutting each pixel once, did not. Now they agree to a few tenths of a per cent.
+        same_pull = lambda look, map_: abs(look / map_ - 1) < 0.05 if map_ > 0 else False
+        check("and the look draws the same pull", same_pull(pl, pm), "look %.2f%%, map %.2f%%" % (100 * pl, 100 * pm))
+        null("the bound fails the look at 1.37 times the map, as the knife drew it before", not same_pull(1.37 * pm, pm))
         null("the unbent note's map against the bent look is not it", abs(pl / max(rm, 1e-9) - 1) > 0.35, "%.2f%% against %.2f%%" % (100 * pl, 100 * rm))
     else:
         check("the bend's pull paints", False)
