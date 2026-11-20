@@ -95,7 +95,8 @@ CONTROLS = """(view) => {
   const v = document.getElementById('mview-' + view), out = {};
   const r = (n) => { const b = n.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map((x) => Math.round(x * 2) / 2).join(','); };
   v.querySelectorAll('.knob-face, .check-switch, select, .switch, .link-btn, .filt-plot, .measure-sec, .menu-label, .mplot').forEach((n, k) => {
-    if (n.getClientRects().length) out[k + ':' + (n.id || n.className)] = r(n);
+    // By its place and kind, not its class, which greying changes (is-idle).
+    if (n.getClientRects().length) out[k + ':' + (n.id || n.tagName)] = r(n);
   });
   return out;
 }"""
@@ -117,8 +118,14 @@ FITS = """() => {
 }"""
 LABELS = """() => {
   const bad = [];
-  const lines = (n) => { const range = document.createRange(); range.selectNodeContents(n);
-    return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size; };
+  // The lines its words take: its text nodes' boxes only, so a switch's lamp is not a line.
+  const lines = (n) => { const tops = new Set(), walk = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
+    for (let t = walk.nextNode(); t; t = walk.nextNode()) {
+      if (!t.textContent.trim()) continue;
+      const range = document.createRange(); range.selectNodeContents(t);
+      for (const r of range.getClientRects()) if (r.width > 0) tops.add(Math.round(r.top + r.height / 2));
+    }
+    return tops.size; };
   for (const view of MEASURE_VIEWS) {
     setMeasureView(view);
     for (const n of el.measurePanel.querySelectorAll('.measure-head .eyebrow, .measure-head button, .fig-tab b, .measure-view:not([hidden]) :is(.menu-label, .check-switch, .eyebrow, .measure-sec, .switch button, .link-btn, .menu-title)')) {
@@ -337,16 +344,16 @@ with sync_playwright() as pw:
       const r = (n) => { const b = n.getBoundingClientRect(); return [b.left, b.top].map((x) => Math.round(x * 2) / 2).join(','); };
       const a = [r(el.transportPlay), r(el.transportState)]; const keep = el.transportAt.textContent;
       el.transportAt.textContent = 'bar 128, beat 4'; const b2 = [r(el.transportPlay), r(el.transportState)];
-      document.getElementById('clockLine').appendChild(el.transportPlay); el.transportAt.textContent = 'bar 1, beat 1'; const c = r(el.transportPlay);
+      el.transportAt.style.minWidth = '0'; document.getElementById('clockLine').appendChild(el.transportPlay); el.transportAt.textContent = 'bar 1, beat 1'; const c = r(el.transportPlay);
       el.transportAt.textContent = 'bar 128, beat 4'; const d = r(el.transportPlay);
-      document.querySelector('.clock-row').appendChild(el.transportPlay); el.transportAt.textContent = keep; syncClockPanel();
+      el.transportAt.style.minWidth = ''; document.querySelector('.clock-row').appendChild(el.transportPlay); el.transportAt.textContent = keep; syncClockPanel();
       return { line, same: JSON.stringify(a) === JSON.stringify(b2), nullMoved: c !== d, button: el.transportPlay.textContent, state: el.transportState.textContent }; }""")
     print("    %s" % clock)
     check("the clock is one sentence - where from, bar and beat, running or stopped - and the button says what it will do",
           __import__("re").fullmatch(r"(Internal|Host|MIDI clock) · bar \d+, beat [1-4] · (Running|Stopped)", clock["line"]) is not None
           and clock["button"] == ("Stop" if clock["state"] == "Running" else "Start"), clock)
     check("the state and the button stay where they are as the bar count grows to three figures", clock["same"], clock)
-    null("the button put on the clock's line moves as it grows", clock["nullMoved"], clock)
+    null("the button put on the clock's line, its bar's box let shrink to its words, moves as it grows", clock["nullMoved"], clock)
     idle = p.evaluate("""() => { const row = el.quantiseGlide.closest('.menu-row'), out = {};
       el.quantise.checked = false; el.quantise.dispatchEvent(new Event('change')); out.off = row.classList.contains('is-idle');
       el.quantise.checked = true; el.quantise.dispatchEvent(new Event('change')); out.on = row.classList.contains('is-idle');

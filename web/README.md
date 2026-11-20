@@ -7631,7 +7631,7 @@ cause, and what it says about writing the next check:
   another session's `core_tests.py` or a proof render loaded the container. `run.py` cannot see
   another process; don't start one beside it.
 
-## The UI review's three builds, and seven traps on the way (20 Nov)
+## The UI review's three builds, and eight traps on the way (20 Nov)
 
 The owner reviewed three mockups (`web/docs/scope-measure.md`, `picture-strip.md`,
 `perform.md`) and they are built: Scope & measure by subject, four subtabs in one box; the
@@ -7670,3 +7670,8 @@ three. What was learned:
   checkbox clicks the one it stands for; the setup, the plugin and the core hear what they
   heard, and `setWidthTo` ticks the box from whatever moved the value. Moving every reader to a
   new id would have meant a new host click in the core for a change of look.
+- **Hidden moves its neighbours; a switch that is put away keeps its place.** Mid / side is
+  hidden while the lag is on (they exclude each other) and on a band split, and in the Vertical
+  view that slid the AC corner's knob 92 px left whenever the lag was switched. The switch keeps
+  its `hidden` (regress.py reads it) and is drawn `visibility: hidden` - with `!important`, since
+  the page's own `[hidden] { display: none !important }` outranks any rule without it.

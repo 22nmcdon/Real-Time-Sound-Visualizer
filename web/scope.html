@@ -2599,6 +2599,9 @@ button.mod-edit-name:hover { color: var(--blush-deep); }
 #measurePanel .menu-row.knob-row > .menu-label { white-space: nowrap; }
 #measurePanel .menu-row.knob-row > .grow > .reading { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 #measurePanel .is-idle { opacity: 0.45; }
+/* A switch put away where it would not mean anything - Mid / side with the lag on or on a band
+   split - keeps its place unseen, so the AC corner beside it does not slide across. */
+#measurePanel .check-switch[hidden] { display: inline-flex !important; visibility: hidden; }
 #measurePanel .measure-block { margin: 0; }
 #measurePanel .measure-block > .menu-title { margin-bottom: 2px; }
 /* The lanes: a row each, its ink and name, Show and AC stacked, Full scale and Offset. */
@@ -2718,7 +2721,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 [data-compact] .clock-line { font-size: 12.5px; }
 .clock-line > span { flex: 0 0 auto; }
 /* The bar and the beat in a box wide enough for "bar 128, beat 4" in figures of one width. */
-.clock-line .clock-at { min-width: 6.5em; }
+.clock-line .clock-at { min-width: 7.2em; }
 .clock-line .clock-sep { color: var(--text-soft); white-space: pre; }
 #transportState[data-on="true"] { color: var(--sage); }
 #transportState[data-on="false"] { color: var(--rust); }
@@ -5744,7 +5747,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <li><b>One input has no second axis &mdash; so lag makes one</b>
         <span>A single instrument down a single input gives two identical channels, and
         identical channels draw a diagonal line and nothing else, whatever the preset. <i>Lag
-        X&ndash;Y</i>, under <i>Vertical</i> in <i>Scope &amp; measure</i>, plots the signal against itself a
+        X&ndash;Y</i>, under <i>Time</i> in <i>Scope &amp; measure</i>, plots the signal against itself a
         moment earlier instead. A held note becomes a closed loop whose shape is its harmonic
         content, and it moves when you move.
         <br><br>
@@ -5763,7 +5766,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         harmonics entirely. That is allowed on purpose; it is where the effect is strongest.</span></li>
 
       <li><b>AC coupling, and where its corner sits</b>
-        <span>Under <i>Vertical</i> in <i>Scope &amp; measure</i>, per lane. It blocks what is not moving, so a converter
+        <span>Under <i>Vertical</i> in <i>Scope &amp; measure</i>, a switch per lane, with the corner as a knob beside <i>Mid / side</i>. It blocks what is not moving, so a converter
         with a DC offset does not push the trace off the screen &mdash; a one-pole high pass,
         the same one a bench scope puts in front of its input. The <i>corner</i> is where it
         starts taking things away: at ten hertz, which is where a scope usually sits, a slow
@@ -5807,7 +5810,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         sound too &mdash; as do the timebase, the trigger, full scale and the turn.</span></li>
 
       <li><b>A filter, on two taps</b>
-        <span>Under <i>Filter</i> in <i>Scope &amp; measure</i>. It reshapes the trace, which is the point of having one
+        <span><i>Trace filter</i>, under <i>Vertical</i> in <i>Scope &amp; measure</i>, beside the lanes, with its response drawn. It reshapes the trace, which is the point of having one
         here: a low pass rounds a square's corners toward a sine, a notch carves a harmonic
         out of the picture, a resonant sweep draws its own ringing. <i>Screen reads</i> and
         <i>Speakers get</i> are separate switches, so the filter can be an instrument for
@@ -5991,8 +5994,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         tempo</i> silences it; see below.</span></li>
 
       <li><b>The arpeggiator</b>
-        <span><i>Arp</i>, in the <i>Perform</i> menu in the header, plays a held chord a note
-        at a time at the tempo:
+        <span>The <i>Arpeggiator</i>, in the <i>Perform</i> menu in the header, plays a held chord a note
+        at a time at the tempo, its <i>Pattern</i>, <i>Step</i> and <i>Octaves</i> each named over
+        its menu, and a bar of what a held C major chord (or the chord you hold) will play drawn
+        over them:
         up, down, up and back, in the order you played it, or at random, from a crotchet to a
         semiquaver triplet, over one to three octaves. In the dyad each step pairs your lowest
         note with the next, so the figure steps through the shapes of the chord's intervals in
@@ -6228,11 +6233,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         always sounded; at fifty an eighth; at nought every note the same in both ears. The
         screen still draws the notes against each other, the outline's lean included, and the
         picture, Scan and the loop are the same to the bit at any setting: what you hear is
-        every note that is drawn, heard apart from where it is drawn. <i>Width on</i> chooses what it
-        applies to: <i>Heard</i>, all of the above, or <i>Drawn too</i>, where the screen draws every
+        every note that is drawn, heard apart from where it is drawn. <i>Draw width</i>, the switch beside it, chooses what it
+        applies to: off, only what you hear, all of the above; or on, drawn too, where the screen draws every
         note at the Width as you hear it, so the speakers are the screen again and Scan reads that
         figure, and the Width becomes the sound's own, saved with it and marked with a ring before its
-        name (the player's Width waits, put away, for <i>Heard</i>). Drawn too, the figure of two notes
+        name (the player's Width waits, put away, for <i>Draw width</i> off). Drawn too, the figure of two notes
         drawn against each other goes: the screen draws the notes' rings summed. The beam's <i>Ink</i> is the
         figure's colour, the accent or one of five lane inks, and <i>Layer B's ink</i> is the
         second figure's, its lane's unless you choose (in Y&ndash;T each lane keeps its own);
@@ -6241,9 +6246,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         or its width, so none of them changes what you hear. Above the
         screen are the display (Y&ndash;T, X&ndash;Y, spectrogram),
         <i>Clear</i>, <i>Scope &amp; measure</i> &mdash; the oscilloscope's own tools in a panel
-        over the screen &mdash; run, mode and <i>Autoset</i>; the trigger; the timebase and
-        zoom; the vertical scale, the trace filter, the lanes, the cursors, a saved reference
-        and the readouts under the screen, which are off until you ask for them there. Two of
+        over the screen: run, mode and <i>Autoset</i> along its head, and four subtabs, each a
+        drawing of its subject and its controls: <i>Trigger</i>; <i>Time</i>, the timebase and zoom,
+        the keys' pitch and the lag; <i>Vertical</i>, the lanes' scale and offset and the trace
+        filter; and <i>Measure</i>, the cursors, a saved reference and the readouts under the
+        screen, which are off until you ask for them there. Two of
         its rows reach the speakers, and are marked so: lag X&ndash;Y's <i>Heard</i> and the
         filter's <i>Speakers get</i> &mdash; and <i>Enlarge</i> at the end.
         The face is the <i>Bench</i>, where everything is played and tuned: the screen on the left, as large as
@@ -6445,8 +6452,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         is not part of a setup code, so loading a preset does not turn it off.</span></li>
 
       <li><b>Morph: one fader, two sounds</b>
-        <span><i>Morph</i>, in the <i>Perform</i> menu in the header, slides between two sounds. Press <i>A</i> to store every
-        knob, change the sound, press <i>B</i>, and the fader goes between them &mdash; the
+        <span><i>Morph</i>, in the <i>Perform</i> menu in the header, slides between two sounds. Press <i>Store</i> under <i>A</i> to store every
+        knob, change the sound, press <i>Store</i> under <i>B</i>, and the fader goes between them &mdash; the
         pitch by octaves, everything else in a straight line. Menus and switches are not
         morphed: a shape or a mode stays as you left it. Nor is the scope's view: the
         timebase, the zoom and the trigger stay where you set them, while the tempo, which you
@@ -6478,7 +6485,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <li><b>Key, tempo and the quantiser</b>
         <span>The <i>Key and tempo</i> section, in the <i>Perform</i> menu in the header, is one key, one scale and one
         tempo for the whole page, with <i>Tap</i> beside the tempo. Where the tempo comes from and
-        the bar are in the <i>Clock</i> section beside it. <i>Quantise the generator's pitch</i> takes the pitch, after
+        the bar are in the <i>Clock</i> section beside it, one sentence: where the beat comes from, the bar and the beat,
+        and whether it is running, with <i>Start</i> or <i>Stop</i> under it. <i>Quantise pitch</i> takes the generator's pitch, after
         everything patched onto it, to the nearest note of the key, so a slow oscillator or the
         photocell on the frequency plays a melody in D dorian rather than a siren. A key you
         play outside the scale is moved too, and a note exactly between two goes down.
@@ -6573,12 +6581,12 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         does reach the samples &mdash; on a stereo pair it turns the lanes themselves, and
         the speakers with them &mdash; so these numbers read the signal as it arrived unless
         you say otherwise. <i>Numbers read &rarr; Turned</i>, in <i>Scope &amp; measure</i>
-        under <i>Measure</i>, points them at what is on the screen instead, and the readout says
+        on its <i>Measure</i> subtab, points them at what is on the screen instead, and the readout says
         <i>post-rotation</i> so you can tell. The level meter and the <i>Clipping</i>
         verdict stay on the signal either way.</span></li>
 
       <li><b>Cursors are draggable</b>
-        <span>Turn them on in <i>Scope &amp; measure</i>, above the screen. Two in time and two in
+        <span>Turn them on in <i>Scope &amp; measure</i>, above the screen, on its <i>Measure</i> subtab. Two in time and two in
         amplitude, on the Y&ndash;T display; the readout gives the difference between each pair,
         and &Delta;t as a frequency.</span></li>
 
@@ -6602,7 +6610,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         the arithmetic that drew it.</span></li>
 
       <li><b>A reference trace</b>
-        <span><i>Save reference</i>, in <i>Scope &amp; measure</i>, freezes what is on screen
+        <span><i>Save</i> under <i>Reference</i>, on <i>Scope &amp; measure</i>'s <i>Measure</i> subtab, freezes what is on screen
         and keeps it dashed behind the live trace, so you can see what changed.</span></li>
 
       <li><b>The goniometer</b>
@@ -6798,8 +6806,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         twice the note's, and the readout's frequency is the sound's rather than the key's:
         an octave under. At 1 ms/div the screen holds less than two of those cycles, and the
         readout says nothing rather than guess. The tuner can read the key instead: with a
-        keyboard, tick <i>take the lag and the tuner from the note played</i>, under <i>Vertical</i> in
-        <i>Scope &amp; measure</i>.</span></li>
+        keyboard, switch on <i>Pitch</i> under <i>From the keys</i>, on <i>Scope &amp; measure</i>'s
+        <i>Time</i> subtab.</span></li>
 
       <li><b>Intervals draw consonance</b>
         <span>A figure closes when the two frequencies are a ratio of small whole numbers,
@@ -29899,16 +29907,19 @@ const CONTROL_WORDS = {
   "menuButton": ["Settings", "Opens what is set once and left: MIDI, the modulation fade, this window’s size, the input and the audio device."],
   "persistence": ["(hidden menu)", "Never shown, so never pointed at: the plugin's panel names it. The Persistence knob in the Picture section is the one people turn."],
   "performClose": ["Close", "Closes Perform; the arpeggiator and the clock keep running."],
-  "arpMode": ["Arp", "Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it."],
-  "arpRate": ["Arp step", "How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t)."],
-  "arpOctaves": ["Arp octaves", "How many octaves the arpeggio spreads the chord over, from one to three."],
-  "transportPlay": ["Bar", "Stops the bar and silences the score; pressed again, starts it from the one and restarts the synced oscillators with it."],
-  "morphStoreA": ["Morph · store A", "Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide."],
+  "arpMode": ["Pattern", "Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it."],
+  "arpRate": ["Step", "How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t)."],
+  "arpOctaves": ["Octaves", "How many octaves the arpeggio spreads the chord over, from one to three."],
+  "transportPlay": ["Start · stop", "Stops the bar and silences the score; pressed again, starts it from the one and restarts the synced oscillators with it."],
+  "clockFrom": ["Clock", "Where the beat comes from: the page’s own clock, a device’s MIDI clock, or the host’s while the plugin plays in a project."],
+  "transportAt": ["Position", "Where the clock is, by the bar and the beat, counted in fours from the one. Start begins it again from the one."],
+  "transportState": ["Clock", "Whether the clock is running. Stopped, the score is silent and the bar stands where it was; the arpeggiator follows your hands."],
+  "morphStoreA": ["Store A", "Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide."],
   "morphPos": ["Morph", "Slides the whole sound between the two stored ends: pitch by octaves, every other knob in a straight line. Menus, switches and the scope’s view stay."],
-  "morphStoreB": ["Morph · store B", "Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear."],
+  "morphStoreB": ["Store B", "Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear."],
   "keyRoot": ["Key", "The page’s one key, which the quantiser and the score play in."],
   "keyScale": ["Scale", "Which notes of the key count: Chromatic (every semitone), major, minor or one of the modes. The quantiser and the score use it."],
-  "quantise": ["Quantise", "Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody."],
+  "quantise": ["Quantise pitch", "Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody."],
   "quantiseGlide": ["Glide", "How long the quantised pitch takes to slide to each new note, up to 300 ms; off, it steps. Only while Quantise is on."],
   "tempo": ["Tempo", "The page’s one tempo, 30 to 300 BPM: the arpeggiator, the score and every synced LFO or delay play at it."],
   "tempoTap": ["Tap tempo", "Sets the tempo from your last four taps, and starts the synced oscillators on the beat you tapped."],
@@ -29946,6 +29957,10 @@ const CONTROL_WORDS = {
   "monitorLive": ["Hear it through the page", "Plays a line input through the page, tens of milliseconds late. Only for a line, never a band split; wear headphones the first time."],
   "measureButton": ["Scope & measure", "Opens the oscilloscope’s own tools over the screen: run, trigger, timebase, scale, the trace filter and the readouts."],
   "measureClose": ["Close", "Closes Scope & measure. Its settings stay as you left them, and the readouts stay if you switched them on."],
+  "mtab-trigger": ["Trigger", "Where the trace starts: the edge, the source lane, the level, the position and the holdoff, drawn on a trace. Its summary is the four."],
+  "mtab-time": ["Time", "How much time the screen holds and the slice Zoom keeps, the keys' pitch, and the lag. Its summary is the timebase and the zoom."],
+  "mtab-vertical": ["Vertical", "Each lane's scale and offset, AC and mid / side, and the trace filter with its response. Its summary is the lanes shown and the filter."],
+  "mtab-measure": ["Measure", "The readouts under the screen, the cursors, what the numbers read and a saved reference. Its summary is whether each shows."],
   "run": ["Stop", "Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent."],
   "modeAuto": ["Auto", "Draws whatever arrives, triggered or not, so the trace never stops and Scan reads it all. A grey trace is free-running, not a fault."],
   "modeNormal": ["Normal", "Holds the last triggered picture while nothing crosses the level, rather than drawing an untriggered one. Scan reads the held picture."],
@@ -29986,10 +30001,10 @@ const CONTROL_WORDS = {
   "lagManual": ["Delay", "Holds the delay where its knob puts it, whatever the note. Scan reads the loop it draws, so the sound changes too."],
   "lag": ["Delay", "How far behind the delayed copy is, 0.1 to 40 ms; Scan reads the loop it draws. Only on Set; on Auto it shows what the lock found."],
   "lagMix": ["Heard", "How much of the delayed copy reaches the right speaker when the speakers get Shaped: a comb that follows the pitch. Up to 50%."],
-  "midiTruth": ["Lag and tuner from the note", "Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound."],
-  "midiFollow": ["… and the timebase", "Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play."],
+  "midiTruth": ["Pitch from the keys", "Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound."],
+  "midiFollow": ["Timebase from the keys", "Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play."],
   "acCorner": ["AC corner", "Where AC coupling starts taking things away, 0.5 to 20 Hz, in what Scan reads too. Ten removes a drift; twenty thins a bass note’s bottom."],
-  "readoutsOn": ["Readouts under the screen", "Shows the numbers under the screen, a row per lane: peak, RMS, frequency, the nearest note, THD. Off to start."],
+  "readoutsOn": ["Readouts", "Shows the numbers under the screen, a row per lane: peak, RMS, frequency, the nearest note, THD. Off to start."],
   "cursorsOn": ["Cursors", "Two time and two level cursors to drag on the Y–T screen; the readout gives each pair’s difference, and Δt as a frequency."],
   "measurePre": ["Numbers read", "The numbers read the signal as it arrived, before the Plane’s Turn."],
   "measurePost": ["Numbers read", "The numbers read the signal after the Plane’s Turn, as the screen shows it. The level meter and Clipping stay on the signal."],
