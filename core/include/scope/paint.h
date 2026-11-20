@@ -106,8 +106,11 @@ struct PaintParams {
      a null for core/tests/pieces/painting.py - the same performance with
      the brush deaf to that one controller - and nothing else sets it. */
   unsigned hears = 0xf;
-  // A null too: every strike spatters as one at this impact, whatever its velocity (below nought: by the strike's own).
+  // A null too: every strike marks as one at this impact, whatever its velocity (below nought: by the strike's own).
   double spatterAt = -1;
+  /* The hardest strikes (over 0.8 of a full impact) flick a few flecks off the mark's fingers' tips: a variant for the
+     owner to choose by eye (20 Nov), off until they do. */
+  bool flecks = false;
 };
 
 /* The player's controllers on the brush (step 3, the owner's table of 16 Nov,
@@ -252,7 +255,11 @@ struct PaintBrush {
   int from = -1;                     // the brush whose stroke it took up, while that one sounds
   double level = 0, peak = 0;        // its voice's level at its last frame, and the most it has reached
   double hz = 0;                     // the pitch it is at: a stroke taken up glides to its new note's
-  bool spattered = false;            // its strike's spatter thrown (step 3), once, the frame it is placed
+  bool spattered = false;            // its strike's mark laid (step 3), once, the frame it is placed
+  // The strike's splay (paintSplay): how far it opened, how fast it regathers, its seed and its clumps; and where it is now.
+  double splay = 0, regather = 1, splayNow = 0;
+  std::uint32_t splaySeed = 0;
+  unsigned clumps = 0x7f;
 };
 
 // What the map says this frame, for the picture stage.
@@ -286,7 +293,7 @@ struct PaintStamp {
   std::uint8_t kind = 0;
   float a = 0, b = 0;
 };
-constexpr std::uint8_t kPaintStampBrush = 0, kPaintStampDrop = 1, kPaintStampPull = 2;
+constexpr std::uint8_t kPaintStampBrush = 0, kPaintStampDrop = 1, kPaintStampPull = 2, kPaintStampFinger = 3;
 
 /* A drop's shape, in units of its radius: how much of a pixel of side `px`
    (in those units) centred at (`u`, `v`) it covers, nought to one - `v`
@@ -313,6 +320,60 @@ inline double paintDropCover(double u, double v, double longer, std::uint32_t se
     if (v < tail) c = std::max(c, std::clamp(0.5 - (std::fabs(u) - 0.75 * std::pow(1 - v / tail, 1.3)) / px, 0.0, 1.0));
   }
   return c;
+}
+
+/* A hard strike splays the brush (the owner, 20 Nov: "brush stroke lines from
+   the paintbrush being splayed outward, and every one wouldn't look exactly
+   the same but would look similar"). The eight bristle groups clump - paint
+   makes bristles stick together - into four to eight clumps (`mask`, a bit a
+   boundary between groups that is cut, chosen from the stroke's seed), and
+   while splayed by `a` (nought: the brush as it always was) the clumps run
+   apart, each a track of its own groups side by side, jittered a little and
+   wandering slowly with time `t` so the outer tracks are not ruler-straight.
+   Each group's centre and its clump's span, across the brush in units of its
+   half-width. The look's shader (paintSplay) is this, line for line, so its
+   32 bristles follow their group's track and the map holds the same tracks. */
+struct PaintSplay {
+  std::array<double, kPaintBins> c {}, lo {}, hi {};
+};
+inline void paintSplay(double a, std::uint32_t seed, unsigned mask, float t, PaintSplay& out) {
+  int s = 0;
+  for (int k = 0; k < kPaintBins; k++) {
+    if (k < kPaintBins - 1 && !(mask & (1u << k))) continue;  // the clump goes on into the next group
+    const int e = k;
+    const double u0c = ((2.0 * s - 7) / 8 + (2.0 * e - 7) / 8) / 2;
+    const auto ci = static_cast<std::uint32_t>(s);
+    const double jit = paintHash(seed * 31u + ci + 1u) * 2 - 1;
+    const double f = 1.5 + 2.5 * paintHash(seed * 37u + ci + 1u), ph = paintHash(seed * 41u + ci + 1u);
+    const double wan = std::sin(2 * kPi * (f * static_cast<double>(t) + ph));
+    const double uc = u0c * (1 + a) + a * (0.12 * jit + 0.05 * wan);
+    for (int j = s; j <= e; j++) {
+      const auto jj = static_cast<std::size_t>(j);
+      out.c[jj] = uc + (2.0 * j - 7) / 8 - u0c;
+      out.lo[jj] = uc + (2.0 * s - 7) / 8 - u0c - 0.125;
+      out.hi[jj] = uc + (2.0 * e - 7) / 8 - u0c + 0.125;
+    }
+    s = k + 1;
+  }
+}
+
+/* A finger of the strike's fan, how much of a pixel of side `px` it covers
+   and how much paint it lays there, nought to one: `v` along it from its
+   root, `u` across, both in units of its half-width at the root, `len` its
+   length in the same. A clump of bristles squeezed out from under the brush:
+   square at the root, tapering, five strands each loaded a little differently
+   and broken off at its own length (the ragged, dry tip), and drier towards
+   the tip. The look's shader (fingerCover) is this, line for line. */
+inline double paintFingerCover(double u, double v, double len, std::uint32_t seed, double px) {
+  if (v < -0.3 || v > len + px) return 0;
+  // Its root is the brush's edge pressed down: square across, a short soft start rather than a disc its width.
+  if (v < 0) return std::clamp(0.5 - (std::fabs(u) - 1) / px, 0.0, 1.0) * (1 + v / 0.3);
+  const double x = std::min(1.0, v / len), h = 1 - 0.6 * std::pow(x, 1.2);
+  const int strand = std::clamp(static_cast<int>(std::floor((u / h + 1) / 2 * 5)), 0, 4);
+  const auto si = static_cast<std::uint32_t>(strand);
+  const double reach = len * (0.65 + 0.35 * paintHash(seed * 7u + si + 11u));
+  const double side = std::clamp(0.5 - (std::fabs(u) - h) / px, 0.0, 1.0), tip = std::clamp(0.5 - (v - reach) / px, 0.0, 1.0);
+  return side * tip * (1 - 0.55 * x) * (0.7 + 0.6 * paintHash(seed * 13u + si + 17u));
 }
 
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
@@ -649,9 +710,12 @@ class Painter {
     const double x = at.x * kPaintN, y = at.y * kPaintN;
     if (!b.placed) { b.x = x; b.y = y; b.placed = true; }
     const double dx = x - b.x, dy = y - b.y, len = std::hypot(dx, dy);
-    // Its strike's spatter, once, from where it lands (step 3).
-    if (!b.spattered) { b.spattered = true; if (!b.handed) spatter(b, x, y, t); }
+    // Its strike's mark, once, from where it lands (step 3): the splayed brush's fan.
+    if (!b.spattered) { b.spattered = true; if (!b.handed) strikeMark(b, x, y, t); }
     const double since = std::max(0.0, t - b.bornAt);
+    // The splay regathers: quickly after a medium strike, more slowly after a hard one.
+    b.splayNow = b.splay > 0 ? b.splay * std::exp(-since / b.regather) : 0.0;
+    if (b.splayNow < 0.005) b.splayNow = 0;
     const double bump = (1 - std::exp(-since / kImpactRise)) * std::exp(-since / kImpactFall) * b.impact * 1.6;
     const double bulge = 1 + kImpactPress * bump;
     /* The player's hands on it (step 3). The wheel, up from its rest at the
@@ -662,7 +726,8 @@ class Painter {
        look draws what the map holds. At rest every factor is one. */
     const double s = wheelUp(), lean = v.held ? controls_.pressure : 0.0;
     p = std::min(1.0, p * (1 + kWheelPress * s) * (1 + kLeanPress * lean));
-    const double w = (kWidthLeast + kWidthPress * p) * (1 + kImpactWiden * bump) * p_.width * (1 + kWheelWiden * s) * (1 + kLeanWiden * lean);
+    // The strike's own widening is the splay now (stamp), which replaced a 6 per cent swell of the whole brush.
+    const double w = (kWidthLeast + kWidthPress * p) * p_.width * (1 + kWheelWiden * s) * (1 + kLeanWiden * lean);
     if (!(p > 0.02) || b.handed) { b.x = x; b.y = y; return; }
     /* The bend's pull (20 Nov): a brush pressed into wet paint and moved
        across the radius by the pitch drags the paint with it, the way the
@@ -694,53 +759,144 @@ class Painter {
   double wheelLoad() const { return 1 + (kWheelLoad - 1) * wheelUp(); }
   double loadMost() const { return kLoadMost * wheelLoad(); }
 
-  /* A strike's spatter (step 3, the owner's: velocity is impact, "spatter,
-     and how far it flies"; rebuilt on 20 Nov, when the owner saw it drawn
-     as a scatter of small rectangles alike - "it should be splattered paint
-     in general"). Drops, not strokes: a ragged blot where the brush lands,
-     larger than the stroke, and around it drops whose sizes fall off a
-     heavy tail (many fine specks, a few large ones, from a Pareto law), more
-     of them and thrown further the harder the strike, smaller and fewer the
-     further they fly, and some of the far ones drawn out into a tail that
-     points away from the blot, as a drop landing at a slant is. Below
-     kSpatterFrom of a full impact a strike throws nothing, so a soft touch
-     and Strike at nought are clean.
-     Every drop is from the stroke's own hash, so the same performance
-     spatters alike, and each lands where the layout puts a moment a little
-     earlier or later and a pitch a little up or down - the layout's terms,
-     so a layout that is not round spatters as it lays (the pieces' turned
-     layout holds it); only the drop's own shape is drawn in the canvas's.
-     Each is a stamp of its own kind, which the look draws by the same
-     shape (paintDropCover), and a drop that lands across the radius lies on
-     another register's ring, which that note then reads. */
-  void spatter(const PaintBrush& b, double x, double y, double t) {
+  /* A strike's mark (step 3; the owner, 20 Nov, of the drops that came
+     before it: "It doesn't look like a hard pressed paint brush. It would
+     have brush stroke lines from the paintbrush being splayed outward, and
+     every one wouldn't look exactly the same but would look similar"). A
+     brush slammed onto the canvas compresses and its bristles fan out from
+     where it lands (Baxter and Lin's brush model, 2004, draws this splay and
+     the plasticity after it): a heavy core at the heel where the belly
+     squeezes its paint out, and from it the clumps of bristles as fingers,
+     one a clump (paintSplay's), ordered across the way the brush travels as
+     the clumps are across the brush, opening forward and to both sides - a
+     fan of about 50 degrees at half an impact and 170 at a full one - with
+     their angles, lengths and widths jittered from the stroke's seed, a
+     finger or two now and then kicked back behind, and a few stray bristles
+     further out as thin lines. Everything grows with the impact to the 1.5
+     from nothing, so a soft strike barely marks and Strike at nought never
+     does. The squeeze leaves the brush leaner, the outer groups most, so the
+     stroke after runs dry sooner; and the brush stays splayed (`splay`),
+     regathering over 0.15 s plus half a second times the impact.
+     With `flecks` (PaintParams, for the owner to choose) the hardest strikes
+     flick a few flecks off the fingers' tips. */
+  void strikeMark(PaintBrush& b, double x, double y, double t) {
     const double impact = std::clamp(p_.spatterAt >= 0 ? p_.spatterAt : b.impact, 0.0, 1.0);
-    const double k = std::clamp((impact - kSpatterFrom) / (1 - kSpatterFrom), 0.0, 1.0);
-    if (!(k > 0)) return;
-    const double g = (0.35 + 0.65 * k) * p_.width / 2;  // how far, in the layout's terms; and how large, in cells
-    const auto base = static_cast<std::uint32_t>(b.serial) * 7919u + static_cast<std::uint32_t>(b.born) * 131u;
-    const auto h = [&](std::uint32_t j, std::uint32_t i) { return paintHash(base + j * 977u + i * 7u + 11u); };
-    /* The blot where it lands, ragged, its edge turned to the way the stroke goes (the layout's: a moment on at the same
-       pitch), so the same strike lands the same blot on any layout - turned in the canvas's own x, a turned layout's
-       blots were not the round one's turned, which the pieces' layout check found. */
-    const PaintPoint on = layout_->at(t + 0.05, b.hz);
-    const double gx = on.x * kPaintN - x, gy = on.y * kPaintN - y, gl = std::hypot(gx, gy);
-    // It grows from nothing at the threshold, so a strike just over it is not a blot of a size out of nowhere.
-    drop(b, x, y, gl > 1e-9 ? gx / gl : 1, gl > 1e-9 ? gy / gl : 0, kSpatterBlotMost * std::sqrt(k) * p_.width / 2, 1, base, kSpatterBlot, kDropThick, t);
-    const int n = static_cast<int>(std::lround(kSpatterMost * std::pow(k, 1.2)));
-    for (int j = 0; j < n; j++) {
-      const auto jj = static_cast<std::uint32_t>(j) + 1u;
-      const double th = 2 * kPi * h(jj, 1);
-      const double far = std::min(1.0, -std::log(1 - 0.95 * h(jj, 2)) / 2.2), d = 0.15 + 0.85 * far;
-      const PaintPoint at = layout_->at(t + std::cos(th) * d * kSpatterSeconds * g, b.hz * std::exp2(std::sin(th) * d * kSpatterOctaves * g));
-      const double ax = at.x * kPaintN, ay = at.y * kPaintN, ox = ax - x, oy = ay - y, off = std::hypot(ox, oy);
-      const double r = kDropLeast * std::pow(1 - 0.985 * h(jj, 3), -0.6) * (0.7 + 0.6 * k) * (1 - 0.75 * far) * p_.width / 2;
-      /* Some drawn out into a teardrop, the larger ones likelier (a speck's tail is under a pixel): the longer the
-         further it flew, as a drop landing at a slanter angle draws a longer one. */
-      const double longer = h(jj, 4) < 0.15 + 0.45 * std::min(1.0, r / 0.5) ? 1 + (0.6 + 1.4 * h(jj, 5)) * (0.4 + 0.6 * far) : 1.0;
-      const double thick = kDropThick * (0.6 + 0.4 * std::min(1.0, r / 0.6)) * (0.8 + 0.4 * h(jj, 6));
-      drop(b, ax, ay, off > 1e-9 ? ox / off : 1, off > 1e-9 ? oy / off : 0, r, longer, base + jj * 104729u, 1.0, thick, t);
+    const double k = std::pow(impact, 1.5);
+    if (!(k > 0.002)) return;
+    const auto seed = (static_cast<std::uint32_t>(b.serial) * 7919u + static_cast<std::uint32_t>(b.born) * 131u) & 0xffffu;
+    const auto h = [&](std::uint32_t j, std::uint32_t i) { return paintHash(seed * 977u + j * 131u + i * 7u + 3u); };
+    // The clumps: four to eight, the boundaries cut those whose hashes are least.
+    const int clumps = 4 + std::min(4, static_cast<int>(5 * h(0, 1)));
+    unsigned mask = 0;
+    for (int j = 0; j < kPaintBins - 1; j++) {
+      int below = 0;
+      for (int i = 0; i < kPaintBins - 1; i++) if (h(1, static_cast<std::uint32_t>(i)) < h(1, static_cast<std::uint32_t>(j))) below++;
+      if (below < clumps - 1) mask |= 1u << j;
     }
+    b.splay = kSplayMost * k; b.regather = kRegather + kRegatherHard * impact; b.splaySeed = seed; b.clumps = mask;
+    // Where it travels: the layout's, a moment on at the same pitch.
+    const PaintPoint on = layout_->at(t + 0.05, b.hz);
+    double fx = on.x * kPaintN - x, fy = on.y * kPaintN - y;
+    const double fl = std::hypot(fx, fy);
+    fx = fl > 1e-9 ? fx / fl : 1; fy = fl > 1e-9 ? fy / fl : 0;
+    const double nx = -fy, ny = fx;
+    const double hw = kMarkHalfWidth * p_.width / 2, open = (kFanLeast + (kFanMost - kFanLeast) * k) * kPi / 180;
+    const double thick = kFingerThick;
+    /* The heel is the brush's own first moments, pressed by the strike's swell into the splayed tracks (stroke): a
+       drop laid for it here drew a black disc that no brush leaves. */
+    double meanLen = 0;
+    int c = 0;
+    for (int g = 0; g < kPaintBins; c++) {
+      int e = g;
+      while (e < kPaintBins - 1 && !(mask & (1u << e))) e++;
+      const double across = ((2.0 * g - 7) / 8 + (2.0 * e - 7) / 8) / 2;  // where the clump sits across the brush, -1 to 1
+      const auto cu = static_cast<std::uint32_t>(c);
+      const double th = across / 0.875 * open / 2 + (h(2, cu) * 2 - 1) * kFanJitter * kPi / 180;
+      const double len = (0.8 + 1.8 * k) * hw * (1 + 0.35 * (h(3, cu) * 2 - 1));
+      const double base = (e - g + 1) / 8.0 * hw * (1 + 0.5 * k) * (1 + 0.4 * (h(4, cu) * 2 - 1));
+      const double ux = fx * std::cos(th) + nx * std::sin(th), uy = fy * std::cos(th) + ny * std::sin(th);
+      finger(b, x + nx * across * hw * 0.9, y + ny * across * hw * 0.9, ux, uy, base, len, seed * 5u + cu, thick, t);
+      meanLen += len;
+      if (p_.flecks && impact > 0.8) {
+        const int n = static_cast<int>(std::floor(h(5, cu) * 1.6 * (impact - 0.8) / 0.2));
+        for (int f = 0; f < n; f++) {
+          const double far = len * (1.05 + 0.4 * h(6, cu * 4u + static_cast<std::uint32_t>(f)));
+          drop(b, x + ux * far, y + uy * far, ux, uy, 0.15 + 0.2 * h(7, cu * 4u + static_cast<std::uint32_t>(f)), 1.6, seed * 11u + cu * 4u + static_cast<std::uint32_t>(f), 0.5, thick * 0.8, t);
+        }
+      }
+      g = e + 1;
+    }
+    meanLen /= std::max(1, c);
+    // Now and then a finger kicked back behind where it lands.
+    const int back = h(8, 1) < 0.45 * k ? (h(8, 2) < 0.3 ? 2 : 1) : 0;
+    for (int j = 0; j < back; j++) {
+      const auto ju = static_cast<std::uint32_t>(j);
+      const double th = kPi + (h(9, ju) * 2 - 1) * 25 * kPi / 180;
+      const double ux = fx * std::cos(th) + nx * std::sin(th), uy = fy * std::cos(th) + ny * std::sin(th);
+      finger(b, x, y, ux, uy, hw * 0.2 * (0.7 + 0.6 * h(10, ju)), meanLen * (0.35 + 0.25 * h(11, ju)), seed * 13u + ju, thick, t);
+    }
+    // And a few stray bristles, thin lines further out.
+    const int strays = static_cast<int>(std::lround(k * (1 + 3 * h(12, 1))));
+    for (int j = 0; j < strays; j++) {
+      const auto ju = static_cast<std::uint32_t>(j);
+      const double th = (h(13, ju) * 2 - 1) * open / 2 * 1.1;
+      const double ux = fx * std::cos(th) + nx * std::sin(th), uy = fy * std::cos(th) + ny * std::sin(th);
+      finger(b, x, y, ux, uy, 0.09, meanLen * (1.1 + 0.5 * h(14, ju)), seed * 17u + ju, thick * 0.8, t);
+    }
+    // The squeeze: what went into the mark left the brush, the outer groups most.
+    for (int g = 0; g < kPaintBins; g++)
+      b.load[static_cast<std::size_t>(g)] *= 1 - kSqueeze * k * (0.6 + 0.4 * std::fabs((2.0 * g - 7) / 7));
+  }
+
+  /* One finger of the mark, in cells: its root, its way, its half-width at
+     the root, its length, its seed and its thickness at the root. Laid as a
+     drop is, each cell the mean over the look's pixels in it. */
+  void finger(const PaintBrush& b, double x, double y, double dx, double dy, double base, double len, std::uint32_t seed,
+              double thick, double t) {
+    constexpr int N = kPaintN, S = kDropSamples;
+    if (!(base > 0) || !(len > 0)) return;
+    seed &= 0xffffffu;
+    if (stamps_.size() < kPaintStampsMost) {
+      PaintStamp st;
+      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(dx); st.dy = static_cast<float>(dy);
+      st.w = static_cast<float>(2 * base / N); st.p = 1; st.t = static_cast<float>(t); st.per = 1;
+      st.load.fill(static_cast<float>(thick));
+      st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
+      st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
+      st.kind = kPaintStampFinger; st.a = static_cast<float>(len / base); st.b = static_cast<float>(seed);
+      stamps_.push_back(st);
+    } else { dropped_++; }
+    const double reach = len + base * 1.5 + 1;
+    const int x0 = std::max(0, static_cast<int>(std::floor(std::min(x, x + dx * len) - base * 1.5 - 1)));
+    const int x1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(x, x + dx * len) + base * 1.5 + 1)));
+    const int y0 = std::max(0, static_cast<int>(std::floor(std::min(y, y + dy * len) - base * 1.5 - 1)));
+    const int y1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(y, y + dy * len) + base * 1.5 + 1)));
+    (void)reach;
+    const double nx = -dy, ny = dx, L = len / base, px = 1.0 / (S * base);
+    for (int yy = y0; yy <= y1; yy++)
+      for (int xx = x0; xx <= x1; xx++) {
+        double in = 0;
+        for (int j = 0; j < S; j++)
+          for (int i = 0; i < S; i++) {
+            const double rx = xx + (i + 0.5) / S - x, ry = yy + (j + 0.5) / S - y;
+            in += paintFingerCover((rx * nx + ry * ny) / base, (rx * dx + ry * dy) / base, L, seed, px);
+          }
+        if (!(in > 0)) continue;
+        layCell(b, static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx), thick * in / (S * S), t);
+      }
+  }
+
+  // A deposit `d` into cell `q`, as a drop or a finger lands it: mixed into wet paint, covering dry by its opacity.
+  void layCell(const PaintBrush& b, std::size_t q, double d, double t) {
+    const double before = map_.thick[q], wetBefore = map_.wet[q];
+    if (before < 1e-4) acc_.ontoBare += d; else if (wetBefore > 0.3) acc_.intoWet += d; else acc_.ontoDry += d;
+    acc_.laid += d;
+    const double hide = (1 - std::exp(-d / kPaintHide)) * (1 - wetBefore);
+    const double kept = before * (1 - hide), after = kept + d;
+    map_.wet[q] = static_cast<float>(after > 0 ? (wetBefore * kept + d) / after : 0);
+    map_.thick[q] = static_cast<float>(after);
+    map_.owner[q] = b.serial;
+    map_.laidAt[q] = static_cast<float>(t);
   }
 
   /* One drop, in cells: where, the way it flew, its radius, its length over
@@ -777,17 +933,7 @@ class Painter {
             in += paintDropCover((rx * nx + ry * ny) / r, (rx * dx + ry * dy) / r, longer, seed, rough, 1.0 / (S * r));
           }
         if (!(in > 0)) continue;
-        const double d = thick * in / (S * S);
-        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
-        const double before = map_.thick[q], wetBefore = map_.wet[q];
-        if (before < 1e-4) acc_.ontoBare += d; else if (wetBefore > 0.3) acc_.intoWet += d; else acc_.ontoDry += d;
-        acc_.laid += d;
-        const double hide = (1 - std::exp(-d / kPaintHide)) * (1 - wetBefore);
-        const double kept = before * (1 - hide), after = kept + d;
-        map_.wet[q] = static_cast<float>(after > 0 ? (wetBefore * kept + d) / after : 0);
-        map_.thick[q] = static_cast<float>(after);
-        map_.owner[q] = b.serial;
-        map_.laidAt[q] = static_cast<float>(t);
+        layCell(b, static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx), thick * in / (S * S), t);
       }
   }
 
@@ -889,8 +1035,11 @@ class Painter {
       for (std::size_t k = 0; k < static_cast<std::size_t>(kPaintBins); k++) st.load[k] = static_cast<float>(b.load[k] + b.carry[k]);
       st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
       st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
+      // Splayed (the strike's), how far, and its seed and clumps: the look lays its bristles along the same tracks.
+      if (b.splayNow > 0) { st.a = static_cast<float>(b.splayNow); st.b = static_cast<float>((b.clumps & 0x7fu) * 65536u + (b.splaySeed & 0xffffu)); }
       stamps_.push_back(st);
     } else dropped_++;
+    if (b.splayNow > 0) { stampSplayed(b, x, y, dx, dy, w, p, t, moved, hw, hl, per); return; }
     const int x0 = std::max(0, static_cast<int>(std::floor(x - hw - hl - 1))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + hw + hl + 1)));
     const int y0 = std::max(0, static_cast<int>(std::floor(y - hw - hl - 1))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + hw + hl + 1)));
     if (x0 > x1 || y0 > y1) return;
@@ -979,6 +1128,133 @@ class Painter {
     }
   }
 
+  /* A stamp of a splayed brush (the strike's, regathering): the eight
+     groups each lay along their own track (paintSplay), the clumps apart
+     with bare canvas between, each clump's edge its own; the outer groups
+     touch lighter. Each cell takes the mean over three by three points in
+     it, since a track is narrower than a cell, so the map holds the paint
+     the look's pixels lay. The pick-up, the push to a clump's flank, the
+     feathering and the dry brush are the plain stamp's. */
+  void stampSplayed(PaintBrush& b, double x, double y, double dx, double dy, double w, double p, double t, double moved, double hw, double hl,
+                    double per) {
+    constexpr int N = kPaintN, S = 3;
+    const double a = b.splayNow, nx = -dy, ny = dx, blend = std::min(1.0, 4 * a);
+    PaintSplay sp;
+    paintSplay(a, b.splaySeed & 0xffffu, b.clumps, static_cast<float>(t), sp);
+    const double hwE = hw * (1 + 1.3 * a);
+    const int x0 = std::max(0, static_cast<int>(std::floor(x - hwE - hl - 1))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + hwE + hl + 1)));
+    const int y0 = std::max(0, static_cast<int>(std::floor(y - hwE - hl - 1))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + hwE + hl + 1)));
+    if (x0 > x1 || y0 > y1) return;
+    double firmSum = 0;
+    int firmN = 0;
+    for (int yy = y0; yy <= y1; yy++)
+      for (int xx = x0; xx <= x1; xx++) {
+        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
+        firmSum += map_.thick[q] * (1 - map_.wet[q]);
+        firmN++;
+      }
+    const double firmMean = firmN ? firmSum / firmN : 0;
+    // Where across the brush (in its half-widths) falls in which group, and how firmly: its clump's edge, blended
+    // from the whole brush's as the splay closes, so a brush regathered lays as the plain stamp does.
+    const auto at = [&](double uh, int& k) {
+      for (int g = 0; g < kPaintBins; g++) {
+        const auto gi = static_cast<std::size_t>(g);
+        if (std::fabs(uh - sp.c[gi]) > 0.125) continue;
+        k = g;
+        const double mid = (sp.lo[gi] + sp.hi[gi]) / 2, half = (sp.hi[gi] - sp.lo[gi]) / 2;
+        const double whole = std::max(0.0, 1 - std::pow(std::fabs(uh) / (1 + a), 4.0)), own = std::max(0.0, 1 - std::pow(std::fabs(uh - mid) / half, 4.0));
+        return whole + (own - whole) * blend;
+      }
+      k = -1;
+      return 0.0;
+    };
+    std::array<double, kPaintBins> picked {}, spent {}, smeared {}, wk {};
+    for (int yy = y0; yy <= y1; yy++)
+      for (int xx = x0; xx <= x1; xx++) {
+        wk.fill(0);
+        double core = 0;
+        for (int j = 0; j < S; j++)
+          for (int i = 0; i < S; i++) {
+            const double rx = xx + (i + 0.5) / S - x, ry = yy + (j + 0.5) / S - y;
+            const double u = rx * nx + ry * ny, v = rx * dx + ry * dy;
+            const double tip = std::max(0.0, 1 - (v * v) / (hl * hl * 1.6));
+            if (tip <= 0) continue;
+            int k = -1;
+            const double edge = at(u / hw, k);
+            if (k < 0) continue;
+            const double e = edge * tip / (S * S);
+            wk[static_cast<std::size_t>(k)] += e;
+            core += e;
+          }
+        if (core <= 0) continue;
+        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
+        const double rx = xx + 0.5 - x, ry = yy + 0.5 - y, u = rx * nx + ry * ny, v = rx * dx + ry * dy;
+        const double a0 = map_.thick[q], wet = map_.wet[q];
+        const bool own = map_.owner[q] == b.serial && t - map_.laidAt[q] <= kOwnSeconds;
+        if (wet > 0.01 && a0 > 0 && !own) {
+          const double take = std::min(0.5, kPick * wet * core * per);
+          // Pushed to the flank of the clump the cell's middle is in, or nearest.
+          int k = -1;
+          at(u / hw, k);
+          const double push = v > 0 && k >= 0 ? std::min(0.5, kPush * wet * core * p * per) : 0.0;
+          const double tk = a0 * take, ps = a0 * push;
+          for (int g = 0; g < kPaintBins; g++) picked[static_cast<std::size_t>(g)] += tk * wk[static_cast<std::size_t>(g)] / core;
+          map_.thick[q] = static_cast<float>(a0 - tk - ps);
+          if (ps > 0) {
+            const auto ki = static_cast<std::size_t>(k);
+            const double mid = (sp.lo[ki] + sp.hi[ki]) / 2;
+            const double off = (u / hw >= mid ? sp.hi[ki] : sp.lo[ki]) * hw * 1.05 + (u / hw >= mid ? 0.5 : -0.5);
+            const int ex = static_cast<int>(std::floor(x + nx * off + dx * v)), ey = static_cast<int>(std::floor(y + ny * off + dy * v));
+            if (ex >= 0 && ey >= 0 && ex < N && ey < N) {
+              const std::size_t e = static_cast<std::size_t>(ey) * N + static_cast<std::size_t>(ex);
+              const double ea = map_.thick[e];
+              map_.wet[e] = static_cast<float>(ea + ps > 0 ? (map_.wet[e] * ea + wet * ps) / (ea + ps) : 0);
+              map_.thick[e] = static_cast<float>(ea + ps);
+            }
+          }
+        }
+        double total = 0;
+        for (int g = 0; g < kPaintBins; g++) {
+          const auto gi = static_cast<std::size_t>(g);
+          if (wk[gi] <= 0) continue;
+          const double outer = 1 - kSplayLight * a / (1 + a) * std::fabs((2.0 * g - 7) / 7);
+          double d = kDeposit * p * b.load[gi] * wk[gi] * per * outer;
+          double c = kDeposit * p * b.carry[gi] * wk[gi] * per * outer;
+          if (p < 0.5) {
+            const float touch = paintHash(static_cast<std::uint32_t>(xx) * 73856093u ^ static_cast<std::uint32_t>(yy) * 19349663u ^ static_cast<std::uint32_t>(g) * 83492791u);
+            const double feather = std::clamp((p * 2.2 - touch) / 0.25, 0.0, 1.0) * (p * 2);
+            d *= feather; c *= feather;
+          }
+          if (b.load[gi] < 0.5) {
+            const double relief = map_.thick[q] * (1 - map_.wet[q]) - firmMean;
+            const double need = 0.1 * (1 - b.load[gi] / 0.5) - 0.03;
+            d *= std::clamp((relief - need) / 0.03, 0.0, 1.0);
+          }
+          if (d > 0) spent[gi] += d;
+          if (c > 0) smeared[gi] += c;
+          total += d + c;
+        }
+        if (total <= 1e-7) continue;
+        const double before = map_.thick[q], wetBefore = map_.wet[q];
+        const bool ownNow = map_.owner[q] == b.serial && t - map_.laidAt[q] <= kOwnSeconds;
+        if (before < 1e-4 || ownNow) acc_.ontoBare += total;
+        else if (wetBefore > 0.3) acc_.intoWet += total;
+        else acc_.ontoDry += total;
+        acc_.laid += total;
+        const double hide = (1 - std::exp(-total / kPaintHide)) * (1 - wetBefore);
+        const double kept = before * (1 - hide), after = kept + total;
+        map_.wet[q] = static_cast<float>(after > 0 ? (wetBefore * kept + total) / after : 0);
+        map_.thick[q] = static_cast<float>(after);
+        map_.owner[q] = b.serial;
+        map_.laidAt[q] = static_cast<float>(t);
+      }
+    for (std::size_t k = 0; k < static_cast<std::size_t>(kPaintBins); k++) {
+      if (spent[k] > 0) b.load[k] *= std::exp(-moved / (kReach * (1 + (kWheelReach - 1) * wheelUp()) * w) * p);
+      if (smeared[k] > 0) b.carry[k] *= std::exp(-moved / (kCarryReach * w) * p);
+      if (picked[k] > 0) b.carry[k] = std::min(kLoadMost, b.carry[k] + kCarry * picked[k]);
+    }
+  }
+
   // The map over `dt`: each cell's wetness falls by its thickness's drying time over `dryDt` (nought under the pedal), and its paint by the fade.
   void age(double dt, double dryDt) {
     if (!(dt > 0)) return;
@@ -1042,6 +1318,13 @@ class Painter {
      kSpatterSeconds along the time and kSpatterOctaves in pitch at width two (the round layout's A3: about nine cells
      along and eight across), the least drop kDropLeast cells across its radius, the blot's edge kSpatterBlot as
      ragged as a drop's, and a drop's thickness about kDropThick (a heavy stroke's). */
+  /* The strike's mark and splay: the brush's half-width it is drawn for (cells at width two), the fan's opening in
+     degrees from a touch to a full impact and its fingers' jitter, how far the brush splays at a full impact (the
+     clumps run apart to that many times the half-width again), how fast it regathers (seconds, and more per impact),
+     and the share of the load the squeeze takes at a full impact. Chosen by looking (web/docs/listening/
+     paint-controllers/strike/). */
+  static constexpr double kMarkHalfWidth = 3.0, kFanLeast = 20, kFanMost = 120, kFanJitter = 10, kSplayMost = 1.4, kFingerThick = 0.3;
+  static constexpr double kRegather = 0.15, kRegatherHard = 0.5, kSqueeze = 0.45, kSplayLight = 0.5;
   static constexpr double kSpatterFrom = 0.35, kSpatterMost = 70, kSpatterSeconds = 0.6, kSpatterOctaves = 2.5;
   static constexpr double kDropLeast = 0.18, kSpatterBlot = 1.5, kSpatterBlotMost = 4.2, kDropThick = 0.5;
   static constexpr int kDropSamples = 6;  // the look's pixels across a cell: PAINT_SIZE / PAINT_CELLS
