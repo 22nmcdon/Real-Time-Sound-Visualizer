@@ -41,7 +41,8 @@ TAP = """(() => {
     const node = new Orig(ctx, name, opts);
     if (name === "scope-brain") {
       const post = node.port.postMessage.bind(node.port);
-      node.port.postMessage = (m, t) => { window.__posted.push(JSON.parse(JSON.stringify(m))); return post(m, t); };
+      // A turn's messages go as one batch (20 Nov): kept one by one, as the worklet hands them on.
+      node.port.postMessage = (m, t) => { for (const one of (m && m.batch) || [m]) window.__posted.push(JSON.parse(JSON.stringify(one))); return post(m, t); };
     }
     return node;
   };

@@ -417,7 +417,8 @@ with sync_playwright() as pw:
       const out = {}, posted = [];
       const realPost = MessagePort.prototype.postMessage;
       MessagePort.prototype.postMessage = function (m, ...rest) {
-        if (m && m.op === 'control') posted.push(m.id + '=' + m.value);
+        // A turn's messages go as one batch (20 Nov): each of them counts.
+        for (const one of (m && m.batch) || [m]) if (one && one.op === 'control') posted.push(one.id + '=' + one.value);
         return realPost.call(this, m, ...rest);
       };
       const rms = (lane) => Math.sqrt(lane.reduce((a, v) => a + v * v, 0) / lane.length);
