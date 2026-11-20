@@ -618,8 +618,21 @@ with sync_playwright() as pw:
         setView('bench'); if (view === 'enlarged') setEnlarged(true);
         setMeasureOpen(true);
         const box = el.measurePanel.getBoundingClientRect();
+        /* Since the UI review (20 Nov) the panel takes the height there is (placeMeasure) and its views
+           are laid in one box that hides what overflows, so what a short window costs is a control cut. */
+        let cut = 0;
+        for (const v of MEASURE_VIEWS) {
+          setMeasureView(v);
+          const vb = document.getElementById('mview-' + v).getBoundingClientRect();
+          for (const n of document.getElementById('mview-' + v).querySelectorAll('select, button, .knob-face, .check-switch, .reading')) {
+            if (!n.getClientRects().length) continue;
+            const b = n.getBoundingClientRect();
+            if (b.bottom > vb.bottom + 0.5 || b.right > vb.right + 0.5) cut++;
+          }
+        }
+        setMeasureView('trigger');
         out[view] = { inside: box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth,
-                      scrolls: el.measurePanel.scrollHeight > el.measurePanel.clientHeight + 1,
+                      scrolls: el.measurePanel.scrollHeight > el.measurePanel.clientHeight + 1 || cut > 0,
                       over: el.screenTools.nextElementSibling === (view === 'bench' ? el.benchScope : el.panes) };
         setMeasureOpen(false); setEnlarged(false);
       }
@@ -685,7 +698,7 @@ with sync_playwright() as pw:
     p.evaluate("() => setSize(1)"); p.wait_for_timeout(200)
     short = p.evaluate(FIT)
     p.evaluate("() => setSize('auto')")
-    check("null: at 960x480 the same check says the panel does not fit", not short["bench"]["inside"], str(short))
+    check("null: at 960x480 the same check says the panel does not fit", not short["bench"]["inside"] or short["bench"]["scrolls"], str(short))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
     check("no page errors across the run", not bad, "; ".join(bad[:4]))
     b.close()

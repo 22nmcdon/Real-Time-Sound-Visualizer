@@ -30,7 +30,8 @@ def check(name, ok, detail=""):
 
 READ = """() => ({ kind: playingKind(), speakers: el.speakersRow.hidden, heard: el.lagMixRow.hidden,
                lag: el.lagCheck.hidden, lagRow: el.lagRow.hidden,
-               shown: [el.speakersRow, el.lagMixRow].map((r) => r.getClientRects().length > 0) })"""
+               // Each on its own subtab since the UI review (20 Nov): the filter's on Vertical, the lag's on Time.
+               shown: [[el.speakersRow, 'vertical'], [el.lagMixRow, 'time']].map(([r, v]) => { setMeasureView(v); return r.getClientRects().length > 0; }) })"""
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required",
