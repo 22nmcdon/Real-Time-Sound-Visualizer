@@ -388,10 +388,12 @@ with sync_playwright() as pw:
       const m = document.getElementById('testingMark');
       if (inflow) { m.style.position = 'static'; m.style.transform = 'none'; m.parentElement.style.flex = '0 0 auto'; }
       const box = (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v * 100) / 100); };
-      const boxes = {};
-      document.querySelectorAll('.top-bar, .top-bar .head > *, .top-bar .preset-bar > *').forEach((e, i) => { boxes[i + ':' + (e.id || e.className)] = box(e); });
+      const all = () => { const o = {}; document.querySelectorAll('.top-bar, .top-bar .head > *, .top-bar .preset-bar > *').forEach((e, i) => { o[i + ':' + (e.id || e.className)] = box(e); }); return o; };
+      const boxes = all(), was = m.hidden;
+      // The same page with the mark taken away, read straight after: what the mark itself moves.
+      m.hidden = true; const bare = all(); m.hidden = was;
       const r = m.getBoundingClientRect(), g = m.parentElement.getBoundingClientRect();
-      return { boxes, shown: !m.hidden && r.width > 0, text: m.textContent,
+      return { boxes, bare, shown: !m.hidden && r.width > 0, text: m.textContent,
                inside: r.left >= g.left - 0.01 && r.right <= g.right + 0.01, ink: getComputedStyle(m).color };
     }"""
     def opened(where, w, h, inflow=False):
@@ -408,17 +410,22 @@ with sync_playwright() as pw:
         root, testing = opened("scope.html", w, h), opened("testing/scope.html", w, h)
         marked.append((w, h, root, testing))
         print("    %dx%d: root shows %s; testing shows %s, inside the spacer %s, header %s"
-              % (w, h, root["shown"], testing["shown"], testing["inside"], "the same" if root["boxes"] == testing["boxes"] else "MOVED"))
-        # Unreproduced as of 20 Nov (red at 1100x860 in two sessions' full
-        # runs, never since): what the next red run needs to say why.
-        if root["boxes"] != testing["boxes"]: moved(w, h, "root", root, "testing", testing)
+              % (w, h, root["shown"], testing["shown"], testing["inside"], "the same" if testing["bare"] == testing["boxes"] else "MOVED"))
+        if testing["bare"] != testing["boxes"]: moved(w, h, "without the mark", {"boxes": testing["bare"], "since": testing["since"]}, "with it", testing)
     check("under /testing/ the header says Testing, in the brand's secondary ink, at every window",
           all(t["shown"] and t["text"] == "Testing" and t["ink"] == "rgb(107, 97, 90)" for *_, t in marked), str([t["ink"] for *_, t in marked]))
     check("null: at the root it says nothing", not any(r["shown"] for _, _, r, _ in marked))
+    # In one page, with the mark and then without it (20 Nov). This compared
+    # the testing page's header with the root page's, two loads apart, and
+    # was red now and then at one window or another: a fresh load of the same
+    # page lays the title block out 167.781 or 167.875 px wide, one load in
+    # four, the same text in the same fonts, so two loads differed by a tenth
+    # of a pixel with no mark in either. The diagnostic print found it. Taking
+    # the mark away in the page that has it asks only what the mark moves.
     check("and the header is laid out the same to the hundredth of a pixel with it or without it, the mark inside its spacer",
-          all(r["boxes"] == t["boxes"] and t["inside"] for _, _, r, t in marked))
+          all(t["bare"] == t["boxes"] and t["inside"] for _, _, r, t in marked))
     flowed = opened("testing/scope.html", 1400, 900, inflow=True)
-    check("null: the mark put into the flow moves the header", flowed["boxes"] != marked[0][2]["boxes"])
+    check("null: the mark put into the flow moves the header", flowed["boxes"] != flowed["bare"])
     shutil.rmtree(site, ignore_errors=True)
 
     print("\n--- the edited mark moves nothing (15 Nov) ---")

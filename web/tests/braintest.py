@@ -812,17 +812,28 @@ with sync_playwright() as pw:
         set('delaySync', sync, 'change');
         setScreenKeys(true); await wait(600);
         const src = state.source, rate = src.sampleRate, real = src.absorb, chunks = [];
-        let got = 0;
-        src.absorb = function (lanes, readings) { chunks.push(Float32Array.from(lanes[0])); got += lanes[0].length; return real.call(this, lanes, readings); };
+        let got = 0, heard = -1;
+        src.absorb = function (lanes, readings) {
+          const l = Float32Array.from(lanes[0]);
+          // Where the key is first heard, in the recording's samples: the chunks
+          // just after the key were played before it, as many as were on their way.
+          if (heard < 0) for (let i = 0; i < l.length; i++) if (Math.abs(l[i]) > 1e-4) { heard = got + i; break; }
+          chunks.push(l); got += l.length; return real.call(this, lanes, readings); };
         /* Until this many samples have come back since the key, however long
            the page takes: under load a headless browser's audio can run
            behind the wall clock, so even the note is held by its samples. */
         const until = async (n) => { for (let w = 0; got < n && w < 6000; w++) await wait(5); };
         let l;
         try {
-          midiNoteOn(57, 110); await until(Math.round(rate * held / 1000));
+          /* Held for its length after it is first heard (20 Nov): counted from
+             the recording's start, the chunks already on their way when the
+             key went down filled the eighth's 60 ms before it sounded, and a
+             note let go before it was heard read as no rise at all (None). */
+          midiNoteOn(57, 110);
+          for (let w = 0; heard < 0 && w < 6000; w++) await wait(5);
+          await until(heard + Math.round(rate * held / 1000));
           midiNoteOff(57);
-          await until(Math.round(rate * (held >= 1000 ? held / 1000 + 0.5 : 1.3)));
+          await until(heard + Math.round(rate * (held >= 1000 ? held / 1000 + 0.5 : 1.3)));
         } finally { src.absorb = real; }
         l = new Float32Array(got);
         for (let c = 0, o = 0; c < chunks.length; o += chunks[c].length, c++) l.set(chunks[c], o);
@@ -847,15 +858,18 @@ with sync_playwright() as pw:
           return { cents: 1200 * Math.log2(Math.max(...hz) / Math.min(...hz)), frames: hz.length };
         }
         /* A short note and its repeat: the first two rises out of silence,
-           2 ms at a time. Out of silence, since the window can open on the
-           tail of what played before the keys gated it. */
+           2 ms at a time, each a climb of three tenths of the loudest within
+           10 ms. Not out of silence, as this was until 20 Nov: under load the
+           key came up late, the note's release was still sounding when its
+           repeat came in at 250 ms, and with no silence before it the repeat
+           was never a rise (None). A release only falls, so a climb is an
+           onset, over a tail or not; the recording begins in silence. */
         const F = Math.round(rate * 0.002), en = [];
         for (let i = 0; i + F <= l.length; i += F) { let e = 0; for (let j = i; j < i + F; j++) e = Math.max(e, Math.abs(l[j])); en.push(e); }
         const top = Math.max(...en), rises = [];
-        let quiet = false;
-        for (let j = 0; j < en.length && rises.length < 2; j++) {
-          if (en[j] < top * 0.05) quiet = true;
-          else if (quiet && en[j] > top * 0.3) { rises.push(j); quiet = false; }
+        for (let j = 5; j < en.length && rises.length < 2; j++) {
+          const low = Math.min(...en.slice(j - 5, j));
+          if (en[j] - low > top * 0.3) { rises.push(j); j += 25; }
         }
         return { ms: rises.length < 2 ? null : (rises[1] - rises[0]) * 2, from: transport.from, start };
       } finally {
