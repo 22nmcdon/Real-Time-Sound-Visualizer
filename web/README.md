@@ -7580,7 +7580,7 @@ that is drops of paint rather than small strokes. Three things the revision lear
   over the distance, `kPullSamples`), the shader was left lifting it, and the look showed four
   times the map's pull past the stroke (0.63 per cent against 0.17). `painttest.py`'s look-equals-
   map checks for the pull and the drops are what found it; a new kind of stamp wants one.
-- **A drop's shape is one function in two languages** (`paintDropIn` in `paint.h`, `dropIn` in the
+- **A drop's shape is one function in two languages** (`paintDropCover` in `paint.h`, `dropCover` in the
   shader), the same hash, and the map samples each cell at the look's six by six pixel centres, so
   a drop lands the same paint in both. Keep them line for line.
 

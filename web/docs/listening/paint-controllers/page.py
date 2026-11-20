@@ -36,7 +36,7 @@ PHRASES = [
      "impact is full.",
      "Spatter is drops now, not strokes: a ragged blot where the brush lands, larger than the stroke, and round it drops "
      "of every size - many fine specks, a few large blots - thrown further and bigger the harder the strike, smaller the "
-     "further they fly, some drawn out into a tail pointing away from the blot. The soft strikes throw nothing (under "
+     "further they fly, some - the larger ones likelier - drawn out into a teardrop whose tail points away from the blot, every edge smooth and rounded. The soft strikes throw nothing (under "
      "about a third of a full impact, nothing). <b>Without</b>, none at all. <b>As first built</b>, a scatter of small "
      "strokes all alike. The close-ups are round the first hard strike."),
     ("lean", "Aftertouch leaned on",

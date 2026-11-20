@@ -230,20 +230,20 @@
    "brush_cells": 4.1,
    "brush_p90": 6.84,
    "drops": 284,
-   "glow": 0.485,
+   "glow": 0.489,
    "memory": 0.002,
    "motion": 0.338,
-   "paint": 452.8,
+   "paint": 461.4,
    "pulls": 0,
    "scan": {
-    "centroid": 3.04,
-    "centroid_p10": 2.8,
+    "centroid": 3.01,
+    "centroid_p10": 2.78,
     "centroid_p90": 3.52,
     "high": 0.011,
-    "movement": 0.0027,
-    "movement_p90": 0.0087,
+    "movement": 0.0026,
+    "movement_p90": 0.0089,
     "readings": 431,
-    "sine": 0.435
+    "sine": 0.443
    },
    "stamps": 902,
    "wet": 0.32

@@ -288,23 +288,31 @@ struct PaintStamp {
 };
 constexpr std::uint8_t kPaintStampBrush = 0, kPaintStampDrop = 1, kPaintStampPull = 2;
 
-/* A drop's shape, in units of its radius: `v` along the way it flew, `u`
-   across. A round head with a ragged edge (three harmonics, their phases
-   from the seed), and, longer than one, a tail tapering away from where it
-   was thrown from, as a drop that lands at a slant draws one. The look's
-   shader (scope.html's paintView, dropIn) is this, line for line, and the
-   map lays it sampled as the look's pixels fall in a cell. */
-inline bool paintDropIn(double u, double v, double longer, std::uint32_t seed, double rough) {
+/* A drop's shape, in units of its radius: how much of a pixel of side `px`
+   (in those units) centred at (`u`, `v`) it covers, nought to one - `v`
+   along the way it flew, `u` across. A round head with a smooth, uneven edge
+   (four low harmonics, their phases from the seed: surface tension keeps a
+   drop's edge rounded, and the higher ones drew it as a cog), and, longer
+   than one, a teardrop's tail tapering away from where it was thrown from,
+   as a drop that lands at a slant draws one. The edge is a ramp a pixel
+   wide, so the look draws it smooth at its own resolution rather than in
+   steps (the owner, 20 Nov: a hard inside-or-out test drew every drop as a
+   cluster of square pixels). The look's shader (scope.html's paintView,
+   dropCover) is this, line for line, and the map lays it sampled at the
+   look's pixel centres in each cell, at the look's pixel size, so the two
+   lay the same paint. */
+inline double paintDropCover(double u, double v, double longer, std::uint32_t seed, double rough, double px) {
   const double r = std::sqrt(u * u + v * v), th = std::atan2(u, v);
   const double p1 = 2 * kPi * paintHash(seed * 7u + 1u), p2 = 2 * kPi * paintHash(seed * 7u + 2u), p3 = 2 * kPi * paintHash(seed * 7u + 3u);
-  const double p4 = 2 * kPi * paintHash(seed * 7u + 4u), p5 = 2 * kPi * paintHash(seed * 7u + 5u);
-  const double edge = 1 + rough * (0.09 * std::cos(2 * th + p1) + 0.07 * std::cos(3 * th + p2) + 0.06 * std::cos(5 * th + p3) +
-                                   0.06 * std::cos(9 * th + p4) + 0.05 * std::cos(14 * th + p5));
-  if (r < edge) return true;
-  if (longer <= 1.05 || v <= 0) return false;
-  const double tail = 2 * (longer - 1) + 0.6;
-  if (v >= tail) return false;
-  return std::fabs(u) < 0.55 * std::pow(1 - v / tail, 1.5);
+  const double p4 = 2 * kPi * paintHash(seed * 7u + 4u);
+  const double edge = 1 + rough * (0.10 * std::cos(2 * th + p1) + 0.07 * std::cos(3 * th + p2) + 0.05 * std::cos(4 * th + p3) +
+                                   0.04 * std::cos(5 * th + p4));
+  double c = std::clamp(0.5 - (r - edge) / px, 0.0, 1.0);
+  if (longer > 1.05 && v > 0) {
+    const double tail = 2.5 * (longer - 1) + 0.8;
+    if (v < tail) c = std::max(c, std::clamp(0.5 - (std::fabs(u) - 0.75 * std::pow(1 - v / tail, 1.3)) / px, 0.0, 1.0));
+  }
+  return c;
 }
 
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
@@ -703,7 +711,7 @@ class Painter {
      so a layout that is not round spatters as it lays (the pieces' turned
      layout holds it); only the drop's own shape is drawn in the canvas's.
      Each is a stamp of its own kind, which the look draws by the same
-     shape (paintDropIn), and a drop that lands across the radius lies on
+     shape (paintDropCover), and a drop that lands across the radius lies on
      another register's ring, which that note then reads. */
   void spatter(const PaintBrush& b, double x, double y, double t) {
     const double impact = std::clamp(p_.spatterAt >= 0 ? p_.spatterAt : b.impact, 0.0, 1.0);
@@ -727,7 +735,9 @@ class Painter {
       const PaintPoint at = layout_->at(t + std::cos(th) * d * kSpatterSeconds * g, b.hz * std::exp2(std::sin(th) * d * kSpatterOctaves * g));
       const double ax = at.x * kPaintN, ay = at.y * kPaintN, ox = ax - x, oy = ay - y, off = std::hypot(ox, oy);
       const double r = kDropLeast * std::pow(1 - 0.985 * h(jj, 3), -0.6) * (0.7 + 0.6 * k) * (1 - 0.75 * far) * p_.width / 2;
-      const double longer = h(jj, 4) < 0.4 ? 1 + (0.4 + 2.2 * h(jj, 5)) * far : 1.0;
+      /* Some drawn out into a teardrop, the larger ones likelier (a speck's tail is under a pixel): the longer the
+         further it flew, as a drop landing at a slanter angle draws a longer one. */
+      const double longer = h(jj, 4) < 0.15 + 0.45 * std::min(1.0, r / 0.5) ? 1 + (0.6 + 1.4 * h(jj, 5)) * (0.4 + 0.6 * far) : 1.0;
       const double thick = kDropThick * (0.6 + 0.4 * std::min(1.0, r / 0.6)) * (0.8 + 0.4 * h(jj, 6));
       drop(b, ax, ay, off > 1e-9 ? ox / off : 1, off > 1e-9 ? oy / off : 0, r, longer, base + jj * 104729u, 1.0, thick, t);
     }
@@ -737,8 +747,8 @@ class Painter {
      its width, its edge's seed and raggedness, and its thickness. It lays as
      a stamp does over what is there (mixing into wet paint, covering dry by
      its opacity), but neither picks up nor ploughs: it lands from the air.
-     Each cell takes the share of the look's six by six pixels inside it that
-     the shape covers, so the map holds what the look draws. */
+     Each cell takes the mean of what the shape covers of the look's six by
+     six pixels in it (paintDropCover), so the map holds what the look draws. */
   void drop(const PaintBrush& b, double x, double y, double dx, double dy, double r, double longer, std::uint32_t seed,
             double rough, double thick, double t) {
     constexpr int N = kPaintN, S = kDropSamples;
@@ -754,19 +764,19 @@ class Painter {
       stamps_.push_back(st);
     } else { dropped_++; }
     seed &= 0xffffffu;
-    const double reach = r * std::max(1 + 0.33 * rough, longer > 1.05 ? 2 * (longer - 1) + 0.6 : 0.0) + 1;  // the edge's harmonics add to under a third
+    const double reach = r * std::max(1 + 0.26 * rough, longer > 1.05 ? 2.5 * (longer - 1) + 0.8 : 0.0) + 1;  // the edge's harmonics add to about a quarter
     const int x0 = std::max(0, static_cast<int>(std::floor(x - reach))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + reach)));
     const int y0 = std::max(0, static_cast<int>(std::floor(y - reach))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + reach)));
     const double nx = -dy, ny = dx;
     for (int yy = y0; yy <= y1; yy++)
       for (int xx = x0; xx <= x1; xx++) {
-        int in = 0;
+        double in = 0;
         for (int j = 0; j < S; j++)
           for (int i = 0; i < S; i++) {
             const double rx = xx + (i + 0.5) / S - x, ry = yy + (j + 0.5) / S - y;
-            if (paintDropIn((rx * nx + ry * ny) / r, (rx * dx + ry * dy) / r, longer, seed, rough)) in++;
+            in += paintDropCover((rx * nx + ry * ny) / r, (rx * dx + ry * dy) / r, longer, seed, rough, 1.0 / (S * r));
           }
-        if (!in) continue;
+        if (!(in > 0)) continue;
         const double d = thick * in / (S * S);
         const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
         const double before = map_.thick[q], wetBefore = map_.wet[q];
@@ -1033,7 +1043,7 @@ class Painter {
      along and eight across), the least drop kDropLeast cells across its radius, the blot's edge kSpatterBlot as
      ragged as a drop's, and a drop's thickness about kDropThick (a heavy stroke's). */
   static constexpr double kSpatterFrom = 0.35, kSpatterMost = 70, kSpatterSeconds = 0.6, kSpatterOctaves = 2.5;
-  static constexpr double kDropLeast = 0.18, kSpatterBlot = 1.8, kSpatterBlotMost = 4.2, kDropThick = 0.5;
+  static constexpr double kDropLeast = 0.18, kSpatterBlot = 1.5, kSpatterBlotMost = 4.2, kDropThick = 0.5;
   static constexpr int kDropSamples = 6;  // the look's pixels across a cell: PAINT_SIZE / PAINT_CELLS
 
   PaintParams p_;

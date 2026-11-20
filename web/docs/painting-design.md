@@ -339,13 +339,16 @@ reads it. **Revised the same day** after the owner listened to the first build
   to it, on the listening page).
 - **Velocity throws drops of paint.** As first built, spatter was up to twenty small dabs, each a
   brush stamp, all alike: "a bunch of really small strokes", rectangles. Rebuilt as drops, a
-  stamp kind of their own with one shape function in the core and the shader (`paintDropIn`,
-  `dropIn`): a ragged blot where the brush lands, larger than the stroke (4.2 cells across its
+  stamp kind of their own with one shape function in the core and the shader (`paintDropCover`,
+  `dropCover`, a ramp a pixel wide at the edge, so it is drawn smooth): a ragged blot where the brush lands, larger than the stroke (4.2 cells across its
   radius at a full impact against the stroke's 3.7), growing from nothing at the threshold; and
   up to 70 drops round it, sizes off a Pareto tail (the largest eight times the median), thrown
   up to 0.6 s along the time and 2.5 octaves across the pitch at a full impact, smaller the
-  further they fly (median 0.33 cells nearer, 0.22 further), and about a third drawn out into a
-  tail pointing away from the blot. Nothing under 0.35 of a full impact, so a soft strike and
+  further they fly (median 0.33 cells nearer, 0.22 further), and about two in five - the larger
+  ones likelier, since a speck's tail is under a pixel - drawn out into a teardrop whose tail
+  points away from the blot. Its edge is smooth: a hard inside-or-out test drew every drop as
+  a cluster of square pixels, so the cover ramps over a pixel, and the edge's harmonics stop at
+  the fifth (higher ones drew the blot as a cog). Nothing under 0.35 of a full impact, so a soft strike and
   Strike at nought are clean (at the default Strike of 50, a velocity of about 90 before the
   first drop). The map samples each cell at the look's six by six pixels, so a drop lays the
   same paint in both, and each lands in the layout's terms, so the turned layout still holds.

@@ -218,11 +218,11 @@ class Looks:
         if url["mode"] != "gpu": raise SystemExit("the look needs WebGL 2: " + url["mode"])
         img = Image.open(io.BytesIO(base64.b64decode(url["url"].split(",")[1]))).convert("RGB")
         img.save(out, quality=88)
-        # And a close-up, `crop` a box in the canvas's unit square (left, top, right, bottom), at the look's own pixels doubled.
+        # And a close-up, `crop` a box in the canvas's unit square (left, top, right, bottom), at the look's own pixels doubled, smoothly (nearest-neighbour doubling drew every edge in steps).
         if crop:
             n = img.size[0]
             box = tuple(int(round(v * n)) for v in crop[0])
-            img.crop(box).resize(((box[2] - box[0]) * 2, (box[3] - box[1]) * 2), Image.NEAREST).save(crop[1], quality=92)
+            img.crop(box).resize(((box[2] - box[0]) * 2, (box[3] - box[1]) * 2), Image.LANCZOS).save(crop[1], quality=92)
 
     def close(self):
         self.browser.close(); self.pw.stop()
