@@ -1,15 +1,18 @@
 """The bend as a palette knife (20 Nov): pictures for the owner before its
 checks. The bend phrase from the paint-controllers page (a whole tone up in a
 quarter second and back, then down slowly over a second and back), painted by
-the core and drawn by the face's own look:
+the core and drawn by the face's own look. Second design: the knife displaces
+and levels the stroke's own paint (a slab, a film behind, a lip ahead), where
+2da8bfd laid a separate sheet beside it.
 
-  bend-knife-REACH.jpg   the knife at 0.7, 1.0 (its default) and 1.5 of its reach
-  bend-smear.jpg         0ad2682's smear (SMEAR=, that commit's core unpacked)
+  bend-knife-REACH.jpg   the knife at 1.0 (its default) and 1.5 of its reach
+  bend-sheet.jpg         2da8bfd's knife, a sheet laid beside the stroke (SHEET=, that commit's core unpacked)
   bend-without.jpg       the brush deaf to the bend
   bend-WAY-flick.jpg     each close round the quick bend, and bend-WAY-slow.jpg round the slow one
   bend-knife-1.0-map.png the core's map of the default, at its own cells, and its close-ups beside the look's
+  flick-large.jpg        the default's quick bend at three times the look's pixels
 
-    CHROME=/opt/pw-browsers/chromium FIRST=/path/to/7389e9c SMEAR=/path/to/0ad2682 \\
+    CHROME=/opt/pw-browsers/chromium FIRST=/path/to/7389e9c SHEET=/path/to/2da8bfd \\
         python3 web/docs/listening/paint-controllers/knife/render.py
 """
 import importlib.util, json, os, subprocess
@@ -23,7 +26,7 @@ ctl = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ctl)
 pw, step1 = ctl.pw, ctl.step1
 BUILD = os.path.join(ctl.BUILD, "knife")
-SMEAR = os.environ.get("SMEAR", "")
+SMEAR = os.environ.get("SHEET", "")
 
 
 def box(x, y, h):
@@ -42,9 +45,10 @@ def main():
     path = os.path.join(BUILD, "bend.script")
     with open(path, "w") as f: f.write(ctl.script(json.dumps(setup), notes, events, length))
     out = lambda n: os.path.join(HERE, n)
-    ways = [("knife-1.0", "render", ("2", "15", "0", "1")), ("knife-0.7", "render", ("2", "15", "0", "0.7")),
-            ("knife-1.5", "render", ("2", "15", "0", "1.5")), ("without", "render", ("2", "11", "0"))]
-    if SMEAR: ways.append(("smear", "render-smear", ("2", "15", "0", "0", "1")))
+    ways = [("knife-1.0", "render", ("2", "15", "0", "1")), ("knife-1.5", "render", ("2", "15", "0", "1.5")),
+            ("without", "render", ("2", "11", "0"))]
+    # 2da8bfd's knife is not rendered here: its smear stamps mean something else to today's shader. Its own pictures,
+    # from that commit, are copied in beside these as bend-sheet*.jpg.
     looks = pw.Looks()
     boxes = None
     try:
@@ -61,7 +65,17 @@ def main():
                     return (float(np.median(q[:, 0])), float(np.median(q[:, 1]))) if len(q) else (0.5, 0.5)
                 boxes = {"flick": box(*at(1.0, 1.5), 0.14), "slow": box(*at(3.8, 5.0), 0.17)}
             crops = [(boxes[k], out("bend-%s-%s.jpg" % (way, k))) for k in ("flick", "slow")]
+            if way == "knife-1.0":
+                # The flick at three times: its own box, a little tighter, upscaled from the whole look after.
+                fb = boxes["flick"]
+                cxy = ((fb[0] + fb[2]) / 2, (fb[1] + fb[3]) / 2)
+                large = box(cxy[0], cxy[1], 0.09)
             looks.look(prefix, out("bend-%s.jpg" % way), floats=23, crop=crops)
+            if way == "knife-1.0":
+                img = Image.open(out("bend-%s.jpg" % way))
+                n = img.size[0]
+                px = tuple(int(round(v * n)) for v in large)
+                img.crop(px).resize(((px[2] - px[0]) * 3, (px[3] - px[1]) * 3), Image.LANCZOS).save(out("flick-large.jpg"), quality=92)
             if way == "knife-1.0":
                 _, thick, wet = step1.maps_of(prefix)
                 m = step1.picture(thick[-1], wet[-1], size=768)

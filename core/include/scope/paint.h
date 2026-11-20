@@ -317,26 +317,51 @@ inline double paintDropCover(double u, double v, double longer, std::uint32_t se
   return c;
 }
 
-/* The bend's palette knife (20 Nov; the owner, of a smear drawn as bristle
-   streaks and then as wandering trails: "it should be more like a flat tool
-   smearing it to the side"): how much of the sheet of paint the knife lays
-   at a pixel of side `px`, nought to one plus the ridge - `s` outward from
-   where the sheet starts, `l` along the stroke, both in the sheet's
-   half-length along the stroke, `len` how far it is pushed in the same. One
-   flat, smooth sheet, no striations: its sides soft, widening a little as it
-   goes, sweeping back along the stroke as `bend` says, thinning smoothly
-   outward, and at its far edge, where the knife stops, piled into a soft
-   ridge (`ridge` of the sheet's own thickness more). The look's shader
-   (knifeCover) is this, line for line. */
-inline double paintKnifeCover(double l, double s, double len, double bend, double ridge, double px) {
-  if (s < -0.5 || s > len * 1.2) return 0;
-  const auto smooth = [](double c) { c = std::clamp(c, 0.0, 1.0); return c * c * (3 - 2 * c); };
-  const double x = std::clamp(s / len, 0.0, 1.0), lat = l - bend * x * x * len;
-  const double half = 1 + 0.25 * x;
-  const double side = smooth((half - std::fabs(lat)) / (0.35 * half + px));
-  const double start = smooth((s + 0.5) / 0.5), end = smooth((1.08 - s / len) / 0.12);
-  const double r = (s / len - 0.93) / 0.07;
-  return side * start * end * ((1 - 0.75 * x) + ridge * std::exp(-r * r));
+/* The bend's palette knife (20 Nov). The owner, of a knife drawn as a sheet
+laid beside the stroke: "A knife going over something like this would look a
+lot more clean than smeared ... and it would also change the original lines'
+look a lot more". What a knife does (knife-painting guides): its flat blade
+levels the paint it passes to one even plane, erasing the stroke's grooves;
+it carries the stroke's own paint with it, so the stroke shears out to the
+side as a slab; behind it, where it started, it leaves a thin, patchy film;
+and where it lifts, the paint it pushed ahead stands in one raised lip.
+
+So across one strip of the stroke (`s` from the stroke's middle, the way the
+knife pushes, in cells), how thick the paint stands after it, over the
+slab's own thickness: the stroke's half-width `c`, pushed `push`, a film
+`film` thick behind it, patchy by the canvas's cells (`wx, wy`), and a lip
+`lip` high and `lipw` wide at the far edge; a ramp `px` wide at each edge so
+the look draws it clean but not jagged. The look's shader (knifeProfile) is
+this, line for line. */
+inline double paintKnifePatch(double wx, double wy) {
+  const double x = wx / 1.3, y = wy / 1.3, ix = std::floor(x), iy = std::floor(y), fx = x - ix, fy = y - iy;
+  const auto at = [](double i, double j) {
+    return static_cast<double>(paintHash(static_cast<std::uint32_t>(static_cast<std::int32_t>(i)) * 73856093u ^
+                                         static_cast<std::uint32_t>(static_cast<std::int32_t>(j)) * 19349663u));
+  };
+  const double sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const double v = (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
+  return std::clamp((v - 0.2) * 1.8, 0.0, 1.0);
+}
+/* A point (`dx, dy` from the ring's centre) in a knife strip's terms: `l`
+   along the stroke from the strip's middle (an angle, the way the brush
+   turns, `turn`), and `s` across it from the stroke's middle the way the
+   knife pushes (`way`, out or in), in cells. The look's shader (knifePolar)
+   is this, line for line. */
+inline void paintKnifePolar(double dx, double dy, double mid, double turn, double way, double radius, double& l, double& s) {
+  double a = (std::atan2(dy, dx) - mid) * turn;
+  while (a > kPi) a -= 2 * kPi;
+  while (a < -kPi) a += 2 * kPi;
+  l = a;
+  s = (std::hypot(dx, dy) - radius) * way;
+}
+inline double paintKnifeProfile(double s, double c, double push, double lipw, double lip, double film, double wx, double wy, double px) {
+  if (s < -c || s > c + push + 3 * lipw) return 0;
+  const double into = std::clamp(0.5 + (s - (push - c)) / px, 0.0, 1.0);  // nought behind the slab, one on it
+  const double end = std::clamp(0.5 - (s - (c + push)) / px, 0.0, 1.0);
+  const double r = (s - (c + push)) / lipw;
+  const double base = film * paintKnifePatch(wx, wy) * (1 - into) + into * end;
+  return base + lip * std::exp(-r * r);
 }
 
 /* The painter: a layout, the brushes, the map and the reads, stepped once a
@@ -389,6 +414,17 @@ class Painter {
        the bend stops, so the smear grows in and fades out along the stroke rather than starting and stopping at an
        edge. Its way is the bend's last. */
     if (bendStep_ != 0) knifeWay_ = bendStep_ > 0 ? 1 : -1;
+    /* One knife a hand a frame: a blade sweeps all the paint in its path, a chord's strokes together. Each brush ran
+       its own at first, and a chord's swaths overlapped in staggered slices that levelled over each other, drawn as
+       stripes. So the hand's strokes' radii, from the ring's centre, as they stood, set its one swath. */
+    for (int h = 0; h < 2; h++) { knifeDone_[static_cast<std::size_t>(h)] = false; knifeLo_[static_cast<std::size_t>(h)] = 1e9; knifeHi_[static_cast<std::size_t>(h)] = -1e9; }
+    for (const auto& bb : brushes_) {
+      if (!bb.serial || !bb.placed || bb.handed || bb.layer < 0 || bb.layer > 1) continue;
+      const PaintRing rg = layout_->ring(bb.hz);
+      const double r = std::hypot(bb.x - rg.cx * kPaintN, bb.y - rg.cy * kPaintN);
+      const auto h = static_cast<std::size_t>(bb.layer);
+      knifeLo_[h] = std::min(knifeLo_[h], r); knifeHi_[h] = std::max(knifeHi_[h], r);
+    }
     {
       const double want = std::fabs(bendStep_), k = want > knifeRate_ ? 1 - std::exp(-dt / kKnifeRise) : 1 - std::exp(-dt / kKnifeEase);
       knifeRate_ += (want - knifeRate_) * k;
@@ -702,14 +738,14 @@ class Painter {
        it under a cell, which nobody sees under a stroke five wide. So a bend
        is also a palette knife: the paint under the brush is pushed to the
        side the pitch went as one flat sheet (knife). */
-    if (knifeRate_ > 0 && b.placed && dt > 0) {
+    if (knifeRate_ > 0 && b.placed && dt > 0 && b.layer >= 0 && b.layer < 2 && !knifeDone_[static_cast<std::size_t>(b.layer)]) {
       const PaintPoint was = layout_->at(t, b.hz * std::exp2(-knifeWay_ * knifeRate_)), on = layout_->at(t + 0.05, b.hz);
       const double mx = x - was.x * kPaintN, my = y - was.y * kPaintN, moved = std::hypot(mx, my);
       const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
       double fx = on.x * kPaintN - x, fy = on.y * kPaintN - y;
       const double fl = std::hypot(fx, fy);
       fx = fl > 1e-9 ? fx / fl : 1; fy = fl > 1e-9 ? fy / fl : 0;
-      if (moved > 1e-9) knife(b, b.x, b.y, mx / moved, my / moved, fx, fy, hw, moved, moved / dt, len, t);
+      if (moved > 1e-9) { knifeDone_[static_cast<std::size_t>(b.layer)] = true; knife(b, b.x, b.y, mx / moved, my / moved, fx, fy, hw, moved, moved / dt, len, t); }
     }
     const int steps = std::max(1, static_cast<int>(std::ceil(len / kSpacing)));
     const double ux = len > 1e-9 ? dx / len : 1, uy = len > 1e-9 ? dy / len : 0;
@@ -823,101 +859,152 @@ class Painter {
       }
   }
 
-  /* The knife, in cells: under a brush at (x, y), half-width `hw`, moving
-     the way (fx, fy) by `travel` this frame, the bend having moved it
-     `moved` across the way (ux, uy) at `speed` cells a second. It scrapes a
-     share of the wet paint off the stroke there - by how far the bend moved
-     over the brush's half-width (kKnifeTake), at most half, so the stroke is
-     scraped thinner and lighter, never to a hole (at most 0.6 a frame) - and pushes it out as one
-     sheet starting just inside the stroke's edge (paintKnifeCover), a
-     little back along the stroke (kKnifeAlong) as the brush moves on. The
-     sheet reaches kKnifeReach of the brush's half-widths at a whole tone
-     (PaintParams::pullReach times), shorter while the bend is short of it
-     and for a slow bend, which also piles a lower ridge than a flick. It
-     lays what it scraped (the stamp carries the thickness), so nothing is
-     made, and the look does the same per pixel. */
+  /* The knife, in cells: on the strip of the stroke the brush laid last
+     frame, the bend having moved the brush `moved` across the way (ux, uy)
+     at `speed` cells a second. The strip's paint is displaced the way the
+     pitch went by the knife's push and levelled: each point takes the colour
+     of the paint from where the blade came, and its thickness becomes the
+     slab's even plane (paintKnifeProfile), a thin patchy film behind it and
+     one lip ahead - the strip's own paint, conserved, so the stroke shears
+     out to the side and its grooves are gone. The push is kKnifeReach of
+     the brush's half-widths at a whole tone and a flick (PaintParams::
+     pullReach times), by the eased bend speed, so the swath grows in and
+     out along the stroke; a flick pushes further with a sharper lip, a slow
+     bend shorter with a broader one.
+     The strip is in polar terms about the centre of the ring the brush is on
+     (the layout's ring for its pitch): across it is the radius, along it the
+     angle, and each frame's strip starts at the angle the last one ended
+     (`knifeEdge`), so the strips tile the stroke exactly with nothing pushed
+     twice and no seam - straight strips on a curved stroke left a wedge
+     between each pair, drawn as a dotted line. The look does the same per
+     pixel (paintKnifePolar). */
   void knife(const PaintBrush& b, double x, double y, double ux, double uy, double fx, double fy, double hw, double moved,
              double speed, double travel, double t) {
     constexpr int N = kPaintN, S = kDropSamples;
-    const double sharp = std::clamp(speed / kKnifeFlick, 0.0, 1.0);
+    (void)moved; (void)travel;
+    /* A flick or a slow bend, by the eased bend speed rather than this frame's: the bend's messages land unevenly
+       between frames, and read a frame at a time they made the push zigzag strip to strip, a saw along the lip. */
+    (void)speed;
+    const double sharp = std::clamp(knifeRate_ / kKnifeFull, 0.0, 1.0);
     const double semis = std::min(2.0, std::fabs(12 * std::log2(controls_.bend)));
-    double kx = ux - fx * kKnifeAlong, ky = uy - fy * kKnifeAlong;
-    const double kl = std::hypot(kx, ky);
-    kx /= kl; ky /= kl;
-    const double nx = -ky, ny = kx;  // along the sheet's width, the stroke's way
-    // The sheet's half-length along the stroke: long enough that each frame's overlaps the next ones' and they read as one.
-    const double h = std::max(kKnifeLength * hw, travel * 1.5);
-    const double reach = kKnifeReach * p_.pullReach * hw * (0.6 + 0.4 * sharp) * (0.35 + 0.65 * semis / 2);
-    const double f = std::min(0.6, kKnifeTake * moved / hw), ridge = 0.5 + 0.9 * sharp;
-    const double bend = -(fx * nx + fy * ny) * kKnifeSweep, start = 0.7 * hw;
-    // The scrape: a share of the wet paint within the brush's width and the sheet's length, its edges soft.
-    double took = 0;
-    const double rr = hw + h + 1;
-    const int x0 = std::max(0, static_cast<int>(std::floor(x - rr))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + rr)));
-    const int y0 = std::max(0, static_cast<int>(std::floor(y - rr))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + rr)));
+    const double push = kKnifeReach * p_.pullReach * hw * std::sqrt(std::clamp(knifeRate_ / kKnifeFull, 0.0, 1.0)) *
+                        (0.6 + 0.4 * sharp) * (0.35 + 0.65 * semis / 2);
+    const PaintRing ring = layout_->ring(b.hz);
+    const double ox = ring.cx * N, oy = ring.cy * N;
+    const auto hand = static_cast<std::size_t>(b.layer);
+    // The swath's middle and half-width across: the hand's strokes, lowest to highest, and a brush's half-width more.
+    const double lo = std::min(knifeLo_[hand], std::hypot(x - ox, y - oy)), hi = std::max(knifeHi_[hand], std::hypot(x - ox, y - oy));
+    const double radius = (lo + hi) / 2;
+    double& edge = knifeEdge_[hand];
+    bool& on = knifeOn_[hand];
+    double& smoothSlab = knifeSlab_[hand];
+    double& lastPush = knifePush_[hand];
+    if (!(push > 0.05) || !(radius > 2)) { on = false; smoothSlab = 0; lastPush = 0; return; }
+    /* The push runs from the last strip's to this one's across the strip, so the swath's far edge and its lip are one
+       line along the stroke; a push a strip drew them as a stair. */
+    const double push0 = on ? lastPush : push;
+    lastPush = push;
+    const auto pushAt = [&](double l, double span) { return push0 + (push - push0) * std::clamp(l / span + 0.5, 0.0, 1.0); };
+    // Which way is out, and whether the pitch went out (+1) or in (-1).
+    const double way = ((x - ox) * ux + (y - oy) * uy) >= 0 ? 1.0 : -1.0;
+    // Along: the way the brush travels about the centre, +1 or -1.
+    const double turn = ((x - ox) * fy - (y - oy) * fx) >= 0 ? 1.0 : -1.0;
+    // The strip ends a little behind the brush (paint already down) and starts where the last one ended.
+    // Two cells behind: the brush's own stamps this frame reach a cell and a half back from where it was, and laid over
+    // a strip just levelled they drew the brush's grooves across the plane, a dashed line a frame.
+    const double end = std::atan2(y - oy, x - ox) - turn * 2.0 / radius;
+    double begin = on ? edge : end - turn * 0.5 / radius;
+    double span = (end - begin) * turn;
+    while (span > kPi) span -= 2 * kPi;
+    while (span < -kPi) span += 2 * kPi;
+    if (span <= 1e-6) { on = true; return; }
+    if (span > 0.5) { begin = end - turn * 0.5 / radius; span = 0.5 / radius; }
+    edge = end; on = true;
+    const double mid = begin + turn * span / 2;
+    const double c = (hi - lo) / 2 + hw * 1.15, lipw = 0.5 + 1.0 * (1 - sharp), lip = 1.2 + 1.3 * sharp, film = kKnifeFilm;
+    const double most = std::max(push, push0);
+    const double inner = radius - c - (way < 0 ? most + 3 * lipw : 0) - 1, outer = radius + c + (way > 0 ? most + 3 * lipw : 0) + 1;
+    // The box over the strip's ring sector: its corners, and the outer arc's extremes are near enough for a span this short.
+    double bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    for (const double a : { mid - turn * span / 2, mid, mid + turn * span / 2 })
+      for (const double r : { std::max(0.0, inner), outer }) {
+        const double px = ox + std::cos(a) * r, py = oy + std::sin(a) * r;
+        bx0 = std::min(bx0, px); by0 = std::min(by0, py); bx1 = std::max(bx1, px); by1 = std::max(by1, py);
+      }
+    const int x0 = std::max(0, static_cast<int>(std::floor(bx0)) - 1), x1 = std::min(N - 1, static_cast<int>(std::ceil(bx1)) + 1);
+    const int y0 = std::max(0, static_cast<int>(std::floor(by0)) - 1), y1 = std::min(N - 1, static_cast<int>(std::ceil(by1)) + 1);
+    const int bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    if (bw <= 0 || bh <= 0 || bw * bh > kKnifeCells) return;
+    double held = 0, shape = 0;
     for (int yy = y0; yy <= y1; yy++)
       for (int xx = x0; xx <= x1; xx++) {
-        const double rx = xx + 0.5 - x, ry = yy + 0.5 - y;
-        const double c = knifeScrape((rx * nx + ry * ny) / h, (rx * kx + ry * ky) / h, hw / h);
-        if (c <= 0) continue;
-        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
-        const double tk = map_.thick[q] * f * map_.wet[q] * c;
-        map_.thick[q] = static_cast<float>(map_.thick[q] - tk);
-        took += tk;
-      }
-    if (!(took > 1e-7)) return;
-    // The sheet: its shape over the cells at the look's pixels, then scaled so it lays what was scraped.
-    const double far = start + reach + h * (2 + std::fabs(bend) * reach / h);
-    const double ex = x + kx * far, ey = y + ky * far;
-    const int sx0 = std::max(0, static_cast<int>(std::floor(std::min(x, ex) - far * 0.5 - h - 1)));
-    const int sx1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(x, ex) + far * 0.5 + h + 1)));
-    const int sy0 = std::max(0, static_cast<int>(std::floor(std::min(y, ey) - far * 0.5 - h - 1)));
-    const int sy1 = std::min(N - 1, static_cast<int>(std::ceil(std::max(y, ey) + far * 0.5 + h + 1)));
-    const int bw = sx1 - sx0 + 1, bh = sy1 - sy0 + 1;
-    if (bw <= 0 || bh <= 0 || bw * bh > kKnifeCells) return;
-    double sum = 0;
-    for (int yy = sy0; yy <= sy1; yy++)
-      for (int xx = sx0; xx <= sx1; xx++) {
-        double in = 0;
+        double in = 0, pr = 0;
         for (int j = 0; j < S; j++)
           for (int i = 0; i < S; i++) {
-            const double rx = xx + (i + 0.5) / S - x, ry = yy + (j + 0.5) / S - y;
-            in += paintKnifeCover((rx * nx + ry * ny) / h, ((rx * kx + ry * ky) - start) / h, reach / h, bend, ridge, 1.0 / (S * h));
+            const double wx = xx + (i + 0.5) / S, wy = yy + (j + 0.5) / S;
+            double l, sv;
+            paintKnifePolar(wx - ox, wy - oy, mid, turn, way, radius, l, sv);
+            const double pl = pushAt(l, span);
+            if (l < -span / 2 || l >= span / 2 || sv < -c || sv > c + pl + 3 * lipw) continue;
+            in += 1;
+            pr += paintKnifeProfile(sv, c, pl, lipw, lip, film, wx, wy, 1.0 / S);
           }
-        sheet_[static_cast<std::size_t>((yy - sy0) * bw + (xx - sx0))] = in / (S * S);
-        sum += in / (S * S);
+        const auto k = static_cast<std::size_t>((yy - y0) * bw + (xx - x0));
+        const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
+        knifeIn_[k] = in / (S * S); knifePr_[k] = pr / (S * S);
+        knifeThick_[k] = map_.thick[q]; knifeWet_[k] = map_.wet[q];
+        held += map_.thick[q] * knifeIn_[k];
+        shape += knifePr_[k];
       }
-    if (!(sum > 1e-9)) return;
-    const double thick = took / sum;
+    if (!(held > 1e-6) || !(shape > 1e-9)) return;
+    /* The slab's thickness, smoothed from strip to strip: levelled strip by strip, each stood at its own and the
+       steps between them were drawn as lines across the plane. Nearly conserved: what one strip lays over or
+       under its own paint the next ones make up. */
+    const double own = held / shape;
+    smoothSlab = smoothSlab > 0 ? smoothSlab + (own - smoothSlab) * kKnifeSmooth : own;
+    const double slab = smoothSlab;
     if (stamps_.size() < kPaintStampsMost) {
       PaintStamp st;
-      st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(kx); st.dy = static_cast<float>(ky);
-      st.w = static_cast<float>(2 * h / N); st.p = static_cast<float>(f); st.t = static_cast<float>(t); st.per = static_cast<float>(bend);
-      st.load[0] = static_cast<float>(thick); st.load[1] = static_cast<float>(ridge); st.load[2] = static_cast<float>(hw / h);
+      // Where the strip's middle is on the stroke, the way it pushes, and the ring's radius there; the look finds the
+      // centre from them. Its span is an angle; the turn and the way ride in `p` and `per`.
+      st.x = static_cast<float>((ox + std::cos(mid) * radius) / N); st.y = static_cast<float>((oy + std::sin(mid) * radius) / N);
+      st.dx = static_cast<float>(std::cos(mid) * way); st.dy = static_cast<float>(std::sin(mid) * way);
+      st.w = static_cast<float>(span); st.p = static_cast<float>(film); st.t = static_cast<float>(t); st.per = static_cast<float>(turn);
+      st.load[0] = static_cast<float>(slab); st.load[1] = static_cast<float>(c); st.load[2] = static_cast<float>(lipw); st.load[3] = static_cast<float>(lip);
+      st.load[4] = static_cast<float>(radius); st.load[5] = static_cast<float>(way); st.load[6] = static_cast<float>(push0);
       st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
       st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
-      st.kind = kPaintStampPull; st.a = static_cast<float>(reach / h);
+      st.kind = kPaintStampPull; st.a = static_cast<float>(push);
       stamps_.push_back(st);
     } else { dropped_++; }
-    for (int yy = sy0; yy <= sy1; yy++)
-      for (int xx = sx0; xx <= sx1; xx++) {
-        const double c = sheet_[static_cast<std::size_t>((yy - sy0) * bw + (xx - sx0))];
-        if (!(c > 0)) continue;
+    // The wetness the moved paint brings, from where the blade came (bilinear over the strip as it stood).
+    const auto wetFrom = [&](double wx, double wy) {
+      const double fxp = wx - x0 - 0.5, fyp = wy - y0 - 0.5;
+      const int ix = static_cast<int>(std::floor(fxp)), iy = static_cast<int>(std::floor(fyp));
+      double v = 0, wsum = 0;
+      for (int j = 0; j < 2; j++)
+        for (int i = 0; i < 2; i++) {
+          const int gx = ix + i, gy = iy + j;
+          if (gx < 0 || gy < 0 || gx >= bw || gy >= bh) continue;
+          const double wgt = (i ? fxp - ix : 1 - (fxp - ix)) * (j ? fyp - iy : 1 - (fyp - iy));
+          const auto k = static_cast<std::size_t>(gy * bw + gx);
+          v += wgt * knifeWet_[k] * knifeThick_[k]; wsum += wgt * knifeThick_[k];
+        }
+      return wsum > 1e-9 ? v / wsum : 1.0;
+    };
+    for (int yy = y0; yy <= y1; yy++)
+      for (int xx = x0; xx <= x1; xx++) {
+        const auto k = static_cast<std::size_t>((yy - y0) * bw + (xx - x0));
+        if (!(knifeIn_[k] > 0)) continue;
         const std::size_t q = static_cast<std::size_t>(yy) * N + static_cast<std::size_t>(xx);
-        const double d = thick * c, before = map_.thick[q], wetBefore = map_.wet[q];
-        if (before < 1e-4) acc_.ontoBare += d; else if (wetBefore > 0.3) acc_.intoWet += d; else acc_.ontoDry += d;
-        acc_.laid += d;
-        const double hide = (1 - std::exp(-d / kPaintHide)) * (1 - wetBefore);
-        const double kept = before * (1 - hide), after = kept + d;
-        map_.wet[q] = static_cast<float>(after > 0 ? (wetBefore * kept + d) / after : 0);
+        const double kept = knifeThick_[k] * (1 - knifeIn_[k]), put = slab * knifePr_[k], after = kept + put;
+        double cl, csv;
+        paintKnifePolar(xx + 0.5 - ox, yy + 0.5 - oy, mid, turn, way, radius, cl, csv);
+        const double dx = xx + 0.5 - ox, dy = yy + 0.5 - oy, r = std::hypot(dx, dy), back = r - way * pushAt(cl, span);
+        const double wet = r > 1e-9 && back > 0 ? wetFrom(ox + dx / r * back, oy + dy / r * back) : 1.0;
+        map_.wet[q] = static_cast<float>(after > 0 ? (knifeWet_[k] * kept + wet * put) / after : 0);
         map_.thick[q] = static_cast<float>(after);
       }
-  }
-  // Where the knife scrapes, nought to one: within the brush's width across the stroke (`half`, in the sheet's
-  // half-lengths) and the sheet's length along it, soft at both. The look's shader (knifeScrape) is this.
-  static double knifeScrape(double l, double s, double half) {
-    const double a = std::clamp((1 - std::fabs(l)) / 0.3, 0.0, 1.0), c = std::clamp((half - std::fabs(s)) / (0.3 * half), 0.0, 1.0);
-    return a * c;
   }
 
   /* One stamp, the study's oil paint (painting-study/tools/oilpaint.cpp) kept
@@ -1093,8 +1180,10 @@ class Painter {
   /* The knife: how far it pushes (the brush's half-widths, at a whole tone and a flick), how much it scrapes (over what
      the bend moved, against the brush's half-width), how fast it rises and dies away (seconds), the cells a second of
      bend movement that are a flick, how far back along the stroke the push leans, and how much the sheet sweeps. */
-  static constexpr double kKnifeReach = 6, kKnifeTake = 25, kKnifeRise = 0.03, kKnifeEase = 0.12, kKnifeFlick = 6, kKnifeLength = 1.0;
-  static constexpr double kKnifeAlong = 0.25, kKnifeSweep = 0.3;
+  /* The knife: how far it pushes (the brush's half-widths, at a whole tone and a flick), the bend speed (octaves a
+     frame) that is a full push, how fast the push rises and dies away (seconds), the cells a second of bend movement
+     that are a flick, and the film it leaves behind over the slab's thickness. */
+  static constexpr double kKnifeReach = 4, kKnifeFull = 0.011, kKnifeRise = 0.08, kKnifeEase = 0.12, kKnifeFlick = 6, kKnifeFilm = 0.15, kKnifeSmooth = 0.15;
   static constexpr int kKnifeCells = 8192;
   /* The spatter: nothing under kSpatterFrom of a full impact; at a full one kSpatterMost drops, thrown as far as
      kSpatterSeconds along the time and kSpatterOctaves in pitch at width two (the round layout's A3: about nine cells
@@ -1115,7 +1204,11 @@ class Painter {
   PaintControls controls_ {};
   double lastBend_ = 1, bendStep_ = 0;  // the bend at the last frame, and how far it has moved since, in octaves
   double knifeRate_ = 0, knifeWay_ = 1;  // the knife's push, eased (octaves a frame), and which way the bend went last
-  std::array<double, kKnifeCells> sheet_ {};  // the knife's sheet over its box (knife)
+  // Each hand's knife: whether it has cut this frame, its strokes' radii, where its last strip ended and whether it
+  // cut last frame, and its slab's thickness smoothed from strip to strip.
+  std::array<bool, 2> knifeDone_ {}, knifeOn_ {};
+  std::array<double, 2> knifeLo_ {}, knifeHi_ {}, knifeEdge_ {}, knifeSlab_ {}, knifePush_ {};
+  std::array<double, kKnifeCells> knifeIn_ {}, knifePr_ {}, knifeThick_ {}, knifeWet_ {};  // the knife's strip as it stood (knife)
   std::array<Slot, kPaintBrushes> slots_ {};
   std::array<Struck, 16> struck_ {};
   std::int32_t serials_ = 0;
