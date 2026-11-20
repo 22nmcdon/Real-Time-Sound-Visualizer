@@ -23,7 +23,7 @@ What would go wrong, and what is checked for it:
 - where it sits: the Picture section's free middle at every size, taking no
   height, the three reads still in the window; and since the UI review (20 Nov)
   every line in CONTROL_WORDS whole, in four lines at most (three compact), at
-  the six windows. The null: each line said three times over is found cut.
+  the six windows. The null: each line said six times over is found cut.
 
 Serial: the rest is a third of a second of real time, and a busy machine
 stretches a sweep that has to be quicker than it.
@@ -298,7 +298,7 @@ with sync_playwright() as pw:
             }
             return { cut, most };
           };
-          const now = whole(), old = whole(3);
+          const now = whole(), old = whole(6);
           el.infoName.textContent = keep[0]; el.infoValue.textContent = keep[1]; t.textContent = keep[2];
           return { inBar: el.infoLine.parentElement === el.pictureBar.querySelector('.picture-wrap'), said: infoAt && infoAt.id,
                    compact: document.body.dataset.compact !== undefined, n: Object.keys(CONTROL_WORDS).length,
@@ -312,7 +312,7 @@ with sync_playwright() as pw:
     check("every one of the page's lines fits whole at every window, in four lines at most (three compact)",
           all(v["n"] > 300 and v["cuts"] == 0 and v["most"] <= (3 if v["compact"] else 4) for v in sit.values()),
           str({k: (v["cuts"], v["cut"], v["most"]) for k, v in sit.items()}))
-    null("each line said three times over, the same count finds most of them cut at every window", all(v["oldCuts"] > v["n"] / 2 for v in sit.values()),
+    null("each line said six times over, the same count finds most of them cut at every window", all(v["oldCuts"] > v["n"] / 2 for v in sit.values()),
          str({k: v["oldCuts"] for k, v in sit.items()}))
     p.set_viewport_size({"width": 1400, "height": 900}); p.wait_for_timeout(300)
 

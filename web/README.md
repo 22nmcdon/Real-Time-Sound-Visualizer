@@ -7660,7 +7660,7 @@ three. What was learned:
   (80 compact) whatever it says, and the check is that every line in `CONTROL_WORDS` fits whole.
 - **A null that cannot fail at a wide window.** The first null for "every line fits whole" was
   the old clamp of two lines; at 1660x1050 the full-width line fits every one of them in two, so
-  the null passed nothing. It is each line said three times over now, which is cut everywhere.
+  the null passed nothing; three times over still fitted four lines there. It is each line said six times over now, which is cut everywhere.
 - **A class name already taken.** The lane rows' name span was first `.lane-name`, which the
   Lanes rack's rows already style (`flex: 1 1 auto`, ellipsis); it is `.lane-word`. Grep the
   stylesheet for a class before giving it.
