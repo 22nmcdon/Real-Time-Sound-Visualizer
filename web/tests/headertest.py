@@ -22,6 +22,7 @@ Every change here is made with the real mouse and keyboard, since undo counts
 only what follows a trusted event: a knob turned by dispatchEvent is, rightly,
 no step at all, and is the null for that rule.
 """
+import time
 import os, re, sys
 from playwright.sync_api import sync_playwright
 
@@ -33,6 +34,13 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+
+def moved(w, h, an, a, bn, b):
+    """Every header box that differs between two readings, with how long after opening each was read."""
+    print("      MOVED at %dx%d: %s read %.2f s after opening, %s %.2f s" % (w, h, an, a["since"], bn, b["since"]))
+    for k in sorted(set(a["boxes"]) | set(b["boxes"])):
+        if a["boxes"].get(k) != b["boxes"].get(k):
+            print("        %s: %s %s, %s %s" % (k, an, a["boxes"].get(k), bn, b["boxes"].get(k)))
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(executable_path=CHROME, args=["--autoplay-policy=no-user-gesture-required"])
@@ -389,8 +397,10 @@ with sync_playwright() as pw:
     def opened(where, w, h, inflow=False):
         q = b.new_page(viewport={"width": w, "height": h})
         q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        t0 = time.monotonic()
         q.goto("file://%s/%s" % (site, where)); q.wait_for_timeout(1200)
         got = q.evaluate(BOXES, inflow)
+        got["since"] = time.monotonic() - t0
         q.close()
         return got
     marked = []
@@ -399,6 +409,9 @@ with sync_playwright() as pw:
         marked.append((w, h, root, testing))
         print("    %dx%d: root shows %s; testing shows %s, inside the spacer %s, header %s"
               % (w, h, root["shown"], testing["shown"], testing["inside"], "the same" if root["boxes"] == testing["boxes"] else "MOVED"))
+        # Unreproduced as of 20 Nov (red at 1100x860 in two sessions' full
+        # runs, never since): what the next red run needs to say why.
+        if root["boxes"] != testing["boxes"]: moved(w, h, "root", root, "testing", testing)
     check("under /testing/ the header says Testing, in the brand's secondary ink, at every window",
           all(t["shown"] and t["text"] == "Testing" and t["ink"] == "rgb(107, 97, 90)" for *_, t in marked), str([t["ink"] for *_, t in marked]))
     check("null: at the root it says nothing", not any(r["shown"] for _, _, r, _ in marked))
@@ -426,12 +439,16 @@ with sync_playwright() as pw:
     def edited_at(w, h, inflow=False):
         q = b.new_page(viewport={"width": w, "height": h})
         q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        t0 = time.monotonic()
         q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(1200)
         got = q.evaluate(EDITED_BOXES, inflow)
+        got["since"] = time.monotonic() - t0
         q.close()
         return got
     eds = [(w, h, edited_at(w, h)) for w, h in ((1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600))]
-    for w, h, e in eds: print("    %dx%d: edited shown %s, inside the button %s, header %s" % (w, h, e["shown"], e["inside"], "the same" if e["plain"] == e["edited"] else "MOVED"))
+    for w, h, e in eds:
+        print("    %dx%d: edited shown %s, inside the button %s, header %s" % (w, h, e["shown"], e["inside"], "the same" if e["plain"] == e["edited"] else "MOVED"))
+        if e["plain"] != e["edited"]: moved(w, h, "plain", {"boxes": e["plain"], "since": e["since"]}, "edited", {"boxes": e["edited"], "since": e["since"]})
     check("with the edited mark the header is laid out the same to the hundredth of a pixel at every window, the mark inside the preset's button",
           all(e["shown"] and e["inside"] and e["plain"] == e["edited"] for *_, e in eds))
     flowed_e = edited_at(1400, 900, inflow=True)
