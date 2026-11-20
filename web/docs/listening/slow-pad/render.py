@@ -13,11 +13,11 @@ candidates, each one field, a touch more of what already makes it breathe:
 
 Each is judged exactly as honestytest judges the bank (its own functions,
 imported), and the limiter's chord with it. Writes results.json beside this
-file and, with --wav DIR, a WAV of each, C4 held 10 s and 4.5 s after, the
-key at 0.9 s, 48 kHz 16-bit, all at one gain so their loudness compares. The
-WAVs are not committed; the owner publishes them.
+file and, with --audio, audio/slow-pad-NAME.mp3 for each, C4 held 10 s and
+4.5 s after, the key at 0.9 s, all at one gain so their loudness compares,
+64 kbps as the other pages' (ffmpeg); they are committed for the owner.
 
-    python3 web/docs/listening/slow-pad/render.py [--wav DIR]
+    python3 web/docs/listening/slow-pad/render.py [--audio]
 """
 import json, os, subprocess, sys, wave
 import numpy as np
@@ -57,8 +57,8 @@ for key, label, patch in CANDIDATES:
     print("%-10s early %s  late %s  %s" % (label, results[key]["early"], results[key]["late"], results[key]["headings"] or "none"))
 with open(os.path.join(HERE, "results.json"), "w") as f: json.dump(results, f, indent=1)
 
-if "--wav" in sys.argv:
-    out = sys.argv[sys.argv.index("--wav") + 1]
+if "--audio" in sys.argv:
+    out = os.path.join(HERE, "audio")
     os.makedirs(out, exist_ok=True)
     takes = {}
     for key, label, patch in CANDIDATES:
@@ -71,7 +71,10 @@ if "--wav" in sys.argv:
         takes[key] = np.fromfile(path, dtype=np.float32).reshape(-1, 2)
     gain = 0.9 / max(float(np.abs(t).max()) for t in takes.values())
     for key, t in takes.items():
-        with wave.open(os.path.join(out, "slow-pad-%s.wav" % key), "wb") as w:
+        wav = os.path.join(h["BUILD"], "slow-pad-%s.wav" % key)
+        with wave.open(wav, "wb") as w:
             w.setnchannels(2); w.setsampwidth(2); w.setframerate(48000)
             w.writeframes((np.clip(t * gain, -1, 1) * 32767).astype("<i2").tobytes())
-    print("WAVs in", out)
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", wav, "-codec:a", "libmp3lame", "-b:a", "64k",
+                        os.path.join(out, "slow-pad-%s.mp3" % key)], check=True)
+    print("MP3s in", out)
