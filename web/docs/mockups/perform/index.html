@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perform panel</title>
+<meta name="description" content="The Perform menu labelled throughout: the arpeggiator's three menus named and its pattern drawn, the clock as a sentence, Glide and Tempo as knobs, and the morph's crossfader with its two ends named.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="../ui-review/common.css">
+<style>
+.perform { width: 640px; }
+.perform .p-head { gap: 12px; }
+.perform .menu-note { font-size: 12px; color: var(--text-soft); white-space: nowrap; }
+.pcols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 26px; margin-top: 10px; }
+.win.compact .pcols { gap: 0 18px; margin-top: 6px; }
+.pcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.win.compact .pcol { gap: 6px; }
+.psec { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.psec:first-child { padding-top: 0; border-top: 0; }
+.win.compact .psec { gap: 4px; padding-top: 6px; }
+.fields3 { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 0 8px; }
+.fields2 { display: grid; grid-template-columns: 1fr 1.5fr; gap: 0 8px; }
+.fields3 .fld, .fields2 .fld { min-width: 0; }
+.fields3 select, .fields2 select { width: 100%; }
+.arp-plot { position: relative; height: 74px; border: 1px solid var(--line); background: var(--cream); }
+.win.compact .arp-plot { height: 58px; }
+.arp-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.arp-cap { font-size: 11px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.clock-line { display: flex; align-items: baseline; gap: 0; font-size: 13.5px; color: var(--charcoal); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.win.compact .clock-line { font-size: 12.5px; }
+.clock-line > span { flex: 0 0 auto; }
+.clock-line .sep { color: var(--text-soft); white-space: pre; }
+#transportState[data-on="true"] { color: var(--sage); }
+#transportState[data-on="false"] { color: var(--rust); }
+.clock-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.beats { display: flex; gap: 4px; }
+.beats i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); }
+.beats i.on { background: var(--charcoal); border-color: var(--charcoal); }
+.morph { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; }
+.morph input[type=range] { width: 100%; margin: 0; -webkit-appearance: none; appearance: none; background: none; height: 16px; }
+.morph input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+.morph input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--blush-deep); margin-top: -5.5px; }
+.morph input[type=range]:hover::-webkit-slider-thumb { background: var(--charcoal); }
+.morph .end { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.morph .end b { font-family: var(--serif); font-weight: 500; font-size: 15px; color: var(--charcoal); line-height: 1; }
+.morph .end .link-btn { font-size: 9px !important; }
+#morphPosValue { font-size: 11px; color: var(--charcoal); text-align: center; grid-column: 2; font-variant-numeric: tabular-nums; }
+.kt-row { display: flex; align-items: flex-end; gap: 12px; }
+.kt-row .row.knobs { display: flex; gap: 6px; }
+.tap { align-self: center; }
+.dimmed { opacity: 0.45; }
+</style>
+</head>
+<body>
+<main class="page">
+  <p class="eyebrow">UI review · 19 Nov · mockup 3 of 3</p>
+  <h1>Perform</h1>
+  <p class="lede">Everything named, the clock in a sentence, and what the arpeggiator will play drawn before you hold a chord.</p>
+  <p class="small">Live: choose a pattern, a step and the octaves, and the drawing shows what a held C major chord will play over one bar. Start the clock and it counts at the tempo. Glide and Tempo are knobs (drag, wheel or arrows); the morph stays a crossfader.</p>
+  <div class="bar"><span class="lbl">Window</span><span class="pg-switch" id="sizes"></span></div>
+  <div class="stage-wrap" id="wrap"></div>
+  <h2>What changed</h2>
+  <dl class="verdict">
+    <dt>The arpeggiator</dt><dd>The three menus are named <b>Pattern</b>, <b>Step</b> and <b>Octaves</b>, each name over its menu, as Play’s Expression row has it. A drawing over them shows one bar of what a held C major chord plays: one row per note, one block per step. With the pattern off it draws the chord held.</dd>
+    <dt>The clock</dt><dd>One sentence: <b>Internal · bar 5, beat 4 · Stopped</b>. Beside it, four beat dots and <b>Start</b> or <b>Stop</b>, whichever it will do. Each part keeps a box of one width, so the button stays put while the bar count grows.</dd>
+    <dt>Knobs</dt><dd><b>Glide</b> and <b>Tempo</b> are knobs, with <b>Tap</b> beside Tempo. Glide dims while Quantise is off, since it acts only then.</dd>
+    <dt>The morph stays a slider</dt><dd>CLAUDE.md lists <i>the setup morph’s crossfader</i> among the controls that stay sliders: it slides between two ends, and a knob would hide which end it is nearer. Its ends are named: <b>A</b> and <b>B</b>, each with <b>Store</b> under it, and the position is read in per cent over the fader.</dd>
+    <dt>Labels</dt><dd>Every menu, switch and knob has a name you can see, three words or fewer. <i>Quantise the generator’s pitch</i> is <b>Quantise pitch</b>; the rest of it is the info line’s.</dd>
+    <dt>Kept</dt><dd>Every id, with its type, range and options (the check compares them with testing). The clock’s three spans keep theirs (<code>clockFrom</code>, <code>transportAt</code>, and <code>transportPlay</code> the button), and one span is new: <code>transportState</code>.</dd>
+    <dt>Size</dt><dd>The panel opens where it does now and is 640 px wide. It is shorter than testing’s: 319 px tall on the full face (from 332) and 278 compact (from 324), because the labels sit over the menus where the old labels took rows of their own. It ends above the Picture strip at every window.</dd>
+  </dl>
+  <h2>Checks</h2>
+  <p class="small">Run <code>checks/perform_checks.py</code>; its results are in <code>checks/results.json</code>.</p>
+</main>
+<script src="../ui-review/data.js"></script>
+<script src="../ui-review/common.js"></script>
+<script>
+"use strict";
+const { knob, sw, tog, select, fld, SIZES, ORDER, reading } = UI;
+const Q = new URLSearchParams(location.search);
+const PERF = { "1660x1050": [646, 58], "1400x900": [516, 58], "1100x860": [326, 58], "1200x680": [420, 45], "1100x680": [330, 45], "960x600": [297, 44] };   // testing's, measured
+const S = { size: SIZES[Q.get("size")] ? Q.get("size") : "1400x900", running: false, bar: 5, beat: 4, from: "Internal", timer: null };
+window.SAY_NAMES = { arpMode: "Pattern", arpRate: "Step", arpOctaves: "Octaves", transportPlay: "Start · stop", quantise: "Quantise pitch", morphStoreA: "Store A", morphStoreB: "Store B" };
+window.EXTRA_WORDS = {
+  clockFrom: ["Clock", "Where the beat comes from: the page’s own clock, or the host’s while the plugin plays in a project."],
+  transportAt: ["Position", "Where the clock is, by the bar and the beat, counted from the one. Start begins it again from the one."],
+  transportState: ["Clock", "Whether the clock is running. Stopped, the score is silent and the arpeggiator waits."],
+};
+UI.FMT.tempo = (v) => v + " BPM";
+UI.FMT.quantiseGlide = (v) => v ? v + " ms" : "off";
+UI.FMT.morphPos = (v) => v + "%";
+const CHORD = [60, 64, 67], PLAYED = [64, 60, 67];
+const STEPS = { "1/4": 4, "1/8": 8, "1/16": 16, "1/8t": 12, "1/16t": 24 };
+const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+
+function panelHTML() {
+  const z = SIZES[S.size], at = PERF[S.size];
+  return '<div class="panel perform" id="performPanel" role="dialog" aria-labelledby="performName" style="left:' + at[0] + "px;top:" + at[1] + 'px">'
+    + '<div class="p-head"><span class="p-name" id="performName">Perform</span><span class="menu-note">Set at the start and played over.</span><button type="button" class="close-btn" id="performClose" aria-label="Close">&times;</button></div>'
+    + '<div class="pcols"><div class="pcol" id="performBody">'
+    + '<div class="psec" id="arpGroup"><span class="sec">Arpeggiator</span>'
+    + '<div class="arp-plot" data-box="arpPlot"><svg id="arpSvg" role="img" aria-label="What a held C major chord plays over one bar"></svg></div><div class="arp-cap" id="arpCap"></div>'
+    + '<div class="fields3">' + fld("arpMode", "Pattern", select("arpMode", { label: true, options: [["off", "Off"], ["up", "Up"], ["down", "Down"], ["updown", "Up and down"], ["played", "As played"], ["random", "Random"]] }))
+    + fld("arpRate", "Step", select("arpRate", { label: true })) + fld("arpOctaves", "Octaves", select("arpOctaves", { label: true, options: [["1", "1"], ["2", "2"], ["3", "3"]] })) + "</div></div>"
+    + '<div class="psec" id="clockGroup"><span class="sec">Clock</span>'
+    + '<div class="clock-line" id="clockLine"><span id="clockFrom" data-say="clockFrom"></span><span class="sep"> · </span><span id="transportAt" data-say="transportAt"></span><span class="sep"> · </span><span id="transportState" data-say="transportState"></span></div>'
+    + '<div class="clock-row"><span class="beats" id="beats" aria-hidden="true"><i></i><i></i><i></i><i></i></span><button type="button" class="link-btn caps" id="transportPlay" data-say="transportPlay" style="min-width:3.6em;text-align:left">Start</button></div></div></div>'
+    + '<div class="pcol" id="performSide"><div class="psec" id="morphGroup"><span class="sec">Morph</span>'
+    + '<div class="morph"><span></span><span id="morphPosValue"></span><span></span>'
+    + '<span class="end"><b>A</b><button type="button" class="link-btn caps" id="morphStoreA" data-say="morphStoreA">Store</button></span>'
+    + '<input type="range" id="morphPos" min="0" max="100" value="0" data-say="morphPos" aria-label="Morph, A to B">'
+    + '<span class="end"><b>B</b><button type="button" class="link-btn caps" id="morphStoreB" data-say="morphStoreB">Store</button></span></div></div>'
+    + '<div class="psec" id="keyGroup"><span class="sec">Key and tempo</span>'
+    + '<div class="fields2">' + fld("keyRoot", "Key", select("keyRoot", { label: true })) + fld("keyScale", "Scale", select("keyScale", { label: true })) + "</div>"
+    + '<div class="kt-row">' + tog("quantise", "Quantise pitch") + '<span class="row knobs">' + knob("quantiseGlide", "Glide") + knob("tempo", "Tempo") + "</span>"
+    + '<button type="button" class="link-btn caps tap" id="tempoTap" data-say="tempoTap">Tap</button></div></div></div></div></div>';
+}
+
+/* What the arpeggiator plays over one bar, from a held chord: the order of the notes, step by step. */
+function arpNotes(mode, octaves) {
+  const asc = []; for (let o = 0; o < octaves; o++) for (const n of CHORD) asc.push(n + 12 * o);
+  if (mode === "up") return asc;
+  if (mode === "down") return asc.slice().reverse();
+  if (mode === "updown") return asc.concat(asc.slice(1, -1).reverse());
+  if (mode === "played") { const p = []; for (let o = 0; o < octaves; o++) for (const n of PLAYED) p.push(n + 12 * o); return p; }
+  if (mode === "random") { let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647; return Array.from({ length: 64 }, () => asc[Math.floor(r() * asc.length)]); }
+  return null;
+}
+function drawArp() {
+  const svg = document.getElementById("arpSvg"), W = svg.clientWidth, H = svg.clientHeight;
+  if (!W) return;
+  const mode = document.getElementById("arpMode").value, oct = +document.getElementById("arpOctaves").value, rate = document.getElementById("arpRate").value;
+  const steps = STEPS[rate], seq = arpNotes(mode, oct);
+  const all = []; for (let o = 0; o < oct; o++) for (const n of CHORD) all.push(n + 12 * o);
+  const lo = all[0], hi = all[all.length - 1], rows = all.length, rh = (H - 6) / rows;
+  const y = (n) => 3 + (rows - 1 - all.indexOf(n)) * rh;
+  let s = '<svg viewBox="0 0 ' + W + " " + H + '">';
+  for (let b = 1; b < 4; b++) s += '<line x1="' + (W * b / 4) + '" x2="' + (W * b / 4) + '" y1="0" y2="' + H + '" stroke="var(--line)" stroke-width="1"/>';
+  const played = [];
+  if (!seq) {
+    for (const n of CHORD) { s += '<rect x="2" y="' + (y(n) + 1) + '" width="' + (W - 4) + '" height="' + Math.max(2, rh - 2) + '" fill="var(--unresolved)"/>'; }
+  } else {
+    const sw_ = W / steps;
+    for (let i = 0; i < steps; i++) {
+      const n = seq[i % seq.length]; played.push(n);
+      s += '<rect x="' + (i * sw_ + 1) + '" y="' + (y(n) + 1) + '" width="' + Math.max(1, sw_ * 0.82) + '" height="' + Math.max(2, rh - 2) + '" fill="' + (S.running && i === stepNow(steps) ? "var(--blush-deep)" : "var(--charcoal)") + '" data-n="' + n + '"/>';
+    }
+  }
+  svg.innerHTML = s + "</svg>";
+  svg.dataset.seq = JSON.stringify(played);
+  const nm = (n) => NAMES[n % 12] + (Math.floor(n / 12) - 1);
+  document.getElementById("arpCap").textContent = seq ? steps + " steps of " + rate + " over the bar, " + nm(lo) + " to " + nm(hi) : "Off: a held chord sounds as held";
+}
+function stepNow(steps) { return Math.floor(((S.beat - 1) / 4) * steps) % steps; }
+function paintClock() {
+  document.getElementById("clockFrom").textContent = S.from;
+  document.getElementById("transportAt").textContent = "bar " + S.bar + ", beat " + S.beat;
+  const st = document.getElementById("transportState");
+  st.textContent = S.running ? "Running" : "Stopped"; st.dataset.on = String(S.running);
+  document.getElementById("transportPlay").textContent = S.running ? "Stop" : "Start";
+  document.querySelectorAll("#beats i").forEach((b, i) => b.classList.toggle("on", i === S.beat - 1));
+}
+function paint() {
+  document.querySelector('[data-knob="quantiseGlide"]').classList.toggle("dimmed", !document.getElementById("quantise").checked);
+  document.getElementById("morphPosValue").textContent = UI.FMT.morphPos(+document.getElementById("morphPos").value);
+  paintClock(); drawArp();
+}
+function tick() {
+  S.beat++; if (S.beat > 4) { S.beat = 1; S.bar++; }
+  paint();
+  S.timer = setTimeout(tick, 60000 / +document.getElementById("tempo").value);
+}
+function render() {
+  clearTimeout(S.timer); S.running = false;
+  const win = UI.stage(document.getElementById("wrap"), S.size, UI.frame({ size: S.size, open: "perform", overlay: panelHTML() }));
+  UI.bind(win, () => paint());
+  document.getElementById("morphPos").addEventListener("input", paint);
+  document.getElementById("transportPlay").addEventListener("click", () => {
+    S.running = !S.running; clearTimeout(S.timer);
+    if (S.running) { S.bar = 1; S.beat = 1; S.timer = setTimeout(tick, 60000 / +document.getElementById("tempo").value); }
+    paint();
+  });
+  paint();
+  for (const b of document.querySelectorAll("#sizes button")) b.setAttribute("aria-pressed", String(b.dataset.v === S.size));
+}
+document.getElementById("sizes").innerHTML = ORDER.map((k) => '<button type="button" data-v="' + k + '">' + SIZES[k].label + "</button>").join("");
+document.getElementById("sizes").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { S.size = b.dataset.v; render(); } });
+window.__m = { S, render, paint, arpNotes,
+  set(o) {
+    clearTimeout(S.timer);
+    o = Object.assign({ arpMode: "off", arpRate: "1/8", arpOctaves: "1", running: false, bar: 5, beat: 4, from: "Internal", quantise: false, quantiseGlide: 0, tempo: 120, morphPos: 0, keyRoot: "0", keyScale: "chromatic" }, o);
+    for (const id of ["arpMode", "arpRate", "arpOctaves", "keyRoot", "keyScale"]) document.getElementById(id).value = o[id];
+    document.getElementById("quantise").checked = o.quantise;
+    UI.setValue("quantiseGlide", o.quantiseGlide, true); UI.setValue("tempo", o.tempo, true);
+    document.getElementById("morphPos").value = o.morphPos;
+    Object.assign(S, { running: o.running, bar: o.bar, beat: o.beat, from: o.from });
+    paint();
+  } };
+render();
+</script>
+</body>
+</html>
