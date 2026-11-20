@@ -5551,6 +5551,16 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         The colours are only the look: the sound reads how much paint is where. For now the
         photocell and the score still read the trace, which goes on underneath.</span></li>
 
+      <li><b>Your hands are on the brush, in Paint</b>
+        <span>The sustain pedal keeps the brush on the canvas: strokes do not lift between notes
+        and the paint stays wet, so new notes blend in; let it go and they lift and dry. The mod
+        wheel is the brush's load, from a scratchy dry brush at the bottom to a heavy loaded one
+        at the top (a wheel you have not moved leaves the brush as it was). The pitch wheel bends
+        the stroke, since pitch is the radius. A hard strike spatters, further the harder, and
+        leaning on a key widens its stroke and smears the wet paint. The wheel and pressure do this
+        as well as whatever Expression gives them to. What the brush does changes the paint, so it
+        is heard through Scan.</span></li>
+
       <li><b>Zoom magnifies, and the wheel works</b>
         <span>In Y&ndash;T it shows a slice of the capture stretched, centred on the trigger
         &mdash; the record is unchanged, so the measurements still read all of it. In X&ndash;Y
@@ -29303,8 +29313,8 @@ const CONTROL_WORDS = {
   "midiPolyJust": ["Tune a chord", "Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there."],
   "midiHold": ["Hold the interval", "In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison."],
   "midiBendRange": ["Pitch bend", "How far the bend wheel takes every note, either way, in semitones. All the notes bend together, so the figure keeps its shape."],
-  "midiWheelTo": ["Mod wheel", "What the mod wheel moves: a vibrato of up to a third of a semitone, the Picture amount, Scan's depth, or nothing."],
-  "midiPressureTo": ["Pressure", "What pressing harder on a held key moves, if your keyboard sends it: a vibrato, the Picture amount, Scan's depth, or nothing."],
+  "midiWheelTo": ["Mod wheel", "What the mod wheel moves: a vibrato of up to a third of a semitone, the Picture amount, Scan's depth, or nothing. In Paint, the brush's load too."],
+  "midiPressureTo": ["Pressure", "What pressing harder on a held key moves, if your keyboard sends it: a vibrato, the Picture amount, Scan's depth, or nothing. In Paint, the brush too."],
   "midiVelocityTo": ["Velocity", "How hard you play always sets a note's level and how brightly it strikes the screen. With FM, a harder note is also brighter in tone."],
   "linkGen": ["Generator’s link", "Whether the Generator is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it."],
   "shape": ["Shape", "The wave each note is made of. A sine is pure and draws smooth curves; sharper shapes are brighter and put corners in the figure."],

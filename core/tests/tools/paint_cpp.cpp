@@ -45,7 +45,8 @@
 //   cost SECONDS [WIDTH]   a chord of sixteen held, trace and painting (at a base width), the best of three
 //                          runs: the instrument's seconds per second of audio
 //
-// Step 3, the player's controllers on the brush; HEARS is PaintParams::hears (15 all, a bit off a null's):
+// Step 3, the player's controllers on the brush; HEARS is PaintParams::hears (15 all, a bit off a null's). The kit
+// appends a scenario path after every command's numbers, so a piece passes each optional number explicitly:
 //   pedal HEARS            a pluck's slow melody, six notes a second apart, under the sustain pedal, then the pedal
 //                          let go: how much of its arc has paint and the longest stretch without (degrees), the paint's
 //                          mean wetness as the pedal goes up, two seconds later, and the stamps the last frame laid

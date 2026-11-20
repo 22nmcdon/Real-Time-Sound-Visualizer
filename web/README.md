@@ -7541,3 +7541,22 @@ a clock put back. Calling the core's own module for the drawings was weighed: it
 copy alone and the bend's settled offset, which the oscillator has no export for, and two seconds of
 settling a redraw; the comparison against the core keeps the second copy of the formulas honest.
 Wave · Figure is kept by the browser as `scope.inkDraws`, under the testing page's prefix there.
+
+## The controllers on the brush, and three traps on the way (20 Nov)
+
+Painting, step 3 (`web/docs/painting-design.md`): the pedal, the mod wheel, the bend, velocity's
+spatter and aftertouch act on the brush in the core, so the look and the map are the same stamps.
+
+- **A stamp's time is the paint's clock, not the performance's.** The look works out how wet a
+  pixel is each frame from its stamp's time against the newest stamp's, so to keep the look wet
+  under the pedal the core's drying clock (`Painter::wetClock`) stands still while it is down and
+  the stamps carry that clock. Without the pedal it is the performance's time to the bit. Anything
+  that wants to know *when* a stamp was laid in seconds of audio cannot read `t` for it any more.
+- **Spatter thrown in the canvas's own x and y broke the turned-layout check** (a second layout
+  must move only where paint lands): drops fly in the layout's terms - along the time and across
+  the pitch - and the layout says where that is. Anything new the brush lays off its own path
+  wants the same.
+- **The pieces' kit appends a scenario file to every tool's arguments.** A `paint_cpp` command with
+  an optional trailing number reads that path as one (`atof`, nought) when the check leaves the
+  number out: the spatter check passed its nulls and failed its check for no reason until it
+  passed `-1` explicitly. Give every optional argument a value from the piece.

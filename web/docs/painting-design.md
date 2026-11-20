@@ -265,7 +265,7 @@ narrower. So a wider brush is wider for the sound too.
   pluck's silent; a Tine piano note is at -23 dB three seconds on, the line. Under the pedal a
   pluck still dies to silence in a quarter second, and a brush lays nothing where nothing
   sounds, so its slow melody is one stroke drawn as nine marks; the brush staying on the
-  canvas through the pedal is step 3's. Painting is off in the recordings, which are unchanged.
+  canvas through the pedal is step 3's (below), which closed it. Painting is off in the recordings, which are unchanged.
 - **The look draws the core's footprint**, its half width and tip in the core's cells
   (`uCell`), where before it computed a shorter tip of its own that laid about half the paint
   per length. Finer than the map, the look's only: four bristles to each of the core's eight
@@ -295,6 +295,69 @@ narrower. So a wider brush is wider for the sound too.
   at any of the three, as WebAssembly 0.51 to 0.58 ms a block of 128 for eight, within a
   shared machine's noise of each other; the ring reads are most of the cost and do not
   depend on width.
+
+## What step 3 built (20 Nov): the controllers on the brush
+
+The owner's table above, decided in the core (`paint.h`, `PaintControls`, handed each frame by
+`Instrument::paintFrame` from the keyboard): every effect reaches the stamps' width, pressure
+and load, or adds stamps, so the look draws what the map holds and Scan reads it.
+
+- **The sustain pedal.** While it is down a brush presses at least 0.3 (`kPedalFloor`), so it
+  lays what it holds through the silence between notes rather than only while there is sound,
+  and a stroke that has lifted - a pluck's voice gone under the pedal - goes on round at its
+  pitch. It is not fed in the silence, so a long silence runs it dry, as a brush would. The
+  paint dries by a clock of its own (`Painter::wetClock`) that stands still while the pedal is
+  down, for the drying and for whose fresh stroke a cell is; the stamps carry that clock, so
+  the look, which dries by its stamps' times, stays wet with the map. Let go, the brushes lift
+  and the clock runs again. The pluck's slow melody under the pedal, nine marks at paint width,
+  is one stroke over three quarters of its arc and the longest stretch without paint 5 degrees
+  (against 18 per cent and 123 without the pedal), the paint 1.00 wet at the end against 0.09.
+  Known limit: the look runs its clock on by the screen's time between servings of stamps, so
+  with the pedal down and no brush on the canvas - pressed before any note, or after Clear -
+  paint already there dries on the screen while the map's stays wet, until the next note's
+  stamps bring the look's clock back and it is wet again (its wetness is worked out from the
+  clock each frame, not kept). Once a note has sounded under the pedal its brush stays on the
+  canvas and its stamps keep the clock.
+- **The mod wheel** is the brush's load and pressure, read from its middle: a wheel that has
+  not moved since the instrument was made paints step 2's brush to the bit (the pieces hold
+  it). Up from the middle the dip and the feed are up to twice as heavy, the pressure up to
+  1.3 times and the width 1.25 (at the top, a held note's half-width 4.6 cells against 2.65,
+  four times the paint); down from it the load falls to 0.6, the pressure to 0.7 and the width
+  to 0.75, where the dry-brush rule starves the bristle groups under half a load and the
+  stroke breaks up into a scratchy one (a ninth of the paint). Lighter than 0.6 laid a
+  twentieth: no stroke at all. **The cost of reading it from its middle:** the wheel rests at
+  the bottom, so a player who sweeps it and lets it fall back paints dry. The other way -
+  today's brush at the bottom and only heavier up - would leave the table's dry brush
+  unreachable. This is the open question to put to the owner.
+- **The pitch wheel.** Poly's voices' pitches leave the bend out (the generator bends at the
+  sound), so the painter is handed the generator's glided bend and moves each brush, and the
+  ring its voice reads, to the bent pitch. Mono's and Dyad's line had it already. A sweep to
+  the top moves A3's brush 0.92 cells out, at most 0.03 a frame, never back.
+- **Velocity.** A strike's impact - velocity times the hand's Strike, as the dip's - throws
+  spatter once, as the brush lands: up to 20 drops at a full impact (`kSpatterMost`, by the
+  impact to the 1.5, so a soft strike throws few), flown up to a fifth of a second along the
+  time and an octave in pitch, times the impact and the base width, from the stroke's own
+  hash (the same performance spatters alike). The drops fly in the layout's terms and the
+  layout says where they land, so the turned layout still holds. Each is a stamp, so the look
+  draws it at the map's width. A drop across the radius lands on another register's ring,
+  which that note then reads.
+- **Aftertouch** (channel pressure) on a held key widens the stroke by up to half and presses
+  it in by up to half again, which shoves more wet paint aside (the core's push is by the
+  pressure): at full, a held note's half-width 6.0 cells against 2.65.
+- **Expression (CC 11)** is the Picture amount, as it was.
+- **The wheel and pressure do both.** Where Expression's menus give them to the vibrato (the
+  wheel's default) or to anything else, the brush reads them as well, in Paint only. The info
+  line on both menus and the cheat sheet say so. No field chooses between them yet; the owner
+  may want one.
+- **Nulls.** `PaintParams::hears`, a bit a controller (all on in the instrument), and
+  `spatterAt` exist for the pieces' nulls: the same performance with the brush deaf to one
+  controller. `pieces/painting.py` holds each controller against its null and the map's width
+  against the stamp's; `painttest.py` plays the wheel, pressure, the bend and velocity as a
+  port's bytes through `midiBytes`, the look's width against the map's in each, and the pedal
+  as a port's controller 64 through the page's own module.
+- **Heard.** `web/docs/listening/paint-controllers/` has five short phrases, each with the
+  controller moving, painted with the brush hearing it and deaf to it: sound, look and map.
+- **Trace is untouched**: painting is off in every recording, and none changed.
 
 Still open, for when the first build is seen: the drying time (the study used 1.2 s; the
 owner wanted it slower, drying smoothly from thin to thick), whether a dark ground is
