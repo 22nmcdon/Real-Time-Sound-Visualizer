@@ -24,10 +24,10 @@
 //   shape                      `shape NAME` - layer A's shape, for the scan's count of shapes
 //   layered                    `layered 1` when the setup restored splits or layers the keyboard
 //   time [TRIES]               `time MS`: the best of TRIES (three if not given) one-second
-//                              blocks, in milliseconds
+//                              blocks, in milliseconds of this thread's own processor time
 //   --bank                     (as the only argument) the bank's preset count
 #include <algorithm>
-#include <chrono>
+#include <ctime>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -153,15 +153,24 @@ int script(const char* path) {
     } else if (cmd == "shape") std::printf("shape %s\n", rig.gen->tone().shapeName.c_str());
     else if (cmd == "layered") std::printf("layered %d\n", rig.keys->settings().layers != scope::LayerMode::Off ? 1 : 0);
     else if (cmd == "time") {
-      // The best of several: what the code costs, not what else the machine did during one of them.
+      /* The best of several: what the code costs, not what else the machine
+         did during one of them. And on this thread's own clock, not the wall
+         (20 Nov): on a busy machine every one of five seconds was preempted
+         somewhere, a case's wall time took in whatever ran meanwhile, and the
+         ratios between cases moved with it - morph x7 read 1.54 of the median
+         beside six busy loops, 1.34 alone, against a bound of 1.6. Time the
+         thread is not running does not count here. What still does is the
+         machine's own contention (a shared cache, a core's other thread),
+         which slows everything the same way and the ratios mostly not. */
+      const auto cpu = [] { timespec t; clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t); return t.tv_sec * 1e3 + t.tv_nsec / 1e6; };
       const long n = static_cast<long>(rig.rate);
       const int tries = arg(1).empty() ? 3 : std::max(1, static_cast<int>(num(arg(1))));
       double best = 1e300;
       for (int r = 0; r < tries; r++) {
         for (auto& b : bufs) b.assign(static_cast<std::size_t>(n), 0.0f);
-        const auto t0 = std::chrono::steady_clock::now();
+        const double t0 = cpu();
         rig.gen->block(bufs[0].data(), bufs[1].data(), static_cast<int>(n), bufs[2].data(), bufs[3].data(), bufs[4].data(), bufs[5].data());
-        const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+        const double ms = cpu() - t0;
         if (ms < best) best = ms;
       }
       std::printf("time %.4f\n", best);
