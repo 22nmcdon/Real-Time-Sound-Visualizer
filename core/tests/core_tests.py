@@ -5417,7 +5417,17 @@ def _face_17nov(ids):
         if k == "freq": out += [x for x in _BARS if x in ids]
         out.append(k)
     return out
-ctl_ids = [k for k in _face_17nov(list(pctl["ranges"])) if not k.startswith("eq")]
+# And in the order Scope & measure laid them out before the UI review (20 Nov,
+# web/docs/scope-measure.md): its subtabs put the lag and its Heard on Time and the
+# trace filter beside the lanes on Vertical, which moved five of the panel's sliders
+# in the face's order and made the morph's and the controls' random runs new to the
+# recordings. Put back in their old slots, in their old order, each run is the one it was.
+_MEASURE_19NOV = ["filterCutoff", "filterRes", "lag", "lagMix", "acCorner"]
+def _face_19nov(ids):
+    out, slots = list(ids), [i for i, k in enumerate(ids) if k in _MEASURE_19NOV]
+    for i, k in zip(slots, [k for k in _MEASURE_19NOV if k in ids]): out[i] = k
+    return out
+ctl_ids = [k for k in _face_19nov(_face_17nov(list(pctl["ranges"]))) if not k.startswith("eq")]
 def mvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     c = rrng.random()

@@ -207,11 +207,11 @@ with sync_playwright() as pw:
     # Two since G3: the voice filter's Cutoff is on show, greyed, while the
     # filter is off, and search finds it, as it finds anything on show.
     check("the Sources panel's destination menu is not searched as rows: cutoff is the two filters'",
-          sorted(cutoff) == [["Cutoff", "Scope & measure \u203a Filter"], ["Cutoff", "Voice filter"]], str(cutoff))
+          sorted(cutoff) == [["Cutoff", "Scope & measure \u203a Trace filter"], ["Cutoff", "Voice filter"]], str(cutoff))
     notch = search("notch")
     # Two since the voice filter (H3): its Type offers a notch too.
     check("but a menu's own choices find it: notch is a type of the trace's filter and of the voice's",
-          sorted(notch) == [["Type", "Scope & measure \u203a Filter"], ["Type", "Voice filter"]], str(notch))
+          sorted(notch) == [["Type", "Scope & measure \u203a Trace filter"], ["Type", "Voice filter"]], str(notch))
     adsr = search("adsr")
     # The Envelope source comes after them, fairly: its description names them.
     # On show in the Generator since F3, no longer behind its dots, and in a
@@ -226,7 +226,7 @@ with sync_playwright() as pw:
     top = search("zoom")
     # The zoom left the strip for Scope & measure in F1, and is found there.
     check("the strip along the top is searched too, and what left it for Scope & measure",
-          ["Zoom", "Scope & measure \u203a Time"] in top and ["Persistence", "Picture"] in search("persistence"),
+          ["Zoom", "Scope & measure \u203a Window"] in top and ["Persistence", "Picture"] in search("persistence"),
           str(top) + " " + str(search("persistence")[:2]))
 
     stale = p.evaluate("""() => { setMidiMode('dyad'); return null; }""")

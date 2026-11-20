@@ -177,16 +177,26 @@ button { font-family: inherit; cursor: pointer; }
   content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
   box-sizing: border-box; border: 1px solid var(--text-soft); margin-right: 5px; vertical-align: 0.12em;
 }
-/* What the Width applies to (16 Nov), a cell beside the Width as a knob is
-   one: its two halves stacked, the name under them in a knob's type, so it
-   takes no more of the Picture section's row than a knob and its name do. */
-#widthToRow {
-  display: grid; grid-template-areas: "face" "name"; justify-items: center; row-gap: 3px;
-  flex: 0 0 auto; margin-top: 4px;
+/* What the Width applies to (16 Nov): since the UI review (20 Nov) one checkbox beside
+   the Width, Draw width, where a two-way switch with "Width on" under it read as three
+   choices to the owner. */
+.width-to { flex: 0 0 auto; display: flex; align-items: center; }
+/* A checkbox drawn as a switch (the UI review, 20 Nov): a pill with a lamp, sage when on.
+   The input stays the checkbox - its id, checked and change are what every reader had -
+   only hidden from the eye, as a knob's range input is. */
+.check.check-switch {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: 30px; padding: 3px 10px 3px 7px; background: var(--paper);
+  font-size: 12px; line-height: 1.3; color: var(--text-soft); white-space: nowrap;
 }
-#widthToRow > .switch { grid-area: face; flex-direction: column; }
-#widthToRow > .switch > button { padding: 1px 7px; font-size: 9.5px; line-height: 1.5; }
-#widthToRow > .menu-label { grid-area: name; font-size: 10px; line-height: 1.2; text-align: center; margin: 0; }
+.check.check-switch > input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.check-switch > .lamp { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--unresolved); flex: 0 0 auto; box-sizing: border-box; }
+.check-switch:has(> input:checked) { color: var(--charcoal); border-color: var(--charcoal); }
+.check-switch:has(> input:checked) > .lamp { background: var(--sage); border-color: var(--sage); }
+.check-switch:has(> input:focus-visible) { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+.check-switch:has(> input:disabled) { opacity: 0.45; cursor: default; }
+.check-switch:hover { border-color: var(--blush); }
+[data-compact] .check.check-switch { font-size: 11.5px; padding: 2px 9px 2px 6px; }
 .head-gap { flex: 1 1 0; min-width: 0; }
 /* The testing site's mark: quiet, in the brand's secondary ink and its rule,
    no colour of its own. Absolute inside the spacer, centred on its line
@@ -1023,39 +1033,38 @@ body[data-enlarged] .enlarge-tools { display: flex; flex-wrap: wrap; align-items
 .enlarge-btn .enlarge-in, body[data-enlarged] .enlarge-btn .enlarge-out { display: none; }
 body[data-enlarged] .enlarge-btn .enlarge-in { display: inline; }
 body[data-enlarged] .enlarge-btn { border-color: var(--blush-deep); color: var(--blush-deep); }
-/* The info line (G3b), in the Picture section's free middle: two lines of
-   it at most, then More. */
-.picture-bar .picture-wrap > .info-line.info-line { flex: 1 1 0; min-width: 0; align-self: center; }
+/* The info line (G3b), in the Picture section's free middle. Since the UI review (20 Nov)
+   a top row - the host's dot, the name, the value, the hand and More - over the control's
+   whole line, four lines of it at most (three compact), top-aligned so a short sentence
+   does not move the name. Two lines beside the name cut most of the doc's lines mid-way. */
+/* Laid over the strip's own height rather than setting it, reaching into its padding, so
+   a long line never makes the strip taller (90 px, 80 compact, as before the review). */
+.picture-bar .picture-wrap > .info-line.info-line { flex: 1 1 0; min-width: 0; align-self: stretch; position: relative; }
 .info-line[hidden] { display: none !important; }
-/* The actions' column fixed where there is room for it and giving way where there is not (a phone's 82 px
-   info line made the page wider than the window, and a finger's drag a scroll). */
-.info-wrap { font-size: 12px; line-height: 1.4; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 132px); column-gap: 12px; align-items: center; overflow: hidden; }
-.info-words { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.info-words > * { display: inline; margin-right: 7px; }
-.info-words > [hidden] { display: none; }
-/* Kept in place while hidden (visibility), so the first control said brings nothing in beside them. */
-.info-acts { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 0; }
-.info-acts > .is-unseen { visibility: hidden; }
-.info-acts .info-menu { display: block; max-width: 100%; font-size: 10.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.info-name { font-family: var(--serif); font-size: 13.5px; color: var(--charcoal); }
-.info-value { color: var(--charcoal); font-variant-numeric: tabular-nums; }
+.info-wrap { position: absolute; left: 0; right: 0; top: -9px; bottom: -11px; display: flex; flex-direction: column;
+  justify-content: flex-start; gap: 1px; overflow: hidden; padding: 0; max-width: none; margin: 0; }
+[data-compact] .info-wrap { top: -4px; bottom: -4px; }
+.info-top { position: relative; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; min-width: 0; overflow: hidden; padding-right: 54px; line-height: 1.2; flex: 0 0 auto; }
+.info-top > [hidden] { display: none; }
+.info-top > .is-unseen { visibility: hidden; }
+.info-name { font-family: var(--serif); font-weight: 500; font-size: 15px; color: var(--charcoal); flex: 0 0 auto; }
+.info-value { font-size: 12.5px; color: var(--charcoal); font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .info-value:empty { display: none; }
-.info-host { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); vertical-align: 0.15em; }
+.info-host { display: inline-block; flex: 0 0 auto; align-self: center; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
 .info-hand {
   display: inline-block; vertical-align: 0.1em; font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;
   color: var(--ch2); border: 1px solid var(--ch2); border-radius: 20px; padding: 2px 6px 1px;
 }
-.info-text { color: var(--text); }
-.info-text::before { content: "\2014"; color: var(--text-soft); margin-right: 7px; }
+.info-text { font-size: 12.5px; line-height: 1.34; color: var(--text); font-weight: 400; white-space: normal;
+  overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
 .info-line[data-empty] .info-text { color: var(--text-soft); }
-.info-line[data-empty] .info-text::before { content: none; }
-.info-more { font-size: 9.5px; }
-/* That the control has a right-click menu (G5b), which is how anyone who has
-   never right-clicked a plugin finds it: on the line, not in every row of words. */
-.info-menu { color: var(--text-soft); }
-[data-compact] .info-wrap { font-size: 11.5px; grid-template-columns: minmax(0, 1fr) minmax(0, 112px); column-gap: 8px; }
+.info-more { position: absolute; right: 0; top: 2px; font-size: 10px; }
+.info-more.is-unseen { visibility: hidden; }
+[data-compact] .info-name { font-size: 14px; }
+[data-compact] .info-text { font-size: 11.5px; line-height: 1.3; -webkit-line-clamp: 3; }
 /* Its card: the line again, with what the page knows about the control. */
 .info-card { max-width: 380px; }
+.info-card .info-card-menu { margin: 0 0 6px; font-size: 11.5px; color: var(--text-soft); }
 .info-card .info-card-line { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; color: var(--charcoal); }
 .info-card dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 8px 0 0; padding-top: 8px;
                 border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; }
@@ -2532,30 +2541,94 @@ button.mod-edit-name:hover { color: var(--blush-deep); }
 /* Fixed, and placed from the toolbar when it opens (placeMeasure): on the
    Bench the toolbar is in a 318px column that scrolls, and a panel hung from
    it was cut off at the column's edge. */
-.measure-panel { position: fixed; width: min(960px, calc(100vw - 32px)); max-height: none; overflow: visible; }
+.measure-panel { position: fixed; width: min(960px, calc(100vw - 32px)); max-height: none; overflow: hidden; }
 .measure-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
 .measure-name { font-family: var(--serif); font-size: 21px; color: var(--charcoal); }
 .measure-head .menu-note { margin: 0; }
 .measure-head .close-btn { margin-left: auto; }
-.measure-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 26px; align-items: start; }
 .measure-col > .menu-group + .menu-group, .measure-col > div + .menu-group,
-.measure-col > .menu-group + div > .menu-group:first-child, .measure-col > div > .menu-group + .menu-group { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
-.measure-run, .measure-pair { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; }
-/* Rows, not a strip: the eyebrows the top bar gave these fields read as
-   section titles here, and the sections' own notes (what AC is, what holdoff
-   does) are the cheat sheet's - the panel holds the controls. */
-.measure-panel .field > .eyebrow { font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text-soft); }
+.measure-col > .menu-group + div > .menu-group:first-child, .measure-col > div > .menu-group + .menu-group { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.measure-panel .field > .eyebrow { font-size: 10.5px; letter-spacing: 0; text-transform: none; color: var(--text-soft); line-height: 1.2; white-space: nowrap; }
 .measure-panel .menu-group .menu-note { display: none; }
-/* Tight enough for the plugin's smallest window, 960x600, with nothing scrolling. */
-.measure-panel { padding: 14px 18px 12px; }
-.measure-head { margin-bottom: 8px; }
-.measure-panel .menu-title { margin-bottom: 6px; }
-.measure-panel .menu-row { margin-top: 5px; }
-.measure-col > .menu-group + .menu-group, .measure-col > div + .menu-group,
-.measure-col > .menu-group + div > .menu-group:first-child, .measure-col > div > .menu-group + .menu-group {
-  margin-top: 10px; padding-top: 9px;
-}
-.measure-block .field { flex: 1 1 140px; }
+/* --- Scope & measure by subject (the UI review, 20 Nov; web/docs/scope-measure.md) ---------
+   The head never changes; under it the figure-area bar and one box of one height (placeMeasure)
+   with the four views laid in it on top of one another, so choosing one moves nothing. Each view
+   is its drawing on the left and its controls on the right; every label is three words or fewer
+   and on one line, and every range a knob over its input (P8c), each cell one width so a reading
+   that grows moves nothing beside it. */
+#measurePanel:not([hidden]) { display: flex; flex-direction: column; padding: 12px 16px 12px; }
+#measurePanel .measure-head { align-items: center; gap: 14px; margin-bottom: 8px; flex: 0 0 auto; min-height: 32px; }
+#measurePanel .measure-name { font-size: 22px; white-space: nowrap; }
+#measurePanel .measure-mode { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.measure-bar { border: 1px solid var(--line); border-bottom: 0; }
+.measure-bar .fig-tab { flex-direction: column; align-items: stretch; gap: 0; padding: 5px 10px 5px; }
+.measure-bar .fig-tab b { font-size: 15.5px; }
+.measure-bar .fig-sum { font-size: 11px; text-overflow: ellipsis; }
+.measure-views { position: relative; flex: 1 1 auto; min-height: 0; border: 1px solid var(--line); background: var(--paper); }
+.measure-view { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 22px; padding: 12px 14px 10px; overflow: hidden; }
+.measure-view[hidden] { display: none; }
+.mfig { display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 0; }
+.mplot { flex: 1 1 auto; min-height: 0; position: relative; }
+.mplot svg { position: absolute; left: 0; top: 0; display: block; overflow: visible; font-family: var(--sans); }
+.mcap { flex: 0 0 auto; font-size: 11px; line-height: 1.3; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.mctl { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+#measurePanel .mctl > .menu-group, #measurePanel .mctl-cols > .menu-group { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px; }
+#measurePanel .mctl > .menu-group + .menu-group { padding-top: 8px; border-top: 1px solid var(--line); }
+#measurePanel .menu-group > .menu-title { margin: 0; }
+#measurePanel .measure-quiet > .menu-title { display: none; }
+#measurePanel .mctl-cols { display: grid; grid-template-columns: auto auto; gap: 0 20px; align-items: start; }
+#measureBody > :not(#traceFilterGroup) { grid-column: 1; }
+#measureBody > #traceFilterGroup { grid-column: 2; grid-row: 1 / span 3; }
+.measure-sec { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--blush-deep); line-height: 1.3; white-space: nowrap; }
+#measurePanel .measure-fields { display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 8px 14px; }
+#measurePanel .measure-fields > .field { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
+#measurePanel .measure-field.menu-row { display: flex; flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: 2px; margin: 0; }
+#measurePanel .measure-field > .menu-label { flex: 0 0 auto; font-size: 10.5px; line-height: 1.2; white-space: nowrap; }
+#measurePanel .measure-field > .grow { flex: 0 0 auto; display: flex; }
+#measurePanel .measure-field select { min-width: 8.5em; }
+#measurePanel .measure-fields > .check-switch { align-self: flex-end; margin-bottom: 2px; }
+#measurePanel .measure-knobs { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 6px; }
+#measurePanel .measure-knobs > :not(.knob-row) { flex: 0 0 auto; align-self: center; }
+/* A cell even where a knob is alone (the AC corner beside Mid / side, Delay beside nothing), read
+   down as the Bench's cells are: a knob alone among menu rows is one line on the Bench, here it
+   is beside switches, not menus. */
+#measurePanel .menu-row.knob-row { flex: 0 0 auto; width: 62px; min-width: 62px; max-width: 62px; margin: 0;
+  grid-template-columns: minmax(0, 1fr); grid-template-areas: "value" "face" "name" "extra"; justify-items: center; column-gap: 0; }
+#measurePanel .menu-row.knob-row > .menu-label { text-align: center; font-size: 10px; line-height: 1.2; }
+#measurePanel .menu-row.knob-row > .grow > .reading { font-size: 11px; }
+#measurePanel .menu-row.knob-row > .menu-label { white-space: nowrap; }
+#measurePanel .menu-row.knob-row > .grow > .reading { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+#measurePanel .is-idle { opacity: 0.45; }
+/* A switch put away where it would not mean anything - Mid / side with the lag on or on a band
+   split - keeps its place unseen, so the AC corner beside it does not slide across. */
+#measurePanel .check-switch[hidden] { display: inline-flex !important; visibility: hidden; }
+#measurePanel .measure-block { margin: 0; }
+#measurePanel .measure-block > .menu-title { margin-bottom: 2px; }
+/* The lanes: a row each, its ink and name, Show and AC stacked, Full scale and Offset. */
+#measurePanel #laneRows { display: flex; flex-direction: column; gap: 6px; }
+#measurePanel .lane-row { display: grid; grid-template-columns: 52px auto auto auto; align-items: center; gap: 2px 10px; }
+#measurePanel .lane-row > .lane-who { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--charcoal); white-space: nowrap; }
+#measurePanel .lane-row > .lane-who > i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+#measurePanel .lane-row > .lane-togs { display: flex; flex-direction: column; gap: 4px; }
+#measurePanel .lane-row > .menu-note { grid-column: 2 / -1; margin: 0; display: block; font-size: 11px; color: var(--text-soft); }
+/* The trace filter's response, on a log axis, the cutoff marked. */
+.filt-plot { position: relative; height: 54px; width: 100%; min-width: 150px; border: 1px solid var(--line); background: var(--cream); }
+.filt-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.measure-ref { align-items: center !important; }
+.measure-ref-state { font-size: 11px; color: var(--text-soft); white-space: nowrap; }
+[data-compact] #measurePanel:not([hidden]) { padding: 9px 12px 10px; }
+[data-compact] #measurePanel .measure-name { font-size: 19px; }
+[data-compact] #measurePanel .measure-head { margin-bottom: 5px; min-height: 28px; }
+[data-compact] .measure-bar .fig-tab b { font-size: 14px; }
+[data-compact] .measure-bar .fig-sum { font-size: 10.5px; }
+[data-compact] .measure-view { padding: 8px 10px 8px; gap: 0 16px; }
+[data-compact] .mctl { gap: 7px; }
+[data-compact] #measurePanel .mctl > .menu-group { gap: 4px; }
+[data-compact] #measurePanel .mctl > .menu-group + .menu-group { padding-top: 6px; }
+[data-compact] #measurePanel .menu-row.knob-row { width: 56px; min-width: 56px; max-width: 56px; }
+[data-compact] #measurePanel .knob-face { width: 30px; height: 30px; }
+[data-compact] .filt-plot { height: 40px; }
+[data-compact] #measurePanel .check.check-switch { font-size: 11.5px; }
 /* A measuring control that reaches the speakers says so, in the house's
    "outside": hiding it as measurement would be a lie about what it does. */
 .speakers-tag {
@@ -2574,7 +2647,20 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
   flex: 0 0 auto; background: var(--cream-2); border-top: 1px solid var(--line);
   padding-block: 10px 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
-.picture-wrap { display: flex; align-items: center; gap: 10px 26px; flex-wrap: nowrap; }
+.picture-wrap { display: flex; align-items: center; gap: 10px 14px; flex-wrap: nowrap; }
+/* The whole window's width since the UI review (20 Nov), with the brand's gutters, as the
+   modulation row above it: the 1180 px measure left the info line 212 px at 1100x860. */
+.picture-bar > .picture-wrap.wrap { max-width: none; height: 100%; }
+.picture-bar .picture-wrap > .menu-row.knob-row { margin-top: 0; }
+/* The knobs closer together than the strip's other parts, as a row of cells (4 px, 2 narrow). */
+.picture-bar .picture-wrap > .menu-row.knob-row + .menu-row.knob-row:not([hidden]),
+.picture-bar .picture-wrap > .menu-row.knob-row[hidden] + .menu-row.knob-row { margin-left: -10px; }
+[data-narrow] .picture-bar .picture-wrap > .menu-row.knob-row + .menu-row.knob-row:not([hidden]),
+[data-narrow] .picture-bar .picture-wrap > .menu-row.knob-row[hidden] + .menu-row.knob-row { margin-left: -8px; }
+[data-narrow] .picture-wrap { gap: 10px; }
+[data-narrow] .picture-bar .menu-row.knob-row { min-width: 50px; }
+[data-narrow] .picture-bar .knob-face { width: 30px; height: 30px; }
+[data-narrow] .picture-name { min-width: 74px; }
 /* Not the knob layout's rule for a parent of knobs, which gives every other
    child a row of its own: here the name, the knobs and the meters are one row. */
 .picture-bar .picture-wrap > :not(.knob-row) { flex: 0 0 auto; }
@@ -2588,16 +2674,83 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 .picture-name { display: flex; flex-direction: column; gap: 4px; min-width: 96px; }
 .picture-title { font-family: var(--serif); font-size: 22px; color: var(--charcoal); }
 .picture-wrap > .menu-row { margin-top: 0; }
-.picture-meters { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-left: auto; }
-.picture-meters .picture-reads { height: 40px; gap: 14px; }
-.picture-meters .picture-reads i { width: 9px; }
-.picture-meter-names { display: flex; gap: 6px; font-size: 10.5px; color: var(--text-soft); }
+.picture-meters { display: flex; flex-direction: column; align-items: stretch; margin-left: auto; }
+/* The three reads (the UI review, 20 Nov): a row each, the name in --text, a 64 px bar 6 px
+   tall filled in charcoal on --line (11.7:1), and the reading in figures of one width. */
+#pictureReads { display: grid; grid-template-columns: auto 64px 3.2em; align-items: center; gap: 3px 8px; height: auto; }
+/* Contents, so the three rows share one column of names; the --v each row carries is still
+   inherited by its bar. */
+#pictureReads .read-row { display: contents; }
+#pictureReads .read-name { font-size: 11px; line-height: 1.3; color: var(--text); white-space: nowrap; }
+#pictureReads .read-bar { display: block; width: auto; height: 6px; border-radius: 0; background: var(--line);
+  background-image: linear-gradient(var(--charcoal), var(--charcoal)); background-repeat: no-repeat;
+  background-position: left; background-size: calc(var(--v, 0) * 100%) 100%; }
+#pictureReads[data-held] .read-bar { background-image: linear-gradient(var(--rust), var(--rust)); }
+#pictureReads .read-value { font-size: 11px; line-height: 1.3; color: var(--charcoal); font-variant-numeric: tabular-nums; text-align: right; }
+[data-compact] #pictureReads { grid-template-columns: auto 52px 3em; gap: 1px 7px; }
+[data-compact] #pictureReads :is(.read-name, .read-value) { font-size: 10.5px; }
+[data-narrow] #pictureReads { grid-template-columns: auto 40px 3em; }
 .level-meter { display: block; width: 7px; height: 40px; border-radius: 1px; background: var(--line); }
 .level-meter i { display: block; width: 100%; height: 100%; border-radius: 1px;
   background: linear-gradient(var(--sage), var(--sage)) no-repeat bottom / 100% calc(var(--v, 0) * 100%); }
 .perform-panel { width: min(640px, calc(100vw - 32px)); max-height: none; overflow: visible; }
 .perform-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; align-items: start; }
 .perform-panel .menu-group .menu-note { display: none; }
+/* Perform, labelled (the UI review, 20 Nov; web/docs/perform.md): every menu, switch and knob
+   named, three words or fewer, the name in small type over its control as Play's Expression
+   row has it; the arpeggiator drawn; the clock a sentence; Glide and Tempo the Bench's knobs. */
+.perform-panel .menu-group + .menu-group { margin-top: 12px; padding-top: 10px; }
+.perform-panel .menu-title { margin-bottom: 6px; }
+[data-compact] .perform-panel { padding: 10px 14px 10px; }
+[data-compact] .perform-panel .measure-head { margin-bottom: 4px; }
+[data-compact] .perform-panel .menu-group + .menu-group { margin-top: 8px; padding-top: 6px; }
+.perform-fields { display: grid; gap: 0 8px; }
+.arp-fields { grid-template-columns: 1.5fr 1fr 1fr; }
+.key-fields { grid-template-columns: 1fr 1.5fr; }
+.perform-fields > .menu-row { display: flex; flex-direction: column; align-items: stretch; gap: 2px; margin: 0; min-width: 0; }
+.perform-fields > .menu-row > .menu-label { flex: 0 0 auto; font-size: 10.5px; line-height: 1.2; white-space: nowrap; }
+.perform-fields > .menu-row > .grow { display: flex; flex: 0 0 auto; min-width: 0; }
+.perform-fields select { width: 100%; min-width: 0; }
+.arp-plot { position: relative; height: 64px; border: 1px solid var(--line); background: var(--paper); }
+[data-compact] .arp-plot { height: 52px; }
+.arp-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.arp-cap { font-size: 11px; line-height: 1.3; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums; margin: 3px 0 6px; }
+/* The clock's sentence: each part a box of one width, so nothing after it moves as the bar grows. */
+.clock-line { display: flex; align-items: baseline; font-size: 13.5px; line-height: 1.3; color: var(--charcoal); white-space: nowrap; font-variant-numeric: tabular-nums; }
+[data-compact] .clock-line { font-size: 12.5px; }
+.clock-line > span { flex: 0 0 auto; }
+/* The bar and the beat in a box wide enough for "bar 128, beat 4" in figures of one width. */
+.clock-line .clock-at { min-width: 7.2em; }
+.clock-line .clock-sep { color: var(--text-soft); white-space: pre; }
+#transportState[data-on="true"] { color: var(--sage); }
+#transportState[data-on="false"] { color: var(--rust); }
+.clock-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.clock-beats { display: flex; gap: 4px; }
+.clock-beats i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); box-sizing: border-box; }
+.clock-beats i.on { background: var(--charcoal); border-color: var(--charcoal); }
+#transportPlay { min-width: 3.6em; text-align: left; }
+/* The morph's crossfader: its ends named, Store under each, where it stands over it. */
+.morph-fader.menu-row { margin-top: 0; }
+.morph-fader > .menu-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.morph-fader > .grow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: ". at ." "a fader b";
+  align-items: center; gap: 2px 10px; width: 100%; }
+.morph-fader .morph-at { grid-area: at; text-align: center; font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; }
+.morph-fader > .grow > .morph-end:first-of-type { grid-area: a; }
+.morph-fader > .grow > .morph-end:last-of-type { grid-area: b; }
+.morph-fader #morphPos { grid-area: fader; width: 100%; min-width: 0; margin: 0; }
+.morph-end { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.morph-end > b { font-family: var(--serif); font-weight: 500; font-size: 15px; line-height: 1; color: var(--charcoal); }
+.morph-end > .link-btn { font-size: 9px; }
+/* Quantise, Glide and Tempo on one row; Tap beside Tempo's knob rather than under its name. */
+/* Over the knob layout's rule for a parent of knobs (a line of its own for anything else). */
+.perform-panel .perform-knobs { display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 6px 10px; margin-top: 8px; }
+.perform-panel .perform-knobs > :not(.knob-row) { flex: 0 0 auto; }
+.perform-knobs > .check-switch { align-self: center; margin-right: 4px; }
+.perform-knobs > .menu-row.knob-row { margin-top: 0; }
+.perform-knobs > .menu-row.is-idle { opacity: 0.45; }
+.perform-knobs > .tempo-row.knob-row { grid-template-columns: auto auto; grid-template-areas: "value ." "face extra" "name ."; column-gap: 8px; }
+.perform-knobs > .tempo-row.knob-row > .grow > #tempoTap { grid-area: extra; align-self: center; }
 .picture-panel { position: fixed; width: min(700px, calc(100vw - 32px)); max-height: none; overflow: visible; }
 .picture-halves { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; align-items: start; }
 .half-title { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--blush-deep);
@@ -2934,22 +3087,41 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                shrink, as the Draw row's do. -->
           <div class="menu-group" id="arpGroup" data-home="perform">
             <span class="menu-title">Arpeggiator</span>
-            <div class="menu-row stack">
-              <label class="menu-label" for="arpMode">Arp</label>
-              <div class="grow">
-                <select id="arpMode" style="flex:2 1 0; min-width:0">
-                  <option value="off">off</option><option value="up">up</option>
-                  <option value="down">down</option><option value="updown">up-down</option>
-                  <option value="played">as played</option><option value="random">random</option>
-                </select>
-                <select id="arpRate" aria-label="Arpeggio step" style="flex:1 1 0; min-width:0">
-                  <option value="1/4">1/4</option><option value="1/8" selected>1/8</option>
-                  <option value="1/16">1/16</option><option value="1/8t">1/8t</option>
-                  <option value="1/16t">1/16t</option>
-                </select>
-                <select id="arpOctaves" aria-label="Octaves the arpeggio climbs" style="flex:1 1 0; min-width:0">
-                  <option value="1">1 oct</option><option value="2">2 oct</option><option value="3">3 oct</option>
-                </select>
+            <!-- Since the UI review (20 Nov, web/docs/perform.md): one bar of what a held chord
+                 plays, drawn from the instrument's own order (Keyboard::arpSequence) over the
+                 chord held or, with none, C major struck E, C, G; then the three menus, each
+                 named over it as Play's Expression row has it. Only a picture: nothing in it
+                 reaches the sound. The values are the menus' as they were; only the words moved. -->
+            <div class="arp-plot"><svg id="arpDraw" role="img" aria-label="What a held chord plays over one bar"></svg></div>
+            <div class="arp-cap" id="arpCap"></div>
+            <div class="perform-fields arp-fields">
+              <div class="menu-row">
+                <label class="menu-label" for="arpMode">Pattern</label>
+                <div class="grow">
+                  <select id="arpMode">
+                    <option value="off">Off</option><option value="up">Up</option>
+                    <option value="down">Down</option><option value="updown">Up and down</option>
+                    <option value="played">As played</option><option value="random">Random</option>
+                  </select>
+                </div>
+              </div>
+              <div class="menu-row">
+                <label class="menu-label" for="arpRate">Step</label>
+                <div class="grow">
+                  <select id="arpRate">
+                    <option value="1/4">1/4</option><option value="1/8" selected>1/8</option>
+                    <option value="1/16">1/16</option><option value="1/8t">1/8t</option>
+                    <option value="1/16t">1/16t</option>
+                  </select>
+                </div>
+              </div>
+              <div class="menu-row">
+                <label class="menu-label" for="arpOctaves">Octaves</label>
+                <div class="grow">
+                  <select id="arpOctaves">
+                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                  </select>
+                </div>
               </div>
             </div>
             <p class="menu-note">Plays a held chord a note at a time at the tempo. Letting go
@@ -2965,18 +3137,16 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                does. -->
           <div class="menu-group" id="clockGroup" data-home="perform">
             <span class="menu-title">Clock</span>
-            <div class="menu-row">
-              <span class="menu-label">From</span>
-              <div class="grow">
-                <span class="reading" id="clockFrom">internal</span>
-              </div>
+            <!-- One sentence since the UI review (20 Nov): where the beat comes from, where the
+                 bar is and whether it runs, each part in a box of its own width; and under it
+                 the beat's four dots and the button, on a row of its own, so a growing bar
+                 count moves nothing a hand reaches for. The button says what it will do. -->
+            <div class="clock-line" id="clockLine">
+              <span class="clock-from" id="clockFrom">Internal</span><span class="clock-sep" aria-hidden="true"> &middot; </span><span class="clock-at" id="transportAt">bar 1, beat 1</span><span class="clock-sep" aria-hidden="true"> &middot; </span><span class="clock-state" id="transportState" data-on="true">Running</span>
             </div>
-            <div class="menu-row">
-              <span class="menu-label">Bar</span>
-              <div class="grow">
-                <button type="button" class="link-btn caps" id="transportPlay">Stop</button>
-                <span class="reading" id="transportAt">1.1</span>
-              </div>
+            <div class="clock-row">
+              <span class="clock-beats" id="clockBeats" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <button type="button" class="link-btn caps" id="transportPlay">Stop</button>
             </div>
             <p class="menu-note">A keyboard or a sequencer sending MIDI clock sets the tempo while it
               runs, and its Start restarts the locked oscillators; <i>From</i> says which.
@@ -3293,15 +3463,18 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                a whole sound. On Measure, in the drawer. -->
           <div class="menu-group" id="morphGroup" data-home="perform" data-place="performSide">
             <span class="menu-title">Morph</span>
-            <!-- A slider, not a knob: a crossfader between the setups stored at its two ends. -->
-            <div class="menu-row" data-mod-dest="morph.pos" data-mod-control="morphPos" data-knob="no">
+            <!-- A slider, not a knob: a crossfader between the setups stored at its two ends,
+                 which since the UI review (20 Nov) are named, A and B, each with Store under it,
+                 and where it stands read in per cent over it. -->
+            <div class="menu-row morph-fader" data-mod-dest="morph.pos" data-mod-control="morphPos" data-knob="no">
               <label class="menu-label" for="morphPos">Morph</label>
               <div class="grow">
-                <button type="button" class="link-btn caps" id="morphStoreA" aria-pressed="false"
-                        title="Store every knob as A">A</button>
-                <input type="range" id="morphPos" min="0" max="100" value="0">
-                <button type="button" class="link-btn caps" id="morphStoreB" aria-pressed="false"
-                        title="Store every knob as B">B</button>
+                <span class="reading morph-at" id="morphPosValue">0%</span>
+                <span class="morph-end"><b aria-hidden="true">A</b><button type="button" class="link-btn caps" id="morphStoreA" aria-pressed="false"
+                        title="Store every knob as A">Store</button></span>
+                <input type="range" id="morphPos" min="0" max="100" value="0" aria-label="Morph, A to B">
+                <span class="morph-end"><b aria-hidden="true">B</b><button type="button" class="link-btn caps" id="morphStoreB" aria-pressed="false"
+                        title="Store every knob as B">Store</button></span>
               </div>
             </div>
             <p class="menu-note" id="morphNote"></p>
@@ -3346,30 +3519,35 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                the oscillators it locks. -->
           <div class="menu-group" id="keyGroup" data-home="perform" data-place="performSide">
             <span class="menu-title">Key and tempo</span>
-            <!-- Two rows, not one: side by side in a Bench column the scale's menu
-                 was cut to "Chroma". -->
-            <div class="menu-row">
-              <label class="menu-label" for="keyRoot">Key</label>
-              <div class="grow"><select id="keyRoot" style="flex:1 1 auto"></select></div>
-            </div>
-            <div class="menu-row">
-              <label class="menu-label" for="keyScale">Scale</label>
-              <div class="grow"><select id="keyScale" style="flex:1 1 auto"></select></div>
-            </div>
-            <label class="check"><input type="checkbox" id="quantise"> Quantise the generator's pitch</label>
-            <div class="menu-row" data-more="1">
-              <label class="menu-label" for="quantiseGlide">Glide</label>
-              <div class="grow">
-                <input type="range" id="quantiseGlide" min="0" max="300" value="0">
-                <span class="reading" id="quantiseGlideValue">off</span>
+            <!-- Each name over its menu since the UI review (20 Nov), as the arpeggiator's. -->
+            <div class="perform-fields key-fields">
+              <div class="menu-row">
+                <label class="menu-label" for="keyRoot">Key</label>
+                <div class="grow"><select id="keyRoot"></select></div>
+              </div>
+              <div class="menu-row">
+                <label class="menu-label" for="keyScale">Scale</label>
+                <div class="grow"><select id="keyScale"></select></div>
               </div>
             </div>
-            <div class="menu-row">
-              <label class="menu-label" for="tempo">Tempo</label>
-              <div class="grow">
-                <input type="range" id="tempo" min="30" max="300" value="120">
-                <span class="reading" id="tempoValue">120 BPM</span>
-                <button type="button" class="link-btn caps" id="tempoTap">Tap</button>
+            <!-- Quantise as a switch, and Glide and Tempo the Bench's knobs, Tap beside Tempo
+                 (the UI review, 20 Nov). Glide is greyed while Quantise is off: it acts only then. -->
+            <div class="perform-knobs">
+              <label class="check check-switch"><input type="checkbox" id="quantise"><span class="lamp" aria-hidden="true"></span>Quantise pitch</label>
+              <div class="menu-row" data-more="1">
+                <label class="menu-label" for="quantiseGlide">Glide</label>
+                <div class="grow">
+                  <input type="range" id="quantiseGlide" min="0" max="300" value="0">
+                  <span class="reading" id="quantiseGlideValue">off</span>
+                </div>
+              </div>
+              <div class="menu-row tempo-row">
+                <label class="menu-label" for="tempo">Tempo</label>
+                <div class="grow">
+                  <input type="range" id="tempo" min="30" max="300" value="120">
+                  <span class="reading" id="tempoValue">120 BPM</span>
+                  <button type="button" class="link-btn caps" id="tempoTap">Tap</button>
+                </div>
               </div>
             </div>
             <p class="menu-note">One key and one tempo for the page. <i>Quantise</i> takes the
@@ -3387,44 +3565,74 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               <i>Clock</i> section beside this one.</p>
           </div>
 
-          <div class="menu-group" data-home="measure" data-place="measureSide">
-            <span class="menu-title">Vertical</span>
-            <div id="laneRows" data-more="1"></div>
-            <label class="check" style="margin-top:10px">
-              <input type="checkbox" id="midSide"> Mid / side instead of left / right
-            </label>
-            <label class="check" id="lagCheck">
-              <input type="checkbox" id="lagOn"> Lag X&ndash;Y: the signal against itself, delayed
-            </label>
-            <div class="menu-row" id="lagRow" hidden data-mod-dest="view.lag" data-mod-control="lag">
-              <label class="menu-label" for="lag">Delay</label>
-              <div class="grow">
-                <div class="switch" role="radiogroup" aria-label="Lag delay" style="flex:0 0 auto">
+          <!-- Before the lanes in the markup though they show on Time: the morph reads its
+               sliders in the markup's order (MORPH_IDS, the core's kMorphIds), and that order is
+               the lag, its Heard, then the AC corner, as it was when they shared a section. -->
+          <!-- From the Keyboard (G3): the note is the one pitch on the page
+               that is not estimated, and these say what of the scope may
+               take it as read - so they are the scope's, not the keyboard's.
+               Two switches since the UI review (20 Nov), in Time's view: the
+               sentence that wrapped to an orphan is each one's info line, and
+               Timebase is greyed while Pitch is off, since it follows the note too. -->
+          <div class="menu-group" id="fromKeysGroup" data-home="measure" data-place="measureTime">
+            <span class="menu-title">From the keys</span>
+            <div class="measure-fields">
+              <label class="check check-switch"><input type="checkbox" id="midiTruth" checked><span class="lamp" aria-hidden="true"></span>Pitch</label>
+              <label class="check check-switch"><input type="checkbox" id="midiFollow"><span class="lamp" aria-hidden="true"></span>Timebase</label>
+            </div>
+          </div>
+
+          <!-- Lag X-Y, the signal against itself delayed: in Time's view since the UI review
+               (20 Nov). Its delay and Heard are knobs, greyed while it is off and kept in their
+               place (they were hidden until it was on, which moved what was under them). Heard
+               is still shown only while a live input plays (showLag). -->
+          <div class="menu-group" id="lagGroup" data-home="measure" data-place="measureTime">
+            <span class="menu-title">Lag X&ndash;Y</span>
+            <div class="measure-fields">
+              <label class="check check-switch" id="lagCheck"><input type="checkbox" id="lagOn"><span class="lamp" aria-hidden="true"></span>Lag X&ndash;Y</label>
+              <div class="field fixed" id="lagHow">
+                <span class="eyebrow">Delay</span>
+                <div class="switch" role="radiogroup" aria-label="Lag delay">
                   <button type="button" class="caps" id="lagAuto" role="radio" aria-checked="true">Auto</button>
                   <button type="button" class="caps" id="lagManual" role="radio" aria-checked="false">Set</button>
                 </div>
-                <input type="range" id="lag" min="1" max="400" value="50" style="flex:1 1 auto" disabled>
-                <span class="reading" id="lagValue">listening</span>
               </div>
             </div>
-            <div class="menu-row" id="lagMixRow" hidden data-more="1">
-              <label class="menu-label" for="lagMix">Heard <span class="speakers-tag">speakers</span></label>
-              <div class="grow">
-                <input type="range" id="lagMix" min="0" max="50" value="20">
-                <span class="reading" id="lagMixValue">20%</span>
+            <div class="measure-knobs">
+              <div class="menu-row" id="lagRow" data-mod-dest="view.lag" data-mod-control="lag">
+                <label class="menu-label" for="lag">Delay</label>
+                <div class="grow">
+                  <input type="range" id="lag" min="1" max="400" value="50" disabled>
+                  <span class="reading" id="lagValue">listening</span>
+                </div>
+              </div>
+              <div class="menu-row" id="lagMixRow" hidden data-more="1">
+                <label class="menu-label" for="lagMix">Heard <span class="speakers-tag">speakers</span></label>
+                <div class="grow">
+                  <input type="range" id="lagMix" min="0" max="50" value="20">
+                  <span class="reading" id="lagMixValue">20%</span>
+                </div>
               </div>
             </div>
-            <!-- From the Keyboard (G3): the note is the one pitch on the page
-                 that is not estimated, and these say what of the scope may
-                 take it as read - so they are the scope's, not the keyboard's. -->
-            <label class="check"><input type="checkbox" id="midiTruth" checked> Take the lag and the tuner from the note played</label>
-            <label class="check"><input type="checkbox" id="midiFollow"> &hellip; and the timebase</label>
+          </div>
+
+          <!-- The lanes, in Scope & measure's Vertical view since the UI review (20 Nov): each
+               lane's ink and name, Show and AC, Full scale and Offset as knobs; Mid / side; and
+               the AC corner. The lag and From the keys went to Time, below: both are about the
+               window's time. -->
+          <div class="menu-group measure-quiet" id="verticalGroup" data-home="measure" data-place="measureBody">
+            <span class="menu-title">Vertical</span>
+            <span class="measure-sec">Lanes</span>
+            <div id="laneRows" data-more="1"></div>
+            <div class="measure-knobs">
+              <label class="check check-switch"><input type="checkbox" id="midSide"><span class="lamp" aria-hidden="true"></span>Mid / side</label>
             <div class="menu-row" data-more="1">
               <label class="menu-label" for="acCorner">AC corner</label>
               <div class="grow">
                 <input type="range" id="acCorner" min="5" max="200" value="100">
                 <span class="reading" id="acCornerValue">10.0 Hz</span>
               </div>
+            </div>
             </div>
             <p class="menu-note"><i>AC</i> blocks what is not moving, so a converter with a
               DC offset does not push the trace off the screen. It is a one-pole high pass,
@@ -3438,6 +3646,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               <i>Full scale</i> is the level that reaches the top of the graticule &mdash;
               drop it to open up a quiet signal.</p>
           </div>
+
 
           <!-- The rack (F5 of web/docs/redesigning-the-face.md): Space & Memory's
                effects as modules, top to bottom in the order the sound goes through
@@ -4523,15 +4732,21 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               sent out too, if MIDI out has a port.</p>
           </div>
 
-          <div class="menu-group" data-home="measure" data-place="measureBody">
-            <span class="menu-title">Filter</span>
-            <label class="check">
-              <input type="checkbox" id="filterOn"> Filter the trace
-            </label>
-            <div class="menu-row" style="margin-top:8px">
-              <label class="menu-label" for="filterType">Type</label>
-              <div class="grow"><select id="filterType" style="flex:1 1 auto"></select></div>
+          <!-- The trace filter, Vertical's since the UI review (20 Nov), beside the lanes: a
+               bench scope keeps its bandwidth limit on the channel menu, and it shapes what the
+               lanes draw. Its response drawn on a log axis with the cutoff marked; all of it greyed
+               while it is off (paintMeasure), and every control still in its place. -->
+          <div class="menu-group" id="traceFilterGroup" data-home="measure" data-place="measureBody">
+            <span class="menu-title">Trace filter</span>
+            <div class="measure-fields">
+              <label class="check check-switch"><input type="checkbox" id="filterOn"><span class="lamp" aria-hidden="true"></span>Filter on</label>
+              <div class="menu-row measure-field" id="filterTypeRow">
+                <label class="menu-label" for="filterType">Type</label>
+                <div class="grow"><select id="filterType"></select></div>
+              </div>
             </div>
+            <div class="filt-plot" id="filterPlot"><svg id="filterSvg" viewBox="0 0 200 50" preserveAspectRatio="none" role="img" aria-label="The trace filter's response"></svg></div>
+            <div class="measure-knobs" id="filterKnobs">
             <div class="menu-row" data-mod-dest="filter.cutoff">
               <label class="menu-label" for="filterCutoff">Cutoff</label>
               <div class="grow">
@@ -4546,7 +4761,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading" id="filterResValue">0</span>
               </div>
             </div>
-            <div class="menu-row" data-more="1" style="margin-top:8px">
+            </div>
+            <div class="measure-fields" id="filterRoutes">
+            <div class="menu-row measure-field" data-more="1">
               <span class="menu-label">Screen reads</span>
               <div class="grow">
                 <div class="switch" role="radiogroup" aria-label="What the screen reads" style="flex:0 0 auto">
@@ -4555,7 +4772,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 </div>
               </div>
             </div>
-            <div class="menu-row" id="speakersRow" data-more="1">
+            <div class="menu-row measure-field" id="speakersRow" data-more="1">
               <span class="menu-label">Speakers get <span class="speakers-tag">speakers</span></span>
               <div class="grow">
                 <div class="switch" role="radiogroup" aria-label="What the speakers get" style="flex:0 0 auto">
@@ -4563,6 +4780,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                   <button type="button" class="caps" id="hearWet" role="radio" aria-checked="false">Shaped</button>
                 </div>
               </div>
+            </div>
             </div>
             <p class="menu-note">This shapes the <em>trace</em>, not the sound: a low pass
               rounds a square's corners toward a sine, a notch carves one harmonic out of
@@ -4611,40 +4829,44 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               which the limiter and the clamp are still the last things before.</p>
           </div>
 
-          <div class="menu-group" data-home="measure" data-place="measureTrigger">
+          <!-- In Scope & measure's Trigger view since the UI review (20 Nov): the edge and the
+               source named over their switches, then Level, Position and Holdoff as knobs. -->
+          <div class="menu-group measure-quiet" data-home="measure" data-place="measureTrigger">
             <span class="menu-title">Trigger</span>
-            <div class="measure-pair">
-        <div class="field fixed">
-          <span class="eyebrow">Edge</span>
-          <div class="switch" role="radiogroup" aria-label="Trigger edge">
-            <button type="button" class="caps" id="edgeRising" role="radio" aria-checked="true">Rising</button>
-            <button type="button" class="caps" id="edgeFalling" role="radio" aria-checked="false">Falling</button>
-          </div>
-        </div>
-        <div class="field">
-          <span class="eyebrow" id="levelLabel">Trigger level</span>
-          <div class="field-row">
-            <input type="range" id="level" min="-1000" max="1000" value="0" aria-labelledby="levelLabel">
-            <span class="reading" id="levelValue">+0.000</span>
-          </div>
-        </div>
-            </div>
-            <div class="menu-row">
-              <span class="menu-label">Source</span>
-              <div class="switch" role="radiogroup" aria-label="Trigger source" id="trigSources"></div>
-            </div>
-            <div class="menu-row" data-mod-dest="trig.position">
-              <label class="menu-label" for="position">Position</label>
-              <div class="grow">
-                <input type="range" id="position" min="0" max="100" value="10">
-                <span class="reading" id="positionValue">10%</span>
+            <div class="measure-fields">
+              <div class="field fixed">
+                <span class="eyebrow">Edge</span>
+                <div class="switch" role="radiogroup" aria-label="Trigger edge">
+                  <button type="button" class="caps" id="edgeRising" role="radio" aria-checked="true">Rising</button>
+                  <button type="button" class="caps" id="edgeFalling" role="radio" aria-checked="false">Falling</button>
+                </div>
+              </div>
+              <div class="field fixed">
+                <span class="eyebrow">Source</span>
+                <div class="switch" role="radiogroup" aria-label="Trigger source" id="trigSources"></div>
               </div>
             </div>
-            <div class="menu-row" data-more="1">
-              <label class="menu-label" for="holdoff">Holdoff</label>
-              <div class="grow">
-                <input type="range" id="holdoff" min="0" max="50" value="0" step="1">
-                <span class="reading" id="holdoffValue">off</span>
+            <div class="measure-knobs">
+              <div class="menu-row">
+                <label class="menu-label" id="levelLabel" for="level">Level</label>
+                <div class="grow">
+                  <input type="range" id="level" min="-1000" max="1000" value="0" aria-labelledby="levelLabel">
+                  <span class="reading" id="levelValue">+0.000</span>
+                </div>
+              </div>
+              <div class="menu-row" data-mod-dest="trig.position">
+                <label class="menu-label" for="position">Position</label>
+                <div class="grow">
+                  <input type="range" id="position" min="0" max="100" value="10">
+                  <span class="reading" id="positionValue">10%</span>
+                </div>
+              </div>
+              <div class="menu-row" data-more="1">
+                <label class="menu-label" for="holdoff">Holdoff</label>
+                <div class="grow">
+                  <input type="range" id="holdoff" min="0" max="50" value="0" step="1">
+                  <span class="reading" id="holdoffValue">off</span>
+                </div>
               </div>
             </div>
             <p class="menu-note"><i>Position</i> is how much of the window sits <em>before</em>
@@ -4754,11 +4976,16 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
               dimming the steep edge of a square wave fights the job Y&ndash;T is for.</p>
           </div>
 
-          <div class="menu-group" data-home="measure" data-place="measureSide">
+          <!-- Measure's view since the UI review (20 Nov): what to show, what the numbers read,
+               and the reference, each named in three words or fewer. -->
+          <div class="menu-group measure-quiet" id="measureGroup" data-home="measure" data-place="measureSide">
             <span class="menu-title">Measure</span>
-            <label class="check"><input type="checkbox" id="readoutsOn"> Readouts under the screen</label>
-            <label class="check"><input type="checkbox" id="cursorsOn"> Cursors</label>
-            <div class="menu-row">
+            <span class="measure-sec">Show</span>
+            <div class="measure-fields">
+              <label class="check check-switch"><input type="checkbox" id="readoutsOn"><span class="lamp" aria-hidden="true"></span>Readouts</label>
+              <label class="check check-switch"><input type="checkbox" id="cursorsOn"><span class="lamp" aria-hidden="true"></span>Cursors</label>
+            </div>
+            <div class="menu-row measure-field">
               <span class="menu-label">Numbers read</span>
               <div class="grow">
                 <div class="switch" role="radiogroup" aria-label="What the numbers are about" style="flex:0 0 auto">
@@ -4767,9 +4994,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 </div>
               </div>
             </div>
-            <div class="menu-row" style="margin-top:10px">
-              <button type="button" class="link-btn caps" id="saveReference">Save reference</button>
+            <span class="measure-sec">Reference</span>
+            <div class="measure-fields measure-ref">
+              <button type="button" class="link-btn caps" id="saveReference">Save</button>
               <button type="button" class="link-btn caps" id="clearReference">Clear</button>
+              <span class="measure-ref-state" id="refState">none saved</span>
             </div>
             <p class="menu-note">A reference is the capture on screen, frozen and kept
               behind the live one so you can see what changed.</p>
@@ -4868,20 +5097,19 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <button type="button" class="link-btn caps" id="measureButton" aria-expanded="false"
                 aria-controls="measurePanel">Scope &amp; measure</button>
         <div class="menu-panel measure-panel" id="measurePanel" role="dialog" aria-modal="true" aria-labelledby="measureName" hidden>
+          <!-- By subject since the UI review (20 Nov, web/docs/scope-measure.md): a head that
+               never changes - the name, Run, the mode and Autoset - then four subtabs in the
+               figure-area bar Play and Ink use, Trigger, Time, Vertical and Measure, each a view
+               of a drawing and its controls, laid in one box of one height (placeMeasure), so
+               choosing one moves nothing. It was about thirty controls in three columns, 564 px
+               tall, which at 960x600 ran over the Picture strip. The views are the sections'
+               homes (data-place), so showControl chooses the subtab that holds a control. -->
           <div class="measure-head">
             <span class="measure-name" id="measureName">Scope &amp; measure</span>
-            <span class="menu-note">For reading the screen. Two rows reach the speakers, and say so.</span>
-            <button type="button" class="close-btn" id="measureClose" aria-label="Close">&times;</button>
-          </div>
-          <div class="measure-cols">
-            <div class="measure-col">
-              <div class="menu-group measure-block">
-                <span class="menu-title">Run</span>
-                <div class="measure-run">
         <button type="button" class="run-btn caps" id="run" data-running="true" data-armed="false">
           <span class="dot"></span><span id="runLabel">Stop</span>
         </button>
-        <div class="field fixed">
+        <div class="field fixed measure-mode">
           <span class="eyebrow">Mode</span>
           <div class="switch" role="radiogroup" aria-label="Trigger mode">
             <button type="button" class="caps" id="modeAuto" role="radio" aria-checked="true">Auto</button>
@@ -4890,37 +5118,54 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
           </div>
         </div>
         <button type="button" class="link-btn caps" id="autoset">Autoset</button>
+            <button type="button" class="close-btn" id="measureClose" aria-label="Close">&times;</button>
+          </div>
+          <div class="fig-bar measure-bar" id="measureBar" role="tablist" aria-label="Scope and measure">
+            <button type="button" role="tab" class="fig-tab" id="mtab-trigger" data-mview="trigger" aria-controls="mview-trigger" aria-selected="true"><b>Trigger</b><span class="fig-sum" id="msum-trigger"></span></button>
+            <button type="button" role="tab" class="fig-tab" id="mtab-time" data-mview="time" aria-controls="mview-time" aria-selected="false" tabindex="-1"><b>Time</b><span class="fig-sum" id="msum-time"></span></button>
+            <button type="button" role="tab" class="fig-tab" id="mtab-vertical" data-mview="vertical" aria-controls="mview-vertical" aria-selected="false" tabindex="-1"><b>Vertical</b><span class="fig-sum" id="msum-vertical"></span></button>
+            <button type="button" role="tab" class="fig-tab" id="mtab-measure" data-mview="measure" aria-controls="mview-measure" aria-selected="false" tabindex="-1"><b>Measure</b><span class="fig-sum" id="msum-measure"></span></button>
+          </div>
+          <div class="measure-views" id="measureViews">
+            <section class="measure-view" id="mview-trigger" data-mview="trigger" role="tabpanel" aria-labelledby="mtab-trigger">
+              <div class="mfig"><div class="mplot" id="trigPlot"></div><div class="mcap" id="trigCap"></div></div>
+              <!-- The Trigger section goes here (data-place). -->
+              <div class="mctl" id="measureTrigger"></div>
+            </section>
+            <section class="measure-view" id="mview-time" data-mview="time" role="tabpanel" aria-labelledby="mtab-time" hidden>
+              <div class="mfig"><div class="mplot" id="timePlot"></div><div class="mcap" id="timeCap"></div></div>
+              <div class="mctl" id="measureTime">
+              <div class="menu-group measure-block">
+                <span class="menu-title">Window</span>
+                <div class="measure-knobs">
+                <div class="menu-row">
+                  <label class="menu-label" id="windowLabel" for="timebase">Timebase</label>
+                  <div class="grow">
+                    <input type="range" id="timebase" min="0" max="14" step="1" value="7" aria-labelledby="windowLabel">
+                    <span class="reading" id="timebaseValue">2 ms/div</span>
+                  </div>
+                </div>
+                <div class="menu-row" data-mod-dest="view.zoom">
+                  <label class="menu-label" id="zoomLabel" for="zoom">Zoom</label>
+                  <div class="grow">
+                    <input type="range" id="zoom" min="0" max="24" value="0" aria-labelledby="zoomLabel">
+                    <span class="reading" id="zoomValue">1.0&times;</span>
+                  </div>
+                </div>
                 </div>
               </div>
-              <!-- The Trigger section goes here (data-place). -->
-              <div id="measureTrigger"></div>
-            </div>
-            <div class="measure-col">
-              <div class="menu-group measure-block">
-                <span class="menu-title">Time</span>
-        <div class="field">
-          <span class="eyebrow" id="windowLabel">Timebase</span>
-          <div class="field-row">
-            <input type="range" id="timebase" min="0" max="14" step="1" value="7" aria-labelledby="windowLabel">
-            <span class="reading" id="timebaseValue">2 ms/div</span>
-          </div>
-        </div>
-        <div class="field fixed" data-mod-dest="view.zoom">
-          <span class="eyebrow" id="zoomLabel">Zoom</span>
-          <div class="field-row">
-            <input type="range" id="zoom" min="0" max="24" value="0"
-                   style="min-width:70px" aria-labelledby="zoomLabel">
-            <span class="reading" id="zoomValue">1.0&times;</span>
-          </div>
-        </div>
+              <!-- From the keys and the lag (data-place). -->
               </div>
-              <!-- The lanes and the trace filter (data-place). -->
-              <div id="measureBody"></div>
-            </div>
-            <!-- Vertical, then Measure (data-place): Measure came from the middle column
-                 in F5, when it took the Numbers read switch from Display, which put the
-                 middle column past 600 px. -->
-            <div class="measure-col" id="measureSide"></div>
+            </section>
+            <section class="measure-view" id="mview-vertical" data-mview="vertical" role="tabpanel" aria-labelledby="mtab-vertical" hidden>
+              <div class="mfig"><div class="mplot" id="vertPlot"></div><div class="mcap" id="vertCap"></div></div>
+              <!-- The lanes and the trace filter, side by side (data-place). -->
+              <div class="mctl mctl-cols" id="measureBody"></div>
+            </section>
+            <section class="measure-view" id="mview-measure" data-mview="measure" role="tabpanel" aria-labelledby="mtab-measure" hidden>
+              <div class="mfig"><div class="mplot" id="measPlot"></div><div class="mcap" id="measCap"></div></div>
+              <div class="mctl" id="measureSide"></div>
+            </section>
           </div>
         </div>
       </span>
@@ -5141,9 +5386,15 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
     </div>
     <!-- What the Width applies to (16 Nov): what you hear alone, the player's
          and no setup's; or what is drawn too, the sound's, in its setup. -->
-    <div class="menu-row" id="widthToRow">
-      <span class="menu-label">Width on</span>
-      <div class="switch" role="radiogroup" aria-label="What the Width applies to">
+    <!-- Since the UI review (20 Nov) one checkbox, Draw width, drawn as a switch: on, the
+         Width is drawn too; off, only heard. The owner found the two-way switch with
+         "Width on" under it read like three choices. The two buttons are kept, out of
+         sight, and the checkbox drives them by their clicks, because they are what the
+         instrument hears (HOST_CLICKS, the core's restore) and what the plugin's panel
+         posts back; so a setup, the plugin and the core hear exactly what they heard. -->
+    <div id="widthToRow" class="width-to">
+      <label class="check check-switch"><input type="checkbox" id="widthDraw"><span class="lamp" aria-hidden="true"></span>Draw width</label>
+      <div class="switch" role="radiogroup" aria-label="What the Width applies to" hidden>
         <button type="button" class="caps" id="widthHeard" role="radio" aria-checked="true">Heard</button>
         <button type="button" class="caps" id="widthDrawn" role="radio" aria-checked="false">Drawn too</button>
       </div>
@@ -5164,23 +5415,27 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
            the right, one size whatever the words say, so pressing a control and changing the line moves
            neither (18 Nov: the owner's rule that nothing moves when something is selected; inline after
            the words, More went wherever the sentence ended). -->
+      <!-- Since the UI review (20 Nov): a top row - the host's dot first, keeping its place
+           shown or not, the name, the value, the hand, and More at its right in a place of
+           its own - over the control's whole line, four lines at most (three compact),
+           which every line in CONTROL_WORDS fits at every window. The line's "Right-click
+           for more" went: More is the one way to more, and its title and the card say
+           that a control has a menu. -->
       <div class="wrap info-wrap">
-        <span class="info-words"><span class="info-name" id="infoName"></span>
-        <span class="info-value" id="infoValue"></span>
-        <span class="info-host" id="infoHost" title="A host can automate it" hidden></span>
-        <span class="info-hand" id="infoHand" hidden></span>
-        <span class="info-text" id="infoText">Rest the pointer on a control to read what it does.</span></span>
-        <span class="info-acts"><span class="info-menu is-unseen" id="infoMenu"></span>
-        <button type="button" class="link-btn caps info-more is-unseen" id="infoMore">More</button></span>
+        <span class="info-top"><span class="info-host is-unseen" id="infoHost" title="A host can automate it"></span><span class="info-name" id="infoName"></span><span class="info-value" id="infoValue"></span><span class="info-hand" id="infoHand" hidden></span>
+        <button type="button" class="link-btn caps info-more is-unseen" id="infoMore"
+                title="The card: what it does, what is moving it, the controls either side. Right-click any control for its menu.">More</button></span>
+        <span class="info-text" id="infoText">Rest the pointer on a control to read what it does.</span>
       </div>
     </div>
     <div class="picture-meters">
+      <!-- A row each since the UI review (20 Nov): the name, a bar filled in charcoal and the
+           reading in per cent in a column of one width, where they were three pale slivers. -->
       <span class="picture-reads" id="pictureReads" role="img" aria-label="The picture's three reads">
-              <i data-read="glow" title="Glow: how much of the screen is lit, against lately"></i><i
-                 data-read="motion" title="Motion: how much the picture is changing, against lately"></i><i
-                 data-read="memory" title="Memory: how long the picture has been repeating itself, still or cycling"></i>
-            </span>
-      <span class="picture-meter-names" aria-hidden="true"><span>Glow</span><span>Motion</span><span>Memory</span></span>
+        <span class="read-row" data-read="glow" title="Glow: how much of the screen is lit, against lately"><span class="read-name">Glow</span><i class="read-bar"></i><span class="read-value">0%</span></span>
+        <span class="read-row" data-read="motion" title="Motion: how much the picture is changing, against lately"><span class="read-name">Motion</span><i class="read-bar"></i><span class="read-value">0%</span></span>
+        <span class="read-row" data-read="memory" title="Memory: how long the picture has been repeating itself, still or cycling"><span class="read-name">Memory</span><i class="read-bar"></i><span class="read-value">0%</span></span>
+      </span>
     </div>
   </div>
 </section>
@@ -5496,7 +5751,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <li><b>One input has no second axis &mdash; so lag makes one</b>
         <span>A single instrument down a single input gives two identical channels, and
         identical channels draw a diagonal line and nothing else, whatever the preset. <i>Lag
-        X&ndash;Y</i>, under <i>Vertical</i> in <i>Scope &amp; measure</i>, plots the signal against itself a
+        X&ndash;Y</i>, under <i>Time</i> in <i>Scope &amp; measure</i>, plots the signal against itself a
         moment earlier instead. A held note becomes a closed loop whose shape is its harmonic
         content, and it moves when you move.
         <br><br>
@@ -5515,7 +5770,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         harmonics entirely. That is allowed on purpose; it is where the effect is strongest.</span></li>
 
       <li><b>AC coupling, and where its corner sits</b>
-        <span>Under <i>Vertical</i> in <i>Scope &amp; measure</i>, per lane. It blocks what is not moving, so a converter
+        <span>Under <i>Vertical</i> in <i>Scope &amp; measure</i>, a switch per lane, with the corner as a knob beside <i>Mid / side</i>. It blocks what is not moving, so a converter
         with a DC offset does not push the trace off the screen &mdash; a one-pole high pass,
         the same one a bench scope puts in front of its input. The <i>corner</i> is where it
         starts taking things away: at ten hertz, which is where a scope usually sits, a slow
@@ -5571,7 +5826,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         sound too &mdash; as do the timebase, the trigger, full scale and the turn.</span></li>
 
       <li><b>A filter, on two taps</b>
-        <span>Under <i>Filter</i> in <i>Scope &amp; measure</i>. It reshapes the trace, which is the point of having one
+        <span><i>Trace filter</i>, under <i>Vertical</i> in <i>Scope &amp; measure</i>, beside the lanes, with its response drawn. It reshapes the trace, which is the point of having one
         here: a low pass rounds a square's corners toward a sine, a notch carves a harmonic
         out of the picture, a resonant sweep draws its own ringing. <i>Screen reads</i> and
         <i>Speakers get</i> are separate switches, so the filter can be an instrument for
@@ -5755,8 +6010,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         tempo</i> silences it; see below.</span></li>
 
       <li><b>The arpeggiator</b>
-        <span><i>Arp</i>, in the <i>Perform</i> menu in the header, plays a held chord a note
-        at a time at the tempo:
+        <span>The <i>Arpeggiator</i>, in the <i>Perform</i> menu in the header, plays a held chord a note
+        at a time at the tempo, its <i>Pattern</i>, <i>Step</i> and <i>Octaves</i> each named over
+        its menu, and a bar of what a held C major chord (or the chord you hold) will play drawn
+        over them:
         up, down, up and back, in the order you played it, or at random, from a crotchet to a
         semiquaver triplet, over one to three octaves. In the dyad each step pairs your lowest
         note with the next, so the figure steps through the shapes of the chord's intervals in
@@ -5992,11 +6249,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         always sounded; at fifty an eighth; at nought every note the same in both ears. The
         screen still draws the notes against each other, the outline's lean included, and the
         picture, Scan and the loop are the same to the bit at any setting: what you hear is
-        every note that is drawn, heard apart from where it is drawn. <i>Width on</i> chooses what it
-        applies to: <i>Heard</i>, all of the above, or <i>Drawn too</i>, where the screen draws every
+        every note that is drawn, heard apart from where it is drawn. <i>Draw width</i>, the switch beside it, chooses what it
+        applies to: off, only what you hear, all of the above; or on, drawn too, where the screen draws every
         note at the Width as you hear it, so the speakers are the screen again and Scan reads that
         figure, and the Width becomes the sound's own, saved with it and marked with a ring before its
-        name (the player's Width waits, put away, for <i>Heard</i>). Drawn too, the figure of two notes
+        name (the player's Width waits, put away, for <i>Draw width</i> off). Drawn too, the figure of two notes
         drawn against each other goes: the screen draws the notes' rings summed. The beam's <i>Ink</i> is the
         figure's colour, the accent or one of five lane inks, and <i>Layer B's ink</i> is the
         second figure's, its lane's unless you choose (in Y&ndash;T each lane keeps its own);
@@ -6005,9 +6262,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         or its width, so none of them changes what you hear. Above the
         screen are the display (Y&ndash;T, X&ndash;Y, spectrogram),
         <i>Clear</i>, <i>Scope &amp; measure</i> &mdash; the oscilloscope's own tools in a panel
-        over the screen &mdash; run, mode and <i>Autoset</i>; the trigger; the timebase and
-        zoom; the vertical scale, the trace filter, the lanes, the cursors, a saved reference
-        and the readouts under the screen, which are off until you ask for them there. Two of
+        over the screen: run, mode and <i>Autoset</i> along its head, and four subtabs, each a
+        drawing of its subject and its controls: <i>Trigger</i>; <i>Time</i>, the timebase and zoom,
+        the keys' pitch and the lag; <i>Vertical</i>, the lanes' scale and offset and the trace
+        filter; and <i>Measure</i>, the cursors, a saved reference and the readouts under the
+        screen, which are off until you ask for them there. Two of
         its rows reach the speakers, and are marked so: lag X&ndash;Y's <i>Heard</i> and the
         filter's <i>Speakers get</i> &mdash; and <i>Enlarge</i> at the end.
         The face is the <i>Bench</i>, where everything is played and tuned: the screen on the left, as large as
@@ -6209,8 +6468,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         is not part of a setup code, so loading a preset does not turn it off.</span></li>
 
       <li><b>Morph: one fader, two sounds</b>
-        <span><i>Morph</i>, in the <i>Perform</i> menu in the header, slides between two sounds. Press <i>A</i> to store every
-        knob, change the sound, press <i>B</i>, and the fader goes between them &mdash; the
+        <span><i>Morph</i>, in the <i>Perform</i> menu in the header, slides between two sounds. Press <i>Store</i> under <i>A</i> to store every
+        knob, change the sound, press <i>Store</i> under <i>B</i>, and the fader goes between them &mdash; the
         pitch by octaves, everything else in a straight line. Menus and switches are not
         morphed: a shape or a mode stays as you left it. Nor is the scope's view: the
         timebase, the zoom and the trigger stay where you set them, while the tempo, which you
@@ -6242,7 +6501,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <li><b>Key, tempo and the quantiser</b>
         <span>The <i>Key and tempo</i> section, in the <i>Perform</i> menu in the header, is one key, one scale and one
         tempo for the whole page, with <i>Tap</i> beside the tempo. Where the tempo comes from and
-        the bar are in the <i>Clock</i> section beside it. <i>Quantise the generator's pitch</i> takes the pitch, after
+        the bar are in the <i>Clock</i> section beside it, one sentence: where the beat comes from, the bar and the beat,
+        and whether it is running, with <i>Start</i> or <i>Stop</i> under it. <i>Quantise pitch</i> takes the generator's pitch, after
         everything patched onto it, to the nearest note of the key, so a slow oscillator or the
         photocell on the frequency plays a melody in D dorian rather than a siren. A key you
         play outside the scale is moved too, and a note exactly between two goes down.
@@ -6337,12 +6597,12 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         does reach the samples &mdash; on a stereo pair it turns the lanes themselves, and
         the speakers with them &mdash; so these numbers read the signal as it arrived unless
         you say otherwise. <i>Numbers read &rarr; Turned</i>, in <i>Scope &amp; measure</i>
-        under <i>Measure</i>, points them at what is on the screen instead, and the readout says
+        on its <i>Measure</i> subtab, points them at what is on the screen instead, and the readout says
         <i>post-rotation</i> so you can tell. The level meter and the <i>Clipping</i>
         verdict stay on the signal either way.</span></li>
 
       <li><b>Cursors are draggable</b>
-        <span>Turn them on in <i>Scope &amp; measure</i>, above the screen. Two in time and two in
+        <span>Turn them on in <i>Scope &amp; measure</i>, above the screen, on its <i>Measure</i> subtab. Two in time and two in
         amplitude, on the Y&ndash;T display; the readout gives the difference between each pair,
         and &Delta;t as a frequency.</span></li>
 
@@ -6366,7 +6626,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         the arithmetic that drew it.</span></li>
 
       <li><b>A reference trace</b>
-        <span><i>Save reference</i>, in <i>Scope &amp; measure</i>, freezes what is on screen
+        <span><i>Save</i> under <i>Reference</i>, on <i>Scope &amp; measure</i>'s <i>Measure</i> subtab, freezes what is on screen
         and keeps it dashed behind the live trace, so you can see what changed.</span></li>
 
       <li><b>The goniometer</b>
@@ -6562,8 +6822,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         twice the note's, and the readout's frequency is the sound's rather than the key's:
         an octave under. At 1 ms/div the screen holds less than two of those cycles, and the
         readout says nothing rather than guess. The tuner can read the key instead: with a
-        keyboard, tick <i>take the lag and the tuner from the note played</i>, under <i>Vertical</i> in
-        <i>Scope &amp; measure</i>.</span></li>
+        keyboard, switch on <i>Pitch</i> under <i>From the keys</i>, on <i>Scope &amp; measure</i>'s
+        <i>Time</i> subtab.</span></li>
 
       <li><b>Intervals draw consonance</b>
         <span>A figure closes when the two frequencies are a ratio of small whole numbers,
@@ -7012,9 +7272,10 @@ const ENLARGE_TRAILS = ["heard", "half", "short"];
 const enlarge = { on: false, pictureOnly: true, hands: "both", trail: "heard" };
 
 const el = {};
-for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger",
+for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger", "measureTime", "measureBar",
+                  "filterSvg", "filterPlot", "filterKnobs", "filterRoutes", "filterTypeRow", "refState",
                   "measureSide", "readoutsOn", "pictureBar", "pictureMore", "picturePanel", "pictureClose", "pictureSound",
-                  "pictureAmountValue", "levelMeter", "output", "outputValue", "stereoWidth", "stereoWidthValue", "stereoWidthRow", "soundWidth", "soundWidthValue", "soundWidthRow", "widthToRow", "widthHeard", "widthDrawn", "performButton", "performPanel", "performClose", "performBody",
+                  "pictureAmountValue", "levelMeter", "output", "outputValue", "stereoWidth", "stereoWidthValue", "stereoWidthRow", "soundWidth", "soundWidthValue", "soundWidthRow", "widthToRow", "widthDraw", "widthHeard", "widthDrawn", "performButton", "performPanel", "performClose", "performBody",
                   "performSide", "dock", "pictureLook", "settingsLeft", "settingsRight", "helpFirst", "sizeAuto", "size90", "size100", "size125", "credit", "status", "presetPrev", "presetNext", "presetEdited", "presetBrowse", "presetSaveHead",
                   "undoButton", "redoButton", "menuButton", "menuPanel", "menuClose",
                   "srcTone", "srcMic", "deviceRow", "device", "toneRows", "benchStore",
@@ -7022,7 +7283,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "vcfBody", "vcfResp", "vcfFKnobs", "vcfSweeps", "vcfShapes", "vcfLoop", "fenvPlot", "vcfEnvKnobs",
                   "waveGroup", "waveName", "waveBand", "waveSay", "linkGenWave", "expressionGroup",
                   "srcDetailReading", "msegReadout", "menvShapes", "menvLoop", "menvHoldNote", "benchStage",
-                  "infoLine", "infoName", "infoValue", "infoHost", "infoHand", "infoText", "infoMenu", "infoMore", "infoLineOn",
+                  "infoLine", "infoName", "infoValue", "infoHost", "infoHand", "infoText", "infoMore", "infoLineOn",
                   "benchSearch", "benchResults",
                   "lagMixRow", "lagMix", "lagMixValue",
                   "midiGroup", "laneGroup", "midiConnect", "keysPedal", "midiStatus", "midiPlayingRow", "midiMonitor", "playHint",
@@ -7098,7 +7359,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "xyX", "xyY",
                   "freq", "freqValue", "amp", "ampValue", "shape", "phase", "phaseValue",
                   "keyGroup", "keyRoot", "keyScale", "quantise", "quantiseGlide", "quantiseGlideValue",
-                  "tempo", "tempoValue", "tempoTap", "clockFrom", "transportPlay", "transportAt",
+                  "tempo", "tempoValue", "tempoTap", "clockFrom", "transportPlay", "transportAt", "transportState", "clockBeats", "arpDraw", "arpCap", "morphPosValue",
                   "fadeGroup", "fadeMode", "fadeEnv", "fadeEnvValue", "fadeLayers", "fadeEditA", "fadeEditB", "fadeRestart", "fadeLoop", "srcDetailTitle", "srcDetail", "dispYT", "dispXY", "dispSpect", "persistence", "spectroSpan",
                   "zoom", "zoomValue", "panesButton", "panesPanel", "panesClose",
                   "interval", "tuneJust", "tuneEqual",
@@ -7108,7 +7369,7 @@ for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose"
                   "scoreOn", "scoreStep", "scoreVoices", "scoreLow", "scoreOctaves",
                   "arpMode", "arpRate", "arpOctaves",
                   "midiOut", "midiOutCh", "midiOutStatus",
-                  "midSide", "lagCheck", "lagOn", "lagRow", "lagAuto", "lagManual",
+                  "midSide", "lagCheck", "lagOn", "lagRow", "lagHow", "lagAuto", "lagManual",
                   "acCorner", "acCornerValue",
                   "lag", "lagValue", "saveReference", "clearReference",
                   "beamLevel", "beamInk", "bInk", "traceWidth", "graticuleOn", "beamXY", "beamYT", "beamGoni",
@@ -7817,15 +8078,12 @@ function transportContinue(now) {
   transport.running = true;
   if (el.transportPlay) syncClockPanel();
 }
-// "3.2": the bar and the beat, in fours, from one.
-function transportSaid(now) {
-  const beat = Math.max(0, transportBeat(now));
-  return (Math.floor(beat / 4) + 1) + "." + (Math.floor(beat % 4) + 1);
-}
+// The bar and the beat, in fours, from one: { bar: 3, beat: 2 }, said "bar 3, beat 2" (the UI review, 20 Nov; "3.2" before).
+function transportSaid(now) { return beatSaid(transportBeat(now)); }
 // The same of a beat as the instrument posts it (instrumentClock).
 function beatSaid(at) {
   const beat = Math.max(0, at);
-  return (Math.floor(beat / 4) + 1) + "." + (Math.floor(beat % 4) + 1);
+  return { bar: Math.floor(beat / 4) + 1, beat: Math.floor(beat % 4) + 1 };
 }
 
 /* The clock the face shows (5b): the instrument's, as it last posted it
@@ -7903,7 +8161,8 @@ function clockStep() {
     if (el.delayMsValue) syncEchoPanel();
   }
   // The rates too: a lock let go moves a rate and nothing else the row says.
-  const said = served.from + Math.round(served.bpm) + Math.round(served.set) + served.running + beatSaid(served.beat)
+  const at = beatSaid(served.beat);
+  const said = served.from + Math.round(served.bpm) + Math.round(served.set) + served.running + at.bar + "." + at.beat
     + served.rates.map((rate) => rate.toFixed(2)).join();
   if (said !== transport.said && typeof syncClockPanel === "function" && el.tempo) {
     transport.said = said;
@@ -8608,6 +8867,19 @@ registerDest({
 });
 
 el.morphPos.addEventListener("input", () => { state.morphPos = Number(el.morphPos.value) / 100; });
+/* Where the fader stands, read over it in per cent (the UI review, 20 Nov), however the value
+   is written - a store, a setup, the host's knob - through the input's own setter, as a knob's
+   face follows its input. The hand's, not the modulated position, as a knob's reading is. */
+{
+  // The prototype's own here, since RANGE_VALUE is declared with the knobs, further down.
+  const own = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  Object.defineProperty(el.morphPos, "value", {
+    configurable: true, enumerable: true,
+    get() { return own.get.call(this); },
+    set(v) { own.set.call(this, v); el.morphPosValue.textContent = Math.round(Number(own.get.call(this))) + "%"; },
+  });
+}
+el.morphPos.addEventListener("input", () => { el.morphPosValue.textContent = Math.round(Number(el.morphPos.value)) + "%"; });
 el.morphStoreA.addEventListener("click", () => morphStore("a"));
 el.morphStoreB.addEventListener("click", () => morphStore("b"));
 syncMorphPanel();
@@ -17517,7 +17789,11 @@ function showLag() {
   const capable = state.source && !state.source.lanes;
   if (!capable && state.lagOn) { state.lagOn = false; el.lagOn.checked = false; }
   el.lagCheck.hidden = !capable;
-  el.lagRow.hidden = !capable || !state.lagOn;
+  el.lagRow.hidden = !capable;
+  el.lagHow.hidden = !capable;
+  // Greyed while the lag is off, and kept in its place (the UI review, 20 Nov).
+  el.lagRow.classList.toggle("is-idle", !state.lagOn);
+  el.lagHow.classList.toggle("is-idle", !state.lagOn);
   /* What reaches the speakers from the screen's side - Speakers get: Shaped,
      and the lag's Heard - is shown only while a live input plays (17 Nov,
      the owner's): on the generator the speakers get the instrument's sound
@@ -23876,6 +24152,7 @@ function widthToDrawn() { return el.widthDrawn.getAttribute("aria-checked") === 
 function setWidthTo(drawn) {
   el.widthDrawn.setAttribute("aria-checked", String(drawn));
   el.widthHeard.setAttribute("aria-checked", String(!drawn));
+  el.widthDraw.checked = drawn;
   el.stereoWidthRow.hidden = drawn;
   el.soundWidthRow.hidden = !drawn;
   genSet("widthDrawn", drawn);
@@ -23887,6 +24164,9 @@ function soundWidthApply() {
 }
 el.widthHeard.addEventListener("click", () => setWidthTo(false));
 el.widthDrawn.addEventListener("click", () => setWidthTo(true));
+/* The face's one control for it since the UI review (20 Nov): the checkbox clicks the
+   button it stands for, so the instrument hears the click it always heard (hostClick). */
+el.widthDraw.addEventListener("change", () => (el.widthDraw.checked ? el.widthDrawn : el.widthHeard).click());
 el.soundWidth.addEventListener("input", soundWidthApply);
 soundWidthApply();
 
@@ -24087,6 +24367,69 @@ function arpSet() {
 el.arpMode.addEventListener("change", arpSet);
 el.arpRate.addEventListener("change", () => { arp.rate = el.arpRate.value; });
 el.arpOctaves.addEventListener("change", () => { arp.octaves = Number(el.arpOctaves.value) || 1; });
+
+/* --- the arpeggiator drawn (the UI review, 20 Nov; web/docs/perform.md) -------------
+   One bar of what a held chord plays, so its effect on the figure can be read before a
+   chord is held: a row per note across the octaves, a block per step. The order is the
+   instrument's own (Keyboard::arpSequence): by note unless As played, the octaves
+   stacked, Down reversed, Up and down turning at the ends without playing them twice.
+   With nothing held it is drawn over C major struck E, C, G, so As played differs from
+   Up. Random is drawn from a fixed seed, a picture of the kind and not of the notes it
+   will choose. While the clock runs the step it is on is in the accent. Nothing here
+   reaches the sound. */
+const ARP_STEPS = { "1/4": 4, "1/8": 8, "1/16": 16, "1/8t": 12, "1/16t": 24 };
+const ARP_CHORD = [64, 60, 67];      // C major, struck E, C, G
+function arpPattern(mode, octaves, struck) {
+  const base = mode === "played" ? struck.slice() : struck.slice().sort((a, b) => a - b);
+  const seq = [];
+  for (let o = 0; o < octaves; o++) for (const n of base) seq.push(n + 12 * o);
+  if (mode === "down") seq.reverse();
+  if (mode === "updown" && seq.length > 2) for (let i = seq.length - 2; i >= 1; i--) seq.push(seq[i]);
+  if (mode === "random") {
+    let s = 7;
+    const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    return Array.from({ length: 24 }, () => seq[Math.floor(r() * seq.length)]);
+  }
+  return seq;
+}
+function drawArp() {
+  const svg = el.arpDraw, W = svg.clientWidth, H = svg.clientHeight;
+  if (!W || !H) return;
+  const mode = el.arpMode.value, octaves = Number(el.arpOctaves.value) || 1, rate = el.arpRate.value;
+  const held = midi.notes.map((h) => h.note), struck = held.length ? held : ARP_CHORD;
+  const steps = ARP_STEPS[rate] || 8;
+  const rows = [...new Set(arpPattern("up", octaves, struck))];
+  const rh = (H - 6) / rows.length, y = (n) => 3 + (rows.length - 1 - rows.indexOf(n)) * rh;
+  const clock = instrumentClock(), running = clock ? clock.running : transport.running;
+  const beat = clock ? clock.beat : transportBeat(performance.now());
+  const now = running ? Math.floor((((beat % 4) + 4) % 4) / 4 * steps) % steps : -1;
+  // Drawn again only when something it shows has changed: it is asked every frame while Perform is open.
+  const key = [W, H, mode, octaves, rate, struck.join(" "), now].join("|");
+  if (svg.dataset.key === key) return;
+  svg.dataset.key = key;
+  let s = "";
+  for (let b = 1; b < 4; b++) s += '<line x1="' + (W * b / 4) + '" x2="' + (W * b / 4) + '" y1="0" y2="' + H + '" stroke="var(--line)" stroke-width="1"/>';
+  const played = [];
+  if (mode === "off") {
+    for (const n of new Set(struck)) s += '<rect x="2" y="' + (y(n) + 1).toFixed(1) + '" width="' + (W - 4) + '" height="' + Math.max(2, rh - 2).toFixed(1) + '" fill="var(--unresolved)"/>';
+  } else {
+    const seq = arpPattern(mode, octaves, struck), w = W / steps;
+    for (let i = 0; i < steps; i++) {
+      const n = seq[i % seq.length];
+      played.push(n);
+      s += '<rect x="' + (i * w + 1).toFixed(1) + '" y="' + (y(n) + 1).toFixed(1) + '" width="' + Math.max(1, w * 0.82).toFixed(1) + '" height="'
+        + Math.max(2, rh - 2).toFixed(1) + '" fill="' + (i === now ? "var(--blush-deep)" : "var(--charcoal)") + '"/>';
+    }
+  }
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.innerHTML = s;
+  svg.dataset.seq = played.join(",");
+  const name = (n) => KEY_NAMES[n % 12] + (Math.floor(n / 12) - 1);
+  const said = mode === "off" ? "Off: a held chord sounds as held"
+    : steps + " steps of " + rate + " over the bar, " + name(rows[0]) + " to " + name(rows[rows.length - 1]) + (held.length ? "" : ", over C major");
+  if (el.arpCap.textContent !== said) el.arpCap.textContent = said;
+}
+for (const id of ["arpMode", "arpRate", "arpOctaves"]) el[id].addEventListener("change", drawArp);
 
 el.scoreOn.addEventListener("change", () => { score.on = el.scoreOn.checked; });
 el.scoreStep.addEventListener("change", () => { score.step = el.scoreStep.value; });
@@ -24647,10 +24990,16 @@ function syncClockPanel() {
   const outside = from !== "internal";
   el.tempo.disabled = outside;
   el.tempoValue.textContent = Math.round(outside ? bpm : set) + " BPM";
-  el.clockFrom.textContent = from === "midi" ? "from MIDI clock" : from === "host" ? "from the host" : "internal";
+  /* One sentence since the UI review (20 Nov): "Internal · bar 5, beat 4 · Stopped", each
+     part a box of its own, and the button on the row under it saying what it will do. */
+  el.clockFrom.textContent = from === "midi" ? "MIDI clock" : from === "host" ? "Host" : "Internal";
   el.transportPlay.textContent = running ? "Stop" : "Start";
   el.transportPlay.setAttribute("aria-pressed", running ? "true" : "false");
-  el.transportAt.textContent = (running ? "" : "stopped at ") + at;
+  el.transportAt.textContent = "bar " + at.bar + ", beat " + at.beat;
+  el.transportState.textContent = running ? "Running" : "Stopped";
+  el.transportState.dataset.on = String(running);
+  el.clockBeats.querySelectorAll("i").forEach((dot, i) => dot.classList.toggle("on", i === at.beat - 1));
+  if (!el.performPanel.hidden) drawArp();
 }
 
 function syncKeyPanel() {
@@ -24659,12 +25008,15 @@ function syncKeyPanel() {
   el.quantise.checked = state.quantise;
   el.quantiseGlide.value = String(state.quantiseGlide);
   el.quantiseGlideValue.textContent = state.quantiseGlide > 0 ? state.quantiseGlide + " ms" : "off";
+  paintGlideIdle();
   syncClockPanel();
 }
 
 el.keyRoot.addEventListener("change", () => { state.keyRoot = Number(el.keyRoot.value); syncQuantiser(); });
 el.keyScale.addEventListener("change", () => { state.keyScale = el.keyScale.value; syncQuantiser(); });
-el.quantise.addEventListener("change", () => { state.quantise = el.quantise.checked; syncQuantiser(); });
+el.quantise.addEventListener("change", () => { state.quantise = el.quantise.checked; syncQuantiser(); paintGlideIdle(); });
+// Glide acts only while Quantise is on, so it is greyed while it is off (the UI review, 20 Nov), and still turns.
+function paintGlideIdle() { el.quantiseGlide.closest(".menu-row").classList.toggle("is-idle", !el.quantise.checked); }
 el.quantiseGlide.addEventListener("input", () => {
   state.quantiseGlide = Number(el.quantiseGlide.value);
   el.quantiseGlideValue.textContent = state.quantiseGlide > 0 ? state.quantiseGlide + " ms" : "off";
@@ -25160,21 +25512,19 @@ function buildLaneRows() {
   const n = laneCount();
   fitChannels(n);
 
+  /* A row a lane since the UI review (20 Nov): its ink and name, Show and AC as switches
+     (still checkboxes), and Full scale and Offset as knobs, read across. */
   el.laneRows.innerHTML = state.channels.slice(0, n).map((ch, i) => {
     const id = laneIdBase(i);
-    const head = '<div class="menu-row">'
-      + '<span class="menu-label" style="color:var(--ch' + (i + 1) + ')">'
-      + escapeText(laneName(i)) + "</span>"
-      + '<div class="grow">'
-      + '<label class="check"><input type="checkbox" id="' + id + 'On"'
-      + (ch.on ? " checked" : "") + "> Show</label>"
-      + '<label class="check"><input type="checkbox" id="' + id + 'Ac"'
-      + (ch.ac ? " checked" : "") + "> AC</label>"
-      + "</div></div>";
+    const toggle = (suffix, on, word) => '<label class="check check-switch"><input type="checkbox" id="' + id + suffix + '"'
+      + (on ? " checked" : "") + '><span class="lamp" aria-hidden="true"></span>' + word + "</label>";
+    const head = '<span class="lane-who"><i style="background:var(--ch' + (i + 1) + ')"></i><span class="lane-word">'
+      + escapeText(laneName(i)) + "</span></span>"
+      + '<span class="lane-togs">' + toggle("On", ch.on, "Show") + toggle("Ac", ch.ac, "AC") + "</span>";
     if (i >= HOST_LANES) {
-      return head + '<p class="menu-note" data-lane-note>At full scale and centred, as the instrument draws it for Scan.</p>';
+      return '<div class="lane-row">' + head + '<p class="menu-note" data-lane-note>At full scale and centred, as the instrument draws it for Scan.</p></div>';
     }
-    return head
+    return '<div class="lane-row">' + head
       + '<div class="menu-row">'
       + '<label class="menu-label" for="' + id + 'Scale">Full scale</label>'
       + '<div class="grow">'
@@ -25188,7 +25538,7 @@ function buildLaneRows() {
       + '<input type="range" id="' + id + 'Offset" min="-100" max="100" value="'
       + Math.round(ch.offset * 100) + '">'
       + '<span class="reading" id="' + id + 'OffsetValue"></span>'
-      + "</div></div>";
+      + "</div></div></div>";
   }).join("");
   dressKnobs(el.laneRows);
 
@@ -28570,6 +28920,12 @@ function setCompact() {
   if (compact !== (document.body.dataset.compact !== undefined)) {
     if (compact) document.body.dataset.compact = ""; else delete document.body.dataset.compact;
   }
+  /* Under 1100 wide in the page's own pixels the Picture strip's fixed parts give its info
+     line what they can (the UI review, 20 Nov), whether or not the face is compact. */
+  const narrow = window.innerWidth / pageZoom <= COMPACT_W;
+  if (narrow !== (document.body.dataset.narrow !== undefined)) {
+    if (narrow) document.body.dataset.narrow = ""; else delete document.body.dataset.narrow;
+  }
   const chips = compact || window.innerHeight / pageZoom < CHIPS_H;
   if (chips !== (document.body.dataset.chips !== undefined)) {
     if (chips) document.body.dataset.chips = ""; else delete document.body.dataset.chips;
@@ -28777,6 +29133,9 @@ function showControl(node) {
     setMenuOpen(true);
   } else if (homeOf(group) === "measure") {
     setMeasureOpen(true);     // over the screen, enlarged or not
+    // The subtab that holds it (the UI review, 20 Nov), as Play's figures choose theirs.
+    const view = target.closest(".measure-view");
+    if (view) setMeasureView(view.dataset.mview);
   } else if (homeOf(group) === "picture") {
     setPictureOpen(true);     // over the bar along the bottom
   } else if (homeOf(group) === "perform") {
@@ -28902,12 +29261,12 @@ function searchEntries() {
     if (!label) continue;
     out.push({ kind: "bar", row, label, crumb: "Picture", hay: rowWords(row, label, "picture") });
   }
-  // What left the strip for Scope & measure (F1): the run, the timebase and the zoom.
-  for (const field of el.measurePanel.querySelectorAll(".measure-block .field")) {
+  // What left the strip for Scope & measure (F1): the mode in its head, and the timebase and the zoom in Time's Window.
+  for (const field of el.measurePanel.querySelectorAll(".measure-head .field, .measure-block .menu-row")) {
     const eyebrow = field.querySelector(".eyebrow");
-    const label = eyebrow ? eyebrow.textContent.trim() : "";
+    const label = eyebrow ? eyebrow.textContent.trim() : rowText(field);
     if (!label) continue;
-    const block = groupTitle(field.closest(".measure-block"));
+    const block = field.closest(".measure-block") ? groupTitle(field.closest(".measure-block")) : "Run";
     out.push({ kind: "panel", row: field, label, crumb: "Scope & measure \u203a " + block,
                hay: rowWords(field, label, block) });
   }
@@ -29597,6 +29956,7 @@ const CONTROL_WORDS = {
   "output": ["Output", "How loud you hear it, after everything, and nothing else: the picture, Scan and the loop are the same at any setting. No preset changes it."],
   "stereoWidth": ["Width", "How wide each note is heard: at nought every note the same in both ears, at a hundred each its own ring. No note moves as others join it."],
   "soundWidth": ["Width", "The sound's own Width, saved with it, while the Width is on what's drawn too: the screen draws every note at it, and you hear what's drawn."],
+  "widthDraw": ["Draw width", "On, the Width is the sound's and drawn too: Scan reads it and the setup keeps it. Off, it is only how wide you hear, and the screen never sees it."],
   "widthHeard": ["Heard", "The Width is yours and only how wide you hear: the screen draws the notes against each other, and the picture and Scan never hear it."],
   "widthDrawn": ["Drawn too", "The Width is the sound's: the screen draws every note at it, so the speakers are the screen again, Scan reads it, and the setup keeps it."],
   "pictureClose": ["Close", "Closes Advanced. Everything set in it stays set, the loop overlay and the panes included."],
@@ -29681,16 +30041,19 @@ const CONTROL_WORDS = {
   "menuButton": ["Settings", "Opens what is set once and left: MIDI, the modulation fade, this window’s size, the input and the audio device."],
   "persistence": ["(hidden menu)", "Never shown, so never pointed at: the plugin's panel names it. The Persistence knob in the Picture section is the one people turn."],
   "performClose": ["Close", "Closes Perform; the arpeggiator and the clock keep running."],
-  "arpMode": ["Arp", "Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it."],
-  "arpRate": ["Arp step", "How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t)."],
-  "arpOctaves": ["Arp octaves", "How many octaves the arpeggio spreads the chord over, from one to three."],
-  "transportPlay": ["Bar", "Stops the bar and silences the score; pressed again, starts it from the one and restarts the synced oscillators with it."],
-  "morphStoreA": ["Morph · store A", "Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide."],
+  "arpMode": ["Pattern", "Plays a held chord a note at a time at the tempo: up, down, up and back, as played or at random. Letting go stops it."],
+  "arpRate": ["Step", "How long each step of the arpeggio is, at the tempo: from a crotchet (1/4) to a semiquaver triplet (1/16t)."],
+  "arpOctaves": ["Octaves", "How many octaves the arpeggio spreads the chord over, from one to three."],
+  "transportPlay": ["Start · stop", "Stops the bar and silences the score; pressed again, starts it from the one and restarts the synced oscillators with it."],
+  "clockFrom": ["Clock", "Where the beat comes from: the page’s own clock, a device’s MIDI clock, or the host’s while the plugin plays in a project."],
+  "transportAt": ["Position", "Where the clock is, by the bar and the beat, counted in fours from the one. Start begins it again from the one."],
+  "transportState": ["Clock", "Whether the clock is running. Stopped, the score is silent and the bar stands where it was; the arpeggiator follows your hands."],
+  "morphStoreA": ["Store A", "Stores every knob as the fader’s left end, and puts the fader there. Store, change the sound, store the other end, then slide."],
   "morphPos": ["Morph", "Slides the whole sound between the two stored ends: pitch by octaves, every other knob in a straight line. Menus, switches and the scope’s view stay."],
-  "morphStoreB": ["Morph · store B", "Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear."],
+  "morphStoreB": ["Store B", "Stores every knob as the fader’s right end, and puts the fader there, so storing moves nothing you hear."],
   "keyRoot": ["Key", "The page’s one key, which the quantiser and the score play in."],
   "keyScale": ["Scale", "Which notes of the key count: Chromatic (every semitone), major, minor or one of the modes. The quantiser and the score use it."],
-  "quantise": ["Quantise", "Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody."],
+  "quantise": ["Quantise pitch", "Moves the generator’s pitch, after everything patched onto it, to the nearest note of the key: an LFO on the frequency plays a melody."],
   "quantiseGlide": ["Glide", "How long the quantised pitch takes to slide to each new note, up to 300 ms; off, it steps. Only while Quantise is on."],
   "tempo": ["Tempo", "The page’s one tempo, 30 to 300 BPM: the arpeggiator, the score and every synced LFO or delay play at it."],
   "tempoTap": ["Tap tempo", "Sets the tempo from your last four taps, and starts the synced oscillators on the beat you tapped."],
@@ -29728,6 +30091,10 @@ const CONTROL_WORDS = {
   "monitorLive": ["Hear it through the page", "Plays a line input through the page, tens of milliseconds late. Only for a line, never a band split; wear headphones the first time."],
   "measureButton": ["Scope & measure", "Opens the oscilloscope’s own tools over the screen: run, trigger, timebase, scale, the trace filter and the readouts."],
   "measureClose": ["Close", "Closes Scope & measure. Its settings stay as you left them, and the readouts stay if you switched them on."],
+  "mtab-trigger": ["Trigger", "Where the trace starts: the edge, the source lane, the level, the position and the holdoff, drawn on a trace. Its summary is the four."],
+  "mtab-time": ["Time", "How much time the screen holds and the slice Zoom keeps, the keys' pitch, and the lag. Its summary is the timebase and the zoom."],
+  "mtab-vertical": ["Vertical", "Each lane's scale and offset, AC and mid / side, and the trace filter with its response. Its summary is the lanes shown and the filter."],
+  "mtab-measure": ["Measure", "The readouts under the screen, the cursors, what the numbers read and a saved reference. Its summary is whether each shows."],
   "run": ["Stop", "Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent."],
   "modeAuto": ["Auto", "Draws whatever arrives, triggered or not, so the trace never stops and Scan reads it all. A grey trace is free-running, not a fault."],
   "modeNormal": ["Normal", "Holds the last triggered picture while nothing crosses the level, rather than drawing an untriggered one. Scan reads the held picture."],
@@ -29768,10 +30135,10 @@ const CONTROL_WORDS = {
   "lagManual": ["Delay", "Holds the delay where its knob puts it, whatever the note. Scan reads the loop it draws, so the sound changes too."],
   "lag": ["Delay", "How far behind the delayed copy is, 0.1 to 40 ms; Scan reads the loop it draws. Only on Set; on Auto it shows what the lock found."],
   "lagMix": ["Heard", "How much of the delayed copy reaches the right speaker when the speakers get Shaped: a comb that follows the pitch. Up to 50%."],
-  "midiTruth": ["Lag and tuner from the note", "Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound."],
-  "midiFollow": ["… and the timebase", "Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play."],
+  "midiTruth": ["Pitch from the keys", "Takes the pitch from the key you play, for the Auto lag and the tuner, rather than estimating it from the sound."],
+  "midiFollow": ["Timebase from the keys", "Also sets the timebase from the note: about four periods of the lowest note held, so the wave keeps its size as you play."],
   "acCorner": ["AC corner", "Where AC coupling starts taking things away, 0.5 to 20 Hz, in what Scan reads too. Ten removes a drift; twenty thins a bass note’s bottom."],
-  "readoutsOn": ["Readouts under the screen", "Shows the numbers under the screen, a row per lane: peak, RMS, frequency, the nearest note, THD. Off to start."],
+  "readoutsOn": ["Readouts", "Shows the numbers under the screen, a row per lane: peak, RMS, frequency, the nearest note, THD. Off to start."],
   "cursorsOn": ["Cursors", "Two time and two level cursors to drag on the Y–T screen; the readout gives each pair’s difference, and Δt as a frequency."],
   "measurePre": ["Numbers read", "The numbers read the signal as it arrived, before the Plane’s Turn."],
   "measurePost": ["Numbers read", "The numbers read the signal after the Plane’s Turn, as the screen shows it. The level meter and Clipping stay on the signal."],
@@ -29879,16 +30246,12 @@ function sayInfo(node) {
   const [name, line] = CONTROL_WORDS[key];
   el.infoName.textContent = name;
   el.infoValue.textContent = infoValueOf(node);
-  el.infoHost.hidden = !HOST_PARAMS.includes(node.id);
+  // Unseen rather than hidden, so the name after it keeps its place (the UI review, 20 Nov).
+  el.infoHost.classList.toggle("is-unseen", !HOST_PARAMS.includes(node.id));
   const hand = infoHandOf(node);
   el.infoHand.hidden = !hand;
   el.infoHand.textContent = hand;
   el.infoText.textContent = line;
-  const menu = menuControl(node) === node;
-  // Unseen rather than hidden, keeping its place (and More's under it).
-  el.infoMenu.classList.toggle("is-unseen", !menu);
-  el.infoMenu.textContent = !menu ? "" : node.closest("[data-mod-dest]") && node.type === "range"
-    ? "Right-click: modulation, more" : "Right-click for more";
   el.infoMore.classList.remove("is-unseen");
   delete el.infoLine.dataset.empty;
 }
@@ -29967,7 +30330,12 @@ function openInfoCard(node) {
       const home = node.dataset.knobMark !== undefined ? node.dataset.knobMark : node.defaultValue;
       if (Number(home) !== Number(node.value)) facts.push(["Two taps", "put it back where it starts"]);
     }
-    body.innerHTML = '<p class="info-card-line"></p>'
+    /* That a control has a menu, which the line said until the UI review (20 Nov): More is
+       the strip's one way to more now, so the card says it first, for anyone who has never
+       right-clicked a plugin. */
+    const menu = menuControl(node) === node
+      ? '<p class="info-card-menu">Right-click it for its menu' + (node.closest("[data-mod-dest]") && node.type === "range" ? ": its modulation, a typed value, Reset." : ": a typed value, Reset.") + "</p>" : "";
+    body.innerHTML = menu + '<p class="info-card-line"></p>'
       + (facts.length ? "<dl>" + facts.map(() => "<dt></dt><dd></dd>").join("") + "</dl>" : "")
       + '<div class="info-card-steps"></div>';
     body.querySelector(".info-card-line").textContent = line;
@@ -30692,7 +31060,8 @@ function knobInput(row) {
   // The Bench's rows, and since F2 the Picture section's along the bottom; since
   // G5a a card's editor's own column (an LFO's Rate, the Envelope's four times),
   // as the second pass draws them. Where it goes keeps its depths as sliders.
-  if (!row.closest('[data-home="bench"], .picture-bar, .src-own')) return null;
+  // Since the UI review (20 Nov) the Perform menu's and Scope & measure's ranges too, the morph's fader aside.
+  if (!row.closest('[data-home="bench"], .picture-bar, .src-own, [data-home="perform"], [data-home="measure"], #measurePanel')) return null;
   const label = row.querySelector(":scope > .menu-label");
   const grow = row.querySelector(":scope > .grow");
   if (!label || !grow) return null;
@@ -31196,17 +31565,243 @@ function setPanesOpen(open) {
 function setMeasureOpen(open) {
   el.measurePanel.hidden = !open;
   el.measureButton.setAttribute("aria-expanded", String(open));
-  if (open) { setMenuOpen(false); setPanesOpen(false); setPictureOpen(false); setPerformOpen(false); placeMeasure(); }
+  if (open) { setMenuOpen(false); setPanesOpen(false); setPictureOpen(false); setPerformOpen(false); placeMeasure(); paintMeasure(true); }
 }
-// Under the toolbar, its right edge on the toolbar's and inside the window.
+/* Under the toolbar, its right edge on the toolbar's and inside the window; since the UI
+   review (20 Nov) one height at each window, which every view is laid in, ending above the
+   Picture strip so the info line the short labels rely on stays in view: 520 px, or less
+   where the strip is nearer (469 at 1200x680), and over the toolbar where that would leave
+   it shorter still (the plugin's 960x600). In the page's own pixels: the rectangles are the
+   window's, and the zoom (Size, F8) is undone before they are compared with a style. */
+const MEASURE_H = 520, MEASURE_H_LEAST = 460;
 function placeMeasure() {
   if (el.measurePanel.hidden) return;
-  const box = el.screenTools.getBoundingClientRect(), width = el.measurePanel.offsetWidth;
-  // Over the toolbar and the header if the window is short: in the window, always.
-  const height = el.measurePanel.offsetHeight;
-  el.measurePanel.style.top = Math.round(Math.max(8, Math.min(box.bottom + 8, window.innerHeight - height - 8))) + "px";
-  el.measurePanel.style.left = Math.round(Math.max(16, Math.min(box.right - width, window.innerWidth - width - 16))) + "px";
+  const z = pageZoom || 1, box = el.screenTools.getBoundingClientRect(), width = el.measurePanel.offsetWidth;
+  const strip = el.pictureBar.getClientRects().length && !enlarge.on ? el.pictureBar.getBoundingClientRect().top / z : window.innerHeight / z;
+  let top = box.bottom / z + 8, height = Math.min(MEASURE_H, strip - 10 - top);
+  if (height < MEASURE_H_LEAST) { height = Math.min(MEASURE_H, strip - 18); top = Math.max(8, strip - 10 - height); }
+  el.measurePanel.style.height = Math.floor(height) + "px";
+  el.measurePanel.style.top = Math.round(top) + "px";
+  el.measurePanel.style.left = Math.round(Math.max(16, Math.min(box.right / z - width, window.innerWidth / z - width - 16))) + "px";
   el.measurePanel.style.right = "auto";
+}
+
+/* --- Scope & measure by subject (the UI review, 20 Nov; web/docs/scope-measure.md) ----
+   Four subtabs, one view at a time in one box, so choosing one moves nothing. The view
+   chosen is a view, never stored, as Play's figures are; showControl chooses the one that
+   holds a control. Each view draws its subject from the values - the trigger on a trace,
+   the window and Zoom's slice, the lanes at their scale and offset with the filter's
+   response, the readouts and cursors as they will look - by the page's own arithmetic over
+   a stand-in wave (two harmonics of one period), never the signal: nothing here reaches the
+   sound or what Scan reads, and the screen beside it already shows the signal itself. */
+const MEASURE_VIEWS = ["trigger", "time", "vertical", "measure"];
+const measureView = { at: "trigger", key: "" };
+function setMeasureView(view, focus) {
+  if (!MEASURE_VIEWS.includes(view)) return;
+  measureView.at = view;
+  for (const v of MEASURE_VIEWS) {
+    document.getElementById("mview-" + v).hidden = v !== view;
+    const tab = document.getElementById("mtab-" + v);
+    tab.setAttribute("aria-selected", String(v === view));
+    tab.tabIndex = v === view ? 0 : -1;
+    if (focus && v === view) tab.focus();
+  }
+  paintMeasure(true);
+}
+el.measureBar.addEventListener("click", (event) => { const tab = event.target.closest("[data-mview]"); if (tab) setMeasureView(tab.dataset.mview); });
+el.measureBar.addEventListener("keydown", (event) => {
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+  if (!step) return;
+  event.preventDefault();
+  const i = MEASURE_VIEWS.indexOf(measureView.at);
+  setMeasureView(MEASURE_VIEWS[(i + step + MEASURE_VIEWS.length) % MEASURE_VIEWS.length], true);
+});
+
+// The stand-in: one period of two harmonics, so a level crosses it more than once and an edge is asked for.
+const MEASURE_WAVE = (u) => 0.55 * Math.sin(2 * Math.PI * u) + 0.2 * Math.sin(4 * Math.PI * u + 0.6);
+// Where it crosses the level on the edge asked, in periods; null where it never does (free run).
+function measureCrossing(level, rising) {
+  const n = 720;
+  for (let i = 0; i < n; i++) {
+    const a = i / n, b = (i + 1) / n, va = MEASURE_WAVE(a) - level, vb = MEASURE_WAVE(b) - level;
+    if (va * vb > 0 || va === vb) continue;
+    if (rising ? vb > va : vb < va) return a + (b - a) * va / (va - vb);
+  }
+  return null;
+}
+function measureGrid(x0, y0, w, h) {
+  let s = '<rect x="' + x0 + '" y="' + y0 + '" width="' + w + '" height="' + h + '" fill="var(--paper)" stroke="var(--line)"/>';
+  for (let i = 1; i < 10; i++) s += '<line x1="' + (x0 + w * i / 10) + '" x2="' + (x0 + w * i / 10) + '" y1="' + y0 + '" y2="' + (y0 + h) + '" stroke="var(--line)"/>';
+  for (let i = 1; i < 8; i++) s += '<line y1="' + (y0 + h * i / 8) + '" y2="' + (y0 + h * i / 8) + '" x1="' + x0 + '" x2="' + (x0 + w) + '" stroke="var(--line)"/>';
+  return s;
+}
+function measurePath(n, x0, w, fy) {
+  let d = "";
+  for (let i = 0; i <= n; i++) d += (i ? "L" : "M") + (x0 + w * i / n).toFixed(1) + " " + fy(i / n).toFixed(1);
+  return d;
+}
+const measureMs = (ms) => ms >= 1000 ? +(ms / 1000).toFixed(2) + " s" : ms < 1 ? ms.toFixed(1) + " ms" : +ms.toFixed(1) + " ms";
+const MEASURE_PERIODS = 2.2;    // the stand-in's periods across Vertical's and Measure's drawings
+const MEASURE_HZ = 220;         // the stand-in's pitch in Trigger's and Time's, so the timebase shows as the screen shows it
+function measureSvg(plot, label, body) {
+  const W = plot.clientWidth, H = plot.clientHeight;
+  plot.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + label + '">' + body(W, H) + "</svg>";
+}
+function drawMeasureTrigger() {
+  const plot = document.getElementById("trigPlot");
+  if (!plot.clientWidth) return;
+  const level = state.level, pos = state.position, rising = state.edge !== "falling", src = state.trigSource === 1 ? 1 : 0;
+  const ms = TIMEBASE[state.timebase] * 10, periods = ms * MEASURE_HZ / 1000;
+  const t0 = measureCrossing(level, rising), free = t0 === null;
+  let geo = null;
+  measureSvg(plot, "The trigger on a trace", (W, H) => {
+    const x0 = 26, y0 = 6, w = W - x0 - 4, h = H - y0 - 18, ty = (v) => y0 + h / 2 - v * h / 2;
+    const at = (u) => (free ? 0 : t0) + (u - pos) * periods;
+    const n = Math.min(2400, Math.max(400, Math.round(w * 3)));
+    const lane = measurePath(n, x0, w, (u) => ty(MEASURE_WAVE(at(u))));
+    const other = measurePath(n, x0, w, (u) => ty(0.8 * MEASURE_WAVE(at(u) + 1 / 3)));
+    const xp = x0 + pos * w, yl = ty(level), hw = Math.min(w - pos * w, state.holdoffMs / ms * w);
+    geo = { xp, yl, free };
+    const ink = free ? "var(--unresolved)" : "var(--ch" + (src + 1) + ")";
+    return measureGrid(x0, y0, w, h)
+      + (hw > 0 ? '<rect x="' + xp + '" y="' + y0 + '" width="' + hw + '" height="' + h + '" fill="var(--wash-strong)"/>' : "")
+      + '<path d="' + other + '" fill="none" stroke="var(--ch' + (2 - src) + ')" stroke-width="1.2" opacity="0.28"/>'
+      + '<path d="' + lane + '" fill="none" stroke="' + ink + '" stroke-width="1.5"/>'
+      + '<line x1="' + x0 + '" x2="' + (x0 + w) + '" y1="' + yl + '" y2="' + yl + '" stroke="var(--blush-deep)" stroke-width="1.25" stroke-dasharray="5 4"/>'
+      + '<path d="M' + (x0 - 1) + " " + yl + 'l-9 -6v12z" fill="var(--blush-deep)"/>'
+      + '<text x="' + (x0 - 8.5) + '" y="' + (yl + 3) + '" font-size="8" fill="var(--paper)" font-weight="500">T</text>'
+      + '<line x1="' + xp + '" x2="' + xp + '" y1="' + y0 + '" y2="' + (y0 + h) + '" stroke="var(--blush-deep)" stroke-dasharray="2 3"/>'
+      + '<path d="M' + (xp - 6) + " " + (y0 + h + 12) + 'l6 -9l6 9z" fill="var(--blush-deep)"/>'
+      + (free ? "" : '<circle cx="' + xp + '" cy="' + yl + '" r="3.5" fill="var(--paper)" stroke="var(--blush-deep)" stroke-width="1.5"/>');
+  });
+  plot.dataset.free = String(free);
+  plot.dataset.at = geo ? geo.xp.toFixed(1) + "," + geo.yl.toFixed(1) : "";
+  plot.dataset.crossing = free ? "" : t0.toFixed(4);
+  const lvl = el.levelValue.textContent.split(" ")[0];
+  document.getElementById("trigCap").textContent = free
+    ? "Free run: nothing crosses " + lvl + " - the trace goes grey and runs on"
+    : (rising ? "Rising" : "Falling") + " through " + lvl + " on the " + laneName(src).toLowerCase() + " lane, "
+      + Math.round(pos * 100) + "% in" + (state.holdoffMs ? ", then " + state.holdoffMs.toFixed(1) + " ms ignored" : "");
+}
+function drawMeasureTime() {
+  const plot = document.getElementById("timePlot");
+  if (!plot.clientWidth) return;
+  const div = TIMEBASE[state.timebase], ms = div * 10, zoom = Math.max(1, state.zoom || 1), pos = state.position, periods = ms * MEASURE_HZ / 1000;
+  const t0 = measureCrossing(state.level, state.edge !== "falling") || 0;
+  let slice = 0;
+  measureSvg(plot, "The window and the slice Zoom keeps", (W, H) => {
+    const x0 = 4, y0 = 6, w = W - 8, h = H - y0 - 22, ty = (v) => y0 + h / 2 - v * h / 2.4;
+    const lane = measurePath(Math.min(2400, Math.max(400, Math.round(w * 3))), x0, w, (u) => ty(MEASURE_WAVE(t0 + (u - pos) * periods)));
+    const xp = x0 + pos * w, sw = w / zoom, sl = Math.max(x0, Math.min(x0 + w - sw, xp - sw * pos));
+    slice = zoom > 1.01 ? sw : w;
+    let labels = "";
+    for (let i = 0; i <= 10; i += 2) labels += '<text x="' + (x0 + w * i / 10) + '" y="' + (y0 + h + 14) + '" font-size="9.5" text-anchor="'
+      + (i === 0 ? "start" : i === 10 ? "end" : "middle") + '" fill="var(--text-soft)">' + measureMs(div * i) + "</text>";
+    return measureGrid(x0, y0, w, h) + '<path d="' + lane + '" fill="none" stroke="var(--ch1)" stroke-width="1.3"/>'
+      + (zoom > 1.01 ? '<rect x="' + x0 + '" y="' + y0 + '" width="' + (sl - x0) + '" height="' + h + '" fill="var(--cream-2)" opacity="0.8"/>'
+        + '<rect x="' + (sl + sw) + '" y="' + y0 + '" width="' + Math.max(0, x0 + w - sl - sw) + '" height="' + h + '" fill="var(--cream-2)" opacity="0.8"/>'
+        + '<rect x="' + sl + '" y="' + y0 + '" width="' + sw + '" height="' + h + '" fill="none" stroke="var(--blush-deep)" stroke-width="1.5"/>' : "")
+      + labels;
+  });
+  plot.dataset.slice = slice.toFixed(1);
+  document.getElementById("timeCap").textContent = measureMs(ms) + " across, " + (periods >= 10 ? Math.round(periods) : periods.toFixed(1)) + " cycles of " + MEASURE_HZ + " Hz"
+    + (zoom > 1.01 ? "; Zoom shows " + measureMs(ms / zoom) + " of it" : "") + (state.lagOn ? "; lag on" : "");
+}
+// The trace filter's response, from the coefficients the trace is filtered with (filterNow, biquadCoefficients), on a log axis 20 Hz to 20 kHz.
+function measureFilterResponse() {
+  const svg = el.filterSvg, now = filterNow(), rate = 48000, c = biquadCoefficients(now.type, now.hz, now.q, rate);
+  const mag = (f) => {
+    const w = 2 * Math.PI * f / rate, cr = Math.cos(w), ci = -Math.sin(w), c2r = Math.cos(2 * w), c2i = -Math.sin(2 * w);
+    const nr = c.b0 + c.b1 * cr + c.b2 * c2r, ni = c.b1 * ci + c.b2 * c2i, dr = 1 + c.a1 * cr + c.a2 * c2r, di = c.a1 * ci + c.a2 * c2i;
+    return Math.sqrt((nr * nr + ni * ni) / (dr * dr + di * di));
+  };
+  let d = "";
+  for (let i = 0; i <= 120; i++) {
+    const f = 20 * Math.pow(1000, i / 120), db = Math.max(-30, Math.min(12, 20 * Math.log10(mag(f) + 1e-9)));
+    d += (i ? "L" : "M") + (i / 120 * 200).toFixed(1) + " " + (4 + (12 - db) / 42 * 42).toFixed(1);
+  }
+  const xc = Math.log(now.hz / 20) / Math.log(1000) * 200;
+  svg.innerHTML = '<line x1="' + xc.toFixed(1) + '" x2="' + xc.toFixed(1) + '" y1="0" y2="50" stroke="var(--blush-deep)" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>'
+    + '<path d="' + d + '" fill="none" stroke="' + (state.filter.on ? "var(--charcoal)" : "var(--unresolved)") + '" stroke-width="1.5" vector-effect="non-scaling-stroke"/>';
+  svg.dataset.cutoff = xc.toFixed(1);
+}
+function drawMeasureVertical() {
+  const plot = document.getElementById("vertPlot");
+  if (!plot.clientWidth) return;
+  const n = Math.min(2, state.channels.length);
+  measureSvg(plot, "The lanes at their scale and offset", (W, H) => {
+    const x0 = 26, y0 = 6, w = W - x0 - 4, h = H - y0 - 8;
+    let s = measureGrid(x0, y0, w, h);
+    for (let i = 0; i < n; i++) {
+      const ch = state.channels[i];
+      if (!ch.on) continue;
+      const gain = Math.pow(10, -fullScaleDb(i) / 20), dc = ch.ac ? 0 : 0.12, amp = (i ? 0.22 : 0.35) * gain;
+      const yc = y0 + h / 2 - ch.offset * h / 2;
+      const d = measurePath(300, x0, w, (u) => {
+        const v = (i ? (state.midSide ? 0.4 : 0.9) * MEASURE_WAVE(u * MEASURE_PERIODS + 0.25) : MEASURE_WAVE(u * MEASURE_PERIODS)) * amp / 0.75 + dc * gain;
+        return Math.max(y0, Math.min(y0 + h, yc - v * h / 2));
+      });
+      s += '<path d="' + d + '" fill="none" stroke="var(--ch' + (i + 1) + ')" stroke-width="1.5"/>'
+        + '<path d="M' + (x0 - 1) + " " + yc.toFixed(1) + 'l-9 -6v12z" fill="var(--ch' + (i + 1) + ')"/>'
+        + '<text x="' + (x0 - 23) + '" y="' + (yc + 3.5).toFixed(1) + '" font-size="9" fill="var(--paper)" font-weight="500">' + (state.midSide ? "MS" : "LR")[i] + "</text>";
+    }
+    return s;
+  });
+  document.getElementById("vertCap").textContent = Array.from({ length: n }, (_, i) => laneName(i) + " "
+    + (state.channels[i].on ? fullScaleDb(i).toFixed(1) + " dBFS" + (state.channels[i].ac ? " AC" : "") : "hidden")).join(" · ")
+    + (state.filter.on ? " · filtered" : "");
+}
+function drawMeasureMeasure() {
+  const plot = document.getElementById("measPlot");
+  if (!plot.clientWidth) return;
+  const shown = el.readoutsOn.checked, cursors = state.cursors, after = state.measureAt === "post";
+  measureSvg(plot, "The readouts and the cursors as they appear", (W, H) => {
+    const rh = 17, th = 3 * rh + 6, x0 = 4, y0 = 6, w = W - 8, h = H - y0 - th - 10, ty = (v) => y0 + h / 2 - v * h / 2.4;
+    const d = measurePath(400, x0, w, (u) => ty(MEASURE_WAVE(u * MEASURE_PERIODS)));
+    let s = measureGrid(x0, y0, w, h) + '<path d="' + d + '" fill="none" stroke="var(--ch1)" stroke-width="1.4"/>';
+    if (state.reference) s += '<path d="' + d + '" fill="none" stroke="var(--ch1)" stroke-dasharray="3 3" opacity="0.5" transform="translate(' + (w * 0.06).toFixed(1) + ' 0)"/>';
+    if (cursors) {
+      for (const f of [0.22, 0.68]) s += '<line x1="' + (x0 + w * f) + '" x2="' + (x0 + w * f) + '" y1="' + y0 + '" y2="' + (y0 + h) + '" stroke="var(--gold)" stroke-dasharray="1.5 2.5" stroke-width="1.3"/>';
+      for (const f of [0.3, 0.7]) s += '<line y1="' + (y0 + h * f) + '" y2="' + (y0 + h * f) + '" x1="' + x0 + '" x2="' + (x0 + w) + '" stroke="var(--gold)" stroke-dasharray="1.5 2.5" stroke-width="1.3"/>';
+    }
+    const t0 = y0 + h + 10, cols = ["", "Peak", "RMS", "Freq", "Note", "THD"], xs = [0, 0.18, 0.36, 0.54, 0.74, 0.88];
+    const rows = [cols, [laneName(0), "−3.1 dB", "−7.4 dB", "220.0 Hz", "A3 +0¢", "18%"], [laneName(1), "−3.1 dB", "−7.4 dB", "220.0 Hz", "A3 +0¢", "18%"]];
+    s += '<g opacity="' + (shown ? 1 : 0.32) + '">';
+    rows.forEach((r, j) => r.forEach((c, i) => {
+      s += '<text x="' + (x0 + w * xs[i]).toFixed(1) + '" y="' + (t0 + j * rh + 11) + '" font-size="' + (j ? 11 : 9.5) + '" fill="'
+        + (j ? (i ? "var(--charcoal)" : "var(--ch" + j + ")") : "var(--text-soft)") + '" letter-spacing="' + (j ? 0 : 1.2) + '">' + escapeText(j ? c : c.toUpperCase()) + "</text>";
+    }));
+    if (cursors) s += '<text x="' + (x0 + w) + '" y="' + (t0 + 11) + '" text-anchor="end" font-size="11" fill="var(--gold)">Δt 4.6 ms · 217 Hz</text>';
+    return s + "</g>";
+  });
+  document.getElementById("measCap").textContent = (shown ? "Readouts under the screen, " : "Readouts off (shown faint), ")
+    + (after ? "read after the turn" : "read from the signal") + (cursors ? "; cursors on Y–T" : "");
+}
+/* The summaries, the greyed rows and the shown view's drawing: asked every frame while the
+   panel is open (paintStage) and drawn again only when what they show has changed, since
+   setups, the host and the keyboard move these values without an event. */
+function paintMeasure(force) {
+  if (el.measurePanel.hidden) return;
+  const lanes = state.channels.slice(0, 2).map((ch, i) => ch.on ? laneName(i) : null).filter(Boolean);
+  const said = {
+    trigger: (state.edge === "falling" ? "Falling" : "Rising") + " · " + laneName(state.trigSource || 0) + " · " + el.levelValue.textContent.split(" ")[0] + " fs · " + el.positionValue.textContent,
+    time: el.timebaseValue.textContent.split(" \u00b7")[0] + " · " + el.zoomValue.textContent + (state.lagOn ? " · lag" : ""),
+    vertical: (lanes.join(", ") || "no lane") + " · " + (state.filter.on ? el.filterType.options[el.filterType.selectedIndex].text.toLowerCase() : "no filter"),
+    measure: "Readouts " + (el.readoutsOn.checked ? "on" : "off") + " · cursors " + (state.cursors ? "on" : "off"),
+  };
+  for (const v of MEASURE_VIEWS) { const n = document.getElementById("msum-" + v); if (n.textContent !== said[v]) n.textContent = said[v]; }
+  // Greyed, never taken out: the filter's controls while it is off, Timebase from the keys while Pitch is.
+  const filterOff = !state.filter.on;
+  for (const node of [el.filterTypeRow, el.filterPlot, el.filterKnobs, el.filterRoutes]) node.classList.toggle("is-idle", filterOff);
+  el.midiFollow.closest(".check-switch").classList.toggle("is-idle", !el.midiTruth.checked);
+  el.refState.textContent = state.reference ? "one saved" : "none saved";
+  const key = [measureView.at, el.measurePanel.clientWidth, el.measurePanel.clientHeight, state.level, state.position, state.edge, state.trigSource,
+    state.holdoffMs, state.timebase, state.zoom, state.lagOn, state.midSide, JSON.stringify(state.channels.slice(0, 2)), JSON.stringify(filterNow()),
+    state.filter.on, el.readoutsOn.checked, state.cursors, state.measureAt, !!state.reference].join("|");
+  if (!force && key === measureView.key) return;
+  measureView.key = key;
+  measureFilterResponse();
+  ({ trigger: drawMeasureTrigger, time: drawMeasureTime, vertical: drawMeasureVertical, measure: drawMeasureMeasure })[measureView.at]();
 }
 window.addEventListener("resize", placeMeasure);
 el.measureButton.addEventListener("click", () => setMeasureOpen(el.measurePanel.hidden));
@@ -31234,7 +31829,7 @@ el.pictureMore.addEventListener("click", () => setPictureOpen(el.picturePanel.hi
 function setPerformOpen(open) {
   el.performPanel.hidden = !open;
   el.performButton.setAttribute("aria-expanded", String(open));
-  if (open) { setMenuOpen(false); setMeasureOpen(false); setPictureOpen(false); }
+  if (open) { setMenuOpen(false); setMeasureOpen(false); setPictureOpen(false); drawArp(); }
 }
 el.performButton.addEventListener("click", () => setPerformOpen(el.performPanel.hidden));
 el.performClose.addEventListener("click", () => { setPerformOpen(false); el.performButton.focus(); });
@@ -31635,10 +32230,18 @@ function paintStage() {
      because it is not a hand's: Level moves it through the screen, the
      Output through the gain. */
   el.levelMeter.style.setProperty("--v", Math.min(1, outputGain(Number(el.output.value)) * envLive / ENV_FULL).toFixed(3));
-  for (const bar of el.pictureReads.children) {
-    bar.style.setProperty("--v", (pictureStage[bar.dataset.read] || 0).toFixed(3));
+  // A row each (the UI review, 20 Nov): the bar's fill and its reading in per cent, written only when it changes.
+  for (const row of el.pictureReads.children) {
+    const v = pictureStage[row.dataset.read] || 0;
+    row.style.setProperty("--v", v.toFixed(3));
+    const said = Math.round(Math.min(1, Math.max(0, v)) * 100) + "%", out = row.lastElementChild;
+    if (out.textContent !== said) out.textContent = said;
   }
   el.pictureReads.style.opacity = String(0.35 + 0.65 * amount);
+  // The arpeggiator's drawing follows the chord held and the step the clock is on, while it is seen;
+  // Scope & measure's summaries and drawings follow their values (the UI review, 20 Nov).
+  if (!el.performPanel.hidden) drawArp();
+  if (!el.measurePanel.hidden) paintMeasure();
   /* Each control the stage moves, lit by how far it moves it: the stage's
      routes onto it summed and held to the loop's total, as the matrix does,
      over that total. The rows are found each frame rather than kept, since

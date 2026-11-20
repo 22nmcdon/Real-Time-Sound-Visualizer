@@ -297,6 +297,14 @@ anywhere on the scale, are product.
 - **Readouts**: `font-variant-numeric: tabular-nums` everywhere a number changes, so a
   reading does not shuffle its neighbours while it moves.
 - **The switch**: a 30px segmented pill; the chosen segment filled charcoal.
+- **A checkbox drawn as a switch** (the UI review, 20 Nov): an outlined 30px pill with an
+  8px lamp - `--unresolved` ringed when off, filled `--sage` with the pill's outline charcoal
+  when on - and its name, three words or fewer, in 12px. The checkbox stays the value, hidden
+  from the eye as a knob's range input is. On Scope & measure, Perform and the Picture strip
+  (Draw width); `label.check` with a tick elsewhere until a section is reviewed.
+- **The Picture's three reads** (the UI review, 20 Nov): a row each, the name in 11px
+  `--text`, a 64px bar 6px tall filled charcoal on `--line` (rust while the loop is held), and
+  the reading in per cent, tabular, in a column of one width.
 - **The run button**: a pill with a status dot - sage while running, breathing while
   armed, outlined rust when stopped.
 - **Modulation**: chips are 30px pills, filled charcoal while armed because armed is a

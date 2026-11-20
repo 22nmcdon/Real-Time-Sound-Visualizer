@@ -61,10 +61,11 @@ RUN = """async ([amount, seconds]) => {
     // The bars as drawn - each one's fill over its height - beside the reads
     // they paint, taken in one go after a frame has painted them.
     await new Promise((r) => requestAnimationFrame(() => r()));
-    // A percentage of the bar as the browser computes the calc, or pixels.
-    const bars = [...el.pictureReads.children].map((b) => {
-      const h = getComputedStyle(b).backgroundSize.split(' ')[1];
-      return h.endsWith('%') ? parseFloat(h) / 100 : parseFloat(h) / b.clientHeight;
+    // A percentage of the bar as the browser computes the calc, or pixels. Since the UI
+    // review (20 Nov) each read is a row and its bar fills across, so the width is read.
+    const bars = [...el.pictureReads.children].map((row) => {
+      const b = row.querySelector('.read-bar'), w = getComputedStyle(b).backgroundSize.split(' ')[0];
+      return w.endsWith('%') ? parseFloat(w) / 100 : parseFloat(w) / b.clientWidth;
     });
     out.push({ t: (performance.now() - start) / 1000, bright: e > 1e-9 ? Math.sqrt(d / e) : 0, rms: Math.sqrt(e / l.length),
                glow: pictureStage.glow, motion: pictureStage.motion, memory: pictureStage.memory, bars,
