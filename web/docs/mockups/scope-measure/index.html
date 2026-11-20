@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scope and measure</title>
+<meta name="description" content="Scope & measure as four small subtabs - Trigger, Time, Vertical, Measure - with Run, the mode and Autoset always in view, knobs where the face has knobs, short labels and a drawing in each.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="../ui-review/common.css">
+<style>
+/* ---- Scope & measure: a head that never changes, four subtabs, one view at a time ---- */
+.measure { left: 16px; }
+.measure .p-head { gap: 14px; }
+.measure .mode { display: flex; align-items: center; gap: 8px; }
+.measure .mode .fl { font-size: 10.5px; color: var(--text-soft); }
+.views { position: relative; flex: 1 1 auto; min-height: 0; margin-top: 12px; }
+.view { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 22px; overflow: hidden; }
+.view[hidden] { display: none; }
+.win.compact .view { gap: 0 16px; }
+.fig { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.fig .plot { flex: 1 1 auto; min-height: 0; position: relative; }
+.fig svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.fig .cap { font-size: 11px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.ctl { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.win.compact .ctl { gap: 7px; }
+.row { display: flex; align-items: flex-end; gap: 14px; flex-wrap: nowrap; }
+.row.knobs { gap: 6px; align-items: flex-start; }
+.grp { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.grp:first-child { padding-top: 0; border-top: 0; }
+.win.compact .grp { gap: 4px; padding-top: 6px; }
+.lane { display: grid; grid-template-columns: 62px auto auto; align-items: center; gap: 4px 10px; }
+.lane .who { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--charcoal); white-space: nowrap; }
+.lane .who i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.lane .togs { display: flex; flex-direction: column; gap: 4px; }
+.vcols { display: grid; grid-template-columns: auto auto; gap: 0 20px; }
+.win.compact .vcols { gap: 0 14px; }
+.vcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.win.compact .vcol { gap: 5px; }
+.filt-plot { position: relative; height: 54px; width: 100%; border: 1px solid var(--line); background: var(--cream); }
+.win.compact .filt-plot { height: 40px; }
+.filt-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ref { display: flex; gap: 12px; align-items: center; }
+.dimmed { opacity: 0.45; }
+#laneGroup[hidden] { display: none; }
+/* The null for the no-scroll check: testing's wall, every view in flow at once. */
+.wall .views { overflow: auto; }
+.wall .view { position: static; display: grid !important; height: auto; min-height: 220px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <p class="eyebrow">UI review · 19 Nov · mockup 1 of 3</p>
+  <h1>Scope &amp; measure</h1>
+  <p class="lede">The oscilloscope’s own tools, read one subject at a time: Trigger, Time, Vertical, Measure.</p>
+  <p class="small">Live: turn the knobs (drag, wheel or arrows; double-click resets), press the switches, choose a subtab. Point at anything and the info line along the bottom says what it does - the page’s own words. Run, the mode and Autoset stay in the panel’s head on every subtab.</p>
+  <div class="bar"><span class="lbl">Window</span><span class="pg-switch" id="sizes"></span></div>
+  <div class="stage-wrap" id="wrap"></div>
+  <h2>What changed</h2>
+  <dl class="verdict">
+    <dt>Four subtabs</dt><dd>Trigger, Time, Vertical, Measure, each its name and a summary, in the figure-area bar Play and Ink use. One view at a time, in one box, so nothing moves when one is chosen. The trace filter is Vertical’s, beside the lanes (a scope’s bandwidth limit lives on its channel menu); the lag and <i>from the note</i> are Time’s.</dd>
+    <dt>Always in view</dt><dd>Run, Auto · Normal · Single and Autoset are the head, with the name and the close.</dd>
+    <dt>Knobs</dt><dd>All fourteen sliders are knobs, the page’s range inputs under them as on the Bench. No slider is left in the panel.</dd>
+    <dt>Short labels</dt><dd>Every label is three words or fewer and one line. <i>Take the lag and the tuner from the note played</i> and its orphan <i>… and the timebase</i> are two switches, <b>Pitch</b> and <b>Timebase</b>, under <b>From the keys</b>; the long sentence is each one’s info line. The checkboxes are drawn as switches; each is still its checkbox, id and all.</dd>
+    <dt>Drawings</dt><dd>Trigger draws the trace with the level dashed, the position marked over it, the crossing and the holdoff; past the trace’s peak it goes grey, as free run does. Time draws the window and the slice Zoom keeps; Vertical the two lanes at their scale and offset, and the trace filter’s response; Measure the readouts and the cursors as they will appear.</dd>
+    <dt>Kept</dt><dd>Every id the panel had, with its type, range, step and options (the check compares them with testing), so the plugin and the tests read what they read.</dd>
+    <dt>Height</dt><dd>The panel is one height at each window, ending above the Picture strip so the info line it relies on stays in view: 520 px, 469 at 1200 × 680 and 1100 × 680. Testing’s wall was 564 and, at 960 × 600, ran 5 px over the strip.</dd>
+  </dl>
+  <h2>Checks</h2>
+  <p class="small" id="checkLine">Run <code>checks/measure_checks.py</code>; its results are in <code>checks/results.json</code>.</p>
+</main>
+<script src="../ui-review/data.js"></script>
+<script src="../ui-review/common.js"></script>
+<script>
+"use strict";
+const { knob, sw, tog, select, fld, SIZES, ORDER, reading } = UI;
+const Q = new URLSearchParams(location.search);
+const S = { size: SIZES[Q.get("size")] ? Q.get("size") : "1400x900", tab: Q.get("tab") || "trigger" };
+window.SAY_NAMES = { midiTruth: "Pitch from the keys", midiFollow: "Timebase from the keys", readoutsOn: "Readouts", filterOn: "Filter the trace", saveReference: "Save reference" };
+UI.FMT.lag = (v) => (v / 10).toFixed(1) + " ms";
+const LANE_INK = ["var(--ch1)", "var(--ch2)"];
+
+const TABS = [
+  ["trigger", "Trigger"], ["time", "Time"], ["vertical", "Vertical"], ["measure", "Measure"],
+];
+function laneHTML(i) {
+  const n = i + 1;
+  return '<div class="lane" data-box="lane' + n + '"><span class="who"><i style="background:' + LANE_INK[i] + '"></i><span id="laneName' + n + '">' + (i ? "Right" : "Left") + "</span></span>"
+    + '<span class="togs">' + tog("ch" + n + "On", "Show") + tog("ch" + n + "Ac", "AC") + "</span>"
+    + '<span class="row knobs">' + knob("ch" + n + "Scale", "Full scale") + knob("ch" + n + "Offset", "Offset", { bip: true }) + "</span></div>";
+}
+function panelHTML() {
+  const z = SIZES[S.size];
+  const w = Math.min(960, z.w - 32 - (z.w < 1100 ? 107 : 0)), h = Math.min(520, z.picT - z.measT - 10);
+  return '<div class="panel measure" id="measurePanel" role="dialog" aria-modal="true" aria-labelledby="measureName" style="top:' + z.measT + "px;width:" + w + "px;height:" + h + 'px">'
+    + '<div class="p-head"><span class="p-name" id="measureName">Scope &amp; measure</span>'
+    + '<button type="button" class="run-btn caps" id="run" data-running="true" data-say="run"><span class="dot"></span><span id="runLabel">Stop</span></button>'
+    + '<span class="mode" data-box="mode"><span class="fl">Mode</span>' + sw("mode", [["modeAuto", "Auto"], ["modeNormal", "Normal"], ["modeSingle", "Single"]], { label: "Trigger mode" }) + "</span>"
+    + '<button type="button" class="link-btn caps" id="autoset" data-say="autoset">Autoset</button>'
+    + '<button type="button" class="close-btn" id="measureClose" aria-label="Close">&times;</button></div>'
+    + '<div class="fbar" role="tablist" aria-label="Scope and measure">' + TABS.map((t) => '<button type="button" class="ftab" role="tab" id="mtab-' + t[0] + '" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '"><b>' + t[1] + '</b><span id="msum-' + t[0] + '"></span></button>').join("") + "</div>"
+    + '<div class="views">'
+    // Trigger
+    + '<section class="view" data-view="trigger" aria-label="Trigger"><div class="fig"><div class="plot" id="trigPlot"></div><div class="cap" id="trigCap"></div></div>'
+    + '<div class="ctl"><div class="grp"><div class="row">' + fld("edge", "Edge", sw("edge", [["edgeRising", "Rising"], ["edgeFalling", "Falling"]], { label: "Edge" }))
+    + fld("source", "Source", sw("trigSources", [["trigSource0", "Left"], ["trigSource1", "Right"]], { label: "Source" }).replace('data-group="trigSources"', 'data-group="trigSources" id="trigSources"')) + "</div></div>"
+    + '<div class="grp"><div class="row knobs">' + knob("level", "Level", { bip: true }) + knob("position", "Position") + knob("holdoff", "Holdoff") + "</div></div></div></section>"
+    // Time
+    + '<section class="view" data-view="time" aria-label="Time" hidden><div class="fig"><div class="plot" id="timePlot"></div><div class="cap" id="timeCap"></div></div>'
+    + '<div class="ctl"><div class="grp"><span class="sec">Window</span><div class="row knobs">' + knob("timebase", "Timebase") + knob("zoom", "Zoom") + "</div></div>"
+    + '<div class="grp"><span class="sec">From the keys</span><div class="row">' + tog("midiTruth", "Pitch") + tog("midiFollow", "Timebase") + "</div></div>"
+    + '<div class="grp"><span class="sec">Lag X–Y</span><div class="row">' + tog("lagOn", "Lag X–Y") + fld("lagHow", "Delay", sw("lagHow", [["lagAuto", "Auto"], ["lagManual", "Set"]], { label: "Lag delay", mini: true }), { box: "lagHow" }) + "</div>"
+    + '<div class="row knobs" id="lagRow">' + knob("lag", "Delay") + knob("lagMix", "Heard") + '<span class="speakers" style="align-self:center">speakers</span></div></div></div></section>'
+    // Vertical
+    + '<section class="view" data-view="vertical" aria-label="Vertical" hidden><div class="fig"><div class="plot" id="vertPlot"></div><div class="cap" id="vertCap"></div></div>'
+    + '<div class="ctl"><div class="vcols"><div class="vcol"><span class="sec">Lanes</span>' + laneHTML(0) + laneHTML(1)
+    + '<div class="row" style="align-items:center">' + tog("midSide", "Mid / side") + '<span class="row knobs">' + knob("acCorner", "AC corner") + "</span></div>"
+    + '<div class="menu-group" id="laneGroup" hidden>' + sw("lay", [["layStack", "Stacked"], ["layOver", "Overlaid"]], { mini: true }) + select("xyX") + select("xyY") + "</div></div>"
+    + '<div class="vcol"><span class="sec">Trace filter</span><div class="row" style="align-items:center">' + tog("filterOn", "Filter on") + fld("ftype", "Type", select("filterType", { label: true, options: [["lowpass", "Low pass"], ["highpass", "High pass"], ["bandpass", "Band pass"], ["notch", "Notch"]] }), { box: "ftype" }) + "</div>"
+    + '<div class="filt-plot" data-box="filtPlot"><svg id="filtSvg" preserveAspectRatio="none" viewBox="0 0 200 50" aria-label="The trace filter’s response"></svg></div>'
+    + '<div class="row knobs">' + knob("filterCutoff", "Cutoff") + knob("filterRes", "Resonance") + "</div>"
+    + '<div class="row">' + fld("seeRow", "Screen reads", sw("see", [["seeDry", "Input"], ["seeWet", "Shaped"]], { mini: true, on: 1, label: "Screen reads" }))
+    + fld("hearRow", 'Speakers get<span class="speakers">speakers</span>', sw("hear", [["hearDry", "Input"], ["hearWet", "Shaped"]], { mini: true, label: "Speakers get" })) + "</div></div></div></div></section>"
+    // Measure
+    + '<section class="view" data-view="measure" aria-label="Measure" hidden><div class="fig"><div class="plot" id="measPlot"></div><div class="cap" id="measCap"></div></div>'
+    + '<div class="ctl"><div class="grp"><span class="sec">Show</span><div class="row">' + tog("readoutsOn", "Readouts") + tog("cursorsOn", "Cursors") + "</div></div>"
+    + '<div class="grp">' + fld("numbers", "Numbers read", sw("numbers", [["measurePre", "Signal"], ["measurePost", "Turned"]], { label: "Numbers read" })) + "</div>"
+    + '<div class="grp"><span class="sec">Reference</span><div class="ref"><button type="button" class="link-btn caps" id="saveReference" data-say="saveReference">Save</button><button type="button" class="link-btn caps" id="clearReference" data-say="clearReference">Clear</button><span class="fl" id="refState" style="font-size:11px;color:var(--text-soft)">none saved</span></div></div></div></section>'
+    + "</div></div>";
+}
+
+/* ---- the drawings: svg in the plot's own pixels, so nothing is stretched ---- */
+const val = (id) => +document.getElementById(id).value;
+const on = (id) => document.getElementById(id).checked;
+const TB_MS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
+const F0 = 220, PERIOD = 1000 / F0;
+const wave = (t) => 0.55 * Math.sin(2 * Math.PI * t / PERIOD) + 0.2 * Math.sin(4 * Math.PI * t / PERIOD + 0.6);
+const slope = (t) => wave(t + 1e-4) - wave(t - 1e-4);
+const zoomOf = () => parseFloat(reading("zoom", val("zoom"))) || 1;
+function grid(W, H, x0, y0) {
+  let s = '<rect x="' + x0 + '" y="' + y0 + '" width="' + W + '" height="' + H + '" fill="var(--paper)" stroke="var(--line)"/>';
+  for (let i = 1; i < 10; i++) s += '<line x1="' + (x0 + W * i / 10) + '" x2="' + (x0 + W * i / 10) + '" y1="' + y0 + '" y2="' + (y0 + H) + '" stroke="var(--line)" stroke-width="1"/>';
+  for (let i = 1; i < 8; i++) s += '<line y1="' + (y0 + H * i / 8) + '" y2="' + (y0 + H * i / 8) + '" x1="' + x0 + '" x2="' + (x0 + W) + '" stroke="var(--line)" stroke-width="1"/>';
+  return s;
+}
+function plotBox(id) { const el = document.getElementById(id); return { el, W: el.clientWidth, H: el.clientHeight }; }
+/* Where the trace crosses the level at the trigger: the first time in a period, on the edge asked. */
+function crossing(level, rising) {
+  const n = 2000;
+  for (let i = 0; i < n; i++) {
+    const a = PERIOD * i / n, b = PERIOD * (i + 1) / n;
+    if ((wave(a) - level) * (wave(b) - level) <= 0 && (rising ? slope(a) > 0 : slope(a) < 0)) {
+      let lo = a, hi = b;
+      for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if ((wave(lo) - level) * (wave(m) - level) <= 0) hi = m; else lo = m; }
+      return (lo + hi) / 2;
+    }
+  }
+  return null;
+}
+function traceTrigger() {
+  const { el, W, H } = plotBox("trigPlot");
+  if (!W || !H) return;
+  const x0 = 26, y0 = 6, w = W - x0 - 4, h = H - y0 - 18;
+  const level = val("level") / 1000, pos = val("position") / 100, rising = UI.pressed("edge") === "edgeRising";
+  const src = UI.pressed("trigSources") === "trigSource1" ? 1 : 0;
+  const tb = TB_MS[val("timebase")], T = tb * 10, hold = val("holdoff") / 10;
+  const t0 = crossing(level, rising), free = t0 === null;
+  const ty = (v) => y0 + h / 2 - v * h / 2;
+  const tAt = (x) => (free ? 0 : t0) + (x / w - pos) * T;
+  const n = Math.min(1600, Math.max(400, w * 2));
+  let d = "", d2 = "";
+  for (let i = 0; i <= n; i++) {
+    const x = w * i / n, t = tAt(x);
+    d += (i ? "L" : "M") + (x0 + x).toFixed(1) + " " + ty(wave(t)).toFixed(1);
+    d2 += (i ? "L" : "M") + (x0 + x).toFixed(1) + " " + ty(0.8 * wave(t + PERIOD / 3)).toFixed(1);
+  }
+  const xp = x0 + pos * w, yl = ty(level), hw = Math.min(w - pos * w, hold / T * w);
+  const ink = free ? "var(--unresolved)" : LANE_INK[src], other = LANE_INK[1 - src];
+  el.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="The trigger on a trace">' + grid(w, h, x0, y0)
+    + (hw > 0 ? '<rect id="trigHold" x="' + xp + '" y="' + y0 + '" width="' + hw + '" height="' + h + '" fill="var(--wash-strong)"/>' : "")
+    + '<path d="' + (src ? d : d2) + '" fill="none" stroke="' + other + '" stroke-width="1.2" opacity="0.28"/>'
+    + '<path id="trigTrace" d="' + (src ? d2 : d) + '" fill="none" stroke="' + ink + '" stroke-width="1.5"/>'
+    + '<line id="trigLevel" x1="' + x0 + '" x2="' + (x0 + w) + '" y1="' + yl + '" y2="' + yl + '" stroke="var(--blush-deep)" stroke-width="1.25" stroke-dasharray="5 4"/>'
+    + '<path d="M' + (x0 - 1) + " " + yl + "l-9 -6v12z" + '" fill="var(--blush-deep)"/><text x="' + (x0 - 22) + '" y="' + (yl + 3.5) + '" font-size="9" fill="var(--paper)" font-family="Jost" font-weight="500">T</text>'
+    + '<line id="trigPos" x1="' + xp + '" x2="' + xp + '" y1="' + y0 + '" y2="' + (y0 + h) + '" stroke="var(--blush-deep)" stroke-width="1" stroke-dasharray="2 3"/>'
+    + '<path d="M' + (xp - 6) + " " + (y0 + h + 12) + "l6 -9l6 9z" + '" fill="var(--blush-deep)"/>'
+    + (free ? "" : '<circle id="trigDot" cx="' + xp + '" cy="' + yl + '" r="3.5" fill="var(--paper)" stroke="var(--blush-deep)" stroke-width="1.5"/>')
+    + "</svg>";
+  el.dataset.geo = JSON.stringify({ x0, y0, w, h, xp, yl, level, pos, free, rising, t0, T });
+  document.getElementById("trigCap").textContent = free
+    ? "Free run: nothing crosses " + reading("level", val("level")) + " - the trace goes grey and runs on"
+    : (rising ? "Rising" : "Falling") + " through " + reading("level", val("level")) + " on the " + (src ? "right" : "left") + " lane, " + reading("position", val("position")) + " in" + (hold ? ", then " + reading("holdoff", val("holdoff")) + " ignored" : "");
+}
+function traceTime() {
+  const { el, W, H } = plotBox("timePlot");
+  if (!W || !H) return;
+  const x0 = 4, y0 = 6, w = W - 8, h = H - y0 - 22;
+  const tb = TB_MS[val("timebase")], T = tb * 10, z = zoomOf(), pos = val("position") / 100;
+  const t0 = crossing(val("level") / 1000, UI.pressed("edge") === "edgeRising") || 0;
+  const ty = (v) => y0 + h / 2 - v * h / 2.4;
+  const n = Math.min(2400, Math.max(400, w * 3));
+  let d = "";
+  for (let i = 0; i <= n; i++) { const x = w * i / n; d += (i ? "L" : "M") + (x0 + x).toFixed(1) + " " + ty(wave(t0 + (x / w - pos) * T)).toFixed(1); }
+  const xp = x0 + pos * w, sw_ = w / z, sl = Math.max(x0, Math.min(x0 + w - sw_, xp - sw_ * pos));
+  let labels = "";
+  for (let i = 0; i <= 10; i += 2) labels += '<text x="' + (x0 + w * i / 10) + '" y="' + (y0 + h + 14) + '" font-size="9.5" text-anchor="' + (i === 0 ? "start" : i === 10 ? "end" : "middle") + '" fill="var(--text-soft)" font-family="Jost">' + fmtMs(tb * i) + "</text>";
+  el.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="The window and the slice Zoom keeps">' + grid(w, h, x0, y0)
+    + '<path d="' + d + '" fill="none" stroke="var(--ch1)" stroke-width="1.3"/>'
+    + (z > 1.01 ? '<rect x="' + x0 + '" y="' + y0 + '" width="' + (sl - x0) + '" height="' + h + '" fill="var(--cream-2)" opacity="0.8"/><rect x="' + (sl + sw_) + '" y="' + y0 + '" width="' + (x0 + w - sl - sw_) + '" height="' + h + '" fill="var(--cream-2)" opacity="0.8"/>'
+      + '<rect id="zoomSlice" x="' + sl + '" y="' + y0 + '" width="' + sw_ + '" height="' + h + '" fill="none" stroke="var(--blush-deep)" stroke-width="1.5"/>' : "")
+    + labels + "</svg>";
+  el.dataset.geo = JSON.stringify({ w, slice: z > 1.01 ? sw_ : w, z });
+  const cycles = T / PERIOD;
+  document.getElementById("timeCap").textContent = fmtMs(T) + " across, " + (cycles >= 10 ? Math.round(cycles) : cycles.toFixed(1)) + " cycles of 220 Hz" + (z > 1.01 ? "; Zoom shows " + fmtMs(T / z) + " of it" : "") + (on("lagOn") ? "; lag on" : "");
+}
+function fmtMs(ms) { return ms >= 1000 ? (ms / 1000) + " s" : (ms < 1 ? ms.toFixed(1) : +ms.toFixed(1)) + " ms"; }
+function traceVert() {
+  const { el, W, H } = plotBox("vertPlot");
+  if (!W || !H) return;
+  const x0 = 26, y0 = 6, w = W - x0 - 4, h = H - y0 - 8;
+  const ms = on("midSide");
+  let s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="The two lanes at their scale and offset">' + grid(w, h, x0, y0);
+  for (const n of [1, 2]) {
+    if (!on("ch" + n + "On")) continue;
+    const db = parseFloat(reading("ch" + n + "Scale", val("ch" + n + "Scale"))) || 0, gain = Math.pow(10, -db / 20);
+    const off = val("ch" + n + "Offset") / 100, dc = on("ch" + n + "Ac") ? 0 : 0.12;
+    const amp = (n === 1 ? 0.35 : 0.22) * gain;
+    const yc = y0 + h / 2 - off * h / 2;
+    let d = "";
+    for (let i = 0; i <= 300; i++) {
+      const x = w * i / 300, t = i / 300 * 2.2 * PERIOD;
+      const v = (n === 1 ? wave(t) : (ms ? 0.4 : 0.9) * wave(t + PERIOD / 4)) * amp / 0.75 + dc * gain;
+      d += (i ? "L" : "M") + (x0 + x).toFixed(1) + " " + Math.max(y0, Math.min(y0 + h, yc - v * h / 2)).toFixed(1);
+    }
+    s += '<path id="vTrace' + n + '" d="' + d + '" fill="none" stroke="' + LANE_INK[n - 1] + '" stroke-width="1.5"/>'
+      + '<path d="M' + (x0 - 1) + " " + yc + "l-9 -6v12z" + '" fill="' + LANE_INK[n - 1] + '"/><text x="' + (x0 - 23) + '" y="' + (yc + 3.5) + '" font-size="9" fill="var(--paper)" font-family="Jost" font-weight="500">' + (ms ? (n === 1 ? "M" : "S") : (n === 1 ? "L" : "R")) + "</text>";
+  }
+  el.innerHTML = s + "</svg>";
+  document.getElementById("laneName1").textContent = ms ? "Mid" : "Left";
+  document.getElementById("laneName2").textContent = ms ? "Side" : "Right";
+  document.getElementById("vertCap").textContent = [1, 2].map((n) => (ms ? ["Mid", "Side"] : ["Left", "Right"])[n - 1] + " " + (on("ch" + n + "On") ? reading("ch" + n + "Scale", val("ch" + n + "Scale")) + (on("ch" + n + "Ac") ? " AC" : "") : "hidden")).join(" · ") + (on("filterOn") ? " · filtered" : "");
+  // The trace filter's response, on a log axis from 20 Hz to 20 kHz.
+  const svg = document.getElementById("filtSvg"), fc = 20 * Math.pow(1000, val("filterCutoff") / 1000), q = 0.707 + val("filterRes") / 100 * 9;
+  const type = document.getElementById("filterType").value;
+  let d = "";
+  for (let i = 0; i <= 120; i++) {
+    const f = 20 * Math.pow(1000, i / 120), r = f / fc, den = Math.sqrt((1 - r * r) ** 2 + (r / q) ** 2);
+    const g = type === "lowpass" ? 1 / den : type === "highpass" ? r * r / den : type === "bandpass" ? (r / q) / den : Math.abs(1 - r * r) / den;
+    const db = Math.max(-30, Math.min(12, 20 * Math.log10(g + 1e-9)));
+    d += (i ? "L" : "M") + (i / 120 * 200).toFixed(1) + " " + (8 + (12 - db) / 42 * 40).toFixed(1);
+  }
+  const xc = Math.log(fc / 20) / Math.log(1000) * 200;
+  svg.innerHTML = '<line x1="' + xc + '" x2="' + xc + '" y1="0" y2="50" stroke="var(--blush-deep)" stroke-width="1" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/><path d="' + d + '" fill="none" stroke="' + (on("filterOn") ? "var(--charcoal)" : "var(--unresolved)") + '" stroke-width="1.5" vector-effect="non-scaling-stroke"/>';
+  for (const id of ["filterCutoff", "filterRes", "ftype", "seeRow", "hearRow"]) { const e = document.querySelector('[data-knob="' + id + '"]') || document.querySelector('[data-box="' + id + '"]') || document.getElementById(id + "Label").parentNode; e.classList.toggle("dimmed", !on("filterOn")); }
+}
+function traceMeasure() {
+  const { el, W, H } = plotBox("measPlot");
+  if (!W || !H) return;
+  const rows = 3, rh = 17, th = rows * rh + 6, x0 = 4, y0 = 6, w = W - 8, h = H - y0 - th - 10;
+  const ty = (v) => y0 + h / 2 - v * h / 2.4;
+  let d = "";
+  for (let i = 0; i <= 400; i++) { const x = w * i / 400; d += (i ? "L" : "M") + (x0 + x).toFixed(1) + " " + ty(wave((x / w) * 2.2 * PERIOD)).toFixed(1); }
+  const ro = on("readoutsOn"), cu = on("cursorsOn"), post = UI.pressed("numbers") === "measurePost";
+  let s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="The readouts and the cursors as they appear">' + grid(w, h, x0, y0) + '<path d="' + d + '" fill="none" stroke="var(--ch1)" stroke-width="1.4"/>';
+  if (S.ref) s += '<path d="' + d + '" fill="none" stroke="var(--ch1)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5" transform="translate(' + (w * 0.06) + ' 0)"/>';
+  if (cu) for (const f of [0.22, 0.68]) s += '<line x1="' + (x0 + w * f) + '" x2="' + (x0 + w * f) + '" y1="' + y0 + '" y2="' + (y0 + h) + '" stroke="var(--gold)" stroke-dasharray="1.5 2.5" stroke-width="1.3"/>';
+  if (cu) for (const f of [0.3, 0.7]) s += '<line y1="' + (y0 + h * f) + '" y2="' + (y0 + h * f) + '" x1="' + x0 + '" x2="' + (x0 + w) + '" stroke="var(--gold)" stroke-dasharray="1.5 2.5" stroke-width="1.3"/>';
+  const ty0 = y0 + h + 10, cols = ["", "Peak", "RMS", "Freq", "Note", "THD"], xs = [0, 0.18, 0.36, 0.54, 0.74, 0.88];
+  const data = [cols, ["Left", "−3.1 dB", "−7.4 dB", "220.0 Hz", "A3 +0¢", "18%"], ["Right", "−3.1 dB", "−7.4 dB", "220.0 Hz", "A3 +0¢", "18%"]];
+  s += '<g id="measRows" opacity="' + (ro ? 1 : 0.32) + '">';
+  data.forEach((r, j) => r.forEach((c, i) => { s += '<text x="' + (x0 + w * xs[i]) + '" y="' + (ty0 + j * rh + 11) + '" font-size="' + (j ? 11 : 9.5) + '" fill="' + (j ? (i ? "var(--charcoal)" : LANE_INK[j - 1]) : "var(--text-soft)") + '" font-family="Jost" letter-spacing="' + (j ? 0 : 1.2) + '">' + (j ? c : c.toUpperCase()) + "</text>"; }));
+  if (cu) s += '<text x="' + (x0 + w) + '" y="' + (ty0 + 11) + '" text-anchor="end" font-size="11" fill="var(--gold)" font-family="Jost">Δt 4.6 ms · 217 Hz</text>';
+  el.innerHTML = s + "</g></svg>";
+  document.getElementById("measCap").textContent = (ro ? "Readouts under the screen, " : "Readouts off (shown faint), ") + (post ? "read after the turn" : "read from the signal") + (cu ? "; cursors on Y–T" : "");
+}
+function summaries() {
+  const t = (id) => document.getElementById(id);
+  t("msum-trigger").textContent = (UI.pressed("edge") === "edgeRising" ? "Rising" : "Falling") + " · " + (UI.pressed("trigSources") === "trigSource1" ? "Right" : "Left") + " · " + reading("level", val("level")) + " · " + reading("position", val("position"));
+  t("msum-time").textContent = reading("timebase", val("timebase")) + " · " + reading("zoom", val("zoom")) + (on("lagOn") ? " · lag" : "");
+  const lanes = [1, 2].filter((n) => on("ch" + n + "On")).map((n) => (on("midSide") ? ["Mid", "Side"] : ["Left", "Right"])[n - 1]);
+  t("msum-vertical").textContent = (lanes.join(", ") || "no lane") + " · " + (on("filterOn") ? t("filterType").selectedOptions[0].text.toLowerCase() : "no filter");
+  t("msum-measure").textContent = "Readouts " + (on("readoutsOn") ? "on" : "off") + " · cursors " + (on("cursorsOn") ? "on" : "off");
+}
+function states() {
+  const lag = on("lagOn"), manual = UI.pressed("lagHow") === "lagManual";
+  document.querySelector('[data-knob="lag"]').classList.toggle("dimmed", !(lag && manual));
+  document.querySelector('[data-knob="lagMix"]').classList.toggle("dimmed", !lag);
+  document.querySelector('[data-box="lagHow"]').classList.toggle("dimmed", !lag);
+  document.getElementById("lag").disabled = !(lag && manual);
+  if (!manual) document.getElementById("lagValue").textContent = lag ? "4.5 ms" : "listening";
+  document.getElementById("midiFollow").closest(".tog").classList.toggle("dimmed", !on("midiTruth"));
+  const run = document.getElementById("run");
+  document.getElementById("runLabel").textContent = run.dataset.running === "true" ? "Stop" : "Run";
+}
+function paint() {
+  for (const v of document.querySelectorAll(".view")) v.hidden = v.dataset.view !== S.tab;
+  for (const b of document.querySelectorAll(".ftab")) b.setAttribute("aria-selected", String(b.dataset.tab === S.tab));
+  states(); summaries();
+  traceTrigger(); traceTime(); traceVert(); traceMeasure();
+}
+
+function render() {
+  const win = UI.stage(document.getElementById("wrap"), S.size, UI.frame({ size: S.size, open: "measure", overlay: panelHTML() }));
+  UI.bind(win, () => paint());
+  for (const b of win.querySelectorAll(".ftab")) b.addEventListener("click", () => { S.tab = b.dataset.tab; paint(); });
+  document.getElementById("run").addEventListener("click", (e) => { const r = e.currentTarget; r.dataset.running = String(r.dataset.running !== "true"); paint(); });
+  document.getElementById("saveReference").addEventListener("click", () => { S.ref = true; document.getElementById("refState").textContent = "one saved"; paint(); });
+  document.getElementById("clearReference").addEventListener("click", () => { S.ref = false; document.getElementById("refState").textContent = "none saved"; paint(); });
+  // The plots are sized by the layout, so draw them once it has happened, and again if hidden views appear.
+  paint();
+  for (const b of document.querySelectorAll("#sizes button")) b.setAttribute("aria-pressed", String(b.dataset.v === S.size));
+}
+document.getElementById("sizes").innerHTML = ORDER.map((k) => '<button type="button" data-v="' + k + '">' + SIZES[k].label + "</button>").join("");
+document.getElementById("sizes").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { S.size = b.dataset.v; render(); } });
+
+/* For the checks: one state, everything named, so no case inherits the last. */
+window.__m = {
+  S, render, paint,
+  set(o) {
+    S.ref = false;
+    const d = { tab: "trigger", run: true, mode: "modeAuto", edge: "edgeRising", src: "trigSource0", level: 0, position: 10, holdoff: 0, timebase: 3, zoom: 0,
+      midiTruth: true, midiFollow: false, lagOn: false, lagHow: "lagAuto", lag: 50, lagMix: 20, ch1On: true, ch2On: true, ch1Ac: false, ch2Ac: false, ch1Scale: 0, ch2Scale: 0, ch1Offset: 0, ch2Offset: 0,
+      midSide: false, acCorner: 100, filterOn: false, filterType: "lowpass", filterCutoff: 566, filterRes: 0, see: "seeWet", hear: "hearDry", readoutsOn: false, cursorsOn: false, numbers: "measurePre" };
+    o = Object.assign(d, o);
+    S.tab = o.tab; document.getElementById("run").dataset.running = String(o.run);
+    for (const id of [o.mode, o.edge, o.src, o.lagHow, o.see, o.hear, o.numbers]) UI.press(id);
+    for (const id of ["level", "position", "holdoff", "timebase", "zoom", "lag", "lagMix", "ch1Scale", "ch2Scale", "ch1Offset", "ch2Offset", "acCorner", "filterCutoff", "filterRes"]) UI.setValue(id, o[id], true);
+    for (const id of ["midiTruth", "midiFollow", "lagOn", "ch1On", "ch2On", "ch1Ac", "ch2Ac", "midSide", "filterOn", "readoutsOn", "cursorsOn"]) document.getElementById(id).checked = o[id];
+    document.getElementById("filterType").value = o.filterType;
+    paint();
+  },
+};
+render();
+</script>
+</body>
+</html>

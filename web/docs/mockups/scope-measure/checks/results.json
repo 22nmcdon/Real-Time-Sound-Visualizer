@@ -1,0 +1,118 @@
+{
+ "fonts": true,
+ "knobs": {
+  "ranges": 14,
+  "underFace": 14,
+  "sliders": 0
+ },
+ "say": {
+  "missing": [],
+  "wrong": [],
+  "unsaid": [],
+  "n": 49
+ },
+ "fit": {
+  "1660x1050": {
+   "h": 520,
+   "bottom": 644,
+   "picT": 960,
+   "bad": 0
+  },
+  "1400x900": {
+   "h": 520,
+   "bottom": 644,
+   "picT": 810,
+   "bad": 0
+  },
+  "1100x860": {
+   "h": 520,
+   "bottom": 682,
+   "picT": 770,
+   "bad": 0
+  },
+  "1200x680": {
+   "h": 469,
+   "bottom": 591,
+   "picT": 600,
+   "bad": 0
+  },
+  "1100x680": {
+   "h": 469,
+   "bottom": 591,
+   "picT": 600,
+   "bad": 0
+  },
+  "960x600": {
+   "h": 520,
+   "bottom": 562,
+   "picT": 587,
+   "bad": 0
+  }
+ },
+ "shift": {
+  "1660x1050": [],
+  "1400x900": [],
+  "1100x860": [],
+  "1200x680": [],
+  "1100x680": [],
+  "960x600": []
+ },
+ "trigger": [
+  {
+   "state": {
+    "level": 0,
+    "position": 10
+   },
+   "levelY": 187.5,
+   "wantY": 187.5,
+   "posX": 85.9,
+   "wantX": 85.9,
+   "traceAtMarker": 187.1,
+   "rising": true
+  },
+  {
+   "state": {
+    "level": 300,
+    "position": 50
+   },
+   "levelY": 127.45,
+   "wantY": 127.45,
+   "posX": 325.5,
+   "wantX": 325.5,
+   "traceAtMarker": 127.4,
+   "rising": true
+  },
+  {
+   "state": {
+    "level": -400,
+    "position": 80,
+    "edge": "edgeFalling"
+   },
+   "levelY": 248.9,
+   "wantY": 248.9,
+   "posX": 505.20000000000005,
+   "wantX": 505.2,
+   "traceAtMarker": 248.4,
+   "rising": false
+  },
+  {
+   "state": {
+    "level": 500,
+    "position": 25
+   },
+   "levelY": 92.75,
+   "wantY": 92.75,
+   "posX": 175.75,
+   "wantX": 175.75,
+   "traceAtMarker": 93.1,
+   "rising": true
+  }
+ ],
+ "zoom": {
+  "w": 701,
+  "slice": 87.625,
+  "z": 8
+ },
+ "checks": 41,
+ "failed": []
+}

@@ -1,0 +1,221 @@
+/* The three UI-review mockups' shared paper: the page around them, and the
+   window they are drawn in. Two sets of tokens, as every mockup here has them.
+   The instrument's are DESIGN.md's, hex for hex, and never move: it has one
+   light, so the face stays in it whatever the reader's system says. The
+   page's own (--pg-*) are the paper around the mockup, and follow the reader.
+   No new colour is drawn on the face. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d;
+  --text: #3a332f; --text-soft: #6b615a; --line: #e4d9cc;
+  --blush: #d9a6a0; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --unresolved: #b6afa4;
+  --wash: rgba(217, 166, 160, 0.16); --wash-strong: rgba(217, 166, 160, 0.26);
+  --ch1: #241f1d; --ch2: #5c6488; --ch3: #4c4921; --ch4: #6f9169; --ch5: #72245e; --ch6: #a6552d;
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Georgia, serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --pg-bg: #faf6f0; --pg-sheet: #fffcf7; --pg-under: #f2ebe1; --pg-ink: #241f1d;
+  --pg-text: #3a332f; --pg-soft: #6b615a; --pg-line: #e4d9cc; --pg-accent: #c07f79;
+  --pg-good: #6f7f63; --pg-bad: #a4553f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+    --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+    --pg-good: #9fb091; --pg-bad: #d08a73;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+  --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+  --pg-good: #9fb091; --pg-bad: #d08a73;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--pg-bg); color: var(--pg-text); font-family: var(--sans); font-weight: 300; font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px; }
+
+/* ---- the page around the mockup ---- */
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--pg-accent); font-weight: 500; margin: 0; }
+h1 { font-family: var(--serif); font-weight: 600; font-size: 34px; line-height: 1.2; margin: 4px 0 8px; color: var(--pg-ink); }
+h2 { font-family: var(--serif); font-weight: 600; font-size: 22px; margin: 34px 0 8px; color: var(--pg-ink); }
+.lede { font-family: var(--script); font-style: italic; font-size: 20px; line-height: 1.45; max-width: 62ch; margin: 0 0 6px; }
+.page p, .page li { max-width: 72ch; }
+.small { font-size: 13.5px; color: var(--pg-soft); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 12px; }
+.bar .lbl { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pg-soft); }
+.pg-switch { display: inline-flex; border: 1px solid var(--pg-line); border-radius: 30px; overflow: hidden; flex-wrap: wrap; }
+.pg-switch button { background: none; border: 0; padding: 5px 12px; font-size: 12px; color: var(--pg-text); }
+.pg-switch button[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); }
+.stage-wrap { width: 100%; overflow: hidden; position: relative; }
+body.full .page { max-width: none; }
+body.full .stage-wrap { overflow: visible; }
+.stage { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+.verdict { display: grid; grid-template-columns: 11em 1fr; gap: 6px 16px; margin: 14px 0 0; max-width: 940px; font-size: 15px; }
+.verdict dt { font-weight: 500; color: var(--pg-ink); }
+.verdict dd { margin: 0; }
+.check-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 940px; font-variant-numeric: tabular-nums; }
+.check-table th, .check-table td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--pg-line); vertical-align: top; }
+.check-table th { font-weight: 500; color: var(--pg-soft); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+.good { color: var(--pg-good); } .bad { color: var(--pg-bad); }
+
+/* ---- the window: the instrument at its own size, in its one light ---- */
+.win {
+  --knob: 36px; --cell: 56px;
+  position: relative; overflow: hidden; background: var(--cream); color: var(--text); border: 1px solid var(--line);
+  font-family: var(--sans); font-weight: 300; font-size: 14px; line-height: 1.4;
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06);
+}
+.win.compact { --knob: 30px; --cell: 50px; font-size: 13px; }
+.win * { box-sizing: border-box; }
+.win button { color: inherit; }
+.win .caps { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; }
+.win .link-btn { background: none; border: 0; border-bottom: 1px solid var(--blush); padding: 0 0 2px; color: var(--charcoal); white-space: nowrap; }
+.win select { border: 1px solid var(--line); background: var(--paper); border-radius: 1px; padding: 3px 6px; font-size: 13px; color: var(--charcoal); min-width: 0; }
+.win.compact select { font-size: 12px; padding: 2px 4px; }
+.win > * { position: absolute; }
+.sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.hdr { left: 0; right: 0; top: 0; display: flex; align-items: center; gap: 22px; padding: 0 24px; border-bottom: 1px solid var(--line); background: var(--cream); }
+.hdr .title { font-family: var(--serif); font-weight: 600; font-size: 21px; letter-spacing: 0.08em; color: var(--charcoal); line-height: 1.1; }
+.hdr .title small { display: block; font-family: var(--script); font-style: italic; font-size: 13px; letter-spacing: 0; color: var(--text-soft); font-weight: 500; }
+.win.compact .hdr .title small { display: none; }
+.hdr .preset { display: flex; flex-direction: column; line-height: 1.15; }
+.hdr .preset .caps { color: var(--blush-deep); font-size: 9px; }
+.hdr .preset b { font-family: var(--serif); font-weight: 500; font-size: 17px; color: var(--charcoal); }
+.hdr .spacer { flex: 1 1 auto; }
+.hdr .run { border: 1px solid var(--gold); color: var(--gold); border-radius: 30px; padding: 3px 12px; }
+.hdr [aria-expanded="true"] { border-bottom-width: 2px; border-bottom-color: var(--blush-deep); }
+
+.scr { left: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 22px 10px 24px; border-right: 1px solid var(--line); }
+.tools { display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+.switch { display: inline-flex; border: 1px solid var(--line); border-radius: 30px; background: var(--paper); flex: 0 0 auto; }
+.switch.caps button { text-transform: inherit; letter-spacing: inherit; font-weight: inherit; }
+.switch button { background: none; border: 0; padding: 5px 11px; border-radius: 30px; color: var(--text-soft); white-space: nowrap; }
+.switch button[aria-pressed="true"], .switch button[aria-checked="true"] { background: var(--charcoal); color: var(--paper); }
+.switch.mini button { padding: 2px 8px; font-size: 9.5px; }
+.sheet { background: var(--paper); border: 1px solid var(--line); box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06); }
+.verdict-line { font-family: var(--serif); font-size: 19px; color: var(--sage); white-space: nowrap; overflow: hidden; }
+.verdict-line span { font-family: var(--sans); font-size: 12px; color: var(--text-soft); margin-left: 10px; }
+
+.bench { padding: 0; }
+.tabs { position: absolute; left: 0; right: 0; top: 0; display: flex; gap: 8px; }
+.tab { flex: 1 1 0; border: 1px solid var(--line); background: var(--cream-2); padding: 8px 12px 9px; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.tab b { font-family: var(--serif); font-weight: 500; font-size: 17px; color: var(--charcoal); line-height: 1.15; }
+.tab span { font-size: 11.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab.on { background: var(--paper); box-shadow: inset 0 3px 0 var(--blush-deep); }
+.win.compact .tab span { display: none; }
+.win.compact .tab b { font-size: 15px; }
+.tab-body { position: absolute; left: 0; right: 0; bottom: 0; border: 1px dashed var(--line); display: grid; place-items: center; color: var(--unresolved); font-size: 12px; }
+
+.modrow { left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 8px 24px; background: var(--cream-2); border-top: 1px solid var(--line); }
+.modrow .lead { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); width: 110px; line-height: 1.3; font-weight: 500; }
+.modrow .lead small { display: block; letter-spacing: 0; text-transform: none; color: var(--text-soft); font-size: 10.5px; font-weight: 300; }
+.mcard { flex: 0 0 200px; height: 68px; background: var(--paper); border: 1px solid var(--line); padding: 6px 10px; font-size: 12px; }
+.modrow.chips { padding: 2px 24px; gap: 6px; }
+.modrow.chips .lead small { display: none; }
+.modrow.chips .lead { width: auto; }
+.modrow.chips .mcard { flex: 0 0 auto; height: auto; border-radius: 20px; padding: 1px 10px; font-size: 11px; }
+
+/* ---- the knob, as scope.html draws it (P8c): a ring through 270 degrees
+   from the bottom left and a paper cap with its pointer, the setting over it
+   and the name under it. The range input under it is the value. ---- */
+.kcell { display: grid; justify-items: center; width: var(--cell); row-gap: 1px; padding: 2px 0; flex: 0 0 auto; position: relative; }
+.kcell .reading { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.3; }
+.kcell .nm { font-size: 10px; color: var(--text-soft); white-space: nowrap; line-height: 1.3; }
+.win.compact .kcell .reading { font-size: 10.5px; }
+.kcell.host .nm::before { content: ""; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); margin-right: 4px; vertical-align: middle; }
+.kcell.dim { opacity: 0.45; }
+.knob-face {
+  --angle: 0deg; --lo: 0deg; --hi: 0deg;
+  position: relative; width: var(--knob); height: var(--knob); margin: 1px 0;
+  display: grid; place-items: center; touch-action: none; cursor: grab; border-radius: 50%;
+}
+.knob-face::before {
+  content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: conic-gradient(from 225deg, var(--line) 0 var(--lo), var(--knob-arc, var(--blush-deep)) var(--lo) var(--hi), var(--line) var(--hi) 270deg, transparent 270deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 3px), var(--charcoal) calc(50% - 3px));
+}
+.knob-face:hover, .knob-face.held { --knob-arc: var(--charcoal); }
+.knob-cap { position: relative; width: 52%; height: 52%; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(36, 31, 29, 0.14); transform: rotate(calc(var(--angle) - 135deg)); }
+.knob-cap::after { content: ""; position: absolute; left: 50%; top: 9%; width: 2px; height: 40%; margin-left: -1px; border-radius: 1px; background: var(--charcoal); }
+.knob-face:focus-visible { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+
+/* A field: its name in small type over its control, as Play's Expression row. */
+.fld { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 0 0 auto; }
+.fld > .fl { font-size: 10.5px; color: var(--text-soft); white-space: nowrap; line-height: 1.2; }
+.fld.dim { opacity: 0.45; }
+/* A switch for a checkbox: the input stays the value (its id, its type), the pill is how it looks. */
+.tog { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 30px; padding: 3px 10px 3px 7px; background: var(--paper); font-size: 12px; color: var(--text-soft); white-space: nowrap; cursor: pointer; flex: 0 0 auto; }
+.tog input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.tog .lamp { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--unresolved); flex: 0 0 auto; }
+.tog:has(input:checked) { color: var(--charcoal); border-color: var(--charcoal); }
+.tog:has(input:checked) .lamp { background: var(--sage); border-color: var(--sage); }
+.tog:has(input:focus-visible) { outline: 2px solid var(--blush-deep); outline-offset: 2px; }
+.tog.dim { opacity: 0.45; }
+.win.compact .tog { font-size: 11.5px; padding: 2px 9px 2px 6px; }
+.speakers { font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rust); border: 1px solid var(--rust); border-radius: 20px; padding: 0 5px; margin-left: 5px; font-weight: 500; vertical-align: 1px; }
+
+/* ---- the panels over the face: Scope & measure and Perform ---- */
+.panel { background: var(--paper); border: 1px solid var(--line); box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.12); z-index: 5; display: flex; flex-direction: column; padding: 14px 18px 12px; }
+.win.compact .panel { padding: 10px 14px 10px; }
+.p-head { display: flex; align-items: center; gap: 16px; flex: 0 0 auto; min-height: 36px; }
+.p-name { font-family: var(--serif); font-weight: 500; font-size: 24px; color: var(--charcoal); white-space: nowrap; line-height: 1.1; }
+.win.compact .p-name { font-size: 20px; }
+.close-btn { margin-left: auto; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); font-size: 16px; line-height: 1; flex: 0 0 auto; }
+.sec { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blush-deep); font-weight: 500; white-space: nowrap; line-height: 1.3; }
+.win .run-btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 30px; border: 1px solid var(--charcoal); background: var(--charcoal); color: var(--paper); padding: 5px 14px 5px 11px; flex: 0 0 auto; }
+.run-btn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); }
+.win .run-btn[data-running="false"] { background: var(--paper); color: var(--rust); border-color: var(--rust); }
+.win .run-btn[data-running="false"] .dot { background: var(--rust); }
+.run-btn #runLabel { display: inline-block; min-width: 3.4em; text-align: left; }
+
+/* The figure-area bar (Play's .fig-bar): a subtab is its name and a summary. */
+.fbar { display: flex; gap: 0; border-bottom: 1px solid var(--line); flex: 0 0 auto; margin-top: 8px; }
+.ftab { flex: 1 1 0; min-width: 0; text-align: left; background: none; border: 1px solid transparent; border-bottom: 0; padding: 6px 10px 6px; margin-bottom: -1px; display: flex; flex-direction: column; line-height: 1.2; }
+.ftab b { font-family: var(--serif); font-weight: 500; font-size: 16px; color: var(--text-soft); white-space: nowrap; }
+.ftab span { font-size: 11px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.ftab[aria-selected="true"] { background: var(--paper); border-color: var(--line); box-shadow: inset 0 3px 0 var(--blush-deep), 0 1px 0 var(--paper); }
+.ftab[aria-selected="true"] b { color: var(--charcoal); }
+.win.compact .ftab b { font-size: 14.5px; }
+.win.compact .ftab span { font-size: 10.5px; }
+
+/* ---- the Picture strip, as the second mockup proposes it ---- */
+.pic { left: 0; right: 0; background: var(--cream-2); border-top: 1px solid var(--line); display: flex; align-items: center; gap: 14px; padding: 0 24px; }
+.pic-name { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; width: 88px; }
+.pic-name b { font-family: var(--serif); font-weight: 500; font-size: 22px; color: var(--charcoal); line-height: 1.1; }
+.win.compact .pic-name b { font-size: 20px; }
+.pic-name .link-btn { align-self: flex-start; }
+.pic-knobs { display: flex; gap: 4px; flex: 0 0 auto; }
+.pic-width { display: flex; flex-direction: column; gap: 3px; flex: 0 0 auto; }
+.pic-width .fl { font-size: 10.5px; color: var(--text-soft); white-space: nowrap; }
+.pic-width .switch { flex-direction: column; border-radius: 14px; }
+.pic-width .switch button { font-size: 9.5px; padding: 2px 9px; border-radius: 12px; text-align: left; }
+.level-meter { width: 6px; align-self: center; height: 44px; background: var(--line); position: relative; flex: 0 0 auto; }
+.level-meter i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--sage); }
+.info { flex: 1 1 auto; min-width: 0; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 6px 0; overflow: hidden; }
+.info-top { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; min-width: 0; }
+.info-name { font-family: var(--serif); font-weight: 500; font-size: 15px; color: var(--charcoal); }
+.info-value { font-size: 12.5px; color: var(--charcoal); font-variant-numeric: tabular-nums; }
+.info-host { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); align-self: center; }
+.info-more { margin-left: auto; font-size: 10px !important; }
+.info-text { font-size: 12.5px; line-height: 1.38; color: var(--text); font-weight: 400; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+.win.compact .info-name { font-size: 14px; }
+.win.compact .info-text { font-size: 11.5px; line-height: 1.32; }
+.reads { display: grid; grid-template-columns: auto 64px 3.2em; align-items: center; gap: 3px 8px; flex: 0 0 auto; }
+.reads .rn { font-size: 11px; color: var(--text); white-space: nowrap; }
+.reads .rb { height: 6px; background: var(--line); position: relative; }
+.reads .rb i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--charcoal); }
+.reads .rv { font-size: 11px; color: var(--charcoal); font-variant-numeric: tabular-nums; text-align: right; }
+.win.compact .reads { grid-template-columns: auto 52px 3em; gap: 1px 7px; }
+.win.compact .reads .rn, .win.compact .reads .rv { font-size: 10.5px; }
