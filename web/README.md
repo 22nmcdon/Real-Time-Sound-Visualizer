@@ -7580,6 +7580,17 @@ that is drops of paint rather than small strokes. Three things the revision lear
   over the distance, `kPullSamples`), the shader was left lifting it, and the look showed four
   times the map's pull past the stroke (0.63 per cent against 0.17). `painttest.py`'s look-equals-
   map checks for the pull and the drops are what found it; a new kind of stamp wants one.
+- **The splayed strike was tried three ways and parked** (20 Nov). The owner asked for a hard strike
+  to look like a hard-pressed brush whose bristles splay. Three designs, each in the history: a fan
+  of straight clumped fingers with the stroke after running as separate tracks (bb419d6: "the
+  stroke after also doesn't look right ... the paint all joins up together and is seamless"); a
+  flare closing seamlessly into the stroke (de8a11f: "The lines are far too straight, and it is
+  too seamless, and it also doesn't look like paint ... the splaying should be out from where it
+  lands, almost like its epicentre, then it gets dragged from there"); and a strike lab of knobs
+  (web/docs/labs/strike-lab/), which did not find it either. The owner went back to the drops with
+  teardrop tails ("the closest one we've had, and we can get this right later"), restored exactly
+  as at b0c1db9, and nothing of the fan or the flare is left in the core or the shader. Resume in
+  the lab: it paints with the face's own shader from stamps the core already lays.
 - **A drop's shape is one function in two languages** (`paintDropCover` in `paint.h`, `dropCover` in the
   shader), the same hash, and the map samples each cell at the look's six by six pixel centres, so
   a drop lands the same paint in both. Keep them line for line.

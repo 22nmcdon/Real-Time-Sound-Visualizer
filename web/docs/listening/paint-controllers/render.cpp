@@ -5,7 +5,7 @@
 // Scan reads. A script in the format core/tests/tools/instrument_cpp.cpp
 // reads ("make", "midi" and "block"), then:
 //
-//   render <script> <out prefix> <width> <hears> [<spatter at> [<flecks> [<pull reach>]]]
+//   render <script> <out prefix> <width> <hears> [<spatter at>]
 //
 // <hears> is PaintParams::hears (15: the pedal, the wheel, the bend and
 // pressure; a bit off, deaf to that one); <spatter at>, PaintParams::
@@ -37,15 +37,13 @@ std::string text(const scope::Json& v) { return v.type == scope::Json::Type::Str
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc < 5) { std::fprintf(stderr, "usage: render <script> <prefix> <width> <hears> [<spatter at> [<flecks> [<pull reach>]]]\n"); return 2; }
+  if (argc < 5) { std::fprintf(stderr, "usage: render <script> <prefix> <width> <hears> [<spatter at>]\n"); return 2; }
   const std::string prefix = argv[2];
   const bool paint = true;
   scope::PaintParams params;
   params.width = std::atof(argv[3]);
   params.hears = static_cast<unsigned>(std::atoi(argv[4]));
   if (argc > 5) params.spatterAt = std::atof(argv[5]);
-  if (argc > 6) params.flecks = std::atoi(argv[6]) != 0;  // the strike's flecks, the variant for the owner to choose
-  if (argc > 7) params.pullReach = std::atof(argv[7]);  // the bend's pull's reach, over its default, for the owner to choose
   std::ifstream file(argv[1]);
   std::FILE* audio = std::fopen((prefix + ".f32").c_str(), "wb");
   std::FILE* reads = std::fopen((prefix + ".reads").c_str(), "w");
