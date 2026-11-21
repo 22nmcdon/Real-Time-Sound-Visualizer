@@ -10101,6 +10101,20 @@ function midiSetPedal(value) {
   midiSayMonitor();
 }
 
+/* For a check that changes something and then reads what is played (21 Nov): resolves once the source has handed
+   the page `ms` of sound played after the call, or after `most` ms of the wall's time if it never does. A wall wait
+   of the same length was a guess at it, and on a loaded machine a wrong one - the instrument had played a fraction
+   of it, and the window read held the state before the change. Sources that count no frames wait the wall's time. */
+function waitHeard(ms, most = 20000) {
+  const src = state.source, rate = (src && src.sampleRate) || 48000;
+  if (!src || typeof src.framesTaken !== "number") return new Promise((r) => setTimeout(r, ms));
+  const want = src.framesTaken + Math.ceil(ms * rate / 1000), t0 = performance.now();
+  return new Promise((resolve) => {
+    const look = () => (src.framesTaken >= want || performance.now() - t0 > most ? resolve() : setTimeout(look, 10));
+    look();
+  });
+}
+
 function midiPanic() {
   midiToCore([0xb0, 123, 0]);
   /* Before the early return. A finger or a letter still down when the stack
@@ -12318,7 +12332,7 @@ function makeBrainSource() {
   let rate = 48000, capacity = 96000;
   // Six lanes, of which the picture has two, or four for two figures or the band split (`drawn`).
   let ring = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(capacity));
-  let at = 0, chunks = 0, drawn = 2;
+  let at = 0, chunks = 0, drawn = 2, taken = 0;
   const generator = makeGeneratorMirror();
   // The generator's readings as the instrument last posted them (makeWasmBrain's readings).
   let read = null, grid = null;
@@ -12352,6 +12366,8 @@ function makeBrainSource() {
     get capacity() { return capacity; },
     // How many chunks have come back: the answer to whether the instrument is playing at all.
     get chunks() { return chunks; },
+    // Every frame of the lanes taken since the source began: what the instrument has played and the page has heard.
+    get framesTaken() { return taken; },
     absorb(lanes, readings) {
       if (readings) read = readings;
       /* The instrument's grid into one array the source keeps, so a reader
@@ -12379,7 +12395,7 @@ function makeBrainSource() {
         for (let c = 0; c < lanes.length; c++) ring[c][at] = lanes[c][k];
         at = (at + 1) % capacity;
       }
-      chunks++;
+      chunks++; taken += n;
     },
     standIn(brain) { stand = brain; standAt = null; owed = 0; },
     // What the page reads off a generator, the instrument's.

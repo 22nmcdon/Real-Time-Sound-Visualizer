@@ -202,20 +202,26 @@ with sync_playwright() as pw:
          fades, on its own frames, are read over the same stretch. */
       let frames = 0, counting = true;
       const count = () => { if (!counting) return; frames++; requestAnimationFrame(count); };
+      /* And the instrument's own frames over the same stretch, a sixtieth of a second of what it played (21 Nov): the
+         grid fades on those, the canvas on the page's, and a loaded page draws fewer frames than the instrument does
+         in the same quarter second - read by the page's count, the grid faded 0.856 a frame against the canvas's
+         0.883 in a full run. */
+      const src = state.source, heard0 = src.framesTaken;
       const f0 = 0, g0 = g[at], c0 = inkOf();
       requestAnimationFrame(count);
       await wait(250);
       counting = false;
-      const f1 = frames, g1 = g[at], c1 = inkOf();
+      const f1 = frames, g1 = g[at], c1 = inkOf(), heard1 = src.framesTaken;
       __level(0.55);
-      return { frames: f1 - f0, grid: [g0, g1], canvas: [c0, c1] };
+      return { frames: f1 - f0, instFrames: (heard1 - heard0) / (src.sampleRate || 48000) * 60, grid: [g0, g1], canvas: [c0, c1] };
     }""")
     import math
     frames = max(1, fade["frames"])
-    grid_rate = (fade["grid"][1] / fade["grid"][0]) ** (1 / frames) if fade["grid"][0] > 0 else None
+    inst_frames = max(1, fade["instFrames"])
+    grid_rate = (fade["grid"][1] / fade["grid"][0]) ** (1 / inst_frames) if fade["grid"][0] > 0 else None
     canvas_rate = (fade["canvas"][1] / fade["canvas"][0]) ** (1 / frames) if fade["canvas"][0] > 0 and fade["canvas"][1] > 0 else None
-    print("    over %d frames: grid %s, canvas ink %s; per frame grid %s, canvas %s (want 0.88)"
-          % (frames, [round(v, 4) for v in fade["grid"]], fade["canvas"],
+    print("    over %d of the page's frames and %.1f of the instrument's: grid %s, canvas ink %s; per frame grid %s, canvas %s (want 0.88)"
+          % (frames, inst_frames, [round(v, 4) for v in fade["grid"]], fade["canvas"],
              None if grid_rate is None else round(grid_rate, 4),
              None if canvas_rate is None else round(canvas_rate, 4)))
     # "The grid fades by one minus the persistence every frame" is

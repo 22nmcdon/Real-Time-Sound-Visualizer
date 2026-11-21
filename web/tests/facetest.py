@@ -211,7 +211,11 @@ with sync_playwright() as pw:
       addRouting('lfo1', 'view.scale3');
       const r3 = state.modRoutings.find((x) => x.destId === 'view.scale3'); if (r3) setDepth(r3, -100, true);
       state.modRoutings.push({ sourceId: 'lfo1', destId: 'view.scale4', amount: 1 });
+      /* Until the instrument serves the offset back, not a fixed 700 ms (21 Nov): in a full run the routing had not yet
+         come round, and all four frames read nought from the instrument while the page's own sum moved. A routing
+         that never reaches it stays nought, and the row is red as it should be. */
       await wait(700);
+      for (let k = 0; k < 100 && !(state.source.face && state.source.face.offsets && state.source.face.offsets['view.scale3']); k++) await wait(50);
       const lanes = [];
       for (let i = 0; i < 4; i++) {
         await new Promise((r) => requestAnimationFrame(r));

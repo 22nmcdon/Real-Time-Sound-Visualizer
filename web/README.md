@@ -7651,16 +7651,26 @@ that is drops of paint rather than small strokes. Three things the revision lear
   in paintcosttest's four seconds to seven. On 21 Nov that check's more than ten frames sat at the
   edge for testing's own head too (interleaved, 11, 11, 9, 9 there and 9, 11, 10, 8 here): the
   container was slower that day than on 20 Nov, when testing painted 17.
-- **Suites seen red only beside others** (21 Nov, the full runs on claude/paint-controllers after
-  testing's f6c5b05): `layerplane` (A's lanes 1.024 where the check wants them unmoved), `photo`
-  (the grid's fade 0.864 against the canvas's 0.884), `cap` (a flatline of 280 samples) and
-  `strike` (A's picture rising 0.020 with B reading its own) and `scan` (the turning fifth read back moving
-  its timbre 0.0036; alone 0.0045 to 0.0069 on the branch and 0.0048 to 0.0085 on testing) and `live`
-  (four lanes after the loads, two of them silent, where alone all four sound), `face` (lane three's
-  full scale against the instrument's offset), `lfo` (a drawn point dragged past nought read 0.95 then
-  0.95) and `clock` (the tempo row under a MIDI clock). Each passes alone; `strike` failed
-  three in six interleaved runs on testing itself and none in six on the branch, and `cap` passed
-  six in six on each under busy loops and its full-run neighbours. Not chased there.
+- **What the suites seen red only under load were waiting on** (21 Nov). Each was red in a full run and
+  green alone; each was something real once looked at, and none needed a bound moved or a timeout raised:
+  - `strike`: A's picture moved with nothing striking it because A breathes - its Scan at 100 read its
+    own picture - and its fifth, tempered, beat once in three seconds, and the read 1.5 s in by the wall's
+    clock was on the picture's rise. Strike at nought, A wandered 0.071 to 0.114. A's Scan at nought, an
+    octave in A's half and three seconds heard: the nulls read 0.0001 to 0.0004, the strike 0.03.
+  - `layerplane`: A's peak over 4096 samples wandered 2.1 per cent with nothing changed (a tempered
+    fifth's beat), past the 2 asked; over 16384 it holds within 0.5, and the reads wait on what was heard.
+  - `photo`: the grid fades on the instrument's frames and the canvas on the page's; both were divided by
+    the page's count, and a loaded page draws fewer. The grid's rate is now by the instrument's frames.
+  - `cap`: the microphone's ring was waited for until its oldest end was written, but a gap could stay
+    anywhere in it (4394 and 11258 samples of zeros at the first look); now until no run of eight.
+  - `scan` and `face` and `live`: reads by the wall's time, or before the lanes or the offset had come
+    round. `waitHeard(ms)` (the page) resolves once the source has handed over `ms` of sound played after
+    the call (`framesTaken`); `face` waits for the instrument's offset, `live` for all four lanes posted.
+  - `lfo`: a drag read 300 ms after the mouse came up; now waited for, the menu gone first. Not reproduced
+    red under load, so the cause is likely rather than shown.
+  - `clock`: not fixed. Its ticks, stamped with when they were due rather than when the timer let them go,
+    still read 132 to 142 BPM under busy loops on either version; the core's lateness correction did not take
+    them back, and why is not yet known. It is serial, and alone on 21 Nov's slow container read 133 once.
 - **Paint a batch in tiles, each with the stamps that reach it** (21 Nov). The look painted a batch's
   whole box, every pixel running every stamp - for a chord round the ring a box of 450 pixels a side
   times up to 256 stamps, nearly all of which could not touch it, and SwiftShader skips no branch. Each

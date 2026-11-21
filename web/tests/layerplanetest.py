@@ -283,8 +283,9 @@ with sync_playwright() as pw:
       el.midiLayers.value = 'split'; el.midiLayers.dispatchEvent(new Event('change'));
       await wait(200);
       midiNoteOn(48, 100); midiNoteOn(55, 100); midiNoteOn(72, 100); await wait(500);
+      // Each read waits for half a second of what the instrument played after the change, not of the wall's time (21 Nov).
       const lows = async () => {
-        await wait(500);
+        await waitHeard(500);
         const w = state.source.getLatestWindow(4096);
         return { lanes: w.length, aX: Math.min(...w[0]), bX: Math.min(...w[2]), bPeak: Math.max(...w[2].map(Math.abs)) };
       };
@@ -300,9 +301,12 @@ with sync_playwright() as pw:
       // B's own echo, 21 ms late at half level: B's 523 Hz note is ten
       // periods and a fiftieth late, so it adds near enough in step - B's
       // lanes half as big again, A's as they were.
+      /* Over 16384 samples since 21 Nov: A is a tempered fifth, whose 3:2 partials beat about twice a second, and
+         its peak over 4096 samples wandered 2.1 per cent with nothing changed - past the 2 per cent asked, so on a
+         loaded run, the reads further apart, it went red (1.021, 1.024). Over 16384 it holds within 0.5. */
       const big = async () => {
-        await wait(500);
-        const w = state.source.getLatestWindow(4096);
+        await waitHeard(500);
+        const w = state.source.getLatestWindow(16384);
         return { a: Math.max(...w[0].map(Math.abs)), b: Math.max(...w[2].map(Math.abs)) };
       };
       const slide = (id, v) => { el[id].value = String(v); el[id].dispatchEvent(new Event('input')); };

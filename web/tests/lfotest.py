@@ -225,9 +225,14 @@ with sync_playwright() as pw:
           opened and rnd["r"] and rnd["y"] > 0, str(rnd))
     shown = p.evaluate("() => !!document.querySelector('#lfoPlot [data-lpt=\"1\"] rect') && document.querySelectorAll('#lfoPlot [data-reach=\"1\"]').length === 2")
     check("a random point is drawn as a diamond with its reach marked either way of nought", shown)
+    # The menu gone before the drag, and the drag's result waited for rather than read 300 ms on (21 Nov): in a full
+    # run, alone in the serial group, the read came back unchanged, 0.95 then 0.95, where alone it is 0.95 then 1.
+    p.wait_for_function("() => !document.querySelector('.over .ctx-item')", timeout=5000)
     x, y = point(p, 1)
     reach0 = rnd["y"]
-    p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x, y + 400, steps=6); p.mouse.up(); p.wait_for_timeout(300)
+    p.mouse.move(x, y); p.mouse.down(); p.mouse.move(x, y + 400, steps=6); p.mouse.up()
+    try: p.wait_for_function("(r0) => lfoParse(lfos[0].drawn)[1].y !== r0", arg=reach0, timeout=5000)
+    except Exception: pass
     reach = p.evaluate("() => lfoParse(lfos[0].drawn)[1].y")
     check("dragged down past nought, its height is still a reach, positive", 0 <= reach <= 1 and reach != reach0, "%r then %r" % (reach0, reach))
     p.locator('#lfoPlot [data-lpt="1"]').click(button="right"); p.wait_for_timeout(200)

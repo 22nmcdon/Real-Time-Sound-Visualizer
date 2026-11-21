@@ -149,15 +149,20 @@ with sync_playwright() as pw:
     # not read: B's new notes redraw it whatever the strike does.
     SITE = """async ([strike, readsB]) => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      /* A still figure under the strike (21 Nov): what moved A's picture with nothing striking it was A itself -
+         its Scan at 100 reading its own picture, the loop breathing, and a tempered fifth (G2 and D3) whose partials
+         beat once in three seconds - and the reads, 1.5 s in by the wall's clock, were on the picture's rise as well.
+         Strike at nought, A's coverage wandered 0.071 to 0.114 after 1.5 s; with A's Scan at nought, an octave in A's
+         half and three seconds heard, 0.0610 to 0.0620. The strike needs only B reading A's picture. */
       const setup = Object.assign({}, corpusSetup('Crossed hands'),
-                                  { pictureAmount: 0, scanStrike: strike, scanReadsA: 'A', scanReadsB: 'B' });
+                                  { pictureAmount: 0, scanStrike: strike, scanReadsA: 'A', scanReadsB: 'B', oscScan: 0 });
       hostQuietly(() => restore(setup)); hostSendSetup();
       await wait(300);
       el.scanReadsB.value = readsB; el.scanReadsB.dispatchEvent(new Event('change', { bubbles: true }));
       // A keyboard present, which the layers need: the screen's.
       setScreenKeys(true);
-      for (const n of [43, 50, 72, 79]) midiNoteOn(n, 100);
-      await wait(1500);
+      for (const n of [43, 55, 72, 79]) midiNoteOn(n, 100);
+      await waitHeard(3000);
       const cover = () => { const l = state.source.layerPictures; return l ? [l.stages[0].raw.cover, l.stages[1].raw.cover] : null; };
       const before = [];
       for (let k = 0; k < 10; k++) { await wait(30); before.push(cover()); }
@@ -166,7 +171,7 @@ with sync_playwright() as pw:
       const after = [];
       for (let k = 0; k < 4; k++) { await wait(30); after.push(cover()); }
       const live = !!(state.source.layerPictures && state.source.layerPictures.live);
-      for (const n of [43, 50, 72, 79, ...burst]) midiNoteOff(n);
+      for (const n of [43, 55, 72, 79, ...burst]) midiNoteOff(n);
       setScreenKeys(false);
       return { before, after, live, host: state.source.kind === 'host' };
     }"""

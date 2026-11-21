@@ -90,9 +90,12 @@ with sync_playwright() as pw:
         """The four lanes the first time a click of the fake device is in them,
         read every 100 ms for up to `seconds`, or None: the device clicks about
         twice a second and is silent between, so one read proves nothing."""
+        # And every lane posted: a lane the worklet's chunks have not yet reached reads exactly silent, and on a
+        # loaded run a click in the first two, the other two not there yet, ended the wait (21 Nov: [0.0071, 0.0116,
+        # 0.0, 0.0] after the loads). A split that has really stopped still never fills them, and reads None.
         for _ in range(int(seconds * 10)):
             got = p.evaluate(LEVELS)
-            if max(g["pk"] for g in got) > 0.05: return got
+            if max(g["pk"] for g in got) > 0.05 and all(g["pk"] > 0 for g in got): return got
             p.wait_for_timeout(100)
         return None
     # The instrument plays from its boot: Mic not yet pressed, it draws its generator.

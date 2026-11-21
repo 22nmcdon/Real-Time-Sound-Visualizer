@@ -55,15 +55,24 @@ with sync_playwright() as pw:
     # check below looks for in capture. Two seconds was always enough alone;
     # beside two other suites the microphone's graph once started late and the
     # 0.74 s window at 50 ms/div began with 40 unwritten samples (9 Nov).
+    # And with no gap anywhere in it (21 Nov): the file has no two exact zeros running, but the fake device starting
+    # under three suites' load can drop out, and a window whose left edge lands on such a gap read as a flatline of
+    # 280 samples in a full run, the capture faithful to a ring that was not. Waited for until the ring holds no run
+    # of eight exact zeros, the flatline check's own length; the longest run left is printed.
     filled = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const longest = (w) => { let best = 0, run = 0; for (const v of w) { run = v === 0 ? run + 1 : 0; if (run > best) best = run; } return best; };
+      let first = null;
       for (let k = 0; k < 120; k++) {
         const w = state.source.getLatestWindow(state.source.capacity)[0];
-        if (w && w.length && w.subarray(0, 8).some((v) => v !== 0)) return k * 100;
+        if (first === null && w && w.length) first = { oldest: w.subarray(0, 8).some((v) => v !== 0), longest: longest(w) };
+        if (w && w.length && w.subarray(0, 8).some((v) => v !== 0) && longest(w) < 8) return { ms: k * 100, first };
         await wait(100);
       }
-      return -1;
+      return { ms: -1, first };
     }""")
+    gap_first = filled["first"]
+    filled = filled["ms"]
 
     info = p.evaluate("""() => ({ kind: state.source.kind, rate: state.source.sampleRate,
                                   cap: state.source.capacity, input: !!state.source.drawsInput })""")
@@ -73,6 +82,8 @@ with sync_playwright() as pw:
     check("the instrument draws the microphone, and its two-second ring is written all the way back",
           info["kind"] == "host" and info["input"] and info["cap"] == round(2 * info["rate"]) and filled >= 0,
           "filled after %d ms more" % filled)
+    print("    at the first look the ring's oldest end was %s and its longest run of exact zeros %d samples"
+          % ("written" if gap_first and gap_first["oldest"] else "not written", gap_first["longest"] if gap_first else -1))
 
     print("\n--- what capture asks for, at every timebase and trigger position ---")
     rows = p.evaluate("""() => {

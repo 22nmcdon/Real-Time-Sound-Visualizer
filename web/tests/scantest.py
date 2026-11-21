@@ -192,14 +192,17 @@ with sync_playwright() as pw:
       midiPanic(); loadCorpus('Scanned fifth'); heldTone(); await wait(400);
       el.pictureAmount.value = '0'; el.pictureAmount.dispatchEvent(new Event('input', { bubbles: true }));
       if (!scanOn) { el.oscScan.value = '0'; el.oscScan.dispatchEvent(new Event('input', { bubbles: true })); }
-      await wait(600);
-      const out = [], t0 = performance.now();
-      while (performance.now() - t0 < seconds * 1000) {
-        await wait(250);
+      await waitHeard(600);
+      /* Read every quarter second of what the instrument played, for `seconds` of it (21 Nov): read by the wall's
+         clock, a slow container's five seconds held less of the fifth's turning, and the spread read 0.0036 where
+         0.004 is asked, alone in the serial group. */
+      const out = [], heard0 = state.source.framesTaken, rate = state.source.sampleRate || 48000;
+      for (let k = 0; k < seconds * 4; k++) {
+        await waitHeard(250);
         const [l] = state.source.getLatestWindow(4096);
         let e = 0, d = 0;
         for (let k = 1; k < l.length; k++) { e += l[k] * l[k]; d += (l[k] - l[k - 1]) ** 2; }
-        out.push([(performance.now() - t0) / 1000, e > 1e-9 ? Math.sqrt(d / e) : 0, Math.sqrt(e / l.length)]);
+        out.push([(state.source.framesTaken - heard0) / rate, e > 1e-9 ? Math.sqrt(d / e) : 0, Math.sqrt(e / l.length)]);
       }
       return { out, host: state.source.kind === 'host' };
     }"""
