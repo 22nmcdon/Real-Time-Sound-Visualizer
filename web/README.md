@@ -7604,21 +7604,32 @@ that is drops of paint rather than small strokes. Three things the revision lear
   (`knifeLevelled_`, `knifeLaid_`). `pieces/painting.py` holds the map to what the strips' own
   stamps say they laid past the stroke, each faded by its age, to two per cent; the old formula
   reads 0.77. Anything else the core lays narrower than a cell at a time can fail the same way.
-- **A loaded machine stretches a gesture, and the look's knife lays the core's slab** (21 Nov).
-  painttest's pull check failed only in the full run: under that load each `p.evaluate` took a
-  third of a second, so its quick bend - twenty messages 8 ms apart - reached the core over six
-  seconds, a slow bend the check is not about; timed in the page instead, a loaded main thread's
-  `setTimeout` stretches it as well. painttest is serial for that (`run.py`), as any suite whose
-  case is a gesture in real time must be. What it uncovered is kept: a bend that slow levels most
-  of the stroke, and the knife lays the core's slab as an amount while the look levels its own
-  paint, which stands a few per cent thinner than the map's, so a six-second bend draws its stroke
-  five to eight per cent heavier than the map holds (past the band they agree; offline, the
-  listening page's renders). And twelve busy loops beside painttest leave the look holding up to
-  1.7 times the map's paint with a bend and the same without one, with every stamp painted once:
-  not yet explained. Two things the hunt fixed: the look faded at most a quarter of a second a
-  frame, so a face drawing under four frames a second kept more paint than the map (it fades by
-  the time since its last frame now, the clock reset on show and Clear); and the face now counts
-  the stamps it misses or lets go and the maps it is sent (`paintView.lost`, `mapsTaken`).
+- **A loaded machine stretches a live case, and the look parts from the map on a second lap**
+  (21 Nov). painttest's pull check failed only in the full run. Captured there - the worklet's
+  MIDI logged with the block each message came in, and played again offline to the block, which
+  gave the live map to the last digit - the quick bend's twenty messages had reached the core over
+  ten seconds and the note was held thirteen and a half: each `p.evaluate` took a third of a second
+  or more under that load, and a page's `setTimeout` stretches as well. Held that long, the brush
+  laps its own stroke, and from the second lap the look holds more paint than the map, 1.38 times
+  by the end of a 13 s note with no bend at all - the same on testing's core and page (step 2's,
+  not the knife's; not yet explained, and it is the next thing to look at in the look). So the
+  look-against-map half of the pull check is now played by a core of its own in the page
+  (`PULL_RUN`, as `PLAY_RUN` is), the case to the block whatever the load, and the live figures
+  are printed beside it, not judged; the live half, the map's pull as a port sends it, stays
+  live. The rule: a check that compares two things the instrument computes should not depend on
+  how long the machine took to send the gesture; drive it by the core's clock. Also found:
+  a six-second bend draws the stroke five to eight per cent heavier in the look than the map holds,
+  since the knife lays the core's slab as an amount and the look levels its own slightly thinner
+  paint to it (past the band they agree); the look faded at most a quarter of a second a frame, so a
+  face drawing under four frames a second kept more paint than the map (it fades by the time since
+  its last frame now, the clock reset on show and Clear); and the face counts the stamps it misses
+  or lets go and the maps it is sent (`paintView.lost`, `mapsTaken`).
+- **Suites seen red only beside others** (21 Nov, the full runs on claude/paint-controllers after
+  testing's f6c5b05): `layerplane` (A's lanes 1.024 where the check wants them unmoved), `photo`
+  (the grid's fade 0.864 against the canvas's 0.884), `cap` (a flatline of 280 samples) and
+  `strike` (A's picture rising 0.020 with B reading its own). Each passes alone; `strike` failed
+  three in six interleaved runs on testing itself and none in six on the branch, and `cap` passed
+  six in six on each under busy loops and its full-run neighbours. Not chased there.
 - **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches
   in the paint shader's loop over a batch's stamps, and every brush stamp paid for both: the
   look's frame rate halved and `paintcosttest.py` went red, two commits after the change that

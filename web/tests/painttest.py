@@ -143,6 +143,31 @@ PLAY_RUN = """() => {
   }
 }"""
 
+# The quick bend, played by a core of its own as PLAY_RUN is (21 Nov): A3 struck at Strike 50, a second on bent up two
+# semitones in twenty steps over 160 ms, let go 1.7 s later, and 1.5 s after - the live case's timings, to the block.
+# Its strokes go to window.__served and it returns its own map, so the look can be held to the map whatever the
+# machine's load: played live, a loaded machine stretched each Playwright call to a third of a second, held the note
+# thirteen seconds of the core's time, and the brush lapped its own stroke, where the look and the map part (step 2's,
+# on testing too; web/README.md).
+PULL_RUN = """() => {
+  const code = encodeSetup(Object.assign({}, decodeSetup(encodeSetup(snapshot())),
+    { oscScan: 60, scanStrike: 50, screenDraws: 'paint' }));
+  const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
+  const l = new Float32Array(128), r = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
+  const at = (s) => Math.round(s * 48000 / 128);
+  let map = null;
+  for (let k = 0; k < at(4.6); k++) {
+    if (k === at(0.2)) brain.midi([0x90, 57, 110], -1);
+    for (let j = 1; j <= 20; j++) if (k === at(1.2 + 0.008 * j)) { const v = 8192 + Math.round(8191 * j / 20); brain.midi([0xE0, v & 127, v >> 7], -1); }
+    if (k === at(3.06)) brain.midi([0x80, 57, 0], -1);
+    brain.block(128, l, r, pics, null);
+    const p = brain.readings().paint;
+    if (p && p.on && p.stamps && p.count) window.__served.push(p.stamps.slice(0, p.count * PAINT_STAMP));
+    if (p && p.map) map = p.map;
+  }
+  return map ? Array.from(map.subarray(0, 128 * 128)) : null;
+}"""
+
 # The run's last note lets go 10/9 + 0.15 s after its first strike: past that the stroke is the release.
 HELD = 10 / 9 + 0.15
 
@@ -438,10 +463,22 @@ with sync_playwright() as pw:
         # Within a twentieth since 20 Nov: until then the bound was 35 per cent, and the look sat at 1.34 to 1.38 times the
         # map, passing on some runs - the core's knife wiped a share of each strip's slab in the cells it shared with the
         # next (paint.h, knife), and the look, cutting each pixel once, did not. Now they agree to a few tenths of a per cent.
+        # The look against the map on the same quick bend played by a core of its own in the page (PULL_RUN), its
+        # strokes painted at 60 frames a second: the case to the block, whatever the machine's load. Live, the live
+        # look and map are printed beside it, not judged.
         same_pull = lambda look, map_: abs(look / map_ - 1) < 0.05 if map_ > 0 else False
-        check("and the look draws the same pull", same_pull(pl, pm), "look %.2f%%, map %.2f%%; stamps the face missed %d, dropped %d; paint in all, look %.1f, map %.1f" % (100 * pl, 100 * pm, pulled["lost"]["missed"], pulled["lost"]["dropped"], sum(pulled["lookCells"]) / 36, sum(pulled["cells"])))
-        null("the bound fails the look at 1.37 times the map, as the knife drew it before", not same_pull(1.37 * pm, pm))
-        null("the unbent note's map against the bent look is not it", abs(pl / max(rm, 1e-9) - 1) > 0.35, "%.2f%% against %.2f%%" % (100 * pl, 100 * rm))
+        q = open_page(b)
+        q.click("#drawPaint"); q.wait_for_timeout(300)
+        q.evaluate(RECORD)
+        own_map = q.evaluate(PULL_RUN)
+        own = q.evaluate(REPLAY, {"fps": 60, "every": 1, "widen": 1, "cells": 0})
+        q.close()
+        om, ol = (beyond(own_map, edge), beyond(own["look"], edge)) if own_map and own["look"] else (0.0, 0.0)
+        check("and the look draws the same pull", same_pull(ol, om),
+              "look %.2f%%, map %.2f%% (paint in all %.1f and %.1f), played by the page's own core; live, look %.2f%%, map %.2f%%"
+              % (100 * ol, 100 * om, sum(own["look"] or [0]) / 36, sum(own_map or [0]), 100 * pl, 100 * pm))
+        null("the bound fails the look at 1.37 times the map, as the knife drew it before", not same_pull(1.37 * om, om))
+        null("the unbent note's map against the bent look is not it", abs(ol / max(rm, 1e-9) - 1) > 0.35, "%.2f%% against %.2f%%" % (100 * ol, 100 * rm))
     else:
         check("the bend's pull paints", False)
 
