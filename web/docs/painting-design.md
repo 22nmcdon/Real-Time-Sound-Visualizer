@@ -343,7 +343,7 @@ reads it. **Revised the same day** after the owner listened to the first build
   stroke is darker than a flat plane of the same paint), a little more paint than was there - under
   one per cent over the listening page's phrase. The bend back to rest cuts nothing. A quick bend up
   of a whole tone leaves 51 per cent of the paint on its arc past the stroke's band, a slow one
-  21; Scan reads it (centroid 2.40 against 2.05 deaf to it, on the listening page). Each run of the
+  21; Scan reads it (centroid 2.42 against 2.05 deaf to it, on the listening page). Each run of the
   knife keeps, per cell, how much of the cell it has levelled and what it laid there, so a strip
   levels only what the run has not: a strip is narrower than a cell, and until 20 Nov each one wiped
   its neighbour's slab in the cells they share, a quarter of what the knife lays past the stroke.
