@@ -7656,8 +7656,9 @@ that is drops of paint rather than small strokes. Three things the revision lear
   (the grid's fade 0.864 against the canvas's 0.884), `cap` (a flatline of 280 samples) and
   `strike` (A's picture rising 0.020 with B reading its own) and `scan` (the turning fifth read back moving
   its timbre 0.0036; alone 0.0045 to 0.0069 on the branch and 0.0048 to 0.0085 on testing) and `live`
-  (four lanes after the loads, two of them silent, where alone all four sound) and `face` (lane three's
-  full scale against the instrument's offset). Each passes alone; `strike` failed
+  (four lanes after the loads, two of them silent, where alone all four sound), `face` (lane three's
+  full scale against the instrument's offset), `lfo` (a drawn point dragged past nought read 0.95 then
+  0.95) and `clock` (the tempo row under a MIDI clock). Each passes alone; `strike` failed
   three in six interleaved runs on testing itself and none in six on the branch, and `cap` passed
   six in six on each under busy loops and its full-run neighbours. Not chased there.
 - **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches
