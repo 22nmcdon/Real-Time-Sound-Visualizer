@@ -14753,6 +14753,8 @@ const paintView = (() => {
   const stepData = new Float32Array(PAINT_STEPS_MOST * 6 * 4);
   const timing = { frames: 0, ms: 0, worst: 0, stamps: 0 };
   const lost = { missed: 0, dropped: 0 };
+  // How many maps the instrument has sent: one every eighth reading, so a test comparing the map with the look waits for one.
+  let mapsTaken = 0;
 
   const COMMON = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
@@ -15293,6 +15295,7 @@ void main() {
     get wantsMap() { return wantMap; },
     get timing() { return timing; },
     get lost() { return lost; },
+    get mapsTaken() { return mapsTaken; },
     get canvas() { return canvas; },
     // The core's map as it was last served (thickness then wetness), or null.
     get map() { return map; },
@@ -15319,7 +15322,7 @@ void main() {
        stamps start at, how many, and the stamps; and the map, when it came. */
     take(paint) {
       if (!paint) return;
-      if (paint.map) map = paint.map;
+      if (paint.map) { map = paint.map; mapsTaken++; }
       if (!paint.on || !paint.stamps) return;
       const from = paint.from, n = paint.count;
       if (from + n <= since) return;

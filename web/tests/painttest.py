@@ -355,7 +355,13 @@ with sync_playwright() as pw:
     # --- step 3: the player's controllers on the brush, through the page's MIDI path ---
     # Each played as a port's bytes into midiBytes, which hands them to the instrument as a port's: a held A3 at a
     # wheel, a lean or a bend, and the map's and the look's width and radius. A page a case, so nothing carries over.
-    MEASURE = """() => { const m = paintView.map, s = paintView.sample();
+    # The map comes every eighth reading and the stamps every one, so under load the map the page holds can be seconds
+    # older than the look (21 Nov: a full run read the pull at map 0.51%, look 1.64%, no stamp lost): wait for two
+    # maps more, then two frames so the look has painted what came with them, and read both then.
+    MEASURE = """async () => { const k = paintView.mapsTaken, t0 = performance.now();
+      while (paintView.mapsTaken < k + 2 && performance.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 50));
+      for (let f = 0; f < 2; f++) await new Promise((r) => requestAnimationFrame(r));
+      const m = paintView.map, s = paintView.sample();
       return { map: m ? Array.from(m.subarray(0, 128 * 128)) : null, look: s ? Array.from(s) : null, lost: Object.assign({}, paintView.lost) }; }"""
     def mean_radius(g, n=128):
         s = sr = 0.0
