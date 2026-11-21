@@ -7631,7 +7631,8 @@ that is drops of paint rather than small strokes. Three things the revision lear
   testing's f6c5b05): `layerplane` (A's lanes 1.024 where the check wants them unmoved), `photo`
   (the grid's fade 0.864 against the canvas's 0.884), `cap` (a flatline of 280 samples) and
   `strike` (A's picture rising 0.020 with B reading its own) and `scan` (the turning fifth read back moving
-  its timbre 0.0036; alone 0.0045 to 0.0069 on the branch and 0.0048 to 0.0085 on testing). Each passes alone; `strike` failed
+  its timbre 0.0036; alone 0.0045 to 0.0069 on the branch and 0.0048 to 0.0085 on testing) and `live`
+  (four lanes after the loads, two of them silent, where alone all four sound). Each passes alone; `strike` failed
   three in six interleaved runs on testing itself and none in six on the branch, and `cap` passed
   six in six on each under busy loops and its full-run neighbours. Not chased there.
 - **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches
