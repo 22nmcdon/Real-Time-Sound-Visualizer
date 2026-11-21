@@ -14752,6 +14752,7 @@ const paintView = (() => {
   let nextSlot = 0;
   const stepData = new Float32Array(PAINT_STEPS_MOST * 6 * 4);
   const timing = { frames: 0, ms: 0, worst: 0, stamps: 0 };
+  const lost = { missed: 0, dropped: 0 };
 
   const COMMON = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
@@ -15291,6 +15292,7 @@ void main() {
     get since() { return since; },
     get wantsMap() { return wantMap; },
     get timing() { return timing; },
+    get lost() { return lost; },
     get canvas() { return canvas; },
     // The core's map as it was last served (thickness then wetness), or null.
     get map() { return map; },
@@ -15321,6 +15323,8 @@ void main() {
       if (!paint.on || !paint.stamps) return;
       const from = paint.from, n = paint.count;
       if (from + n <= since) return;
+      // Stamps the face was never sent (the readings fell behind the core's ring) and, below, ones it let go.
+      if (since > 0 && from > since) lost.missed += from - since;
       for (let k = Math.max(0, since - from); k < n; k++) {
         const s = paint.stamps.subarray(k * PAINT_STAMP, (k + 1) * PAINT_STAMP);
         queue.push(s);
@@ -15329,7 +15333,7 @@ void main() {
       clockAt = performance.now();
       since = from + n;
       // A face far behind takes the newest only, rather than painting a backlog.
-      if (queue.length > 8 * PAINT_STEPS_MOST) queue = queue.slice(queue.length - 8 * PAINT_STEPS_MOST);
+      if (queue.length > 8 * PAINT_STEPS_MOST) { lost.dropped += queue.length - 8 * PAINT_STEPS_MOST; queue = queue.slice(queue.length - 8 * PAINT_STEPS_MOST); }
     },
     setOn(on) {
       if (on) make();

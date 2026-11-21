@@ -356,7 +356,7 @@ with sync_playwright() as pw:
     # Each played as a port's bytes into midiBytes, which hands them to the instrument as a port's: a held A3 at a
     # wheel, a lean or a bend, and the map's and the look's width and radius. A page a case, so nothing carries over.
     MEASURE = """() => { const m = paintView.map, s = paintView.sample();
-      return { map: m ? Array.from(m.subarray(0, 128 * 128)) : null, look: s ? Array.from(s) : null }; }"""
+      return { map: m ? Array.from(m.subarray(0, 128 * 128)) : null, look: s ? Array.from(s) : null, lost: Object.assign({}, paintView.lost) }; }"""
     def mean_radius(g, n=128):
         s = sr = 0.0
         for y in range(n):
@@ -384,7 +384,7 @@ with sync_playwright() as pw:
         p.close()
         if not (got["map"] and got["look"]): return None
         return {"map": spread(got["map"]), "look": spread(got["look"]), "radius": mean_radius(got["map"]), "cells": got["map"],
-                "lookCells": got["look"]}
+                "lookCells": got["look"], "lost": got["lost"]}
     rest = held()
     heavy = held(before=[(0xB0, 1, 127)])
     leaned = held(during=[(0xD0, 127)])
@@ -430,7 +430,7 @@ with sync_playwright() as pw:
         # map, passing on some runs - the core's knife wiped a share of each strip's slab in the cells it shared with the
         # next (paint.h, knife), and the look, cutting each pixel once, did not. Now they agree to a few tenths of a per cent.
         same_pull = lambda look, map_: abs(look / map_ - 1) < 0.05 if map_ > 0 else False
-        check("and the look draws the same pull", same_pull(pl, pm), "look %.2f%%, map %.2f%%" % (100 * pl, 100 * pm))
+        check("and the look draws the same pull", same_pull(pl, pm), "look %.2f%%, map %.2f%%; stamps the face missed %d, dropped %d" % (100 * pl, 100 * pm, pulled["lost"]["missed"], pulled["lost"]["dropped"]))
         null("the bound fails the look at 1.37 times the map, as the knife drew it before", not same_pull(1.37 * pm, pm))
         null("the unbent note's map against the bent look is not it", abs(pl / max(rm, 1e-9) - 1) > 0.35, "%.2f%% against %.2f%%" % (100 * pl, 100 * rm))
     else:
