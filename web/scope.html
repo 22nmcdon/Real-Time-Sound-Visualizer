@@ -15339,12 +15339,12 @@ void main() {
       if (queue.length > 8 * PAINT_STEPS_MOST) { lost.dropped += queue.length - 8 * PAINT_STEPS_MOST; queue = queue.slice(queue.length - 8 * PAINT_STEPS_MOST); }
     },
     setOn(on) {
-      if (on) make();
+      if (on) { make(); if (canvas && canvas.hidden) lastDraw = 0; }
       if (canvas) canvas.hidden = !on;
       if (!on) queue = [];
     },
     clear() {
-      queue = [];
+      queue = []; lastDraw = 0;
       if (mode === "gpu" && gl) clearTargets();
       map = null;
       if (fallback) fallback.clearRect(0, 0, PAINT_CELLS, PAINT_CELLS);
@@ -15353,7 +15353,11 @@ void main() {
       if (!canvas || canvas.hidden) return;
       place();
       const began = performance.now();
-      const dt = lastDraw ? Math.min(0.25, (now - lastDraw) / 1000) : 0;
+      /* The look fades by the time since its last frame, as the core's map fades by its own: capped at a quarter of a
+         second a frame until 21 Nov, so a face drawing slower than four frames a second - SwiftShader under a full run's
+         load - kept nearly twice the paint the map held, and painttest's look against the map failed under load alone.
+         The clock starts again when Paint is shown and on Clear, so a spell hidden is no jump; never backwards. */
+      const dt = lastDraw ? Math.max(0, (now - lastDraw) / 1000) : 0;
       lastDraw = now;
       if (mode === "gpu") {
         // The look's own clock between servings, so the gloss dries smoothly.

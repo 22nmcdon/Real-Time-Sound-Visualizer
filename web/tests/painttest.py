@@ -383,7 +383,10 @@ with sync_playwright() as pw:
         p.wait_for_timeout(200)
         p.evaluate("(v) => midiBytes([0x90, 57, v])", vel)
         p.wait_for_timeout(gap)
-        for m in during: p.evaluate("(m) => midiBytes(m)", list(m)); p.wait_for_timeout(8 if len(during) > 1 else 0)
+        # A sweep is timed in the page, one call: sent a message a call, each call's round trip under a full run's load
+        # (a third of a second, 21 Nov) made the quick bend six seconds long, which is not the case the checks are about.
+        p.evaluate("async (ms) => { for (const m of ms) { midiBytes(m); if (ms.length > 1) await new Promise((r) => setTimeout(r, 8)); } }",
+                   [list(m) for m in during])
         p.wait_for_timeout(1700)
         p.evaluate("() => midiBytes([0x80, 57, 0])"); p.wait_for_timeout(1500)
         got = p.evaluate(MEASURE)
@@ -436,7 +439,7 @@ with sync_playwright() as pw:
         # map, passing on some runs - the core's knife wiped a share of each strip's slab in the cells it shared with the
         # next (paint.h, knife), and the look, cutting each pixel once, did not. Now they agree to a few tenths of a per cent.
         same_pull = lambda look, map_: abs(look / map_ - 1) < 0.05 if map_ > 0 else False
-        check("and the look draws the same pull", same_pull(pl, pm), "look %.2f%%, map %.2f%%; stamps the face missed %d, dropped %d" % (100 * pl, 100 * pm, pulled["lost"]["missed"], pulled["lost"]["dropped"]))
+        check("and the look draws the same pull", same_pull(pl, pm), "look %.2f%%, map %.2f%%; stamps the face missed %d, dropped %d; paint in all, look %.1f, map %.1f" % (100 * pl, 100 * pm, pulled["lost"]["missed"], pulled["lost"]["dropped"], sum(pulled["lookCells"]) / 36, sum(pulled["cells"])))
         null("the bound fails the look at 1.37 times the map, as the knife drew it before", not same_pull(1.37 * pm, pm))
         null("the unbent note's map against the bent look is not it", abs(pl / max(rm, 1e-9) - 1) > 0.35, "%.2f%% against %.2f%%" % (100 * pl, 100 * rm))
     else:

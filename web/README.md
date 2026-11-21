@@ -7604,6 +7604,21 @@ that is drops of paint rather than small strokes. Three things the revision lear
   (`knifeLevelled_`, `knifeLaid_`). `pieces/painting.py` holds the map to what the strips' own
   stamps say they laid past the stroke, each faded by its age, to two per cent; the old formula
   reads 0.77. Anything else the core lays narrower than a cell at a time can fail the same way.
+- **A loaded machine stretches a gesture, and the look's knife lays the core's slab** (21 Nov).
+  painttest's pull check failed only in the full run: under that load each `p.evaluate` took a
+  third of a second, so its quick bend - twenty messages 8 ms apart - reached the core over six
+  seconds, a slow bend the check is not about; timed in the page instead, a loaded main thread's
+  `setTimeout` stretches it as well. painttest is serial for that (`run.py`), as any suite whose
+  case is a gesture in real time must be. What it uncovered is kept: a bend that slow levels most
+  of the stroke, and the knife lays the core's slab as an amount while the look levels its own
+  paint, which stands a few per cent thinner than the map's, so a six-second bend draws its stroke
+  five to eight per cent heavier than the map holds (past the band they agree; offline, the
+  listening page's renders). And twelve busy loops beside painttest leave the look holding up to
+  1.7 times the map's paint with a bend and the same without one, with every stamp painted once:
+  not yet explained. Two things the hunt fixed: the look faded at most a quarter of a second a
+  frame, so a face drawing under four frames a second kept more paint than the map (it fades by
+  the time since its last frame now, the clock reset on show and Clear); and the face now counts
+  the stamps it misses or lets go and the maps it is sent (`paintView.lost`, `mapsTaken`).
 - **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches
   in the paint shader's loop over a batch's stamps, and every brush stamp paid for both: the
   look's frame rate halved and `paintcosttest.py` went red, two commits after the change that
