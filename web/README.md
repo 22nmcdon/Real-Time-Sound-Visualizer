@@ -7661,6 +7661,17 @@ that is drops of paint rather than small strokes. Three things the revision lear
   0.95) and `clock` (the tempo row under a MIDI clock). Each passes alone; `strike` failed
   three in six interleaved runs on testing itself and none in six on the branch, and `cap` passed
   six in six on each under busy loops and its full-run neighbours. Not chased there.
+- **Paint a batch in tiles, each with the stamps that reach it** (21 Nov). The look painted a batch's
+  whole box, every pixel running every stamp - for a chord round the ring a box of 450 pixels a side
+  times up to 256 stamps, nearly all of which could not touch it, and SwiftShader skips no branch. Each
+  batch is now 32-pixel tiles, each drawn with the stamps whose reach crosses it, in their order, all
+  from the canvas as the batch found it and copied back after: the same stamps in the same order at
+  every pixel, so the look is the same to the bit (three phrases' worth, compared pixel for pixel), and
+  `paintcosttest.py` paints 24 to 26 frames in its four seconds where testing's head paints 9 to 11 on
+  the same container. Smaller tiles cost the page more time than they save (16: 17 to 22 frames), larger
+  ones save less (64: 12 or 13). What makes it exact: anything a stamp's shader reads by the batch -
+  the dry brush's cell, read at the batch's first stamp's time - is a uniform (`uT0`), not the tile's
+  first stamp.
 - **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches
   in the paint shader's loop over a batch's stamps, and every brush stamp paid for both: the
   look's frame rate halved and `paintcosttest.py` went red, two commits after the change that
