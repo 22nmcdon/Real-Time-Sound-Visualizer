@@ -7666,11 +7666,19 @@ that is drops of paint rather than small strokes. Three things the revision lear
   - `scan` and `face` and `live`: reads by the wall's time, or before the lanes or the offset had come
     round. `waitHeard(ms)` (the page) resolves once the source has handed over `ms` of sound played after
     the call (`framesTaken`); `face` waits for the instrument's offset, `live` for all four lanes posted.
+    Scan's held run hooks its stop into that script by a string, and the first version of this change took
+    the string away, so the suite stopped at its own assertion in both full runs: the stop is now made at
+    two seconds heard, in the reading loop, as the samples are taken.
   - `lfo`: a drag read 300 ms after the mouse came up; now waited for, the menu gone first. Not reproduced
     red under load, so the cause is likely rather than shown.
   - `clock`: not fixed. Its ticks, stamped with when they were due rather than when the timer let them go,
     still read 132 to 142 BPM under busy loops on either version; the core's lateness correction did not take
     them back, and why is not yet known. It is serial, and alone on 21 Nov's slow container read 133 once.
+  - `paintcost`'s null (the trace twice within a fifth): not fixed. Red once in two full runs, alone,
+    0.4271 against 0.3392. On twelve fresh pages the gap reached 0.14 to 0.21 whether the runs were taken
+    in blocks or in turn, four of two seconds or twenty-four of a quarter, the best of each; the median of
+    short slices was worse (0.45), so it is not spikes inside a run. Each run is a new instance of the
+    compiled core, and something differs instance to instance - not yet shown what.
 - **Paint a batch in tiles, each with the stamps that reach it** (21 Nov). The look painted a batch's
   whole box, every pixel running every stamp - for a chord round the ring a box of 450 pixels a side
   times up to 256 stamps, nearly all of which could not touch it, and SwiftShader skips no branch. Each

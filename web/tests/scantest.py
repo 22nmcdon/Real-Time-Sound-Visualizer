@@ -243,7 +243,9 @@ with sync_playwright() as pw:
     # from 6 s against itself before the stop, as it was on the page's brain;
     # and Run as its null - the same fifth on the same page, never stopped,
     # moving from 6 s as before it.
-    HELD = SITE.replace("await wait(600);", "await wait(600); if (stopAt !== null) setTimeout(() => setRunning(false), stopAt * 1000);") \
+    # The stop is at `stopAt` seconds heard, as the samples are (21 Nov): stopped by the wall's clock, a loaded
+    # machine stopped it earlier in what was played than the readings say, and "before the stop" held some of after.
+    HELD = SITE.replace("await waitHeard(250);", "if (stopAt !== null && state.running && (state.source.framesTaken - heard0) / rate >= stopAt) setRunning(false);\n        await waitHeard(250);") \
         .replace("async ([scanOn, seconds]) => {", "async ([scanOn, seconds, stopAt]) => {") \
         .replace("return { out, host:", "setRunning(true);\n      return { out, host:")
     assert HELD.count("setRunning(false)") == 1 and "stopAt" in HELD
