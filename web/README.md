@@ -7645,13 +7645,19 @@ that is drops of paint rather than small strokes. Three things the revision lear
   stored in another form (a time for a wetness) has to be written so it reads back as the same value,
   not by a rule that is right at its ends; and a rule thresholded by a clamp gives a different mean
   read per pixel than per cell, so read it at the resolution the other side does. `painttest.py`
-  holds two and a half turns, with the old figures as its null; mutants of each fix go red.
+  holds two and a half turns, with the old figures as its null; mutants of each fix go red. The
+  cell's firm paint is read once a batch, before the stamps' loop: inside it SwiftShader ran the
+  eighteen reads for every stamp, dry or not, and the look's frame rate fell from about ten frames
+  in paintcosttest's four seconds to seven. On 21 Nov that check's more than ten frames sat at the
+  edge for testing's own head too (interleaved, 11, 11, 9, 9 there and 9, 11, 10, 8 here): the
+  container was slower that day than on 20 Nov, when testing painted 17.
 - **Suites seen red only beside others** (21 Nov, the full runs on claude/paint-controllers after
   testing's f6c5b05): `layerplane` (A's lanes 1.024 where the check wants them unmoved), `photo`
   (the grid's fade 0.864 against the canvas's 0.884), `cap` (a flatline of 280 samples) and
   `strike` (A's picture rising 0.020 with B reading its own) and `scan` (the turning fifth read back moving
   its timbre 0.0036; alone 0.0045 to 0.0069 on the branch and 0.0048 to 0.0085 on testing) and `live`
-  (four lanes after the loads, two of them silent, where alone all four sound). Each passes alone; `strike` failed
+  (four lanes after the loads, two of them silent, where alone all four sound) and `face` (lane three's
+  full scale against the instrument's offset). Each passes alone; `strike` failed
   three in six interleaved runs on testing itself and none in six on the branch, and `cap` passed
   six in six on each under busy loops and its full-run neighbours. Not chased there.
 - **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches
