@@ -7616,8 +7616,11 @@ that is drops of paint rather than small strokes. Three things the revision lear
   look-against-map half of the pull check is now played by a core of its own in the page
   (`PULL_RUN`, as `PLAY_RUN` is), the case to the block whatever the load, and the live figures
   are printed beside it, not judged; the live half, the map's pull as a port sends it, stays
-  live. The rule: a check that compares two things the instrument computes should not depend on
-  how long the machine took to send the gesture; drive it by the core's clock. Also found:
+  live, and since a stretched bend pushes less (0.22% in one full run), what it holds live is that
+  a port's bend reaches the brush - knife strips served, none unbent - and the push itself, the
+  same bound, is judged on `PULL_RUN`. The rule: a check that compares two things the instrument
+  computes, or a quantity of a gesture, should not depend on how long the machine took to send the
+  gesture; drive it by the core's clock. Also found:
   a six-second bend draws the stroke five to eight per cent heavier in the look than the map holds,
   since the knife lays the core's slab as an amount and the look levels its own slightly thinner
   paint to it (past the band they agree); the look faded at most a quarter of a second a frame, so a
@@ -7627,7 +7630,8 @@ that is drops of paint rather than small strokes. Three things the revision lear
 - **Suites seen red only beside others** (21 Nov, the full runs on claude/paint-controllers after
   testing's f6c5b05): `layerplane` (A's lanes 1.024 where the check wants them unmoved), `photo`
   (the grid's fade 0.864 against the canvas's 0.884), `cap` (a flatline of 280 samples) and
-  `strike` (A's picture rising 0.020 with B reading its own). Each passes alone; `strike` failed
+  `strike` (A's picture rising 0.020 with B reading its own) and `scan` (the turning fifth read back moving
+  its timbre 0.0036; alone 0.0045 to 0.0069 on the branch and 0.0048 to 0.0085 on testing). Each passes alone; `strike` failed
   three in six interleaved runs on testing itself and none in six on the branch, and `cap` passed
   six in six on each under busy loops and its full-run neighbours. Not chased there.
 - **SwiftShader runs the branch not taken** (20 Nov). The drops and the knife put two branches

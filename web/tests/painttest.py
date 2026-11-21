@@ -387,7 +387,8 @@ with sync_playwright() as pw:
       while (paintView.mapsTaken < k + 2 && performance.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 50));
       for (let f = 0; f < 2; f++) await new Promise((r) => requestAnimationFrame(r));
       const m = paintView.map, s = paintView.sample();
-      return { map: m ? Array.from(m.subarray(0, 128 * 128)) : null, look: s ? Array.from(s) : null, lost: Object.assign({}, paintView.lost) }; }"""
+      const kinds = [0, 0, 0]; for (const b of (window.__served || [])) for (let i = 20; i < b.length; i += PAINT_STAMP) kinds[Math.round(b[i])]++;
+      return { map: m ? Array.from(m.subarray(0, 128 * 128)) : null, look: s ? Array.from(s) : null, lost: Object.assign({}, paintView.lost), kinds }; }"""
     def mean_radius(g, n=128):
         s = sr = 0.0
         for y in range(n):
@@ -401,6 +402,7 @@ with sync_playwright() as pw:
     def held(before=(), during=(), strike=50, vel=110, gap=300):
         p = open_page(b)
         p.click("#drawPaint"); p.wait_for_timeout(300)
+        p.evaluate(RECORD)
         p.evaluate("(st) => { el.oscScan.value = '60'; el.oscScan.dispatchEvent(new Event('input'));"
                    " el.scanStrike.value = String(st); el.scanStrike.dispatchEvent(new Event('input')); }", strike)
         p.wait_for_timeout(300)
@@ -418,7 +420,7 @@ with sync_playwright() as pw:
         p.close()
         if not (got["map"] and got["look"]): return None
         return {"map": spread(got["map"]), "look": spread(got["look"]), "radius": mean_radius(got["map"]), "cells": got["map"],
-                "lookCells": got["look"], "lost": got["lost"]}
+                "lookCells": got["look"], "lost": got["lost"], "knives": got["kinds"][2], "brushes": got["kinds"][0]}
     rest = held()
     heavy = held(before=[(0xB0, 1, 127)])
     leaned = held(during=[(0xD0, 127)])
@@ -458,15 +460,8 @@ with sync_playwright() as pw:
     if pulled and rest:
         edge = ring_radius(2) + 3.6
         pm, pl, rm = beyond(pulled["cells"], edge), beyond(pulled["lookCells"], edge), beyond(rest["cells"], edge)
-        check("a quick bend of two semitones, as a port sends it, drags paint out past the stroke in the core's map", pm > 0.004 and pm > 4 * rm,
-              "%.2f%% of the paint past %.1f cells, %.2f%% unbent" % (100 * pm, edge, 100 * rm))
-        # Within a twentieth since 20 Nov: until then the bound was 35 per cent, and the look sat at 1.34 to 1.38 times the
-        # map, passing on some runs - the core's knife wiped a share of each strip's slab in the cells it shared with the
-        # next (paint.h, knife), and the look, cutting each pixel once, did not. Now they agree to a few tenths of a per cent.
-        # The look against the map on the same quick bend played by a core of its own in the page (PULL_RUN), its
-        # strokes painted at 60 frames a second: the case to the block, whatever the machine's load. Live, the live
-        # look and map are printed beside it, not judged.
-        same_pull = lambda look, map_: abs(look / map_ - 1) < 0.05 if map_ > 0 else False
+        # The quick bend played by a core of its own in the page (PULL_RUN), to the block whatever the machine's load,
+        # and its strokes painted again at 60 frames a second.
         q = open_page(b)
         q.click("#drawPaint"); q.wait_for_timeout(300)
         q.evaluate(RECORD)
@@ -474,8 +469,20 @@ with sync_playwright() as pw:
         own = q.evaluate(REPLAY, {"fps": 60, "every": 1, "widen": 1, "cells": 0})
         q.close()
         om, ol = (beyond(own_map, edge), beyond(own["look"], edge)) if own_map and own["look"] else (0.0, 0.0)
+        # Live, a port's bend reaches the brush: the knife cuts, and unbent it does not. Live is only for that - under a
+        # full run's load the "quick" bend reached the core over ten seconds (21 Nov) and pushed 0.22%, a slow bend.
+        check("a bend to the top, as a port sends it, reaches the brush: the knife cuts, and unbent it does not",
+              pulled["knives"] > 10 and rest["knives"] == 0, "%d knife strips served bent, %d unbent; live, %.2f%% of the paint past %.1f cells"
+              % (pulled["knives"], rest["knives"], 100 * pm, edge))
+        null("the same count, of the unbent note's brush stamps, is not nought, so the knife's nought is read", rest["brushes"] > 10, "%d" % rest["brushes"])
+        check("a quick bend of two semitones drags paint out past the stroke in the core's map", om > 0.004 and om > 4 * rm,
+              "%.2f%% of the paint past %.1f cells, %.2f%% unbent" % (100 * om, edge, 100 * rm))
+        # Within a twentieth since 20 Nov: until then the bound was 35 per cent, and the look sat at 1.34 to 1.38 times the
+        # map, passing on some runs - the core's knife wiped a share of each strip's slab in the cells it shared with the
+        # next (paint.h, knife), and the look, cutting each pixel once, did not. Now they agree to a few tenths of a per cent.
+        same_pull = lambda look, map_: abs(look / map_ - 1) < 0.05 if map_ > 0 else False
         check("and the look draws the same pull", same_pull(ol, om),
-              "look %.2f%%, map %.2f%% (paint in all %.1f and %.1f), played by the page's own core; live, look %.2f%%, map %.2f%%"
+              "look %.2f%%, map %.2f%% (paint in all %.1f and %.1f); live, look %.2f%%, map %.2f%%"
               % (100 * ol, 100 * om, sum(own["look"] or [0]) / 36, sum(own_map or [0]), 100 * pl, 100 * pm))
         null("the bound fails the look at 1.37 times the map, as the knife drew it before", not same_pull(1.37 * om, om))
         null("the unbent note's map against the bent look is not it", abs(ol / max(rm, 1e-9) - 1) > 0.35, "%.2f%% against %.2f%%" % (100 * ol, 100 * rm))
