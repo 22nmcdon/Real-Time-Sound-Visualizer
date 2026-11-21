@@ -7627,6 +7627,25 @@ that is drops of paint rather than small strokes. Three things the revision lear
   face drawing under four frames a second kept more paint than the map (it fades by the time since
   its last frame now, the clock reset on show and Clear); and the face counts the stamps it misses
   or lets go and the maps it is sent (`paintView.lost`, `mapsTaken`).
+- **A held note's second lap, and two rules the look and the map kept differently** (21 Nov). The
+  look's 1.38 times the map by the end of a 13 s note was the look's. It stored wetness as the time
+  paint was laid, and over paint under a hundredth wet it set that time to the deposit's: a thin fresh
+  coat on the first lap's dry stroke made the whole pixel fresh, so the brush's next stamps mixed into
+  it rather than covering it, keeping the old paint under the new. The core keeps wetness by paint,
+  (wet before * kept + laid) over all. The look now writes the laid time that gives the core's
+  wetness (`laidFor`, the inverse of `wetOf`). Found by stepping one frame at a time from states the
+  two agreed on (wetness 0.0039 against 0.0051, paint per cell 0.168 against 0.175): on the first lap
+  both laid about 0.6 a frame, on the second the look 0.53 and the map 0.09. Then a second gap, a
+  slow drift to 0.90 by the third turn, was the dry brush: a nearly empty bristle group catches only
+  on high points, and the map took them from the dried paint and the look from the canvas's weave.
+  Both take both now - the core each cell's pixels' weave (`paintWeave`, the look's WEAVE shader in
+  C++), the mean of their catch, and the look the paint's height by its cell (nine of its pixels)
+  against the core's `firmMean`, which brush stamps carry in their spare `a`. The look stands about
+  0.955 of the map on every turn, the rest its shorter outer bristles. Two general lessons: a value
+  stored in another form (a time for a wetness) has to be written so it reads back as the same value,
+  not by a rule that is right at its ends; and a rule thresholded by a clamp gives a different mean
+  read per pixel than per cell, so read it at the resolution the other side does. `painttest.py`
+  holds two and a half turns, with the old figures as its null; mutants of each fix go red.
 - **Suites seen red only beside others** (21 Nov, the full runs on claude/paint-controllers after
   testing's f6c5b05): `layerplane` (A's lanes 1.024 where the check wants them unmoved), `photo`
   (the grid's fade 0.864 against the canvas's 0.884), `cap` (a flatline of 280 samples) and

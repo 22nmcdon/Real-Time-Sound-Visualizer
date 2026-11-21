@@ -183,6 +183,26 @@ inline float paintHash(std::uint32_t x) {
   return static_cast<float>((x & 0xffffff) / double(0xffffff));
 }
 
+/* The canvas's weave at one of the look's pixels (kDropSamples to a cell's side, x right and y down the map's
+   rows): the look's WEAVE shader, line for line, in its floats. The look's dry brush catches on it; the map,
+   whose cells are wider than its threads, takes its share by the cell's pixels (Painter::stamp). */
+inline float paintWeave(int px, int py) {
+  const auto sn = [](float x, std::uint32_t seed) {
+    const float i = std::floor(x), f = x - i, g = f * f * (3.0f - 2.0f * f);
+    const auto ii = static_cast<std::uint32_t>(static_cast<std::int32_t>(i));
+    return paintHash(ii * 2654435761u + seed) * (1.0f - g) + paintHash((ii + 1u) * 2654435761u + seed) * g;
+  };
+  const float x = static_cast<float>(px), y = static_cast<float>(py), pi = 3.14159265f;
+  const float xw = x + 1.6f * sn(y / 23.0f, 11u) + 0.7f * sn(y / 5.0f, 12u);
+  const float yw = y + 1.6f * sn(x / 23.0f, 13u) + 0.7f * sn(x / 5.0f, 14u);
+  const int tx = static_cast<int>(std::floor(xw / 4.0f)), ty = static_cast<int>(std::floor(yw / 4.0f));
+  const bool warp = ((tx + ty) % 2) == 0;
+  const float th = 0.6f + 0.4f * paintHash(static_cast<std::uint32_t>(warp ? tx * 7 + 1 : ty * 13 + 2));
+  const float a = std::fabs(std::sin(pi * (warp ? xw : yw) / 4.0f)) * th;
+  const float b = 0.3f * std::fabs(std::sin(pi * (warp ? yw : xw) / 4.0f));
+  return 0.6f * a + 0.2f * b + 0.25f * paintHash(static_cast<std::uint32_t>(py * 7919 + px * 104729));
+}
+
 // The thickness at which paint hides the ground to 1/e: what coverage is out of.
 constexpr double kPaintHide = 0.15;
 
@@ -370,6 +390,17 @@ class Painter {
   explicit Painter(const PaintParams& p = {}) : p_(p), layout_(std::make_unique<RoundLayout>(p)) {
     for (auto& s : slots_) s.tables = std::make_unique<ScanTables>();
     stamps_.reserve(kPaintStampsMost);
+    // Each cell's pixels' weave, as reliefs (the look's (weave - 0.5) * 0.15), a byte each: made once, here.
+    constexpr int S = kDropSamples;
+    weave_.resize(static_cast<std::size_t>(kPaintN) * kPaintN * S * S);
+    for (int yy = 0; yy < kPaintN; yy++)
+      for (int xx = 0; xx < kPaintN; xx++)
+        for (int j = 0; j < S; j++)
+          for (int i = 0; i < S; i++) {
+            const float w = std::clamp(paintWeave(xx * S + i, yy * S + j), 0.0f, 1.0f);
+            weave_[((static_cast<std::size_t>(yy) * kPaintN + static_cast<std::size_t>(xx)) * S + static_cast<std::size_t>(j)) * S + static_cast<std::size_t>(i)] =
+                static_cast<std::uint8_t>(std::lround(w * 255.0f));
+          }
   }
   void setLayout(std::unique_ptr<PaintLayout> layout) { layout_ = std::move(layout); }
   const PaintLayout& layout() const { return *layout_; }
@@ -1079,6 +1110,7 @@ class Painter {
     const double hw = std::max(0.5, w * 0.5 * (0.4 + 0.6 * p));
     const double hl = std::max(0.75, 0.15 * w);
     const double per = std::clamp(moved / (1.4 * hl), 0.02, 1.0);
+    bool served = false;
     if (stamps_.size() < kPaintStampsMost) {
       PaintStamp st;
       st.x = static_cast<float>(x / N); st.y = static_cast<float>(y / N); st.dx = static_cast<float>(dx); st.dy = static_cast<float>(dy);
@@ -1087,6 +1119,7 @@ class Painter {
       st.serial = b.serial; st.hand = static_cast<std::uint8_t>(b.layer); st.ink = static_cast<std::uint8_t>(b.ink);
       st.note = static_cast<std::uint8_t>(std::clamp(b.note, 0, 127));
       stamps_.push_back(st);
+      served = true;
     } else dropped_++;
     const int x0 = std::max(0, static_cast<int>(std::floor(x - hw - hl - 1))), x1 = std::min(N - 1, static_cast<int>(std::ceil(x + hw + hl + 1)));
     const int y0 = std::max(0, static_cast<int>(std::floor(y - hw - hl - 1))), y1 = std::min(N - 1, static_cast<int>(std::ceil(y + hw + hl + 1)));
@@ -1101,6 +1134,8 @@ class Painter {
         firmN++;
       }
     const double firmMean = firmN ? firmSum / firmN : 0;
+    // The look reads the same mean, so its dry brush catches on the same paint (the stamp's `a`, a brush's spare).
+    if (served) stamps_.back().a = static_cast<float>(firmMean);
     std::array<double, kPaintBins> picked {}, spent {}, smeared {};
     for (int yy = y0; yy <= y1; yy++)
       for (int xx = x0; xx <= x1; xx++) {
@@ -1143,10 +1178,18 @@ class Painter {
         }
         // A nearly empty bristle group catches only on high, firm points: dry brush. Not what
         // it carries: wet paint on the tips smears on wherever they touch.
+        /* The points are the dried paint above its mean under the brush and the canvas's weave, as the look's
+           pixels have them; the cell lays the mean of its pixels' catch (21 Nov). Until then the map caught on the
+           paint alone and the look on the weave alone, so a dry brush laid differently on each - on bare canvas
+           the look eight per cent short, and over a held note's own dry stroke, lap after lap, further. */
         if (b.load[kk] < 0.5) {
           const double relief = map_.thick[q] * (1 - map_.wet[q]) - firmMean;
           const double need = 0.1 * (1 - b.load[kk] / 0.5) - 0.03;
-          d *= std::clamp((relief - need) / 0.03, 0.0, 1.0);
+          const std::uint8_t* w = &weave_[q * static_cast<std::size_t>(kDropSamples * kDropSamples)];
+          double caught = 0;
+          for (int s = 0; s < kDropSamples * kDropSamples; s++)
+            caught += std::clamp((relief + (w[s] / 255.0 - 0.5) * 0.15 - need) / 0.03, 0.0, 1.0);
+          d *= caught / (kDropSamples * kDropSamples);
         }
         if (d > 0) spent[kk] += d;
         if (c > 0) smeared[kk] += c;
@@ -1271,6 +1314,7 @@ class Painter {
   // Each hand's run of the knife (a run while it cuts frame after frame), and what of each cell the run has levelled and
   // laid; a cell another run touched last reads as untouched (knife).
   std::array<std::uint32_t, 2> knifeRun_ {};
+  std::vector<std::uint8_t> weave_;  // each cell's pixels' weave, kDropSamples square, 0 to 255 (the constructor)
   std::array<std::vector<float>, 2> knifeLevelled_ { std::vector<float>(kPaintN * kPaintN, 0.f), std::vector<float>(kPaintN * kPaintN, 0.f) };
   std::array<std::vector<float>, 2> knifeLaid_ { std::vector<float>(kPaintN * kPaintN, 0.f), std::vector<float>(kPaintN * kPaintN, 0.f) };
   std::array<std::vector<std::uint32_t>, 2> knifeOfRun_ { std::vector<std::uint32_t>(kPaintN * kPaintN, 0u), std::vector<std::uint32_t>(kPaintN * kPaintN, 0u) };

@@ -168,6 +168,24 @@ PULL_RUN = """() => {
   return map ? Array.from(map.subarray(0, 128 * 128)) : null;
 }"""
 
+# A note held for two and a half turns of the ring (20 s; a turn is 8 s), played by a core of its own, so its brush
+# laps its own stroke twice (21 Nov): the strokes as served, and the map at the end of the first turn and at the end.
+LAP_RUN = """() => {
+  const code = encodeSetup(Object.assign({}, decodeSetup(encodeSetup(snapshot())), { oscScan: 60, screenDraws: 'paint' }));
+  const brain = makeWasmBrain(wasmModule(), 48000, 128, code);
+  const l = new Float32Array(128), r = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
+  const at = (s) => Math.round(s * 48000 / 128);
+  let map = null, mapLap = null; window.__servedLap = [];
+  for (let k = 0; k < at(20.5); k++) {
+    if (k === at(0.2)) brain.midi([0x90, 57, 100], -1);
+    brain.block(128, l, r, pics, null);
+    const p = brain.readings().paint;
+    if (p && p.on && p.stamps && p.count) { const s = p.stamps.slice(0, p.count * PAINT_STAMP); window.__served.push(s); if (k < at(8.2)) window.__servedLap.push(s); }
+    if (p && p.map) { map = p.map; if (k < at(8.2)) mapLap = p.map; }
+  }
+  return { lap: Array.from(mapLap.subarray(0, 128 * 128)), end: Array.from(map.subarray(0, 128 * 128)) };
+}"""
+
 # The run's last note lets go 10/9 + 0.15 s after its first strike: past that the stroke is the release.
 HELD = 10 / 9 + 0.15
 
@@ -350,6 +368,29 @@ with sync_playwright() as pw:
     else:
         check("the look's stroke is the map's width", False, "map %s, look %s" % (bool(got["map"]), bool(got["look"])))
     p.close()
+
+    # A held note's brush lapping its own stroke (21 Nov): the look and the map alike on the second and third turns, as
+    # on the first. Until then the look kept the first turn's paint under the second's (a thin fresh coat on old dry
+    # paint made the whole pixel fresh, so the brush mixed into it instead of covering it): the look stood 0.945 times
+    # the map after the first turn and 1.378 after a 13 s note. The look's own constant short is its shorter outer
+    # bristles (the core's have none), about five per cent.
+    p = open_page(b)
+    p.click("#drawPaint"); p.wait_for_timeout(300)
+    p.evaluate(RECORD)
+    laps = p.evaluate(LAP_RUN)
+    end_look = p.evaluate(REPLAY, {"fps": 60, "every": 1, "widen": 1, "cells": 0})["look"]
+    p.evaluate("() => { window.__served = window.__servedLap; }")
+    lap_look = p.evaluate(REPLAY, {"fps": 60, "every": 1, "widen": 1, "cells": 0})["look"]
+    p.close()
+    if end_look and lap_look:
+        r_lap, r_end = sum(lap_look) / 36 / sum(laps["lap"]), sum(end_look) / 36 / sum(laps["end"])
+        laps_agree = lambda a, e: abs(e / a - 1) < 0.03 and abs(e - 1) < 0.08
+        check("a note held two and a half turns: the look keeps to the map as its brush laps its own stroke",
+              laps_agree(r_lap, r_end), "the look %.3f times the map after the first turn, %.3f after the third (paint %.1f against %.1f)"
+              % (r_lap, r_end, sum(end_look) / 36, sum(laps["end"])))
+        null("the same rule fails the look as it was: 0.945 times the map after a turn, 1.378 after two laps", not laps_agree(0.945, 1.378))
+    else:
+        check("the lapping note paints", False)
 
     # A run, each note struck alone, played by the core itself (the page's own module, as the worklet runs it, so
     # the timing is the instrument's to the block and not the page's timers'): its strokes, as served, painted
