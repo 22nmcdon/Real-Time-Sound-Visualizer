@@ -895,6 +895,8 @@ dialog[open] { display: flex; flex-direction: column; }
 /* The painting (step 2), square over the trace, placed by paintView. */
 .sheet canvas.paint-view { position: absolute; width: auto; height: auto; cursor: default; background: var(--paper); }
 .sheet canvas.paint-view[hidden] { display: none; }
+/* Paint held back from the stable site (RELEASE, the top of the script). */
+html[data-held-paint] [data-paint-only] { display: none !important; }
 
 /* The photocell's reticle, over the trace rather than drawn into it: drawn in,
    it would be deposited on the phosphor and read itself. It fills with its own
@@ -5075,7 +5077,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                  the display (screenDraws), which the trace keeps underneath for
                  the photocell and the score. Its own switch beside this one,
                  the first try, cost the toolbar a row at every window. -->
-            <button type="button" class="caps" id="drawPaint" role="radio" aria-checked="false">Paint</button>
+            <button type="button" class="caps" id="drawPaint" role="radio" aria-checked="false" data-paint-only>Paint</button>
           </div>
         </div>
       <button type="button" class="link-btn caps" id="clearButton"
@@ -5801,7 +5803,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <span>Frequency up, time running right to left, level as ink. Hover it and it names
         the frequency and the note under the pointer.</span></li>
 
-      <li><b>Paint</b>
+      <li data-paint-only><b>Paint</b>
         <span>The fourth place on the same switch chooses what the sound is read from: Y&ndash;T,
         X&ndash;Y and Spect show the trace, <i>Paint</i> lets the playing paint: time goes clockwise round the canvas,
         one turn in eight seconds, and pitch goes outward, so a held note is an arc, a chord
@@ -5813,7 +5815,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         The colours are only the look: the sound reads how much paint is where. For now the
         photocell and the score still read the trace, which goes on underneath.</span></li>
 
-      <li><b>Your hands are on the brush, in Paint</b>
+      <li data-paint-only><b>Your hands are on the brush, in Paint</b>
         <span>Under the sustain pedal a hand's notes go on as one stroke, though the brush still
         lays only while there is sound, so the paint says what you hear. The mod wheel is the
         brush's load: at rest at the bottom the brush is the plain one, and pushed up it is loaded
@@ -7127,6 +7129,43 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
    shim covers those (and key, length and clear for completeness); anywhere
    else - the stable site, a file opened from the disk, the plugin - it does
    nothing. A storage that throws is left as it is: the page already copes. */
+/* What the stable site leaves out (22 Nov, the first release for testers). The
+   site is published twice (.github/workflows/pages.yml): the stable page at the
+   root, for anyone the owner sends the link to, and the work in progress under
+   /testing/. A part that is not ready for testers is held back from the root
+   here, and only here: every place that hides it asks RELEASE, so a part comes
+   back by taking it out of HELD. The test is the storage shim's, below: a page
+   served over http or https at a path that is not under /testing/ is the stable
+   site; a file opened from the disk (where every suite opens it), the testing
+   site and the plugin (window.__JUCE__, whatever address its web view gives the
+   page) are not. `?site=stable` or `?site=testing` overrides it, for a look at
+   either from a local server or a file, and for the check that emulates the
+   root (releasetest.py).
+
+   Paint is the one held back (the owner, 22 Nov: "until it is more complete").
+   Held, the display switch has no Paint, nothing that only Paint uses is shown
+   (`data-paint-only`, by a rule on html[data-held-paint], and the info line's
+   `stable:` words, which say the line without Paint), and a setup that names
+   screenDraws: paint is drawn - and heard by Scan - on the trace, while the
+   setup keeps saying paint (state.drawsKept), so the same code still paints on
+   testing. The plugin keeps Paint: it is not part of this release. To hold it
+   back there later, the plugin would pass its own word in the page's boot
+   (where it already passes pictureUrl and the rest) and RELEASE read it, rather
+   than a third guess from the address; the core needs nothing, since it is
+   told trace. */
+const RELEASE = (function release() {
+  const HELD = ["paint"];
+  let stable;
+  try {
+    const asked = new URLSearchParams(location.search).get("site");
+    if (asked === "stable" || asked === "testing") stable = asked === "stable";
+    else stable = /^https?:$/.test(location.protocol) && !/\/testing\//.test(location.pathname) && !window.__JUCE__;
+  } catch (error) { stable = false; }
+  const held = new Set(stable ? HELD : []);
+  for (const part of held) document.documentElement.setAttribute("data-held-" + part, "");
+  return { stable, paint: !held.has("paint") };
+})();
+
 (function testingStorage() {
   try {
     if (!/\/testing\//.test(location.pathname)) return;
@@ -12167,7 +12206,7 @@ function makeBrainHost() {
     });
     source.rate = ctx.sampleRate;
     await loadGeneratorModule(ctx);
-    const code = encodeSetup(snapshot());
+    const code = heardSetup();
     const said = new Promise((resolve) => {
       // One input, a pair: the microphone or line input, when the instrument is given one.
       node = new AudioWorkletNode(ctx, "scope-brain", {
@@ -13122,6 +13161,7 @@ const state = {
   panesExtra: { harmonics: false, tuner: false },
   persistence: 0,            // 0 off, >0 the fade per frame, -1 infinite
   draws: "trace",            // what the screen draws (painting, step 2): "trace" or "paint"
+  drawsKept: "trace",        // what the setup says it draws, which the stable site may not show (RELEASE)
   paintPersistence: 16,      // the painting's Persistence, a half-life in seconds
   cursors: false,
   cursor: { t1: 0.3, t2: 0.7, a1: 0.5, a2: -0.5 },
@@ -14714,7 +14754,12 @@ function setPaintPersistence(h) {
    loop overlay's rings, which are the trace's Scan path, are not drawn, and
    Which hands is hidden: one canvas, each hand's ink only the look. */
 function setDraws(mode) {
-  state.draws = mode === "paint" ? "paint" : "trace";
+  /* The setup's word is kept as it came, and the screen shows it only where
+     Paint is released: on the stable site a paint code is drawn and read on the
+     trace and saved as it was (RELEASE). Pressing Y-T, X-Y or Spect is the
+     player's choice, so it writes trace even when the screen already showed it. */
+  state.drawsKept = mode === "paint" ? "paint" : "trace";
+  state.draws = RELEASE.paint ? state.drawsKept : "trace";
   const paint = state.draws === "paint";
   el.drawPaint.setAttribute("aria-checked", String(paint));
   for (const [id, mode] of [["dispYT", "yt"], ["dispXY", "xy"], ["dispSpect", "spect"]]) {
@@ -21556,7 +21601,7 @@ function snapshot() {
     modSilent: [...held.keys()].join(","),
     display: state.display,
     persistence: el.persistence.value,
-    screenDraws: state.draws, paintPersistence: state.paintPersistence,
+    screenDraws: state.drawsKept, paintPersistence: state.paintPersistence,
     span: el.spectroSpan.value,
     zoom: Number(el.zoom.value),
     timebase: state.timebase,
@@ -22386,6 +22431,13 @@ function writeSaved(all) {
 const SETUP_VERSION = 13;
 
 function encodeSetup(snap) { return setupCodec.encode(snap); }
+/* The setup as the instrument is to play it: the snapshot, but drawing what the
+   screen shows, since Scan reads that (RELEASE: a paint code on the stable site). */
+function heardSetup() {
+  const snap = snapshot();
+  snap.screenDraws = state.draws;
+  return encodeSetup(snap);
+}
 function decodeSetup(code) { return setupCodec.decode(code); }
 
 /* What differs from the defaults - and the Picture amount always. Restoring
@@ -23904,7 +23956,7 @@ function hostSendSetup() {
   if (!hostSync.on || hostSync.applying) return;
   // A load is not the player's hand on a control: what it sets comes after the gestures it interrupts.
   gesturesEnd(false);
-  scopeHost.call("scopeSetup", encodeSetup(snapshot()), presetEdited ? "" : el.preset.value);  // an edited preset is no program
+  scopeHost.call("scopeSetup", heardSetup(), presetEdited ? "" : el.preset.value);  // an edited preset is no program
 }
 
 async function hostConnect(site) {
@@ -29313,6 +29365,7 @@ function rowIsLive(row, group) {
    for the word. */
 function rowWords(row, label, section) {
   const said = Array.from(row.querySelectorAll("button, .reading, [aria-label], option"))
+    .filter((node) => RELEASE.paint || !node.closest("[data-paint-only]"))
     .map((node) => node.getAttribute("aria-label") || node.textContent).join(" ");
   return (label + " " + section + " " + said).toLowerCase();
 }
@@ -30249,8 +30302,19 @@ const CONTROL_WORDS = {
   "presetDelete": ["Delete saved", "Deletes the saved sound chosen, or the saved one loaded, from this browser, without asking. The bank’s own cannot be deleted."],
   "presetCode": ["Setup code", "The whole setup as text: copy it to send a sound to someone, or paste one in and press Paste to load it."],
   "presetCopy": ["Copy", "Copies the setup code of the sound as it is now, for a message, another browser or the plugin."],
-  "presetPaste": ["Paste", "Loads the code pasted into the field, or else the one on the clipboard if the browser hands it over."]
+  "presetPaste": ["Paste", "Loads the code pasted into the field, or else the one on the clipboard if the browser hands it over."],
+  "stable:midiWheelTo": ["Mod wheel", "The wheel moves a vibrato, the Picture amount, Scan's depth or nothing."],
+  "stable:midiPressureTo": ["Pressure", "Leaning on a held key moves a vibrato, the Picture amount, Scan's depth or nothing."],
+  "stable:scanMemory": ["Persistence", "How long a stroke takes to fade to half. Longer, and the tone and the picture’s reads remember more."]
 };
+/* The stable site's lines where the line above names Paint (RELEASE): the doc's
+   `stable:` rows, put in their controls' places there and taken out everywhere,
+   since they are no controls of their own. */
+for (const key of Object.keys(CONTROL_WORDS)) {
+  if (!key.startsWith("stable:")) continue;
+  if (!RELEASE.paint) CONTROL_WORDS[key.slice("stable:".length)] = CONTROL_WORDS[key];
+  delete CONTROL_WORDS[key];
+}
 const INFO_REST_MS = 330;
 const INFO_KEY = "scope.infoLine";
 // Controls with no id of their own, and the bench's tabs, whose ids are made.

@@ -784,3 +784,16 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | presetCode | Setup code | The whole setup as text: copy it to send a sound to someone, or paste one in and press Paste to load it. | 104 | yes — what a code holds and does not (the source, the fade, Settings), and that the site and the plugin read each other’s |
 | presetCopy | Copy | Copies the setup code of the sound as it is now, for a message, another browser or the plugin. | 94 | - |
 | presetPaste | Paste | Loads the code pasted into the field, or else the one on the clipboard if the browser hands it over. | 100 | - |
+
+### Without Paint, on the stable site
+
+Paint is held back from the stable site for the first release (22 Nov; `RELEASE` at the top
+of the page's script). A control whose line names Paint has a second line here, keyed
+`stable:` and its id, which the stable site shows in its place; the testing site, a file
+and the plugin show the line above. Not controls of their own, so not counted with them.
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| stable:midiWheelTo | Mod wheel | The wheel moves a vibrato, the Picture amount, Scan's depth or nothing. | 71 | - |
+| stable:midiPressureTo | Pressure | Leaning on a held key moves a vibrato, the Picture amount, Scan's depth or nothing. | 83 | - |
+| stable:scanMemory | Persistence | How long a stroke takes to fade to half. Longer, and the tone and the picture’s reads remember more. | 100 | - |
