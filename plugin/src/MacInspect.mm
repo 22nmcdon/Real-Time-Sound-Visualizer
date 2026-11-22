@@ -3,6 +3,8 @@
 // SDK. Kept apart from JUCE so the file is a dozen lines of Cocoa.
 #import <WebKit/WebKit.h>
 
+bool scopeMarkWebViewsInspectable(void* nsView);  // declared again in PluginEditor.cpp, which calls it
+
 static bool markInspectable(NSView* view) {
   bool any = false;
   if ([view isKindOfClass:[WKWebView class]]) {
