@@ -7674,11 +7674,16 @@ that is drops of paint rather than small strokes. Three things the revision lear
   - `clock`: not fixed. Its ticks, stamped with when they were due rather than when the timer let them go,
     still read 132 to 142 BPM under busy loops on either version; the core's lateness correction did not take
     them back, and why is not yet known. It is serial, and alone on 21 Nov's slow container read 133 once.
-  - `paintcost`'s null (the trace twice within a fifth): not fixed. Red once in two full runs, alone,
-    0.4271 against 0.3392. On twelve fresh pages the gap reached 0.14 to 0.21 whether the runs were taken
-    in blocks or in turn, four of two seconds or twenty-four of a quarter, the best of each; the median of
-    short slices was worse (0.45), so it is not spikes inside a run. Each run is a new instance of the
-    compiled core, and something differs instance to instance - not yet shown what.
+  - `paintcost`'s null (the trace twice within a fifth): fixed 22 Nov, and not by the instance. Red once
+    in two full runs, alone, 0.4271 against 0.3392, and later red alone and on testing alike. Nothing
+    differs instance to instance: the same instance, run ten times in a row, read 0.42 to 0.68 ms a block,
+    and a fixed loop of plain JavaScript, timed ten times running on an empty page, read 20 to 39 ms - the
+    shared container's own speed swings by a third from one second to the next. Each whole run measured its
+    moment. Now the four instances (trace, painting, the trace again, and a trace doing each block twice)
+    are run in quarter-second slices taken in turn, the best slice each: the two traces read within 0 to 3
+    per cent in five runs alone, and the doubled trace 1.9 to 2.1 times the trace, which the fifth's band
+    must see (its own null). Why the interleaving tried before did not settle it is not shown: the entry
+    says each run was a new instance, and if each slice was, each paid its own warm-up and its own moment.
 - **Paint a batch in tiles, each with the stamps that reach it** (21 Nov). The look painted a batch's
   whole box, every pixel running every stamp - for a chord round the ring a box of 450 pixels a side
   times up to 256 stamps, nearly all of which could not touch it, and SwiftShader skips no branch. Each
