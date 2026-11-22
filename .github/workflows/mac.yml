@@ -150,3 +150,19 @@ jobs:
           echo "passed $(grep -c '  PASS  ' shell.log || true), failed $(grep -c '  FAIL  ' shell.log || true)"
           grep '  FAIL  ' shell.log || true
           exit "$status"
+
+      # A Debug build, compiled only (22 Nov): the face's inspectable web view
+      # (PluginEditor.cpp under JUCE_MAC && JUCE_DEBUG, and MacInspect.mm) is
+      # compiled in no Release build, so without this its first compile would be
+      # the owner's. Apple Silicon alone, the AU alone, nothing installed and no
+      # auval. Run whether or not the shell test passed, so its answer is not
+      # hidden behind another failure. The symbol check proves the Debug code
+      # reached the binary: a Release build has no makeInspectable.
+      - name: Build Debug (the inspectable face), compile only
+        if: ${{ !cancelled() }}
+        run: |
+          cmake -S plugin -B plugin/build-mac-debug -DCMAKE_BUILD_TYPE=Debug -DSCOPE_JUCE_DIR="$JUCE_DIR" -DCMAKE_OSX_ARCHITECTURES=arm64
+          cmake --build plugin/build-mac-debug --config Debug --target ScopeInstrument_AU -j "$(sysctl -n hw.ncpu)"
+          bin=plugin/build-mac-debug/ScopeInstrument_artefacts/Debug/AU/Scope.component/Contents/MacOS/Scope
+          nm -C "$bin" | grep -E 'ScopeEditor::makeInspectable|scopeMarkWebViewsInspectable'
+          nm -C "$bin" | grep -q 'ScopeEditor::makeInspectable' || { echo "the Debug build has no makeInspectable"; exit 1; }
