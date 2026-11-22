@@ -86,7 +86,7 @@ owner's 47; the redesign as first built gave -0.1 at 47 and -1.5 at 75.
 
 Parallel: offline renders, no real time.
 """
-import json, os, subprocess, sys
+import json, os, re, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -199,7 +199,7 @@ def decoded(code):
     return dict(zip(out[::2], out[1::2]))
 owner_read = decoded(OWNER)
 check("the owner's code, saved at 47 under version 10, reads as %s at version %s" % (owner_read["pictureAmount"], owner_read["v"]),
-      owner_read["pictureAmount"].startswith("75.2") and owner_read["v"].startswith("13"))  # 13 since 18 Nov, the drawn envelopes' pass
+      owner_read["pictureAmount"].startswith("75.2") and float(owner_read["v"]) == int(re.search(r"kSetupVersion = (\d+)", open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "core", "include", "scope", "setup.h")).read()).group(1)))  # the core's version, which this code comes up to
 import base64
 v11 = base64.b64encode(json.dumps({"v": 11, "pictureAmount": 47}).encode()).decode().rstrip("=")
 null("a code saved at version 11 is left at its 47 (%s)" % decoded(v11)["pictureAmount"],
