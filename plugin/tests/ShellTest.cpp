@@ -4704,6 +4704,121 @@ int main() {
     }
   }
 
+  std::printf("\n--- the rack turned up on the plugin's face is heard ---\n");
+  {
+    /* The owner turned each rack module to its highest on the face (22 Nov)
+       and heard nothing change. The host's automation of the delay's,
+       phaser's and reverb's mixes is held above; nothing held the face's own
+       way in: a knob moved in the plugin's web view, its value carried by
+       the page to the native side, and the core playing it. Here each module
+       is turned up on the face as a hand turns it (setControl's input event,
+       the EQ by its switch), a bright tone held from the host, and what the
+       plugin plays is compared with the module off: the magnitudes of the
+       tone's first 24 partials, both channels, which a delay, chorus, phaser,
+       reverb, EQ or turn all move and the moment's phase does not. The null
+       is the same reading taken twice with nothing moved. */
+    ScopeProcessor racked;
+    racked.prepareToPlay(rate, block);
+    std::unique_ptr<juce::AudioProcessorEditor> owned(racked.createEditor());
+    auto* face = dynamic_cast<ScopeEditor*>(owned.get());
+    if (face == nullptr || !face->hasFace()) {
+      check("a web view to open the face in (run under xvfb-run -a, with WebKitGTK)", false, "no web view");
+    } else {
+      owned->addToDesktop(juce::ComponentPeer::windowHasTitleBar);
+      owned->setVisible(true);
+      juce::AudioBuffer<float> buf(2, block);
+      const auto clock0 = juce::Time::getMillisecondCounterHiRes();
+      double played = 0;
+      const auto run = [&](int ms, juce::MidiBuffer* first = nullptr) {
+        if (first != nullptr) { buf.clear(); racked.processBlock(buf, *first); played += block; }
+        const double until = juce::Time::getMillisecondCounterHiRes() + ms;
+        while (juce::Time::getMillisecondCounterHiRes() < until) {
+          const double due = (juce::Time::getMillisecondCounterHiRes() - clock0) / 1000.0 * rate;
+          while (played < due) { buf.clear(); juce::MidiBuffer m; racked.processBlock(buf, m); played += block; }
+          juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
+      };
+      const auto ask = [&](const juce::String& script, int waitMs) {
+        auto answer = std::make_shared<std::optional<juce::String>>();
+        face->evaluate(script, [answer](juce::WebBrowserComponent::EvaluationResult r) {
+          if (const juce::var* v = r.getResult()) *answer = v->toString();
+          else *answer = "error: " + (r.getError() ? r.getError()->message : juce::String("?"));
+        });
+        for (int waited = 0; !*answer && waited < waitMs; waited += 20) run(20);
+        return answer->value_or("no answer");
+      };
+      juce::String ready;
+      for (int k = 0; k < 300 && ready != "true"; ++k)
+        ready = ask("String(typeof faceLaidOut !== 'undefined' && !!faceLaidOut && !!state.source && state.source.kind === 'host')", 200);
+      ask(R"js((() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
+          setControl('shape', 'ramp'); return 'ramp'; })())js", 1000);
+      run(400);
+      const int note = 48;
+      const double f0 = 440.0 * std::pow(2.0, (note - 69) / 12.0);
+      juce::MidiBuffer on;
+      on.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 0);
+      run(0, &on);
+      run(1000);
+      // Half a second of what the plugin plays, as the magnitudes of the tone's partials on each channel (Hann-windowed).
+      const auto partials = [&]() {
+        std::vector<float> l, r;
+        const int blocks = static_cast<int>(0.5 * rate / block);
+        for (int k = 0; k < blocks; ++k) {
+          buf.clear(); juce::MidiBuffer none; racked.processBlock(buf, none); played += block;
+          for (int i = 0; i < block; ++i) { l.push_back(buf.getSample(0, i)); r.push_back(buf.getSample(1, i)); }
+        }
+        std::vector<double> mags;
+        for (const auto* x : { &l, &r })
+          for (int h = 1; h <= 24; ++h) {
+            double re = 0, im = 0;
+            const double w = 2 * 3.141592653589793 * h * f0 / rate, n = static_cast<double>(x->size());
+            for (std::size_t i = 0; i < x->size(); ++i) {
+              const double hann = 0.5 - 0.5 * std::cos(2 * 3.141592653589793 * i / (n - 1));
+              re += (*x)[i] * hann * std::cos(w * i); im -= (*x)[i] * hann * std::sin(w * i);
+            }
+            mags.push_back(std::sqrt(re * re + im * im) / n);
+          }
+        return mags;
+      };
+      const auto change = [](const std::vector<double>& a, const std::vector<double>& b) {
+        double d = 0, p = 0;
+        for (std::size_t i = 0; i < a.size(); ++i) { d += (a[i] - b[i]) * (a[i] - b[i]); p += b[i] * b[i]; }
+        return p > 0 ? 10 * std::log10(d / p + 1e-30) : 0.0;
+      };
+      const auto dry = partials();
+      run(300);
+      const auto again = partials();
+      double level = 0; for (const double m : dry) level = std::max(level, m);
+      const double still = change(again, dry);
+      check("the face open, the plugin plays the tone held from the host", ready == "true" && level > 0.01,
+            ready.toStdString() + "; loudest partial " + num(level));
+      check("null: the same reading taken twice with nothing moved hardly changes", still < -40, num(still) + " dB");
+      struct Module { const char* name; const char* up; const char* down; const char* slider; float value; };
+      const std::vector<Module> modules {
+        { "delay", "setControl('delayMix', 100)", "setControl('delayMix', 0)", "delayMix", 100 },
+        { "chorus", "setControl('chorusMix', 100)", "setControl('chorusMix', 0)", "chorusMix", 100 },
+        { "phaser", "setControl('phaserMix', 100)", "setControl('phaserMix', 0)", "phaserMix", 100 },
+        { "reverb", "setControl('reverbMix', 100)", "setControl('reverbMix', 0)", "reverbMix", 100 },
+        { "EQ", "setEqOn(true); setControl('eqLow', 120); setControl('eqMid', -120); setControl('eqHigh', 120)", "setEqOn(false)", "eqLow", 120 },
+        { "plane", "setControl('planeTwist', 100)", "setControl('planeTwist', 0)", "planeTwist", 100 },
+      };
+      for (const auto& m : modules) {
+        ask(juce::String("(() => { ") + m.up + "; return 'up'; })()", 1000);
+        run(900);
+        const auto wet = partials();
+        const double at = racked.slider(m.slider), moved = change(wet, dry);
+        ask(juce::String("(() => { ") + m.down + "; return 'down'; })()", 1000);
+        run(700);
+        check(std::string("the ") + m.name + " turned up on the plugin's face reaches the processor and changes what it plays",
+              at == m.value && moved > -25, std::string(m.slider) + " " + num(at) + "; change against off " + num(moved) + " dB");
+      }
+      owned->setVisible(false);
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+      owned.reset();
+      juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
+    }
+  }
+
   std::printf("\n%s\n", failures ? "FAILED" : "the shell plays, serves the page, and hands it the picture");
   return failures ? 1 : 0;
 }
