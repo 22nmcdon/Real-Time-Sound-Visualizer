@@ -4713,9 +4713,9 @@ int main() {
        the page to the native side, and the core playing it. Here each module
        is turned up on the face as a hand turns it (setControl's input event,
        the EQ by its switch), a bright tone held from the host, and what the
-       plugin plays is compared with the module off: the magnitudes of the
-       tone's first 24 partials, both channels, which a delay, chorus, phaser,
-       reverb, EQ or turn all move and the moment's phase does not. The null
+       plugin plays is compared with the module off: each channel's power in
+       sixth-of-an-octave bands, which a delay, chorus, phaser, reverb, EQ or
+       turn all move and the moment's phase does not. The null
        is the same reading taken twice with nothing moved. */
     ScopeProcessor racked;
     racked.prepareToPlay(rate, block);
@@ -4754,7 +4754,6 @@ int main() {
           setControl('shape', 'ramp'); return 'ramp'; })())js", 1000);
       run(400);
       const int note = 48;
-      const double f0 = 440.0 * std::pow(2.0, (note - 69) / 12.0);
       juce::MidiBuffer on;
       on.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 0);
       run(0, &on);
@@ -4767,17 +4766,31 @@ int main() {
           buf.clear(); juce::MidiBuffer none; racked.processBlock(buf, none); played += block;
           for (int i = 0; i < block; ++i) { l.push_back(buf.getSample(0, i)); r.push_back(buf.getSample(1, i)); }
         }
+        /* Each channel's power in 48 bands, a sixth of an octave each from 60 Hz, summed over a 2 Hz grid of
+           Hann-windowed DFT points: a profile that neither the moment's phase nor the note's exact tuning moves.
+           A partial read at the note's nominal frequency alone (the first version) moved -29 dB between two
+           readings of the same tone, the tone not landing on that frequency exactly. */
         std::vector<double> mags;
-        for (const auto* x : { &l, &r })
-          for (int h = 1; h <= 24; ++h) {
-            double re = 0, im = 0;
-            const double w = 2 * 3.141592653589793 * h * f0 / rate, n = static_cast<double>(x->size());
-            for (std::size_t i = 0; i < x->size(); ++i) {
-              const double hann = 0.5 - 0.5 * std::cos(2 * 3.141592653589793 * i / (n - 1));
-              re += (*x)[i] * hann * std::cos(w * i); im -= (*x)[i] * hann * std::sin(w * i);
+        const double tau = 2 * 3.141592653589793;
+        for (const auto* x : { &l, &r }) {
+          const std::size_t n = x->size();
+          std::vector<double> win(n);
+          for (std::size_t i = 0; i < n; ++i) win[i] = (*x)[i] * (0.5 - 0.5 * std::cos(tau * i / (n - 1)));
+          for (int band = 0; band < 48; ++band) {
+            const double lo = 60 * std::pow(2.0, band / 6.0), hi = 60 * std::pow(2.0, (band + 1) / 6.0);
+            double power = 0;
+            for (double f = lo; f < hi; f += 2) {
+              const double c = std::cos(tau * f / rate), sn = std::sin(tau * f / rate);
+              double pr = 1, pi = 0, re = 0, im = 0;
+              for (std::size_t i = 0; i < n; ++i) {
+                re += win[i] * pr; im -= win[i] * pi;
+                const double t = pr * c - pi * sn; pi = pr * sn + pi * c; pr = t;
+              }
+              power += re * re + im * im;
             }
-            mags.push_back(std::sqrt(re * re + im * im) / n);
+            mags.push_back(std::sqrt(power) / n);
           }
+        }
         return mags;
       };
       const auto change = [](const std::vector<double>& a, const std::vector<double>& b) {
