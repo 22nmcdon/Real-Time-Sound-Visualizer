@@ -1,0 +1,212 @@
+{
+ "Drying pad": {
+  "code": "eyJ2IjoxMywic2hhcGUiOiJyYW1wIiwib3NjU2NhbiI6NjAsInNjYW5TdHJpa2UiOjQwLCJ2Y2ZUeXBlIjoxLCJ2Y2ZDdXQiOjU2MCwidmNmUmVzIjoxNSwiYW1wIjoyOCwiY3ljbGVzIjoiIiwiYXRrIjoyMDAsImRlYyI6ODAwLCJzdXMiOjgwLCJyZWwiOjE1MDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4xMiIsInNjcmVlbkRyYXdzIjoicGFpbnQiLCJwYWludFBlcnNpc3RlbmNlIjo4LCJ0aW1lYmFzZSI6MywibWlkaU1vZGUiOiJwb2x5IiwicGljdHVyZUFtb3VudCI6MTAwfQ",
+  "draws": "paint",
+  "limiter": -0.68,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.1408,
+     0.1366,
+     0.1298,
+     0.1192,
+     0.109
+    ],
+    "held_rms": 0.0843,
+    "late": [
+     0.1399,
+     0.1441,
+     0.157,
+     0.1699,
+     0.1899
+    ],
+    "most": 0.2548,
+    "notes": [
+     60
+    ],
+    "verdict": "Breathing"
+   }
+  ]
+ },
+ "Palette knife organ": {
+  "code": "eyJ2IjoxMywic2hhcGUiOiJkcmF3YmFycyIsImJhcnMiOiI4ODgwMDAwMDAiLCJvc2NTY2FuIjo0MCwic2NhblN0cmlrZSI6MTAwLCJjeWNsZXMiOiIiLCJhdGsiOjIsInN1cyI6MTAwLCJyZWwiOjgwLCJkaXNwbGF5IjoieHkiLCJwZXJzaXN0ZW5jZSI6IjAuMyIsInNjcmVlbkRyYXdzIjoicGFpbnQiLCJwYWludFBlcnNpc3RlbmNlIjoyNCwidGltZWJhc2UiOjYsIm1pZGlNb2RlIjoicG9seSIsImJlbmRSYW5nZSI6NSwid2hlZWxUbyI6Im9mZiIsInBpY3R1cmVBbW91bnQiOjB9",
+  "draws": "paint",
+  "limiter": -2.62,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.0393,
+     0.0391,
+     0.0385,
+     0.0384,
+     0.037
+    ],
+    "held_rms": 0.1424,
+    "late": [
+     0.0775,
+     0.0779,
+     0.0789,
+     0.0808,
+     0.0792
+    ],
+    "most": 0.2009,
+    "notes": [
+     60
+    ],
+    "verdict": "Breathing"
+   }
+  ]
+ },
+ "Spattered mallets": {
+  "code": "eyJ2IjoxMywic2hhcGUiOiJzaW5lIiwib3NjUmF0aW8iOjQsIm9zY0ZtIjoxMiwib3NjU2NhbiI6NzAsInNjYW5TdHJpa2UiOjEwMCwiY3ljbGVzIjoiIiwiYXRrIjoxLCJkZWMiOjcwMCwic3VzIjoxNSwicmVsIjo0MDAsIm1vZCI6ImVudi5ub3RlPmdlbi5mbUAwLjUwMCIsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4zIiwic2NyZWVuRHJhd3MiOiJwYWludCIsInBhaW50UGVyc2lzdGVuY2UiOjQwLCJ0aW1lYmFzZSI6MywibWlkaU1vZGUiOiJwb2x5IiwicGljdHVyZUFtb3VudCI6MH0",
+  "draws": "paint",
+  "limiter": -3.91,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.1044,
+     0.1068,
+     0.1068,
+     0.108,
+     0.1052
+    ],
+    "held_rms": 0.0234,
+    "late": [
+     0.0014,
+     0.0016,
+     0.0016,
+     0.0012,
+     0.0012
+    ],
+    "most": 0.4409,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ },
+ "Tines in wet paint": {
+  "code": "eyJ2IjoxMywic2hhcGUiOiJzaW5lIiwib3NjRm0iOjgsIm9zY1NjYW4iOjcwLCJzY2FuU3RyaWtlIjoxMDAsInZjZlR5cGUiOjEsInZjZkN1dCI6NzAwLCJjeWNsZXMiOiIiLCJhdGsiOjEsImRlYyI6MTAwMCwic3VzIjoyNSwicmVsIjo1MDAsIm1vZCI6ImVudi5ub3RlPmdlbi5mbUAwLjQwMDttaWRpLmtleT5nZW4uZm1AMC4zMDAiLCJkaXNwbGF5IjoieHkiLCJwZXJzaXN0ZW5jZSI6IjAuMyIsInNjcmVlbkRyYXdzIjoicGFpbnQiLCJwYWludFBlcnNpc3RlbmNlIjozMiwidGltZWJhc2UiOjMsIm1pZGlNb2RlIjoicG9seSIsInBpY3R1cmVBbW91bnQiOjB9",
+  "draws": "paint",
+  "limiter": -3.82,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.0641,
+     0.0646,
+     0.066,
+     0.0679,
+     0.0766
+    ],
+    "held_rms": 0.036,
+    "late": [
+     0.0011,
+     0.0012,
+     0.0015,
+     0.0016,
+     0.0019
+    ],
+    "most": 0.176,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ },
+ "bank: Drawbar organ": {
+  "code": "eyJ2IjoxMywic2hhcGUiOiJkcmF3YmFycyIsImJhcnMiOiI4ODgwMDAwMDAiLCJvc2NTY2FuIjoxNCwic2NhblN0cmlrZSI6MTAwLCJjeWNsZXMiOiIiLCJhdGsiOjIsInN1cyI6MTAwLCJyZWwiOjgwLCJkaXNwbGF5IjoieHkiLCJwZXJzaXN0ZW5jZSI6IjAuMyIsInRpbWViYXNlIjo2LCJtaWRpTW9kZSI6InBvbHkiLCJwaWN0dXJlQW1vdW50IjowfQ",
+  "draws": "trace",
+  "limiter": -2.12,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.0584,
+     0.063,
+     0.0679,
+     0.064,
+     0.0659
+    ],
+    "held_rms": 0.1501,
+    "late": [
+     0.0035,
+     0.003,
+     0.0061,
+     0.0046,
+     0.0033
+    ],
+    "most": 0.2562,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ },
+ "bank: Slow pad": {
+  "code": "eyJ2IjoxMywic2hhcGUiOiJyYW1wIiwib3NjU2NhbiI6NjAsInNjYW5TdHJpa2UiOjQwLCJ2Y2ZUeXBlIjoxLCJ2Y2ZDdXQiOjU2MCwidmNmUmVzIjoxNSwiYW1wIjoyOCwiY3ljbGVzIjoiIiwiYXRrIjoyMDAsImRlYyI6ODAwLCJzdXMiOjgwLCJyZWwiOjE1MDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4xMiIsInRpbWViYXNlIjozLCJtaWRpTW9kZSI6InBvbHkiLCJwaWN0dXJlQW1vdW50IjoxMDB9",
+  "draws": "trace",
+  "limiter": -0.72,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.3418,
+     0.2645,
+     0.2371,
+     0.1722,
+     0.1748
+    ],
+    "held_rms": 0.1168,
+    "late": [
+     0.023,
+     0.0195,
+     0.026,
+     0.0278,
+     0.0342
+    ],
+    "most": 0.953,
+    "notes": [
+     60
+    ],
+    "verdict": "Breathing"
+   }
+  ]
+ },
+ "bank: Tine piano": {
+  "code": "eyJ2IjoxMywic2hhcGUiOiJzaW5lIiwib3NjRm0iOjgsIm9zY1NjYW4iOjUwLCJzY2FuU3RyaWtlIjoxMDAsInZjZlR5cGUiOjEsInZjZkN1dCI6NzAwLCJjeWNsZXMiOiIiLCJhdGsiOjEsImRlYyI6MTAwMCwic3VzIjoyNSwicmVsIjo1MDAsIm1vZCI6ImVudi5ub3RlPmdlbi5mbUAwLjQwMDttaWRpLmtleT5nZW4uZm1AMC4zMDAiLCJkaXNwbGF5IjoieHkiLCJwZXJzaXN0ZW5jZSI6IjAuMyIsInRpbWViYXNlIjozLCJtaWRpTW9kZSI6InBvbHkiLCJwaWN0dXJlQW1vdW50IjowfQ",
+  "draws": "trace",
+  "limiter": -2.71,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.1201,
+     0.0871,
+     0.1255,
+     0.1273,
+     0.0884
+    ],
+    "held_rms": 0.0358,
+    "late": [
+     0.0014,
+     0.0013,
+     0.0014,
+     0.0014,
+     0.0011
+    ],
+    "most": 0.2893,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ }
+}
