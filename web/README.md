@@ -7880,3 +7880,100 @@ at 960x600 with two hands. `windowtest.py` and the plugin's shell test hold both
   can be the plugin's face for a check of the face alone by defining `window.__JUCE__ = {}`
   before the page's script: with no `backend` the page still plays through its own worklet
   (`scopeHost` falls back), and everything that asks `IN_PLUGIN` answers as in the plugin.
+
+## The first release for testers: Paint held back, headroom, and WebKit (22 Nov)
+
+Three jobs before the owner sends the stable site to testers.
+
+**Paint held back from the stable site.** The owner: "I'm going to remove the paint option from
+the first deliverable until it is more complete." One switch decides it, `RELEASE` at the top of
+the page's script, by the storage shim's own test: served over http or https at a path not
+under `/testing/` is the stable site; a file from the disk (every other suite), the testing site
+and the plugin (`window.__JUCE__`) are not. `?site=stable` and `?site=testing` override it from
+anywhere. Held, `html[data-held-paint]` hides every `[data-paint-only]` (the display switch's
+Paint button and the cheat sheet's two Paint entries), the info line takes the words doc's
+`stable:` rows for the three controls whose line names Paint (the mod wheel, pressure and
+Persistence), the search skips what is held, and a code naming `screenDraws: paint` is drawn and
+read on the trace. `releasetest.py` holds it, each part with its null.
+
+- **What is shown and what is kept are two fields.** `state.draws` is what the screen shows, as
+  every reader of it already meant; `state.drawsKept` is the setup's word, which `snapshot()`
+  saves, so a paint code loaded on the stable site and saved again still paints on testing. The
+  instrument must hear what is shown, since Scan reads the painting in Paint: the two places a
+  whole setup reaches it (the worklet's first code and `hostSendSetup`) go through
+  `heardSetup()`, which puts `state.draws` back over the kept word. A third place sending
+  `encodeSetup(snapshot())` to the instrument would paint underneath a trace, silently - the
+  check reads the instrument's own `scopeState` for that reason, not the page's.
+- **The plugin later.** It keeps Paint for now. To hold it back there, the plugin's boot (where
+  it already passes `pictureUrl` and the rest) would pass its own word and `RELEASE` read it,
+  rather than a third guess from the address; the core needs nothing, being told trace.
+
+**Headroom.** A plain sine chord came out at the clamp: the owner's bounce of the base, six
+notes, peaked at -0.1 dB and distorted a Mac mini's own speaker. Measured offline (render_cpp,
+velocity 127, six, eight and sixteen keys), every bank sound but *Tines at the radius* sat at
+-0.35 dBFS sample peak and up to -0.06 dBFS true peak (*Crossed hands*, sixteen keys): the
+limiter's make-up gain (1.7 dB, Chromium's at -3 dB and 20:1) lifts what it holds back to its
+ceiling, so a big chord on anything meets it. The instrument now puts the limiter's output
+3.5 dB down (`Instrument::kHeadroom`), and the loudest is -3.55 dBTP.
+
+- **Why after the limiter, and not its threshold or the voices.** A gain after it changes the
+  level and nothing else: which notes are limited and by how much, the meter that reads it, the
+  picture and so Scan are as they were, and the limiter stays Chromium's to the bit. A lower
+  threshold would have pressed single notes of the base it leaves alone; the voices' gain would
+  have moved the picture, which is drawn before the Output, and so the sound through Scan. The
+  cost is that what was never limited is 3.5 dB quieter too (*Tines at the radius*, -12.3 to
+  -15.8 dBTP). It is part of the limiter's stage, so a harness that turns the limiter off
+  (`limiter`, "0") hears the pair exactly as before.
+- **"Only the level" is a check, not a claim.** `core/tests/pieces/headroom.py` builds the core
+  a second time with the trim at one and renders a Breathing preset and the base through both:
+  the heard pair is the other's times the trim to 5e-8, the picture's lanes the same to the bit.
+- **A true peak is read between the samples.** The piece reads it four times oversampled by the
+  spectrum zero-padded, and its own null is a quarter-rate sine 45 degrees off its peaks, whose
+  samples read 3 dB short of it. Four times still misses up to 0.17 dB on a tone at a quarter of
+  the rate whose peak falls between the new points, which is every meter's error and why the line
+  is held with half a decibel to spare.
+
+**WebKit and Firefox.** Playwright's WebKit and Firefox could not be fetched: the pre-installed
+Playwright (1.64.1) asks `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`, and
+the environment's network refuses both (`403 request blocked: no rule or allowlist entry allows
+host`). No Firefox is installed either, so the page is untested in Gecko. WebKitGTK 2.52 is
+installed for the plugin's web view, with GObject bindings for the system's python3.12, and it
+is Safari's engine - WebKit, JavaScriptCore, its Web Audio and AudioWorklet - without Safari's
+shell or the Mac's audio. `webkittest.py` drives it under `xvfb-run` (through
+`webkit_page.py`) with autoplay refused as Safari refuses it, and a real click sent through GTK.
+At 1400x900 and 1100x680 on the root, and 1400x900 on testing with Paint pressed: no error,
+rejection or console warning; the sound starts on the click, in the AudioWorklet with the
+compiled core (not the stand-in); a dyad reaches the lanes and the trace; no tab scrolls, nor
+the page; Scope & measure, the browser and Settings open, neither panel scrolling; Paint paints.
+Nothing had to be fixed. Its first null was red where it should not have been: a 3000 px block
+put in the Bench to prove the fit check can see an overflow read nought, because the Bench is a
+flex box and squeezed the block to 351 px - the null's block now refuses to shrink.
+
+One difference the numbers do not see, from screenshots set side by side (`WEBKIT_SHOTS=dir`
+keeps them): WebKitGTK draws a `<select>` with its GTK theme's own padding inside the box, so
+the fixed-height ones - the figures' *Shape…* (22 px) - have their text clipped at the bottom,
+and the Keyboard's Outline menu shows *bass + meloc*. Safari on a Mac draws a styled select with
+its own metrics, not GTK's, so this does not say Safari clips them; it is item 9 of the list
+below, for the owner's eye, rather than a change made blind - `appearance: none` on every menu
+would change each one's box in Chromium too, which `patchtest.py` holds to half a pixel.
+
+What it cannot see, and the owner's checklist for real Safari on the Mac, both sites:
+
+1. Open the root. Nothing sounds until the first click; then press **M** and play A, S, D: the
+   figure draws and you hear it. Safari's address bar shows no "autoplay blocked" mark after.
+2. Develop > Show JavaScript Console (Settings > Advanced > *Show features for web developers*
+   first): no red line from opening, through playing, to the end of this list.
+3. Play a six-note chord with the on-screen keys at full Output: no crackle on the built-in
+   speakers (the headroom above).
+4. Play, Ink, Space & Memory: none scrolls. Scope & measure, Browse (load two presets and hear
+   them change) and Settings each open and close. Enlarge, then Esc.
+5. The display switch at the root has Y–T, X–Y and Spect and no Paint; under `/testing/` it has
+   Paint, and pressing it paints.
+6. Settings > This window > Size at 90 and 125 per cent, then a window about 1100 by 680: the
+   face still fits (CSS `zoom`, which Safari has long had).
+7. With a MIDI keyboard: Safari has no Web MIDI, so Settings' MIDI says there is none and the
+   on-screen keys and the computer keyboard are the way to play. That is expected, not a fault.
+8. Leave a chord held for a minute and switch to another tab and back: the sound and the trace
+   carry on or resume (Safari suspends audio in hidden tabs more readily than Chromium).
+9. On Play, the Amp figure's *Shape…* menu and the Keyboard's Outline menu (*bass + melody*):
+   is the text whole, not clipped at the bottom or cut short at the arrow?
