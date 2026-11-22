@@ -4751,8 +4751,10 @@ int main() {
       for (int k = 0; k < 300 && ready != "true"; ++k)
         ready = ask("String(typeof faceLaidOut !== 'undefined' && !!faceLaidOut && !!state.source && state.source.kind === 'host')", 200);
       ask(R"js((() => { const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
-          setControl('shape', 'ramp'); return 'ramp'; })())js", 1000);
+          setControl('shape', 'ramp'); setControl('pictureAmount', 0); return 'ramp'; })())js", 1000);
       run(400);
+      // The picture's loop moves a held tone on its own (the Picture amount, 60 in a setup that does not say), so it is still here.
+      const juce::String opened = ask("JSON.stringify({ picture: snapshot().pictureAmount, scan: snapshot().oscScan, shape: snapshot().shape })", 1000);
       const int note = 48;
       juce::MidiBuffer on;
       on.addEvent(juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(100)), 0);
@@ -4805,7 +4807,7 @@ int main() {
       const double still = change(again, dry);
       check("the face open, the plugin plays the tone held from the host", ready == "true" && level > 0.01,
             ready.toStdString() + "; loudest partial " + num(level));
-      check("null: the same reading taken twice with nothing moved hardly changes", still < -40, num(still) + " dB");
+      check("null: the same reading taken twice with nothing moved hardly changes", still < -40, num(still) + " dB; " + opened.toStdString());
       struct Module { const char* name; const char* up; const char* down; const char* slider; float value; };
       const std::vector<Module> modules {
         { "delay", "setControl('delayMix', 100)", "setControl('delayMix', 0)", "delayMix", 100 },
