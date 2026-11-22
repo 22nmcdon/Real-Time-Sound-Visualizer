@@ -2849,7 +2849,8 @@ check("version 13: a code from before the drawn envelopes gets the old envelope'
       all(_old(k, v13[0]) for k in ("envShape", "vcfShape", "menvShape")) and not _old("bEnvShape", v13[0])
       and _old("bEnvShape", v13[1]) and not _old("bVcfShape", v13[1]) and _old("bVcfShape", v13[2]) and not _old("bEnvShape", v13[2])
       and not _old("envShape", v13[3]) and '"envShape":"1;A>m.6;R>l"' in v13[4] and _old("vcfShape", v13[4])
-      and _old("envShape", v13[5]) and '"v":13' in v13[0],
+      and _old("envShape", v13[5])
+      and '"v":%s' % re.search(r"kSetupVersion = (\d+)", open(os.path.join(CORE, "include", "scope", "setup.h")).read()).group(1) in v13[0],
       " | ".join(x[:140] for x in v13))
 check("null: the codes as written name no shape", not any(_old("envShape", _json.dumps(st)) for st in V13))
 v14 = [_json.loads(l[5:]) if l.startswith("read ") else None for l in scpp[V14_FROM:V14_FROM + len(V14)]]
