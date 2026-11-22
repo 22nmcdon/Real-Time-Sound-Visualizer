@@ -255,12 +255,24 @@ inline std::optional<std::string> encodeSetup(const Json& snap) {
    span of its own, held to the knob's ends as restore held it - as the place
    on today's knob that is the same frequency: 20 Hz to 20 kHz over a
    thousand, unrounded. The old law was 40, 125 or 1000 Hz times two to the
-   power of 4, 6 or 4 octaves times the place over a hundred. */
+   power of 4, 6 or 4 octaves times the place over a hundred, so the new
+   place is a thousand thirds of log10(from / 20) + octaves * place / 100 *
+   log10(2). Written with the logarithms as constants and nothing from the
+   maths library but fma: the place is stored, and the site's compiled core
+   and the plugin's native one must write it to the same last digit. pow and
+   log10 differ in their last bit between the two libraries (18 of 630
+   places did), and a multiply and an add may be fused into one rounding on
+   one target and not another (GCC with -ffp-contract=fast fused them even
+   in separate statements), so the one multiply-add is an explicit fma,
+   which IEEE rounds once everywhere. */
 inline double eqPlaceOfOldSpan(int band, double place) {
-  static const double kFrom[3] = { 40, 125, 1000 }, kOctaves[3] = { 4, 6, 4 };
+  static const double kLog10From[3] = { 0.3010299956639812, 0.7958800173440752, 1.6989700043360187 };  // log10(from / 20)
+  static const double kOctaves[3] = { 4, 6, 4 };
+  constexpr double kLog10Two = 0.3010299956639812;
   const double p = std::fmax(0.0, std::fmin(100.0, place)) / 100;
-  const double hz = kFrom[band] * std::pow(2.0, kOctaves[band] * p);
-  return 1000 * std::log10(hz / 20) / 3;
+  const double octaves = kOctaves[band] * p;
+  const double above = std::fma(octaves, kLog10Two, kLog10From[band]);
+  return above * 1000 / 3;
 }
 
 inline bool migrateSetup(Json& setup) {

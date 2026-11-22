@@ -7894,3 +7894,14 @@ would be a different filter (proposed, not built).
 **The bands may cross.** Nothing pushes one band along by another: each is its own filter and
 the response is their product whichever way round they stand, and a knob that moved its
 neighbour would make the morph or a host's write to one band land on two.
+
+**A number the codec stores must be computed the same to the last bit in every build.** The
+first pass used `pow` and `log10`, and the site's compiled core and the native one wrote 18 of
+630 migrated places a digit apart in the seventeenth figure - their maths libraries round
+differently - which `core_tests.py`'s check of the compiled codec against the native caught
+while every web suite was green. Then, with the logarithms as constants, GCC at
+`-ffp-contract=fast` fused a multiply and an add from two statements into one rounding. The
+pass now uses no library function but an explicit `std::fma`, which IEEE rounds once
+everywhere; GCC and Clang at -O0 to -O3, with and without FMA, and the WebAssembly build agree
+to the character. A value used only at run time (the hertz `eqHz` makes) can differ in its last
+bit between builds; a value written into a code cannot.
