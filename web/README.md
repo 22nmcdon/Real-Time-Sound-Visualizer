@@ -7853,3 +7853,25 @@ three. What was learned:
   green - the page agrees with itself. The two new sections are written before the lanes in the
   markup and placed on Time by `data-place`, so the face is as built and the order is the old.
   Run the core's tests after moving any slider in the markup, even between hidden homes.
+
+## The plugin's face: what the host owns, and Browse on the compact header (22 Nov)
+
+The owner, in Logic: Settings showed the audio device, the MIDI ports and their note, none of
+which mean anything inside a host, and the compact face (which the plugin opens on, at
+1200x680) had no Browse, so the preset browser could not be found. In the plugin the
+host-owned rows and sections are marked `data-host-owns` and hidden (`HOST_OWNS`); Browse is
+on the header at every size, on the site too, since the compact header has 190 px to spare
+at 960x600 with two hands. `windowtest.py` and the plugin's shell test hold both.
+
+- **`hidden` does not keep a Settings section away.** Laying the face out (`setView`) sets
+  `hidden = false` on every section it deals, so the Audio section, hidden at boot in the
+  plugin, came back the moment the face was laid out, while the rows inside the MIDI section,
+  which `setView` does not touch, stayed hidden. A section that must stay away in one context
+  needs a rule: here `html[data-plugin] [data-host-owns] { display: none !important }`, the
+  attribute set by the plugin's boot. The rows keep `hidden` as well, since the shell test
+  reads `el.keysOpenRow.hidden`. The null in `windowtest.py` takes the mark off the page and
+  must see the Audio section again.
+- **The page knows it is in the plugin by `window.__JUCE__`** (`IN_PLUGIN`), so a site suite
+  can be the plugin's face for a check of the face alone by defining `window.__JUCE__ = {}`
+  before the page's script: with no `backend` the page still plays through its own worklet
+  (`scopeHost` falls back), and everything that asks `IN_PLUGIN` answers as in the plugin.
