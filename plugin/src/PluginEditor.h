@@ -23,6 +23,13 @@ class ScopeEditor final : public juce::AudioProcessorEditor {
   // A gesture the page left open - the window closed mid-drag - is ended as the face goes.
   ~ScopeEditor() override { processor_.endGestures(); }
   void resized() override;
+#if JUCE_MAC && JUCE_DEBUG
+  /* A Debug build on a Mac marks its WKWebView inspectable, for Safari's
+     Develop menu (plugin/MAC.md, "If something fails"). The web view joins
+     the window only once the editor has a peer, so this is where it is
+     looked for, and again a few times after if it is not there yet. */
+  void parentHierarchyChanged() override;
+#endif
   /* For the shell test, which opens the face under a virtual display: whether
      there is a web view, and a script run in the page with what it returns. */
   bool hasFace() const { return face_; }
@@ -35,6 +42,10 @@ class ScopeEditor final : public juce::AudioProcessorEditor {
   bool face_ = false;
   juce::WebBrowserComponent browser_;
   juce::Label missing_;  // said instead of the face where there is no web view
+#if JUCE_MAC && JUCE_DEBUG
+  void makeInspectable(int triesLeft);
+  bool inspectable_ = false;
+#endif
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ScopeEditor)
 };

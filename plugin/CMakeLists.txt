@@ -32,7 +32,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE STRING "macOS: the oldest system th
 # Logic caches what an AU said of itself by its version, so a build that
 # changes the parameters, the buses or the name under an unchanged version can
 # be shown to Logic as the old one until its cache is reset.
-project(ScopeInstrument VERSION 0.2.0 LANGUAGES C CXX)
+project(ScopeInstrument VERSION 0.3.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -99,6 +99,10 @@ juce_add_plugin(ScopeInstrument
 juce_add_binary_data(ScopePage SOURCES ../web/scope.html)
 
 target_sources(ScopeInstrument PRIVATE src/PluginProcessor.cpp src/PluginEditor.cpp)
+# The Debug build's inspectable web view (PluginEditor.cpp), in Objective-C++: Apple only.
+if(APPLE)
+  target_sources(ScopeInstrument PRIVATE src/MacInspect.mm)
+endif()
 
 target_compile_definitions(ScopeInstrument PUBLIC
   JUCE_WEB_BROWSER=1
@@ -116,6 +120,9 @@ target_link_libraries(ScopeInstrument
 # neither a host nor a web view. `ctest` or run it directly.
 juce_add_console_app(ScopeShellTest PRODUCT_NAME "ScopeShellTest" NEEDS_WEB_BROWSER TRUE)
 target_sources(ScopeShellTest PRIVATE tests/ShellTest.cpp src/PluginProcessor.cpp src/PluginEditor.cpp)
+if(APPLE)
+  target_sources(ScopeShellTest PRIVATE src/MacInspect.mm)
+endif()
 # Modal loops, for the test alone: it opens the face and waits on the message
 # thread for the page to answer (the right-click, G5b).
 target_compile_definitions(ScopeShellTest PRIVATE JucePlugin_Name="Scope" JUCE_WEB_BROWSER=1 JUCE_USE_CURL=0

@@ -148,7 +148,9 @@ rm -f ~/Library/Caches/AudioUnitCache/com.apple.audiounits.cache
 
 and open Logic again. The cure that lasts is the rule in `PLAN.md`
 ("Releasing"): every build handed over raises the version, which is what
-tells Logic to look again.
+tells Logic to look again. This one is **0.3.0** (22 Nov; 0.2.0 was 19 Nov,
+before LFO 1 rate joined the host's knobs), which the Plug-in Manager shows
+beside Scope: an older number there is an old build or an old cache.
 
 Then, on a new **Software Instrument** track, instrument slot → *AU
 Instruments → Real-Time Sound Visualizer → Scope*. What to try, roughly in
@@ -385,17 +387,18 @@ before a failure is usually the one that names it.
 - **The face**: a screenshot (Shift-Cmd-4, then Space, then click the plugin
   window), and the window's size.
 - **The Web Inspector**, for a blank face, a control that does nothing or a
-  Paint mode to read. In the Release build WKWebView is not inspectable.
-  Build Debug once (`cmake -S plugin -B plugin/build-debug -G Ninja
-  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_OSX_ARCHITECTURES=arm64`, then the same
-  build line with `build-debug`, and install that bundle in place of the
-  Release one, step 4): JUCE turns on WebKit's developer extras there, so
-  the web view's own menu - over the setup code's text box, the one place
-  the page lets it show - offers *Inspect Element*. If it does not (macOS
-  13.3 and later also ask an app to mark a web view inspectable, which JUCE
-  8.0.15 does not), the standalone `Scope.app` from the Debug build is the
-  same face and the same web view, and Safari → Settings → Advanced → *Show
-  features for web developers*, then Develop → this Mac, may list it.
+  Paint mode to read. The Release build's web view is not inspectable, on
+  purpose; the Debug build's is (`PluginEditor.cpp`, `MacInspect.mm`). Once:
+  Safari → Settings → Advanced → *Show features for web developers*. Then
+  build Debug (`cmake -S plugin -B plugin/build-debug -G Ninja
+  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_OSX_ARCHITECTURES=arm64`, then step 2's
+  build line with `build-debug`), install that bundle in place of the
+  Release one (step 4, with `build-debug` in `B`), open the face in Logic,
+  and in Safari choose **Develop → this Mac's name → the plugin's page**
+  (`juce://juce.backend`, titled as the page is; Logic may be the app it is
+  listed under). If it is not listed, the fallback is the web view's own
+  menu, which the page shows only over the setup code's text box: in the
+  Debug build it offers *Inspect Element*.
   In the console, copy any red line, and these:
 
   ```js

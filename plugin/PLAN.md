@@ -2670,6 +2670,10 @@ version they show, so one rule serves both. The parameters' own version
 hints (`juce::ParameterID`'s second argument, "Found on the way" below) are a
 different number and move only when a parameter arrives.
 
+0.2.0 (19 Nov) went out without LFO 1 rate, which joined the host's knobs
+that evening; 0.3.0 (22 Nov) is the first number with all eighteen, raised for
+the owner's first build on the Mac.
+
 ## Found on the way
 
 - **A host's parameters thrown away by prepare** (17 Nov, auval on the first

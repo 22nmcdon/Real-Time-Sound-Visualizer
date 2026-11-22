@@ -151,6 +151,31 @@ ScopeEditor::ScopeEditor(ScopeProcessor& owner)
   if (supported) browser_.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 }
 
+#if JUCE_MAC && JUCE_DEBUG
+// In MacInspect.mm, compiled on Apple only: marks every WKWebView under the view given.
+bool scopeMarkWebViewsInspectable(void* nsView);
+
+void ScopeEditor::parentHierarchyChanged() {
+  AudioProcessorEditor::parentHierarchyChanged();
+  if (face_ && !inspectable_) makeInspectable(10);
+}
+
+/* Debug only, because an inspectable web view in a build handed to anyone
+   lets any Safari on the machine read and drive the page - and because
+   JUCE 8.0.15 turns on WebKit's developer extras in Debug only, so the two
+   ways in arrive together. Since macOS 13.3 (the deployment target) a web
+   view is invisible to Safari's Develop menu unless its app says otherwise;
+   JUCE does not, and gives no handle to its WKWebView, so it is found under
+   the editor's own native view. */
+void ScopeEditor::makeInspectable(int triesLeft) {
+  if (auto* peer = getPeer()) inspectable_ = scopeMarkWebViewsInspectable(peer->getNativeHandle());
+  if (inspectable_ || triesLeft <= 0) return;
+  juce::Timer::callAfterDelay(200, [safe = juce::Component::SafePointer<ScopeEditor>(this), triesLeft] {
+    if (safe != nullptr) safe->makeInspectable(triesLeft - 1);
+  });
+}
+#endif
+
 void ScopeEditor::resized() {
   browser_.setBounds(getLocalBounds());
   missing_.setBounds(getLocalBounds().reduced(40));
