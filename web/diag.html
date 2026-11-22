@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sound check</title>
+<!-- A diagnostic page (22 Nov), not part of the instrument: the owner heard
+     static on every preset live, on a Mac, in Chrome and in Logic alike, while
+     a bounce was clean and nothing on Linux reproduced it. This page plays the
+     instrument exactly as scope.html does - the same compiled core, the same
+     worklet module (taken from scope.html itself, loaded in a hidden frame and
+     then let go), the same messages - and measures what only the listener's
+     machine can: how long each block takes against its deadline, how regularly
+     the audio thread is called, what the browser says about underruns, what
+     reaches the speakers' node, and whether each rack module changes the sound.
+     It writes one report to copy. It touches nothing scope.html or a suite
+     reads. Its nulls: ?null=busy makes the worklet spin 4 ms a block, which
+     must show late blocks; ?null=inert sends each module at Mix nought, which
+     must read inert. -->
+<style>
+  body { margin: 0 auto; max-width: 760px; padding: 16px; background: #faf6f0; color: #3a332f;
+         font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  h1 { font-size: 22px; font-weight: 500; margin: 8px 0; }
+  button { font: inherit; padding: 6px 14px; margin: 4px 8px 4px 0; }
+  pre { background: #fff; border: 1px solid #d8d0c6; padding: 10px; white-space: pre-wrap; word-break: break-word;
+        font: 12px/1.45 ui-monospace, Menlo, monospace; min-height: 120px; }
+  .fail { color: #a33; } .pass { color: #2a6a3a; }
+</style>
+</head>
+<body>
+<h1>Sound check</h1>
+<p>This plays the instrument for about 40 seconds and measures it on this computer: first a plain sine,
+then a bright tone with each effect in the rack turned all the way up in turn. You will hear it,
+at a moderate level. Leave this tab in front while it runs. When it says <b>Done</b>, press
+<b>Copy the report</b> and paste it back.</p>
+<button id="go">Start</button><button id="copy" disabled>Copy the report</button>
+<span id="status"></span>
+<pre id="out"></pre>
+<script>
+"use strict";
+const Q = new URLSearchParams(location.search);
+const NULL_MODE = Q.get("null") || "";
+const out = document.getElementById("out"), statusEl = document.getElementById("status");
+const lines = [];
+const say = (s) => { lines.push(s); out.textContent = lines.join("\n"); };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const dB = (x) => (x > 0 ? 10 * Math.log10(x) : -Infinity);
+const f1 = (x) => (Number.isFinite(x) ? x.toFixed(1) : String(x));
+let failures = 0;
+const verdict = (ok, what) => { if (!ok) failures++; say((ok ? "  ok    " : "  FAIL  ") + what); };
+
+/* What the same page measured in headless Chromium on Linux (22 Nov), where
+   nothing was wrong: each module's change against off, offline, at Mix 100
+   (the EQ at +12 / -12 / +12 dB, the Plane at Twist 100), on the tone below.
+   Offline is the same core and the same numbers to a tenth of a dB on any
+   machine, so a difference there is a different core; live is a spectrum and
+   is allowed a wide margin. Filled in from a run of this page (REFERENCE_*). */
+const REFERENCE_OFFLINE = {
+  44100: { delay: 2.5, chorus: -3.0, phaser: -2.5, reverb: -6.1, eq: 4.1, plane: 4.3 },
+  48000: { delay: 2.5, chorus: -3.0, phaser: -2.4, reverb: -6.2, eq: 4.1, plane: 4.3 },
+};
+const REFERENCE_LIVE = {
+  44100: { delay: 1.5, chorus: -9.4, phaser: -7.8, reverb: -8.1, eq: 0.3, plane: -8.7 },
+  48000: { delay: 1.5, chorus: -9.5, phaser: -7.9, reverb: -8.2, eq: 0.3, plane: -8.7 },
+};
+
+const MODULES = [
+  ["delay", { delayMix: 100 }], ["chorus", { chorusMix: 100 }], ["phaser", { phaserMix: 100 }],
+  ["reverb", { reverbMix: 100 }], ["eq", { eqOn: true, eqLow: 120, eqMid: -120, eqHigh: 120 }],
+  ["plane", { planeTwist: 100 }],
+];
+// The inert null: each module at rest, which must read as doing nothing.
+const INERT = { delay: { delayMix: 0 }, chorus: { chorusMix: 0 }, phaser: { phaserMix: 0 }, reverb: { reverbMix: 0 },
+                eq: { eqOn: false, eqLow: 120, eqMid: -120, eqHigh: 120 }, plane: { planeTwist: 0 } };
+const TONE = { shape: "ramp" };
+const SINE_NOTE = 60, TONE_NOTE = 48;
+
+/* scope.html, in a hidden frame, for its compiled core, its worklet module and
+   its setup codec - so this page plays exactly what the instrument plays. */
+async function borrow() {
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "position:absolute;width:1200px;height:800px;left:-5000px;top:0;border:0";
+  frame.src = "scope.html";
+  document.body.appendChild(frame);
+  await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+  const w = frame.contentWindow;
+  for (let i = 0; i < 100 && !(w.wasmCore && w.generatorModuleSource && w.encodeSetup); i++) await wait(100);
+  if (!w.wasmCore) throw new Error("scope.html did not load beside this page");
+  const base = w.eval("BASE_SETUP");
+  const code = (extra) => w.encodeSetup(Object.assign({}, base, extra || {}));
+  return { frame, w, bytes: w.wasmCore().slice(), text: w.generatorModuleSource(), code };
+}
+
+/* The worklet's own process() timed, by rewriting the module text: the real
+   process becomes process_, and a wrapper around it counts each block's time,
+   the gap since the last call, and the render quantum, and posts them a window
+   at a time. performance.now where the worklet has it, Date.now (whole ms)
+   where it does not - said in the report. */
+const PROCESS_ANCHOR = "    process(inputs, outputs) {\n      const b = this.brain, out = outputs[0];";
+function timedModule(text) {
+  if (text.split(PROCESS_ANCHOR).length !== 2) return { text, timed: false };
+  const wrapper = `    process(inputs, outputs) {
+      const clock = (typeof performance !== "undefined" && performance.now) ? () => performance.now() : () => Date.now();
+      const T = clock();
+      const r = this.process_(inputs, outputs);
+      const o = (this.processorOptions_ || {});
+      if (o.busy) { while (clock() - T < o.busy) {} }
+      const d = clock() - T;
+      const D = this.diag || (this.diag = { n: 0, sum: 0, max: 0, late: 0, gapMax: 0, last: -1, quantum: 0, hist: new Array(41).fill(0), fine: typeof performance !== "undefined" && !!performance.now });
+      const deadline = (outputs[0] && outputs[0][0] ? outputs[0][0].length : 128) / sampleRate * 1000;
+      D.n++; D.sum += d; if (d > D.max) D.max = d; if (d > deadline) D.late++;
+      D.quantum = outputs[0] && outputs[0][0] ? outputs[0][0].length : 0;
+      D.hist[Math.min(40, Math.floor(d / 0.25))]++;
+      if (D.last >= 0) { const g = T - D.last; if (g > D.gapMax) D.gapMax = g; }
+      D.last = T;
+      if (D.n >= 64) { this.port.postMessage({ diag: { n: D.n, sum: D.sum, max: D.max, late: D.late, gapMax: D.gapMax, quantum: D.quantum, hist: D.hist, fine: D.fine, deadline, frame: currentFrame } }); this.diag = null; }
+      return r;
+    }
+    process_(inputs, outputs) {
+      const b = this.brain, out = outputs[0];`;
+  let t = text.replace(PROCESS_ANCHOR, wrapper);
+  // The options the wrapper reads, kept by the constructor (the busy null's spin).
+  const ctorAnchor = "      const o = (options && options.processorOptions) || {};";
+  if (t.split(ctorAnchor).length === 2) t = t.replace(ctorAnchor, ctorAnchor + "\n      this.processorOptions_ = o;");
+  return { text: t, timed: true };
+}
+
+// A tap: what reaches the speakers' node, both channels, a thousand frames a post.
+const TAP = `registerProcessor("diag-tap", class extends AudioWorkletProcessor {
+  constructor() { super(); this.l = new Float32Array(1024); this.r = new Float32Array(1024); this.at = 0; }
+  process(inputs, outputs) {
+    const i = inputs[0], o = outputs[0];
+    if (i && i[0]) {
+      for (let c = 0; c < o.length; c++) o[c].set(i[Math.min(c, i.length - 1)]);
+      for (let k = 0; k < i[0].length; k++) {
+        this.l[this.at] = i[0][k]; this.r[this.at] = (i[1] || i[0])[k];
+        if (++this.at === 1024) { this.port.postMessage([this.l, this.r], [this.l.buffer, this.r.buffer]); this.l = new Float32Array(1024); this.r = new Float32Array(1024); this.at = 0; }
+      }
+    }
+    return true;
+  }
+});`;
+
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ur = re[i + k], ui = im[i + k];
+        const vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t;
+      }
+    }
+  }
+}
+// Power spectrum averaged over half-overlapping windows of 8192.
+function spectrum(x) {
+  const N = 8192, p = new Float64Array(N / 2 + 1);
+  let count = 0;
+  for (let s = 0; s + N <= x.length; s += N / 2) {
+    const re = new Float64Array(N), im = new Float64Array(N);
+    // Blackman-Harris, four terms: its sidelobes are under -92 dB, so a clean sine reads clean between its partials (a Hann's read -60).
+    for (let k = 0; k < N; k++) { const t = 2 * Math.PI * k / (N - 1); re[k] = x[s + k] * (0.35875 - 0.48829 * Math.cos(t) + 0.14128 * Math.cos(2 * t) - 0.01168 * Math.cos(3 * t)); }
+    fft(re, im);
+    for (let k = 0; k <= N / 2; k++) p[k] += re[k] * re[k] + im[k] * im[k];
+    count++;
+  }
+  for (let k = 0; k < p.length; k++) p[k] /= Math.max(1, count);
+  return p;
+}
+const concat = (chunks) => { const x = new Float32Array(chunks.length * 1024); chunks.forEach((c, i) => x.set(c, i * 1024)); return x; };
+
+// What a sine at the speakers' node should be: steps no bigger than its slope, and nothing between its partials.
+function sineFigures(x, rate, f0) {
+  let peak = 0, step = 0;
+  for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
+  for (let i = 1; i < x.length; i++) step = Math.max(step, Math.abs(x[i] - x[i - 1]));
+  const p = spectrum(x), hz = rate / 8192;
+  let all = 0, between = 0, high = 0;
+  for (let k = 1; k < p.length; k++) {
+    const f = k * hz; all += p[k];
+    const h = Math.round(f / f0);
+    if (f > 100 && Math.abs(f - h * f0) > 40) between += p[k];
+    if (f > 5000) high += p[k];
+  }
+  return { peak, step, slope: peak * 2 * Math.PI * f0 / rate, between: dB(between / all), high: dB(high / all) };
+}
+
+async function run() {
+  document.getElementById("go").disabled = true;
+  say("Sound check, " + new Date().toISOString() + (NULL_MODE ? "   NULL TEST: " + NULL_MODE : ""));
+  say("browser: " + navigator.userAgent);
+  say("cores: " + navigator.hardwareConcurrency + ", page: " + location.pathname);
+  statusEl.textContent = "loading the instrument…";
+  const app = await borrow();
+  const timed = timedModule(app.text);
+  say("timing inside the worklet: " + (timed.timed ? "yes" : "NO - the worklet's process() was not found to time"));
+
+  // Offline, on this thread, with the instrument's own core: each module against off.
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const rate = ctx.sampleRate;
+  statusEl.textContent = "measuring offline…";
+  const offline = {}, liveAll = {};
+  const render = (extra) => {
+    const b = app.w.makeWasmBrain(app.w.wasmModule(), rate, 128, app.code(Object.assign({}, TONE, extra)));
+    const L = new Float32Array(128), R = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
+    b.midi([0x90, TONE_NOTE, 100], -1);
+    const blocks = Math.round(rate / 128), x = new Float32Array(blocks * 256);
+    for (let k = 0; k < 2 * blocks; k++) {
+      b.block(128, L, R, pics, null);
+      if (k >= blocks) { const at = (k - blocks) * 256; x.set(L, at); x.set(R, at + 128); }
+    }
+    return x;
+  };
+  const dry = render({});
+  let dryPower = 0; for (const v of dry) dryPower += v * v;
+  for (const [name, extra] of MODULES) {
+    const wet = render(NULL_MODE === "inert" ? INERT[name] : extra);
+    let d = 0; for (let i = 0; i < wet.length; i++) d += (wet[i] - dry[i]) ** 2;
+    offline[name] = dB(d / dryPower);
+  }
+  app.frame.remove();   // the app's own drawing would load this thread; let it go before playing
+
+  statusEl.textContent = "playing…";
+  say("");
+  say("audio: sampleRate " + rate + ", baseLatency " + f1((ctx.baseLatency || 0) * 1000) + " ms, outputLatency " +
+      f1((ctx.outputLatency || 0) * 1000) + " ms, state " + ctx.state);
+  const blob = URL.createObjectURL(new Blob([timed.text], { type: "application/javascript" }));
+  await ctx.audioWorklet.addModule(blob);
+  await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([TAP], { type: "application/javascript" })));
+  const module = new WebAssembly.Module(app.bytes);
+  const node = new AudioWorkletNode(ctx, "scope-brain", {
+    numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+    processorOptions: { wasm: module, code: app.code({}), busy: NULL_MODE === "busy" ? 4 : 0 },
+  });
+  const tap = new AudioWorkletNode(ctx, "diag-tap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+  const level = ctx.createGain(); level.gain.value = 0.5;
+  node.connect(tap); tap.connect(level); level.connect(ctx.destination);
+
+  let windows = [], chunks = [], recording = false, fault = null;
+  node.port.onmessage = (e) => {
+    const m = e.data;
+    if (!m) return;
+    if (m.error) fault = m.error;
+    if (m.diag) windows.push(m.diag);
+    if (m.lanes) node.port.postMessage({ recycle: m.lanes.map((l) => l.buffer) }, m.lanes.map((l) => l.buffer));
+  };
+  tap.port.onmessage = (e) => { if (recording) chunks.push(e.data); };
+  const send = (m) => node.port.postMessage(m);
+  await ctx.resume();
+  await wait(800);
+
+  const stats = () => (ctx.playbackStats ? { u: ctx.playbackStats.underrunEvents, d: ctx.playbackStats.underrunDuration, t: ctx.playbackStats.totalDuration } : null);
+  // One phase: a setup and a held note, settled, then measured for `ms`.
+  const phase = async (code, note, ms) => {
+    send({ op: "setup", code });
+    send({ op: "midi", bytes: [0x90, note, 100], at: -1 });
+    await wait(900);
+    windows = []; chunks = []; recording = true;
+    const s0 = stats(), t0 = performance.now(), c0 = ctx.currentTime;
+    await wait(ms);
+    recording = false;
+    const s1 = stats(), wall = performance.now() - t0, heard = (ctx.currentTime - c0) * 1000;
+    send({ op: "midi", bytes: [0x80, note, 0], at: -1 });
+    const w = windows.slice(), l = chunks.map((c) => c[0]), r = chunks.map((c) => c[1]);
+    const n = w.reduce((a, x) => a + x.n, 0), sum = w.reduce((a, x) => a + x.sum, 0);
+    const hist = new Array(41).fill(0); for (const x of w) x.hist.forEach((v, i) => (hist[i] += v));
+    let p99 = 0, seen = 0; for (let i = 0; i < 41; i++) { seen += hist[i]; if (seen >= 0.99 * n) { p99 = (i + 1) * 0.25; break; } }
+    return {
+      blocks: n, mean: n ? sum / n : NaN, p99, max: Math.max(0, ...w.map((x) => x.max)), late: w.reduce((a, x) => a + x.late, 0),
+      gapMax: Math.max(0, ...w.map((x) => x.gapMax)), quantum: w.length ? w[w.length - 1].quantum : 0,
+      deadline: w.length ? w[w.length - 1].deadline : 128 / rate * 1000, fine: w.length ? w[0].fine : null,
+      underruns: s0 && s1 ? s1.u - s0.u : null, underrunMs: s0 && s1 ? (s1.d - s0.d) * 1000 : null,
+      wall, heard, l: concat(l), r: concat(r),
+    };
+  };
+  const timing = (name, t) => say(name + ": " + t.blocks + " blocks of " + t.quantum + " frames, process() mean " + t.mean.toFixed(3) +
+      " ms, p99 <= " + t.p99.toFixed(2) + " ms, max " + f1(t.max) + " ms against " + t.deadline.toFixed(2) + " ms; late " + t.late +
+      "; longest gap between calls " + f1(t.gapMax) + " ms; underruns " + (t.underruns === null ? "(browser does not say)" : t.underruns + " (" + f1(t.underrunMs) + " ms)") +
+      "; clock " + f1(t.heard) + " ms heard in " + f1(t.wall) + " ms" + (t.fine === false ? " [whole-ms timer]" : ""));
+
+  say("");
+  say("1. the plain sine, C4, 4 seconds");
+  const sine = await phase(app.code({}), SINE_NOTE, 4000);
+  if (fault) say("  the instrument stopped: " + fault);
+  timing("  timing", sine);
+  const f0 = 440 * Math.pow(2, (SINE_NOTE - 69) / 12);
+  const sl = sineFigures(sine.l, rate, f0), sr = sineFigures(sine.r, rate, f0);
+  say("  at the speakers' node: peak " + sl.peak.toFixed(3) + " / " + sr.peak.toFixed(3) + ", largest step " + sl.step.toFixed(4) + " / " +
+      sr.step.toFixed(4) + " (a clean sine's slope " + sl.slope.toFixed(4) + "), between partials " + f1(sl.between) + " / " + f1(sr.between) +
+      " dB, above 5 kHz " + f1(sl.high) + " / " + f1(sr.high) + " dB");
+  verdict(sine.blocks > 0 && sine.late <= Math.max(2, sine.blocks * 0.002), "no block late (" + sine.late + " of " + sine.blocks + ")");
+  verdict(sine.underruns === null || sine.underruns === 0, "the browser reports no underruns (" + sine.underruns + ")");
+  verdict(sine.max < 0.75 * sine.deadline || !sine.fine, "the worst block well inside its deadline (" + f1(sine.max) + " of " + sine.deadline.toFixed(2) + " ms)");
+  verdict(sl.step < 1.5 * sl.slope + 1e-4 && sr.step < 1.5 * sr.slope + 1e-4, "no click: no step larger than the sine's own slope");
+  verdict(sl.between < -70 && sr.between < -70 && sl.high < -90 && sr.high < -90, "no noise: nothing between the partials or above 5 kHz");
+
+  say("");
+  say("2. each rack module at full, on a bright tone (C3), 2 seconds each, against the module off");
+  const off = await phase(app.code(TONE), TONE_NOTE, 2000);
+  timing("  off", off);
+  const offP = [spectrum(off.l), spectrum(off.r)];
+  let offPower = 0; for (const p of offP) for (const v of p) offPower += v;
+  for (const [name, extra] of MODULES) {
+    const t = await phase(app.code(Object.assign({}, TONE, NULL_MODE === "inert" ? INERT[name] : extra)), TONE_NOTE, 2000);
+    const p = [spectrum(t.l), spectrum(t.r)];
+    let d = 0;
+    for (let c = 0; c < 2; c++) for (let k = 0; k < p[c].length; k++) d += (Math.sqrt(p[c][k]) - Math.sqrt(offP[c][k])) ** 2;
+    const live = dB(d / offPower);
+    liveAll[name] = live;
+    say("  " + name + ": change against off, live " + f1(live) + " dB, offline " + f1(offline[name]) + " dB" +
+        (REFERENCE_OFFLINE[rate] ? " (Linux: live " + f1(REFERENCE_LIVE[rate][name]) + ", offline " + f1(REFERENCE_OFFLINE[rate][name]) + ")" : "") +
+        "; late " + t.late + ", max " + f1(t.max) + " ms, underruns " + t.underruns);
+    verdict(offline[name] > -30, name + " changes the sound in the core (offline " + f1(offline[name]) + " dB)");
+    if (REFERENCE_OFFLINE[rate]) verdict(Math.abs(offline[name] - REFERENCE_OFFLINE[rate][name]) < 1, name + " offline as on Linux");
+    verdict(live > -30, name + " changes what reaches the speakers' node (live " + f1(live) + " dB)");
+    if (REFERENCE_LIVE[rate]) verdict(Math.abs(live - REFERENCE_LIVE[rate][name]) < 6, name + " live within 6 dB of Linux");
+    verdict(t.late <= Math.max(2, t.blocks * 0.002) && (t.underruns === null || t.underruns === 0), name + " plays without late blocks or underruns");
+  }
+  send({ op: "midi", bytes: [0xb0, 123, 0], at: -1 });
+  await wait(300);
+  await ctx.close();
+  say("");
+  say(failures ? failures + " check(s) failed" : "every check passed");
+  say("REFERENCE " + JSON.stringify({ rate, offline, live: liveAll }));
+  statusEl.textContent = "Done";
+  document.getElementById("copy").disabled = false;
+  window.__diag = { failures, lines, offline, live: liveAll };
+}
+
+document.getElementById("go").addEventListener("click", () => run().catch((e) => { say("ERROR: " + (e && e.stack || e)); statusEl.textContent = "Stopped"; }));
+document.getElementById("copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(out.textContent); statusEl.textContent = "Copied"; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents(out); getSelection().removeAllRanges(); getSelection().addRange(r); statusEl.textContent = "Selected: press Cmd-C"; }
+});
+</script>
+</body>
+</html>
