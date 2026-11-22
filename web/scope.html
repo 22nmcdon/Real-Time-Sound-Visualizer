@@ -2318,15 +2318,22 @@ button.mod-edit-name:hover { color: var(--blush-deep); }
 /* --- the minimum window (F8) -------------------------------------------------
    Below 1100 wide or 860 tall - the plugin's minimum, 960x600, and its default,
    1200x680, are both in here - the face is compact, as the redesign draws it
-   at the minimum: the header one row, without the line of what is playing or
-   Browse (the preset's name opens the browser); the tabs without their lines;
+   at the minimum: the header one row, without the line of what is playing;
+   the tabs without their lines;
    the modulation cards folded to chips; menus and readings a size smaller.
    What it costs is what it hides: the line under the title is the one that
    says "press anything to hear it", which on a compact face the Running
-   status says instead. Set by setCompact, from the window, not the device. */
+   status says instead. Set by setCompact, from the window, not the device.
+   Browse stays (22 Nov, the owner's): it went here until then, the preset's
+   name opening the browser in its place, and in the plugin, which opens
+   compact at 1200x680, nobody found the way in. The compact header has 190 px
+   to spare at 960x600 with two hands; Browse takes about 50. */
 [data-compact] .top-bar { padding-block: 6px; }
 [data-compact] .head { gap: 4px 10px; flex-wrap: nowrap; }
-[data-compact] .title-block .sheet-credit, [data-compact] #presetBrowse { display: none; }
+[data-compact] .title-block .sheet-credit { display: none; }
+/* What the host owns, in the plugin (HOST_OWNS): by a rule rather than by hidden alone, since laying the face out
+   (setView) shows every section it deals, and the Audio section is one. */
+html[data-plugin] [data-host-owns] { display: none !important; }
 [data-compact] .sheet-title { font-size: 16px; }
 [data-compact] .preset-bar { gap: 6px; padding-left: 10px; flex-wrap: nowrap; }
 [data-compact] .preset-bar .preset-button { min-width: 0; max-width: 150px; }
@@ -3162,7 +3169,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                you are in, so its home is Settings. Visible whatever is loaded -
                a setting that vanishes when the source changes cannot be found -
                and greyed, with the reason, where it does not apply. -->
-          <div class="menu-group" id="audioGroup" data-home="settings" data-place="settingsRight">
+          <div class="menu-group" id="audioGroup" data-home="settings" data-place="settingsRight" data-host-owns>
             <span class="menu-title">Audio</span>
             <div class="menu-row" id="deviceRow">
               <label class="menu-label" for="device">Device</label>
@@ -3200,14 +3207,14 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                the half you play is the Keyboard section on the Bench. -->
           <div class="menu-group" id="midiSetGroup" data-home="settings" data-place="settingsLeft">
             <span class="menu-title">MIDI</span>
-            <div class="menu-row">
+            <div class="menu-row" id="midiInRow" data-host-owns>
               <span class="menu-label">MIDI in</span>
               <div class="grow">
                 <button type="button" class="link-btn caps" id="midiConnect">Connect</button>
                 <span class="reading" id="midiStatus">off</span>
               </div>
             </div>
-            <div class="menu-row">
+            <div class="menu-row" id="midiOutRow" data-host-owns>
               <label class="menu-label" for="midiOut">MIDI out</label>
               <div class="grow"><select id="midiOut" style="flex:1 1 0; min-width:0">
                 <option value="">Off</option></select>
@@ -3247,7 +3254,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                  as Ableton's computer keyboard is M. Not in the plugin, which
                  hides the row: a host has its own keys and musical typing, and a
                  plugin window taking letters fights the host's shortcuts. -->
-            <div class="menu-row" id="keysOpenRow">
+            <div class="menu-row" id="keysOpenRow" data-host-owns>
               <span class="menu-label">On-screen keys</span>
               <div class="grow">
                 <button type="button" class="link-btn caps" id="keysOpen"
@@ -3255,7 +3262,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <span class="reading">M</span>
               </div>
             </div>
-            <p class="menu-note">Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
+            <p class="menu-note" id="midiSetNote" data-host-owns>Setting up a Nord Electro: it connects twice. USB carries MIDI only, and the left
               and right line outs go to a stereo line input &mdash; that is the organ itself,
               and the rotary, chorus and vibrato are genuinely stereo, so X&ndash;Y draws a
               moving figure rather than the diagonal a mono microphone gives. On the keyboard,
@@ -6833,7 +6840,8 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         the interval beats. <i>Just</i> or <i>Equal</i> is in the Generator's &ctdot; menu: it is set once and left.</span></li>
 
       <li><b>Play it: a MIDI keyboard</b>
-        <span><i>Settings &rarr; MIDI &rarr; Connect</i>. Two held notes become the two
+        <span><i>Settings &rarr; MIDI &rarr; Connect</i> (in the plugin your host routes the
+        keyboard to it, so Settings has no ports, and no audio device). Two held notes become the two
         channels, so the interval under your hands is the figure on the screen: hold a fifth
         and 2:3 stands still, walk through thirds and the figure walks with you. The lower
         note goes on X and the higher on Y whichever finger landed first, so the picture
@@ -32491,8 +32499,21 @@ document.addEventListener("keydown", (event) => {
    rather than any attribute: each frame measures its canvas and refits it
    (fitCanvas). An empty ResizeObserver on them stood here until the review
    (17 Nov), observing for a callback that did nothing. */
-// The on-screen keys are the site's: the plugin's host has its own (setScreenKeys).
-if (IN_PLUGIN) el.keysOpenRow.hidden = true;
+/* What the host owns, hidden in the plugin (22 Nov, the owner's): the audio
+   device, what is plugged into it and whether the page monitors it (the
+   host's input bus is the input, and the host monitors); the MIDI ports
+   (the host routes MIDI to the plugin and takes what it sends) and the
+   note on setting up a keyboard's ports; and the on-screen keys, since a
+   host has its own keys and musical typing (setScreenKeys). Hidden, not
+   removed: the plugin's panel and the morph read their ids. What stays in
+   Settings is what the instrument or the face reads: the Chord window, the
+   input into the generator, This window. The page's Input (Tone or Mic) stays
+   too: in the plugin Mic is the host's input. */
+const HOST_OWNS = Array.from(document.querySelectorAll("[data-host-owns]"), (e) => e.id);
+if (IN_PLUGIN) {
+  document.documentElement.dataset.plugin = "";
+  for (const id of HOST_OWNS) document.getElementById(id).hidden = true;
+}
 registerLaneDests(state.channels.length);
 buildSourceDetail();
 fillIntervals();

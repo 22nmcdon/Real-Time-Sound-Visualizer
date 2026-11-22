@@ -7674,11 +7674,16 @@ that is drops of paint rather than small strokes. Three things the revision lear
   - `clock`: not fixed. Its ticks, stamped with when they were due rather than when the timer let them go,
     still read 132 to 142 BPM under busy loops on either version; the core's lateness correction did not take
     them back, and why is not yet known. It is serial, and alone on 21 Nov's slow container read 133 once.
-  - `paintcost`'s null (the trace twice within a fifth): not fixed. Red once in two full runs, alone,
-    0.4271 against 0.3392. On twelve fresh pages the gap reached 0.14 to 0.21 whether the runs were taken
-    in blocks or in turn, four of two seconds or twenty-four of a quarter, the best of each; the median of
-    short slices was worse (0.45), so it is not spikes inside a run. Each run is a new instance of the
-    compiled core, and something differs instance to instance - not yet shown what.
+  - `paintcost`'s null (the trace twice within a fifth): fixed 22 Nov, and not by the instance. Red once
+    in two full runs, alone, 0.4271 against 0.3392, and later red alone and on testing alike. Nothing
+    differs instance to instance: the same instance, run ten times in a row, read 0.42 to 0.68 ms a block,
+    and a fixed loop of plain JavaScript, timed ten times running on an empty page, read 20 to 39 ms - the
+    shared container's own speed swings by a third from one second to the next. Each whole run measured its
+    moment. Now the four instances (trace, painting, the trace again, and a trace doing each block twice)
+    are run in quarter-second slices taken in turn, the best slice each: the two traces read within 0 to 3
+    per cent in five runs alone, and the doubled trace 1.9 to 2.1 times the trace, which the fifth's band
+    must see (its own null). Why the interleaving tried before did not settle it is not shown: the entry
+    says each run was a new instance, and if each slice was, each paid its own warm-up and its own moment.
 - **Paint a batch in tiles, each with the stamps that reach it** (21 Nov). The look painted a batch's
   whole box, every pixel running every stamp - for a chord round the ring a box of 450 pixels a side
   times up to 256 stamps, nearly all of which could not touch it, and SwiftShader skips no branch. Each
@@ -7905,3 +7910,25 @@ pass now uses no library function but an explicit `std::fma`, which IEEE rounds 
 everywhere; GCC and Clang at -O0 to -O3, with and without FMA, and the WebAssembly build agree
 to the character. A value used only at run time (the hertz `eqHz` makes) can differ in its last
 bit between builds; a value written into a code cannot.
+
+## The plugin's face: what the host owns, and Browse on the compact header (22 Nov)
+
+The owner, in Logic: Settings showed the audio device, the MIDI ports and their note, none of
+which mean anything inside a host, and the compact face (which the plugin opens on, at
+1200x680) had no Browse, so the preset browser could not be found. In the plugin the
+host-owned rows and sections are marked `data-host-owns` and hidden (`HOST_OWNS`); Browse is
+on the header at every size, on the site too, since the compact header has 190 px to spare
+at 960x600 with two hands. `windowtest.py` and the plugin's shell test hold both.
+
+- **`hidden` does not keep a Settings section away.** Laying the face out (`setView`) sets
+  `hidden = false` on every section it deals, so the Audio section, hidden at boot in the
+  plugin, came back the moment the face was laid out, while the rows inside the MIDI section,
+  which `setView` does not touch, stayed hidden. A section that must stay away in one context
+  needs a rule: here `html[data-plugin] [data-host-owns] { display: none !important }`, the
+  attribute set by the plugin's boot. The rows keep `hidden` as well, since the shell test
+  reads `el.keysOpenRow.hidden`. The null in `windowtest.py` takes the mark off the page and
+  must see the Audio section again.
+- **The page knows it is in the plugin by `window.__JUCE__`** (`IN_PLUGIN`), so a site suite
+  can be the plugin's face for a check of the face alone by defining `window.__JUCE__ = {}`
+  before the page's script: with no `backend` the page still plays through its own worklet
+  (`scopeHost` falls back), and everything that asks `IN_PLUGIN` answers as in the plugin.

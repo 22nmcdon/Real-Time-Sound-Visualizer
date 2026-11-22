@@ -475,7 +475,11 @@ Do not re-litigate these without a reason; each replaced something that failed.
 - **Every section has one home.** `data-home` is `settings` (set once and left:
   MIDI, Audio, the inputs, the modulation fade, This window; two columns by
   `data-place` since F7b, notes behind each section's dots, the panel under
-  the header on the window's right), `bench` (everything played or tuned),
+  the header on the window's right; in the plugin what the host owns is hidden there (22 Nov,
+  `HOST_OWNS`, `data-host-owns`, by a rule on `html[data-plugin]` since
+  `setView` shows every section it deals): the Audio section, the MIDI ports
+  and their note and the on-screen keys, leaving the Chord window, the input
+  into the generator and This window), `bench` (everything played or tuned),
   since G5a `routings` (the modulation fade, in Routings), or, since
   F1, `measure`, since F2 `picture` (the Picture section's Advanced, with the
   Beam since F7b) or since F3 `perform` (the header's Perform menu: the arpeggiator, the clock, the key and tempo, the morph) - `measure` is the oscilloscope's own tools: *Scope & measure*, a panel over
@@ -562,7 +566,8 @@ Do not re-litigate these without a reason; each replaced something that failed.
   960x600 fits every case unasked and 1200x680 stays at 100. Below 1100 by
   860 in the page's own pixels (so the zoom counts) the face is compact
   (`setCompact`, `body[data-compact]`): the header one row without the line
-  of what is playing or Browse, the tabs without their lines, the cards as
+  of what is playing (Browse stays since 22 Nov: in the plugin, which opens
+  compact, nobody found the browser by its preset's name), the tabs without their lines, the cards as
   chips, narrower columns (`BENCH_COL_COMPACT`) with labels beside their
   menus, smaller knobs and the keys shorter; the modulation cards are chips
   there and on any window under 900 tall. The verdict and readouts are a

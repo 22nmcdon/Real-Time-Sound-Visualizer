@@ -4827,6 +4827,35 @@ int main() {
         check(std::string("the ") + m.name + " turned up on the plugin's face reaches the processor and changes what it plays",
               at == m.value && moved > -25, std::string(m.slider) + " " + num(at) + "; change against off " + num(moved) + " dB");
       }
+      /* The face in the plugin (22 Nov): Settings shows nothing the host owns - the audio device, the MIDI ports
+         and their note, the on-screen keys - and keeps the Chord window; and Browse is in the header at the
+         plugin's own size, which is compact, and opens the browser. Read in WebKitGTK, where the site's checks
+         (windowtest.py) cannot reach. The null is the same page with its plugin mark taken off, which must show
+         the host's sections. */
+      const juce::String settings = ask(R"js((() => {
+          closeOverlay();
+          el.menuButton.click();
+          const size = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return r.width * r.height; };
+          const shown = () => HOST_OWNS.filter((id) => size(id) > 0);
+          const plugin = shown(), chord = size('midiSplitWindowRow') > 0, owns = HOST_OWNS.join(' ');
+          delete document.documentElement.dataset.plugin;
+          const unmarked = shown();
+          document.documentElement.dataset.plugin = '';
+          el.menuButton.click();
+          const b = el.presetBrowse.getBoundingClientRect();
+          el.presetBrowse.click();
+          const opened = el.presetDialog.open;
+          if (opened) el.presetDialog.close();
+          return JSON.stringify({ inPlugin: IN_PLUGIN, plugin, chord, owns, unmarked, browse: Math.round(b.width),
+                                  compact: document.body.dataset.compact !== undefined, opened });
+        })())js", 3000);
+      check("the plugin's Settings shows none of what the host owns, and keeps the Chord window",
+            settings.contains("\"inPlugin\":true") && settings.contains("\"plugin\":[]") && settings.contains("\"chord\":true")
+            && settings.contains("audioGroup") && settings.contains("midiInRow") && settings.contains("midiOutRow"), settings.toStdString());
+      check("null: the same page without its plugin mark shows the host's sections",
+            !settings.contains("\"unmarked\":[]"), settings.toStdString());
+      check("Browse is in the plugin's header, and opens the browser", settings.contains("\"opened\":true")
+            && !settings.contains("\"browse\":0,"), settings.toStdString());
       owned->setVisible(false);
       juce::MessageManager::getInstance()->runDispatchLoopUntil(300);
       owned.reset();

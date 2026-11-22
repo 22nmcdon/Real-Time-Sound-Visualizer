@@ -26,7 +26,18 @@ What would go wrong, and what is checked for it:
   put the modulation row across the window, 1400x900 with two layers folds
   too, by 41 px, with the same null. A module
   switched on by a value, with no press on the rack, must fold the others too
-  (paintRack), and closing the module must unfold them.
+  (paintRack), and closing the module must unfold them;
+- Browse gone from the header where the face is compact - the plugin opens
+  compact at 1200x680, and until 22 Nov nobody there found the browser: at
+  each of fittest.py's six windows, on the site and as the plugin, with one
+  hand and two, Browse is on the header's one row, the header does not
+  overflow, and a real click opens the browser. The null is the old rule put
+  back, which hides it at 1200x680;
+- the plugin's Settings showing what the host owns (the audio device, the MIDI
+  ports and their note, the on-screen keys), or the site's not showing them,
+  or the plugin losing what it still reads (the Chord window, the input into
+  the generator, This window). The null is the plugin's page with its mark
+  taken off, which must show the host's sections again.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -310,6 +321,79 @@ with sync_playwright() as pw:
             null("the name drawn where testing drew it is seen at the canvas's edge (%d px of ink there)" % n["edge"], n["edge"] == 0)
         p.close()
     ctx.close()
+    print("\n--- Browse in the header at every window, the plugin's included ---")
+    # The plugin opens compact (1200x680), and until 22 Nov the compact face dropped Browse, the preset's name
+    # opening the browser in its place: in the plugin nobody found the way in. At each of fittest.py's windows,
+    # on the site and as the plugin (window.__JUCE__ is what the page reads, IN_PLUGIN), with one hand and two
+    # (the header's widest, with Editing in it): Browse is drawn, on the header's one row, the header not
+    # overflowing, and a real click on it opens the browser.
+    BROWSE = """async (two) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
+      if (two) { setMidiMode('poly'); el.midiLayers.value = 'layer'; el.midiLayers.dispatchEvent(new Event('change')); await wait(150); }
+      const head = document.querySelector('.head'), b = el.presetBrowse.getBoundingClientRect(), h = head.getBoundingClientRect();
+      const name = el.preset.getBoundingClientRect();
+      const kids = Array.from(head.children).map((c) => c.getBoundingClientRect()).filter((r) => r.height > 0);
+      return { w: b.width, h: b.height, inRow: b.top >= h.top - 1 && b.bottom <= h.bottom + 1 && b.top < name.bottom && b.bottom > name.top,
+               oneRow: Math.max(...kids.map((r) => r.top)) - Math.min(...kids.map((r) => r.top)) < name.height,
+               fits: head.scrollWidth <= head.clientWidth + 1, hands: !document.getElementById('handsPick').hidden,
+               compact: document.body.dataset.compact !== undefined, plugin: IN_PLUGIN };
+    }"""
+    WINDOWS = [(1660, 1050), (1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600)]
+    def browse_page(w, h, plugin, old_rule=False):
+        ctx = b.new_context(viewport={"width": w, "height": h})
+        if plugin: ctx.add_init_script("window.__JUCE__ = {};")
+        p = ctx.new_page()
+        p.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+        p.goto(f"file://{ART}/scope.html"); p.wait_for_timeout(1500)
+        if old_rule: p.add_style_tag(content="[data-compact] #presetBrowse { display: none; }")
+        return ctx, p
+    for w, h in WINDOWS:
+        for plugin in (False, True):
+            ctx, p = browse_page(w, h, plugin)
+            r1 = p.evaluate(BROWSE, False)
+            p.click("#presetBrowse"); p.wait_for_timeout(200)
+            opened = p.evaluate("() => el.presetDialog.open && el.presetSaving.hidden")
+            p.keyboard.press("Escape"); p.wait_for_timeout(150)
+            r2 = p.evaluate(BROWSE, True)
+            where = "%dx%d %s" % (w, h, "in the plugin" if plugin else "on the site")
+            check("%s Browse is in the header's one row, the header not overflowing, with one hand and two, and a click opens the browser" % where,
+                  all(r["w"] > 20 and r["inRow"] and r["oneRow"] and r["fits"] for r in (r1, r2)) and r2["hands"] and opened
+                  and r1["plugin"] == plugin, "%s / %s; opened %s" % (r1, r2, opened))
+            ctx.close()
+    # The null: the rule the compact face had until 22 Nov hides it where the face is compact.
+    ctx, p = browse_page(1200, 680, True, old_rule=True)
+    r = p.evaluate(BROWSE, False)
+    null("with the compact face's old rule, Browse at the plugin's 1200x680 is drawn (%s)" % r, r["w"] > 20 and r["compact"])
+    ctx.close()
+
+    print("\n--- Settings in the plugin shows only what the host does not own ---")
+    # In the plugin the audio device, the MIDI ports, their note and the on-screen keys are the host's (22 Nov),
+    # hidden by html[data-plugin] [data-host-owns]; the site still shows them. What stays is what the instrument
+    # or the face reads: the Chord window, the input into the generator, This window.
+    SETTINGS = """() => {
+      const d = document.getElementById('helpDialog'); if (d && d.open) d.close();
+      el.menuButton.click();
+      const size = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return r.width * r.height; };
+      const owned = HOST_OWNS.filter((id) => !document.getElementById(id).classList.contains('menu-note'));
+      return { owns: HOST_OWNS, shown: owned.filter((id) => size(id) > 0), kept: ['midiSplitWindowRow', 'inputGroup', 'windowGroup'].filter((id) => size(id) > 0),
+               open: !el.menuPanel.hidden };
+    }"""
+    for w, h in [(1200, 680), (1400, 900)]:
+        ctx, p = browse_page(w, h, False)
+        site = p.evaluate(SETTINGS); ctx.close()
+        ctx, p = browse_page(w, h, True)
+        plug = p.evaluate(SETTINGS)
+        # The null: the plugin's page with its mark taken off shows the host's sections again, so the rule is what hides them.
+        p.evaluate("() => { el.menuButton.click(); delete document.documentElement.dataset.plugin; }")
+        unmarked = p.evaluate(SETTINGS); ctx.close()
+        want = {"audioGroup", "midiInRow", "midiOutRow", "keysOpenRow"}
+        check("%dx%d: the site's Settings shows the audio device, the MIDI ports and the on-screen keys" % (w, h),
+              site["open"] and want <= set(site["shown"]) and len(site["kept"]) == 3, str(site))
+        check("%dx%d: the plugin's Settings shows none of them, and keeps the Chord window, the input into the generator and This window" % (w, h),
+              plug["open"] and plug["shown"] == [] and want <= set(plug["owns"]) and len(plug["kept"]) == 3, str(plug))
+        null("%dx%d: the plugin's page without its mark hides the host's sections (%s shown)" % (w, h, unmarked["shown"]), unmarked["shown"] == [])
+
     b.close()
 
 if bad:
