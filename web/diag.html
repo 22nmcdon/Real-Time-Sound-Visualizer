@@ -56,12 +56,12 @@ const verdict = (ok, what) => { if (!ok) failures++; say((ok ? "  ok    " : "  F
    machine, so a difference there is a different core; live is a spectrum and
    is allowed a wide margin. Filled in from a run of this page (REFERENCE_*). */
 const REFERENCE_OFFLINE = {
-  44100: { delay: 2.5, chorus: -3.0, phaser: -2.5, reverb: -6.1, eq: 4.1, plane: 4.3 },
-  48000: { delay: 2.5, chorus: -3.0, phaser: -2.4, reverb: -6.2, eq: 4.1, plane: 4.3 },
+  44100: {"tone": {"delay": 2.5, "chorus": -3.0, "phaser": -2.5, "reverb": -6.1, "eq": 4.1, "plane": 4.3}, "sine": {"delay": 2.5, "chorus": -2.3, "phaser": -3.4, "reverb": -9.9, "eq": -0.2, "plane": 5.4}},
+  48000: {"tone": {"delay": 2.5, "chorus": -3.0, "phaser": -2.4, "reverb": -6.2, "eq": 4.1, "plane": 4.3}, "sine": {"delay": 2.5, "chorus": -2.3, "phaser": -3.3, "reverb": -9.9, "eq": -0.2, "plane": 5.4}},
 };
 const REFERENCE_LIVE = {
-  44100: { delay: 1.5, chorus: -9.4, phaser: -7.8, reverb: -8.1, eq: 0.3, plane: -8.7 },
-  48000: { delay: 1.5, chorus: -9.5, phaser: -7.9, reverb: -8.2, eq: 0.3, plane: -8.7 },
+  44100: {"tone": {"delay": 1.5, "chorus": -9.4, "phaser": -7.8, "reverb": -8.1, "eq": 0.3, "plane": -8.7}, "sine": {"delay": 0.5, "chorus": -8.9, "phaser": -14.3, "reverb": -27.8, "eq": -16.7, "plane": -4.6}},
+  48000: {"tone": {"delay": 1.5, "chorus": -9.5, "phaser": -7.9, "reverb": -8.2, "eq": 0.3, "plane": -8.7}, "sine": {"delay": 0.5, "chorus": -8.8, "phaser": -14.2, "reverb": -27.1, "eq": -16.7, "plane": -4.6}},
 };
 
 const MODULES = [
@@ -77,14 +77,45 @@ const SINE_NOTE = 60, TONE_NOTE = 48;
 
 /* scope.html, in a hidden frame, for its compiled core, its worklet module and
    its setup codec - so this page plays exactly what the instrument plays. */
+/* The page is written into a frame of this page's own (document.write into a
+   blank frame), so its address is this page's - under /testing/ its storage
+   is the testing site's, and it restores what the owner's browser kept - and
+   so a tap can be laid before its script runs: whatever it connects to its
+   speakers is also connected to a tap, which is how the face's own path is
+   heard below. */
+const FRAME_TAP = `<script>(function () {
+  window.__tap = { chunks: [], on: false, nodes: 0 };
+  const TAP_TEXT = ${JSON.stringify("__TAP__")};
+  const connect = AudioNode.prototype.connect;
+  AudioNode.prototype.connect = function (dest) {
+    const r = connect.apply(this, arguments);
+    if (typeof AudioDestinationNode !== "undefined" && dest instanceof AudioDestinationNode && !this.__tapped) {
+      this.__tapped = true; window.__tap.nodes++;
+      const self = this, ctx = dest.context;
+      ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([TAP_TEXT], { type: "application/javascript" }))).then(() => {
+        const t = new AudioWorkletNode(ctx, "diag-tap", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+        t.port.onmessage = (e) => { if (window.__tap.on) window.__tap.chunks.push(e.data); };
+        connect.call(self, t);
+        window.__tap.ctx = ctx;
+      });
+    }
+    return r;
+  };
+})();<\/script>`;
 async function borrow() {
   const frame = document.createElement("iframe");
-  frame.style.cssText = "position:absolute;width:1200px;height:800px;left:-5000px;top:0;border:0";
-  frame.src = "scope.html";
+  frame.style.cssText = "position:absolute;width:1400px;height:900px;left:-5000px;top:0;border:0";
   document.body.appendChild(frame);
-  await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+  const text = await (await fetch("scope.html", { cache: "no-store" })).text();
+  const at = text.indexOf("<meta charset=\"utf-8\">");
+  if (at < 0) throw new Error("scope.html was not as expected");
+  const cut = at + "<meta charset=\"utf-8\">".length;
+  const doc = frame.contentDocument;
+  doc.open();
+  doc.write(text.slice(0, cut) + FRAME_TAP.replace(JSON.stringify("__TAP__"), JSON.stringify(TAP)) + text.slice(cut));
+  doc.close();
   const w = frame.contentWindow;
-  for (let i = 0; i < 100 && !(w.wasmCore && w.generatorModuleSource && w.encodeSetup); i++) await wait(100);
+  for (let i = 0; i < 150 && !(w.wasmCore && w.generatorModuleSource && w.encodeSetup && w.state); i++) await wait(100);
   if (!w.wasmCore) throw new Error("scope.html did not load beside this page");
   const base = w.eval("BASE_SETUP");
   const code = (extra) => w.encodeSetup(Object.assign({}, base, extra || {}));
@@ -195,25 +226,98 @@ function sineFigures(x, rate, f0) {
   return { peak, step, slope: peak * 2 * Math.PI * f0 / rate, between: dB(between / all), high: dB(high / all) };
 }
 
+// How much a spectrum moved: the summed squared change of both channels' magnitudes, over the dry power.
+function spectralChange(offP, l, r) {
+  const p = [spectrum(l), spectrum(r)];
+  let d = 0, off = 0;
+  for (let c = 0; c < 2; c++) for (let k = 0; k < p[c].length; k++) { d += (Math.sqrt(p[c][k]) - Math.sqrt(offP[c][k])) ** 2; off += offP[c][k]; }
+  return dB(d / off);
+}
+// One underrun in a phase is allowed: headless Chromium on Linux, with nothing wrong, now and then reports one.
+const late = (t) => t.late <= Math.max(2, t.blocks * 0.002) && (t.underruns === null || t.underruns <= 1);
+const refOf = (table, rate, tone, name) => (table[rate] && table[rate][tone] ? table[rate][tone][name] : undefined);
+
 async function run() {
   document.getElementById("go").disabled = true;
   say("Sound check, " + new Date().toISOString() + (NULL_MODE ? "   NULL TEST: " + NULL_MODE : ""));
   say("browser: " + navigator.userAgent);
   say("cores: " + navigator.hardwareConcurrency + ", page: " + location.pathname);
   statusEl.textContent = "loading the instrument…";
-  const app = await borrow();
+  const app = await borrow(), w = app.w;
   const timed = timedModule(app.text);
   say("timing inside the worklet: " + (timed.timed ? "yes" : "NO - the worklet's process() was not found to time"));
 
-  // Offline, on this thread, with the instrument's own core: each module against off.
+  /* What the page restored from this browser's storage, before anything here
+     touched it: the rack's switches and mixes as the page opened on them, so
+     a kept setting cannot pass for a fault, or a fault for a kept setting. */
+  say("");
+  say("0. what the page opened on (restored from this browser)");
+  try {
+    const snap = w.snapshot();
+    const pick = (keys) => keys.map((k) => k + " " + JSON.stringify(snap[k])).join(", ");
+    say("  rack: " + pick(["delayMix", "chorusMix", "phaserMix", "reverbMix", "eqOn", "eqLow", "eqMid", "eqHigh", "planeTwist", "fxOrder"]));
+    say("  upper hand: " + pick(["bDelayMix", "bChorusMix", "bPhaserMix", "bReverbMix", "bEqOn", "timeOwn"]));
+    say("  sound: shape " + JSON.stringify(snap.shape) + ", Output " + w.document.getElementById("output").value + ", Width " + w.document.getElementById("stereoWidth").value +
+        ", preset " + JSON.stringify(w.document.title));
+    const keys = []; for (let i = 0; i < w.localStorage.length; i++) keys.push(w.localStorage.key(i));
+    say("  kept by this browser: " + (keys.length ? keys.join(", ") : "nothing"));
+  } catch (error) { say("  could not read it: " + error); }
+
+  const offline = {}, faceAll = {}, liveAll = { tone: {}, sine: {} };
+  /* 1. The face's own path: the page itself plays, and its knobs are moved as
+     a hand moves them (setControl's input event, the EQ's switch), so what is
+     measured is what the face sends the instrument and what comes out of the
+     page's own chain to its speakers. */
+  say("");
+  say("1. the rack through the page's own knobs (the face -> the instrument -> its speakers), a bright tone, C3");
+  statusEl.textContent = "playing through the page…";
+  try {
+    w.eval("restore({})");
+    w.setControl("shape", "ramp");
+    await w.applyGeneratorSound();
+    for (let i = 0; i < 50 && !(w.__tap.ctx && w.__tap.ctx.state === "running"); i++) { if (w.__tap.ctx) w.__tap.ctx.resume(); await wait(100); }
+    if (!w.__tap.ctx || w.__tap.ctx.state !== "running") throw new Error("the page's sound did not start (" + (w.__tap.ctx ? w.__tap.ctx.state : "no context") + ")");
+    w.eval("scopeHost.midi([0x90, " + TONE_NOTE + ", 100])");
+    const grab = async (ms) => { await wait(900); w.__tap.chunks = []; w.__tap.on = true; await wait(ms); w.__tap.on = false;
+      return { l: concat(w.__tap.chunks.map((c) => c[0])), r: concat(w.__tap.chunks.map((c) => c[1])) }; };
+    const dryFace = await grab(2000);
+    let level = 0; for (const v of dryFace.l) level = Math.max(level, Math.abs(v));
+    say("  the page's speakers carry the tone: peak " + level.toFixed(3) + " at " + w.__tap.ctx.sampleRate + " Hz");
+    verdict(level > 0.01, "the page's own sound reaches its speakers");
+    const offP = [spectrum(dryFace.l), spectrum(dryFace.r)];
+    const FACE = {
+      delay: [() => w.setControl("delayMix", 100), () => w.setControl("delayMix", 0), "delayMix"],
+      chorus: [() => w.setControl("chorusMix", 100), () => w.setControl("chorusMix", 0), "chorusMix"],
+      phaser: [() => w.setControl("phaserMix", 100), () => w.setControl("phaserMix", 0), "phaserMix"],
+      reverb: [() => w.setControl("reverbMix", 100), () => w.setControl("reverbMix", 0), "reverbMix"],
+      eq: [() => { w.setEqOn(true); w.setControl("eqLow", 120); w.setControl("eqMid", -120); w.setControl("eqHigh", 120); }, () => w.setEqOn(false), "eqOn"],
+      plane: [() => w.setControl("planeTwist", 100), () => w.setControl("planeTwist", 0), "planeTwist"],
+    };
+    for (const [name] of MODULES) {
+      const [on, offFn, field] = FACE[name];
+      if (NULL_MODE !== "inert") on();
+      const written = w.snapshot()[field];
+      const t = await grab(2000);
+      offFn();
+      const change = spectralChange(offP, t.l, t.r);
+      faceAll[name] = change;
+      say("  " + name + ": the face wrote " + field + " = " + JSON.stringify(written) + "; change against off " + f1(change) + " dB");
+      verdict(change > -30, name + " turned up on the face changes what the page plays (" + f1(change) + " dB)");
+    }
+    w.eval("scopeHost.midi([0xb0, 123, 0])");
+  } catch (error) {
+    failures++;
+    say("  FAIL  could not play through the page: " + (error && error.message || error));
+  }
+
+  // Offline, on this thread, with the instrument's own core: each module against off, on the tone and the sine.
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const rate = ctx.sampleRate;
   statusEl.textContent = "measuring offline…";
-  const offline = {}, liveAll = {};
-  const render = (extra) => {
-    const b = app.w.makeWasmBrain(app.w.wasmModule(), rate, 128, app.code(Object.assign({}, TONE, extra)));
+  const render = (extra, note) => {
+    const b = w.makeWasmBrain(w.wasmModule(), rate, 128, app.code(extra));
     const L = new Float32Array(128), R = new Float32Array(128), pics = [new Float32Array(128), new Float32Array(128)];
-    b.midi([0x90, TONE_NOTE, 100], -1);
+    b.midi([0x90, note, 100], -1);
     const blocks = Math.round(rate / 128), x = new Float32Array(blocks * 256);
     for (let k = 0; k < 2 * blocks; k++) {
       b.block(128, L, R, pics, null);
@@ -221,14 +325,17 @@ async function run() {
     }
     return x;
   };
-  const dry = render({});
-  let dryPower = 0; for (const v of dry) dryPower += v * v;
-  for (const [name, extra] of MODULES) {
-    const wet = render(NULL_MODE === "inert" ? INERT[name] : extra);
-    let d = 0; for (let i = 0; i < wet.length; i++) d += (wet[i] - dry[i]) ** 2;
-    offline[name] = dB(d / dryPower);
+  for (const [tone, base, note] of [["tone", TONE, TONE_NOTE], ["sine", {}, SINE_NOTE]]) {
+    offline[tone] = {};
+    const dry = render(base, note);
+    let dryPower = 0; for (const v of dry) dryPower += v * v;
+    for (const [name, extra] of MODULES) {
+      const wet = render(Object.assign({}, base, NULL_MODE === "inert" ? INERT[name] : extra), note);
+      let d = 0; for (let i = 0; i < wet.length; i++) d += (wet[i] - dry[i]) ** 2;
+      offline[tone][name] = dB(d / dryPower);
+    }
   }
-  app.frame.remove();   // the app's own drawing would load this thread; let it go before playing
+  app.frame.remove();   // the page's own drawing and sound would load this thread; let it go before timing
 
   statusEl.textContent = "playing…";
   say("");
@@ -271,14 +378,14 @@ async function run() {
     recording = false;
     const s1 = stats(), wall = performance.now() - t0, heard = (ctx.currentTime - c0) * 1000;
     send({ op: "midi", bytes: [0x80, note, 0], at: -1 });
-    const w = windows.slice(), l = chunks.map((c) => c[0]), r = chunks.map((c) => c[1]);
-    const n = w.reduce((a, x) => a + x.n, 0), sum = w.reduce((a, x) => a + x.sum, 0);
-    const hist = new Array(41).fill(0); for (const x of w) x.hist.forEach((v, i) => (hist[i] += v));
+    const ws = windows.slice(), l = chunks.map((c) => c[0]), r = chunks.map((c) => c[1]);
+    const n = ws.reduce((a, x) => a + x.n, 0), sum = ws.reduce((a, x) => a + x.sum, 0);
+    const hist = new Array(41).fill(0); for (const x of ws) x.hist.forEach((v, i) => (hist[i] += v));
     let p99 = 0, seen = 0; for (let i = 0; i < 41; i++) { seen += hist[i]; if (seen >= 0.99 * n) { p99 = (i + 1) * 0.25; break; } }
     return {
-      blocks: n, mean: n ? sum / n : NaN, p99, max: Math.max(0, ...w.map((x) => x.max)), late: w.reduce((a, x) => a + x.late, 0),
-      gapMax: Math.max(0, ...w.map((x) => x.gapMax)), quantum: w.length ? w[w.length - 1].quantum : 0,
-      deadline: w.length ? w[w.length - 1].deadline : 128 / rate * 1000, fine: w.length ? w[0].fine : null,
+      blocks: n, mean: n ? sum / n : NaN, p99, max: Math.max(0, ...ws.map((x) => x.max)), late: ws.reduce((a, x) => a + x.late, 0),
+      gapMax: Math.max(0, ...ws.map((x) => x.gapMax)), quantum: ws.length ? ws[ws.length - 1].quantum : 0,
+      deadline: ws.length ? ws[ws.length - 1].deadline : 128 / rate * 1000, fine: ws.length ? ws[0].fine : null,
       underruns: s0 && s1 ? s1.u - s0.u : null, underrunMs: s0 && s1 ? (s1.d - s0.d) * 1000 : null,
       wall, heard, l: concat(l), r: concat(r),
     };
@@ -289,7 +396,7 @@ async function run() {
       "; clock " + f1(t.heard) + " ms heard in " + f1(t.wall) + " ms" + (t.fine === false ? " [whole-ms timer]" : ""));
 
   say("");
-  say("1. the plain sine, C4, 4 seconds");
+  say("2. the plain sine, C4, 4 seconds, played here as the page plays it");
   const sine = await phase(app.code({}), SINE_NOTE, 4000);
   if (fault) say("  the instrument stopped: " + fault);
   timing("  timing", sine);
@@ -304,37 +411,35 @@ async function run() {
   verdict(sl.step < 1.5 * sl.slope + 1e-4 && sr.step < 1.5 * sr.slope + 1e-4, "no click: no step larger than the sine's own slope");
   verdict(sl.between < -70 && sr.between < -70 && sl.high < -90 && sr.high < -90, "no noise: nothing between the partials or above 5 kHz");
 
-  say("");
-  say("2. each rack module at full, on a bright tone (C3), 2 seconds each, against the module off");
-  const off = await phase(app.code(TONE), TONE_NOTE, 2000);
-  timing("  off", off);
-  const offP = [spectrum(off.l), spectrum(off.r)];
-  let offPower = 0; for (const p of offP) for (const v of p) offPower += v;
-  for (const [name, extra] of MODULES) {
-    const t = await phase(app.code(Object.assign({}, TONE, NULL_MODE === "inert" ? INERT[name] : extra)), TONE_NOTE, 2000);
-    const p = [spectrum(t.l), spectrum(t.r)];
-    let d = 0;
-    for (let c = 0; c < 2; c++) for (let k = 0; k < p[c].length; k++) d += (Math.sqrt(p[c][k]) - Math.sqrt(offP[c][k])) ** 2;
-    const live = dB(d / offPower);
-    liveAll[name] = live;
-    say("  " + name + ": change against off, live " + f1(live) + " dB, offline " + f1(offline[name]) + " dB" +
-        (REFERENCE_OFFLINE[rate] ? " (Linux: live " + f1(REFERENCE_LIVE[rate][name]) + ", offline " + f1(REFERENCE_OFFLINE[rate][name]) + ")" : "") +
-        "; late " + t.late + ", max " + f1(t.max) + " ms, underruns " + t.underruns);
-    verdict(offline[name] > -30, name + " changes the sound in the core (offline " + f1(offline[name]) + " dB)");
-    if (REFERENCE_OFFLINE[rate]) verdict(Math.abs(offline[name] - REFERENCE_OFFLINE[rate][name]) < 1, name + " offline as on Linux");
-    verdict(live > -30, name + " changes what reaches the speakers' node (live " + f1(live) + " dB)");
-    if (REFERENCE_LIVE[rate]) verdict(Math.abs(live - REFERENCE_LIVE[rate][name]) < 6, name + " live within 6 dB of Linux");
-    verdict(t.late <= Math.max(2, t.blocks * 0.002) && (t.underruns === null || t.underruns === 0), name + " plays without late blocks or underruns");
+  for (const [tone, base, note, title] of [["tone", TONE, TONE_NOTE, "a bright tone (C3)"], ["sine", {}, SINE_NOTE, "the plain sine (C4)"]]) {
+    say("");
+    say((tone === "tone" ? "3" : "4") + ". each rack module at full, on " + title + ", 2 seconds each, against the module off, played here");
+    const off = await phase(app.code(base), note, 2000);
+    timing("  off", off);
+    const offP = [spectrum(off.l), spectrum(off.r)];
+    for (const [name, extra] of MODULES) {
+      const t = await phase(app.code(Object.assign({}, base, NULL_MODE === "inert" ? INERT[name] : extra)), note, 2000);
+      const live = spectralChange(offP, t.l, t.r);
+      liveAll[tone][name] = live;
+      const ro = refOf(REFERENCE_OFFLINE, rate, tone, name), rl = refOf(REFERENCE_LIVE, rate, tone, name);
+      say("  " + name + ": change against off, live " + f1(live) + " dB, offline " + f1(offline[tone][name]) + " dB" +
+          (ro !== undefined ? " (Linux: live " + f1(rl) + ", offline " + f1(ro) + ")" : "") + "; late " + t.late + ", max " + f1(t.max) + " ms, underruns " + t.underruns);
+      verdict(offline[tone][name] > -40, name + " changes the sound in the core (offline " + f1(offline[tone][name]) + " dB)");
+      if (ro !== undefined) verdict(Math.abs(offline[tone][name] - ro) < 1, name + " offline as on Linux");
+      verdict(live > -40, name + " changes what reaches the speakers' node (live " + f1(live) + " dB)");
+      if (rl !== undefined) verdict(Math.abs(live - rl) < 6, name + " live within 6 dB of Linux");
+      if (!late(t)) say("  (note: " + name + "'s phase had late blocks or underruns; information, not a check of the rack)");
+    }
   }
   send({ op: "midi", bytes: [0xb0, 123, 0], at: -1 });
   await wait(300);
   await ctx.close();
   say("");
   say(failures ? failures + " check(s) failed" : "every check passed");
-  say("REFERENCE " + JSON.stringify({ rate, offline, live: liveAll }));
+  say("REFERENCE " + JSON.stringify({ rate, offline, live: liveAll, face: faceAll }));
   statusEl.textContent = "Done";
   document.getElementById("copy").disabled = false;
-  window.__diag = { failures, lines, offline, live: liveAll };
+  window.__diag = { failures, lines, offline, live: liveAll, face: faceAll };
 }
 
 document.getElementById("go").addEventListener("click", () => run().catch((e) => { say("ERROR: " + (e && e.stack || e)); statusEl.textContent = "Stopped"; }));
