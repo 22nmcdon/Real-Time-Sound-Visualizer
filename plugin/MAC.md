@@ -81,7 +81,9 @@ No xvfb on a Mac: its face checks open a real window on the desktop for a
 few seconds (leave the Mac unlocked). It ends with "the shell plays, serves
 the page, and hands it the picture" or FAILED. On Linux under `xvfb-run -a`
 it is 233 checks passed and none failed at 722da4c (22 Nov); a check that
-passes there and fails here is the day's real finding. The paint check prints a
+passes there and fails here is the day's real finding. (GitHub's macOS
+runner also read 233 and none failed on 22 Nov, so a failure here would be
+this Mac's, not macOS's.) The paint check prints a
 line of its own, `(the face in WebKitGTK, painting: {...})` - the label is the
 Linux one, but on the Mac it is WKWebView's answer: `"mode":"gpu"` is the
 painting on the graphics card, `"mode":"plain"` with a `why` is the fallback,
@@ -301,24 +303,29 @@ not be, and each is a question for the day:
 - **auval** on the owner's Mac. On the GitHub runner (macOS 15) the first
   build passed everything but "parameters retain value across reset and
   initialization", which was a real bug - prepare threw away the host's
-  values - fixed since (`PLAN.md`, "Found on the way"); the runner's builds
-  of 17 Nov (runs 4 and 5) passed auval and the shell test. Since then three
-  host knobs have been added (Attack and Release, version 7; LFO 1 rate,
-  version 8), which auval walks too.
+  values - fixed since (`PLAN.md`, "Found on the way"). **Settled on the
+  runner on 22 Nov** (run 6, `claude/mac-build` at 722da4c, macOS 15, Apple
+  Silicon): the universal build, both slices and the 13.3 target, auval with
+  all eighteen knobs, and the shell test at 233 passed and none failed, its
+  face checks in WKWebView included - Play's band and figures, Ink's figures,
+  the right-click, the drag's gestures, Learn from a host's note and the
+  Envelope card's dot. What the runner cannot say is the owner's Xcode, the
+  owner's Mac and Logic.
 - **The face in WKWebView**: that the page loads from the binary through
   JUCE's `juce://` scheme handler, that the native functions answer, and that
   the picture's fetches (one `/picture.bin` and one `/lfos.bin` a frame, and
   in Paint `/paint/COUNT.bin` for the strokes since the last, all served on
   the main thread) keep up - the frame rate is the number to take home,
   beside stage 0's Linux table.
-- **Paint on WKWebView's graphics.** Whether it gives WebGL 2 with a float
-  or half-float render target (`EXT_color_buffer_float`, else
-  `_half_float`), and the painting's frame rate on the M4 Pro's GPU. Under
-  `xvfb-run -a` here, on WebKitGTK's software renderer, the shell test's
-  line read `"mode":"gpu"`, 32 frames a second, 9.3 ms a paint frame and
-  358 ms at worst (722da4c). Plain on the Mac would mean the fallback is
-  what Logic users see, and is worth a decision rather than a fix on the
-  spot.
+- **Paint on WKWebView's graphics.** Partly settled on the runner on 22
+  Nov: WKWebView gives WebGL 2 with a float render target, and the shell
+  test's line read `"mode":"gpu"`, 0.145 ms a paint frame and 2 ms at worst,
+  against WebKitGTK's software renderer here at 9.3 ms and 358 ms. Its `fps`
+  (34 there, 32 here) is the shell test's own loop pacing the page, not the
+  face's rate. Still open: the frame rate in Logic on the M4 Pro, with the
+  face in a real window and a host playing, and whether a painting held for
+  minutes stays smooth (step 6, Paint). Plain on the owner's Mac, where the
+  runner had the graphics card, would be a finding about that Mac.
 - **The controllers through Logic**: whether the mod wheel, channel
   pressure, the pitch wheel and the pedal arrive as the page and the core
   expect them, or Logic turns pressure into polyphonic aftertouch or eats
