@@ -299,13 +299,13 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | eqThumb | The EQ’s curve | What the three bands do together, 20 Hz to 20 kHz; flat and grey while the EQ is off. Press it to shape the curve over the tabs. | 128 | - |
 | eqEditorOn | EQ on or off | Off, the EQ is not there at all and its curve is kept; on, you hear the curve, flat until you shape it. Moving a point switches it on. | 134 | - |
 | eqEditorClose | Close | Closes the EQ’s editor and brings the tab back. The curve stays as you left it. | 79 | - |
-| eqLow | Low | Lifts or cuts everything below the low shelf’s corner, up to 12 dB either way: weight under the sound, the figure longer at its lowest notes. | 141 | yes — a shelf, the Web Audio node’s, on both channels alike; where it acts is Low at, in the editor, under the curve |
-| eqMid | Mid | Lifts or cuts a band around Mid at, as wide as Width, up to 12 dB either way: a boost brings that part forward, a cut hollows it out. | 133 | - |
-| eqHigh | High | Lifts or cuts everything above the high shelf’s corner, up to 12 dB either way: air over the sound, or a darker one with softer corners. | 136 | - |
-| eqLowFreq | Low at | Where the low shelf turns, 40 to 640 Hz, four octaves on the knob: its middle is 160 Hz. The gain is half its full amount there. | 128 | - |
-| eqMidFreq | Mid at | The middle of the mid band, 125 Hz to 8 kHz, six octaves on the knob: its middle is 1 kHz. | 90 | - |
+| eqLow | Low | Lifts or cuts everything below the low shelf’s corner, from 16 dB down to 12 up: weight under the sound, the figure longer at its lowest notes. | 143 | yes — a shelf, the Web Audio node’s, on both channels alike; where it acts is Low at, in the editor, under the curve |
+| eqMid | Mid | Lifts or cuts a band around Mid at, as wide as Width, from 16 dB down to 12 up: a boost brings that part forward, a cut hollows it out. | 135 | - |
+| eqHigh | High | Lifts or cuts everything above the high shelf’s corner, from 16 dB down to 12 up: air over the sound, or a darker one with softer corners. | 138 | - |
+| eqLowFreq | Low at | Where the low shelf turns, anywhere from 20 Hz to 20 kHz; it starts at 160 Hz. The gain is half its full amount there. | 118 | - |
+| eqMidFreq | Mid at | The middle of the mid band, anywhere from 20 Hz to 20 kHz; it starts at 1 kHz. | 78 | - |
 | eqMidWidth | Width | How wide the mid band is, from a fifth of an octave, a narrow notch or peak, to four octaves, a broad tilt of the middle. | 121 | - |
-| eqHighFreq | High at | Where the high shelf turns, 1 to 16 kHz, four octaves on the knob: its middle is 4 kHz. The gain is half its full amount there. | 127 | - |
+| eqHighFreq | High at | Where the high shelf turns, anywhere from 20 Hz to 20 kHz; it starts at 4 kHz. Near the top it reaches only the last overtones. | 127 | - |
 
 ### Phaser
 

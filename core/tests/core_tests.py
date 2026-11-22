@@ -2820,6 +2820,20 @@ V13 = [{"v": 12, "freq": 330}, {"v": 12, "bAtk": 40, "layers": "split"}, {"v": 1
        {"v": 13, "freq": 330}, {"v": 12, "envShape": "1;A>m.6;R>l"}, {"freq": 330}]
 V13_FROM = len(scmds)
 scmds += ["decode " + code_of(_json.dumps(st, separators=(",", ":"))) for st in V13]
+# Version 14 (22 Nov): each EQ band's frequency a place over 20 Hz to 20 kHz
+# (a thousand, the cutoff's law) rather than a hundred over a span of its
+# own. Every old place, for each band and each hand, and between places,
+# past the ends and not a number; a band left out of a code with the EQ in
+# it, and of one without; the upper hand's left out (the lower's, as
+# restore reads it); and a code made at 14, which keeps what it says.
+V14_OLD = [(40, 4), (125, 6), (1000, 4)]
+V14_AT = ["eqLowFreq", "eqMidFreq", "eqHighFreq"]
+V14 = [{"v": 13, "eqOn": True, V14_AT[k]: p, "b" + V14_AT[k][0].upper() + V14_AT[k][1:]: 100 - p, "layers": "layer"}
+       for k in range(3) for p in list(range(0, 101)) + [12.5, 73.25, -4, 130]]
+V14 += [{"v": 13, "eqLow": 30}, {"v": 13, "freq": 330}, {"v": 13, "bEqHigh": -20, "layers": "layer"},
+        {"v": 13, "eqLowFreq": "abc", "bEqMidFreq": "abc", "eqOn": True}, {"v": 14, "eqLowFreq": 50, "eqOn": True}]
+V14_FROM = len(scmds)
+scmds += ["decode " + code_of(_json.dumps(st, separators=(",", ":"))) for st in V14]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
 v11 = sjs[V11_FROM:V11_FROM + len(V11)]
@@ -2838,6 +2852,32 @@ check("version 13: a code from before the drawn envelopes gets the old envelope'
       and _old("envShape", v13[5]) and '"v":13' in v13[0],
       " | ".join(x[:140] for x in v13))
 check("null: the codes as written name no shape", not any(_old("envShape", _json.dumps(st)) for st in V13))
+v14 = [_json.loads(l[5:]) if l.startswith("read ") else None for l in scpp[V14_FROM:V14_FROM + len(V14)]]
+def _old_hz(k, p): lo, octs = V14_OLD[k]; return lo * 2 ** (octs * max(0, min(100, p)) / 100)
+def _new_hz(p): return 20 * 1000 ** (max(0, min(1000, p)) / 1000)
+def _v14_miss(rows):
+    worst = 0.0
+    for st, got in zip(V14, rows):
+        for key in st:
+            if "Freq" not in key or not isinstance(st[key], (int, float)): continue
+            k = [a.lower() for a in V14_AT].index(key[1:].lower() if key.startswith("b") else key.lower())
+            if not got or not isinstance(got.get(key), (int, float)): return float("inf")
+            worst = max(worst, abs(_new_hz(got[key]) - _old_hz(k, st[key])) / _old_hz(k, st[key]))
+    return worst
+_n14 = 3 * 105
+v14_worst = _v14_miss(v14[:_n14])
+check("version 14: every old EQ place, %d of them on each band and hand, between places and past the ends, decodes to the "
+      "hertz it meant, to a part in a hundred thousand million" % (_n14 * 2), v14_worst < 1e-11, "worst %.2e" % v14_worst)
+check("null: and the same places read as today's, unmigrated, miss by far more", _v14_miss(V14[:_n14]) > 0.5)
+ex = v14[_n14:]
+check("an old code with the EQ in it and a band left out has that band's old middle written, 160 Hz, 1 kHz and 4 kHz; "
+      "one with no EQ field gains none; the upper hand's left out stays out; not a number stays the lower's default and "
+      "the upper's unusable; and a code made at 14 keeps its place",
+      ex[0] and all(abs(_new_hz(ex[0][a]) - hz) < 1e-9 * hz for a, hz in zip(V14_AT, (160, 1000, 4000)))
+      and ex[1] and not any(a in ex[1] for a in V14_AT) and ex[2] and abs(_new_hz(ex[2]["eqHighFreq"]) - 4000) < 1e-9 * 4000
+      and "bEqHighFreq" not in ex[2] and ex[3] and abs(_new_hz(ex[3]["eqLowFreq"]) - 160) < 1e-9 * 160
+      and ex[3]["bEqMidFreq"] == "abc" and ex[4] and ex[4]["eqLowFreq"] == 50 and ex[0]["v"] >= 14,
+      repr(ex)[:400])
 # The site's setup codes (5e), as the page makes them: its defaults and its
 # table of fields read off the page as it evaluates them, and the compiled
 # core's codec, from the module the page carries, through the page's own
@@ -6241,7 +6281,8 @@ def eq_page(lines):
     return out, errors
 erng = random.Random(1117)
 def evalue(id):
-    lo, hi = (-120, 120) if id in ("eqLow", "eqMid", "eqHigh") else (2, 40) if id == "eqMidWidth" else (0, 100)
+    # The knobs' ranges since 22 Nov: gains to -16 dB, places a thousand over 20 Hz to 20 kHz.
+    lo, hi = (-160, 120) if id in ("eqLow", "eqMid", "eqHigh") else (2, 40) if id == "eqMidWidth" else (0, 1000)
     return erng.choice([erng.randint(lo, hi), round(erng.uniform(lo, hi), 1), lo - 7, hi + 7, "abc", "7.5"])
 def eop():
     c = erng.random()
@@ -6304,7 +6345,7 @@ check("linked again from the upper, the upper's is copied over the lower's", not
 check("a setup with the upper's own loads it, unlinked, a field it lacks the lower's", ep[14]["own"] and ep[14]["b"][0] == -3
       and ep[14]["b"][3] == 20 and ep[14]["a"][0] == 2.5 and ep[14]["b"][6] == ep[14]["a"][6], repr(ep[14]))
 check("out of range is held to the knob's ends, and a code's too", ep[16]["b"][0] == 12 and ep[18]["a"][0] == 12
-      and ep[18]["a"][4] == 0.2 and ep[18]["a"][6] == 0 and abs(ep[18]["gen"][6] - 1000) < 1e-9, repr(ep[18]))
+      and ep[18]["a"][4] == 0.2 and ep[18]["a"][6] == 0 and abs(ep[18]["gen"][6] - 20) < 1e-9, repr(ep[18]))
 check("its switch, a field: pressed, the lower's is in and the generator told; a setup's eqOn read; the upper's own off "
       "while the lower's is on", ep[20]["a"][7] is True and ep[20]["gen"][7] is True and ep[21]["a"][7] is True
       and ep[22]["own"] and ep[22]["a"][7] is True and ep[22]["b"][7] is False and ep[22]["genB"][7] is False, repr(ep[20:23])[:300])

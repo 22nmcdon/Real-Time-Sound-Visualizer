@@ -384,8 +384,9 @@ struct Brain {
     double chorus = 0, rate = 0.6, depthMs = 3, centreMs = 12, chorusFeedback = 0;
     double phaser = 0, phRate = 0.3, phDepth = 0.7, phFeedback = 0.3;  // P8e
     double rvMix = 0, rvSize = 0.4, rvTone = 0.6, rvPre = 10, rvSpread = 0;  // P9
-    // The EQ (17 Nov): each gain in dB, each frequency as its knob's place (0 to 100, eqHz), the mid's width in octaves.
-    double eqLow = 0, eqLowPos = 50, eqMid = 0, eqMidPos = 50, eqWidth = 1, eqHigh = 0, eqHighPos = 50;
+    // The EQ (17 Nov): each gain in dB, each frequency as its knob's place (0 to 1000 on the cutoff's law since
+    // version 14, eqHz), the mid's width in octaves.
+    double eqLow = 0, eqLowPos = 301, eqMid = 0, eqMidPos = 567, eqWidth = 1, eqHigh = 0, eqHighPos = 767;
     bool eqOn = false;  // its switch, a field (17 Nov)
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
@@ -1061,10 +1062,17 @@ inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
    four octaves from 40 Hz for the low shelf, six from 125 Hz for the mid, four
    from 1 kHz for the high shelf, so the middle of each knob is 160 Hz, 1 kHz
    and 4 kHz. In octaves, so a knob turned is a musical distance wherever it is. */
-inline double eqHz(int band, double pos) {
-  const double p = std::fmax(0.0, std::fmin(100.0, pos)) / 100;
-  return band == 0 ? 40 * std::pow(2.0, 4 * p) : band == 1 ? 125 * std::pow(2.0, 6 * p) : 1000 * std::pow(2.0, 4 * p);
-}
+/* Each band's frequency from its knob's place (22 Nov, setup version 14): the
+   whole audible range for every band, 20 Hz to 20 kHz on the voice filter's
+   cutoff law (cutoffHz, a thousand steps over three decades), so the high
+   shelf can be taken to the top and the low one to the bottom. Until then
+   each band had a span of its own over a hundred steps - 40 to 640 Hz, 125 Hz
+   to 8 kHz, 1 to 16 kHz - which migrateSetup's 13 -> 14 pass turns into this
+   law's places exactly (eqPlaceOfOldSpan, setup.h). The bands may cross: each
+   is its own filter, and the response is their product whichever way round
+   they stand. The band is kept in the signature for the face's sake, which
+   asks by band. */
+inline double eqHz(int /*band*/, double pos) { return cutoffHz(std::fmax(0.0, std::fmin(1000.0, pos))); }
 inline void eqSend(Generator& gen, const Brain::EchoState& e, int layer) {
   gen.set("eqLow", e.eqLow, layer); gen.set("eqLowHz", eqHz(0, e.eqLowPos), layer);
   gen.set("eqMid", e.eqMid, layer); gen.set("eqMidHz", eqHz(1, e.eqMidPos), layer);

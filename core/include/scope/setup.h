@@ -39,7 +39,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 13;  // SETUP_VERSION
+constexpr int kSetupVersion = 14;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 // The table (schema.h, SETUP_FIELDS on the page), parsed once.
@@ -251,6 +251,18 @@ inline std::optional<std::string> encodeSetup(const Json& snap) {
 // full scale as a position in the table, because that is what it was in a
 // version 1 setup, and the second turns that position into decibels - run the
 // other way round, the first would read a decibel value as an index.
+/* An EQ band's place on its knob before setup version 14 - a hundred over a
+   span of its own, held to the knob's ends as restore held it - as the place
+   on today's knob that is the same frequency: 20 Hz to 20 kHz over a
+   thousand, unrounded. The old law was 40, 125 or 1000 Hz times two to the
+   power of 4, 6 or 4 octaves times the place over a hundred. */
+inline double eqPlaceOfOldSpan(int band, double place) {
+  static const double kFrom[3] = { 40, 125, 1000 }, kOctaves[3] = { 4, 6, 4 };
+  const double p = std::fmax(0.0, std::fmin(100.0, place)) / 100;
+  const double hz = kFrom[band] * std::pow(2.0, kOctaves[band] * p);
+  return 1000 * std::log10(hz / 20) / 3;
+}
+
 inline bool migrateSetup(Json& setup) {
   const bool falsy = setup.type == Json::Type::Null || (setup.type == Json::Type::Bool && !setup.b)
                   || (setup.type == Json::Type::Number && (setup.n == 0 || std::isnan(setup.n)))
@@ -506,6 +518,41 @@ inline bool migrateSetup(Json& setup) {
     if (!setup.get("bEnvShape") && any({ "bAtk", "bDec", "bSus", "bRel" })) setup.set("bEnvShape", Json::string(kOld));
     if (!setup.get("bVcfShape") && any({ "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel" }))
       setup.set("bVcfShape", Json::string(kOld));
+  }
+  /* 13 -> 14 (22 Nov): each EQ band's frequency moves across the whole
+     audible range (the owner: the high shelf would not go to the right). Its
+     knob had been a hundred places over a span of the band's own - four
+     octaves from 40 Hz for the low shelf, six from 125 Hz for the mid, four
+     from 1 kHz for the high shelf - and is now a thousand over 20 Hz to
+     20 kHz, the voice filter's cutoff law (eqHz, restore.h). So a stored
+     place is turned into the hertz it meant and that into the new law's
+     place, unrounded, so it plays the same frequency to the last bit the
+     law can carry (core/tests/core_tests.py feeds it every old place). A
+     pass rather than a second reading of the number: a 50 would otherwise
+     be 160 Hz or 28 Hz depending on nothing it says. An old code that
+     leaves a band out meant its middle, 160 Hz, 1 kHz or 4 kHz, which the
+     new defaults (301, 567, 767) miss by up to eight cents, so where the
+     code has any of the EQ's fields the middle's own place is written; one
+     with none has the EQ off and flat, where no frequency is heard. The
+     upper hand's only where it has its own: one it lacks is the lower's, as
+     restore reads it, and an unusable one stays unusable for the same
+     reason. */
+  if (!(v >= 14) && setup.type == Json::Type::Object) {
+    static const char* const kAt[3] = { "eqLowFreq", "eqMidFreq", "eqHighFreq" };
+    static const char* const kAtB[3] = { "bEqLowFreq", "bEqMidFreq", "bEqHighFreq" };
+    bool any = false;
+    for (const char* k : { "eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq", "eqOn",
+                           "bEqLow", "bEqLowFreq", "bEqMid", "bEqMidFreq", "bEqMidWidth", "bEqHigh", "bEqHighFreq", "bEqOn" })
+      if (setup.get(k)) any = true;
+    for (int band = 0; band < 3; ++band) {
+      const Json* a = setup.get(kAt[band]);
+      const double p = jsToNumber(a);
+      if (a && std::isfinite(p)) setup.set(kAt[band], Json::number(eqPlaceOfOldSpan(band, p)));
+      else if (any) setup.set(kAt[band], Json::number(eqPlaceOfOldSpan(band, 50)));
+      const Json* b = setup.get(kAtB[band]);
+      const double q = jsToNumber(b);
+      if (b && std::isfinite(q)) setup.set(kAtB[band], Json::number(eqPlaceOfOldSpan(band, q)));
+    }
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));
   return true;

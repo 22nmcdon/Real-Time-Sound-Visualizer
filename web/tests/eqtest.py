@@ -17,10 +17,20 @@ What would go wrong, and what is checked for it:
   the upper hand's by its own gains, and a version-12 code with a gain and no
   eqOn is off (an off switch is the default, and left out of a code). The
   null is the rule read without the version, which would turn the new code on;
-- the readings and the line lying about the octave laws: each knob's middle
-  is 160 Hz, 1 kHz and 4 kHz, the ends 40 Hz and 16 kHz, held against the
-  generator's own fields (eqLowHz and the rest), not against the page's
-  arithmetic alone;
+- the readings and the line lying about the octave law: since 22 Nov every
+  band runs 20 Hz to 20 kHz on the cutoff's law, a thousand places, and
+  starts at 160 Hz, 1 kHz and 4 kHz, held against the generator's own fields
+  (eqLowHz and the rest), not against the page's arithmetic alone;
+- a code from before that law (version 13) playing another frequency: every
+  old place of each band and hand, through the page's decode (the compiled
+  core's migrateSetup) and restore, is sent to the engine as the hertz the
+  old law gave it, to a part in ten thousand million; a band left out of an
+  old code with the EQ in it is its old middle. The null is the same places
+  restored without the pass, as today's places, which play elsewhere;
+- the deeper cut not reaching the sound: a gain's knob goes to -16 dB, is
+  sent as -16, and past it is held there; and with the low shelf taken to
+  20 kHz a held note's peak in the spectrum after the EQ falls by 16 dB to a
+  hundredth of one. The null is the old floor, -12, which falls by 12;
 - a setup that does not come back: every EQ field set off its default,
   written as a code, read back and restored, lands where it was, in the
   knobs and in the engine; a default EQ writes no field at all (additive: an
@@ -146,8 +156,8 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       restore({}); await wait(30);
       const out = [];
-      for (const [id, v] of [['eqLowFreq', 0], ['eqLowFreq', 50], ['eqLowFreq', 100], ['eqMidFreq', 50], ['eqMidFreq', 100],
-                             ['eqHighFreq', 50], ['eqHighFreq', 100], ['eqMidWidth', 2], ['eqMidWidth', 40]]) {
+      for (const [id, v] of [['eqLowFreq', 0], ['eqLowFreq', 301], ['eqLowFreq', 1000], ['eqMidFreq', 567], ['eqMidFreq', 0],
+                             ['eqHighFreq', 767], ['eqHighFreq', 1000], ['eqMidWidth', 2], ['eqMidWidth', 40]]) {
         setControl(id, v);
         const g = genSettings(0);
         out.push([id, v, el[id + 'Value'].textContent, g.eqLowHz, g.eqMidHz, g.eqHighHz, g.eqMidWidth]);
@@ -156,19 +166,79 @@ with sync_playwright() as pw:
       return out;
     }""")
     print("    %s" % rd)
-    want = [("40 Hz", 3, 40), ("160 Hz", 3, 160), ("640 Hz", 3, 640), ("1.0 kHz", 4, 1000), ("8.0 kHz", 4, 8000),
-            ("4.0 kHz", 5, 4000), ("16.0 kHz", 5, 16000), ("0.2 oct", 6, 0.2), ("4.0 oct", 6, 4)]
+    law = lambda p: 20 * 1000 ** (p / 1000)
+    want = [("20 Hz", 3, 20), ("160 Hz", 3, law(301)), ("20.0 kHz", 3, 20000), ("1.0 kHz", 4, law(567)), ("20 Hz", 4, 20),
+            ("4.0 kHz", 5, law(767)), ("20.0 kHz", 5, 20000), ("0.2 oct", 6, 0.2), ("4.0 oct", 6, 4)]
     misses = [(r, w) for r, w in zip(rd, want) if r[2] != w[0] or abs(r[w[1]] - w[2]) > 1e-9 * w[2]]
-    check("each knob's ends and middle read and are sent as their octave laws say: 40, 160, 640 Hz; 1 and 8 kHz; 4 and 16 kHz; 0.2 to 4 octaves",
+    check("each band runs 20 Hz to 20 kHz and starts at 160 Hz, 1 kHz and 4 kHz, read and sent as the law says; the width 0.2 to 4 octaves",
           not misses and len(rd) == 9, str(misses[:2]))
-    check("and not a linear law, which would put the low knob's middle at 340 Hz", abs(rd[1][3] - 340) > 100)
+    check("and each start within eight cents of 160 Hz, 1 kHz and 4 kHz, reading as them", all(abs(1200 * __import__("math").log2(rd[i][k] / hz)) < 8.1
+          for i, k, hz in ((1, 3, 160), (3, 4, 1000), (5, 5, 4000))), str([rd[1][3], rd[3][4], rd[5][5]]))
+    check("and not a linear law, which would put the low knob's start at 6 kHz", abs(rd[1][3] - 6034) > 1000)
+
+    print("\n--- a code from before the whole range (version 13) ---")
+    mg = p.evaluate("""async () => {
+      const code = (o) => btoa(JSON.stringify(o)).replace(/=+$/, '');
+      const AT = ['eqLowFreq', 'eqMidFreq', 'eqHighFreq'], HZ = ['eqLowHz', 'eqMidHz', 'eqHighHz'];
+      const out = [];
+      for (let k = 0; k < 3; k++) for (const pl of [0, 1, 17, 37.5, 50, 63, 99, 100, -5, 140]) {
+        const o = { v: 13, eqOn: true, eqLow: 20, layers: 'layer', midiMode: 'poly', bPlane: true };
+        o[AT[k]] = pl; o['b' + AT[k][0].toUpperCase() + AT[k].slice(1)] = 100 - pl;
+        restore(decodeSetup(code(o)));
+        const migrated = [genSettings(0)[HZ[k]], genSettings(1)[HZ[k]]];
+        // The null: the same places taken as today's, with no pass.
+        restore(Object.assign({}, o, { v: undefined }));
+        out.push({ k, place: pl, migrated, unmigrated: [genSettings(0)[HZ[k]], genSettings(1)[HZ[k]]] });
+      }
+      restore(decodeSetup(code({ v: 13, eqOn: true, eqHigh: -30 })));
+      const middles = HZ.map((h) => genSettings(0)[h]);
+      restore({});
+      return { out, middles };
+    }""")
+    OLD = [(40, 4), (125, 6), (1000, 4)]
+    old_hz = lambda k, pl: OLD[k][0] * 2 ** (OLD[k][1] * max(0, min(100, pl)) / 100)
+    worst = max(max(abs(r["migrated"][0] / old_hz(r["k"], r["place"]) - 1), abs(r["migrated"][1] / old_hz(r["k"], 100 - r["place"]) - 1)) for r in mg["out"])
+    check("every old place of each band, the lower hand's and the upper's, between places and past the ends, is sent as the hertz "
+          "the old law gave it (%d codes)" % len(mg["out"]), worst < 1e-10 and len(mg["out"]) == 30, "worst %.2e" % worst)
+    check("an old code with the EQ in it and its bands left out plays them at their old middles, 160 Hz, 1 kHz and 4 kHz",
+          all(abs(a - b) < 1e-9 * b for a, b in zip(mg["middles"], (160, 1000, 4000))), str(mg["middles"]))
+    unm = min(abs(r["unmigrated"][0] / old_hz(r["k"], r["place"]) - 1) for r in mg["out"] if 0 < r["place"] < 100)
+    null("the same places restored as today's, with no pass, play elsewhere: every one inside the old range misses by at least %.0f%%" % (100 * unm),
+         unm > 0.05, "%.3f" % unm)
+
+    print("\n--- the deeper cut, in the sound ---")
+    cut = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      restore({}); setRunning(true); openEqEditor();
+      setControl('eqLow', -160);
+      const knob = { value: el.eqLow.value, reading: el.eqLowValue.textContent, sent: genSettings(0).eqLow };
+      setControl('eqLow', -200);
+      const past = { value: el.eqLow.value, sent: genSettings(0).eqLow };
+      midiNoteOn(57, 100); await wait(800);
+      const peak = () => { let m = -200; for (let i = 2; i < eqEd.spec.length; i++) m = Math.max(m, eqEd.spec[i]); return m; };
+      const out = {};
+      // The low shelf taken to 20 kHz, so a held note is wholly under it.
+      for (const [name, on, g] of [['dry', false, 0], ['cut16', true, -160], ['cut12', true, -120]]) {
+        setEqOn(on); setControl('eqLowFreq', 1000); setControl('eqLow', g); await wait(1200);
+        out[name] = peak();
+      }
+      midiNoteOff(57); closeEqEditor(); restore({});
+      return { knob, past, out };
+    }""")
+    print("    %s" % cut)
+    check("the gains' knob goes to -16 dB, reads it, and the engine is sent -16; past it, it is held there",
+          cut["knob"] == {"value": "-160", "reading": "−16.0 dB", "sent": -16} and cut["past"] == {"value": "-160", "sent": -16}, str(cut))
+    fall = cut["out"]["cut16"] - cut["out"]["dry"]
+    check("with the low shelf at 20 kHz, a held note's peak after the EQ falls by 16 dB (%.3f)" % fall, abs(fall + 16) < 0.01, str(cut["out"]))
+    null("the old floor, -12, falls by 12, which that check would not pass", abs((cut["out"]["cut12"] - cut["out"]["dry"]) + 16) > 3.9,
+         "%.3f" % (cut["out"]["cut12"] - cut["out"]["dry"]))
 
     print("\n--- a setup, there and back ---")
     rt = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       restore({}); await wait(30);
       const plain = encodeSetup(snapshot()), plainFields = Object.keys(decodeSetup(plain)).filter((k) => /^b?[eE]q/.test(k));
-      const set = { eqLow: -60, eqLowFreq: 20, eqMid: 45, eqMidFreq: 70, eqMidWidth: 33, eqHigh: 95, eqHighFreq: 85 };
+      const set = { eqLow: -160, eqLowFreq: 120, eqMid: 45, eqMidFreq: 700, eqMidWidth: 33, eqHigh: 95, eqHighFreq: 1000 };
       for (const [id, v] of Object.entries(set)) setControl(id, v);
       setEqOn(true);
       const code = encodeSetup(snapshot());
@@ -205,7 +275,7 @@ with sync_playwright() as pw:
       const linkedBoth = [echo.eqLow, echoB.eqLow, genSettings(0).eqLow, genSettings(1).eqLow];
       setLink('eq', false);
       click('editHandB'); await wait(30);
-      setControl('eqLow', -80); setControl('eqHighFreq', 90);
+      setControl('eqLow', -80); setControl('eqHighFreq', 900);
       const upper = { a: [echo.eqLow, echo.eqHighPos], b: [echoB.eqLow, echoB.eqHighPos], knob: el.eqLow.value,
                       gen: [genSettings(0).eqLow, genSettings(1).eqLow], own: genSettings(1).timeOwn };
       click('editHandA'); await wait(30);
@@ -222,13 +292,13 @@ with sync_playwright() as pw:
     print("    %s" % hd)
     check("linked, a knob writes both hands, in the page and the engine", hd["linkedBoth"] == [2, 2, 2, 2], str(hd["linkedBoth"]))
     check("unlinked, the upper hand's knobs write its own EQ and leave the lower's",
-          hd["upper"]["b"] == [-8, 90] and hd["upper"]["a"] == [2, 50] and hd["upper"]["gen"] == [2, -8], str(hd["upper"]))
+          hd["upper"]["b"] == [-8, 900] and hd["upper"]["a"] == [2, 767] and hd["upper"]["gen"] == [2, -8], str(hd["upper"]))
     check("and the generator is told the EQ is the upper hand's own (timeOwn's bit 16)", (hd["upper"]["own"] & 16) == 16,
           str(hd["upper"]["own"]))
     null("the lower hand's knob shows the lower's, not the upper's", hd["lowerKnob"] == "20")
-    check("the upper hand's own goes into the code", hd["fields"] == [-80, 90], str(hd["fields"]))
+    check("the upper hand's own goes into the code", hd["fields"] == [-80, 900], str(hd["fields"]))
     check("linked again from the lower, the two are one", hd["relinked"] == [2, 2], str(hd["relinked"]))
-    check("and the code loads the upper hand's own again, unlinked", hd["reloaded"] == {"own": True, "b": [-8, 90], "a": 2},
+    check("and the code loads the upper hand's own again, unlinked", hd["reloaded"] == {"own": True, "b": [-8, 900], "a": 2},
           str(hd["reloaded"]))
 
     print("\n--- the tab's line ---")
