@@ -72,8 +72,13 @@ def run(kit):
     null("288 frames at every rate reads as no one time", not a_time([288] * 4) and not the_quote([288] * 4))
     null("a chain that delays nothing reads as not the quoted figure", not the_quote([0] * 4))
     # Under its threshold the limiter is its make-up gain: a quarter of full
-    # scale comes out a little louder, never quieter, by under two decibels.
-    gains = [runs[r][2] for r in RATES]
-    check("a quarter of full scale comes through the limiter at its make-up gain: louder, by under 2 dB",
-          made_up(gains), "x%s" % ["%.4f" % g for g in gains])
+    # scale comes out a little louder, never quieter, by under two decibels -
+    # and then, since 22 Nov, the headroom after it (Instrument::kHeadroom),
+    # which this takes back out so the limiter's own gain is what is read.
+    head = float(re.search(r"kHeadroom = ([0-9.]+)f;", open(os.path.join(HERE, "..", "..", "include", "scope", "instrument.h"),
+                                                           encoding="utf-8").read()).group(1))
+    gains = [runs[r][2] / head for r in RATES]
+    check("a quarter of full scale comes through the limiter at its make-up gain: louder, by under 2 dB, before the headroom",
+          made_up(gains), "x%s, the heard pair x%s" % (["%.4f" % g for g in gains], ["%.4f" % runs[r][2] for r in RATES]))
     null("the pre-limit pair against itself, unity, reads as no make-up gain", not made_up([1.0] * 4))
+    null("the heard pair read without taking the headroom out is quieter than it went in", not made_up([runs[r][2] for r in RATES]))

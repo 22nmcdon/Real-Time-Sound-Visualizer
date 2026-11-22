@@ -7325,6 +7325,10 @@ from pieces import loop as _loop
 from pieces.kit import Kit as _Kit
 LTOOL = os.path.join(HERE, "tools", "limiter_page.py")
 LEVERY = 7680   # frames between the limiters' readings: 0.16 s, sixty of the context's quanta
+# The headroom (22 Nov): the instrument puts the limiter's output down by kHeadroom, a float
+# multiply after the clamp, so the browser's nodes are held to it times the same float.
+LHEAD = _np.float32(float(re.search(r"kHeadroom = ([0-9.]+)f;", open(os.path.join(CORE, "include", "scope", "instrument.h")).read()).group(1)))
+def headroom(x): return (x.astype(_np.float32) * LHEAD).astype(_np.float32)
 _lkit = _Kit(check)
 def lpage(src, mode, release=None):
     out = src + "." + mode + ("-%g" % release if release else "")
@@ -7341,6 +7345,7 @@ for lname, lmode in (("the reverb at full", "reverb"), ("a crossed split at Scan
     lruns[lname] = (_np.fromfile(pre, dtype=_np.float32), _np.fromfile(heard, dtype=_np.float32), reds, pre, heard)
 for lname, (pre, heard, reds, prepath, heardpath) in lruns.items():
     page, preds = lpage(prepath, "limited")
+    page = headroom(page)
     apart = float(_np.max(_np.abs(page - heard))) if len(page) == len(heard) else inf
     check("%s: the browser's limiter and clamp on the core's pair make what the core's make, %d samples the same to %g"
           % (lname, len(heard), TOL), apart <= TOL and len(heard) > 500000 and float(_np.max(_np.abs(pre))) > 1.5,
@@ -7366,11 +7371,16 @@ for lname, (pre, heard, reds, prepath, heardpath) in lruns.items():
 # the core's pair a sample late, and the pair before the limiter.
 lname, (pre, heard, reds, prepath, heardpath) = next(iter(lruns.items()))
 slow, sreds = lpage(prepath, "limited", 0.11)
+slow = headroom(slow)
 check("null: the comparison fails against the browser's limiter with a release of 0.11 s",
       float(_np.max(_np.abs(slow - heard))) > 1e-4 and max(abs(a - b) for a, b in zip(sreds, reds)) > 1e-3)
 page, _ = lpage(prepath, "limited")
+page = headroom(page)
 check("null: and against the core's output a sample late", float(_np.max(_np.abs(page[2:] - heard[:-2]))) > 1e-3)
 check("null: and against the pair before the limiter", float(_np.max(_np.abs(page - pre))) > 0.5)
+unheaded, _ = lpage(prepath, "limited")
+check("null: and against the browser's nodes without the headroom", float(_np.max(_np.abs(unheaded - heard))) > 0.1,
+      "worst %.3f" % float(_np.max(_np.abs(unheaded - heard))))
 
 # The engine's pieces, held by their own numbers (stage 5, step 3, batch 2):
 # the web suites' "numbers" rows that drove a piece of the engine from the
