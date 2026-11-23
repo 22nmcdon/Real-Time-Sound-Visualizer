@@ -1909,8 +1909,29 @@ class Instrument {
       }
       meterLimiter_.process(meterL_.data(), meterR_.data(), n);
       limiter_.process(left, right, n);
+      for (int k = 0; k < n; k++) { left[k] *= kHeadroom; right[k] *= kHeadroom; }
     }
   }
+
+  /* The headroom (22 Nov, the first release for testers): the limiter's
+     output 3.5 dB down, its clamp's ceiling with it, so nothing the
+     instrument plays comes out over about -3.6 dBFS. Until then a plain sine
+     chord came out at the clamp, 0.99 - the owner's bounce of the base, a
+     six-note chord, peaked at -0.1 dB, and distorted a Mac mini's own
+     speaker - since the limiter's make-up gain (1.7 dB, Chromium's at -3 dB
+     and 20:1) lifts what it holds back up to its ceiling, and every bank
+     sound but one met it on a big chord. A gain after the limiter, rather
+     than the limiter's threshold lowered or the voices' gain staged: it
+     changes how loud everything is and nothing else - which notes are
+     limited, by how much, the meter that reads it, the picture and so Scan
+     are all as they were, and the limiter stays Chromium's to the bit
+     (limiter_page.py) - where a lower threshold would have pressed single
+     notes of the base that it leaves alone, and the voices' gain would have
+     moved the picture, which is drawn before the Output. The cost: what was
+     never limited is 3.5 dB quieter too, which the Output and the listener's
+     volume give back. Part of the limiter's stage, so a harness that turns
+     the limiter off (`limiter`, "0") hears the pair as it was. */
+  static constexpr float kHeadroom = 0.66834391756861456f;  // 10^(-3.5/20)
 
   /* The last of the picture, the page's screen, for the hearing to read: its
      left channel, and its right for the width. The band split's, as the page

@@ -834,23 +834,11 @@
 },
 {
 "id": "zoom",
-"class": "REACHES THE SOUND THROUGH THE PICTURE",
+"class": "look-only",
 "host": false,
-"figures": [
-"breathing-xy",
-"breathing-yt",
-"settled-xy",
-"settled-yt",
-"split-xy",
-"split-yt"
-],
-"most": {
-"figure": "split-yt",
-"value": "19",
-"diffDb": 0.21369116972342722,
-"spectral": 0.6463960498090325,
-"levelDb": 0.38720836274238585
-}
+"figures": [],
+"most": null,
+"note": "22 Nov: only the look since (scope/beam.h); core/tests/pieces/zoom.py holds the sound and the grid the same at every zoom. Measured before: 0.646 spectrum, split-yt at 19"
 },
 {
 "id": "amp",

@@ -224,9 +224,9 @@ with sync_playwright() as pw:
           all(" rate" in (" " + r[0].lower()) or r[1] == "Modulation" for r in rate) and rate != [],
           str(rate))
     top = search("zoom")
-    # The zoom left the strip for Scope & measure in F1, and is found there.
-    check("the strip along the top is searched too, and what left it for Scope & measure",
-          ["Zoom", "Scope & measure \u203a Window"] in top and ["Persistence", "Picture"] in search("persistence"),
+    # The zoom left the strip for Scope & measure in F1, and Scope & measure for the screen's toolbar on 22 Nov.
+    check("the screen's toolbar and the Picture section are searched too",
+          ["Zoom", "Screen"] in top and ["Persistence", "Picture"] in search("persistence"),
           str(top) + " " + str(search("persistence")[:2]))
 
     stale = p.evaluate("""() => { setMidiMode('dyad'); return null; }""")

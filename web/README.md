@@ -7963,3 +7963,150 @@ at 960x600 with two hands. `windowtest.py` and the plugin's shell test hold both
   can be the plugin's face for a check of the face alone by defining `window.__JUCE__ = {}`
   before the page's script: with no `backend` the page still plays through its own worklet
   (`scopeHost` falls back), and everything that asks `IN_PLUGIN` answers as in the plugin.
+
+## The first release for testers: Paint held back, headroom, and WebKit (22 Nov)
+
+Three jobs before the owner sends the stable site to testers.
+
+**Paint held back from the stable site.** The owner: "I'm going to remove the paint option from
+the first deliverable until it is more complete." One switch decides it, `RELEASE` at the top of
+the page's script, by the storage shim's own test: served over http or https at a path not
+under `/testing/` is the stable site; a file from the disk (every other suite), the testing site
+and the plugin (`window.__JUCE__`) are not. `?site=stable` and `?site=testing` override it from
+anywhere. Held, `html[data-held-paint]` hides every `[data-paint-only]` (the display switch's
+Paint button and the cheat sheet's two Paint entries), the info line takes the words doc's
+`stable:` rows for the three controls whose line names Paint (the mod wheel, pressure and
+Persistence), the search skips what is held, and a code naming `screenDraws: paint` is drawn and
+read on the trace. `releasetest.py` holds it, each part with its null.
+
+- **What is shown and what is kept are two fields.** `state.draws` is what the screen shows, as
+  every reader of it already meant; `state.drawsKept` is the setup's word, which `snapshot()`
+  saves, so a paint code loaded on the stable site and saved again still paints on testing. The
+  instrument must hear what is shown, since Scan reads the painting in Paint: the two places a
+  whole setup reaches it (the worklet's first code and `hostSendSetup`) go through
+  `heardSetup()`, which puts `state.draws` back over the kept word. A third place sending
+  `encodeSetup(snapshot())` to the instrument would paint underneath a trace, silently - the
+  check reads the instrument's own `scopeState` for that reason, not the page's.
+- **The plugin later.** It keeps Paint for now. To hold it back there, the plugin's boot (where
+  it already passes `pictureUrl` and the rest) would pass its own word and `RELEASE` read it,
+  rather than a third guess from the address; the core needs nothing, being told trace.
+
+**Headroom.** A plain sine chord came out at the clamp: the owner's bounce of the base, six
+notes, peaked at -0.1 dB and distorted a Mac mini's own speaker. Measured offline (render_cpp,
+velocity 127, six, eight and sixteen keys), every bank sound but *Tines at the radius* sat at
+-0.35 dBFS sample peak and up to -0.06 dBFS true peak (*Crossed hands*, sixteen keys): the
+limiter's make-up gain (1.7 dB, Chromium's at -3 dB and 20:1) lifts what it holds back to its
+ceiling, so a big chord on anything meets it. The instrument now puts the limiter's output
+3.5 dB down (`Instrument::kHeadroom`), and the loudest is -3.55 dBTP.
+
+- **Why after the limiter, and not its threshold or the voices.** A gain after it changes the
+  level and nothing else: which notes are limited and by how much, the meter that reads it, the
+  picture and so Scan are as they were, and the limiter stays Chromium's to the bit. A lower
+  threshold would have pressed single notes of the base it leaves alone; the voices' gain would
+  have moved the picture, which is drawn before the Output, and so the sound through Scan. The
+  cost is that what was never limited is 3.5 dB quieter too (*Tines at the radius*, -12.3 to
+  -15.8 dBTP). It is part of the limiter's stage, so a harness that turns the limiter off
+  (`limiter`, "0") hears the pair exactly as before.
+- **"Only the level" is a check, not a claim.** `core/tests/pieces/headroom.py` builds the core
+  a second time with the trim at one and renders a Breathing preset and the base through both:
+  the heard pair is the other's times the trim to 5e-8, the picture's lanes the same to the bit.
+- **A true peak is read between the samples.** The piece reads it four times oversampled by the
+  spectrum zero-padded, and its own null is a quarter-rate sine 45 degrees off its peaks, whose
+  samples read 3 dB short of it. Four times still misses up to 0.17 dB on a tone at a quarter of
+  the rate whose peak falls between the new points, which is every meter's error and why the line
+  is held with half a decibel to spare.
+
+**WebKit and Firefox.** Playwright's WebKit and Firefox could not be fetched: the pre-installed
+Playwright (1.64.1) asks `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`, and
+the environment's network refuses both (`403 request blocked: no rule or allowlist entry allows
+host`). No Firefox is installed either, so the page is untested in Gecko. WebKitGTK 2.52 is
+installed for the plugin's web view, with GObject bindings for the system's python3.12, and it
+is Safari's engine - WebKit, JavaScriptCore, its Web Audio and AudioWorklet - without Safari's
+shell or the Mac's audio. `webkittest.py` drives it under `xvfb-run` (through
+`webkit_page.py`) with autoplay refused as Safari refuses it, and a real click sent through GTK.
+At 1400x900 and 1100x680 on the root, and 1400x900 on testing with Paint pressed: no error,
+rejection or console warning; the sound starts on the click, in the AudioWorklet with the
+compiled core (not the stand-in); a dyad reaches the lanes and the trace; no tab scrolls, nor
+the page; Scope & measure, the browser and Settings open, neither panel scrolling; Paint paints.
+Nothing had to be fixed. Its first null was red where it should not have been: a 3000 px block
+put in the Bench to prove the fit check can see an overflow read nought, because the Bench is a
+flex box and squeezed the block to 351 px - the null's block now refuses to shrink.
+
+One difference the numbers do not see, from screenshots set side by side (`WEBKIT_SHOTS=dir`
+keeps them): WebKitGTK draws a `<select>` with its GTK theme's own padding inside the box, so
+the fixed-height ones - the figures' *Shape…* (22 px) - have their text clipped at the bottom,
+and the Keyboard's Outline menu shows *bass + meloc*. Safari on a Mac draws a styled select with
+its own metrics, not GTK's, so this does not say Safari clips them; it is item 9 of the list
+below, for the owner's eye, rather than a change made blind - `appearance: none` on every menu
+would change each one's box in Chromium too, which `patchtest.py` holds to half a pixel.
+
+What it cannot see, and the owner's checklist for real Safari on the Mac, both sites:
+
+1. Open the root. Nothing sounds until the first click; then press **M** and play A, S, D: the
+   figure draws and you hear it. Safari's address bar shows no "autoplay blocked" mark after.
+2. Develop > Show JavaScript Console (Settings > Advanced > *Show features for web developers*
+   first): no red line from opening, through playing, to the end of this list.
+3. Play a six-note chord with the on-screen keys at full Output: no crackle on the built-in
+   speakers (the headroom above).
+4. Play, Ink, Space & Memory: none scrolls. Scope & measure, Browse (load two presets and hear
+   them change) and Settings each open and close. Enlarge, then Esc.
+5. The display switch at the root has Y–T, X–Y and Spect and no Paint; under `/testing/` it has
+   Paint, and pressing it paints.
+6. Settings > This window > Size at 90 and 125 per cent, then a window about 1100 by 680: the
+   face still fits (CSS `zoom`, which Safari has long had).
+7. With a MIDI keyboard: Safari has no Web MIDI, so Settings' MIDI says there is none and the
+   on-screen keys and the computer keyboard are the way to play. That is expected, not a fault.
+8. Leave a chord held for a minute and switch to another tab and back: the sound and the trace
+   carry on or resume (Safari suspends audio in hidden tabs more readily than Chromium).
+9. On Play, the Amp figure's *Shape…* menu and the Keyboard's Outline menu (*bass + melody*):
+   is the text whole, not clipped at the bottom or cut short at the arrow?
+
+## Zoom only the look and on the toolbar, and a readout that never moves the screen (22 Nov)
+
+Two more for the first release, from the owner.
+
+**Zoom.** "I don't think zoom should affect the sound anymore. It feels wrong. And it should be
+a setting that is always readily available." The beam laid the grid Scan reads magnified by the
+zoom (`scope/beam.h`), so the zoom changed the sound - 0.646 of the spectrum's distance at its
+worst in the reach audit. Now the beam lays the whole record and the figure at its own size at
+any zoom, and the face magnifies its own drawing as before; `Screen::zoom` stays, as the look's
+value the view's readings carry. `core/tests/pieces/zoom.py` holds the sound and the grid the same
+to the bit at 4x, 16x and 64x in X–Y and Y–T, and under an LFO on the zoom, each against a copy
+of the core with the old beam.
+
+- **What is stored.** The zoom stays a setup field, as the display is: a look a code can carry,
+  with no migration, since none of the bank's presets has a zoom or a routing on it. Of the old
+  library's 267 setups (`core/tests/scenarios/library-p8f.json`, a test corpus, not shipped) one
+  has a zoom, *Edge, magnified* at 16 (a display preset, magnified on purpose), and one routes an
+  LFO to it, *Bass zooms in*; both now sound as they would at 1x, and look as they did.
+- **On the toolbar, a knob alone.** Moved, never copied, from Scope & measure's Time to after
+  *Clear*, so it goes into Enlarge with the screen. With its name and reading it took a row the
+  toolbar has not got - at 1400x900 on testing there were 5 px to spare, at 960x600 4 - and moved
+  the screen down by it; alone, with the toolbar's gap 12 px where it was 18 and the display
+  switch's buttons 8 px each side where they were 11, every window keeps its rows. Its name and
+  value are the info line's and the readout's ("2.0x zoom"). It is a knob by `knobInput`'s list
+  (`.screen-zoom`), searched under *Screen*, and `showControl` finds it without a panel.
+  `zoomtest.py` holds it at every window, its null the knob with its name and reading shown.
+- **Two traps.** A knob alone among menu rows gets a 6 px top margin from the rule for that case,
+  which made the toolbar's second row 2 px taller and moved the screen; the zoom's rule is by id
+  to out-rank it. And the Bench's flex box squeezes a plain tall block to fit, so a fit check's
+  null that appends one reads nought (webkittest's first try): a null's block must refuse to shrink.
+- **The photocell on a magnified screen.** The grid it reads is unmagnified now, so its reticle
+  is put where its cell is drawn - in X–Y scaled about the middle, in Y–T through the slice the
+  screen shows (`gridToScreen`, `ytSlice`) - and a drag comes back the same way; a cell
+  magnified off the screen hides the reticle until it is on it again.
+- **The goldens.** The beam's recordings with a zoom moved, and so did two of restore's: those
+  scenarios walk the page's sliders at random in the markup's order, and the zoom's slider moved,
+  so the walks touched other view sliders; between the old and new recordings only the five view
+  fields differ (level, position, timebase, holdoff, zoom), the instrument's state is the same.
+  The beam's own null "against a zoom one step less" became a timebase one step shorter, beside
+  a check that the Y–T run with every zoom put back to one lays the same grids.
+
+**The line under the screen.** "In fullscreen mode and not Picture only, the information beneath
+it ... sometimes causes the view to shift, because it gets too long and pushes everything up." The
+readout was a wrapping flex row; a long detail (a chord's outline in both hands, the loop's
+verdict) took a second line out of the enlarged screen's height. It is a grid of one-line boxes
+now - the verdict, the detail, *Looking for* - each cut with an ellipsis and whole in its title; on
+the face's narrow column the detail has a line of its own under the verdict. `readouttest.py`
+holds the screen's box the same to the pixel with the line short, the longest the page makes and
+a longer one, in Enlarge and on the face at every window; under the old row it moves at all six.

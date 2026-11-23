@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-403 controls: 403 lines, none marked as removed by a later stage, 90 wanting a paragraph
+406 controls: 406 lines, none marked as removed by a later stage, 90 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -676,7 +676,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | mtab-trigger | Trigger | Where the trace starts: the edge, the source lane, the level, the position and the holdoff, drawn on a trace. Its summary is the four. | 134 | - |
-| mtab-time | Time | How much time the screen holds and the slice Zoom keeps, the keys' pitch, and the lag. Its summary is the timebase and the zoom. | 128 | - |
+| mtab-time | Time | How much time the screen holds and the slice the toolbar's Zoom shows of it, the keys' pitch, and the lag. Its summary is the timebase. | 135 | - |
 | mtab-vertical | Vertical | Each lane's scale and offset, AC and mid / side, and the trace filter with its response. Its summary is the lanes shown and the filter. | 135 | - |
 | mtab-measure | Measure | The readouts under the screen, the cursors, what the numbers read and a saved reference. Its summary is whether each shows. | 123 | - |
 | run | Stop | Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent. | 144 | - |
@@ -702,7 +702,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | timebase | Timebase | How much time the screen holds, from a millisecond to half a second across. Scan reads what it holds, in X–Y as in Y–T, so the sound changes too. | 145 | yes — the longest settings depend on the converter’s rate (743 ms at 44.1 kHz, 341 at 96); past it the reading says past the buffer |
-| zoom | Zoom | Magnifies: in Y–T a slice around the trigger, in X–Y the figure, on the spectrogram the band. Scan reads it as drawn, so the sound changes too. | 143 | - |
+| zoom | Zoom | Magnifies the screen: in Y–T a slice around the trigger, in X–Y the figure, on the spectrogram the band. Only the look: Scan reads the whole. | 141 | - |
 
 ### Scope & measure › Lanes
 
@@ -789,3 +789,16 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | presetCode | Setup code | The whole setup as text: copy it to send a sound to someone, or paste one in and press Paste to load it. | 104 | yes — what a code holds and does not (the source, the fade, Settings), and that the site and the plugin read each other’s |
 | presetCopy | Copy | Copies the setup code of the sound as it is now, for a message, another browser or the plugin. | 94 | - |
 | presetPaste | Paste | Loads the code pasted into the field, or else the one on the clipboard if the browser hands it over. | 100 | - |
+
+### Without Paint, on the stable site
+
+Paint is held back from the stable site for the first release (22 Nov; `RELEASE` at the top
+of the page's script). A control whose line names Paint has a second line here, keyed
+`stable:` and its id, which the stable site shows in its place; the testing site, a file
+and the plugin show the line above. Not controls of their own, so not counted with them.
+
+| id | name | line | chars | paragraph |
+|---|---|---|---|---|
+| stable:midiWheelTo | Mod wheel | The wheel moves a vibrato, the Picture amount, Scan's depth or nothing. | 71 | - |
+| stable:midiPressureTo | Pressure | Leaning on a held key moves a vibrato, the Picture amount, Scan's depth or nothing. | 83 | - |
+| stable:scanMemory | Persistence | How long a stroke takes to fade to half. Longer, and the tone and the picture’s reads remember more. | 100 | - |
