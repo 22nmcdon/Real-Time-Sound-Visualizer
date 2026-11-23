@@ -2843,6 +2843,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 .perform-knobs > .tempo-row.knob-row { grid-template-columns: auto auto; grid-template-areas: "value ." "face extra" "name ."; column-gap: 8px; }
 .perform-knobs > .tempo-row.knob-row > .grow > #tempoTap { grid-area: extra; align-self: center; }
 .picture-panel { position: fixed; width: min(700px, calc(100vw - 32px)); max-height: none; overflow: visible; }
+/* Over the on-screen keys (z-index 80), which cover the foot of the window: standing on the bar from its
+   link since 23 Nov, its last rows are where the keys are, and a panel opened is the nearer thing. */
+.picture-panel { z-index: 85; }
 .picture-halves { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; align-items: start; }
 .half-title { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--blush-deep);
   margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }

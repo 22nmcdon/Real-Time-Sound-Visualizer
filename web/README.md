@@ -8193,3 +8193,6 @@ Two of the owner's, from testing the release (`web/docs/release-polish/`):
   null of the slider forced onto the toolbar at 1400x900. Because it can be in the side column
   outside the toolbar, `showControl` and the search look for it by its own box, `el.screenZoom`, not
   inside `el.screenTools`: both lost it the first time.
+- **Standing on the bar put its last rows under the on-screen keys** (fixed over the window's foot,
+  z-index 80), and `inktest.py`, which presses the Graticule with the keys open, timed out on a
+  click the keys took. The panel is over them now (85): one opened is the nearer thing.
