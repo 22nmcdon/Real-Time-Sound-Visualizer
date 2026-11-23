@@ -2924,7 +2924,7 @@ _w15 = _v15_wrong(v15)
 check("version 15: every old cut, %d places on each cut and hand, decodes on where it was in, keeping its place, and off at "
       "the new start where it was at its end, past it, or not a number" % len(V15_PLACES), not _w15, repr(_w15[:3]))
 check("null: and the codes as written, unmigrated, fail the same reading", bool(_v15_wrong(V15)))
-ex15 = v15[-4:]
+ex15 = v15[-3:]
 check("an old code with no cut gains no switch and no place; a code from before 14 is brought through both passes; one made "
       "at 15 keeps what it says, its cut off; and every decode is stamped 15",
       ex15[0] and not any(k in ex15[0] for k in _AT15 + _ON15) and ex15[1] and ex15[1].get("eqCutLowOn") is True
@@ -6449,12 +6449,14 @@ check("its cuts: a code naming none has them off at 30 Hz and 18 kHz (version 15
       and ep[24]["a"][10] == 500 and ep[24]["gen"][10] == 20000 and ep[25]["gen"][9] == 3.5
       and ep[26]["own"] and abs(ep[26]["gen"][8] - _cut(300)) < 1e-9 and abs(ep[26]["genB"][8] - _cut(600)) < 1e-9
       and ep[26]["genB"][11] == 1.2 and ep[26]["gen"][11] == 0.71, repr([ep[i]["gen"][8:] for i in (23, 24, 25, 26)]))
-check("each band's switch: the high cut switched on is in where its knob put it; the mid switched off is told nought "
-      "and keeps its gain; the upper hand's own low shelf off is told nought while the lower's is in",
-      abs(ep[28]["gen"][10] - _cut(500)) < 1e-9 and ep[28]["a"][16] is True and ep[29]["gen"][2] == -6
+check("each band's switch: the high cut switched on is in at once where its knob is (its start, which row 26's setup "
+      "put back); the mid switched off is told nought and keeps its gain; the upper hand's own low shelf off is told nought "
+      "while the lower's is in",
+      ep[27]["gen"][10] == 20000 and ep[28]["a"][10] == 985 and abs(ep[28]["gen"][10] - _cut(985)) < 1e-9 and ep[28]["a"][16] is True and ep[29]["gen"][2] == -6
       and ep[30]["gen"][2] == 0 and ep[30]["a"][2] == -6 and ep[30]["a"][14] is False
       and ep[31]["own"] and ep[31]["gen"][0] == 4 and ep[31]["genB"][0] == 0 and ep[31]["b"][0] == 4 and ep[31]["b"][13] is False,
-      repr([(ep[i]["gen"][:3], ep[i]["genB"][:1], ep[i]["a"][12:]) for i in (28, 29, 30, 31)])[:400])
+      repr([(ep[i]["gen"][:3], ep[i]["gen"][10], ep[i]["genB"][:1], ep[i]["a"][12:], ep[i]["b"][:1], ep[i]["b"][12:], ep[i]["own"])
+            for i in (27, 28, 29, 30, 31)])[:700])
 check("null: and with the switches ignored, the mid would be told its gain", ep[30]["a"][2] != ep[30]["gen"][2])
 ewrote = sum(1 for i in range(1, len(ep)) if ep[i]["b"] != ep[i - 1]["b"] and ep[i]["own"])
 check("the runs write the upper hand's own EQ %d times" % ewrote, ewrote > 30)
@@ -6472,8 +6474,12 @@ check("null: and against the two layers' generators swapped", any(not eclose(x, 
 def _told_before(st, cut, layer):
     at = _AT15[cut]
     own = "b" + at[0].upper() + at[1:]
-    p = st.get(own, st.get(at)) if layer == 1 and own in st else st.get(at)
+    key = own if layer == 1 and own in st else at
+    # A cut a code left out was at its end before 15, out; one it names as null is a place of nought.
+    if key not in st: return 20.0 if cut == 0 else 20000.0
+    p = st[key]
     if not _v15_in(p, cut): return 20.0 if cut == 0 else 20000.0
+    if p is None: p = 0
     return 20 * 1000 ** (max(0.0, min(1000.0, float(int(p) if isinstance(p, bool) else p))) / 1000)
 _old15 = [(st, got) for st, got in zip(V15, v15) if got and st.get("v") == 14]
 _c15 = eq_core([_json.dumps(dict({"midiMode": "poly"}, **got)) for _, got in _old15])
