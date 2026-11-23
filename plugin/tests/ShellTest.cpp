@@ -885,8 +885,11 @@ int main() {
     check("and the reading fails with B's picture moving A's sound", crossedB.live && !crossedB.own);
     /* An oscillator on the zoom, sent from the page as its routings: the
        destination is the plugin's, the offset it writes is in the view, and
-       the zoom the walk draws at is made again from it after the matrix -
-       so the grid differs from the figure at the zoom's own step. And the
+       the zoom is made again from it after the matrix. Since 22 Nov the zoom
+       is only the look (scope/beam.h): the face magnifies by it and the grid
+       is laid whole, so the grid is the same as without the oscillator -
+       until then it differed, which this held. The lit reading can tell two
+       grids apart: X-Y against Y-T, above, differs by more than one. And the
        Clear button, with persistence at infinite so everything drawn stays:
        the frame after it starts the grid again. */
     const Run zoomed = run(bent, false, blocks, [](ScopeProcessor& p) {
@@ -904,9 +907,9 @@ int main() {
       for (int k = 0; k < 40; ++k) { buf.clear(); p.processBlock(buf, m); }
       zoomMod = p.view().zoomMod; zoomNow = p.view().screen.zoom; zoomStep = p.view().zoomStep;
     }
-    check("an oscillator on the zoom from the page moves the plugin's picture: the offset in the view, the zoom made again from it",
+    check("an oscillator on the zoom from the page moves the plugin's zoom and not its grid: the offset in the view, the zoom made again from it, the grid as without it",
           zoomMod != 0 && std::fabs(zoomNow - std::pow(2, (zoomStep + zoomMod) / 4)) < 1e-12 && zoomNow != std::pow(2, zoomStep / 4)
-          && std::fabs(zoomed.lit - looped.lit) > 1,
+          && std::fabs(zoomed.lit - looped.lit) < 1e-9,
           "offset " + num(zoomMod) + ", zoom " + num(zoomNow) + ", lit " + num(zoomed.lit) + " against " + num(looped.lit));
     /* Everything drawn stays only if what is drawn moves on: the pendulums
        shrank as they ran down and laid each figure inside the last, until G2
@@ -1290,7 +1293,8 @@ int main() {
     };
     const auto [off, routed, bright, pitch] = listen(true);
     const auto [offU, plain, brightU, pitchU] = listen(false);
-    const double heard = apart(routed, plain, 0, routed.size());
+    // Read before the headroom (22 Nov, Instrument::kHeadroom): the heard pair is 3.5 dB down, and this bound was set on it at full.
+    const double heard = apart(routed, plain, 0, routed.size()) / std::pow(10.0, -3.5 / 20);
     check("the hearing reads the picture as the page would, step by step, the held A3 its pitch; and brightness on the twist is heard",
           off == 0 && bright > 0.1 && std::fabs(pitch - std::log2(220 / scope::kPitchRef) / 2) < 1e-9 && heard > 0.05,
           "off by " + num(off) + ", brightness " + num(bright) + ", pitch " + num(pitch) + "; without the routing it differs by " + num(heard));
