@@ -2834,6 +2834,22 @@ V14 += [{"v": 13, "eqLow": 30}, {"v": 13, "freq": 330}, {"v": 13, "bEqHigh": -20
         {"v": 13, "eqLowFreq": "abc", "bEqMidFreq": "abc", "eqOn": True}, {"v": 14, "eqLowFreq": 50, "eqOn": True}]
 V14_FROM = len(scmds)
 scmds += ["decode " + code_of(_json.dumps(st, separators=(",", ":"))) for st in V14]
+# Version 15 (23 Nov): each EQ band its own switch, and the cuts starting off at
+# 30 Hz and 18 kHz where they had started out at their ends. Each cut's place
+# in and out, at its end, past it, a hair inside it, as a string and not a
+# number; the upper hand's own in, out and left out; a code with none; and
+# one made at 15, which keeps what it says. Held below to what the generator
+# was told before the pass and is told after it, in the EQ's section.
+V15_PLACES = [0, 0.0, 1e-300, 1e-12, 1, 59, 300, 500, 999, 999.999999, 1000, 1000.5, 1200, -5, "300", "abc", None, True, "7.5"]
+V15 = [{"v": 14, "eqOn": True, cut: p, "layers": "layer", "midiMode": "poly"}
+       for cut in ("eqCutLowFreq", "eqCutHighFreq") for p in V15_PLACES]
+V15 += [{"v": 14, "eqOn": True, "eqCutLowFreq": a, "bEqCutLowFreq": b, "eqCutHighFreq": c, "bEqCutHighFreq": d,
+         "bPlane": True, "layers": "layer", "midiMode": "poly"}
+        for a, b, c, d in [(300, 0, 1000, 400), (0, 300, 600, 1000), (0, 0, 1000, 1000), (300, 500, 700, 900), (-5, "abc", 1200, 999)]]
+V15 += [{"v": 14, "eqOn": True, "bEqCutHighFreq": 500, "bPlane": True, "layers": "layer", "midiMode": "poly"},
+        {"freq": 330}, {"v": 13, "eqCutLowFreq": 300}, {"v": 15, "eqCutLowFreq": 300, "eqOn": True}]
+V15_FROM = len(scmds)
+scmds += ["decode " + code_of(_json.dumps(st, separators=(",", ":"))) for st in V15]
 sjs, scpp = sboth(scmds, "setup.txt")
 bad = [i for i, (a, b) in enumerate(zip(sjs, scpp)) if a != b]
 v11 = sjs[V11_FROM:V11_FROM + len(V11)]
@@ -2879,6 +2895,41 @@ check("an old code with the EQ in it and a band left out has that band's old mid
       and "bEqHighFreq" not in ex[2] and ex[3] and abs(_new_hz(ex[3]["eqLowFreq"]) - 160) < 1e-9 * 160
       and ex[3]["bEqMidFreq"] == "abc" and ex[4] and ex[4]["eqLowFreq"] == 50 and ex[0]["v"] >= 14,
       repr(ex)[:400])
+v15 = [_json.loads(l[5:]) if l.startswith("read ") else None for l in scpp[V15_FROM:V15_FROM + len(V15)]]
+def _v15_in(p, cut):
+    """In before version 15, as restore read it: a number held to the knob's ends, its hertz past the cut's end."""
+    if p is None: p = 0
+    if isinstance(p, bool): p = int(p)
+    try: p = float(p)
+    except (TypeError, ValueError): return False
+    if not math.isfinite(p): return False
+    hz = 20 * 1000 ** (max(0.0, min(1000.0, p)) / 1000)
+    return hz > 20 if cut == 0 else hz < 20000
+_AT15, _ON15 = ["eqCutLowFreq", "eqCutHighFreq"], ["eqCutLowOn", "eqCutHighOn"]
+def _v15_wrong(rows):
+    """Each old cut against its decode: in, it is on and keeps its place; out, it is off (no switch, or false)."""
+    bad = []
+    for st, got in zip(V15, rows):
+        if not got: bad.append((st, got)); continue
+        for cut in (0, 1):
+            for pre in ("", "b"):
+                at = pre + (_AT15[cut] if not pre else _AT15[cut][0].upper() + _AT15[cut][1:])
+                on = pre + (_ON15[cut] if not pre else _ON15[cut][0].upper() + _ON15[cut][1:])
+                if at not in st or st.get("v") == 15: continue
+                was = _v15_in(st[at], cut)
+                if was != (got.get(on) is True) or (was and got.get(at) != st[at]) or (not was and at in got):
+                    bad.append((at, st[at], got.get(on), got.get(at)))
+    return bad
+_w15 = _v15_wrong(v15)
+check("version 15: every old cut, %d places on each cut and hand, decodes on where it was in, keeping its place, and off at "
+      "the new start where it was at its end, past it, or not a number" % len(V15_PLACES), not _w15, repr(_w15[:3]))
+check("null: and the codes as written, unmigrated, fail the same reading", bool(_v15_wrong(V15)))
+ex15 = v15[-4:]
+check("an old code with no cut gains no switch and no place; a code from before 14 is brought through both passes; one made "
+      "at 15 keeps what it says, its cut off; and every decode is stamped 15",
+      ex15[0] and not any(k in ex15[0] for k in _AT15 + _ON15) and ex15[1] and ex15[1].get("eqCutLowOn") is True
+      and ex15[1]["eqCutLowFreq"] == 300 and ex15[2] and ex15[2].get("eqCutLowFreq") == 300 and "eqCutLowOn" not in ex15[2]
+      and all(r and r["v"] == 15 for r in v15), repr(ex15)[:400])
 # The site's setup codes (5e), as the page makes them: its defaults and its
 # table of fields read off the page as it evaluates them, and the compiled
 # core's codec, from the module the page carries, through the page's own
@@ -6260,8 +6311,10 @@ from playwright.sync_api import sync_playwright as _sync_playwright
 EQ_IDS = ["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq",
           "eqCutLowFreq", "eqCutLowQ", "eqCutHighFreq", "eqCutHighQ"]
 # And its switch, a field since 17 Nov (eqOn): the last of the seven, so the indices above it keep their places.
+# And each band's switch (23 Nov), after them all, 12 to 16 in the range's order.
+EQ_ON = ["eqCutLowOn", "eqLowOn", "eqMidOn", "eqHighOn", "eqCutHighOn"]
 EQ_KEYS = ["eqLow", "eqLowPos", "eqMid", "eqMidPos", "eqWidth", "eqHigh", "eqHighPos", "eqOn",
-           "eqCutLowPos", "eqCutLowQ", "eqCutHighPos", "eqCutHighQ"]
+           "eqCutLowPos", "eqCutLowQ", "eqCutHighPos", "eqCutHighQ"] + EQ_ON
 EQ_GEN = ["eqLow", "eqLowHz", "eqMid", "eqMidHz", "eqMidWidth", "eqHigh", "eqHighHz", "eqOn",
           "eqCutLowHz", "eqCutLowQ", "eqCutHighHz", "eqCutHighQ"]
 EQ_PAGE = """async (lines) => {
@@ -6314,14 +6367,16 @@ def eop():
     if c < 0.8: return {"op": "click", "id": erng.choice(["editHandA", "editHandB"])}
     if c < 0.85: return {"op": "change", "id": "midiLayers", "value": erng.choice(["off", "split", "layer", "layer"])}
     # The EQ's switch, a field (17 Nov): pressed as the page's button presses its box.
-    if c < 0.89: return {"op": "change", "id": "eqOn", "value": erng.choice([True, False])}
-    if c < 0.93:
+    if c < 0.87: return {"op": "change", "id": "eqOn", "value": erng.choice([True, False])}
+    # Each band's switch (23 Nov), as the strip's lamp presses its box.
+    if c < 0.91: return {"op": "change", "id": erng.choice(EQ_ON), "value": erng.choice([True, False])}
+    if c < 0.94:
         st = {k: evalue(i) for k, i in zip(["eqLow", "eqMidFreq", "bEqLow", "bEqHighFreq", "bEqMidWidth", "eqCutHighFreq",
                                               "bEqCutLowFreq", "bEqCutLowQ"],
                                              ["eqLow", "eqMidFreq", "eqLow", "eqHighFreq", "eqMidWidth", "eqCutHighFreq",
                                               "eqCutLowFreq", "eqCutLowQ"]) if erng.random() < 0.6}
-        for k in ("eqOn", "bEqOn"):
-            if erng.random() < 0.5: st[k] = erng.choice([True, False, "yes", 1])
+        for k in ["eqOn", "bEqOn"] + EQ_ON + ["b" + k[0].upper() + k[1:] for k in EQ_ON]:
+            if erng.random() < 0.4: st[k] = erng.choice([True, False, "yes", 1])
         st.update(bPlane=erng.choice([True, True, False]), layers=erng.choice(["split", "layer"]), midiMode="poly")
         return st
     return _json.loads(erng.choice(presets))
@@ -6346,8 +6401,13 @@ EMADE = [{}, {"op": "click", "id": "midiPoly"}, {"op": "change", "id": "midiLaye
          # The cuts (23 Nov): a code with none at their ends, one pulled in by its knob, and the upper hand's own.
          {"eqOn": True}, {"op": "slider", "id": "eqCutHighFreq", "value": 500},                                    # 23, 24
          {"op": "slider", "id": "eqCutLowQ", "value": 350},                                                        # 25
-         {"bPlane": True, "eqOn": True, "eqCutLowFreq": 300, "bEqCutLowFreq": 600, "bEqCutHighQ": 120,
-          "layers": "layer", "midiMode": "poly"}]                                                                   # 26
+         {"bPlane": True, "eqOn": True, "eqCutLowFreq": 300, "eqCutLowOn": True, "bEqCutLowFreq": 600, "bEqCutHighQ": 120,
+          "layers": "layer", "midiMode": "poly"},                                                                   # 26
+         # The bands' switches (23 Nov): the high cut's on, pulled in by 24's knob; the mid off with a gain; the
+         # upper hand's own low shelf off while the lower's is on.
+         {"op": "change", "id": "midiLayers", "value": "off"}, {"op": "change", "id": "eqCutHighOn", "value": True},  # 27, 28
+         {"op": "slider", "id": "eqMid", "value": -60}, {"op": "change", "id": "eqMidOn", "value": False},          # 29, 30
+         {"bPlane": True, "eqOn": True, "eqLow": 40, "bEqLowOn": False, "layers": "layer", "midiMode": "poly"}]      # 31
 def erun():
     start = [_json.loads(erng.choice(presets)) if erng.random() < 0.5 else {}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": erng.choice(["split", "layer"])},
@@ -6381,17 +6441,54 @@ check("its switch, a field: pressed, the lower's is in and the generator told; a
       and ep[22]["own"] and ep[22]["a"][7] is True and ep[22]["b"][7] is False and ep[22]["genB"][7] is False, repr(ep[20:23])[:300])
 check("null: and a setup without it is off", ep[19]["a"][7] is False or ep[18]["a"][7] is False, repr(ep[18]["a"]))
 _cut = lambda p: 20 * 1000 ** (p / 1000)
-check("its cuts: a code naming none has them at their ends (20 Hz, 20 kHz, Q 0.71) and the generator is told so; a knob "
-      "pulls one in; a setup's upper hand has its own, unlinked",
-      ep[23]["gen"][8:12] == [20, 0.71, 20000, 0.71] and abs(ep[24]["gen"][10] - _cut(500)) < 1e-9 and ep[25]["gen"][9] == 3.5
+check("its cuts: a code naming none has them off at 30 Hz and 18 kHz (version 15), and the generator is told them at their "
+      "ends, out; a knob written with no hand on it moves one and leaves it off; a setup that switches one on has it in, "
+      "and its upper hand its own place, unlinked",
+      ep[23]["gen"][8:12] == [20, 0.71, 20000, 0.71] and ep[23]["a"][8] == 59 and ep[23]["a"][10] == 985
+      and ep[23]["a"][12] is False and ep[23]["a"][16] is False
+      and ep[24]["a"][10] == 500 and ep[24]["gen"][10] == 20000 and ep[25]["gen"][9] == 3.5
       and ep[26]["own"] and abs(ep[26]["gen"][8] - _cut(300)) < 1e-9 and abs(ep[26]["genB"][8] - _cut(600)) < 1e-9
       and ep[26]["genB"][11] == 1.2 and ep[26]["gen"][11] == 0.71, repr([ep[i]["gen"][8:] for i in (23, 24, 25, 26)]))
+check("each band's switch: the high cut switched on is in where its knob put it; the mid switched off is told nought "
+      "and keeps its gain; the upper hand's own low shelf off is told nought while the lower's is in",
+      abs(ep[28]["gen"][10] - _cut(500)) < 1e-9 and ep[28]["a"][16] is True and ep[29]["gen"][2] == -6
+      and ep[30]["gen"][2] == 0 and ep[30]["a"][2] == -6 and ep[30]["a"][14] is False
+      and ep[31]["own"] and ep[31]["gen"][0] == 4 and ep[31]["genB"][0] == 0 and ep[31]["b"][0] == 4 and ep[31]["b"][13] is False,
+      repr([(ep[i]["gen"][:3], ep[i]["genB"][:1], ep[i]["a"][12:]) for i in (28, 29, 30, 31)])[:400])
+check("null: and with the switches ignored, the mid would be told its gain", ep[30]["a"][2] != ep[30]["gen"][2])
 ewrote = sum(1 for i in range(1, len(ep)) if ep[i]["b"] != ep[i - 1]["b"] and ep[i]["own"])
 check("the runs write the upper hand's own EQ %d times" % ewrote, ewrote > 30)
 check("null: and the comparison fails against the page's hands one out of step",
       any(not eclose(x, y) for x, y in zip(epage[1:], ecore[:-1])))
 eflip = [dict(r, gen=r["genB"], genB=r["gen"]) for r in ecore]
 check("null: and against the two layers' generators swapped", any(not eclose(x, y) for x, y in zip(epage, eflip)))
+# Version 15 plays every old setup as it played (23 Nov): each old code above,
+# decoded by the core's migrateSetup and restored, tells each layer's
+# generator the cuts that the code told it before the pass - in where it was
+# in, at the place it had, and at its end exactly where it was out, which is
+# what an off cut is told - so the chain runs the same filters, to the bit.
+# What it was told before is worked out here from the code as written, by
+# the rule restore read it by until 15.
+def _told_before(st, cut, layer):
+    at = _AT15[cut]
+    own = "b" + at[0].upper() + at[1:]
+    p = st.get(own, st.get(at)) if layer == 1 and own in st else st.get(at)
+    if not _v15_in(p, cut): return 20.0 if cut == 0 else 20000.0
+    return 20 * 1000 ** (max(0.0, min(1000.0, float(int(p) if isinstance(p, bool) else p))) / 1000)
+_old15 = [(st, got) for st, got in zip(V15, v15) if got and st.get("v") == 14]
+_c15 = eq_core([_json.dumps(dict({"midiMode": "poly"}, **got)) for _, got in _old15])
+_miss15 = []
+for (st, _), r in zip(_old15, _c15):
+    for cut, idx in ((0, 8), (1, 10)):
+        for layer, gk in ((0, "gen"), (1, "genB")):
+            want = _told_before(st, cut, layer)
+            if abs(r[gk][idx] - want) > 1e-12 * want: _miss15.append((st, cut, layer, r[gk][idx], want))
+check("version 15: each of %d old codes, migrated and restored, tells both layers' generators the cuts it told them before "
+      "the pass, in or at their ends, to the bit" % len(_old15), not _miss15 and len(_old15) > 40, repr(_miss15[:2])[:400])
+_raw15 = eq_core([_json.dumps(dict({"midiMode": "poly"}, **st)) for st, _ in _old15])
+check("null: and the same codes restored without the pass lose every cut that was in, which a code since 15 left off",
+      sum(1 for (st, _), r in zip(_old15, _raw15) for c, i in ((0, 8), (1, 10))
+          if abs(r["gen"][i] - _told_before(st, c, 0)) > 1e-9 * _told_before(st, c, 0)) > 10)
 
 golden.section("the generator in WebAssembly")
 # The core's generator compiled for the browser, the module the page carries,

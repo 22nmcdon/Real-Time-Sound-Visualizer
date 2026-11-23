@@ -249,6 +249,19 @@ The same six inks are the modulation sources' colours: each source carries one
 control are painted in it. So the inks are a register the whole Bench draws from, not
 only the traces' colours, and a source's ink says nothing about which lane it comes from.
 
+The EQ's five bands draw from the same register (23 Nov, the owner's, after
+`web/docs/mockups/eq-bands/`): the low cut olive (`--ch3`), the low shelf terracotta
+(`--ch6`), the mid slate (`--ch2`), the high shelf the lane sage (`--ch4`) and the high cut
+plum (`--ch5`), each the same for the band's cell in the strip, its point, its own curve and
+its knobs' rings, while the sum of them stays charcoal, the sixth. So there is no new token,
+and the six-ink measurement covers them. They are ordered so that bands next to each other in
+the range, which overlap the most, are never the two greens or the two warm inks; the mockup's
+checks measured the five and charcoal at a worst CIEDE2000 of 20.6, and 11.1 and 9.5 under
+simulated deuteranopia and protanopia, each clearing 3:1 on paper and cream. The knobs' rings
+are the one place a band's ink stands where the house has blush-deep, and only inside that
+editor. With the hands unlinked the upper hand's ink is olive, the low cut's, so there the
+upper hand's curve is drawn charcoal (the sum) or grey (the other hand's dashes) instead.
+
 ### The spectrogram ramp
 
 Built from brand tokens only - paper, cream-2, blush, blush-deep, rust, charcoal - with

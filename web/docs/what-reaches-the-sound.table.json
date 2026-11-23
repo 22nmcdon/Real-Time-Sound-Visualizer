@@ -4235,6 +4235,54 @@
 "note": "presses eqOn; not measured by the audit, which ran before it"
 },
 {
+"id": "eqCutLowOn",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "the low cut's own switch, a field since 23 Nov (version 15), pressed by its lamp in the EQ's strip; off is the band out of the chain to the bit, told as a gain of nought or a cut at its end (web/tests/eqtest.py)"
+},
+{
+"id": "eqLowOn",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "the low shelf's own switch, a field since 23 Nov (version 15), pressed by its lamp in the EQ's strip; off is the band out of the chain to the bit, told as a gain of nought or a cut at its end (web/tests/eqtest.py)"
+},
+{
+"id": "eqMidOn",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "the mid's own switch, a field since 23 Nov (version 15), pressed by its lamp in the EQ's strip; off is the band out of the chain to the bit, told as a gain of nought or a cut at its end (web/tests/eqtest.py)"
+},
+{
+"id": "eqHighOn",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "the high shelf's own switch, a field since 23 Nov (version 15), pressed by its lamp in the EQ's strip; off is the band out of the chain to the bit, told as a gain of nought or a cut at its end (web/tests/eqtest.py)"
+},
+{
+"id": "eqCutHighOn",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "the high cut's own switch, a field since 23 Nov (version 15), pressed by its lamp in the EQ's strip; off is the band out of the chain to the bit, told as a gain of nought or a cut at its end (web/tests/eqtest.py)"
+},
+{
+"id": "eqBandReset",
+"class": "sound by design",
+"host": false,
+"figures": [],
+"most": null,
+"note": "puts the chosen band's knobs back where they start, as each point's Reset does; not measured by the audit, which ran before it"
+},
+{
 "id": "eqThumb",
 "class": "face only",
 "host": false,

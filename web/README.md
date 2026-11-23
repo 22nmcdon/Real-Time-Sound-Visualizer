@@ -8110,3 +8110,52 @@ now - the verdict, the detail, *Looking for* - each cut with an ellipsis and who
 the face's narrow column the detail has a line of its own under the verdict. `readouttest.py`
 holds the screen's box the same to the pixel with the line short, the longest the page makes and
 a longer one, in Enlarge and on the face at every window; under the old row it moves at all six.
+
+## The EQ's band strip: each band its own, and points under the hand (23 Nov)
+
+The owner, after using the five-point EQ: a cut dragged to the right "eventually forces you to
+follow the line and no longer follows the mouse", and "it is hard to tell which dot is which
+filter, and what the filter curve actually is for that specific filter". The mockup
+(`web/docs/mockups/eq-bands/`, with its own checks) was approved as it stood, and built:
+
+- **A strip of the five bands** across the editor's top, in the range's order, each cell its
+  band's ink, shape, name, lamp and values on one line (`buildEqStrip`, `paintEqStrip`). The lamp
+  is the band's switch; pressing the cell chooses the band. Only the chosen band's knobs are in the
+  foot (`eqShowKnobs`); the others wait in `#eqStore`, so every id still resolves for the plugin's
+  panel, the morph and the host. The foot has room again for the line on what the point does.
+- **Each band its own ink**, the lane inks (`EQ_INK`; DESIGN.md section 10), the same for its cell,
+  point, own curve and knobs' rings, the sum still charcoal; the chosen band's curve stroked at 2
+  and its area to nought washed in its ink. An off band draws no curve and its point is a dashed
+  grey ring. No new token, so `designtest.py` had nothing to add.
+- **Points on their own values** (`eqPointDb`): the mid at its gain, a shelf at half its gain (where
+  the node's shelf is at its corner), a cut at 20 log10 Q - so each point is on its own coloured
+  curve - and the pointer is the values straight (`eqFromPointer`), less where the hand took hold,
+  held inside the plot. Until now the drag moved the values by how far the hand had gone and drew
+  the point on the sum, so a cut taken right rode the high shelf's step away from the pointer. The
+  rack line's small curve keeps its dots on the sum (`eqSumPointDb`): it is a reading, never dragged.
+- **Each band's switch, stored** (`eqCutLowOn`, `eqLowOn`, `eqMidOn`, `eqHighOn`, `eqCutHighOn`, and
+  `b` twins under the EQ's link). A band off is told to the chain as what it already leaves out - a
+  gain of nought, a cut at its end - by the page's `eqFields` and the core's `eqSend` alike, so the
+  plane's own skip is the switch and an off band is out to the bit, with no change to `plane.h`. A
+  band moved by a hand while off switches on (`eqHand`), as the EQ does.
+- **The cuts start off at 30 Hz and 18 kHz** (places 59 and 985), where switching one on acts at
+  once; until now they started at their ends, out, where switching on would have done nothing.
+  That changed a default, so it is setup version 15: the core's `migrateSetup` switches on a cut an
+  old code had in, keeping its place, and takes one at its end, past it or unreadable to the new
+  start, off. "In" is read by the chain's own test on the hertz, so a place a hair inside an end
+  whose hertz rounds to it is out there as it was. `core_tests.py` feeds every kind of old cut
+  through the pass and then holds what both layers' generators are told, before and after, to the
+  bit; its null restores the same codes without the pass and loses every cut that was in.
+
+Three traps on the way:
+
+- **The repaint key did not know the switches.** `paintEqPlot` skips a paint whose key has not
+  changed, and the key is `ECHO_EQ_KEYS`; a lamp pressed changed nothing in it, so the curve of a
+  band switched off stayed drawn. The keys include the switches now.
+- **Moving the chosen point to draw it on top re-ordered Tab.** Re-appending it made it the last
+  point in the markup, so Shift+Tab from the mid went to the high cut, which then moved, and Tab
+  left the plot. The points stay in the range's order; a `<use>` of the chosen one is drawn over
+  them, taking no pointer and no focus.
+- **A narrow mid's peak missed its own path by 3 px.** The bands' own paths were sampled on the 360
+  log-spaced frequencies only; a 0.2-octave mid at 8 kHz peaks between two of them. They are
+  sampled at the bands' own frequencies too, as the sum always was.

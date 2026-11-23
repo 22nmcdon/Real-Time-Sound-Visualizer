@@ -256,38 +256,62 @@ with sync_playwright() as pw:
       restore({ pictureAmount: 0 }); setRunning(true); openEqEditor();
       const fresh = { knobs: ['eqCutLowFreq', 'eqCutLowQ', 'eqCutHighFreq', 'eqCutHighQ'].map((id) => el[id].value),
                       readings: [el.eqCutLowFreqValue.textContent, el.eqCutHighFreqValue.textContent],
-                      sent: [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz] };
+                      sent: [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz],
+                      switches: EQ_ON_KEYS.map((k) => el[k].checked) };
+      // A cut switched on acts at once (23 Nov, version 15): from its start, 30 Hz and 18 kHz, not its end.
+      setEqBandOn(3, true); setEqBandOn(4, true);
+      const atOnce = [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz, eqHz(3, 59), eqHz(4, 985)];
+      // The null: switched on where the cuts started before 15, at their ends, they are told their ends - out.
+      setControl('eqCutLowFreq', 0); setControl('eqCutHighFreq', 1000);
+      const atEnds = [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz];
       midiNoteOn(57, 100); await wait(800);
       // The note's own bin and its neighbours, not the loudest anywhere: cut away, the note is not the spectrum's top.
       const bin = Math.round(220 / (eqRate() / FFT_SIZE));
       const peak = () => { let m = -200; for (let i = bin - 2; i <= bin + 2; i++) m = Math.max(m, eqEd.spec[i]); return m; };
       const out = { switch: {} };
-      for (const [name, on, low, high] of [['off', false, 0, 1000], ['ends', true, 0, 1000], ['low1k', true, 566, 1000],
-                                           ['high1k', true, 0, 566]]) {
-        setEqOn(on); setControl('eqLow', 30); setControl('eqCutLowFreq', low); setControl('eqCutHighFreq', high); await wait(1200);
+      // Each with both cuts switched on (23 Nov) but the last: the low cut at 1 kHz switched off, which is out of the chain.
+      for (const [name, on, low, high, lowOn] of [['off', false, 0, 1000, true], ['ends', true, 0, 1000, true], ['low1k', true, 566, 1000, true],
+                                                  ['high1k', true, 0, 566, true], ['low1kOff', true, 566, 1000, false]]) {
+        setEqOn(on); setControl('eqLow', 30); setControl('eqCutLowFreq', low); setControl('eqCutHighFreq', high);
+        setEqBandOn(3, lowOn); setEqBandOn(4, true); await wait(1200);
         out[name] = peak(); out.switch[name] = el.eqOn.checked;
       }
+      setEqBandOn(3, true);
       // With the EQ's shelf at nought too, so "ends" is the dry note: a check that the cuts at rest do nothing.
       setControl('eqLow', 0); setControl('eqCutLowFreq', 0); setControl('eqCutHighFreq', 1000); await wait(1200);
       out.endsFlat = peak();
       out.switch.endsFlat = el.eqOn.checked;
       setEqOn(false); await wait(1200); out.dry = peak(); out.switch.dry = el.eqOn.checked;
       midiNoteOff(57); closeEqEditor();
-      const line = (() => { restore({}); setEqOn(true); setControl('eqCutLowFreq', 400); setControl('eqCutHighFreq', 800); paintRack();
+      const line = (() => { restore({}); setEqOn(true); setControl('eqCutLowFreq', 400); setControl('eqCutHighFreq', 800);
+                            setEqBandOn(3, true); setEqBandOn(4, true); paintRack();
                             return document.querySelector('[data-fx-sum="eq"]').textContent; })();
+      // The null: the same places with the cuts' switches off, which the line does not name.
+      const lineOff = (() => { setEqBandOn(3, false); setEqBandOn(4, false); paintRack();
+                               return document.querySelector('[data-fx-sum="eq"]').textContent; })();
       const code = (o) => btoa(JSON.stringify(o)).replace(/=+$/, '');
       restore(decodeSetup(code({ v: 13, eqOn: true, eqLow: 30 }))); const old = [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz];
       restore(decodeSetup(code({ v: 14, eqOn: true, eqCutLowFreq: 400 }))); const named = [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz];
       restore({});
-      return { fresh, out, line, old, named };
+      return { fresh, atOnce, atEnds, out, line, lineOff, old, named };
     }""")
     q.close()
     print("    %s" % cuts)
     o = cuts["out"]
-    check("the EQ's switch where each reading wants it: off, on, on, on, on, off",
-          o["switch"] == {"off": False, "ends": True, "low1k": True, "high1k": True, "endsFlat": True, "dry": False}, str(o["switch"]))
-    check("fresh, both cuts are at their ends - the knobs 0 and 1000, reading off, the engine sent 20 Hz and 20 kHz - and their Q 0.71",
-          cuts["fresh"] == {"knobs": ["0", "71", "1000", "71"], "readings": ["off", "off"], "sent": [20, 20000]}, str(cuts["fresh"]))
+    check("the EQ's switch where each reading wants it: off, on, on, on, on, on, off",
+          o["switch"] == {"off": False, "ends": True, "low1k": True, "high1k": True, "low1kOff": True, "endsFlat": True, "dry": False},
+          str(o["switch"]))
+    check("fresh (version 15), both cuts start switched off at 30 Hz and 18 kHz - the knobs 59 and 985, reading so, the engine "
+          "sent their ends, out - their Q 0.71, and the three bands' switches on",
+          cuts["fresh"] == {"knobs": ["59", "71", "985", "71"], "readings": ["30 Hz", "18.0 kHz"], "sent": [20, 20000],
+                            "switches": [False, True, True, True, False]}, str(cuts["fresh"]))
+    a = cuts["atOnce"]
+    check("a cut switched on acts at once: the engine is sent 30 Hz and 18 kHz, where they start", abs(a[0] - a[2]) < 1e-9
+          and abs(a[1] - a[3]) < 1e-6 and 29 < a[0] < 31 and 17900 < a[1] < 18100, str(a))
+    null("switched on at their ends, where they started before version 15, they are sent their ends: out, no change",
+         cuts["atEnds"] == [20, 20000], str(cuts["atEnds"]))
+    check("the low cut at 1 kHz switched off is out of the chain: the note is where both at their ends leave it, to a hundredth "
+          "of a decibel (%.4f)" % (o["low1kOff"] - o["ends"]), abs(o["low1kOff"] - o["ends"]) < 0.01)
     check("a low cut at 1 kHz takes a held 220 Hz note down by more than 20 dB (%.1f)" % (o["low1k"] - o["ends"]), o["low1k"] - o["ends"] < -20)
     check("a high cut at 1 kHz leaves it within half a decibel (%.2f)" % (o["high1k"] - o["ends"]), abs(o["high1k"] - o["ends"]) < 0.5)
     check("both cuts at their ends do nothing: the EQ on and flat with them is the dry note, to a hundredth of a decibel (%.4f)"
@@ -297,6 +321,7 @@ with sync_playwright() as pw:
     check("an older code, which names no cut, loads both at their ends, out", cuts["old"] == [20, 20000], str(cuts["old"]))
     null("a code naming the low cut loads it in", cuts["named"][0] > 20 and cuts["named"][1] == 20000, str(cuts["named"]))
     check("the rack's line names each cut that is in", "cut below" in cuts["line"] and "cut above" in cuts["line"], cuts["line"])
+    null("and neither when they are switched off at the same places", "cut" not in cuts["lineOff"], cuts["lineOff"])
 
     print("\n--- a setup, there and back ---")
     rt = p.evaluate("""async () => {
@@ -307,6 +332,10 @@ with sync_playwright() as pw:
                     eqCutLowFreq: 250, eqCutLowQ: 300, eqCutHighFreq: 850, eqCutHighQ: 60 };
       for (const [id, v] of Object.entries(set)) setControl(id, v);
       setEqOn(true);
+      // The bands' switches (23 Nov): both cuts on and the mid off, each away from where it starts.
+      setEqBandOn(3, true); setEqBandOn(4, true); setEqBandOn(1, false);
+      const switches = () => EQ_ON_KEYS.map((k) => el[k].checked);
+      const swSet = switches();
       const code = encodeSetup(snapshot());
       const engine = () => { const g = genSettings(0); return [g.eqLow, g.eqLowHz, g.eqMid, g.eqMidHz, g.eqMidWidth, g.eqHigh, g.eqHighHz, g.eqOn,
                                                                 g.eqCutLowHz, g.eqCutLowQ, g.eqCutHighHz, g.eqCutHighQ]; };
@@ -314,12 +343,12 @@ with sync_playwright() as pw:
       restore({}); await wait(30);
       const cleared = engine();
       restore(decodeSetup(code)); await wait(30);
-      const back = { knobs: Object.keys(set).map((id) => Number(el[id].value)), engine: engine() };
+      const back = { knobs: Object.keys(set).map((id) => Number(el[id].value)), engine: engine(), switches: switches() };
       // A code with no EQ over an EQ that is on: nought, as a code from before the EQ.
       restore({ freq: 330 }); await wait(30);
       const old = engine();
       restore({});
-      return { plainFields, set: Object.values(set), before, cleared, back, old, coded: decodeSetup(code) };
+      return { plainFields, set: Object.values(set), before, cleared, back, old, coded: decodeSetup(code), swSet };
     }""")
     print("    %s" % {k: v for k, v in rt.items() if k != "coded"})
     check("a default EQ writes no field into a code", rt["plainFields"] == [], str(rt["plainFields"]))
@@ -328,6 +357,10 @@ with sync_playwright() as pw:
           zip(["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq", "eqCutLowFreq", "eqCutLowQ",
                "eqCutHighFreq", "eqCutHighQ"], rt["set"]))
           and rt["coded"].get("eqOn") is True and rt["back"]["engine"][7] is True, str(rt["back"]))
+    check("and each band's switch comes back (both cuts on, the mid off), the mid told nought while it keeps its gain",
+          rt["swSet"] == [True, True, False, True, True] and rt["back"]["switches"] == rt["swSet"]
+          and rt["coded"].get("eqMidOn") is False and rt["coded"].get("eqCutLowOn") is True and rt["back"]["engine"][2] == 0
+          and rt["back"]["knobs"][2] == 45, str((rt["swSet"], rt["back"]["switches"])))
     null("the restore between really cleared it", rt["cleared"] != rt["before"] and rt["cleared"][0] == 0)
     check("a code with no EQ, loaded over one that is on, is an EQ at nought, and off", rt["old"][0] == 0 and rt["old"][2] == 0
           and rt["old"][5] == 0 and rt["old"][7] is False, str(rt["old"]))

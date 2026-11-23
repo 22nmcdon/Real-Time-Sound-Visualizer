@@ -39,7 +39,7 @@
 
 namespace scope {
 
-constexpr int kSetupVersion = 14;  // SETUP_VERSION
+constexpr int kSetupVersion = 15;  // SETUP_VERSION
 constexpr double kFullScaleDb[9] = { 0, -3, -6, -12, -18, -24, -30, -40, -50 };  // FULL_SCALE_DB
 
 // The table (schema.h, SETUP_FIELDS on the page), parsed once.
@@ -564,6 +564,46 @@ inline bool migrateSetup(Json& setup) {
       const Json* b = setup.get(kAtB[band]);
       const double q = jsToNumber(b);
       if (b && std::isfinite(q)) setup.set(kAtB[band], Json::number(eqPlaceOfOldSpan(band, q)));
+    }
+  }
+  /* 14 -> 15 (23 Nov): each EQ band has its own switch, and the cuts start
+     switched off at 30 Hz and 18 kHz, where switching one on acts at once
+     (the owner's, after the band strip's mockup). Until then a cut started
+     at its end of the range, 20 Hz or 20 kHz, where it is out, and was in
+     anywhere else: so a cut a code had in - its place read as restore reads
+     it, the knob's ends held, and away from its end - is switched on and
+     keeps its place, and one at its end, or left out, or not a number,
+     which restore read as the end it started at, is off. An off cut's
+     stored end is taken out rather than kept, so it lands on the new start
+     and switching it on does something; it is not heard either way. A pass
+     rather than a default read two ways: since 15 a code leaves an off
+     switch out, so "no eqCutLowOn" means off, and a cut that was in has to
+     say so. The three bands' switches start on and need nothing: a code from
+     before them had every band in. The upper hand's only where it has its own
+     place: one it lacks is the lower's, place and switch, as restore reads it,
+     which was in exactly when the lower's was. */
+  if (!(v >= 15) && setup.type == Json::Type::Object) {
+    static const char* const kAt[2] = { "eqCutLowFreq", "eqCutHighFreq" };
+    static const char* const kOn[2] = { "eqCutLowOn", "eqCutHighOn" };
+    static const char* const kAtB[2] = { "bEqCutLowFreq", "bEqCutHighFreq" };
+    static const char* const kOnB[2] = { "bEqCutLowOn", "bEqCutHighOn" };
+    /* In, as restore and the chain read it: a number held to the knob's ends,
+       in hertz on the cutoff's law (capture.h's cutoffHz, written out), and
+       past this cut's end by the chain's own test - so a place a hair off
+       the end, whose hertz rounds to the end, is out here as it was there. */
+    const auto in = [](const Json* at, int cut) {
+      const double p = jsToNumber(at);
+      if (!at || !std::isfinite(p)) return false;
+      const double hz = 20 * std::pow(1000.0, std::fmax(0.0, std::fmin(1000.0, p)) / 1000);
+      return cut == 0 ? hz > 20 : hz < 20000;
+    };
+    for (int cut = 0; cut < 2; ++cut) {
+      if (in(setup.get(kAt[cut]), cut)) setup.set(kOn[cut], Json::boolean(true));
+      else setup.erase(kAt[cut]);
+      if (const Json* b = setup.get(kAtB[cut])) {
+        if (in(b, cut)) setup.set(kOnB[cut], Json::boolean(true));
+        else { setup.set(kOnB[cut], Json::boolean(false)); setup.erase(kAtB[cut]); }
+      }
     }
   }
   if (setup.type == Json::Type::Object) setup.set("v", Json::number(kSetupVersion));

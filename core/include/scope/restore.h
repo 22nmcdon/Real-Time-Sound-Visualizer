@@ -387,9 +387,19 @@ struct Brain {
     // The EQ (17 Nov): each gain in dB, each frequency as its knob's place (0 to 1000 on the cutoff's law since
     // version 14, eqHz), the mid's width in octaves.
     double eqLow = 0, eqLowPos = 301, eqMid = 0, eqMidPos = 567, eqWidth = 1, eqHigh = 0, eqHighPos = 767;
-    // Its two cuts (23 Nov): each a place on the same law, at its end to start (out), and a plain Q.
-    double eqCutLowPos = 0, eqCutLowQ = 0.71, eqCutHighPos = 1000, eqCutHighQ = 0.71;
+    // Its two cuts (23 Nov): each a place on the same law and a plain Q; since version 15 they start at 30 Hz and
+    // 18 kHz, switched off (below), where they had started at their ends, out.
+    double eqCutLowPos = 59, eqCutLowQ = 0.71, eqCutHighPos = 985, eqCutHighQ = 0.71;
     bool eqOn = false;  // its switch, a field (17 Nov)
+    /* Each band's own switch (23 Nov, the owner's, after the band strip's
+       mockup): off, the band is out of the chain whatever its values, which it
+       keeps. The three bands start on, so a code from before the switches
+       plays as it did; the cuts start off, at a place where switching one on
+       acts at once, and migrateSetup's 14 -> 15 pass turns on a cut a code
+       had in. eqSend tells the chain an off band as the values it already
+       leaves out - a gain of nought, a cut at its end - so the plane's own
+       skip is the switch, and an off band is out to the bit. */
+    bool eqLowOn = true, eqMidOn = true, eqHighOn = true, eqCutLowOn = false, eqCutHighOn = false;
     std::optional<double> sent;  // the synced time last sent, which only the clock writes
   } echo;
   // Layer B's own echo and chorus (the page's `echoB`), under the plane's
@@ -673,9 +683,11 @@ inline const std::array<HandSectionSpec, kHandSections>& handSections() {
       { "gen.reverb", "gen.reverbSize", "gen.reverbTone" }, 8 },
     // The EQ (17 Nov), last so every section before it keeps its place.
     { "eq", "linkEq", { "eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq", "eqOn",
-                        "eqCutLowFreq", "eqCutLowQ", "eqCutHighFreq", "eqCutHighQ" },
+                        "eqCutLowFreq", "eqCutLowQ", "eqCutHighFreq", "eqCutHighQ",
+                        "eqCutLowOn", "eqLowOn", "eqMidOn", "eqHighOn", "eqCutHighOn" },
       { "bEqLow", "bEqLowFreq", "bEqMid", "bEqMidFreq", "bEqMidWidth", "bEqHigh", "bEqHighFreq", "bEqOn",
-        "bEqCutLowFreq", "bEqCutLowQ", "bEqCutHighFreq", "bEqCutHighQ" }, {}, 16 },
+        "bEqCutLowFreq", "bEqCutLowQ", "bEqCutHighFreq", "bEqCutHighQ",
+        "bEqCutLowOn", "bEqLowOn", "bEqMidOn", "bEqHighOn", "bEqCutHighOn" }, {}, 16 },
   } };
   return specs;
 }
@@ -1082,12 +1094,13 @@ inline void syncEchoPanel(Brain& b, const Keyboard& keys) {
    asks by band. */
 inline double eqHz(int /*band*/, double pos) { return cutoffHz(std::fmax(0.0, std::fmin(1000.0, pos))); }
 inline void eqSend(Generator& gen, const Brain::EchoState& e, int layer) {
-  gen.set("eqLow", e.eqLow, layer); gen.set("eqLowHz", eqHz(0, e.eqLowPos), layer);
-  gen.set("eqMid", e.eqMid, layer); gen.set("eqMidHz", eqHz(1, e.eqMidPos), layer);
+  // A band switched off (23 Nov) is told as what the chain already leaves out: a gain of nought, a cut at its end.
+  gen.set("eqLow", e.eqLowOn ? e.eqLow : 0, layer); gen.set("eqLowHz", eqHz(0, e.eqLowPos), layer);
+  gen.set("eqMid", e.eqMidOn ? e.eqMid : 0, layer); gen.set("eqMidHz", eqHz(1, e.eqMidPos), layer);
   gen.set("eqMidWidth", e.eqWidth, layer);
-  gen.set("eqHigh", e.eqHigh, layer); gen.set("eqHighHz", eqHz(2, e.eqHighPos), layer);
-  gen.set("eqCutLowHz", eqHz(3, e.eqCutLowPos), layer); gen.set("eqCutLowQ", e.eqCutLowQ, layer);
-  gen.set("eqCutHighHz", eqHz(4, e.eqCutHighPos), layer); gen.set("eqCutHighQ", e.eqCutHighQ, layer);
+  gen.set("eqHigh", e.eqHighOn ? e.eqHigh : 0, layer); gen.set("eqHighHz", eqHz(2, e.eqHighPos), layer);
+  gen.set("eqCutLowHz", e.eqCutLowOn ? eqHz(3, e.eqCutLowPos) : 20, layer); gen.set("eqCutLowQ", e.eqCutLowQ, layer);
+  gen.set("eqCutHighHz", e.eqCutHighOn ? eqHz(4, e.eqCutHighPos) : 20000, layer); gen.set("eqCutHighQ", e.eqCutHighQ, layer);
   gen.set("eqOn", e.eqOn ? 1 : 0, layer);
 }
 
@@ -1137,6 +1150,7 @@ inline void syncEchoB(Brain& b, Generator& gen) {
     f.eqLow = a.eqLow; f.eqLowPos = a.eqLowPos; f.eqMid = a.eqMid; f.eqMidPos = a.eqMidPos; f.eqWidth = a.eqWidth;
     f.eqHigh = a.eqHigh; f.eqHighPos = a.eqHighPos; f.eqOn = a.eqOn;
     f.eqCutLowPos = a.eqCutLowPos; f.eqCutLowQ = a.eqCutLowQ; f.eqCutHighPos = a.eqCutHighPos; f.eqCutHighQ = a.eqCutHighQ;
+    f.eqLowOn = a.eqLowOn; f.eqMidOn = a.eqMidOn; f.eqHighOn = a.eqHighOn; f.eqCutLowOn = a.eqCutLowOn; f.eqCutHighOn = a.eqCutHighOn;
   }
   gen.set("timeOwn", timeOwnMask(b), 1);
   const Brain::EchoState& e = b.echoB;
@@ -1854,6 +1868,8 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     e.eqCutLowPos = fieldNum("eqCutLowFreq"); e.eqCutLowQ = fieldNum("eqCutLowQ") / 100;
     e.eqCutHighPos = fieldNum("eqCutHighFreq"); e.eqCutHighQ = fieldNum("eqCutHighQ") / 100;
     e.eqOn = fieldFlag("eqOn");
+    e.eqLowOn = fieldFlag("eqLowOn"); e.eqMidOn = fieldFlag("eqMidOn"); e.eqHighOn = fieldFlag("eqHighOn");
+    e.eqCutLowOn = fieldFlag("eqCutLowOn"); e.eqCutHighOn = fieldFlag("eqCutHighOn");
     setA("delayMix", e.mix);
     setA("delayMs", delayTimeMs(brain));
     setA("delayFeedback", e.feedback);
@@ -1923,6 +1939,11 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
         f.eqCutHighQ = slide("bEqCutHighQ", 100, e.eqCutHighQ);
         const auto on = own("bEqOn");
         f.eqOn = on ? on->b : e.eqOn;
+        // Each band's switch (23 Nov), the lower hand's where the upper has none of its own.
+        const auto ownFlag = [&](const char* key, bool a) { const auto v = own(key); return v ? v->b : a; };
+        f.eqLowOn = ownFlag("bEqLowOn", e.eqLowOn); f.eqMidOn = ownFlag("bEqMidOn", e.eqMidOn);
+        f.eqHighOn = ownFlag("bEqHighOn", e.eqHighOn); f.eqCutLowOn = ownFlag("bEqCutLowOn", e.eqCutLowOn);
+        f.eqCutHighOn = ownFlag("bEqCutHighOn", e.eqCutHighOn);
       }
     }
     syncEchoB(brain, gen);
@@ -2327,6 +2348,13 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "delayPingPong") { echoTarget(b, keys, kHandDelay).pingPong = checked; syncEcho(b, gen); }
   // The EQ's switch, a field (17 Nov), as the ping-pong is: the module's own target.
   else if (id == "eqOn") { echoTarget(b, keys, kHandEq).eqOn = checked; syncEcho(b, gen); }
+  // Each band's own switch (23 Nov), the same way.
+  else if (id == "eqLowOn" || id == "eqMidOn" || id == "eqHighOn" || id == "eqCutLowOn" || id == "eqCutHighOn") {
+    Brain::EchoState& e = echoTarget(b, keys, kHandEq);
+    (id == "eqLowOn" ? e.eqLowOn : id == "eqMidOn" ? e.eqMidOn : id == "eqHighOn" ? e.eqHighOn
+     : id == "eqCutLowOn" ? e.eqCutLowOn : e.eqCutHighOn) = checked;
+    syncEcho(b, gen);
+  }
   // The key and the quantiser.
   else if (id == "keyRoot") { b.keyRoot = number; syncQuantiser(b, gen); }
   else if (id == "keyScale") { b.keyScale = text; syncQuantiser(b, gen); }
@@ -2473,6 +2501,7 @@ inline void copyHand(Brain& b, Generator& gen, int sec, int from, int to) {
       t.eqLow = f.eqLow; t.eqLowPos = f.eqLowPos; t.eqMid = f.eqMid; t.eqMidPos = f.eqMidPos; t.eqWidth = f.eqWidth;
       t.eqHigh = f.eqHigh; t.eqHighPos = f.eqHighPos; t.eqOn = f.eqOn;
       t.eqCutLowPos = f.eqCutLowPos; t.eqCutLowQ = f.eqCutLowQ; t.eqCutHighPos = f.eqCutHighPos; t.eqCutHighQ = f.eqCutHighQ;
+      t.eqLowOn = f.eqLowOn; t.eqMidOn = f.eqMidOn; t.eqHighOn = f.eqHighOn; t.eqCutLowOn = f.eqCutLowOn; t.eqCutHighOn = f.eqCutHighOn;
     } else {
       t.rvMix = f.rvMix; t.rvSize = f.rvSize; t.rvTone = f.rvTone; t.rvPre = f.rvPre; t.rvSpread = f.rvSpread;
     }
@@ -2521,7 +2550,8 @@ inline bool handsEqual(const Brain& b, const Generator& gen, int sec) {
     return f.eqLow == e.eqLow && f.eqLowPos == e.eqLowPos && f.eqMid == e.eqMid && f.eqMidPos == e.eqMidPos
         && f.eqWidth == e.eqWidth && f.eqHigh == e.eqHigh && f.eqHighPos == e.eqHighPos && f.eqOn == e.eqOn
         && f.eqCutLowPos == e.eqCutLowPos && f.eqCutLowQ == e.eqCutLowQ && f.eqCutHighPos == e.eqCutHighPos
-        && f.eqCutHighQ == e.eqCutHighQ;
+        && f.eqCutHighQ == e.eqCutHighQ && f.eqLowOn == e.eqLowOn && f.eqMidOn == e.eqMidOn && f.eqHighOn == e.eqHighOn
+        && f.eqCutLowOn == e.eqCutLowOn && f.eqCutHighOn == e.eqCutHighOn;
   if (sec == kHandPicture) {
     const Brain::PictureHand &p = b.pictureHands[0], &q = b.pictureHands[1];
     if (p.amount != q.amount || p.strike != q.strike || p.responds != q.responds || p.feel != q.feel || p.rise != q.rise

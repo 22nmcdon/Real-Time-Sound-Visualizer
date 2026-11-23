@@ -120,8 +120,8 @@ inline constexpr RangeSpec kRanges[] = {
   { "eqLow", -160, 120, 1, 0 }, { "eqMid", -160, 120, 1, 0 }, { "eqHigh", -160, 120, 1, 0 },
   { "eqLowFreq", 0, 1000, 1, 301 }, { "eqMidFreq", 0, 1000, 1, 567 }, { "eqMidWidth", 2, 40, 1, 10 },
   { "eqHighFreq", 0, 1000, 1, 767 },
-  // Its two cuts (23 Nov): each a place on the same law, at its end to start, and its Q in hundredths.
-  { "eqCutLowFreq", 0, 1000, 1, 0 }, { "eqCutLowQ", 50, 400, 1, 71 }, { "eqCutHighFreq", 0, 1000, 1, 1000 },
+  // Its two cuts (23 Nov): each a place on the same law, at 30 Hz and 18 kHz to start since version 15, and its Q in hundredths.
+  { "eqCutLowFreq", 0, 1000, 1, 59 }, { "eqCutLowQ", 50, 400, 1, 71 }, { "eqCutHighFreq", 0, 1000, 1, 985 },
   { "eqCutHighQ", 50, 400, 1, 71 },
   { "inputDepth", 0, 100, 1, 50 },
   { "oscScan", 0, 100, 1, 0 },

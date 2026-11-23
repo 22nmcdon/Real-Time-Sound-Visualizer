@@ -40,7 +40,8 @@ pattern and figure, Wave · Figure and Hold to watch it drift, and Shaping's cur
 and on 20 Nov, the UI review: Scope & measure's four subtabs, the Picture strip's Draw width, the one control for what the Width applies to;
 Perform's names - Pattern, Step, Octaves, Start · stop, Quantise pitch, Store A and B - and the clock's three
 parts; and Scope & measure's Pitch and Timebase from the keys and Readouts; and on 23 Nov, the EQ's two cuts, each
-where it cuts and its Q, and a point's words for a cut's resonance).
+where it cuts and its Q, and a point's words for a cut's resonance; and again on 23 Nov, the EQ's band strip:
+a band's cell and its switch, the five switches, Reset band, and the cuts' new start).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -105,7 +106,9 @@ them; G3b gives each a `data-say` with the key in the first column:
 | mod-depth | A source’s depth | How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same. | 142 |
 | mod-depth-typed | A depth, typed | The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further. | 135 |
 | mod-remove | Take it off | Takes this source off this control. The source goes on moving everything else it is on. | 87 |
-| eq-point | A point on the EQ's curve | A point of the EQ: sideways is where it acts, up and down its gain, or a cut's resonance; Shift widens the mid. Double-click resets. | 132
+| eq-point | A point on the EQ's curve | A band of the EQ, on its own curve: sideways is where it acts, up and down its gain, or a cut's resonance. Shift widens the mid. | 128 | 132 |
+| eq-cell | A band of the EQ | A band in the EQ's strip, in its own colour, with its values; press it to choose it, its point and curve stronger and its knobs below. | 134 | - |
+| eq-lamp | A band's switch | Whether this band is in: off, it is out of the sound and keeps its values; on, you hear it. Moving its point switches it on. | 124 | - |
 
 ## Play
 
@@ -298,7 +301,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | linkEq | EQ’s link | Whether the EQ is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 136 | - |
 | eqOn | EQ on | Whether the EQ is in: off, it is not there at all and keeps its curve; on, you hear the curve. Its switch, and the editor's, press it. | 134 | - |
 | eqThumb | The EQ’s curve | What the five points do together, 20 Hz to 20 kHz; flat and grey while the EQ is off. Press it to shape the curve over the tabs. | 128 | - |
-| eqEditorOn | EQ on or off | Off, the EQ is not there at all and its curve is kept; on, you hear the curve, flat until you shape it. Moving a point switches it on. | 134 | - |
+| eqEditorOn | EQ on or off | Off, the EQ is not there at all and its curve is kept; on, you hear the bands switched on. Moving a point switches it on. | 121 | - |
 | eqEditorClose | Close | Closes the EQ’s editor and brings the tab back. The curve stays as you left it. | 79 | - |
 | eqLow | Low | Lifts or cuts everything below the low shelf’s corner, from 16 dB down to 12 up: weight under the sound, the figure longer at its lowest notes. | 143 | yes — a shelf, the Web Audio node’s, on both channels alike; where it acts is Low at, in the editor, under the curve |
 | eqMid | Mid | Lifts or cuts a band around Mid at, as wide as Width, from 16 dB down to 12 up: a boost brings that part forward, a cut hollows it out. | 135 | - |
@@ -307,10 +310,16 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | eqMidFreq | Mid at | The middle of the mid band, anywhere from 20 Hz to 20 kHz; it starts at 1 kHz. | 78 | - |
 | eqMidWidth | Width | How wide the mid band is, from a fifth of an octave, a narrow notch or peak, to four octaves, a broad tilt of the middle. | 121 | - |
 | eqHighFreq | High at | Where the high shelf turns, anywhere from 20 Hz to 20 kHz; it starts at 4 kHz. Near the top it reaches only the last overtones. | 127 | - |
-| eqCutLowFreq | Low cut | Takes away everything below it, 12 dB an octave, anywhere from 20 Hz to 20 kHz. At 20 Hz, where it starts, it is off. | 117 | - |
+| eqCutLowFreq | Low cut | Takes away everything below it, 12 dB an octave, anywhere from 20 Hz to 20 kHz. It starts at 30 Hz, switched off. | 113 | - |
 | eqCutLowQ | Q | The low cut's resonance: 0.71 is the flattest, with no bump; up to 4 rings a bump of 12 dB at the cut; 0.5 rounds it softer. | 124 | - |
-| eqCutHighFreq | High cut | Takes away everything above it, 12 dB an octave, anywhere from 20 Hz to 20 kHz. At 20 kHz, where it starts, it is off. | 118 | - |
+| eqCutHighFreq | High cut | Takes away everything above it, 12 dB an octave, anywhere from 20 Hz to 20 kHz. It starts at 18 kHz, switched off. | 114 | - |
 | eqCutHighQ | Q | The high cut's resonance: 0.71 is the flattest, with no bump; up to 4 rings a bump of 12 dB at the cut; 0.5 rounds it softer. | 125 | - |
+| eqCutLowOn | Low cut on | Whether the low cut is in. It starts off, at 30 Hz; switched on, it cuts there at once. Its lamp in the strip presses it. | 121 | - |
+| eqLowOn | Low shelf on | Whether the low shelf is in: off, it is out of the sound and keeps its gain. Its lamp in the EQ's strip presses it. | 115 | - |
+| eqMidOn | Mid on | Whether the mid band is in: off, it is out of the sound and keeps its gain and width. Its lamp in the EQ's strip presses it. | 124 | - |
+| eqHighOn | High shelf on | Whether the high shelf is in: off, it is out of the sound and keeps its gain. Its lamp in the EQ's strip presses it. | 116 | - |
+| eqCutHighOn | High cut on | Whether the high cut is in. It starts off, at 18 kHz; switched on, it cuts there at once. Its lamp in the strip presses it. | 123 | - |
+| eqBandReset | Reset band | Puts the chosen band back where it starts, a gain of nought or a cut at its start, and leaves its switch as it is. | 114 | - |
 
 ### Phaser
 

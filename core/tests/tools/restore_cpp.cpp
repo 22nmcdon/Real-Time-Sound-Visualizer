@@ -477,6 +477,9 @@ int main(int argc, char** argv) {
         echo.set("eqHighPos", num(e.eqHighPos)); echo.set("eqOn", flag(e.eqOn));
         echo.set("eqCutLowPos", num(e.eqCutLowPos)); echo.set("eqCutLowQ", num(e.eqCutLowQ));
         echo.set("eqCutHighPos", num(e.eqCutHighPos)); echo.set("eqCutHighQ", num(e.eqCutHighQ));
+        // Each band's switch (23 Nov).
+        echo.set("eqCutLowOn", flag(e.eqCutLowOn)); echo.set("eqLowOn", flag(e.eqLowOn)); echo.set("eqMidOn", flag(e.eqMidOn));
+        echo.set("eqHighOn", flag(e.eqHighOn)); echo.set("eqCutHighOn", flag(e.eqCutHighOn));
       }
       return echo;
     };
