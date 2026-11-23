@@ -5548,7 +5548,12 @@ def _face_23nov(ids):
     out = [k for k in ids if k != "zoom"]
     out.insert(out.index("soundWidth") + 1, "zoom")
     return out
-ctl_ids = [k for k in _face_23nov(_face_19nov(_face_17nov(list(pctl["ranges"])))) if not k.startswith("eq")]
+# And without the filter's envelope's Velocity (23 Nov, vcfVel), added after the recordings' page
+# was gone: drawn among them it would shift every index the random runs draw by, and each run
+# would be new to the recordings. Its own reach is core/tests/pieces/vcfvel.py's, and the panel's
+# table holds its range to the page's above.
+_ADDED_23NOV = ["vcfVel"]
+ctl_ids = [k for k in _face_23nov(_face_19nov(_face_17nov(list(pctl["ranges"])))) if not k.startswith("eq") and k not in _ADDED_23NOV]
 def mvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     c = rrng.random()
