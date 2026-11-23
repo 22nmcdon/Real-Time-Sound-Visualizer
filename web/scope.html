@@ -11168,6 +11168,8 @@ function generatorSettings() {
     eqLow: 0, eqLowHz: 160, eqMid: 0, eqMidHz: 1000, eqMidWidth: 1, eqHigh: 0, eqHighHz: 4000,
     // And whether it is in at all, its switch (17 Nov): off, no band runs.
     eqOn: false,
+    // Its two cuts (23 Nov): where each acts in hertz, out at its end, and its plain Q.
+    eqCutLowHz: 20, eqCutLowQ: 0.71, eqCutHighHz: 20000, eqCutHighQ: 0.71,
     // F5b: the order the three run in after the plane, an index into FX_ORDER_STAGES.
     fxOrder: 0,
 
@@ -11306,6 +11308,7 @@ function generatorSettings() {
     phaserDepth: 0.7,
     phaserFeedback: 0.3,
     eqLow: 0, eqLowHz: 160, eqMid: 0, eqMidHz: 1000, eqMidWidth: 1, eqHigh: 0, eqHighHz: 4000, eqOn: false,
+    eqCutLowHz: 20, eqCutLowQ: 0.71, eqCutHighHz: 20000, eqCutHighQ: 0.71,
     fxOrder: 0,
     voices: null,
   };
