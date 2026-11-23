@@ -5536,7 +5536,19 @@ def _face_19nov(ids):
     out, slots = list(ids), [i for i, k in enumerate(ids) if k in _MEASURE_19NOV]
     for i, k in zip(slots, [k for k in _MEASURE_19NOV if k in ids]): out[i] = k
     return out
-ctl_ids = [k for k in _face_19nov(_face_17nov(list(pctl["ranges"]))) if not k.startswith("eq")]
+# And the zoom where it stood on the toolbar after Clear, before placeZoom (23 Nov,
+# web/README.md) laid it under the screen wherever the toolbar has no room - which
+# is the 1400x900 page_tables.py reads the controls at, so the zoom came after the
+# filter's sliders in the face's order rather than after the Width's, and the morph's
+# and the controls' random runs, which draw sliders from this list by index, were
+# new to the recordings. Put back after soundWidth, each run is the one it was,
+# whichever place the window gives it.
+def _face_23nov(ids):
+    if "zoom" not in ids or "soundWidth" not in ids: return list(ids)
+    out = [k for k in ids if k != "zoom"]
+    out.insert(out.index("soundWidth") + 1, "zoom")
+    return out
+ctl_ids = [k for k in _face_23nov(_face_19nov(_face_17nov(list(pctl["ranges"])))) if not k.startswith("eq")]
 def mvalue(id):
     r = pctl["ranges"][id]; lo, hi = float(r["min"]), float(r["max"])
     c = rrng.random()

@@ -8160,6 +8160,43 @@ Three traps on the way:
   log-spaced frequencies only; a 0.2-octave mid at 8 kHz peaks between two of them. They are
   sampled at the bands' own frequencies too, as the sum always was.
 
+## The Picture's Advanced from its link, and Zoom a slider where there is room (23 Nov)
+
+Two of the owner's, from testing the release (`web/docs/release-polish/`):
+
+- **The Advanced panel rises from its link.** From F2 it was placed at the window's right, over the
+  tabs, whatever opened it: "the advanced picture screen always appears in the bottom right-hand
+  corner; that feels wrong". `placePicture` puts its left edge on the link's (a hand's pill before
+  the link moves the link, and the panel with it) and its bottom 8 px above the Picture bar, so it
+  never covers the link that closes it; the window's edge pushes it left only where it must. It now
+  covers the screen while it is open, which F2's brief had avoided; the owner asked for this place.
+  Standing on the bar cost 13 px at 960x600, where the panel was 525 tall and only 520 stand above
+  the bar, so the Beam's four switches went two by two (ids and contents kept). The placement was
+  also in mixed pixels until now - the window's and the bar's, which the Size zoom scales, beside the
+  panel's own, which it does not - so at Auto's 90 per cent it was not where it was meant to be; the
+  zoom is divided out, as `placeMeasure` does. `fittest.py` holds it at the six windows, its null the old placement.
+- **A pressed link is a pixel taller.** `.link-btn[aria-expanded="true"]` draws a 2 px rule, so
+  Advanced grew a pixel as its panel opened, and the new check that nothing on the face moves
+  caught it. A pixel less padding fixed 100 per cent and not 90, where a border and padding round
+  apart; the second pixel is a shadow now, outside the box. Other links that sit in a row fixed it
+  with a height (`.fig-tools .link-btn`); this one sits alone, and a height is wrong at 90.
+- **Zoom is a slider with its name and reading, placed by room** (`placeZoom`). On the toolbar after
+  Clear if the toolbar does not grow a row for it; else laid over the slack under the screen
+  (absolute, so it takes no height); else on the toolbar anyway, the screen giving up a row. The
+  side column is the screen's width or the window's height less the toolbar, whichever is less, so
+  where the toolbar is short of room the square is short of height and leaves slack: 1660x1050 and
+  Enlarge at every size take the toolbar, the other five fittest windows the slack. The third case
+  is the readouts switched on at 1400x900, which make the screen a square of what is left; they move
+  the screen themselves. Shortening labels was rejected (Scope & measure's name is the owner's, and
+  60 px saved was not the 112 needed at 1400x900), and a second toolbar row would have moved the
+  screen. `zoomtest.py` holds the toolbar's box and the screen's at testing a79bc17's pixels, with the
+  null of the slider forced onto the toolbar at 1400x900. Because it can be in the side column
+  outside the toolbar, `showControl` and the search look for it by its own box, `el.screenZoom`, not
+  inside `el.screenTools`: both lost it the first time.
+- **Standing on the bar put its last rows under the on-screen keys** (fixed over the window's foot,
+  z-index 80), and `inktest.py`, which presses the Graticule with the keys open, timed out on a
+  click the keys took. The panel is over them now (85): one opened is the nearer thing.
+
 ## The filter's sweep as played, Retrigger, and a hand muted (23 Nov)
 
 The owner reported that the voice filter "doesn't ever open up": a saw at 2 kHz, +3.3 octaves, Attack

@@ -2624,18 +2624,23 @@ html[data-plugin] [data-host-owns] { display: none !important; }
    look and none of its scrolling: nothing on this face scrolls, so its two
    columns are what it may hold. */
 .screen-tools { display: flex; align-items: center; gap: 12px 12px; flex-wrap: wrap; margin: 0 0 10px; }
-/* The zoom on the toolbar (22 Nov): a small knob alone, its name and reading kept for the info line,
-   the search and the readout and out of sight, so the toolbar keeps its rows at every window. The gap
-   was 18 px and the switch's buttons 11 px each side until then: the knob's room. */
+/* The zoom (22 Nov; a slider since 23 Nov): its name as the toolbar's other words are set, a short
+   track and its reading in a box one width for every value (9.5x to 64x), so turning it moves nothing.
+   One box at every window, 154 px by 22 (140 compact), wherever placeZoom puts it: on the toolbar after
+   Clear where the row has the room, else under the screen, laid over the slack below the square and
+   taking none of the column's height (.bench-scope > .screen-zoom). The gap was 18 px and the switch's
+   buttons 11 px each side until 22 Nov: the knob's room, kept. */
 .screen-zoom { flex: 0 0 auto; display: flex; align-items: center; }
-/* By id, to out-rank the rule for a knob alone among menu rows, whose top margin made the row 28 px. */
-#screenZoom > .menu-row.knob-row { display: flex; align-items: center; width: 22px; height: 22px; min-width: 0; max-width: none; margin: 0; }
-[data-compact] #screenZoom > .menu-row.knob-row { width: 20px; height: 20px; }
-[data-compact] .screen-zoom > .menu-row.knob-row .knob-face { width: 20px; height: 20px; }
-.screen-zoom > .menu-row.knob-row .knob-face { width: 22px; height: 22px; margin: 0; }
-.screen-zoom > .menu-row > .menu-label, .screen-zoom > .menu-row > .grow > .reading {
-  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-}
+#screenZoom > .menu-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; height: 22px; margin: 0; min-width: 0; max-width: none; }
+#screenZoom .menu-label { flex: 0 0 auto; align-self: center; line-height: 1; margin: 0; font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-soft); }
+#screenZoom .grow { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+#screenZoom input[type="range"] { width: 76px; min-width: 0; margin: 0; flex: 0 0 auto; }
+#screenZoom .reading { display: inline-block; width: 34px; text-align: right; font-size: 12px; }
+[data-compact] #screenZoom input[type="range"] { width: 64px; }
+[data-compact] #screenZoom .reading { width: 32px; font-size: 11.5px; }
+[data-compact] #screenZoom .menu-label { font-size: 10px; }
+.bench-scope { position: relative; }
+.bench-scope > .screen-zoom { position: absolute; left: 0; top: calc(min(100cqw, 100cqh) + 10px); }
 .screen-tools .field { flex: 0 0 auto; }
 .screen-tools > .link-btn { align-self: center; }
 .screen-measure { margin-left: auto; }
@@ -2853,6 +2858,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 .perform-knobs > .tempo-row.knob-row { grid-template-columns: auto auto; grid-template-areas: "value ." "face extra" "name ."; column-gap: 8px; }
 .perform-knobs > .tempo-row.knob-row > .grow > #tempoTap { grid-area: extra; align-self: center; }
 .picture-panel { position: fixed; width: min(700px, calc(100vw - 32px)); max-height: none; overflow: visible; }
+/* Over the on-screen keys (z-index 80), which cover the foot of the window: standing on the bar from its
+   link since 23 Nov, its last rows are where the keys are, and a panel opened is the nearer thing. */
+.picture-panel { z-index: 85; }
 .picture-halves { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px; align-items: start; }
 .half-title { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--blush-deep);
   margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
@@ -2861,6 +2869,13 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 .picture-switch { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 4px 12px; }
 .picture-switch .menu-note { margin: 0; }
 .picture-foot { margin-top: 12px; }
+.beam-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 12px; margin-top: 8px; }
+.beam-checks > .check { margin: 0; }
+/* Pressed, a link's rule is 2 px where it was 1, which made Advanced a pixel taller as its panel
+   opened. Here the second pixel is a shadow, outside the box, so opening it moves nothing on the face
+   (23 Nov; fittest.py). A pixel less padding did it at 100 per cent and not at 90, where the border
+   and the padding round apart. */
+#pictureMore[aria-expanded="true"] { border-bottom-width: 1px; box-shadow: 0 1px 0 var(--blush-deep); }
 /* What Scan reads has a row only while the layers draw a picture each; until then, no empty heading. */
 #scanGroup:not(:has(#scanReadsRow:not([hidden]))) { display: none; }
 /* A popover inside it opens upward: the panel sits on the bottom of the window. */
@@ -5118,18 +5133,22 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 </select>
               </div>
             </div>
-            <label class="check" style="margin-top:8px">
-              <input type="checkbox" id="graticuleOn" checked> Graticule
-            </label>
-            <label class="check" style="margin-top:8px">
-              <input type="checkbox" id="beamXY" checked> X&ndash;Y
-            </label>
-            <label class="check" style="margin-top:7px">
-              <input type="checkbox" id="beamYT"> Y&ndash;T waveform
-            </label>
-            <label class="check" style="margin-top:7px">
-              <input type="checkbox" id="beamGoni"> Goniometer
-            </label>
+            <!-- Two by two since 23 Nov: one under another they made the Advanced panel 525 px
+                 tall at 960x600, over the Picture bar by 4 once it stood on the bar from its link. -->
+            <div class="beam-checks">
+              <label class="check">
+                <input type="checkbox" id="graticuleOn" checked> Graticule
+              </label>
+              <label class="check">
+                <input type="checkbox" id="beamXY" checked> X&ndash;Y
+              </label>
+              <label class="check">
+                <input type="checkbox" id="beamYT"> Y&ndash;T waveform
+              </label>
+              <label class="check">
+                <input type="checkbox" id="beamGoni"> Goniometer
+              </label>
+            </div>
             <p class="menu-note">On a real scope the spot's brightness is how long it
               dwelt, so it goes as one over its speed &mdash; bright where the trace turns
               around, faint through the fast sweeps. Off for the waveform by default:
@@ -5236,12 +5255,16 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <!-- The zoom (22 Nov, the owner's: "it should be a setting that is always readily
            available"), out of Scope & measure's Time and here, where it travels into Enlarge
            with the screen. Only the look since the same day: the face magnifies its drawing,
-           and the grid Scan reads is the same at any zoom (scope/beam.h). A knob alone, its
-           name and value in the info line and the readout's "2.0x zoom": with a name and a
-           reading it took a row the toolbar has not got at 1400x900 or at the plugin's
-           960x600, and moved the screen down by it. -->
+           and the grid Scan reads is the same at any zoom (scope/beam.h). A slider with its
+           name and reading since 23 Nov (the owner's: "zoom has no header, and I think zoom
+           specifically should be a horizontal slider"); it was a 22 px knob alone, because
+           with a name and a reading it took a row the toolbar has not got at 1400x900 or at
+           the plugin's 960x600. So it goes where there is room, by measuring (placeZoom):
+           here, after Clear, where the row has it (1660x1050, and Enlarge at every size), and
+           otherwise under the screen, in the slack the square leaves below itself where the
+           column is narrower than it is tall. -->
       <span class="screen-zoom" id="screenZoom">
-        <span class="menu-row" data-mod-dest="view.zoom" title="Zoom: magnifies the screen, only the look">
+        <span class="menu-row" data-mod-dest="view.zoom" data-knob="no" title="Zoom: magnifies the screen, only the look. Double-click for 1x">
           <label class="menu-label" id="zoomLabel" for="zoom">Zoom</label>
           <span class="grow">
             <input type="range" id="zoom" min="0" max="24" value="0" aria-labelledby="zoomLabel">
@@ -5396,8 +5419,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
 <!-- The Picture (F2 of web/docs/redesigning-the-face.md): the end of the
      loop, along the bottom and in view on every tab (Enlarge covers it) - how
      much the picture moves the sound, Scan and what feeds it, the one
-     Persistence, and the three reads. Advanced holds the rest over its right
-     side: what changes the sound, and what only changes the look. -->
+     Persistence, and the three reads. Advanced holds the rest in a panel that
+     rises from its link (23 Nov): what changes the sound, and what only changes
+     the look. -->
 <section class="picture-bar" id="pictureBar">
   <div class="wrap picture-wrap">
     <div class="picture-name">
@@ -5998,8 +6022,10 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
       <li><b>Zoom magnifies, and the wheel works</b>
         <span>In Y&ndash;T it shows a slice of the capture stretched, centred on the trigger
         &mdash; the record is unchanged, so the measurements still read all of it. In X&ndash;Y
-        it scales the figure; on the spectrogram it closes in the frequency band. It is the small
-        knob on the screen's toolbar, beside <i>Clear</i>, and in Enlarge with the screen. It is
+        it scales the figure; on the spectrogram it closes in the frequency band. It is the slider
+        named <i>Zoom</i>, beside <i>Clear</i> on the screen's toolbar where the window has the room
+        and just under the screen where it has not, and on the toolbar in Enlarge; a double-click
+        puts it back to 1&times;. It is
         only the look: Scan reads the picture whole, at any zoom, so the sound never changes
         with it &mdash; where the timebase, the trigger, full scale and the turn, which change
         what is drawn, do change it.</span></li>
@@ -7516,7 +7542,7 @@ const ENLARGE_TRAILS = ["heard", "half", "short"];
 const enlarge = { on: false, pictureOnly: true, hands: "both", trail: "heard" };
 
 const el = {};
-for (const id of ["screenTools", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger", "measureTime", "measureBar",
+for (const id of ["screenTools", "screenZoom", "measureButton", "measurePanel", "measureClose", "measureBody", "measureTrigger", "measureTime", "measureBar",
                   "filterSvg", "filterPlot", "filterKnobs", "filterRoutes", "filterTypeRow", "refState",
                   "measureSide", "readoutsOn", "pictureBar", "pictureMore", "picturePanel", "pictureClose", "pictureSound",
                   "pictureAmountValue", "levelMeter", "output", "outputValue", "stereoWidth", "stereoWidthValue", "stereoWidthRow", "soundWidth", "soundWidthValue", "soundWidthRow", "widthToRow", "widthDraw", "widthHeard", "widthDrawn", "performButton", "performPanel", "performClose", "performBody",
@@ -19292,6 +19318,12 @@ function setZoom(step) {
 }
 
 el.zoom.addEventListener("input", () => setZoom(Number(el.zoom.value)));
+/* Double-click puts it back at 1x, as two taps put a knob back (23 Nov, when it became a slider). */
+el.zoom.addEventListener("dblclick", () => {
+  el.zoom.value = el.zoom.defaultValue;
+  el.zoom.dispatchEvent(new Event("input", { bubbles: true }));
+  el.zoom.dispatchEvent(new Event("change", { bubbles: true }));
+});
 
 /* A step of the zoom from the wheel or a key, as a hand on the slider: its
    own input event, so it is the slider's handler that runs, and the plugin,
@@ -29817,6 +29849,42 @@ function placeScreen(enlarged) {
     el.benchSide.insertBefore(el.screenTools, el.benchScope);
     el.benchSide.appendChild(el.dock);
   }
+  placeZoom();
+}
+
+/* The zoom's place (23 Nov), by room, as the rack folds: on the toolbar after Clear if it
+   goes there without the toolbar growing a row; otherwise under the screen, laid over the
+   slack the square leaves below itself, if the slack holds it; otherwise on the toolbar
+   anyway, and the screen gives up a row. The column is the screen's width or the window's
+   height less the toolbar, whichever is less, so where the toolbar is short of room the
+   square is short of height and leaves the slack: at the six windows fittest.py measures
+   the first or the second always holds, and in Enlarge the toolbar is the window's width.
+   The third is the readouts switched on at 1400x900, which shrink the screen to a square
+   in what is left and leave no slack; the readouts move the screen themselves, so the
+   zoom's row is a small part of what they cost. A move, never a copy; and only a move
+   when the answer changes, since a moved input loses the pointer it is under. */
+function placeZoom() {
+  const zoom = el.screenZoom;
+  const toBar = () => { if (zoom.parentElement !== el.screenTools || zoom.previousElementSibling !== el.clearButton) el.clearButton.after(zoom); };
+  if (enlarge.on || !el.benchScope.contains(el.traceSheet)) { toBar(); zoom.dataset.at = "toolbar"; return; }
+  const was = zoom.parentElement;
+  const inBar = was === el.screenTools;
+  if (inBar) zoom.style.display = "none";
+  const bare = el.screenTools.offsetHeight;
+  zoom.style.display = "";
+  toBar();
+  if (el.screenTools.offsetHeight <= bare) { zoom.dataset.at = "toolbar"; return; }
+  el.benchScope.appendChild(zoom);
+  const slack = el.benchScope.clientHeight - el.traceSheet.offsetHeight;
+  if (slack >= zoom.offsetHeight + 12) { zoom.dataset.at = "under"; return; }
+  toBar();
+  zoom.dataset.at = "toolbar";
+}
+{
+  let queued = false;
+  const again = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; if (faceLaidOut) placeZoom(); }); };
+  window.addEventListener("resize", again);
+  if (window.ResizeObserver) { const watch = new ResizeObserver(again); watch.observe(el.benchSide); watch.observe(el.dock); }
 }
 
 /* --- Enlarge (G4 of web/docs/the-face-second-pass.md) ------------------------------
@@ -29912,8 +29980,8 @@ function showControl(node) {
   if (el.menvControls.contains(target)) { openModCard("env.note"); return true; }
   // The Picture section along the bottom is always on show (F2).
   if (el.pictureBar.contains(target) && !el.picturePanel.contains(target)) return true;
-  // And the screen's toolbar, enlarged or not: the zoom since 22 Nov.
-  if (el.screenTools.contains(target) && !el.measurePanel.contains(target)) return true;
+  // And the screen's toolbar, enlarged or not, and the zoom wherever placeZoom put it (22 Nov; under the screen since 23 Nov).
+  if ((el.screenTools.contains(target) && !el.measurePanel.contains(target)) || el.screenZoom.contains(target)) return true;
   const group = target.closest(".menu-group");
   if (!group) return false;
   /* Out of Enlarge first, except for Scope & measure, which opens over the
@@ -30052,8 +30120,8 @@ function searchEntries() {
     if (!label) continue;
     out.push({ kind: "bar", row, label, crumb: "Picture", hay: rowWords(row, label, "picture") });
   }
-  // The screen's toolbar: the zoom since 22 Nov.
-  for (const row of el.screenTools.querySelectorAll(".screen-zoom > .menu-row")) {
+  // The zoom since 22 Nov, on the toolbar or under the screen.
+  for (const row of el.screenZoom.querySelectorAll(":scope > .menu-row")) {
     out.push({ kind: "bar", row, label: rowText(row), crumb: "Screen", hay: rowWords(row, rowText(row), "screen toolbar") });
   }
   // What left the strip for Scope & measure (F1): the mode in its head, and the timebase in Time's Window.
@@ -30903,7 +30971,7 @@ const CONTROL_WORDS = {
   "measureButton": ["Scope & measure", "Opens the oscilloscope’s own tools over the screen: run, trigger, timebase, scale, the trace filter and the readouts."],
   "measureClose": ["Close", "Closes Scope & measure. Its settings stay as you left them, and the readouts stay if you switched them on."],
   "mtab-trigger": ["Trigger", "Where the trace starts: the edge, the source lane, the level, the position and the holdoff, drawn on a trace. Its summary is the four."],
-  "mtab-time": ["Time", "How much time the screen holds and the slice the toolbar's Zoom shows of it, the keys' pitch, and the lag. Its summary is the timebase."],
+  "mtab-time": ["Time", "How much time the screen holds and the slice Zoom shows of it, the keys' pitch, and the lag. Its summary is the timebase."],
   "mtab-vertical": ["Vertical", "Each lane's scale and offset, AC and mid / side, and the trace filter with its response. Its summary is the lanes shown and the filter."],
   "mtab-measure": ["Measure", "The readouts under the screen, the cursors, what the numbers read and a saved reference. Its summary is whether each shows."],
   "run": ["Stop", "Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent."],
@@ -31899,7 +31967,7 @@ function knobInput(row) {
   // G5a a card's editor's own column (an LFO's Rate, the Envelope's four times),
   // as the second pass draws them. Where it goes keeps its depths as sliders.
   // Since the UI review (20 Nov) the Perform menu's and Scope & measure's ranges too, the morph's fader aside.
-  if (!row.closest('[data-home="bench"], .picture-bar, .src-own, [data-home="perform"], [data-home="measure"], #measurePanel, .screen-zoom')) return null;
+  if (!row.closest('[data-home="bench"], .picture-bar, .src-own, [data-home="perform"], [data-home="measure"], #measurePanel')) return null;
   const label = row.querySelector(":scope > .menu-label");
   const grow = row.querySelector(":scope > .grow");
   if (!label || !grow) return null;
@@ -32645,9 +32713,15 @@ function paintMeasure(force) {
 window.addEventListener("resize", placeMeasure);
 el.measureButton.addEventListener("click", () => setMeasureOpen(el.measurePanel.hidden));
 
-/* The Picture's Advanced (F2): over the right of the bar along the bottom,
-   leaving the screen in view, as its brief asks. Fixed and placed when it
-   opens, as Scope & measure is, and for the same reason. */
+/* The Picture's Advanced (F2): rising from its link at the left of the bar
+   along the bottom, its left edge in line with the link, as Perform's opens
+   under its header button (23 Nov, the owner's: "the advanced picture screen
+   always appears in the bottom right-hand corner; that feels wrong" - it sat
+   at the window's right from F2, over the tabs, a long way from what opened
+   it). Its bottom is above the bar, so it never covers the link that closes
+   it; on a narrow window it is pushed left only as far as the window's edge
+   needs. Fixed and placed when it opens, as Scope & measure is, and for the
+   same reason, in the page's own pixels (the Size zoom divided out). */
 function setPictureOpen(open) {
   el.picturePanel.hidden = !open;
   el.pictureMore.setAttribute("aria-expanded", String(open));
@@ -32656,9 +32730,10 @@ function setPictureOpen(open) {
 }
 function placePicture() {
   if (el.picturePanel.hidden) return;
-  const bar = el.pictureBar.getBoundingClientRect(), width = el.picturePanel.offsetWidth, height = el.picturePanel.offsetHeight;
-  el.picturePanel.style.left = Math.round(Math.max(16, window.innerWidth - width - 16)) + "px";
-  el.picturePanel.style.top = Math.round(Math.max(8, Math.min(bar.top - height - 8, window.innerHeight - height - 8))) + "px";
+  const z = pageZoom || 1, width = el.picturePanel.offsetWidth, height = el.picturePanel.offsetHeight;
+  const bar = el.pictureBar.getBoundingClientRect(), link = el.pictureMore.getBoundingClientRect();
+  el.picturePanel.style.left = Math.round(Math.max(8, Math.min(link.left / z, window.innerWidth / z - width - 8))) + "px";
+  el.picturePanel.style.top = Math.round(Math.max(8, Math.min(bar.top / z, window.innerHeight / z) - height - 8)) + "px";
   el.picturePanel.style.right = "auto";
 }
 window.addEventListener("resize", placePicture);

@@ -248,7 +248,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   alone among menu rows is one line, since as a cell it stood taller than the
   slider it replaced (Wave's header, since 19 Nov the Generator, has the name,
   a small knob and its reading on one line, as tall as the menus beside it). The drawbars (upright, under Play's Wave), the setup morph's crossfader, the strip
-  under the screen and the editor's depths stay sliders. `knobtest.py` holds it.
+  under the screen, the editor's depths and the screen's Zoom stay sliders (Zoom since 23 Nov,
+  the owner's, with its name and reading: on the toolbar after Clear where the row has the room,
+  else laid over the slack under the screen, `placeZoom`, by room; `zoomtest.py`). `knobtest.py` holds it.
 - **No Bench tab may scroll.** The Bench is three tabs along the loop - Play,
   Ink, Space & Memory, in the order the sound goes round it (the Picture tab
   went in F2: its knobs are the Picture section along the bottom; the
