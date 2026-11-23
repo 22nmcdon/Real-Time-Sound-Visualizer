@@ -367,9 +367,9 @@ with sync_playwright() as pw:
             check("null: the pairing menu beside them, a third, does not read whole (%dx%d)" % (w, h),
                   not (wid.get("oneLine") and wid.get("inside") and wid.get("whole")), str(wid))
             ef = r["eqFit"]
-            check("the EQ's editor opened from its arrow, with one hand and two, its seven knobs in it, does not scroll, is "
+            check("the EQ's editor opened from its arrow, with one hand and two, its eleven knobs in it (the three bands' seven and the two cuts' four, 23 Nov), does not scroll, is "
                   "inside the window and keeps a plot at least 400 by 200 (%dx%d)" % (w, h),
-                  len(ef) == 2 and all(e["open"] and e["over"] <= 0 and e["editorOver"] <= 0 and e["inside"] and e["knobs"] == 7
+                  len(ef) == 2 and all(e["open"] and e["over"] <= 0 and e["editorOver"] <= 0 and e["inside"] and e["knobs"] == 11
                                        and e["plot"][0] >= 400 and e["plot"][1] >= 200 for e in ef), str(ef))
             check("null: its plot asked for the window's height puts its body over (%dx%d)" % (w, h), r["eqNull"]["over"] > 0, str(r["eqNull"]))
             check("and on top of it each of the rack's modules was measured open, every effect on (%dx%d)" % (w, h),
