@@ -275,6 +275,15 @@ int main(int argc, char** argv) {
         { "eqHighHz", [&](double v) { t.eqHighHz = v; } }, { "eqOn", [&](double v) { t.eqOn = v != 0; } },
       };
       for (const auto& [k, set] : fields) set(d(k));
+      /* The EQ's cuts (23 Nov), only where a run names them: one that names
+         none has them at their ends, out, as the engine's defaults are - read
+         as nought, a high cut would sit at 10 Hz and silence every run made
+         before it. */
+      const std::map<std::string, std::function<void(double)>> cuts {
+        { "eqCutLowHz", [&](double v) { t.eqCutLowHz = v; } }, { "eqCutLowQ", [&](double v) { t.eqCutLowQ = v; } },
+        { "eqCutHighHz", [&](double v) { t.eqCutHighHz = v; } }, { "eqCutHighQ", [&](double v) { t.eqCutHighQ = v; } },
+      };
+      for (const auto& [k, set] : cuts) if (p.count(k)) set(d(k));
       // Layer B's own shape, as the page's run holds it.
       scope::PlaneLayerTone b;
       bool bown = d("bown") == 1;
@@ -308,6 +317,11 @@ int main(int argc, char** argv) {
         { "bEqHighHz", [&](double v) { b.eqHighHz = v; } }, { "bEqOn", [&](double v) { b.eqOn = v != 0; } },
       };
       for (const auto& [k, set] : bfields) set(d(k));
+      const std::map<std::string, std::function<void(double)>> bcuts {
+        { "bEqCutLowHz", [&](double v) { b.eqCutLowHz = v; } }, { "bEqCutLowQ", [&](double v) { b.eqCutLowQ = v; } },
+        { "bEqCutHighHz", [&](double v) { b.eqCutHighHz = v; } }, { "bEqCutHighQ", [&](double v) { b.eqCutHighQ = v; } },
+      };
+      for (const auto& [k, set] : bcuts) if (p.count(k)) set(d(k));
       std::map<long, std::vector<std::pair<std::string, double>>> events;
       for (const auto& e : splitOn(p["ev"], ';')) {
         if (e.empty()) continue;
@@ -359,6 +373,8 @@ int main(int argc, char** argv) {
         if (d("inp") == 1) { x = -0.375; y = 0.625; }
         if (d("inp") == 2 && i >= 200) { x = 0; y = 0; }
         // The same asymmetric burst on both channels, as the page's run (P9).
+        // Two partials, 250 Hz and 4 kHz, the same on both channels (23 Nov): what the EQ's cuts keep and take.
+        if (d("inp") == 4) x = y = 0.4 * std::sin(tw * 250 * di / rate) + 0.4 * std::sin(tw * 4000 * di / rate);
         if (d("inp") == 3) {
           const double ph = std::fmod(di * 220 / rate, 1.0);
           x = y = i < 2400 ? 0.6 * (2 * ph - 1) + 0.2 * std::sin(2 * tw * 220 * di / rate + 0.3) : 0;
@@ -502,7 +518,8 @@ int main(int argc, char** argv) {
       const auto c = scope::biquadCoefficients(w[1], num(w[2]), num(w[3]), num(w[4]));
       show({ c.b0, c.b1, c.b2, c.a1, c.a2 });
     }
-    // The EQ's band (17 Nov): `eqBand band db hz widthOct rate`, band 0 the low shelf, 1 the mid, 2 the high shelf.
+    // The EQ's band (17 Nov): `eqBand band db hz widthOct rate`, band 0 the low shelf, 1 the mid, 2 the high shelf;
+    // 3 the low cut and 4 the high cut (23 Nov), their plain Q in widthOct's place.
     else if (name == "eqBand") {
       const auto c = scope::Plane::eqBand(static_cast<int>(num(w[1])), num(w[2]), num(w[3]), num(w[4]), num(w[5]));
       show({ c[0], c[1], c[2], c[3], c[4] });

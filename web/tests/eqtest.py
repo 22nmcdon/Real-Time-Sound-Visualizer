@@ -31,6 +31,15 @@ What would go wrong, and what is checked for it:
   sent as -16, and past it is held there; and with the low shelf taken to
   20 kHz a held note's peak in the spectrum after the EQ falls by 16 dB to a
   hundredth of one. The null is the old floor, -12, which falls by 12;
+- the cuts (23 Nov, the owner's five points) not reaching the sound, or
+  reaching it at rest: a held note (220 Hz) under a low cut at 1 kHz falls
+  by more than 20 dB and under a high cut at 1 kHz by less than half of
+  one, and with both cuts at their ends - where every setup starts and
+  every older code loads them - the note's peak is the EQ's without them,
+  to the hundredth of a decibel. The nulls: the cuts were in, reading
+  below; a code with no cut fields loads them at their ends, and a setup
+  naming one does not. Their fields round trip, and the rack's line names
+  a cut that is in;
 - a setup that does not come back: every EQ field set off its default,
   written as a code, read back and restored, lands where it was, in the
   knobs and in the engine; a default EQ writes no field at all (additive: an
@@ -233,16 +242,74 @@ with sync_playwright() as pw:
     null("the old floor, -12, falls by 12, which that check would not pass", abs((cut["out"]["cut12"] - cut["out"]["dry"]) + 16) > 3.9,
          "%.3f" % (cut["out"]["cut12"] - cut["out"]["dry"]))
 
+    print("\n--- the cuts, in the sound (23 Nov) ---")
+    # A page of its own: the section before leaves a note's level a fifth of a decibel off on the one it used.
+    q = b.new_page(viewport={"width": 1400, "height": 900})
+    q.on("pageerror", lambda e: bad.append("pageerror: " + str(e)))
+    q.add_init_script(path=COMPILED_CORE)
+    q.goto(f"file://{ART}/scope.html"); q.wait_for_timeout(700)
+    if q.locator("#helpClose").is_visible(): q.locator("#helpClose").click()
+    q.evaluate("() => { setView('bench'); setBenchTab('space'); }"); q.wait_for_timeout(300)
+    cuts = q.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      // The Picture at nought: at its default the loop reshapes a held note, and its level drifts by a fifth of a decibel.
+      restore({ pictureAmount: 0 }); setRunning(true); openEqEditor();
+      const fresh = { knobs: ['eqCutLowFreq', 'eqCutLowQ', 'eqCutHighFreq', 'eqCutHighQ'].map((id) => el[id].value),
+                      readings: [el.eqCutLowFreqValue.textContent, el.eqCutHighFreqValue.textContent],
+                      sent: [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz] };
+      midiNoteOn(57, 100); await wait(800);
+      // The note's own bin and its neighbours, not the loudest anywhere: cut away, the note is not the spectrum's top.
+      const bin = Math.round(220 / (eqRate() / FFT_SIZE));
+      const peak = () => { let m = -200; for (let i = bin - 2; i <= bin + 2; i++) m = Math.max(m, eqEd.spec[i]); return m; };
+      const out = { switch: {} };
+      for (const [name, on, low, high] of [['off', false, 0, 1000], ['ends', true, 0, 1000], ['low1k', true, 566, 1000],
+                                           ['high1k', true, 0, 566]]) {
+        setEqOn(on); setControl('eqLow', 30); setControl('eqCutLowFreq', low); setControl('eqCutHighFreq', high); await wait(1200);
+        out[name] = peak(); out.switch[name] = el.eqOn.checked;
+      }
+      // With the EQ's shelf at nought too, so "ends" is the dry note: a check that the cuts at rest do nothing.
+      setControl('eqLow', 0); setControl('eqCutLowFreq', 0); setControl('eqCutHighFreq', 1000); await wait(1200);
+      out.endsFlat = peak();
+      out.switch.endsFlat = el.eqOn.checked;
+      setEqOn(false); await wait(1200); out.dry = peak(); out.switch.dry = el.eqOn.checked;
+      midiNoteOff(57); closeEqEditor();
+      const line = (() => { restore({}); setEqOn(true); setControl('eqCutLowFreq', 400); setControl('eqCutHighFreq', 800); paintRack();
+                            return document.querySelector('[data-fx-sum="eq"]').textContent; })();
+      const code = (o) => btoa(JSON.stringify(o)).replace(/=+$/, '');
+      restore(decodeSetup(code({ v: 13, eqOn: true, eqLow: 30 }))); const old = [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz];
+      restore(decodeSetup(code({ v: 14, eqOn: true, eqCutLowFreq: 400 }))); const named = [genSettings(0).eqCutLowHz, genSettings(0).eqCutHighHz];
+      restore({});
+      return { fresh, out, line, old, named };
+    }""")
+    q.close()
+    print("    %s" % cuts)
+    o = cuts["out"]
+    check("the EQ's switch where each reading wants it: off, on, on, on, on, off",
+          o["switch"] == {"off": False, "ends": True, "low1k": True, "high1k": True, "endsFlat": True, "dry": False}, str(o["switch"]))
+    check("fresh, both cuts are at their ends - the knobs 0 and 1000, reading off, the engine sent 20 Hz and 20 kHz - and their Q 0.71",
+          cuts["fresh"] == {"knobs": ["0", "71", "1000", "71"], "readings": ["off", "off"], "sent": [20, 20000]}, str(cuts["fresh"]))
+    check("a low cut at 1 kHz takes a held 220 Hz note down by more than 20 dB (%.1f)" % (o["low1k"] - o["ends"]), o["low1k"] - o["ends"] < -20)
+    check("a high cut at 1 kHz leaves it within half a decibel (%.2f)" % (o["high1k"] - o["ends"]), abs(o["high1k"] - o["ends"]) < 0.5)
+    check("both cuts at their ends do nothing: the EQ on and flat with them is the dry note, to a hundredth of a decibel (%.4f)"
+          % (o["endsFlat"] - o["dry"]), abs(o["endsFlat"] - o["dry"]) < 0.01)
+    null("and the shelf alone, which the cuts sat beside, did move it (%.2f), so the comparison could see a change" % (o["ends"] - o["off"]),
+         abs(o["ends"] - o["off"]) > 0.5)
+    check("an older code, which names no cut, loads both at their ends, out", cuts["old"] == [20, 20000], str(cuts["old"]))
+    null("a code naming the low cut loads it in", cuts["named"][0] > 20 and cuts["named"][1] == 20000, str(cuts["named"]))
+    check("the rack's line names each cut that is in", "cut below" in cuts["line"] and "cut above" in cuts["line"], cuts["line"])
+
     print("\n--- a setup, there and back ---")
     rt = p.evaluate("""async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       restore({}); await wait(30);
       const plain = encodeSetup(snapshot()), plainFields = Object.keys(decodeSetup(plain)).filter((k) => /^b?[eE]q/.test(k));
-      const set = { eqLow: -160, eqLowFreq: 120, eqMid: 45, eqMidFreq: 700, eqMidWidth: 33, eqHigh: 95, eqHighFreq: 1000 };
+      const set = { eqLow: -160, eqLowFreq: 120, eqMid: 45, eqMidFreq: 700, eqMidWidth: 33, eqHigh: 95, eqHighFreq: 1000,
+                    eqCutLowFreq: 250, eqCutLowQ: 300, eqCutHighFreq: 850, eqCutHighQ: 60 };
       for (const [id, v] of Object.entries(set)) setControl(id, v);
       setEqOn(true);
       const code = encodeSetup(snapshot());
-      const engine = () => { const g = genSettings(0); return [g.eqLow, g.eqLowHz, g.eqMid, g.eqMidHz, g.eqMidWidth, g.eqHigh, g.eqHighHz, g.eqOn]; };
+      const engine = () => { const g = genSettings(0); return [g.eqLow, g.eqLowHz, g.eqMid, g.eqMidHz, g.eqMidWidth, g.eqHigh, g.eqHighHz, g.eqOn,
+                                                                g.eqCutLowHz, g.eqCutLowQ, g.eqCutHighHz, g.eqCutHighQ]; };
       const before = engine();
       restore({}); await wait(30);
       const cleared = engine();
@@ -258,7 +325,8 @@ with sync_playwright() as pw:
     check("a default EQ writes no field into a code", rt["plainFields"] == [], str(rt["plainFields"]))
     check("every field set away from its default comes back, in the knobs and in the engine",
           rt["back"]["knobs"] == rt["set"] and rt["back"]["engine"] == rt["before"] and all(rt["coded"][k] == v for k, v in
-          zip(["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq"], rt["set"]))
+          zip(["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq", "eqCutLowFreq", "eqCutLowQ",
+               "eqCutHighFreq", "eqCutHighQ"], rt["set"]))
           and rt["coded"].get("eqOn") is True and rt["back"]["engine"][7] is True, str(rt["back"]))
     null("the restore between really cleared it", rt["cleared"] != rt["before"] and rt["cleared"][0] == 0)
     check("a code with no EQ, loaded over one that is on, is an EQ at nought, and off", rt["old"][0] == 0 and rt["old"][2] == 0

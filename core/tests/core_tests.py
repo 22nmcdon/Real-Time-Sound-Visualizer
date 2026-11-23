@@ -6239,10 +6239,14 @@ golden.section("the EQ, the face against the core (17 Nov)")
 # the knobs as the panel shows them, which hand owns it, and what each layer
 # of the generator is told (in hertz, so the octave laws are held too).
 from playwright.sync_api import sync_playwright as _sync_playwright
-EQ_IDS = ["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq"]
-# And its switch, a field since 17 Nov (eqOn): the last of each, so the indices above it keep their places.
-EQ_KEYS = ["eqLow", "eqLowPos", "eqMid", "eqMidPos", "eqWidth", "eqHigh", "eqHighPos", "eqOn"]
-EQ_GEN = ["eqLow", "eqLowHz", "eqMid", "eqMidHz", "eqMidWidth", "eqHigh", "eqHighHz", "eqOn"]
+# Its two cuts (23 Nov) after the rest, so the indices the checks below read keep their places.
+EQ_IDS = ["eqLow", "eqLowFreq", "eqMid", "eqMidFreq", "eqMidWidth", "eqHigh", "eqHighFreq",
+          "eqCutLowFreq", "eqCutLowQ", "eqCutHighFreq", "eqCutHighQ"]
+# And its switch, a field since 17 Nov (eqOn): the last of the seven, so the indices above it keep their places.
+EQ_KEYS = ["eqLow", "eqLowPos", "eqMid", "eqMidPos", "eqWidth", "eqHigh", "eqHighPos", "eqOn",
+           "eqCutLowPos", "eqCutLowQ", "eqCutHighPos", "eqCutHighQ"]
+EQ_GEN = ["eqLow", "eqLowHz", "eqMid", "eqMidHz", "eqMidWidth", "eqHigh", "eqHighHz", "eqOn",
+          "eqCutLowHz", "eqCutLowQ", "eqCutHighHz", "eqCutHighQ"]
 EQ_PAGE = """async (lines) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const out = [];
@@ -6283,7 +6287,8 @@ def eq_page(lines):
 erng = random.Random(1117)
 def evalue(id):
     # The knobs' ranges since 22 Nov: gains to -16 dB, places a thousand over 20 Hz to 20 kHz.
-    lo, hi = (-160, 120) if id in ("eqLow", "eqMid", "eqHigh") else (2, 40) if id == "eqMidWidth" else (0, 1000)
+    lo, hi = ((-160, 120) if id in ("eqLow", "eqMid", "eqHigh") else (2, 40) if id == "eqMidWidth"
+              else (50, 400) if id in ("eqCutLowQ", "eqCutHighQ") else (0, 1000))
     return erng.choice([erng.randint(lo, hi), round(erng.uniform(lo, hi), 1), lo - 7, hi + 7, "abc", "7.5"])
 def eop():
     c = erng.random()
@@ -6294,8 +6299,10 @@ def eop():
     # The EQ's switch, a field (17 Nov): pressed as the page's button presses its box.
     if c < 0.89: return {"op": "change", "id": "eqOn", "value": erng.choice([True, False])}
     if c < 0.93:
-        st = {k: evalue(i) for k, i in zip(["eqLow", "eqMidFreq", "bEqLow", "bEqHighFreq", "bEqMidWidth"],
-                                             ["eqLow", "eqMidFreq", "eqLow", "eqHighFreq", "eqMidWidth"]) if erng.random() < 0.6}
+        st = {k: evalue(i) for k, i in zip(["eqLow", "eqMidFreq", "bEqLow", "bEqHighFreq", "bEqMidWidth", "eqCutHighFreq",
+                                              "bEqCutLowFreq", "bEqCutLowQ"],
+                                             ["eqLow", "eqMidFreq", "eqLow", "eqHighFreq", "eqMidWidth", "eqCutHighFreq",
+                                              "eqCutLowFreq", "eqCutLowQ"]) if erng.random() < 0.6}
         for k in ("eqOn", "bEqOn"):
             if erng.random() < 0.5: st[k] = erng.choice([True, False, "yes", 1])
         st.update(bPlane=erng.choice([True, True, False]), layers=erng.choice(["split", "layer"]), midiMode="poly")
@@ -6318,7 +6325,12 @@ EMADE = [{}, {"op": "click", "id": "midiPoly"}, {"op": "change", "id": "midiLaye
          {"eqLow": 999, "eqMidWidth": 1, "eqHighFreq": -4, "eqMid": "12"},                                        # 18
          {"op": "change", "id": "midiLayers", "value": "off"},                                                    # 19
          {"op": "change", "id": "eqOn", "value": True}, {"eqLow": 30, "eqOn": True},                              # 20, 21
-         {"bPlane": True, "eqLow": 30, "eqOn": True, "bEqLow": -20, "bEqOn": False, "layers": "layer", "midiMode": "poly"}]  # 22
+         {"bPlane": True, "eqLow": 30, "eqOn": True, "bEqLow": -20, "bEqOn": False, "layers": "layer", "midiMode": "poly"},  # 22
+         # The cuts (23 Nov): a code with none at their ends, one pulled in by its knob, and the upper hand's own.
+         {"eqOn": True}, {"op": "slider", "id": "eqCutHighFreq", "value": 500},                                    # 23, 24
+         {"op": "slider", "id": "eqCutLowQ", "value": 350},                                                        # 25
+         {"bPlane": True, "eqOn": True, "eqCutLowFreq": 300, "bEqCutLowFreq": 600, "bEqCutHighQ": 120,
+          "layers": "layer", "midiMode": "poly"}]                                                                   # 26
 def erun():
     start = [_json.loads(erng.choice(presets)) if erng.random() < 0.5 else {}, {"op": "click", "id": "midiPoly"},
              {"op": "change", "id": "midiLayers", "value": erng.choice(["split", "layer"])},
@@ -6351,6 +6363,12 @@ check("its switch, a field: pressed, the lower's is in and the generator told; a
       "while the lower's is on", ep[20]["a"][7] is True and ep[20]["gen"][7] is True and ep[21]["a"][7] is True
       and ep[22]["own"] and ep[22]["a"][7] is True and ep[22]["b"][7] is False and ep[22]["genB"][7] is False, repr(ep[20:23])[:300])
 check("null: and a setup without it is off", ep[19]["a"][7] is False or ep[18]["a"][7] is False, repr(ep[18]["a"]))
+_cut = lambda p: 20 * 1000 ** (p / 1000)
+check("its cuts: a code naming none has them at their ends (20 Hz, 20 kHz, Q 0.71) and the generator is told so; a knob "
+      "pulls one in; a setup's upper hand has its own, unlinked",
+      ep[23]["gen"][8:12] == [20, 0.71, 20000, 0.71] and abs(ep[24]["gen"][10] - _cut(500)) < 1e-9 and ep[25]["gen"][9] == 3.5
+      and ep[26]["own"] and abs(ep[26]["gen"][8] - _cut(300)) < 1e-9 and abs(ep[26]["genB"][8] - _cut(600)) < 1e-9
+      and ep[26]["genB"][11] == 1.2 and ep[26]["gen"][11] == 0.71, repr([ep[i]["gen"][8:] for i in (23, 24, 25, 26)]))
 ewrote = sum(1 for i in range(1, len(ep)) if ep[i]["b"] != ep[i - 1]["b"] and ep[i]["own"])
 check("the runs write the upper hand's own EQ %d times" % ewrote, ewrote > 30)
 check("null: and the comparison fails against the page's hands one out of step",

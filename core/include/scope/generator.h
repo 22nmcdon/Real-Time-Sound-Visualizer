@@ -1024,6 +1024,11 @@ class Generator {
     else if (field == "eqHigh") p.eqHigh = v;
     else if (field == "eqHighHz") p.eqHighHz = v;
     else if (field == "eqOn") p.eqOn = v != 0;
+    // Its two cuts (23 Nov): where each acts in hertz, and its resonance as a plain Q.
+    else if (field == "eqCutLowHz") p.eqCutLowHz = v;
+    else if (field == "eqCutLowQ") p.eqCutLowQ = v;
+    else if (field == "eqCutHighHz") p.eqCutHighHz = v;
+    else if (field == "eqCutHighQ") p.eqCutHighQ = v;
     else return false;
     return true;
   }

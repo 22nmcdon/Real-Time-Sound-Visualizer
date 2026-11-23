@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-399 controls: 399 lines, none marked as removed by a later stage, 90 wanting a paragraph
+403 controls: 403 lines, none marked as removed by a later stage, 90 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -39,7 +39,8 @@ Rate in, and the Rate knob's new words; and again on 19 Nov, Ink's figures: its 
 pattern and figure, Wave · Figure and Hold to watch it drift, and Shaping's curve and two cycles;
 and on 20 Nov, the UI review: Scope & measure's four subtabs, the Picture strip's Draw width, the one control for what the Width applies to;
 Perform's names - Pattern, Step, Octaves, Start · stop, Quantise pitch, Store A and B - and the clock's three
-parts; and Scope & measure's Pitch and Timebase from the keys and Readouts).
+parts; and Scope & measure's Pitch and Timebase from the keys and Readouts; and on 23 Nov, the EQ's two cuts, each
+where it cuts and its Q, and a point's words for a cut's resonance).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -104,7 +105,7 @@ them; G3b gives each a `data-say` with the key in the first column:
 | mod-depth | A source’s depth | How far this source moves the control, filling out from the middle: right is more, left a minus. Alt-drag the knob, or its ring, for the same. | 142 |
 | mod-depth-typed | A depth, typed | The depth as a number: type one, with or without its sign and per cent, and press Enter. As far as the source can reach and no further. | 135 |
 | mod-remove | Take it off | Takes this source off this control. The source goes on moving everything else it is on. | 87 |
-| eq-point | A point on the EQ's curve | A band of the EQ: sideways is where it acts, up and down its gain; Shift or the wheel widens the mid. Double-click resets; right-click for more. | 144 |
+| eq-point | A point on the EQ's curve | A point of the EQ: sideways is where it acts, up and down its gain, or a cut's resonance; Shift widens the mid. Double-click resets. | 132
 
 ## Play
 
@@ -296,7 +297,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 |---|---|---|---|---|
 | linkEq | EQ’s link | Whether the EQ is the same in both hands or this hand’s own. Unlinking starts the other hand as a copy; linking copies this one over it. | 136 | - |
 | eqOn | EQ on | Whether the EQ is in: off, it is not there at all and keeps its curve; on, you hear the curve. Its switch, and the editor's, press it. | 134 | - |
-| eqThumb | The EQ’s curve | What the three bands do together, 20 Hz to 20 kHz; flat and grey while the EQ is off. Press it to shape the curve over the tabs. | 128 | - |
+| eqThumb | The EQ’s curve | What the five points do together, 20 Hz to 20 kHz; flat and grey while the EQ is off. Press it to shape the curve over the tabs. | 128 | - |
 | eqEditorOn | EQ on or off | Off, the EQ is not there at all and its curve is kept; on, you hear the curve, flat until you shape it. Moving a point switches it on. | 134 | - |
 | eqEditorClose | Close | Closes the EQ’s editor and brings the tab back. The curve stays as you left it. | 79 | - |
 | eqLow | Low | Lifts or cuts everything below the low shelf’s corner, from 16 dB down to 12 up: weight under the sound, the figure longer at its lowest notes. | 143 | yes — a shelf, the Web Audio node’s, on both channels alike; where it acts is Low at, in the editor, under the curve |
@@ -306,6 +307,10 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | eqMidFreq | Mid at | The middle of the mid band, anywhere from 20 Hz to 20 kHz; it starts at 1 kHz. | 78 | - |
 | eqMidWidth | Width | How wide the mid band is, from a fifth of an octave, a narrow notch or peak, to four octaves, a broad tilt of the middle. | 121 | - |
 | eqHighFreq | High at | Where the high shelf turns, anywhere from 20 Hz to 20 kHz; it starts at 4 kHz. Near the top it reaches only the last overtones. | 127 | - |
+| eqCutLowFreq | Low cut | Takes away everything below it, 12 dB an octave, anywhere from 20 Hz to 20 kHz. At 20 Hz, where it starts, it is off. | 117 | - |
+| eqCutLowQ | Q | The low cut's resonance: 0.71 is the flattest, with no bump; up to 4 rings a bump of 12 dB at the cut; 0.5 rounds it softer. | 124 | - |
+| eqCutHighFreq | High cut | Takes away everything above it, 12 dB an octave, anywhere from 20 Hz to 20 kHz. At 20 kHz, where it starts, it is off. | 118 | - |
+| eqCutHighQ | Q | The high cut's resonance: 0.71 is the flattest, with no bump; up to 4 rings a bump of 12 dB at the cut; 0.5 rounds it softer. | 125 | - |
 
 ### Phaser
 

@@ -62,6 +62,14 @@ struct PlaneTimeTone {
   // The EQ (17 Nov): each band's gain in dB, nought for none, and where it
   // acts in hertz; the mid's width in octaves.
   double eqLow = 0, eqLowHz = 160, eqMid = 0, eqMidHz = 1000, eqMidWidth = 1, eqHigh = 0, eqHighHz = 4000;
+  /* Its two cuts (23 Nov, the owner's five points): a low cut, Web Audio's
+     highpass, and a high cut, its lowpass, each 12 dB an octave, where it
+     acts in hertz and its resonance as a plain Q (the node takes it in
+     decibels, 20 log10 of this). A cut at its end of the range - the low at
+     20 Hz, the high at 20 kHz, where the knobs start - is out, as a gain of
+     nought is, so an EQ with its cuts at their ends is the three bands to
+     the bit. */
+  double eqCutLowHz = 20, eqCutLowQ = 0.71, eqCutHighHz = 20000, eqCutHighQ = 0.71;
   /* Whether the EQ is in at all (17 Nov, the owner's): its switch is a field,
      the one rack module whose is, so an EQ switched off keeps its curve and a
      flat one switched on is ready to shape. Off, no band runs, whatever the
@@ -123,12 +131,13 @@ class Plane {
     double revIn = 0, revDampA = 0, revC = 1, revS = 0;
     int revPre = 0;
     /* The EQ (17 Nov): which bands are in (1 the low shelf, 2 the mid, 4 the
-       high shelf; a band at nought dB is left out, so it is exact), and each
-       band's coefficients, b0 b1 b2 a1 a2 over a0, worked out only when what
-       they are made from moves. */
+       high shelf, and since 23 Nov 8 the low cut and 16 the high cut; a band
+       at nought dB, or a cut at its end, is left out, so it is exact), and
+       each band's coefficients, b0 b1 b2 a1 a2 over a0, worked out only when
+       what they are made from moves. */
     int eqBands = 0;
-    std::array<std::array<double, 5>, 3> eqC {};
-    std::array<std::array<double, 2>, 3> eqAt { { { NAN, NAN }, { NAN, NAN }, { NAN, NAN } } };
+    std::array<std::array<double, 5>, 5> eqC {};
+    std::array<std::array<double, 2>, 5> eqAt { { { NAN, NAN }, { NAN, NAN }, { NAN, NAN }, { NAN, NAN }, { NAN, NAN } } };
     double eqWidthAt = NAN;
   };
 
@@ -307,13 +316,21 @@ class Plane {
      response is held to (core/tests/pieces/eq.py). Each frequency is held
      under 0.45 of the rate, where the phaser's sweep is, so a high shelf
      set at 16 kHz on a 22 kHz render is a shelf and not a fold. The mid's
-     width is in octaves, turned into the node's Q by the analog relation. */
+     width is in octaves, turned into the node's Q by the analog relation.
+     Bands 3 and 4 (23 Nov) are the cuts, the node's highpass and lowpass,
+     whose Q is the plain one here (`widthOct` carries it) and 20 log10 of
+     it on the node; `db` is not read for them. */
   static std::array<double, 5> eqCoefficients(int band, double db, double hz, double widthOct, double rate) {
     const double f = std::fmin(hz, 0.45 * rate);
     const double w0 = kTwoPi * f / rate, c = std::cos(w0), sn = std::sin(w0);
     const double A = std::pow(10.0, db / 40);
     double b0, b1, b2, a0, a1, a2;
-    if (band == 1) {
+    if (band >= 3) {
+      const double alpha = sn / (2 * std::fmax(0.1, widthOct));
+      if (band == 3) { b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2; }
+      else { b0 = (1 - c) / 2; b1 = 1 - c; b2 = (1 - c) / 2; }
+      a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha;
+    } else if (band == 1) {
       const double q = eqWidthQ(widthOct), alpha = sn / (2 * q);
       b0 = 1 + alpha * A; b1 = -2 * c; b2 = 1 - alpha * A;
       a0 = 1 + alpha / A; a1 = -2 * c; a2 = 1 - alpha / A;
@@ -355,6 +372,18 @@ class Plane {
       at = { g, f };
       if (k == 1) T.eqWidthAt = t.eqMidWidth;
       T.eqC[static_cast<std::size_t>(k)] = eqCoefficients(k, g, f, t.eqMidWidth, rate_);
+    }
+    // The cuts: in unless at their ends (20 Hz, 20 kHz, the knobs' ends exactly), whatever the gains.
+    const double cutHz[2] = { t.eqCutLowHz, t.eqCutHighHz }, cutQ[2] = { t.eqCutLowQ, t.eqCutHighQ };
+    for (int j = 0; j < 2; j++) {
+      const int k = 3 + j;
+      if (!std::isfinite(cutHz[j]) || (j == 0 ? !(cutHz[j] > 20) : !(cutHz[j] < 20000))) continue;
+      T.eqBands |= 1 << k;
+      const double f = std::fmax(10.0, cutHz[j]), q = std::isfinite(cutQ[j]) ? std::fmax(0.5, std::fmin(4.0, cutQ[j])) : 0.71;
+      auto& at = T.eqAt[static_cast<std::size_t>(k)];
+      if (at[0] == q && at[1] == f) continue;
+      at = { q, f };
+      T.eqC[static_cast<std::size_t>(k)] = eqCoefficients(k, 0, f, q, rate_);
     }
   }
   /* A module the hands share while another is B's own (G6) is layer A's to
@@ -552,7 +581,7 @@ class Plane {
     double tl = 0, tr = 0, hl = 0, hr = 0, wph = 0;  // F5c: the tone's and cut's memories, the wow's phase
     int ran = 0, was = 0;  // the modules that ran this block and the last, by timeOwn's bits
     // The EQ's: each band's two states a channel (transposed direct form II), and the bands it last ran.
-    std::array<std::array<double, 2>, 3> eqL {}, eqR {};
+    std::array<std::array<double, 2>, 5> eqL {}, eqR {};
     int eqWas = 0;
   };
 
@@ -655,11 +684,12 @@ class Plane {
     if (T.eqBands != 0) {
       timeRuns(fx, 16);
       if (const int fresh = T.eqBands & ~fx.eqWas) {
-        for (std::size_t k = 0; k < 3; k++)
+        for (std::size_t k = 0; k < 5; k++)
           if (fresh & (1 << k)) { fx.eqL[k].fill(0); fx.eqR[k].fill(0); }
       }
       fx.eqWas = T.eqBands;
-      for (std::size_t k = 0; k < 3; k++) {
+      // The three bands in the order they always ran, then the two cuts (23 Nov), so the three alone are the old sum to the bit.
+      for (std::size_t k = 0; k < 5; k++) {
         if (!(T.eqBands & (1 << k))) continue;
         x = eqBiquad(T.eqC[k], fx.eqL[k], x);
         y = eqBiquad(T.eqC[k], fx.eqR[k], y);

@@ -73,6 +73,9 @@ Json layerBJson(const scope::LayerBSettings& t) {
     o.set("eqLow", num(t.eqLow)); o.set("eqLowHz", num(t.eqLowHz)); o.set("eqMid", num(t.eqMid));
     o.set("eqMidHz", num(t.eqMidHz)); o.set("eqMidWidth", num(t.eqMidWidth)); o.set("eqHigh", num(t.eqHigh));
     o.set("eqHighHz", num(t.eqHighHz)); o.set("eqOn", flag(t.eqOn));
+    // Its two cuts (23 Nov).
+    o.set("eqCutLowHz", num(t.eqCutLowHz)); o.set("eqCutLowQ", num(t.eqCutLowQ));
+    o.set("eqCutHighHz", num(t.eqCutHighHz)); o.set("eqCutHighQ", num(t.eqCutHighQ));
   }
   o.set("planeOwn", flag(t.planeOwn)); o.set("planeTurn", num(t.planeTurn)); o.set("timeOwn", num(t.timeOwn));
   o.set("planeMirror", num(t.planeMirror)); o.set("planeRadius", num(t.planeRadius)); o.set("planeLimit", num(t.planeLimit));
@@ -116,6 +119,9 @@ Json toneJson(const scope::Tone& t) {
     o.set("eqLow", num(t.eqLow)); o.set("eqLowHz", num(t.eqLowHz)); o.set("eqMid", num(t.eqMid));
     o.set("eqMidHz", num(t.eqMidHz)); o.set("eqMidWidth", num(t.eqMidWidth)); o.set("eqHigh", num(t.eqHigh));
     o.set("eqHighHz", num(t.eqHighHz)); o.set("eqOn", flag(t.eqOn));
+    // Its two cuts (23 Nov).
+    o.set("eqCutLowHz", num(t.eqCutLowHz)); o.set("eqCutLowQ", num(t.eqCutLowQ));
+    o.set("eqCutHighHz", num(t.eqCutHighHz)); o.set("eqCutHighQ", num(t.eqCutHighQ));
   }
   o.set("menvOwn", flag(t.menvOwn)); o.set("menvEvery", flag(t.menvEvery)); o.set("menvAttackMs", num(t.menv.attackMs)); o.set("menvDecayMs", num(t.menv.decayMs));
   o.set("menvSustain", num(t.menv.sustain)); o.set("menvReleaseMs", num(t.menv.releaseMs));
@@ -469,6 +475,8 @@ int main(int argc, char** argv) {
         echo.set("eqLow", num(e.eqLow)); echo.set("eqLowPos", num(e.eqLowPos)); echo.set("eqMid", num(e.eqMid));
         echo.set("eqMidPos", num(e.eqMidPos)); echo.set("eqWidth", num(e.eqWidth)); echo.set("eqHigh", num(e.eqHigh));
         echo.set("eqHighPos", num(e.eqHighPos)); echo.set("eqOn", flag(e.eqOn));
+        echo.set("eqCutLowPos", num(e.eqCutLowPos)); echo.set("eqCutLowQ", num(e.eqCutLowQ));
+        echo.set("eqCutHighPos", num(e.eqCutHighPos)); echo.set("eqCutHighQ", num(e.eqCutHighQ));
       }
       return echo;
     };

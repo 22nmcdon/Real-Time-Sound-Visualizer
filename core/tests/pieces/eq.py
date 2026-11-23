@@ -136,6 +136,59 @@ def run(kit):
     null("and the low shelf is not the high: +12 at 160 Hz reads near nought at 16 kHz",
          abs(float(db(response(lowc, [16000], 44100))[0])) < 0.5)
 
+    # --- the two cuts (23 Nov, the owner's five points) against the node ---
+    # The low cut is the node's highpass and the high cut its lowpass, whose Q the node takes in decibels:
+    # 20 log10 of the plain Q the core is given. Corners across the range, Qs across theirs, two rates.
+    ccases = [(band, hz, q, rate) for rate in (44100, 48000) for band in (3, 4)
+              for hz in (20.5, 100, 1000, 6000, 19000) for q in (0.5, 0.71, 1.5, 4)]
+    cv = kit.floats("functions_cpp", "\n".join("eqBand %d 0 %r %r %r" % (b, hz, q, r) for b, hz, q, r in ccases))
+    ccoefs = [cv[5 * i:5 * i + 5] for i in range(len(ccases))]
+    cwant = node_responses([{"type": "highpass" if b == 3 else "lowpass", "hz": hz, "db": 0, "q": 20 * math.log10(q), "rate": r,
+                             "probes": probes} for b, hz, q, r in ccases])
+    cworst = max(float(np.abs(db(response(c, probes, r)) - db(m)).max()) for (_, _, _, r), c, m in zip(ccases, ccoefs, cwant))
+    check("each cut is Web Audio's own filter, to 0.0001 dB: %d highpasses and lowpasses at %d frequencies, two rates, "
+          "the node given the Q in decibels" % (len(ccases), len(probes)), cworst < 1e-4, "worst %.2e dB" % cworst)
+    cwrong = node_responses([{"type": "highpass" if b == 3 else "lowpass", "hz": hz, "db": 0, "q": q, "rate": r, "probes": probes}
+                             for b, hz, q, r in ccases])
+    coff = max(float(np.abs(db(response(c, probes, r)) - db(m)).max()) for (_, _, _, r), c, m in zip(ccases, ccoefs, cwrong))
+    null("the same comparison fails against the plain Q handed to the node as decibels", coff > 0.5, "%.3f dB" % coff)
+    # The resonance is the bump at the corner: the response there is the plain Q, in decibels.
+    bump = [float(db(response(kit.floats("functions_cpp", "eqBand 4 0 1000 %r 48000" % q), [1000], 48000))[0]) for q in (0.71, 4)]
+    check("a cut's resonance is its bump: at its corner a Q of 0.71 reads -3 dB and a Q of 4 reads +12 (%.2f, %.2f)" % tuple(bump),
+          abs(bump[0] + 2.97) < 0.05 and abs(bump[1] - 12.04) < 0.05, str(bump))
+
+    # --- the cuts in the plane: what they keep and what they take ---
+    def partial(a, f, rate=44100.0):
+        x = np.asarray(a)[3000:, 0]
+        t = np.arange(3000, 3000 + len(x)) / rate
+        return 2 * abs(np.mean(x * np.exp(-2j * np.pi * f * t)))
+    pair = dict(inp=4, samples=12000)
+    dry2 = plane_run(kit, **pair)
+    hc = plane_run(kit, **pair, eqCutHighHz=1000, eqCutHighQ=0.71)
+    lc = plane_run(kit, **pair, eqCutLowHz=1000, eqCutLowQ=0.71)
+    lvl = lambda a, f: 20 * math.log10(max(1e-12, partial(a, f)) / partial(dry2, f))
+    hk, ht, lk, lt = lvl(hc, 250), lvl(hc, 4000), lvl(lc, 4000), lvl(lc, 250)
+    check("a high cut at 1 kHz leaves a 250 Hz partial (%.2f dB) and takes a 4 kHz one (%.1f dB)" % (hk, ht), abs(hk) < 0.5 and ht < -20)
+    check("a low cut at 1 kHz the reverse: leaves 4 kHz (%.2f dB) and takes 250 Hz (%.1f dB)" % (lk, lt), abs(lk) < 0.5 and lt < -20)
+    null("and the dry pair has both partials, at the level it was made with",
+         abs(partial(dry2, 250) - 0.4) < 0.01 and abs(partial(dry2, 4000) - 0.4) < 0.01, "%.3f %.3f" % (partial(dry2, 250), partial(dry2, 4000)))
+    # At their ends - the knobs' 20 Hz and 20 kHz, where they start - they are out: the three bands to the bit, EQ on.
+    bands3 = dict(eqLow=4, eqLowHz=200, eqMid=-5, eqMidHz=900, eqMidWidth=0.8, eqHigh=6, eqHighHz=3000)
+    trio3 = dict(phaserMix=0.8, phaserRate=5, phaserDepth=0.6, phaserFeedback=0.5, chorusMix=0.5, chorusRate=2,
+                 chorusDepthMs=3, chorusMs=12, delayMix=0.4, delayMs=20, delayFeedback=0.5)
+    three = dict(bands3, eqCutLowQ=4, eqCutHighQ=4)
+    ends = plane_run(kit, **trio3, **three, eqCutLowHz=20, eqCutHighHz=20000)
+    none = plane_run(kit, **trio3, **bands3)
+    check("both cuts at their ends, with the EQ on and a resonance set, are the three bands alone to the bit", np.array_equal(ends, none))
+    near = plane_run(kit, **trio3, **three, eqCutLowHz=20.5, eqCutHighHz=20000)
+    null("and a low cut half a hertz in from its end is not", not np.array_equal(near, none), "%.2e" % float(np.abs(near - none).max()))
+    # And a cut is in whatever the gains: with every band at nought it still cuts.
+    flat = plane_run(kit, **pair, eqLow=0, eqMid=0, eqHigh=0, eqCutHighHz=1000)
+    check("a cut is in whatever the gains: with all three at nought a high cut at 1 kHz still takes 4 kHz (%.1f dB)" % lvl(flat, 4000),
+          lvl(flat, 4000) < -20)
+    off2 = plane_run(kit, **pair, eqOn=0, eqCutHighHz=1000)
+    check("and the EQ's switch takes the cuts out too: off, a high cut at 1 kHz is the dry pair to the bit", np.array_equal(off2, dry2))
+
     # --- the deeper cut reaches the sound (22 Nov) ---
     # A low shelf taken to the top of the range is the whole of a run's tones (220, 330 and 661 Hz) under it: the
     # pair falls by the shelf's gain. At -16 dB, the knob's foot since 22 Nov, it falls by 16; the old foot by 12.

@@ -120,6 +120,9 @@ inline constexpr RangeSpec kRanges[] = {
   { "eqLow", -160, 120, 1, 0 }, { "eqMid", -160, 120, 1, 0 }, { "eqHigh", -160, 120, 1, 0 },
   { "eqLowFreq", 0, 1000, 1, 301 }, { "eqMidFreq", 0, 1000, 1, 567 }, { "eqMidWidth", 2, 40, 1, 10 },
   { "eqHighFreq", 0, 1000, 1, 767 },
+  // Its two cuts (23 Nov): each a place on the same law, at its end to start, and its Q in hundredths.
+  { "eqCutLowFreq", 0, 1000, 1, 0 }, { "eqCutLowQ", 50, 400, 1, 71 }, { "eqCutHighFreq", 0, 1000, 1, 1000 },
+  { "eqCutHighQ", 50, 400, 1, 71 },
   { "inputDepth", 0, 100, 1, 50 },
   { "oscScan", 0, 100, 1, 0 },
   { "scanStrike", 0, 100, 1, 50 },
@@ -224,7 +227,7 @@ inline constexpr const char* kMorphIds[] = {
   // Level in the Generator since G7, after Glide, where the page lays it out.
   "morph", "width", "table", "glide", "amp", "envAttack", "envDecay", "envSustain", "envRelease", "envDelay", "envHold", "quantiseGlide", "tempo",
   "lag", "lagMix", "acCorner", "planeTwist", "rotate", "planeTurn", "planeRadius", "planeScaleX", "planeScaleY",
-  "planeShear", "eqLow", "eqMid", "eqHigh", "eqLowFreq", "eqMidFreq", "eqMidWidth", "eqHighFreq", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth",
+  "planeShear", "eqLow", "eqMid", "eqHigh", "eqLowFreq", "eqMidFreq", "eqMidWidth", "eqHighFreq", "eqCutLowFreq", "eqCutLowQ", "eqCutHighFreq", "eqCutHighQ", "phaserMix", "phaserRate", "phaserDepth", "phaserFeedback", "chorusMix", "chorusRate", "chorusDepth",
   "chorusTime", "chorusFeedback", "delayMix", "delayMs", "delayFeedback", "delayTone", "delayLowCut", "delayWidth",
   "delayWow", "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread", "bar0", "bar1", "bar2", "bar3",
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",

@@ -7911,6 +7911,37 @@ everywhere; GCC and Clang at -O0 to -O3, with and without FMA, and the WebAssemb
 to the character. A value used only at run time (the hertz `eqHz` makes) can differ in its last
 bit between builds; a value written into a code cannot.
 
+## The EQ's five points: a low and a high cut beside the three bands (23 Nov)
+
+The owner chose five points with fixed roles over a shelf that could become a cut: Low cut ·
+Low shelf · Mid · High shelf · High cut. The cuts are Web Audio's highpass and lowpass, 12 dB an
+octave, each with a place on the same 20 Hz to 20 kHz law and a plain Q (0.5 to 4, Butterworth's
+0.71 to start); the node takes that Q in decibels, 20 log10 of it, which `pieces/eq.py` holds to
+the node with its null the plain Q handed over as decibels. Additive fields (`eqCutLowFreq`,
+`eqCutLowQ`, `eqCutHighFreq`, `eqCutHighQ` and their upper-hand twins), no version.
+
+**A band that is at rest must be out, not nearly nothing.** A highpass at 20 Hz is not the
+identity - it moves the phase of everything under a few hundred hertz - so "within a hair" would
+have changed every setup with its EQ on. A cut at its end of the range is left out of the chain,
+as a gain of nought is, by the hertz the knob's end makes (20 and 20000 exactly on the law), and
+the pieces hold the cuts at their ends to the three bands to the bit, with a cut half a hertz in
+as the null. The functions tool reads a cut only where a run names it: read as nought, as every
+other field there is, a high cut would have sat at 10 Hz and silenced every run recorded before.
+
+**A point at rest must not sit where a point at work can.** A cut that is out was first drawn on
+the curve at its end, which put it over the mid's point taken to 20 kHz: the reach check found the
+mid there missed by nine probes of nine. An out cut rests on the 0 dB line, dashed, where it is
+not in the sum anyway.
+
+**A drawing cached by a key goes stale when the key misses a field.** The editor redraws only when
+`ECHO_EQ_KEYS` changes; the cuts' four were not in it, so a cut pulled in by code left its point
+where it was, and the reach check caught a point at +12 dB drawn on the 0 dB line.
+
+**Eleven knobs in the editor's row** left the old note beside them one word wide, which took the
+plot's whole height at 960x600; the note went (its words are the heading's, each point's and the
+cheat sheet's) and the row's gaps give, measured at all six windows with the old gaps as the null.
+Screenshots of both cuts pulled in are in `web/docs/eq-five-points/`.
+
 ## The plugin's face: what the host owns, and Browse on the compact header (22 Nov)
 
 The owner, in Logic: Settings showed the audio device, the MIDI ports and their note, none of

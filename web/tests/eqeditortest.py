@@ -77,11 +77,16 @@ SETTINGS = [
     # Since 22 Nov: the deeper cut and the bands at the range's ends, the high shelf at the top and the low at the foot.
     ("the deepest cuts, the shelves at the ends", [-160, -160, -160], [20, 1000, 20000], 10),
     ("the bands crossed", [100, -50, -120], [5000, 300, 60], 20),
+    # Since 23 Nov the cuts too: [low cut Hz, its Q in hundredths, high cut Hz, its Q], at their ends where not named.
+    ("both cuts pulled in, a bump on each", [30, -40, 0], [160, 1000, 4000], 10, [80, 300, 6000, 250]),
+    ("the cuts crossed over a boost", [0, 80, 0], [160, 700, 4000], 30, [3000, 71, 400, 400]),
 ]
-SET = """([g, hz, w]) => {
+SET = """([g, hz, w, cut]) => {
   setEqOn(true);
+  cut = cut || [20, 71, 20000, 71];
   const ids = [['eqLow', g[0]], ['eqMid', g[1]], ['eqHigh', g[2]], ['eqLowFreq', eqPos(0, hz[0])], ['eqMidFreq', eqPos(1, hz[1])],
-               ['eqHighFreq', eqPos(2, hz[2])], ['eqMidWidth', w]];
+               ['eqHighFreq', eqPos(2, hz[2])], ['eqMidWidth', w], ['eqCutLowFreq', eqPos(3, cut[0])], ['eqCutLowQ', cut[1]],
+               ['eqCutHighFreq', eqPos(4, cut[2])], ['eqCutHighQ', cut[3]]];
   for (const [id, v] of ids) setControl(id, v);
 }"""
 MEASURE = """(which) => {
@@ -93,14 +98,18 @@ MEASURE = """(which) => {
     return pts[pts.length - 1][1]; };
   const h = echoTarget('eq'), gains = [h.eqLow, h.eqMid, h.eqHigh];
   const dots = which === 'plot' ? Array.from(svg.querySelectorAll('.eq-pt .eq-ring')) : Array.from(svg.querySelectorAll('.eq-thumb-pt'));
-  return dots.map((c, k) => {
+  return dots.map((c, i) => {
+    // The plot's points are in the range's order since the cuts (23 Nov), so each says its band.
+    const k = which === 'plot' ? Number(c.parentNode.dataset.band) : i;
     const cx = +c.getAttribute('cx'), cy = +c.getAttribute('cy');
     // The first placement, the band's own gain, on the same axis: the null.
     const ht = svg.clientHeight;
     const oldY = which === 'plot' ? eqEd.geo.y(gains[k]) : 3 + (EQ_DB_TOP - gains[k]) / (EQ_DB_TOP - EQ_DB_FOOT) * (ht - 6);
     // On the curve, or on the plot's edge where the bands together take the curve past it (22 Nov).
     const edge = which === 'plot' ? [eqEd.geo.y(EQ_DB_TOP), eqEd.geo.y(EQ_DB_FOOT)] : [3, ht - 3];
-    const onCurve = Math.max(edge[0], Math.min(edge[1], yAt(cx)));
+    // A cut that is out (at its end, 23 Nov) rests on the 0 dB line instead, since it is not in the sum.
+    const zero = which === 'plot' ? eqEd.geo.y(0) : 3 + EQ_DB_TOP / (EQ_DB_TOP - EQ_DB_FOOT) * (ht - 6);
+    const onCurve = eqIsCut(k) && !eqBandIn(h, k) ? zero : Math.max(edge[0], Math.min(edge[1], yAt(cx)));
     return { band: k, gain: gains[k], miss: Math.abs(cy - onCurve), oldMiss: Math.abs(oldY - onCurve) };
   });
 }"""
@@ -123,12 +132,12 @@ with sync_playwright() as pw:
     for w, h in [(1400, 900), (960, 600)]:
         p = page(w, h)
         p.evaluate("() => openEqEditor()"); p.wait_for_timeout(200)
-        for name, g, pos, wd in SETTINGS:
-            p.evaluate(SET, [g, pos, wd]); p.wait_for_timeout(30)
+        for name, g, pos, wd, *cut in SETTINGS:
+            p.evaluate(SET, [g, pos, wd, cut[0] if cut else None]); p.wait_for_timeout(30)
             for which in ["plot", "thumb"]:
                 for r in p.evaluate(MEASURE, which):
                     worst = max(worst, r["miss"])
-                    if r["band"] != 1 and r["gain"] != 0: shelves.append((r["oldMiss"], "%dx%d %s %s band %d" % (w, h, name, which, r["band"])))
+                    if r["band"] in (0, 2) and r["gain"] != 0: shelves.append((r["oldMiss"], "%dx%d %s %s band %d" % (w, h, name, which, r["band"])))
                     if r["miss"] > 0.5: check("%dx%d %s %s band %d on the curve" % (w, h, name, which, r["band"]), False, "%.3f px" % r["miss"])
         p.close()
     check("every point within half a pixel of the drawn path at its x, %d settings, both windows, editor and line" % len(SETTINGS), worst <= 0.5,
@@ -141,17 +150,22 @@ with sync_playwright() as pw:
     subprocess.run(["g++", "-std=c++17", "-O1", "-I" + os.path.join(ROOT, "core", "include"),
                     os.path.join(ROOT, "core", "tests", "tools", "eq_response_cpp.cpp"), "-o", exe], check=True)
     # Places on today's knob (a thousand over 20 Hz to 20 kHz): the starts, and the ends both ways, the cut at -16 dB.
+    # And the cuts (23 Nov): [low cut's place, its Q, high cut's place, its Q], at their ends (out) where not named.
     CASES = [([3, 0, 3], [301, 567, 767], 1.0), ([3, -4, 3], [301, 528, 767], 1.4), ([12, 12, -16], [0, 1000, 1000], 0.2),
-             ([-16, -16, 12], [1000, 0, 0], 4.0), ([0, 6.5, 0], [301, 567, 767], 1.0), ([0, 0, 0], [301, 567, 767], 1.0)]
+             ([-16, -16, 12], [1000, 0, 0], 4.0), ([0, 6.5, 0], [301, 567, 767], 1.0), ([0, 0, 0], [301, 567, 767], 1.0),
+             ([3, 0, 3], [301, 567, 767], 1.0, [200, 3.0, 800, 0.5]), ([0, 0, 0], [301, 567, 767], 1.0, [700, 4.0, 300, 4.0]),
+             ([-6, 4, 0], [301, 567, 767], 2.0, [1, 0.71, 999, 2.0])]
     p = page(1400, 900)
     freqs = [20 * 1000 ** (i / 240) for i in range(241)]
     lines, settings = [], []
-    for g, pos, wd in CASES:
-        hz = p.evaluate("(pos) => pos.map((v, k) => eqHz(k, v))", pos)
-        e = dict(low=g[0], lowHz=hz[0], mid=g[1], midHz=hz[1], width=wd, high=g[2], highHz=hz[2])
+    for g, pos, wd, *cut in CASES:
+        cut = cut[0] if cut else [0, 0.71, 1000, 0.71]
+        hz = p.evaluate("(pos) => pos.map((v, k) => eqHz(k, v))", pos + [cut[0], cut[2]])
+        e = dict(low=g[0], lowHz=hz[0], mid=g[1], midHz=hz[1], width=wd, high=g[2], highHz=hz[2],
+                 cutLowHz=hz[3], cutLowQ=cut[1], cutHighHz=hz[4], cutHighQ=cut[3])
         for rate in (48000, 44100):
             settings.append((e, rate))
-            lines.append(f"{rate} {g[0]} {hz[0]!r} {g[1]} {hz[1]!r} {wd} {g[2]} {hz[2]!r}")
+            lines.append(f"{rate} {g[0]} {hz[0]!r} {g[1]} {hz[1]!r} {wd} {g[2]} {hz[2]!r} {hz[3]!r} {cut[1]!r} {hz[4]!r} {cut[3]!r}")
     out = subprocess.run([exe], input="\n".join(lines) + "\n", capture_output=True, text=True, check=True).stdout.split("\n")
     worst, nulls = 0.0, []
     for (e, rate), line in zip(settings, out):
@@ -160,7 +174,8 @@ with sync_playwright() as pw:
         other = p.evaluate("([e, f, r]) => eqResponseDb(e, f, r)", [e, freqs, 44100 if rate == 48000 else 48000])
         worst = max(worst, max(abs(a - c) for a, c in zip(page_db, core)))
         nulls.append(max(abs(a - c) for a, c in zip(other, core)))
-    check("the page's curve is the core's to 0.01 dB, six settings, 241 frequencies, 48 and 44.1 kHz", worst < 0.01, "worst %.2e dB" % worst)
+    check("the page's curve is the core's to 0.01 dB, %d settings (three with the cuts), 241 frequencies, 48 and 44.1 kHz" % len(CASES),
+          worst < 0.01, "worst %.2e dB" % worst)
     null("the page's curve at the other rate misses the core's where a shelf is high", max(nulls) > 0.01, "largest miss %.3f dB" % max(nulls))
 
     print("\n--- every point in reach at every extreme (22 Nov) ---")
@@ -171,10 +186,13 @@ with sync_playwright() as pw:
     # it (a shelf's own point is only at half its gain, at its corner). For each point: its reach wholly inside the
     # plot, the editor and the window, and the point itself under the pointer at its centre and at eight places a
     # pixel and a half inside its reach's rim - document.elementFromPoint, what a hand would press.
-    REACH = """([g, pos, w, bands, nullOld]) => {
+    REACH = """([g, pos, w, bands, nullOld, cut]) => {
       setEqOn(true);
+      // The cuts (23 Nov): [low cut's place, its Q in hundredths, high cut's place, its Q]; at their ends unless named.
+      cut = cut || [0, 71, 1000, 71];
       const ids = [['eqLow', g[0]], ['eqMid', g[1]], ['eqHigh', g[2]], ['eqLowFreq', pos[0]], ['eqMidFreq', pos[1]],
-                   ['eqHighFreq', pos[2]], ['eqMidWidth', w]];
+                   ['eqHighFreq', pos[2]], ['eqMidWidth', w], ['eqCutLowFreq', cut[0]], ['eqCutLowQ', cut[1]],
+                   ['eqCutHighFreq', cut[2]], ['eqCutHighQ', cut[3]]];
       for (const [id, v] of ids) setControl(id, v);
       paintEq();
       const svg = el.eqPlot.getBoundingClientRect(), ed = el.eqEditor.getBoundingClientRect(), geo = eqEd.geo;
@@ -214,14 +232,36 @@ with sync_playwright() as pw:
         ("the high shelf boosted at 20 kHz under a wide mid boost, past the top", [0, 120, 120], [301, 930, 1000], 40, [2, 1], ("top",)),
         ("the high shelf cut at 20 kHz under a wide mid cut, past the foot", [0, -160, -160], [301, 930, 1000], 40, [2, 1], ("foot",)),
         ("the low shelf boosted at 20 Hz under a wide mid boost, past the top", [120, 120, 0], [0, 100, 767], 40, [0, 1], ("top",)),
+        # The cuts (23 Nov): at their ends, out, on the 0 dB line at the plot's sides; and pulled a step in with the most
+        # resonance, their bump +12 dB, on the top at either side.
+        ("both cuts at their ends, out, on the 0 dB line at either side", [0, 0, 0], [301, 567, 767], 10, [3, 4], ("left",),
+         [0, 71, 1000, 71]),
+        ("the low cut a step in with its most resonance, on the top at the left", [0, 0, 0], [301, 567, 767], 10, [3], ("top",),
+         [1, 400, 1000, 71]),
+        ("the high cut a step in with its most resonance, on the top at the right", [0, 0, 0], [301, 567, 767], 10, [4], ("top",),
+         [0, 71, 999, 400]),
     ]
     REACH_WINDOWS = [(1660, 1050), (1400, 900), (1100, 860), (1200, 680), (1100, 680), (960, 600)]
-    out_of_reach, off_edge, past, olds, n_points = [], [], 0, [], 0
+    out_of_reach, off_edge, past, olds, n_points, rows = [], [], 0, [], 0, []
     for w, h in REACH_WINDOWS:
         q = page(w, h)
         q.evaluate("() => openEqEditor()"); q.wait_for_timeout(250)
-        for name, g, pos, wd, bands, edges in EDGE_CASES:
-            for r in q.evaluate(REACH, [g, pos, wd, bands, name.startswith("the mid's cut at 20 Hz")]):
+        # Five bands' eleven knobs in one row (23 Nov): inside the editor, and the plot left a height worth drawing in.
+        rows.append((w, h, q.evaluate("""() => { const k = el.eqEdKnobs.getBoundingClientRect(), e = el.eqEditor.getBoundingClientRect();
+          return { inside: k.left >= e.left && k.right <= e.right, over: el.eqEdKnobs.scrollWidth - el.eqEdKnobs.clientWidth,
+                   plot: Math.round(el.eqPlot.getBoundingClientRect().height), knobs: el.eqEdKnobs.querySelectorAll('input').length }; }""")))
+        if (w, h) == (960, 600):
+            # The null: the gaps the row had before the cuts, put back, measured the same way.
+            oldrow = q.evaluate("""async () => {
+              const css = document.createElement('style');
+              css.textContent = '.eq-knobs{gap:4px!important}.eq-band{column-gap:6px!important;padding:2px 3px!important}.eq-sep{margin:2px!important}';
+              document.head.appendChild(css); await new Promise((r) => setTimeout(r, 100));
+              const k = el.eqEdKnobs.getBoundingClientRect(), e = el.eqEditor.getBoundingClientRect();
+              const out = { inside: k.left >= e.left && k.right <= e.right, width: Math.round(k.width) };
+              css.remove(); await new Promise((r) => setTimeout(r, 100));
+              return out; }""")
+        for name, g, pos, wd, bands, edges, *cut in EDGE_CASES:
+            for r in q.evaluate(REACH, [g, pos, wd, bands, name.startswith("the mid's cut at 20 Hz"), cut[0] if cut else None]):
                 n_points += 1
                 if r["missed"] or not r["inside"]:
                     out_of_reach.append("%dx%d %s band %d: %d of 9 probes missed, inside %s" % (w, h, name, r["band"], r["missed"], r["inside"]))
@@ -238,7 +278,8 @@ with sync_playwright() as pw:
                 if "old" in r: olds.append((w, h, r["old"]))
         q.close()
     check("every point at an edge or a corner wholly in reach - under the pointer at its centre and all round its rim, its reach "
-          "inside the plot, the editor and the window: %d points, eight cases, six windows" % n_points, not out_of_reach and n_points == 72,
+          "inside the plot, the editor and the window: %d points, %d cases, six windows" % (n_points, len(EDGE_CASES)),
+          not out_of_reach and n_points == len(REACH_WINDOWS) * sum(len(c[4]) for c in EDGE_CASES),
           "; ".join(out_of_reach[:3]))
     check("and each on the plot, the band at the end of its range on that edge or corner, the cut at -16 dB on the foot",
           not off_edge, "; ".join(off_edge[:3]))
@@ -246,6 +287,44 @@ with sync_playwright() as pw:
     null("the same point where the old plot drew it, 2 dB past its foot, is not in reach at any window: the probes miss it or it "
          "leaves the plot", len(olds) == len(REACH_WINDOWS) and all(o["missed"] or not o["inside"] for _, _, o in olds),
          str([(w, h, o) for w, h, o in olds][:2]))
+
+    badrows = [(w, h, r) for w, h, r in rows if not (r["inside"] and r["over"] <= 0 and r["plot"] >= 150 and r["knobs"] == 11)]
+    check("the eleven knobs of the five points in one row inside the editor, none cut off, the plot at least 150 px tall, at "
+          "all six windows", not badrows and len(rows) == 6, str(badrows or [(w, h, r["plot"]) for w, h, r in rows]))
+    null("the row with the gaps it had before the cuts does not fit the editor at 960x600", not oldrow["inside"], str(oldrow))
+
+    print("\n--- the cuts pulled in by a hand (23 Nov) ---")
+    DOC_SHOTS = os.environ.get("EQ_DOC_SHOTS")
+    for w, h in [(1400, 900), (960, 600)]:
+        q = page(w, h)
+        q.evaluate("() => { restore({}); setEqOn(true); setControl('eqMid', 30); setControl('eqLow', -40); eqEd.sel = 4; openEqEditor(); }")
+        q.wait_for_timeout(300)
+        ring = lambda k: q.evaluate("""(k) => { const r = eqEd.parts.points[k].querySelector('.eq-ring').getBoundingClientRect();
+                                               return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }""", k)
+        plot = q.evaluate("() => { const r = el.eqPlot.getBoundingClientRect(); return { left: r.left, width: r.width }; }")
+        before = q.evaluate("() => [el.eqCutHighFreq.value, el.eqCutHighQ.value, el.eqCutLowFreq.value, el.eqCutLowQ.value, genSettings(0).eqCutHighHz]")
+        hc, lc = ring(4), ring(3)
+        # The high cut from 20 kHz to about a third of the way back, and up for a bump; the low cut in from 20 Hz, and down.
+        q.mouse.move(hc["x"], hc["y"]); q.mouse.down(); q.mouse.move(hc["x"] - plot["width"] * 0.28, hc["y"] - 45, steps=12); q.mouse.up()
+        q.mouse.move(lc["x"], lc["y"]); q.mouse.down(); q.mouse.move(lc["x"] + plot["width"] * 0.18, lc["y"] + 25, steps=12); q.mouse.up()
+        q.wait_for_timeout(250)
+        after = q.evaluate("""() => { const g = genSettings(0), s = document.querySelector('[data-fx-sum="eq"]').textContent;
+          return { knobs: [el.eqCutHighFreq.value, el.eqCutHighQ.value, el.eqCutLowFreq.value, el.eqCutLowQ.value],
+                   hz: [g.eqCutHighHz, g.eqCutHighQ, g.eqCutLowHz, g.eqCutLowQ], sum: s,
+                   undo: undoHistory.undo.length, dashed: eqEd.parts.points[4].querySelector('.eq-ring').getAttribute('stroke-dasharray') }; }""")
+        if os.environ.get("EQ_SHOTS"): q.screenshot(path=os.path.join(os.environ["EQ_SHOTS"], "eq-%dx%d-cuts-pulled-in.png" % (w, h)))
+        if DOC_SHOTS: q.screenshot(path=os.path.join(DOC_SHOTS, "editor-%dx%d.png" % (w, h)))
+        print("    %dx%d before %s, after %s" % (w, h, before, after))
+        hk = [int(v) for v in after["knobs"]]
+        check("%dx%d: the high cut's point, dragged in from 20 kHz and up, is in below 20 kHz with more resonance, and the engine "
+              "is told" % (w, h), hk[0] < 1000 and hk[1] > 71 and abs(after["hz"][0] - 20 * 1000 ** (hk[0] / 1000)) < 1e-6
+              and abs(after["hz"][1] - hk[1] / 100) < 1e-9, str(after))
+        check("%dx%d: the low cut's, dragged in from 20 Hz and down, is in above 20 Hz with less, and the engine is told" % (w, h),
+              hk[2] > 0 and hk[3] < 71 and abs(after["hz"][2] - 20 * 1000 ** (hk[2] / 1000)) < 1e-6, str(after))
+        check("%dx%d: and the rack's line says both cuts" % (w, h), "cut below" in after["sum"] and "cut above" in after["sum"], after["sum"])
+        null("%dx%d: before the hand, both were at their ends, out, and the line said neither" % (w, h),
+             before[:4] == ["1000", "71", "0", "71"] and before[4] == 20000)
+        q.close()
 
     print("\n--- a point dragged past the plot's corner, and grabbed again (22 Nov) ---")
     SHOTS = os.environ.get("EQ_SHOTS")
@@ -360,7 +439,7 @@ with sync_playwright() as pw:
     p.evaluate("() => eqFocusPoint()")
     p.keyboard.press("Escape"); p.wait_for_timeout(150)
     esc2 = p.evaluate("() => ({ editor: eqEd.open, focus: document.activeElement === el.eqThumb, knobs: el.eqStore.querySelectorAll('input').length })")
-    check("Esc again closes the editor, the focus back on the curve, the knobs back in their store", esc2 == {"editor": False, "focus": True, "knobs": 7}, str(esc2))
+    check("Esc again closes the editor, the focus back on the curve, the knobs back in their store", esc2 == {"editor": False, "focus": True, "knobs": 11}, str(esc2))
 
     print("\n--- the line's small curve ---")
     thumb = p.evaluate("""async () => {
@@ -387,7 +466,7 @@ with sync_playwright() as pw:
     }""")
     print("    %s" % thumb)
     check("off, the line's curve is flat and grey, with no points", thumb["off"]["grey"] and not thumb["off"]["sum"] and thumb["off"]["dots"] == 0, str(thumb["off"]))
-    check("on, it is the curve with its three points", thumb["on"]["sum"] and thumb["on"]["dots"] == 3 and not thumb["on"]["grey"], str(thumb["on"]))
+    check("on, it is the curve with its five points", thumb["on"]["sum"] and thumb["on"]["dots"] == 5 and not thumb["on"]["grey"], str(thumb["on"]))
     check("with the hands' EQs their own and different, it draws both, the other dashed in the lower hand's ink",
           thumb["differ"]["sum"] and thumb["differ"]["other"] and thumb["otherInk"] == thumb["lowerInk"], str(thumb))
     null("two hands linked draw one", thumb["linkedTwo"]["sum"] and not thumb["linkedTwo"]["other"], str(thumb["linkedTwo"]))
