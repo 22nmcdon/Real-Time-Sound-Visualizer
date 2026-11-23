@@ -61,7 +61,9 @@ def back_code():
     import base64, json
     setup = json.loads(base64.urlsafe_b64decode(PROTOTYPE_CODE + "=" * (-len(PROTOTYPE_CODE) % 4)))
     setup.pop("polyRound")
-    setup["v"] = 13
+    import os, re
+    # The version the core brings a code up to (14 since 22 Nov, the EQ's whole range; the prototype has no EQ).
+    setup["v"] = int(re.search(r"kSetupVersion = (\d+)", open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "core", "include", "scope", "setup.h")).read()).group(1))
     out = {}
     for k, v in setup.items():
         out[k] = v

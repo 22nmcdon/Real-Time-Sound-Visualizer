@@ -555,7 +555,7 @@ with sync_playwright() as pw:
     check("a code with drawn shapes loads them into the face and the generator it drives", got == ["1;A>m.62;D.4,.3,m.7>m.3;R>m.65;L2", 40, "1;A>l;D>l;R>l;S-",
           "1;A>m.62;D.4,.3,m.7>m.3;R>m.65;L2", 40, "1;A>l;D>l;R>l;S-"], str(got))
     old = p.evaluate("() => { const s = decodeSetup(btoa(JSON.stringify({ v: 12, atk: 5 })).replace(/=+$/, '')); return [s.v, s.envShape, s.vcfShape, s.menvShape]; }")
-    check("a version-12 code comes up with the old envelope's shape in each", old == [13, "1;A>p.2;D>p.2;R>a.2", "1;A>p.2;D>p.2;R>a.2", "1;A>p.2;D>p.2;R>a.2"], str(old))
+    check("a version-12 code comes up with the old envelope's shape in each", old == [p.evaluate("() => SETUP_VERSION"), "1;A>p.2;D>p.2;R>a.2", "1;A>p.2;D>p.2;R>a.2", "1;A>p.2;D>p.2;R>a.2"], str(old))
     null("one made at 13 names none", p.evaluate("() => decodeSetup(btoa(JSON.stringify({ v: 13, atk: 5 })).replace(/=+$/, '')).envShape") is None)
 
     if bad: check("no page errors", False, "; ".join(bad[:3]))

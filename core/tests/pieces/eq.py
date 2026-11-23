@@ -6,8 +6,13 @@ The bands are the node's (the Audio EQ Cookbook, the shelves' slope one), so
 the node is the reference, as it was for the page's old biquad: the core's
 coefficients (functions_cpp's `eqBand`) are turned into a response here and
 held to the node's `getFrequencyResponse` in the browser to a ten-thousandth
-of a decibel, at every band, gains from -12 to +12 dB, frequencies across
-each knob's range and two rates. The mid's width is in octaves on the knob
+of a decibel, at every band, gains from -16 to +12 dB (the knobs' range
+since 22 Nov), frequencies across each knob's range - 20 Hz to 20 kHz for
+every band since then - and two rates. Near the top the core holds a band
+at 0.45 of the rate, where the node goes on to Nyquist, so the top of the
+range is held to the node at 19 kHz, under that at both rates; what the
+core does at 20 kHz is held by its own numbers below: a high shelf there
+reaches only what is left above it, a low shelf there is the whole sound. The mid's width is in octaves on the knob
 and Q to the node, by the analog relation (functions_cpp's `eqQ`); the null
 is the width handed to the node as Q unconverted.
 
@@ -90,7 +95,8 @@ def run(kit):
     check, null = kit.check, kit.null
     db = lambda m: 20 * np.log10(np.maximum(1e-12, np.asarray(m, dtype=float)))
     types = ["lowshelf", "peaking", "highshelf"]
-    ranges = [(40, 640), (125, 8000), (1000, 16000)]
+    # The whole range for every band since 22 Nov (the knob's ends, 20 Hz to 20 kHz), at 19 kHz for the top (see above).
+    ranges = [(20, 19000)] * 3
 
     # --- the bands against the node ---
     cases = []
@@ -98,7 +104,7 @@ def run(kit):
         for band in range(3):
             lo, hi = ranges[band]
             for hz in (lo, math.sqrt(lo * hi), hi):
-                for gain in (-12, -6, -1.5, 0.1, 3, 12):
+                for gain in (-16, -12, -6, -1.5, 0.1, 3, 12):
                     for width in ((0.2, 1, 4) if band == 1 else (1,)):
                         cases.append((band, gain, hz, width, rate))
     calls = ["eqBand %d %r %r %r %r" % c for c in cases] + ["eqQ %r" % c[3] for c in cases]
@@ -129,6 +135,20 @@ def run(kit):
           and abs(reads[2] - 6) < 1e-9 and abs(reads[3] + 6) < 0.6, "%.3f %.3f %.3f %.3f" % reads)
     null("and the low shelf is not the high: +12 at 160 Hz reads near nought at 16 kHz",
          abs(float(db(response(lowc, [16000], 44100))[0])) < 0.5)
+
+    # --- the deeper cut reaches the sound (22 Nov) ---
+    # A low shelf taken to the top of the range is the whole of a run's tones (220, 330 and 661 Hz) under it: the
+    # pair falls by the shelf's gain. At -16 dB, the knob's foot since 22 Nov, it falls by 16; the old foot by 12.
+    rms = lambda a: float(np.sqrt(np.mean(np.asarray(a)[2000:, :2] ** 2)))
+    dry = rms(plane_run(kit))
+    falls = {g: 20 * math.log10(rms(plane_run(kit, eqLow=g, eqLowHz=20000)) / dry) for g in (-16, -12)}
+    check("a low shelf at -16 dB taken to 20 kHz takes the pair down by 16 dB, to about a sixth (%.3f)" % falls[-16],
+          abs(falls[-16] + 16) < 0.05, "%.4f dB" % falls[-16])
+    null("and the old foot, -12, by 12, which that check would not pass", abs(falls[-12] + 16) > 3.9, "%.4f dB" % falls[-12])
+    # A high shelf at the top of the range does little to the same tones: it reaches only what is above them.
+    top = 20 * math.log10(rms(plane_run(kit, eqHigh=-16, eqHighHz=20000)) / dry)
+    check("and a high shelf at -16 dB at 20 kHz leaves the same tones within a tenth of a decibel (%.4f): a shelf at the top "
+          "touches only the last overtones" % top, abs(top) < 0.1, "%.4f dB" % top)
 
     # --- where it sits in the plane ---
     eq = dict(eqLow=4, eqLowHz=200, eqMid=-5, eqMidHz=900, eqMidWidth=0.8, eqHigh=6, eqHighHz=3000)

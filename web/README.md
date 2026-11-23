@@ -7859,6 +7859,58 @@ three. What was learned:
   markup and placed on Time by `data-place`, so the face is as built and the order is the old.
   Run the core's tests after moving any slider in the markup, even between hidden homes.
 
+## The EQ's whole range, its deeper cut, and points kept in reach (22 Nov)
+
+The owner tried the EQ and found three things: the cut stopped at -12 dB without saying so, a
+point could be dragged where it could not be grabbed again, and the bands stopped short - the
+high shelf would not go to the right. The gains go to -16 dB now (the boost stays +12); every
+band's frequency runs 20 Hz to 20 kHz on the voice filter's cutoff law, a thousand places; and
+the editor's plot is the gains' range exactly, with every point held inside it and a margin of
+its whole reach round it.
+
+**A stored number whose meaning changes gets a version, not a second reading.** Each band's
+place had been a hundred over a span of its own (40 to 640 Hz, 125 Hz to 8 kHz, 1 to 16 kHz),
+so a 50 was 160 Hz, 1 kHz or 4 kHz; on the new law it is 28 Hz. Setup version 14's pass
+(`migrateSetup`, `eqPlaceOfOldSpan` in `scope/setup.h`) turns each old place into the hertz it
+meant and that into the new place, unrounded, so an old code plays the same frequency to a part
+in 10^15; and because the new defaults (301, 567, 767) miss the old middles by up to eight cents,
+an old code with any EQ field has its missing bands' old middles written in. The gains' wider
+range needed nothing of the kind: widening a clamp's floor moves no stored value. `eqtest.py`
+sends every old place through the page's decode and restore to the engine, its null the same
+places read without the pass (each misses by half or more); `core_tests.py` does 630 through
+the core's codec.
+
+**A point drawn past the plot's edge is a point lost.** The plot was +-12 dB and a point was
+drawn up to 2 dB past it, which at 1400x900 put its centre 25 px under the foot, past the svg
+and over the knobs, which took the press. A point is drawn on the total curve, and two bands
+together can take the curve far past either end of one band's range, so the clamp is on the
+drawing, at the plot's edge, and the plot keeps `EQ_HIT` (the point's reach, 16 px) on every
+side a point can go. `eqeditortest.py` presses each point at its centre and round its rim with
+`elementFromPoint` - what a hand would hit - at eight edge cases and six windows; the null is
+the same point moved to where the old plot drew it, which nine of nine probes miss.
+
+**A shelf at the top of the range does almost nothing, and that is the range's honest end.**
+The core holds a band at 0.45 of the rate (19.8 kHz at 44.1 kHz), and a high shelf at 20 kHz
+cuts only what is above it: on a 220 Hz tone, nothing measurable (`pieces/eq.py`). A low shelf
+there is the whole sound - the way to turn everything down by the gain. The owner called the
+high shelf "the lowpass"; a shelf flattens at its gain rather than falling away, so a real cut
+would be a different filter (proposed, not built).
+
+**The bands may cross.** Nothing pushes one band along by another: each is its own filter and
+the response is their product whichever way round they stand, and a knob that moved its
+neighbour would make the morph or a host's write to one band land on two.
+
+**A number the codec stores must be computed the same to the last bit in every build.** The
+first pass used `pow` and `log10`, and the site's compiled core and the native one wrote 18 of
+630 migrated places a digit apart in the seventeenth figure - their maths libraries round
+differently - which `core_tests.py`'s check of the compiled codec against the native caught
+while every web suite was green. Then, with the logarithms as constants, GCC at
+`-ffp-contract=fast` fused a multiply and an add from two statements into one rounding. The
+pass now uses no library function but an explicit `std::fma`, which IEEE rounds once
+everywhere; GCC and Clang at -O0 to -O3, with and without FMA, and the WebAssembly build agree
+to the character. A value used only at run time (the hertz `eqHz` makes) can differ in its last
+bit between builds; a value written into a code cannot.
+
 ## The plugin's face: what the host owns, and Browse on the compact header (22 Nov)
 
 The owner, in Logic: Settings showed the audio device, the MIDI ports and their note, none of
