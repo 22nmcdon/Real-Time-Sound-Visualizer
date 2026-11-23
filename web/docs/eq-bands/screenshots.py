@@ -14,7 +14,8 @@ import webfonts
 SHAPED = """() => { setBenchTab('space'); restore({}); setEqOn(true); setControl('eqLow', 45); setControl('eqMid', -30);
   setControl('eqHigh', 40); setEqBandOn(3, true); setEqBandOn(4, true); setControl('eqCutLowFreq', eqPos(3, 40));
   setControl('eqCutHighFreq', eqPos(4, 9000)); setControl('eqCutHighQ', 140); openEqEditor(); }"""
-CROSS = """([x, y]) => { const c = document.createElement('div');
+# The pointer's cross, in the page's own pixels: it is laid inside the zoomed page (Size, 90 per cent at 960x600).
+CROSS = """([x, y]) => { const c = document.createElement('div'); x /= pageZoom; y /= pageZoom;
   c.style.cssText = 'position:fixed;left:' + (x - 9) + 'px;top:' + (y - 9) + 'px;width:18px;height:18px;pointer-events:none;z-index:99;'
    + 'background:linear-gradient(#a4553f,#a4553f) center/2px 18px no-repeat,linear-gradient(#a4553f,#a4553f) center/18px 2px no-repeat';
   document.body.appendChild(c); }"""
