@@ -2488,6 +2488,17 @@ html[data-plugin] [data-host-owns] { display: none !important; }
 .ink-swatch[data-ink="ch3"] { --swatch: var(--ch3); }
 .ink-swatch[data-ink="ch4"] { --swatch: var(--ch4); }
 .ink-swatch[data-ink="ch5"] { --swatch: var(--ch5); }
+/* The second hand's "Its lane's": half a disc in the lane's ink, ringed in it, so
+   it reads as that ink by reference rather than as a seventh ink. */
+.ink-swatch[data-ink="lane"] {
+  background: conic-gradient(from 225deg, var(--swatch) 0 50%, var(--paper) 0 100%);
+  box-shadow: inset 0 0 0 2px var(--swatch), 0 0 0 2px var(--paper);
+}
+.ink-swatch[data-ink="lane"][aria-checked="true"] {
+  box-shadow: inset 0 0 0 2px var(--swatch), 0 0 0 2px var(--paper), 0 0 0 4px var(--blush-deep);
+}
+/* Dimmed while one figure is drawn: still chosen and kept, and nothing moves. */
+#bInkRow.idle .ink-swatches { opacity: 0.45; }
 
 /* --- dock ---------------------------------------------------------------- */
 /* On the Bench it is a line under the screen (F8): no band, no gutter. */
@@ -5091,6 +5102,11 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                  inks, which DESIGN.md measures to stay apart on the paper, so no
                  colour is added to the brand. Not terracotta, the sixth: it is the
                  photocell's reticle, which sits on the figure. -->
+            <!-- Each hand's ink a row of swatches (23 Nov, the owner's: "why don't we
+                 just have two different colour choice arrays, one for each hand?"), named
+                 for the hands as the face names them. The second row is dimmed, not
+                 hidden, while only one figure is drawn: its choice is still kept, and a
+                 hidden row would move the note under it. -->
             <div class="menu-row">
               <span class="menu-label" id="beamInkLabel">Ink</span>
               <div class="ink-swatches" id="beamInk" role="radiogroup" aria-labelledby="beamInkLabel">
@@ -5102,11 +5118,27 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
                 <button type="button" class="ink-swatch" id="inkCh5" data-ink="ch5" role="radio" aria-checked="false" aria-label="Plum" title="Plum"></button>
               </div>
             </div>
+            <div class="menu-row" id="bInkRow">
+              <span class="menu-label" id="bInkLabel">Second hand</span>
+              <!-- "Its lane's" first, as in the menu: a disc half in the lane's ink, ringed
+                   in it, which paintInks keeps in whatever ink that lane is now. -->
+              <div class="ink-swatches" id="bInkSwatches" role="radiogroup" aria-labelledby="bInkLabel">
+                <button type="button" class="ink-swatch" id="bInkLane" data-ink="lane" role="radio" aria-checked="true" aria-label="Its lane&rsquo;s ink" title="Its lane&rsquo;s ink"></button>
+                <button type="button" class="ink-swatch" id="bInkAccent" data-ink="accent" role="radio" aria-checked="false" aria-label="Rose" title="Rose"></button>
+                <button type="button" class="ink-swatch" id="bInkCh1" data-ink="ch1" role="radio" aria-checked="false" aria-label="Charcoal" title="Charcoal"></button>
+                <button type="button" class="ink-swatch" id="bInkCh2" data-ink="ch2" role="radio" aria-checked="false" aria-label="Slate" title="Slate"></button>
+                <button type="button" class="ink-swatch" id="bInkCh3" data-ink="ch3" role="radio" aria-checked="false" aria-label="Olive" title="Olive"></button>
+                <button type="button" class="ink-swatch" id="bInkCh4" data-ink="ch4" role="radio" aria-checked="false" aria-label="Sage" title="Sage"></button>
+                <button type="button" class="ink-swatch" id="bInkCh5" data-ink="ch5" role="radio" aria-checked="false" aria-label="Plum" title="Plum"></button>
+              </div>
+            </div>
             <!-- Said where it is chosen, so the Y-T traces keeping their lanes' inks
                  does not look like a fault: there the colours tell the channels apart. -->
             <p class="ink-where">Colours the X&ndash;Y figure. In Y&ndash;T each lane keeps its own ink.</p>
-            <div class="menu-row">
-              <label class="menu-label" for="bInk">Layer B's ink</label>
+            <!-- The value the second row sets, as a menu, out of sight, where it always
+                 was: the plugin's panel, undo and the setup hear its change event as before. -->
+            <div class="menu-row" id="bInkMenuRow" hidden>
+              <label class="menu-label" for="bInk">Second hand's ink</label>
               <div class="grow">
                 <select id="bInk" style="flex:1 1 auto">
                   <option value="lane" selected>Its lane's</option>
@@ -6470,8 +6502,9 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         figure, and the Width becomes the sound's own, saved with it and marked with a ring before its
         name (the player's Width waits, put away, for <i>Draw width</i> off). Drawn too, the figure of two notes
         drawn against each other goes: the screen draws the notes' rings summed. The beam's <i>Ink</i> is the
-        figure's colour, the accent or one of five lane inks, and <i>Layer B's ink</i> is the
-        second figure's, its lane's unless you choose (in Y&ndash;T each lane keeps its own);
+        figure's colour, the accent or one of five lane inks, and with two hands the second row of
+        swatches is the second hand's, its lane's (the half disc) unless you choose; each row is
+        named for its hand, and the second is dimmed while one figure is drawn, still yours to choose for when there are two (in Y&ndash;T each lane keeps its own);
         <i>Thickness</i> draws the traces thinner or thicker, and <i>Graticule</i> rules the
         divisions or leaves the screen bare. Scan reads where the light went, not its colour
         or its width, so none of them changes what you hear. Above the
@@ -7273,7 +7306,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         <span>The headings are down the left, each with what it means in a line, and your
         saved sounds are the last. The middle is the heading's sounds, each with a thumbnail
         of its figure as the instrument draws it with a note held &mdash; a split draws its
-        second hand in layer B's ink &mdash; and what to listen for. Choosing one shows it on
+        second hand in its own ink &mdash; and what to listen for. Choosing one shows it on
         the right, larger, with what to listen for and what to watch for over the whole of
         what it says, and loads nothing;
         <i>Load</i> loads it and leaves the browser open, so you can listen through a heading.
@@ -7642,7 +7675,7 @@ for (const id of ["screenTools", "screenZoom", "measureButton", "measurePanel", 
                   "midSide", "lagCheck", "lagOn", "lagRow", "lagHow", "lagAuto", "lagManual",
                   "acCorner", "acCornerValue",
                   "lag", "lagValue", "saveReference", "clearReference",
-                  "beamLevel", "beamInk", "bInk", "traceWidth", "graticuleOn", "beamXY", "beamYT", "beamGoni",
+                  "beamLevel", "beamInk", "bInk", "bInkRow", "bInkLabel", "bInkSwatches", "bInkLane", "beamInkLabel", "traceWidth", "graticuleOn", "beamXY", "beamYT", "beamGoni",
                   "helpButton", "helpDialog", "helpClose",
                   "tabScreen", "tabTrigger", "tabMeasure", "tabSignal", "tabKeys",
                   "panelScreen", "panelTrigger", "panelMeasure", "panelSignal", "panelKeys",
@@ -16454,7 +16487,7 @@ function drawMain(frame, elapsed) {
    Persistence is what makes it look like a scope rather than a plot: the beam
    writes and the screen forgets slowly, so the whole figure is visible at once
    even though only a fraction of it is drawn on any frame. */
-/* A figure's ink: A's is the Beam's Ink, B's is Layer B's ink, which by
+/* A figure's ink: A's is the Beam's first row of swatches, B's its second, which by
    default is its X lane's, so it matches that lane in Y-T and in the legend.
    A third figure has nothing to choose it and keeps its lane's. One rule,
    read by the figure and by the loop overlay, whose rings are in their
@@ -18344,27 +18377,68 @@ function clearPaper() {
   fit.ctx.fillStyle = ink.paper;
   fit.ctx.fillRect(0, 0, fit.w, fit.h);
 }
+const INK_NAMES = { accent: "Rose", ch1: "Charcoal", ch2: "Slate", ch3: "Olive", ch4: "Sage", ch5: "Plum" };
+/* Both rows of swatches, the second hand's named and drawn from the hands as
+   they are: its rows' names are the hands' while there are two (Lower and
+   Upper on a split, A and B layered), and the row is dimmed while only one
+   figure is drawn, when its ink has nothing to colour. The labels are a fixed
+   width, so a name changing moves nothing. A roving tab stop in each group:
+   only the chosen swatch is in the tab order, as a radio group's is. */
 function paintInks() {
-  for (const b of el.beamInk.querySelectorAll(".ink-swatch")) {
-    b.setAttribute("aria-checked", String(b.dataset.ink === state.beamInk));
+  for (const [group, key] of [[el.beamInk, "beamInk"], [el.bInkSwatches, "bInk"]]) {
+    for (const b of group.querySelectorAll(".ink-swatch")) {
+      const on = b.dataset.ink === state[key];
+      b.setAttribute("aria-checked", String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
   }
   if (el.bInk.value !== state.bInk) el.bInk.value = state.bInk;
+  const figures = typeof sourceFigures === "function" ? sourceFigures() : null;
+  const laneInk = "ch" + ((figures && figures[1] ? figures[1][0] : 2) + 1);
+  el.bInkLane.style.setProperty("--swatch", "var(--" + laneInk + ")");
+  const two = typeof midi !== "undefined" && midi.layers.mode !== "off";
+  const names = two ? (midi.layers.mode === "split" ? ["Lower hand", "Upper hand"] : ["Layer A", "Layer B"]) : ["Ink", "Second hand"];
+  if (el.beamInkLabel.textContent !== names[0]) el.beamInkLabel.textContent = names[0];
+  if (el.bInkLabel.textContent !== names[1]) el.bInkLabel.textContent = names[1];
+  /* Dimmed while one figure is drawn, and still choosable (the owner's, 23 Nov): it
+     changes nothing heard, and a choice made now is there when two hands play. Each
+     swatch's title says why it is dimmed, so the dimming is not read as off. */
+  const idle = !(figures && figures.length === 2);
+  el.bInkRow.classList.toggle("idle", idle);
+  const why = idle ? " \u2013 dimmed: it colours the second hand\u2019s figure, and none is drawn now; still yours to choose for when there is" : "";
+  for (const b of el.bInkSwatches.querySelectorAll(".ink-swatch")) {
+    const said = (b.dataset.ink === "lane" ? "Its lane\u2019s ink (" + INK_NAMES[laneInk] + " now)" : INK_NAMES[b.dataset.ink]) + why;
+    if (b.title !== said) { b.title = said; b.setAttribute("aria-label", said); }
+  }
 }
-el.beamInk.addEventListener("click", (e) => {
-  const b = e.target.closest(".ink-swatch");
-  if (b) setInk("beamInk", b.dataset.ink);
-});
-// A radio group's arrows: left and right step through the inks, as a select's would.
-el.beamInk.addEventListener("keydown", (e) => {
-  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-  const inks = SETUP_FIELDS.beamInk[1][1];
-  const by = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
-  const next = inks[(inks.indexOf(state.beamInk) + by + inks.length) % inks.length];
-  setInk("beamInk", next);
-  el.beamInk.querySelector('[data-ink="' + next + '"]').focus();
-  e.preventDefault();
-});
+/* The second row writes the hidden menu and sends its change event, so what
+   hears the menu - the plugin's panel, undo, the setup - hears what it did. */
+function chooseInk(key, value) {
+  if (key === "beamInk") { setInk("beamInk", value); return; }
+  if (el.bInk.value === value && state.bInk === value) { paintInks(); return; }
+  el.bInk.value = value;
+  el.bInk.dispatchEvent(new Event("change", { bubbles: true }));
+}
+for (const [group, key] of [[el.beamInk, "beamInk"], [el.bInkSwatches, "bInk"]]) {
+  group.addEventListener("click", (e) => {
+    const b = e.target.closest(".ink-swatch");
+    if (b) chooseInk(key, b.dataset.ink);
+  });
+  // A radio group's arrows: left and right step through the inks, as a select's would; Home and End to the ends.
+  group.addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
+    const inks = SETUP_FIELDS[key][1][1];
+    const by = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
+    const next = e.key === "Home" ? inks[0] : e.key === "End" ? inks[inks.length - 1]
+      : inks[(inks.indexOf(state[key]) + by + inks.length) % inks.length];
+    chooseInk(key, next);
+    group.querySelector('[data-ink="' + next + '"]').focus();
+    e.preventDefault();
+  });
+}
 el.bInk.addEventListener("change", () => setInk("bInk", el.bInk.value));
+// The hands come and go with the keyboard: the rows' names and the dimming follow while the panel is open.
+window.setInterval(() => { if (!el.picturePanel.hidden) paintInks(); }, 250);
 // The thickness and the graticule: the next frame draws them, and the paper is cleared as an ink's change clears it.
 el.traceWidth.addEventListener("change", () => {
   state.trace = SETUP_FIELDS.trace[1][1].includes(el.traceWidth.value) ? el.traceWidth.value : "normal";
@@ -30861,7 +30935,14 @@ const CONTROL_WORDS = {
   "inkCh3": ["Ink: Olive", "Draws the X–Y figure in olive. Only the look: Scan reads the light, not its colour."],
   "inkCh4": ["Ink: Sage", "Draws the X–Y figure in sage. Only the look: Scan reads the light, not its colour."],
   "inkCh5": ["Ink: Plum", "Draws the X–Y figure in plum. Only the look: Scan reads the light, not its colour."],
-  "bInk": ["The upper hand’s ink", "The colour of the upper hand’s figure while each hand draws one: its lane’s ink to start, or one you choose. Only the look."],
+  "bInk": ["The second hand’s ink", "The colour of the second hand’s figure while each hand draws one, kept for the row of swatches beside the first hand’s: its lane’s ink to start."],
+  "bInkLane": ["Second hand: its lane’s ink", "Draws the second hand’s figure in its lane’s ink, as in Y–T. Dimmed with one figure drawn, and still choosable for when there are two."],
+  "bInkAccent": ["Second hand: Rose", "Draws the second hand’s figure in rose. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh1": ["Second hand: Charcoal", "Draws the second hand’s figure in charcoal. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh2": ["Second hand: Slate", "Draws the second hand’s figure in slate. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh3": ["Second hand: Olive", "Draws the second hand’s figure in olive. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh4": ["Second hand: Sage", "Draws the second hand’s figure in sage. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh5": ["Second hand: Plum", "Draws the second hand’s figure in plum. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
   "traceWidth": ["Thickness", "How thick the trace is drawn. Only the look: Scan reads where the beam went, not how wide it was drawn."],
   "graticuleOn": ["Graticule", "Rules the screen’s divisions over the paper, or leaves it bare. Only the look: Scan never reads the grid."],
   "beamXY": ["X–Y", "Lets Intensity dim the X–Y figure where it moves fast. Unticked, the whole figure is full ink, and Scan reads it that way."],
@@ -32725,7 +32806,7 @@ el.measureButton.addEventListener("click", () => setMeasureOpen(el.measurePanel.
 function setPictureOpen(open) {
   el.picturePanel.hidden = !open;
   el.pictureMore.setAttribute("aria-expanded", String(open));
-  if (open) { setMenuOpen(false); setMeasureOpen(false); setPerformOpen(false); placePicture(); }
+  if (open) { setMenuOpen(false); setMeasureOpen(false); setPerformOpen(false); paintInks(); placePicture(); }
   else setPanesOpen(false);
 }
 function placePicture() {

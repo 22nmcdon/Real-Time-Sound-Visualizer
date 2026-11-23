@@ -7,7 +7,7 @@ can automate it and the hand it applies to; the sentence here comes after them. 
 150 characters each. *Paragraph* marks the controls whose card (opened from *More*) needs
 more than the line can carry, with what it should say.
 
-406 controls: 406 lines, none marked as removed by a later stage, 90 wanting a paragraph
+421 controls: 421 lines, none marked as removed by a later stage, 90 wanting a paragraph
 (counted again in G5a, which added the Routings panel's, the Photocell's editor's and the
 Envelope's two switches, and moved the fade to Routings; in G5b, which added a depth's
 three - its slider, its number and its cross - wherever a row of depths is, and whose
@@ -41,7 +41,8 @@ and on 20 Nov, the UI review: Scope & measure's four subtabs, the Picture strip'
 Perform's names - Pattern, Step, Octaves, Start · stop, Quantise pitch, Store A and B - and the clock's three
 parts; and Scope & measure's Pitch and Timebase from the keys and Readouts; and on 23 Nov, the EQ's two cuts, each
 where it cuts and its Q, and a point's words for a cut's resonance; and again on 23 Nov, the EQ's band strip:
-a band's cell and its switch, the five switches, Reset band, and the cuts' new start).
+a band's cell and its switch, the five switches, Reset band, and the cuts' new start; and again on 23 Nov,
+the second hand's ink as a row of seven swatches like the first hand's, its menu kept out of sight).
 Each line was checked against the control's code, its section's notes and the help sheet.
 
 ## Questions for the owner
@@ -467,7 +468,14 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | inkCh3 | Ink: Olive | Draws the X–Y figure in olive. Only the look: Scan reads the light, not its colour. | 83 | - |
 | inkCh4 | Ink: Sage | Draws the X–Y figure in sage. Only the look: Scan reads the light, not its colour. | 82 | - |
 | inkCh5 | Ink: Plum | Draws the X–Y figure in plum. Only the look: Scan reads the light, not its colour. | 82 | - |
-| bInk | The upper hand’s ink | The colour of the upper hand’s figure while each hand draws one: its lane’s ink to start, or one you choose. Only the look. | 123 | - |
+| bInk | The second hand’s ink | The colour of the second hand’s figure while each hand draws one, kept for the row of swatches beside the first hand’s: its lane’s ink to start. | 144 | - |
+| bInkLane | Second hand: its lane’s ink | Draws the second hand’s figure in its lane’s ink, as in Y–T. Dimmed with one figure drawn, and still choosable for when there are two. | 134 | - |
+| bInkAccent | Second hand: Rose | Draws the second hand’s figure in rose. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 128 | - |
+| bInkCh1 | Second hand: Charcoal | Draws the second hand’s figure in charcoal. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 132 | - |
+| bInkCh2 | Second hand: Slate | Draws the second hand’s figure in slate. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 129 | - |
+| bInkCh3 | Second hand: Olive | Draws the second hand’s figure in olive. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 129 | - |
+| bInkCh4 | Second hand: Sage | Draws the second hand’s figure in sage. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 128 | - |
+| bInkCh5 | Second hand: Plum | Draws the second hand’s figure in plum. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 128 | - |
 | traceWidth | Thickness | How thick the trace is drawn. Only the look: Scan reads where the beam went, not how wide it was drawn. | 103 | - |
 | graticuleOn | Graticule | Rules the screen’s divisions over the paper, or leaves it bare. Only the look: Scan never reads the grid. | 105 | - |
 | beamXY | X–Y | Lets Intensity dim the X–Y figure where it moves fast. Unticked, the whole figure is full ink, and Scan reads it that way. | 122 | - |
