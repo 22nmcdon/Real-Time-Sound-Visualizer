@@ -2431,21 +2431,40 @@ html[data-plugin] [data-host-owns] { display: none !important; }
 /* On the Bench it is a line under the screen (F8): no band, no gutter. */
 .bench-side > .dock { background: none; border-top: 0; padding: 0; flex: 0 0 auto; }
 .bench-side > .dock > .wrap { padding: 0; max-width: none; margin: 0; }
-.bench-side > .dock .readout { min-height: 0; gap: 2px 12px; }
+.bench-side > .dock .readout {
+  min-height: 0; row-gap: 2px; column-gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "verdict looking" "detail detail";
+}
 .bench-side > .dock .foot { display: none; }
 .dock {
   flex: 0 0 auto; background: var(--cream-2); border-top: 1px solid var(--line);
   padding-block: 12px 14px;
   padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
 }
-.readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; min-height: 46px; }
+/* One line of fixed boxes that never wraps or grows (22 Nov, the owner's: in Enlarge "the information
+   beneath it - held notes, gated, etc. - sometimes causes the view to shift, because it gets too long
+   and pushes everything up"). It wrapped as a flex row, and a long detail - a chord's outline, both
+   hands, the loop's verdict - took a second line out of the screen's height. Now a grid: the verdict and
+   Looking for each a box of one line, the detail the rest, each cut with an ellipsis and its whole text
+   in its title. On the face's narrow column (below) the detail has a line of its own, under the verdict,
+   one line again. */
+.readout {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "verdict detail looking";
+  align-items: baseline; column-gap: 18px; min-height: 46px;
+}
+.readout > .verdict, .readout > .detail {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.readout > .verdict { grid-area: verdict; max-width: 22em; }
+.readout > .detail { grid-area: detail; }
+.readout > .looking { grid-area: looking; }
 .verdict { font-family: var(--serif); font-size: 17px; color: var(--charcoal); }
 .verdict[data-state="locked"]   { color: var(--sage); }
 .verdict[data-state="free"]     { color: var(--unresolved); }
 .verdict[data-state="clipping"] { color: var(--rust); }
 .verdict[data-state="held"]     { color: var(--charcoal); }
 .detail { font-size: 13px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
-.looking { margin-left: auto; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.looking { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .looking b {
   font-family: var(--serif); font-size: 15px; color: var(--charcoal);
   font-variant-numeric: tabular-nums;
@@ -2522,7 +2541,6 @@ html[data-plugin] [data-host-owns] { display: none !important; }
      and Autoset - runs 28px past a 400px screen and takes the page's width
      with it. */
   .group { flex: 1 1 100%; flex-wrap: wrap; }
-  .looking { margin-left: 0; }
   .aside { flex-direction: column; }
   .menu-panel {
     position: fixed; inset: auto 0 0 0; width: 100vw; max-width: 100vw;
@@ -16970,6 +16988,8 @@ function drawSpectrum(frame) {
 
 function say(element, text) {
   if (element.textContent !== text) element.textContent = text;
+  // A verdict cut at its box's end says itself whole on a hover (22 Nov).
+  if (element === el.verdict && element.title !== text) element.title = text;
 }
 
 /* The automatic lag is slow on purpose. Tracking pitch frame by frame would
@@ -17235,6 +17255,8 @@ function writeReadout(frame) {
   }
 
   el.readoutDetail.textContent = bits.join(" · ");
+  // The whole of it, for a line cut at its box's end (22 Nov).
+  if (el.readoutDetail.title !== el.readoutDetail.textContent) el.readoutDetail.title = el.readoutDetail.textContent;
   markPresetDirty();
 
   writeMeasures(frame);

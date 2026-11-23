@@ -7977,3 +7977,53 @@ What it cannot see, and the owner's checklist for real Safari on the Mac, both s
    carry on or resume (Safari suspends audio in hidden tabs more readily than Chromium).
 9. On Play, the Amp figure's *Shape…* menu and the Keyboard's Outline menu (*bass + melody*):
    is the text whole, not clipped at the bottom or cut short at the arrow?
+
+## Zoom only the look and on the toolbar, and a readout that never moves the screen (22 Nov)
+
+Two more for the first release, from the owner.
+
+**Zoom.** "I don't think zoom should affect the sound anymore. It feels wrong. And it should be
+a setting that is always readily available." The beam laid the grid Scan reads magnified by the
+zoom (`scope/beam.h`), so the zoom changed the sound - 0.646 of the spectrum's distance at its
+worst in the reach audit. Now the beam lays the whole record and the figure at its own size at
+any zoom, and the face magnifies its own drawing as before; `Screen::zoom` stays, as the look's
+value the view's readings carry. `core/tests/pieces/zoom.py` holds the sound and the grid the same
+to the bit at 4x, 16x and 64x in X–Y and Y–T, and under an LFO on the zoom, each against a copy
+of the core with the old beam.
+
+- **What is stored.** The zoom stays a setup field, as the display is: a look a code can carry,
+  with no migration, since none of the bank's presets has a zoom or a routing on it. Of the old
+  library's 267 setups (`core/tests/scenarios/library-p8f.json`, a test corpus, not shipped) one
+  has a zoom, *Edge, magnified* at 16 (a display preset, magnified on purpose), and one routes an
+  LFO to it, *Bass zooms in*; both now sound as they would at 1x, and look as they did.
+- **On the toolbar, a knob alone.** Moved, never copied, from Scope & measure's Time to after
+  *Clear*, so it goes into Enlarge with the screen. With its name and reading it took a row the
+  toolbar has not got - at 1400x900 on testing there were 5 px to spare, at 960x600 4 - and moved
+  the screen down by it; alone, with the toolbar's gap 12 px where it was 18 and the display
+  switch's buttons 8 px each side where they were 11, every window keeps its rows. Its name and
+  value are the info line's and the readout's ("2.0x zoom"). It is a knob by `knobInput`'s list
+  (`.screen-zoom`), searched under *Screen*, and `showControl` finds it without a panel.
+  `zoomtest.py` holds it at every window, its null the knob with its name and reading shown.
+- **Two traps.** A knob alone among menu rows gets a 6 px top margin from the rule for that case,
+  which made the toolbar's second row 2 px taller and moved the screen; the zoom's rule is by id
+  to out-rank it. And the Bench's flex box squeezes a plain tall block to fit, so a fit check's
+  null that appends one reads nought (webkittest's first try): a null's block must refuse to shrink.
+- **The photocell on a magnified screen.** The grid it reads is unmagnified now, so its reticle
+  is put where its cell is drawn - in X–Y scaled about the middle, in Y–T through the slice the
+  screen shows (`gridToScreen`, `ytSlice`) - and a drag comes back the same way; a cell
+  magnified off the screen hides the reticle until it is on it again.
+- **The goldens.** The beam's recordings with a zoom moved, and so did two of restore's: those
+  scenarios walk the page's sliders at random in the markup's order, and the zoom's slider moved,
+  so the walks touched other view sliders; between the old and new recordings only the five view
+  fields differ (level, position, timebase, holdoff, zoom), the instrument's state is the same.
+  The beam's own null "against a zoom one step less" became a timebase one step shorter, beside
+  a check that the Y–T run with every zoom put back to one lays the same grids.
+
+**The line under the screen.** "In fullscreen mode and not Picture only, the information beneath
+it ... sometimes causes the view to shift, because it gets too long and pushes everything up." The
+readout was a wrapping flex row; a long detail (a chord's outline in both hands, the loop's
+verdict) took a second line out of the enlarged screen's height. It is a grid of one-line boxes
+now - the verdict, the detail, *Looking for* - each cut with an ellipsis and whole in its title; on
+the face's narrow column the detail has a line of its own under the verdict. `readouttest.py`
+holds the screen's box the same to the pixel with the line short, the longest the page makes and
+a longer one, in Enlarge and on the face at every window; under the old row it moves at all six.
