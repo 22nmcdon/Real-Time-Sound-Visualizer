@@ -267,7 +267,18 @@ ADVANCED = r"""async (extra) => {
      its bottom above the Picture bar - so it never covers the link that closes it. */
   const placed = (b) => ({ inside: b.top >= 0 && b.bottom <= innerHeight + 1 && b.left >= 0 && b.right <= innerWidth + 1,
                            anchored: Math.abs(b.left - link.left) <= 3, above: b.bottom <= bar.top + 0.5 });
-  const out = Object.assign(placed(box), {
+  /* Both hands' inks as rows of swatches (23 Nov): every swatch of both inside the
+     panel, each row on one line, the second as tall as the first. The null squeezes
+     the second row until it wraps. */
+  const rowsOf = () => [el.beamInk, el.bInkSwatches].map((g) => {
+    const s = Array.from(g.querySelectorAll('.ink-swatch')).map((n) => n.getBoundingClientRect());
+    const p = el.picturePanel.getBoundingClientRect();
+    return { n: s.length, line: s.every((r) => Math.abs(r.top - s[0].top) < 0.5),
+             inside: s.every((r) => r.width > 0 && r.left >= p.left && r.right <= p.right && r.top >= p.top && r.bottom <= p.bottom) };
+  });
+  const inks = rowsOf();
+  el.bInkSwatches.style.maxWidth = '100px'; const inksNull = rowsOf(); el.bInkSwatches.style.maxWidth = '';
+  const out = Object.assign(placed(box), { inks, inksNull,
                 over: el.picturePanel.scrollHeight - el.picturePanel.clientHeight, shown, moved: face() !== before,
                 knobs: [el.pictureRise, el.pictureFall].every((i) => i.classList.contains('knob-dial')) });
   // The null: the placement it had until 23 Nov, the window's right and above the bar where it fits.
@@ -343,6 +354,9 @@ with sync_playwright() as pw:
         check("the Picture's Advanced at %dx%d, split and on Custom - Reads, Pictures, Responds to, Rise, fall and its two "
               "knobs - is inside the window and does not scroll" % (w, h),
               adv["inside"] and adv["over"] <= 1 and adv["shown"] == [True] * 4 and adv["knobs"], str(adv))
+        check("both hands' inks at %dx%d are rows of swatches inside the panel, six and seven, each on one line" % (w, h),
+              adv["inks"] == [{"n": 6, "line": True, "inside": True}, {"n": 7, "line": True, "inside": True}], str(adv["inks"]))
+        null("the second row squeezed to 100 px wraps, and is seen to", not adv["inksNull"][1]["line"], str(adv["inksNull"]))
         check("and it rises from its link (23 Nov): its left edge within 3 px of the link's, its bottom above the Picture bar, "
               "and nothing on the face moved as it opened", adv["anchored"] and adv["above"] and not adv["moved"], str(adv))
         check("null: the placement it had until 23 Nov, at the window's right, is not anchored to the link or not above the bar",

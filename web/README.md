@@ -8196,3 +8196,35 @@ Two of the owner's, from testing the release (`web/docs/release-polish/`):
 - **Standing on the bar put its last rows under the on-screen keys** (fixed over the window's foot,
   z-index 80), and `inktest.py`, which presses the Graticule with the keys open, timed out on a
   click the keys took. The panel is over them now (85): one opened is the nearer thing.
+
+## Each hand's ink a row of swatches (23 Nov)
+
+The owner's: "why don't we just have two different colour choice arrays, one for each hand? Right
+now the second hand's one is a dropdown menu instead." The Beam's second ink is a row of seven
+swatches under the first hand's six, the same discs, with *Its lane's* first as the menu had it:
+half a disc in the lane's ink, ringed in it, so it reads as an ink by reference rather than a
+seventh colour; `paintInks` keeps it in whatever ink that lane is now and says which in its title.
+The rows are named for the hands as the face names them (*Lower hand* and *Upper hand* on a split,
+*Layer A* and *Layer B* layered, *Ink* and *Second hand* with one), in labels of a fixed width so a
+name changing moves nothing; and the second row is dimmed, not hidden, while one figure is drawn,
+since its choice is still kept and a hidden row would move the note under it.
+
+- **`#bInk` stays, as a select out of sight** (`#bInkMenuRow hidden`), where it was in the markup,
+  and the swatches drive it by its change event, as the keyboard band drives `midiLayers`. So the
+  plugin's panel (`panel_controls.h` lists `bInk` as a menu), undo, the setup and every reader hear
+  what they always did, and the core's control order did not move: no recording or `_face_*` shim
+  was needed. The first hand's swatches still write `beamInk` directly, as before.
+- **Selectors that named one swatch now name two.** `.ink-swatch[data-ink="ch5"]` was the first
+  hand's Plum and is now either; Playwright's strict locator throws on it and `querySelector` takes
+  the first silently. `inktest.py` scopes each to `#beamInk` or `#bInkSwatches`. The "exactly one
+  swatch is marked" check counted two the first time, the second row's *Its lane's* being marked.
+- **The info line keys its words by id**, so the second row's swatches have ids of their own
+  (`bInkLane`, `bInkAccent`, `bInkCh1`..`bInkCh5`) and lines in `what-each-control-says.md`;
+  `wordstest.py` finds any control without one.
+- `inktest.py` presses all seven with the mouse and requires the state, the kept menu and the code
+  to follow, a change event per press, the first hand's ink untouched, the figure's second hand
+  drawn in it and *Its lane's* bringing the lane's ink back (counted on the screen), the keys, undo,
+  the names and the dimming, and nothing in the panel or on the face moving, with a gap a pixel
+  wider as that check's null. `fittest.py` requires both rows inside the panel on one line at the
+  six windows, with the second squeezed until it wraps as the null. The swatch row is shorter than
+  the menu row it replaced (22 px against 28 to 31), so the panel did not grow.

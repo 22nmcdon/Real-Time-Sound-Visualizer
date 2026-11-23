@@ -21,7 +21,14 @@ What would go wrong, and what is checked for it:
   without either draws in the inks it always did;
 - the swatches as a picture of a choice rather than a control: they are
   pressed with the mouse and stepped with the arrow keys, and exactly one is
-  marked chosen.
+  marked chosen;
+- the second hand's row of swatches (23 Nov, which replaced its menu) not
+  reaching what the menu reached: every swatch pressed with the mouse has to
+  set the kept menu and send its change event, and the figure's second hand
+  has to be drawn in it; *Its lane's* has to bring the lane's ink back; the
+  keys step it; the rows are named for the hands and the second dimmed with
+  one figure; undo takes a swatch back; and nothing in the panel or on the
+  face moves as one is chosen, with a gap a pixel wider as the null.
 """
 import os, sys
 from playwright.sync_api import sync_playwright
@@ -123,14 +130,14 @@ with sync_playwright() as pw:
     rose = counted(p)
     check("by default the figure is drawn in the accent, as it always was", rose["blush-deep"] > 300 and rose["ch5"] < 20, str(rose))
     p.locator("#pictureMore").click(); p.wait_for_timeout(300)
-    p.locator('.ink-swatch[data-ink="ch5"]').click(); p.wait_for_timeout(400)
+    p.locator('#beamInk .ink-swatch[data-ink="ch5"]').click(); p.wait_for_timeout(400)
     plum = counted(p)
     check("Plum pressed: the figure is drawn in plum, and no longer in the accent",
           plum["ch5"] > 300 and plum["blush-deep"] < 20, str(plum))
     check("null: the default frame has next to no plum in it, so the count can tell", rose["ch5"] < 20 and plum["ch5"] > 15 * max(1, rose["ch5"]))
-    marks = p.evaluate("() => Array.from(document.querySelectorAll('.ink-swatch[aria-checked=\"true\"]')).map((e) => e.dataset.ink)")
+    marks = p.evaluate("() => Array.from(document.querySelectorAll('#beamInk .ink-swatch[aria-checked=\"true\"]')).map((e) => e.dataset.ink)")
     check("exactly one swatch is marked, the one pressed", marks == ["ch5"], str(marks))
-    p.locator('.ink-swatch[data-ink="ch5"]').focus()
+    p.locator('#beamInk .ink-swatch[data-ink="ch5"]').focus()
     p.keyboard.press("ArrowRight"); p.wait_for_timeout(100)
     wrapped = p.evaluate("() => [state.beamInk, document.activeElement.dataset.ink]")
     p.keyboard.press("ArrowLeft"); p.keyboard.press("ArrowLeft"); p.wait_for_timeout(100)
@@ -151,15 +158,17 @@ with sync_playwright() as pw:
       const wait = (ms) => new Promise((r) => setTimeout(r, ms));
       const log = [], real = scopeHost.call.bind(scopeHost);
       scopeHost.call = (name, ...args) => { if (name !== 'scopeState' && name !== 'scopeReport') log.push(name + ' ' + args[0]); return real(name, ...args); };
-      for (const ink of ['ch2', 'ch3', 'accent', 'ch4']) { document.querySelector('.ink-swatch[data-ink="' + ink + '"]').click(); await wait(80); }
+      for (const ink of ['ch2', 'ch3', 'accent', 'ch4']) for (const g of ['#beamInk', '#bInkSwatches']) { document.querySelector(g + ' .ink-swatch[data-ink="' + ink + '"]').click(); await wait(80); }
       const inks = log.splice(0);
+      // The second hand back on its lane's ink, which the section with two layers starts from.
+      el.bInkSwatches.querySelector('[data-ink="lane"]').click();
       showControl('freq'); el.freq.focus(); el.freq.value = String(Number(el.freq.value) + 5); el.freq.dispatchEvent(new Event('input', { bubbles: true }));
       await wait(80);
       const knob = log.splice(0);
       scopeHost.call = real;
       return { inks, knob, grid: phosphor.grid === state.source.grid };
     }""")
-    check("the ink never reaches the instrument, whose grid is the one Scan and the photocell read: four swatches pressed, nothing sent",
+    check("the ink never reaches the instrument, whose grid is the one Scan and the photocell read: four swatches in each row pressed, nothing sent",
           sent["inks"] == [] and sent["grid"], str(sent))
     null("a knob turned the same way sends something, so the count is being kept", len(sent["knob"]) > 0, str(sent["knob"]))
 
@@ -178,17 +187,72 @@ with sync_playwright() as pw:
       return { figures, laneInk: figures && figures[1] ? 'ch' + (figures[1][0] + 1) : null };
     }""")
     check("the split draws two figures, B's on a lane of its own", two["figures"] and len(two["figures"]) == 2 and two["laneInk"], str(two))
-    p.evaluate("() => { el.beamInk.querySelector('[data-ink=\"ch1\"]').click(); }"); p.wait_for_timeout(400)
+    p.evaluate("() => { el.beamInk.querySelector('[data-ink=\"ch1\"]').click(); setPictureOpen(true); }"); p.wait_for_timeout(400)
     turn = drift_period(43, 50)
     lane = counted_over(p, turn)
     check("B in its lane's ink by default, A in charcoal", lane.get(two["laneInk"], 0) > 150 and lane["ch1"] > 150, str(lane))
-    p.select_option("#bInk", "ch5"); p.wait_for_timeout(400)
+
+    print("\n--- the second hand's swatches (23 Nov) ---")
+    # Every box in the panel and on the face that could move, read before and after each press.
+    p.evaluate("""() => {
+      window.__boxes = () => [el.picturePanel, el.pictureBar, el.pictureMore, el.traceSheet, el.benchBody, el.beamInkLabel, el.bInkLabel,
+          document.querySelector('.ink-where'), document.getElementById('traceWidth'), ...document.querySelectorAll('#picturePanel .ink-swatch')]
+        .map((n) => { const r = n.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => v.toFixed(1)).join(','); }).join(' ');
+      window.__changes = 0; el.bInk.addEventListener('change', () => window.__changes++);
+    }""")
+    names = p.evaluate("() => [el.beamInkLabel.textContent, el.bInkLabel.textContent, el.bInkRow.classList.contains('idle'), el.bInkRow.hidden, el.bInk.closest('[hidden]') !== null]")
+    check("with a split the rows are named for the hands, the second not dimmed, and the menu kept out of sight",
+          names == ["Lower hand", "Upper hand", False, False, True], str(names))
+    before = p.evaluate("() => __boxes()")
+    pressed = []
+    for value in ["accent", "ch1", "ch2", "ch3", "ch4", "ch5", "lane"]:
+        p.locator('#bInkSwatches .ink-swatch[data-ink="%s"]' % value).click(); p.wait_for_timeout(60)
+        pressed.append(p.evaluate("""(v) => ({ v, state: state.bInk, menu: el.bInk.value, code: snapshot().bInk, a: state.beamInk,
+            marked: Array.from(el.bInkSwatches.querySelectorAll('[aria-checked="true"]')).map((e) => e.dataset.ink),
+            tab: Array.from(el.bInkSwatches.querySelectorAll('.ink-swatch')).filter((e) => e.tabIndex === 0).map((e) => e.dataset.ink),
+            ink: handInk(1), moved: __boxes() !== window.__before })""".replace("window.__before", repr(before)), value))
+    changes = p.evaluate("() => __changes")
+    wrong = [x for x in pressed if not (x["state"] == x["menu"] == x["code"] == x["v"] and x["marked"] == [x["v"]] and x["tab"] == [x["v"]]
+             and x["a"] == "ch1" and x["ink"] == ({"accent": "blush-deep", "lane": two["laneInk"]}.get(x["v"], x["v"])))]
+    check("each of the seven swatches pressed sets the second hand's ink, the kept menu and the code to it, marks only it, "
+          "leaves the first hand's alone and colours the second figure", not wrong, str(wrong or pressed[-1]))
+    check("and the kept menu heard a change event for every press, as the plugin and undo hear it", changes == 7, str(changes))
+    check("nothing in the panel or on the face moved as they were chosen", not any(x["moved"] for x in pressed),
+          str([x["v"] for x in pressed if x["moved"]]))
+    null("a swatch gap a pixel wider is seen to move them", p.evaluate("""(b) => { el.bInkSwatches.style.gap = '9px';
+          const moved = __boxes() !== b; el.bInkSwatches.style.gap = ''; return moved; }""", before))
+    null("a press on the first hand's row does not reach the second's menu",
+         p.evaluate("() => { const n = __changes; el.beamInk.querySelector('[data-ink=\"ch2\"]').click(); const r = [__changes - n, state.bInk];"
+                    " el.beamInk.querySelector('[data-ink=\"ch1\"]').click(); return r[0] === 0 && r[1] === 'lane'; }"))
+    lane_title = p.evaluate("() => [el.bInkLane.title, el.bInkLane.style.getPropertyValue('--swatch').trim()]")
+    check("Its lane's says so and which ink that is now, and is drawn in it", "lane" in lane_title[0] and lane_title[1] == "var(--%s)" % two["laneInk"],
+          str(lane_title))
+    p.locator('#bInkSwatches .ink-swatch[data-ink="lane"]').focus()
+    p.keyboard.press("ArrowLeft"); p.wait_for_timeout(60)
+    wrapped = p.evaluate("() => [state.bInk, el.bInk.value, document.activeElement.dataset.ink, document.activeElement.parentElement.id]")
+    p.keyboard.press("Home"); p.keyboard.press("ArrowRight"); p.wait_for_timeout(60)
+    stepped = p.evaluate("() => [state.bInk, el.bInk.value, document.activeElement.dataset.ink]")
+    check("the second row is a radio group to the keys: left from Its lane's wraps to Plum, Home goes to Its lane's, right to Rose, the focus with them",
+          wrapped == ["ch5", "ch5", "ch5", "bInkSwatches"] and stepped == ["accent", "accent", "accent"], "%s %s" % (wrapped, stepped))
+    # Undo takes a press back: a real click is a trusted event, so the step is recorded once it has held still.
+    p.locator('#bInkSwatches .ink-swatch[data-ink="lane"]').click(); p.wait_for_timeout(700)
+    p.locator('#bInkSwatches .ink-swatch[data-ink="ch4"]').click(); p.wait_for_timeout(700)
+    undone = p.evaluate("() => { const was = state.bInk; undoStep(true); return [was, state.bInk, el.bInk.value, el.bInkSwatches.querySelector('[aria-checked=\"true\"]').dataset.ink]; }")
+    check("undo takes a swatch back, onto the menu and the row", undone == ["ch4", "lane", "lane", "lane"], str(undone))
+    null("before the undo it was the swatch pressed", undone[0] == "ch4")
+
+    p.locator('#bInkSwatches .ink-swatch[data-ink="ch5"]').click(); p.wait_for_timeout(400)
     plumB = counted_over(p, turn)
     check("B's ink set to plum: B in plum, A still charcoal, and B's lane ink gone",
           plumB["ch5"] > 150 and plumB["ch1"] > 150 and plumB.get(two["laneInk"], 0) < 30, str(plumB))
     check("null: before, there was next to no plum", lane["ch5"] < 30)
     check("null: read over the same turn, an ink neither hand is in comes out near nothing, so the turn's best is not the counter's noise",
           lane["ch2"] < 30 and plumB["ch2"] < 30 and lane["blush-deep"] < 30, "%s %s" % (lane["ch2"], plumB["ch2"]))
+    p.locator('#bInkSwatches .ink-swatch[data-ink="lane"]').click(); p.wait_for_timeout(400)
+    back = counted_over(p, turn)
+    check("Its lane's pressed: B in its lane's ink again and the plum gone, A still charcoal",
+          back.get(two["laneInk"], 0) > 150 and back["ch5"] < 30 and back["ch1"] > 150, str(back))
+    p.locator('#bInkSwatches .ink-swatch[data-ink="ch5"]').click(); p.wait_for_timeout(400)
 
     print("\n--- the loop overlay's rings ---")
     rings = p.evaluate("""async () => {
@@ -203,6 +267,10 @@ with sync_playwright() as pw:
           rings and all(i == ("ch1" if l == 0 else "ch5") for l, i in rings) and {l for l, _ in rings} == {0, 1}, str(rings))
     p.evaluate("""() => { for (const n of [43, 50, 72]) midiNoteOff(n); midiPanic();
       el.midiLayers.value = 'off'; el.midiLayers.dispatchEvent(new Event('change')); }""")
+    p.wait_for_timeout(400)
+    one = p.evaluate("() => [el.beamInkLabel.textContent, el.bInkLabel.textContent, el.bInkRow.classList.contains('idle'), !!el.bInkSwatches.offsetParent]")
+    check("with one hand again the rows say Ink and Second hand, the second dimmed but still there", one == ["Ink", "Second hand", True, True], str(one))
+    null("with the split it was not dimmed", names[2] is False)
 
     print("\n--- the graticule and the thickness ---")
     # The ruling's own ink, counted over the screen; and the figure's pixels at
