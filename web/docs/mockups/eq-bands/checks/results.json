@@ -1,0 +1,160 @@
+{
+ "checks": [
+  {
+   "name": "1400x900: every point stays under the pointer to all four edges, held to its band's reach (20 drags, 40 steps each)",
+   "ok": true,
+   "detail": "worst 0.08 screen px at a scale of 0.81"
+  },
+  {
+   "name": "1400x900: null - the same check fails against the point's place before the drag",
+   "ok": true,
+   "detail": "543 px off"
+  },
+  {
+   "name": "1400x900: a point taken to any edge can be taken hold of there (its own hit circle is under its centre)",
+   "ok": true,
+   "detail": "20 of 20"
+  },
+  {
+   "name": "1400x900: null - with the points on the summed curve (today), the High cut dragged right leaves the pointer",
+   "ok": true,
+   "detail": "worst 76.5 screen px"
+  },
+  {
+   "name": "1400x900: every point sits on its own band's curve at its frequency",
+   "ok": true,
+   "detail": "worst 0.000 px"
+  },
+  {
+   "name": "1400x900: null - they are not on the summed curve",
+   "ok": true,
+   "detail": "worst 62.2 px off the sum"
+  },
+  {
+   "name": "1400x900: the chosen band's curve, and only it, is drawn stronger and washed in its ink, and its cell is chosen",
+   "ok": true,
+   "detail": "for each of the five"
+  },
+  {
+   "name": "1400x900: null - for each band, the next band's curve is not the one highlighted",
+   "ok": true,
+   "detail": "five"
+  },
+  {
+   "name": "1400x900: a band switched off is out of the chain (the sum is the other four), its curve is gone and its point hollow and grey",
+   "ok": true,
+   "detail": "for each of the five: 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands"
+  },
+  {
+   "name": "1400x900: null - switching each band off changes the summed curve",
+   "ok": true,
+   "detail": "five"
+  },
+  {
+   "name": "1400x900: nothing in the editor scrolls or spills, chosen, off, flat or with the EQ off (13 states)",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "name": "1400x900: nothing moves - head, strip, cells, values, lamps, plot, foot - across them",
+   "ok": true,
+   "detail": "to half a pixel"
+  },
+  {
+   "name": "1400x900: null - a reading sized to its words is seen to move",
+   "ok": true,
+   "detail": "it moved"
+  },
+  {
+   "name": "960x600: every point stays under the pointer to all four edges, held to its band's reach (20 drags, 40 steps each)",
+   "ok": true,
+   "detail": "worst 0.02 screen px at a scale of 0.90"
+  },
+  {
+   "name": "960x600: null - the same check fails against the point's place before the drag",
+   "ok": true,
+   "detail": "517 px off"
+  },
+  {
+   "name": "960x600: a point taken to any edge can be taken hold of there (its own hit circle is under its centre)",
+   "ok": true,
+   "detail": "20 of 20"
+  },
+  {
+   "name": "960x600: null - with the points on the summed curve (today), the High cut dragged right leaves the pointer",
+   "ok": true,
+   "detail": "worst 62.4 screen px"
+  },
+  {
+   "name": "960x600: every point sits on its own band's curve at its frequency",
+   "ok": true,
+   "detail": "worst 0.000 px"
+  },
+  {
+   "name": "960x600: null - they are not on the summed curve",
+   "ok": true,
+   "detail": "worst 45.6 px off the sum"
+  },
+  {
+   "name": "960x600: the chosen band's curve, and only it, is drawn stronger and washed in its ink, and its cell is chosen",
+   "ok": true,
+   "detail": "for each of the five"
+  },
+  {
+   "name": "960x600: null - for each band, the next band's curve is not the one highlighted",
+   "ok": true,
+   "detail": "five"
+  },
+  {
+   "name": "960x600: a band switched off is out of the chain (the sum is the other four), its curve is gone and its point hollow and grey",
+   "ok": true,
+   "detail": "for each of the five: 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands"
+  },
+  {
+   "name": "960x600: null - switching each band off changes the summed curve",
+   "ok": true,
+   "detail": "five"
+  },
+  {
+   "name": "960x600: nothing in the editor scrolls or spills, chosen, off, flat or with the EQ off (13 states)",
+   "ok": true,
+   "detail": "none"
+  },
+  {
+   "name": "960x600: nothing moves - head, strip, cells, values, lamps, plot, foot - across them",
+   "ok": true,
+   "detail": "to half a pixel"
+  },
+  {
+   "name": "960x600: null - a reading sized to its words is seen to move",
+   "ok": true,
+   "detail": "it moved"
+  },
+  {
+   "name": "each band is Web Audio's own BiquadFilterNode to 0.0001 dB (140 filters at 13 frequencies, 44.1 kHz)",
+   "ok": true,
+   "detail": "worst 4.4e-06 dB"
+  },
+  {
+   "name": "null - the cuts against the node given the plain Q as its decibels",
+   "ok": true,
+   "detail": "8.04 dB off"
+  },
+  {
+   "name": "every band's ink clears 3:1 on paper and on cream",
+   "ok": true,
+   "detail": "lowest 3.29:1"
+  },
+  {
+   "name": "the five inks and charcoal are told apart (CIEDE2000 all pairs, normal and two simulations)",
+   "ok": true,
+   "detail": "All-pairs CIEDE2000 separation of the five inks and the sum's charcoal, measured by the checks: worst 20.6 normal (Low cut and Sum), 11.1 simulated deuteranopia (Mid and High cut), 9.5 protanopia (Low cut and Low shelf)."
+  },
+  {
+   "name": "null - the brand's sage beside the lane sage fails the same bar",
+   "ok": true,
+   "detail": "5.4"
+  }
+ ],
+ "pairs": "All-pairs CIEDE2000 separation of the five inks and the sum's charcoal, measured by the checks: worst 20.6 normal (Low cut and Sum), 11.1 simulated deuteranopia (Mid and High cut), 9.5 protanopia (Low cut and Low shelf)."
+}

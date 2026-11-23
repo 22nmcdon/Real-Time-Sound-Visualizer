@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EQ bands</title>
+<meta name="description" content="The EQ editor with a strip of five bands, each in its own ink, its own curve and its points under the hand.">
+<!-- Not render-blocking, as the brand asks of every webfont: printed first,
+     promoted once loaded, so a reader offline gets the fallback faces. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+/* Two sets of tokens, as the other mockups have them. The instrument's are
+   DESIGN.md's, hex for hex, and never move: the instrument has one light, so
+   the face stays in it whatever the reader's system says. The page's own
+   (--pg-*) are the paper around the mockup, and follow the reader.
+   No new colour token: the five bands take the lane inks ch2 to ch6, the
+   register DESIGN.md section 10 says the whole Bench draws from. */
+:root {
+  --cream: #faf6f0; --cream-2: #f2ebe1; --paper: #fffcf7; --charcoal: #241f1d;
+  --text: #3a332f; --text-soft: #6b615a; --line: #e4d9cc;
+  --blush: #d9a6a0; --blush-deep: #c07f79; --gold: #b08d57;
+  --sage: #6f7f63; --rust: #a4553f; --unresolved: #b6afa4;
+  --wash: rgba(217, 166, 160, 0.16); --wash-strong: rgba(217, 166, 160, 0.26);
+  --ch1: #241f1d; --ch2: #5c6488; --ch3: #4c4921; --ch4: #6f9169; --ch5: #72245e; --ch6: #a6552d;
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --script: "Cormorant Garamond", Georgia, serif;
+  --sans: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --pg-bg: #faf6f0; --pg-sheet: #fffcf7; --pg-under: #f2ebe1; --pg-ink: #241f1d;
+  --pg-text: #3a332f; --pg-soft: #6b615a; --pg-line: #e4d9cc; --pg-accent: #c07f79;
+  --pg-good: #6f7f63; --pg-bad: #a4553f;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+    --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+    --pg-good: #9fb091; --pg-bad: #d08a73;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --pg-bg: #1c1917; --pg-sheet: #24201d; --pg-under: #2b2622; --pg-ink: #f3ece2;
+  --pg-text: #e2d9cd; --pg-soft: #b3a89c; --pg-line: #3d3631; --pg-accent: #d9a6a0;
+  --pg-good: #9fb091; --pg-bad: #d08a73;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--pg-bg); color: var(--pg-text);
+  font-family: var(--sans); font-weight: 300; font-size: 16px; line-height: 1.65;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px; }
+
+/* ---- the page around the mockup ---- */
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+@media (min-width: 760px) { .page { padding-inline: 24px; } }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--pg-accent); font-weight: 500; margin: 0; }
+h1 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 34px; line-height: 1.15; margin: 6px 0 8px; }
+h2 { font-family: var(--serif); font-weight: 600; color: var(--pg-ink); font-size: 22px; line-height: 1.25; margin: 34px 0 8px; }
+.lede { font-family: var(--script); font-style: italic; font-size: 20px; line-height: 1.45; max-width: 62ch; margin: 0 0 6px; }
+.page p, .page li { max-width: 72ch; }
+.small { font-size: 13.5px; color: var(--pg-soft); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 18px 0 12px; }
+.bar .grp { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.bar .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--pg-soft); font-weight: 500; }
+.pg-switch { display: inline-flex; border: 1px solid var(--pg-line); border-radius: 30px; overflow: hidden; flex-wrap: wrap; }
+.pg-switch button { background: none; border: 0; padding: 6px 13px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 500; color: var(--pg-soft); }
+.pg-switch button:hover { color: var(--pg-accent); }
+.pg-switch button[aria-pressed="true"] { background: var(--pg-ink); color: var(--pg-bg); }
+.stage-wrap { width: 100%; overflow: hidden; position: relative; }
+.stage { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+.fit-line { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; margin: 8px 0 0; color: var(--pg-soft); font-variant-numeric: tabular-nums; }
+.check-table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 940px; font-variant-numeric: tabular-nums; }
+.check-table th, .check-table td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--pg-line); vertical-align: top; }
+.check-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--pg-soft); font-weight: 500; }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 6px; }
+code { font-family: var(--mono); font-size: 0.86em; overflow-wrap: anywhere; }
+kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--pg-line); border-bottom-width: 2px; padding: 0 4px; border-radius: 1px; }
+
+/* ---- the window: the instrument at its own size, in its one light ---- */
+.win {
+  width: 1400px; height: 900px; position: relative; overflow: hidden;
+  background: var(--cream); color: var(--text); border: 1px solid var(--line);
+  font-family: var(--sans); font-weight: 300; font-size: 14px; line-height: 1.4;
+  box-shadow: 0 1px 0 var(--cream-2), 0 14px 34px rgba(36, 31, 29, 0.06);
+}
+.win.compact { width: 1067px; height: 667px; font-size: 13px; }
+.win * { box-sizing: border-box; }
+.win .caps { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 500; }
+/* What is behind the editor, drawn plainly: it is not what is proposed. */
+.bg { position: absolute; color: var(--text-soft); }
+.bg-hdr { left: 0; top: 0; right: 0; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 24px; padding-left: 134px; }
+.bg-hdr .t { font-family: var(--serif); font-size: 21px; letter-spacing: 0.08em; color: var(--charcoal); font-weight: 600; }
+.bg-hdr .p { font-family: var(--serif); font-size: 18px; color: var(--charcoal); }
+.compact .bg-hdr { padding-left: 22px; } .compact .bg-hdr .t { font-size: 17px; } .compact .bg-hdr .p { font-size: 15px; }
+.bg-scr { background: var(--paper); border: 1px solid var(--line); }
+.bg-scr::after { content: ""; position: absolute; inset: 16px; border: 1px solid var(--charcoal); opacity: 0.6;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 12.5% 12.5%; }
+.bg-row { left: 0; right: 0; border-top: 1px solid var(--line); background: var(--cream-2); display: flex; align-items: center; gap: 10px; padding: 8px 24px 8px 130px; }
+.bg-row .card { flex: 0 0 240px; align-self: stretch; border: 1px solid var(--line); background: var(--paper); font-size: 12.5px; padding: 6px 10px; color: var(--charcoal); }
+.compact .bg-row { padding: 3px 10px 3px 90px; } .compact .bg-row .card { flex-basis: 150px; padding: 2px 8px; font-size: 11.5px; }
+.bg-pic { left: 0; right: 0; border-top: 1px solid var(--line); background: var(--cream-2); padding: 14px 24px; font-family: var(--serif); font-size: 22px; color: var(--charcoal); }
+.compact .bg-pic { font-size: 18px; padding: 10px 16px; }
+
+/* ---- the editor: what is proposed ---- */
+.ed {
+  position: absolute; background: var(--paper); border: 1px solid var(--line); border-radius: 1px;
+  padding: 0 19px 12px; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 6px 24px rgba(36, 31, 29, 0.10);
+}
+.compact .ed { padding: 0 15px 8px; }
+.ed-head { flex: 0 0 52px; display: flex; align-items: center; gap: 12px; }
+.compact .ed-head { flex-basis: 44px; gap: 10px; }
+.ed-head .ico { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; color: var(--charcoal); }
+.ed-head .ico svg { width: 18px; height: 18px; }
+.ed-head .name { font-family: var(--serif); font-size: 21px; color: var(--charcoal); font-weight: 500; }
+.compact .ed-head .name { font-size: 18px; }
+.fx-on { background: var(--paper); border: 1px solid var(--line); border-radius: 30px; padding: 2px 11px; color: var(--text-soft); }
+.fx-on[aria-pressed="true"] { background: var(--charcoal); border-color: var(--charcoal); color: var(--cream); }
+.ed-head .desc { flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.close { background: none; border: 0; border-bottom: 1px solid var(--blush); padding: 0 0 2px; color: var(--charcoal); }
+
+/* The band strip: one cell a band, in the range's order. Each cell is its
+   band's: a rule of its ink along the top, its shape drawn in its ink, its
+   name, its lamp (the switch), and its values in one line. The chosen cell is
+   washed with its ink, as its curve is. Every cell is one width, and the
+   values sit in a box of one width, so choosing or switching moves nothing. */
+.strip { flex: 0 0 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+.cell {
+  position: relative; height: 50px; border: 1px solid var(--line); border-top: 3px solid var(--ink); border-radius: 1px;
+  background: var(--paper); padding: 4px 8px 0 9px; text-align: left; display: grid; color: var(--charcoal);
+  grid-template-columns: 22px minmax(0, 1fr) 18px; grid-template-rows: 20px 18px; column-gap: 7px; align-items: center;
+}
+.compact .cell { height: 44px; padding: 3px 6px 0 7px; grid-template-rows: 18px 16px; column-gap: 5px; }
+.cell:hover { border-color: var(--ink); border-top-color: var(--ink); }
+.cell[aria-selected="true"] { background: color-mix(in srgb, var(--ink) 11%, var(--paper)); border-color: var(--ink); }
+.cell .shape { width: 22px; height: 14px; color: var(--ink); }
+.cell .nm { font-size: 13px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compact .cell .nm { font-size: 12px; }
+.cell .val { grid-column: 1 / 4; font-size: 11.5px; color: var(--text-soft); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+.compact .cell .val { font-size: 11px; }
+.cell[aria-selected="true"] .val { color: var(--text); }
+.lamp { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--ink); padding: 0; position: relative; }
+.lamp::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--paper); opacity: 0; }
+.cell[data-off] { --ink: var(--unresolved); border-top-style: dashed; }
+.cell[data-off] .nm, .cell[data-off] .val { color: var(--text-soft); }
+.cell[data-off] .lamp { background: var(--paper); border-style: dashed; }
+
+/* The plot. */
+.plot-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.plot { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; overflow: visible; }
+.plot .pt { cursor: grab; outline: none; }
+.plot .pt.held { cursor: grabbing; }
+.plot .pt:focus-visible .ring { stroke-width: 3; }
+.readout {
+  position: absolute; pointer-events: none; background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--ink); padding: 2px 7px;
+  font-size: 11.5px; color: var(--charcoal); white-space: nowrap; font-variant-numeric: tabular-nums; border-radius: 1px;
+  box-shadow: 0 2px 8px rgba(36, 31, 29, 0.08);
+}
+.readout[hidden] { display: none; }
+
+/* The foot: only the chosen band's knobs, under its name in its ink. */
+.foot { flex: 0 0 68px; display: flex; align-items: center; gap: 22px; margin-top: 6px; border-top: 1px solid var(--line); padding-top: 4px; }
+.compact .foot { flex-basis: 60px; gap: 16px; margin-top: 4px; }
+.foot .who { flex: 0 0 150px; display: grid; gap: 2px; }
+.compact .foot .who { flex-basis: 124px; }
+.foot .who b { font-weight: 500; color: var(--charcoal); font-size: 14px; display: flex; align-items: center; gap: 7px; }
+.foot .who b i { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+.foot .who span { font-size: 11.5px; color: var(--text-soft); }
+.knobs { display: flex; gap: 18px; align-items: flex-start; }
+.compact .knobs { gap: 12px; }
+.knob { width: 64px; display: grid; justify-items: center; gap: 1px; }
+.compact .knob { width: 58px; }
+.knob .rd { font-size: 12px; color: var(--charcoal); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.knob .lb { font-size: 10.5px; color: var(--text-soft); }
+.face { --hi: 0deg; position: relative; width: 36px; height: 36px; touch-action: none; cursor: grab; border-radius: 50%; }
+.compact .face { width: 30px; height: 30px; }
+.face::before { content: ""; position: absolute; inset: 3px; border-radius: 50%;
+  background: conic-gradient(from 225deg, var(--ink) 0 var(--hi), var(--line) var(--hi) 270deg, transparent 270deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 3px), #000 calc(50% - 3px));
+          mask: radial-gradient(circle, transparent 0 calc(50% - 3px), #000 calc(50% - 3px)); }
+.face::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line); }
+.face i { position: absolute; left: 50%; top: 8px; bottom: 50%; width: 1.5px; margin-left: -0.75px; background: var(--charcoal); z-index: 1;
+  transform-origin: 50% 100%; transform: rotate(calc(var(--hi) - 135deg)); }
+.compact .face i { top: 7px; }
+.foot .hint { flex: 1 1 auto; min-width: 0; font-size: 11.5px; color: var(--text-soft); line-height: 1.35; }
+.foot .reset { white-space: nowrap; background: none; border: 0; border-bottom: 1px solid var(--blush); padding: 0 0 2px; color: var(--charcoal); font-size: 10.5px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Mockup · the EQ · 23 Nov · five bands, each its own</p>
+  <h1>The EQ’s five bands, each its own</h1>
+  <p class="lede">A strip of the five bands across the top of the editor, each in its own ink, with its switch. Each band’s own curve is drawn in that ink, and the chosen one is washed. Each point sits on its own values, so it stays under the hand to the edge.</p>
+  <p class="small">Live. The window is Space &amp; Memory as built, in the boxes <code>scope.html</code> measures at 60c9db7 (<code>checks/real_boxes.py</code>). The editor opens over the tabs where it opens today, at the same size. The curves are the page’s own arithmetic, Web Audio’s biquads as <code>pieces/eq.py</code> holds them, at 44.1 kHz. Nothing in <code>scope.html</code> or the core has changed. Drag a point, press a cell, turn a knob, double-click a point to reset it. With a point chosen, the arrows move it.</p>
+  <div class="bar" role="toolbar" aria-label="What the mockup shows">
+    <div class="grp"><span class="lbl">Window</span>
+      <div class="pg-switch" id="pgSize">
+        <button type="button" data-v="1400x900">1400 × 900</button>
+        <button type="button" data-v="960x600">960 × 600 at 90%</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Points sit</span>
+      <div class="pg-switch" id="pgPlace">
+        <button type="button" data-v="own">On their own values (proposed)</button>
+        <button type="button" data-v="sum">On the summed curve (today)</button>
+      </div></div>
+    <div class="grp"><span class="lbl">Start from</span>
+      <div class="pg-switch" id="pgStart">
+        <button type="button" data-v="shaped">A shaped curve</button>
+        <button type="button" data-v="flat">Flat, as a new setup</button>
+      </div></div>
+  </div>
+  <div class="stage-wrap" id="stageWrap"><div class="stage" id="stage"><div class="win" id="win"></div></div></div>
+  <div class="fit-line" id="fitLine" aria-live="polite"></div>
+
+  <h2>What changes</h2>
+  <ul>
+    <li><b>The band strip.</b> One cell for each band, in the range’s order: Low cut, Low shelf, Mid, High shelf, High cut. Each cell has a rule of its ink along the top, its shape drawn small in its ink, its name, its <b>lamp</b> (the switch) and its values in one line. A shelf or the mid shows <i>160 Hz · +4.5 dB</i>; a cut shows <i>12 kHz · Q 0.71</i>. Pressing a cell chooses the band. Pressing its lamp switches the band on or off and leaves which one is chosen alone. Today’s editor has no per-band switch: a band was out at 0 dB, and a cut was out at its end.</li>
+    <li><b>Each band its own ink</b>, the same for its cell, its point, its curve and its knobs’ rings. See the colours below.</li>
+    <li><b>The plot.</b> Each band’s own curve is drawn thin in its ink. The sum is on top in charcoal, as today. The chosen band’s curve is drawn stronger, and the area between it and 0 dB is washed lightly in its ink. A band switched off draws no curve, and its point is a hollow dashed ring in grey, still there to take hold of. The EQ’s own <i>Off</i> greys the sum, as today.</li>
+    <li><b>The points sit on their own values, not on the sum.</b> Across is the band’s frequency. Up and down is where the band’s own curve crosses that frequency. For the mid that is its gain. For a shelf it is half its gain, where the shelf is half-way up its step. For a cut it is its resonance, 20 log₁₀ Q, from −6 dB at Q 0.5 to +12 dB at Q 4, the scale the cuts already use. So every point sits exactly on its own coloured line. The pointer is mapped straight to the values, so the point stays under the hand. Past the plot’s edge it stops at the edge, where it can still be taken hold of. Switch <i>Points sit</i> to <i>today</i> and drag the High cut to the right to see the old way: the point leaves the pointer and rides the high shelf’s step. A shelf’s point moves half as far as its gain does, which keeps it on its own line, so it stops at +6 and −8 on the plot when its gain reaches the knob’s ends, +12 and −16. A cut’s point stops at +12 and −6, at Q 4 and 0.5.</li>
+    <li><b>Only the chosen band’s knobs</b> are in the foot, under its name and in its ink. That is two knobs, or three for the mid, in place of eleven in a row. The other knobs go back to the EQ’s hidden store while the editor is open, as they do when it is shut, so every id still resolves for the plugin’s panel, the morph and the host. The foot now has room for a line on what the points do. That line went with the cuts on 23 Nov, when the knobs took the row.</li>
+  </ul>
+
+  <h2>The colours</h2>
+  <p>The five lane inks, slate to terracotta: <b>no new token</b>. DESIGN.md section 10 calls them “a register the whole Bench draws from, not only the traces’ colours”. Their all-pairs separation was measured as a six, and these are five of the six, so the measurement already covers them. Charcoal, the sixth, stays the sum’s. They are ordered so that bands next to each other in the range, which overlap the most, are never the two greens or the two warm inks.</p>
+  <div class="table-wrap"><table class="check-table">
+    <thead><tr><th>Band</th><th>Ink</th><th>Contrast on paper</th><th>On cream</th></tr></thead>
+    <tbody id="inkRows"></tbody>
+  </table></div>
+  <p class="small" id="inkPairs"></p>
+  <p>One clash to know about. With two hands and the EQ unlinked, today’s editor dashes the other hand’s curve in that hand’s ink. The upper hand’s ink is olive, the low cut’s. The dash tells them apart, and a band’s curve is thin and a hand’s is not. If that is not enough, the other hand’s curve can go grey and dashed while the bands show.</p>
+
+  <h2>What is stored new</h2>
+  <p>Five switches, one per band, and their upper-hand twins: <code>eqCutLowOn</code>, <code>eqLowOn</code>, <code>eqMidOn</code>, <code>eqHighOn</code>, <code>eqCutHighOn</code>, and <code>bEqCutLowOn</code> to <code>bEqCutHighOn</code>, under the EQ’s link as its other fields are. They are <b>additive and on by default</b>, so an old setup has all five on and plays to the bit as before. There is no version bump and no decode pass, since <code>Object.assign</code> over the defaults gives an old code the new default. A code writes a band’s switch only when it is off.</p>
+  <p>In the chain, a band switched off is skipped, the same as a band at 0 dB or a cut at its end today. The EQ’s own <code>eqOn</code> stays the switch for the whole EQ, a field, as the owner chose on 17 Nov. Moving a point of a band that is off switches that band on, as moving a point while the EQ is off switches the EQ on today.</p>
+
+  <h2>What I would change my mind on</h2>
+  <ul>
+    <li><b>A cut at its end, switched on.</b> It still does nothing, as today: a low cut at 20 Hz is out of the chain. Its lamp says <i>on</i> and its point sits at the edge. I could make the cuts start <i>off</i> at a sensible place (a low cut at 30 Hz, a high cut at 18 kHz), so that switching one on does something at once. That would mean a default that differs from an old code’s. It would be a version bump with a pass that writes <i>on</i> where a cut was in, or <i>off</i> where it was at its end. I lean towards it, but it is your call.</li>
+    <li><b>The knobs’ rings in the band’s ink</b> rather than the accent. This ties a knob to its point. It is the one place a band’s ink stands where the house has blush-deep, and that is local to this editor.</li>
+    <li><b>The EQ’s line in the rack</b> could carry five small dots in the inks in place of today’s three black ones. I have left that alone here.</li>
+  </ul>
+
+  <h2>Checks, run on this page</h2>
+  <p class="small">From <code>checks/eq_bands_checks.py</code>, run in Chromium at both windows. It writes its results into this page and into <code>checks/results.json</code>.</p>
+  <div class="table-wrap"><table class="check-table">
+    <thead><tr><th>Check</th><th>Result</th></tr></thead>
+    <tbody id="checkRows"><tr><td colspan="2">Run <code>checks/eq_bands_checks.py</code>; it writes the results here.</td></tr></tbody>
+  </table></div>
+</div>
+<script type="application/json" id="checkResults">{"checks": [{"name": "1400x900: every point stays under the pointer to all four edges, held to its band's reach (20 drags, 40 steps each)", "ok": true, "detail": "worst 0.08 screen px at a scale of 0.81"}, {"name": "1400x900: null - the same check fails against the point's place before the drag", "ok": true, "detail": "543 px off"}, {"name": "1400x900: a point taken to any edge can be taken hold of there (its own hit circle is under its centre)", "ok": true, "detail": "20 of 20"}, {"name": "1400x900: null - with the points on the summed curve (today), the High cut dragged right leaves the pointer", "ok": true, "detail": "worst 76.5 screen px"}, {"name": "1400x900: every point sits on its own band's curve at its frequency", "ok": true, "detail": "worst 0.000 px"}, {"name": "1400x900: null - they are not on the summed curve", "ok": true, "detail": "worst 62.2 px off the sum"}, {"name": "1400x900: the chosen band's curve, and only it, is drawn stronger and washed in its ink, and its cell is chosen", "ok": true, "detail": "for each of the five"}, {"name": "1400x900: null - for each band, the next band's curve is not the one highlighted", "ok": true, "detail": "five"}, {"name": "1400x900: a band switched off is out of the chain (the sum is the other four), its curve is gone and its point hollow and grey", "ok": true, "detail": "for each of the five: 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands"}, {"name": "1400x900: null - switching each band off changes the summed curve", "ok": true, "detail": "five"}, {"name": "1400x900: nothing in the editor scrolls or spills, chosen, off, flat or with the EQ off (13 states)", "ok": true, "detail": "none"}, {"name": "1400x900: nothing moves - head, strip, cells, values, lamps, plot, foot - across them", "ok": true, "detail": "to half a pixel"}, {"name": "1400x900: null - a reading sized to its words is seen to move", "ok": true, "detail": "it moved"}, {"name": "960x600: every point stays under the pointer to all four edges, held to its band's reach (20 drags, 40 steps each)", "ok": true, "detail": "worst 0.02 screen px at a scale of 0.90"}, {"name": "960x600: null - the same check fails against the point's place before the drag", "ok": true, "detail": "517 px off"}, {"name": "960x600: a point taken to any edge can be taken hold of there (its own hit circle is under its centre)", "ok": true, "detail": "20 of 20"}, {"name": "960x600: null - with the points on the summed curve (today), the High cut dragged right leaves the pointer", "ok": true, "detail": "worst 62.4 screen px"}, {"name": "960x600: every point sits on its own band's curve at its frequency", "ok": true, "detail": "worst 0.000 px"}, {"name": "960x600: null - they are not on the summed curve", "ok": true, "detail": "worst 45.6 px off the sum"}, {"name": "960x600: the chosen band's curve, and only it, is drawn stronger and washed in its ink, and its cell is chosen", "ok": true, "detail": "for each of the five"}, {"name": "960x600: null - for each band, the next band's curve is not the one highlighted", "ok": true, "detail": "five"}, {"name": "960x600: a band switched off is out of the chain (the sum is the other four), its curve is gone and its point hollow and grey", "ok": true, "detail": "for each of the five: 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands, 5 to 4 bands"}, {"name": "960x600: null - switching each band off changes the summed curve", "ok": true, "detail": "five"}, {"name": "960x600: nothing in the editor scrolls or spills, chosen, off, flat or with the EQ off (13 states)", "ok": true, "detail": "none"}, {"name": "960x600: nothing moves - head, strip, cells, values, lamps, plot, foot - across them", "ok": true, "detail": "to half a pixel"}, {"name": "960x600: null - a reading sized to its words is seen to move", "ok": true, "detail": "it moved"}, {"name": "each band is Web Audio's own BiquadFilterNode to 0.0001 dB (140 filters at 13 frequencies, 44.1 kHz)", "ok": true, "detail": "worst 4.4e-06 dB"}, {"name": "null - the cuts against the node given the plain Q as its decibels", "ok": true, "detail": "8.04 dB off"}, {"name": "every band's ink clears 3:1 on paper and on cream", "ok": true, "detail": "lowest 3.29:1"}, {"name": "the five inks and charcoal are told apart (CIEDE2000 all pairs, normal and two simulations)", "ok": true, "detail": "All-pairs CIEDE2000 separation of the five inks and the sum's charcoal, measured by the checks: worst 20.6 normal (Low cut and Sum), 11.1 simulated deuteranopia (Mid and High cut), 9.5 protanopia (Low cut and Low shelf)."}, {"name": "null - the brand's sage beside the lane sage fails the same bar", "ok": true, "detail": "5.4"}], "pairs": "All-pairs CIEDE2000 separation of the five inks and the sum's charcoal, measured by the checks: worst 20.6 normal (Low cut and Sum), 11.1 simulated deuteranopia (Mid and High cut), 9.5 protanopia (Low cut and Low shelf)."}</script>
+<script>
+"use strict";
+/* ===== the instrument's boxes, from checks/real_boxes.py at 60c9db7 ===== */
+const SIZES = {
+  "1400x900": { W: 1400, H: 900, zoom: 1, compact: false, hdr: 70.6, scr: [24, 85.6, 470, 556], modrow: [723.3, 87], pic: [810.3, 89.7],
+                ed: [538, 85.6, 838, 629.7] },
+  "960x600": { W: 1067, H: 667, zoom: 0.9, compact: true, hdr: 44.4, scr: [12, 55.5, 300, 300], modrow: [554.9, 32], pic: [586.9, 79.8],
+               ed: [326, 55.5, 716.7, 495.4] },
+};
+
+/* ===== the maths: Web Audio's biquads, as scope.html's eqCoefficients ===== */
+const RATE = 44100;
+const F_MIN = 20, F_MAX = 20000, DB_TOP = 12, DB_FOOT = -16, HIT = 16;
+const DB_LINES = [-16, -12, -6, 0, 6, 12];
+const GRID_F = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+const MINOR_F = [30, 40, 60, 70, 80, 90, 300, 400, 600, 700, 800, 900, 3000, 4000, 6000, 7000, 8000, 9000];
+function widthQ(oct) { const w = Math.max(0.05, oct), p = Math.pow(2, w); return Math.sqrt(p) / (p - 1); }
+// kind: "hp" "ls" "pk" "hs" "lp"
+function coefs(kind, db, hz, q, rate) {
+  const f = Math.min(hz, 0.45 * rate), w0 = 2 * Math.PI * f / rate, c = Math.cos(w0), sn = Math.sin(w0), A = Math.pow(10, db / 40);
+  let b0, b1, b2, a0, a1, a2;
+  if (kind === "hp" || kind === "lp") {
+    const alpha = sn / (2 * Math.max(0.1, q));
+    if (kind === "hp") { b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2; } else { b0 = (1 - c) / 2; b1 = 1 - c; b2 = (1 - c) / 2; }
+    a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha;
+  } else if (kind === "pk") {
+    const alpha = sn / (2 * widthQ(q));
+    b0 = 1 + alpha * A; b1 = -2 * c; b2 = 1 - alpha * A; a0 = 1 + alpha / A; a1 = -2 * c; a2 = 1 - alpha / A;
+  } else {
+    const alpha = sn / 2 * Math.sqrt(2), k = 2 * Math.sqrt(A) * alpha;
+    if (kind === "ls") {
+      b0 = A * ((A + 1) - (A - 1) * c + k); b1 = 2 * A * ((A - 1) - (A + 1) * c); b2 = A * ((A + 1) - (A - 1) * c - k);
+      a0 = (A + 1) + (A - 1) * c + k; a1 = -2 * ((A - 1) + (A + 1) * c); a2 = (A + 1) + (A - 1) * c - k;
+    } else {
+      b0 = A * ((A + 1) + (A - 1) * c + k); b1 = -2 * A * ((A - 1) + (A + 1) * c); b2 = A * ((A + 1) + (A - 1) * c - k);
+      a0 = (A + 1) - (A - 1) * c + k; a1 = 2 * ((A - 1) - (A + 1) * c); a2 = (A + 1) - (A - 1) * c - k;
+    }
+  }
+  return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0];
+}
+function respDb(cascade, freqs) {
+  return freqs.map((f) => {
+    const w = 2 * Math.PI * f / RATE, c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+    let re = 1, im = 0;
+    for (const co of cascade) {
+      const nr = co[0] + co[1] * c1 + co[2] * c2, ni = -(co[1] * s1 + co[2] * s2);
+      const dr = 1 + co[3] * c1 + co[4] * c2, di = -(co[3] * s1 + co[4] * s2), dd = dr * dr + di * di;
+      const r = (nr * dr + ni * di) / dd, i = (ni * dr - nr * di) / dd;
+      const t = re * r - im * i; im = re * i + im * r; re = t;
+    }
+    return 10 * Math.log10(re * re + im * im);
+  });
+}
+
+/* ===== the bands ===== */
+const BANDS = [
+  { id: "lc", name: "Low cut", short: "LC", kind: "hp", ink: "--ch3", cut: true, field: "eqCutLowOn" },
+  { id: "ls", name: "Low shelf", short: "L", kind: "ls", ink: "--ch6", field: "eqLowOn" },
+  { id: "mid", name: "Mid", short: "M", kind: "pk", ink: "--ch2", field: "eqMidOn" },
+  { id: "hs", name: "High shelf", short: "H", kind: "hs", ink: "--ch4", field: "eqHighOn" },
+  { id: "hc", name: "High cut", short: "HC", kind: "lp", ink: "--ch5", cut: true, field: "eqCutHighOn" },
+];
+const START = {
+  shaped: [{ on: true, hz: 40, q: 0.71 }, { on: true, hz: 160, db: 4.5 }, { on: true, hz: 1000, db: -3, width: 1 },
+           { on: true, hz: 4000, db: 4 }, { on: true, hz: 9000, q: 1.4 }],
+  // The knobs' own starts: the cuts at their ends, every gain at nought.
+  flat: [{ on: true, hz: 20, q: 0.71 }, { on: true, hz: 160, db: 0 }, { on: true, hz: 1000, db: 0, width: 1 },
+         { on: true, hz: 4000, db: 0 }, { on: true, hz: 20000, q: 0.71 }],
+};
+const S = { size: "1400x900", place: "own", start: "shaped", eqOn: true, sel: 4, v: null, drag: null, lastDown: null };
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const cutIn = (k, v) => (k === 0 ? v.hz > 20 : v.hz < 20000);
+// The band's height on the plot, where its own curve crosses its frequency: a cut's resonance as
+// 20 log10 Q, the mid's gain, and half a shelf's (the cookbook's shelf is at the square root of its
+// gain there). So every point sits on its own line, and the pointer maps to it straight.
+const heightDb = (k) => (BANDS[k].cut ? 20 * Math.log10(S.v[k].q) : BANDS[k].kind === "pk" ? S.v[k].db : S.v[k].db / 2);
+const heightTo = (k, h) => (BANDS[k].kind === "pk" ? h : 2 * h);
+function bandCoefs(k) {
+  const v = S.v[k], b = BANDS[k];
+  if (!v.on) return null;
+  if (b.cut) return cutIn(k, v) ? coefs(b.kind, 0, v.hz, v.q, RATE) : null;
+  if (!v.db) return null;
+  return coefs(b.kind, v.db, v.hz, b.kind === "pk" ? v.width : 1, RATE);
+}
+const cascade = () => [0, 1, 2, 3, 4].map(bandCoefs).filter(Boolean);
+const FREQS = Array.from({ length: 360 }, (_, i) => F_MIN * Math.pow(F_MAX / F_MIN, i / 359));
+const withBands = () => FREQS.concat(S.v.map((v) => v.hz)).sort((a, b) => a - b);
+
+/* ===== readings ===== */
+const hzR = (hz) => (hz >= 10000 ? (hz / 1000).toFixed(1).replace(/\.0$/, "") + " kHz" : hz >= 1000 ? (hz / 1000).toFixed(2).replace(/0$/, "") + " kHz" : Math.round(hz) + " Hz");
+const dbR = (db) => (db > 0.04 ? "+" : db < -0.04 ? "−" : "") + Math.abs(db).toFixed(1) + " dB";
+function cellSays(k) {
+  const v = S.v[k];
+  if (!v.on) return "off · " + hzR(v.hz);
+  if (BANDS[k].cut) return hzR(v.hz) + " · Q " + v.q.toFixed(2) + (cutIn(k, v) ? "" : " · open");
+  return hzR(v.hz) + " · " + dbR(v.db);
+}
+const SHAPE_D = {
+  hp: "M1 13 C5 13 6 3 10 3 H21", ls: "M1 4 H6 C10 4 11 10 15 10 H21", pk: "M1 10 H5 C8 10 8 3 11 3 S14 10 17 10 H21",
+  hs: "M1 10 H6 C10 10 11 4 15 4 H21", lp: "M1 3 H12 C16 3 17 13 21 13",
+};
+const svg = (tag, attrs, parent) => {
+  const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+
+/* ===== the window ===== */
+const win = document.getElementById("win");
+let parts = null, geo = null;
+function build() {
+  const z = SIZES[S.size];
+  win.className = "win" + (z.compact ? " compact" : "");
+  win.innerHTML =
+    '<div class="bg bg-hdr" style="height:' + z.hdr + 'px"><span class="t">OSCILLOSCOPE</span><span class="p">Plain sine</span></div>'
+    + '<div class="bg bg-scr" style="left:' + z.scr[0] + 'px;top:' + z.scr[1] + 'px;width:' + z.scr[2] + 'px;height:' + z.scr[3] + 'px"></div>'
+    + '<div class="bg bg-row" style="top:' + z.modrow[0] + 'px;height:' + z.modrow[1] + 'px"><span class="card">LFO 1</span><span class="card">LFO 2</span><span class="card">Envelope</span><span class="card">Photocell</span></div>'
+    + '<div class="bg bg-pic" style="top:' + z.pic[0] + 'px;height:' + z.pic[1] + 'px">Picture</div>'
+    + '<div class="ed" id="ed" role="dialog" aria-label="The EQ" style="left:' + z.ed[0] + 'px;top:' + z.ed[1] + 'px;width:' + z.ed[2] + 'px;height:' + z.ed[3] + 'px">'
+    + '<div class="ed-head"><span class="ico" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 13c2.5 0 3-3 5.5-3s2 4.5 4 4.5S14 7 18 7"/><path d="M5 4v12M10 4v12M15 4v12" opacity="0.45"/></svg></span>'
+    + '<span class="name">EQ</span><button type="button" class="fx-on caps" id="edOn" aria-pressed="true">On</button>'
+    + '<span class="desc">Five bands on the pair, the same on both channels, so a line stays a line.</span>'
+    + '<button type="button" class="close caps">Close</button></div>'
+    + '<div class="strip" id="strip" role="tablist" aria-label="The bands"></div>'
+    + '<div class="plot-wrap" id="plotWrap"><svg class="plot" id="plot" role="group" aria-label="The EQ’s response, 20 Hz to 20 kHz"></svg><div class="readout" id="readout" hidden></div></div>'
+    + '<div class="foot" id="foot"></div></div>';
+  const strip = win.querySelector("#strip");
+  BANDS.forEach((b, k) => {
+    const c = document.createElement("div");
+    c.className = "cell"; c.setAttribute("role", "tab"); c.tabIndex = 0; c.dataset.band = k;
+    c.style.setProperty("--ink", "var(" + b.ink + ")");
+    c.innerHTML = '<svg class="shape" viewBox="0 0 22 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="' + SHAPE_D[b.kind] + '"/></svg>'
+      + '<span class="nm">' + b.name + '</span><button type="button" class="lamp" aria-pressed="true" aria-label="' + b.name + ' on"></button><span class="val"></span>';
+    c.addEventListener("click", (e) => { if (e.target.closest(".lamp")) return; choose(k); });
+    c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(k); } });
+    c.querySelector(".lamp").addEventListener("click", () => { S.v[k].on = !S.v[k].on; paint(); });
+    strip.appendChild(c);
+  });
+  win.querySelector("#edOn").addEventListener("click", () => { S.eqOn = !S.eqOn; paint(); });
+  buildPlot();
+  wirePlot();
+  buildFoot();
+  fitStage();
+  paint();
+  // The plot's scales are its box's: taken again whenever the box changes (the webfonts arriving
+  // change the head's height), or the points drift from the pointer by the difference - which the
+  // first run of the checks found, a percent across.
+  new ResizeObserver(() => {
+    const el = win.querySelector("#plot");
+    if (el && geo && (el.clientWidth !== geo.w || el.clientHeight !== geo.h)) { buildPlot(); paint(); }
+  }).observe(win.querySelector("#plotWrap"));
+}
+function plotGeo() {
+  const el = win.querySelector("#plot"), w = el.clientWidth, h = el.clientHeight, compact = SIZES[S.size].compact;
+  const L = compact ? 30 : 36, R = HIT, T = HIT, B = Math.max(HIT, compact ? 16 : 20);
+  return { w, h, L, R, T, B, W: w - L - R, H: h - T - B, compact,
+           x: (f) => L + Math.log10(f / F_MIN) / Math.log10(F_MAX / F_MIN) * (w - L - R),
+           y: (db) => T + (DB_TOP - db) / (DB_TOP - DB_FOOT) * (h - T - B),
+           f: (x) => F_MIN * Math.pow(F_MAX / F_MIN, (x - L) / (w - L - R)),
+           db: (y) => DB_TOP - (y - T) / (h - T - B) * (DB_TOP - DB_FOOT) };
+}
+// A soft, still analysis behind the curve, as the Spect view's is (moving, in the page).
+function specPath(g) {
+  const pts = [];
+  for (let i = 0; i <= 120; i++) {
+    const f = F_MIN * Math.pow(F_MAX / F_MIN, i / 120), o = Math.log2(f / 220);
+    const db = -3 - 1.6 * Math.abs(o) * (o > 0 ? 1.4 : 0.8) + 2.2 * Math.sin(i * 0.9) * Math.exp(-Math.abs(o) / 3);
+    pts.push((i ? "L" : "M") + g.x(f).toFixed(1) + " " + g.y(clamp(db, DB_FOOT, DB_TOP)).toFixed(1));
+  }
+  return pts.join("") + "L" + g.x(F_MAX) + " " + (g.T + g.H) + "L" + g.x(F_MIN) + " " + (g.T + g.H) + "Z";
+}
+function buildPlot() {
+  const plot = win.querySelector("#plot"), g = geo = plotGeo();
+  plot.textContent = "";
+  plot.setAttribute("viewBox", "0 0 " + g.w + " " + g.h);
+  const fs = g.compact ? 9.5 : 10.5;
+  svg("rect", { x: g.L, y: g.T, width: g.W, height: g.H, fill: "none", stroke: "var(--line)" }, plot);
+  for (const f of MINOR_F) svg("line", { x1: g.x(f), x2: g.x(f), y1: g.T, y2: g.T + g.H, stroke: "var(--line)", "stroke-width": 0.5, opacity: 0.7 }, plot);
+  for (const f of GRID_F) {
+    svg("line", { x1: g.x(f), x2: g.x(f), y1: g.T, y2: g.T + g.H, stroke: "var(--line)" }, plot);
+    svg("text", { x: g.x(f), y: g.h - 4, "text-anchor": f === F_MIN ? "start" : f === F_MAX ? "end" : "middle", "font-size": fs, fill: "var(--text-soft)" }, plot)
+      .textContent = f >= 1000 ? f / 1000 + "k" : String(f);
+  }
+  for (const d of DB_LINES) {
+    svg("line", { x1: g.L, x2: g.L + g.W, y1: g.y(d), y2: g.y(d), stroke: d === 0 ? "var(--unresolved)" : "var(--line)" }, plot);
+    svg("text", { x: g.L - 5, y: g.y(d) + 3.5, "text-anchor": "end", "font-size": fs, fill: "var(--text-soft)" }, plot)
+      .textContent = (d > 0 ? "+" : d < 0 ? "−" : "") + Math.abs(d);
+  }
+  svg("rect", { x: g.L, y: g.T, width: g.W, height: g.H }, svg("clipPath", { id: "clip" }, svg("defs", {}, plot)));
+  const inner = svg("g", { "clip-path": "url(#clip)" }, plot);
+  svg("path", { d: specPath(g), fill: "var(--cream-2)", stroke: "none", opacity: 0.8 }, inner);
+  parts = {
+    fill: svg("path", { class: "sel-fill", stroke: "none" }, inner),
+    bands: BANDS.map((b, k) => svg("path", { class: "band-curve", "data-band": k, fill: "none", stroke: "var(" + b.ink + ")" }, inner)),
+    sum: svg("path", { id: "sumPath", fill: "none", "stroke-width": 2 }, inner),
+    bracket: svg("path", { fill: "none", "stroke-width": 1 }, inner),
+    points: [],
+  };
+  // In the range's order, so Tab goes low cut to high cut.
+  BANDS.forEach((b, k) => {
+    const pt = svg("g", { class: "pt", tabindex: 0, role: "button", "data-band": k }, plot);
+    svg("circle", { r: HIT, fill: "transparent", class: "hit" }, pt);
+    svg("circle", { r: g.compact ? 8 : 9, "stroke-width": 1.75, class: "ring" }, pt);
+    svg("text", { "text-anchor": "middle", "font-size": b.cut ? (g.compact ? 6.5 : 7.5) : (g.compact ? 8.5 : 9.5), "font-weight": 600, "pointer-events": "none" }, pt).textContent = b.short;
+    parts.points.push(pt);
+  });
+}
+function bandPath(k, g) {
+  const co = bandCoefs(k);
+  const db = co ? respDb([co], FREQS) : FREQS.map(() => 0);
+  return { d: FREQS.map((f, i) => (i ? "L" : "M") + g.x(f).toFixed(1) + " " + g.y(clamp(db[i], DB_FOOT - 2, DB_TOP + 2)).toFixed(1)).join(""), db };
+}
+// Where a point is drawn: its own values, or (today) on the sum, a cut out at its end on the 0 line.
+function pointXY(k) {
+  const g = geo, v = S.v[k];
+  if (S.place === "sum") {
+    const b = BANDS[k];
+    const y = b.cut && !cutIn(k, v) ? 0 : respDb(cascade(), [v.hz])[0];
+    return { x: g.x(v.hz), y: g.y(clamp(y, DB_FOOT, DB_TOP)) };
+  }
+  return { x: g.x(clamp(v.hz, F_MIN, F_MAX)), y: g.y(clamp(heightDb(k), DB_FOOT, DB_TOP)) };
+}
+function paint() {
+  const g = geo;
+  if (!parts || !g) return;
+  win.querySelector("#edOn").setAttribute("aria-pressed", String(S.eqOn));
+  win.querySelector("#edOn").textContent = S.eqOn ? "On" : "Off";
+  // The strip.
+  win.querySelectorAll(".cell").forEach((c) => {
+    const k = Number(c.dataset.band), v = S.v[k];
+    c.setAttribute("aria-selected", String(k === S.sel));
+    if (v.on) c.removeAttribute("data-off"); else c.setAttribute("data-off", "");
+    const lamp = c.querySelector(".lamp");
+    lamp.setAttribute("aria-pressed", String(v.on));
+    lamp.setAttribute("aria-label", BANDS[k].name + (v.on ? " on" : " off"));
+    lamp.title = v.on ? "On: press to switch this band off" : "Off: press to switch it on";
+    c.querySelector(".val").textContent = cellSays(k);
+  });
+  // The bands' own curves, the chosen one stronger and washed.
+  let selD = "";
+  BANDS.forEach((b, k) => {
+    const p = parts.bands[k], on = S.v[k].on && S.eqOn;
+    if (!on) { p.setAttribute("d", ""); return; }
+    const { d } = bandPath(k, g);
+    p.setAttribute("d", d);
+    const chosen = k === S.sel;
+    p.setAttribute("stroke-width", chosen ? 2 : 1.25);
+    p.setAttribute("opacity", chosen ? 1 : 0.5);
+    p.setAttribute("data-chosen", chosen ? "1" : "0");
+    if (chosen) selD = d;
+  });
+  const sel = BANDS[S.sel];
+  parts.fill.setAttribute("d", selD ? selD + "L" + (g.L + g.W + 4) + " " + g.y(0) + "L" + (g.L - 4) + " " + g.y(0) + "Z" : "");
+  parts.fill.setAttribute("fill", "color-mix(in srgb, var(" + sel.ink + ") 13%, transparent)");
+  // The sum, on top.
+  const fr = withBands(), sdb = respDb(cascade(), fr);
+  parts.sum.setAttribute("d", fr.map((f, i) => (i ? "L" : "M") + g.x(f).toFixed(1) + " " + g.y(clamp(sdb[i], DB_FOOT - 2, DB_TOP + 2)).toFixed(1)).join(""));
+  parts.sum.setAttribute("stroke", S.eqOn ? "var(--charcoal)" : "var(--unresolved)");
+  // The mid's width, a bracket under its point while it is chosen.
+  if (S.sel === 2 && S.v[2].on) {
+    const v = S.v[2], lo = v.hz / Math.pow(2, v.width / 2), hi = v.hz * Math.pow(2, v.width / 2), p = pointXY(2);
+    const yb = clamp(p.y + (heightDb(2) >= 0 ? 16 : -16), g.T + 4, g.T + g.H);
+    parts.bracket.setAttribute("d", "M" + g.x(lo) + " " + (yb - 4) + "V" + yb + "H" + g.x(hi) + "V" + (yb - 4));
+    parts.bracket.setAttribute("stroke", "var(" + BANDS[2].ink + ")");
+  } else parts.bracket.setAttribute("d", "");
+  // The points, the chosen one last so it is on top.
+  const order = [0, 1, 2, 3, 4].filter((k) => k !== S.sel).concat([S.sel]);
+  for (const k of order) {
+    const pt = parts.points[k], b = BANDS[k], v = S.v[k], chosen = k === S.sel, on = v.on && S.eqOn;
+    const { x, y } = pointXY(k), [hit, ring, text] = pt.children;
+    pt.parentNode.appendChild(pt);
+    for (const c of [hit, ring]) { c.setAttribute("cx", x); c.setAttribute("cy", y); }
+    const ink = on ? "var(" + b.ink + ")" : "var(--unresolved)";
+    ring.setAttribute("stroke", ink);
+    ring.setAttribute("fill", chosen && on ? ink : "var(--paper)");
+    ring.setAttribute("stroke-dasharray", on ? "" : "2.5 2");
+    text.setAttribute("x", x); text.setAttribute("y", y + (b.cut ? 2.6 : 3.4));
+    text.setAttribute("fill", chosen && on ? "var(--paper)" : on ? ink : "var(--text-soft)");
+    pt.dataset.x = x; pt.dataset.y = y;
+    pt.setAttribute("aria-label", b.name + ": " + cellSays(k) + ". Drag it, or the arrows; double-click resets it.");
+  }
+  paintFoot();
+  updateFit();
+}
+
+/* ===== the foot: the chosen band's knobs ===== */
+const KNOBS = {
+  hz: { label: "At", lo: Math.log(20), hi: Math.log(20000), to: (v) => Math.log(v), from: (u) => Math.exp(u), read: hzR },
+  db: { label: "Gain", lo: -16, hi: 12, to: (v) => v, from: (u) => Math.round(u * 10) / 10, read: dbR },
+  q: { label: "Q", lo: Math.log(0.5), hi: Math.log(4), to: (v) => Math.log(v), from: (u) => Math.round(Math.exp(u) * 100) / 100, read: (v) => v.toFixed(2) },
+  width: { label: "Width", lo: 0.2, hi: 4, to: (v) => v, from: (u) => Math.round(u * 10) / 10, read: (v) => v.toFixed(1) + " oct" },
+};
+function knobsOf(k) { return BANDS[k].cut ? ["hz", "q"] : k === 2 ? ["hz", "db", "width"] : ["hz", "db"]; }
+function buildFoot() {
+  const foot = win.querySelector("#foot");
+  foot.innerHTML = '<div class="who"><b><i></i><span class="nm"></span></b><span class="what"></span></div><div class="knobs" id="knobs"></div>'
+    + '<div class="hint"></div><button type="button" class="reset caps">Reset band</button>';
+  foot.querySelector(".reset").addEventListener("click", () => reset(S.sel));
+}
+const WHAT = { hp: "takes away below it", ls: "lifts or lowers below it", pk: "lifts or lowers around it", hs: "lifts or lowers above it", lp: "takes away above it" };
+function paintFoot() {
+  const foot = win.querySelector("#foot"), b = BANDS[S.sel], v = S.v[S.sel];
+  foot.style.setProperty("--ink", v.on ? "var(" + b.ink + ")" : "var(--unresolved)");
+  foot.querySelector(".nm").textContent = b.name;
+  foot.querySelector(".what").textContent = v.on ? WHAT[b.kind] : "off: moving it puts it on";
+  foot.querySelector(".hint").textContent = b.cut
+    ? "Sideways is where it cuts; up and down its resonance, Q, a bump at the cut."
+    : b.kind === "pk" ? "Sideways is where it acts, up and down its gain; Shift-drag or the wheel its width."
+    : "Sideways is where it acts, up and down its gain.";
+  const knobs = foot.querySelector("#knobs"), want = knobsOf(S.sel);
+  if (knobs.dataset.for !== String(S.sel)) {
+    knobs.dataset.for = S.sel;
+    knobs.innerHTML = "";
+    for (const key of want) {
+      const n = document.createElement("div");
+      n.className = "knob"; n.dataset.key = key;
+      n.innerHTML = '<span class="rd"></span><span class="face" tabindex="0" role="slider" aria-label="' + b.name + " " + KNOBS[key].label + '"><i></i></span><span class="lb">' + KNOBS[key].label + "</span>";
+      wireKnob(n.querySelector(".face"), key);
+      knobs.appendChild(n);
+    }
+  }
+  for (const n of knobs.children) {
+    const K = KNOBS[n.dataset.key], val = S.v[S.sel][n.dataset.key], u = (K.to(val) - K.lo) / (K.hi - K.lo);
+    n.querySelector(".face").style.setProperty("--hi", (clamp(u, 0, 1) * 270).toFixed(1) + "deg");
+    n.querySelector(".rd").textContent = K.read(val);
+  }
+}
+function setVal(k, key, val) {
+  const K = KNOBS[key];
+  S.v[k][key] = K.from(clamp(K.to(val), K.lo, K.hi));
+  // A hand moving a band that is off puts it in, as a point moved puts the EQ in today.
+  S.v[k].on = true; S.eqOn = true;
+}
+function wireKnob(face, key) {
+  let drag = null;
+  face.addEventListener("pointerdown", (e) => { face.setPointerCapture(e.pointerId); drag = { y: e.clientY, u: KNOBS[key].to(S.v[S.sel][key]) }; });
+  face.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const K = KNOBS[key], sc = Number(document.getElementById("stage").dataset.scale) || 1;
+    setVal(S.sel, key, K.from(clamp(drag.u + (drag.y - e.clientY) / sc / 180 * (K.hi - K.lo), K.lo, K.hi)));
+    paint();
+  });
+  face.addEventListener("pointerup", () => { drag = null; });
+  face.addEventListener("dblclick", () => { setVal(S.sel, key, START.flat[S.sel][key]); paint(); });
+  face.addEventListener("keydown", (e) => {
+    const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const K = KNOBS[key];
+    setVal(S.sel, key, K.from(K.to(S.v[S.sel][key]) + d * (K.hi - K.lo) / (e.shiftKey ? 200 : 40)));
+    paint();
+  });
+}
+
+/* ===== the points under the hand ===== */
+function choose(k) { S.sel = k; paint(); }
+function reset(k) { Object.assign(S.v[k], JSON.parse(JSON.stringify(START.flat[k])), { on: true }); S.sel = k; paint(); }
+function at(e) {
+  const plot = win.querySelector("#plot"), box = plot.getBoundingClientRect();
+  return { x: (e.clientX - box.left) * (geo.w / box.width), y: (e.clientY - box.top) * (geo.h / box.height) };
+}
+function readout(k) {
+  const r = win.querySelector("#readout"), b = BANDS[k], p = pointXY(k);
+  r.style.setProperty("--ink", "var(" + b.ink + ")");
+  r.textContent = b.name + "  " + cellSays(k) + (k === 2 ? " · " + S.v[2].width.toFixed(1) + " oct" : "");
+  r.hidden = false;
+  r.style.left = clamp(p.x - 70, geo.L, geo.w - 200) + "px";
+  r.style.top = (p.y > geo.h / 2 ? p.y - 34 : p.y + 16) + "px";
+}
+function wirePlot() {
+  const plot = win.querySelector("#plot");
+  plot.addEventListener("pointerdown", (e) => {
+    const pt = e.target.closest && e.target.closest(".pt");
+    if (!pt || e.button !== 0) return;
+    e.preventDefault();
+    const k = Number(pt.dataset.band), a = at(e), now = performance.now();
+    if (S.lastDown && S.lastDown.k === k && now - S.lastDown.t < 360) { S.lastDown = null; reset(k); return; }
+    S.lastDown = { k, t: now };
+    plot.setPointerCapture(e.pointerId);
+    const p = pointXY(k), v = S.v[k];
+    // Where the hand took hold, against the point: kept for the whole drag, so nothing jumps.
+    S.drag = { k, id: e.pointerId, ox: a.x - p.x, oy: a.y - p.y, x0: a.x, y0: a.y, hz: v.hz, h: BANDS[k].cut ? 20 * Math.log10(v.q) : v.db, width: v.width, shift: e.shiftKey };
+    S.sel = k;
+    pt.classList.add("held");
+    paint(); readout(k);
+    pt.focus({ preventScroll: true });
+  });
+  plot.addEventListener("pointermove", (e) => {
+    const d = S.drag;
+    if (!d || e.pointerId !== d.id) return;
+    const a = at(e), g = geo, k = d.k, v = S.v[k];
+    if (k === 2 && (e.shiftKey || d.shift)) {
+      v.width = Math.round(clamp(d.width + (d.y0 - a.y) / (g.H / 1.2) * 3.8, 0.2, 4) * 10) / 10;
+    } else if (S.place === "own") {
+      // Proposed: the pointer is the values. Its place, less where it took hold, read back through the plot's
+      // own scales and held inside the plot, so the point is under the hand to the edge and stops there.
+      const x = clamp(a.x - d.ox, g.L, g.L + g.W), y = clamp(a.y - d.oy, g.T, g.T + g.H);
+      v.hz = clamp(g.f(x), F_MIN, F_MAX);
+      const h = g.db(y);
+      if (BANDS[k].cut) v.q = clamp(Math.pow(10, h / 20), 0.5, 4); else v.db = clamp(heightTo(k, h), -16, 12);
+    } else {
+      // Today: by how far the hand has moved, the point drawn wherever the sum is there.
+      v.hz = clamp(d.hz * Math.pow(F_MAX / F_MIN, (a.x - d.x0) / g.W), F_MIN, F_MAX);
+      const h = d.h + (d.y0 - a.y) / g.H * (DB_TOP - DB_FOOT);
+      if (BANDS[k].cut) v.q = clamp(Math.pow(10, h / 20), 0.5, 4); else v.db = clamp(Math.round(h * 10) / 10, -16, 12);
+    }
+    v.on = true; S.eqOn = true;
+    paint(); readout(k);
+  });
+  const end = (e) => {
+    if (!S.drag || e.pointerId !== S.drag.id) return;
+    S.drag = null;
+    win.querySelectorAll(".pt.held").forEach((p) => p.classList.remove("held"));
+    setTimeout(() => { if (!S.drag) win.querySelector("#readout").hidden = true; }, 900);
+  };
+  plot.addEventListener("pointerup", end);
+  plot.addEventListener("pointercancel", end);
+  plot.addEventListener("wheel", (e) => {
+    const pt = e.target.closest && e.target.closest(".pt");
+    if (!pt || Number(pt.dataset.band) !== 2) return;
+    e.preventDefault();
+    S.sel = 2; S.v[2].width = Math.round(clamp(S.v[2].width + (e.deltaY < 0 ? 0.1 : -0.1), 0.2, 4) * 10) / 10;
+    paint(); readout(2);
+  }, { passive: false });
+  plot.addEventListener("focusin", (e) => {
+    const pt = e.target.closest && e.target.closest(".pt");
+    if (pt && Number(pt.dataset.band) !== S.sel) { S.sel = Number(pt.dataset.band); paint(); }
+  });
+  plot.addEventListener("keydown", (e) => {
+    const pt = e.target.closest && e.target.closest(".pt");
+    if (!pt) return;
+    const k = Number(pt.dataset.band), dx = { ArrowLeft: -1, ArrowRight: 1 }[e.key], dy = { ArrowDown: -1, ArrowUp: 1 }[e.key];
+    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); reset(k); return; }
+    if (dx === undefined && dy === undefined) return;
+    e.preventDefault();
+    const fine = e.shiftKey;
+    if (dx) setVal(k, "hz", S.v[k].hz * Math.pow(1000, dx * (fine ? 0.004 : 0.02)));
+    else if (BANDS[k].cut) setVal(k, "q", S.v[k].q * Math.pow(10, dy * (fine ? 0.1 : 0.5) / 20));
+    else setVal(k, "db", S.v[k].db + dy * (fine ? 0.1 : 0.5));
+    paint(); readout(k);
+  });
+}
+
+/* ===== fit, and what the page measures as it is drawn ===== */
+function fitStage() {
+  const z = SIZES[S.size], wrap = document.getElementById("stageWrap"), stage = document.getElementById("stage");
+  const avail = wrap.clientWidth, w = z.W * z.zoom, sc = Math.min(1, avail / w) * z.zoom;
+  stage.style.transform = "scale(" + sc + ")";
+  stage.dataset.scale = sc;
+  wrap.style.height = Math.ceil(z.H * sc + 2) + "px";
+}
+function updateFit() {
+  const ed = win.querySelector("#ed"), plot = win.querySelector("#plot"), z = SIZES[S.size];
+  const over = ed.scrollHeight > ed.clientHeight + 0.5 || ed.scrollWidth > ed.clientWidth + 0.5;
+  document.getElementById("fitLine").innerHTML =
+    "<span>Editor " + Math.round(z.ed[2]) + " × " + Math.round(z.ed[3]) + " (as today)</span>"
+    + "<span>Plot " + Math.round(geo.w) + " × " + Math.round(geo.h) + "</span>"
+    + "<span>" + (over ? "Scrolls" : "Nothing scrolls") + "</span>"
+    + "<span>Fields: " + BANDS.map((b, k) => b.field + "=" + (S.v[k].on ? 1 : 0)).join(" ") + "</span>";
+}
+
+/* ===== the colours' table, measured here ===== */
+function lin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+function lum(hex) { const n = parseInt(hex.slice(1), 16); return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255); }
+function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+(function inkTable() {
+  const cs = getComputedStyle(document.documentElement), tok = (t) => cs.getPropertyValue(t).trim();
+  document.getElementById("inkRows").innerHTML = BANDS.map((b) => {
+    const hex = tok(b.ink);
+    return "<tr><td><span class=\"sw\" style=\"background:" + hex + "\"></span>" + b.name + "</td><td><code>" + b.ink + "</code> " + hex
+      + "</td><td>" + contrast(hex, tok("--paper")).toFixed(2) + ":1</td><td>" + contrast(hex, tok("--cream")).toFixed(2) + ":1</td></tr>";
+  }).join("");
+})();
+
+/* ===== the page's switches ===== */
+function pgSwitch(id, key, after) {
+  const box = document.getElementById(id);
+  const mark = () => box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === S[key])));
+  box.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; S[key] = b.dataset.v; mark(); after(); });
+  mark();
+}
+function startFrom() { S.v = JSON.parse(JSON.stringify(START[S.start])); S.eqOn = true; }
+startFrom();
+pgSwitch("pgSize", "size", build);
+pgSwitch("pgPlace", "place", paint);
+pgSwitch("pgStart", "start", () => { startFrom(); paint(); });
+window.addEventListener("resize", () => { fitStage(); });
+build();
+// The checks' results, written into the page by checks/eq_bands_checks.py, so they travel with it.
+(function results() {
+  let res = null;
+  try { res = JSON.parse(document.getElementById("checkResults").textContent); } catch (e) { return; }
+  if (!res || !res.checks) return;
+  document.getElementById("checkRows").innerHTML = res.checks.map((c) => "<tr><td>" + c.name + "</td><td style=\"color:var(" + (c.ok ? "--pg-good" : "--pg-bad") + ")\">" + (c.ok ? "passes" : "FAILS") + " \u00b7 " + c.detail + "</td></tr>").join("");
+  if (res.pairs) document.getElementById("inkPairs").textContent = res.pairs;
+})();
+// For the checks.
+window.mock = { S, BANDS, pointXY, heightDb, cascade, respDb, bandCoefs, paint, geo: () => geo, choose };
+</script>
+</body>
+</html>
