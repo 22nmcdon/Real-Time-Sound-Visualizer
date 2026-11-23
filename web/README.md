@@ -8207,7 +8207,10 @@ seventh colour; `paintInks` keeps it in whatever ink that lane is now and says w
 The rows are named for the hands as the face names them (*Lower hand* and *Upper hand* on a split,
 *Layer A* and *Layer B* layered, *Ink* and *Second hand* with one), in labels of a fixed width so a
 name changing moves nothing; and the second row is dimmed, not hidden, while one figure is drawn,
-since its choice is still kept and a hidden row would move the note under it.
+since its choice is still kept and a hidden row would move the note under it. Dimmed, it is
+still choosable (the owner's call: it changes nothing heard, and the choice is there when two hands
+play), and each swatch's title, its aria-label and its info line say why it is dimmed, so the
+dimming is not read as switched off.
 
 - **`#bInk` stays, as a select out of sight** (`#bInkMenuRow hidden`), where it was in the markup,
   and the swatches drive it by its change event, as the keyboard band drives `midiLayers`. So the

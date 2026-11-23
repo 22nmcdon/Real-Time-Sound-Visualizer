@@ -467,13 +467,13 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | inkCh4 | Ink: Sage | Draws the X–Y figure in sage. Only the look: Scan reads the light, not its colour. | 82 | - |
 | inkCh5 | Ink: Plum | Draws the X–Y figure in plum. Only the look: Scan reads the light, not its colour. | 82 | - |
 | bInk | The second hand’s ink | The colour of the second hand’s figure while each hand draws one, kept for the row of swatches beside the first hand’s: its lane’s ink to start. | 144 | - |
-| bInkLane | Second hand: its lane’s ink | Draws the second hand’s figure in its lane’s ink, the one that lane has in Y–T: half a disc in it. Only the look. | 113 | - |
-| bInkAccent | Second hand: Rose | Draws the second hand’s figure in rose while each hand draws one. Only the look: Scan reads the light, not its colour. | 118 | - |
-| bInkCh1 | Second hand: Charcoal | Draws the second hand’s figure in charcoal while each hand draws one. Only the look: Scan reads the light, not its colour. | 122 | - |
-| bInkCh2 | Second hand: Slate | Draws the second hand’s figure in slate while each hand draws one. Only the look: Scan reads the light, not its colour. | 119 | - |
-| bInkCh3 | Second hand: Olive | Draws the second hand’s figure in olive while each hand draws one. Only the look: Scan reads the light, not its colour. | 119 | - |
-| bInkCh4 | Second hand: Sage | Draws the second hand’s figure in sage while each hand draws one. Only the look: Scan reads the light, not its colour. | 118 | - |
-| bInkCh5 | Second hand: Plum | Draws the second hand’s figure in plum while each hand draws one. Only the look: Scan reads the light, not its colour. | 118 | - |
+| bInkLane | Second hand: its lane’s ink | Draws the second hand’s figure in its lane’s ink, as in Y–T. Dimmed with one figure drawn, and still choosable for when there are two. | 134 | - |
+| bInkAccent | Second hand: Rose | Draws the second hand’s figure in rose. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 128 | - |
+| bInkCh1 | Second hand: Charcoal | Draws the second hand’s figure in charcoal. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 132 | - |
+| bInkCh2 | Second hand: Slate | Draws the second hand’s figure in slate. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 129 | - |
+| bInkCh3 | Second hand: Olive | Draws the second hand’s figure in olive. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 129 | - |
+| bInkCh4 | Second hand: Sage | Draws the second hand’s figure in sage. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 128 | - |
+| bInkCh5 | Second hand: Plum | Draws the second hand’s figure in plum. Dimmed with one figure drawn, and still choosable for when there are two. Only the look. | 128 | - |
 | traceWidth | Thickness | How thick the trace is drawn. Only the look: Scan reads where the beam went, not how wide it was drawn. | 103 | - |
 | graticuleOn | Graticule | Rules the screen’s divisions over the paper, or leaves it bare. Only the look: Scan never reads the grid. | 105 | - |
 | beamXY | X–Y | Lets Intensity dim the X–Y figure where it moves fast. Unticked, the whole figure is full ink, and Scan reads it that way. | 122 | - |

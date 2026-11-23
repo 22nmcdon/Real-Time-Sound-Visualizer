@@ -203,6 +203,7 @@ with sync_playwright() as pw:
     names = p.evaluate("() => [el.beamInkLabel.textContent, el.bInkLabel.textContent, el.bInkRow.classList.contains('idle'), el.bInkRow.hidden, el.bInk.closest('[hidden]') !== null]")
     check("with a split the rows are named for the hands, the second not dimmed, and the menu kept out of sight",
           names == ["Lower hand", "Upper hand", False, False, True], str(names))
+    split_titles = p.evaluate("() => Array.from(el.bInkSwatches.querySelectorAll('.ink-swatch')).filter((b) => /dimmed/.test(b.title)).map((b) => b.dataset.ink)")
     before = p.evaluate("() => __boxes()")
     pressed = []
     for value in ["accent", "ch1", "ch2", "ch3", "ch4", "ch5", "lane"]:
@@ -271,6 +272,14 @@ with sync_playwright() as pw:
     one = p.evaluate("() => [el.beamInkLabel.textContent, el.bInkLabel.textContent, el.bInkRow.classList.contains('idle'), !!el.bInkSwatches.offsetParent]")
     check("with one hand again the rows say Ink and Second hand, the second dimmed but still there", one == ["Ink", "Second hand", True, True], str(one))
     null("with the split it was not dimmed", names[2] is False)
+    # Dimmed and still choosable (the owner's, 23 Nov): each swatch says why, and a press still sets it.
+    dim = p.evaluate("""() => { const sw = Array.from(el.bInkSwatches.querySelectorAll('.ink-swatch'));
+      const said = sw.every((b) => /dimmed/.test(b.title) && /second hand/.test(b.title) && b.getAttribute('aria-label') === b.title);
+      el.bInkSwatches.querySelector('[data-ink="ch2"]').click(); const set = [state.bInk, el.bInk.value];
+      el.bInkSwatches.querySelector('[data-ink="lane"]').click(); return { said, set }; }""")
+    check("dimmed, each of its swatches says why in its title and to a screen reader, and pressing one still sets the second hand's ink",
+          dim == {"said": True, "set": ["ch2", "ch2"]}, str(dim))
+    null("with the split no swatch said it was dimmed", not split_titles, str(split_titles))
 
     print("\n--- the graticule and the thickness ---")
     # The ruling's own ink, counted over the screen; and the figure's pixels at

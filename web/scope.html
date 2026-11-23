@@ -6463,7 +6463,7 @@ body:not([data-readouts="on"]) .dock .foot { display: none; }
         drawn against each other goes: the screen draws the notes' rings summed. The beam's <i>Ink</i> is the
         figure's colour, the accent or one of five lane inks, and with two hands the second row of
         swatches is the second hand's, its lane's (the half disc) unless you choose; each row is
-        named for its hand, and the second is dimmed while one figure is drawn (in Y&ndash;T each lane keeps its own);
+        named for its hand, and the second is dimmed while one figure is drawn, still yours to choose for when there are two (in Y&ndash;T each lane keeps its own);
         <i>Thickness</i> draws the traces thinner or thicker, and <i>Graticule</i> rules the
         divisions or leaves the screen bare. Scan reads where the light went, not its colour
         or its width, so none of them changes what you hear. Above the
@@ -18333,13 +18333,20 @@ function paintInks() {
   const figures = typeof sourceFigures === "function" ? sourceFigures() : null;
   const laneInk = "ch" + ((figures && figures[1] ? figures[1][0] : 2) + 1);
   el.bInkLane.style.setProperty("--swatch", "var(--" + laneInk + ")");
-  const said = "Its lane\u2019s ink (" + INK_NAMES[laneInk] + " now)";
-  if (el.bInkLane.title !== said) { el.bInkLane.title = said; el.bInkLane.setAttribute("aria-label", said); }
   const two = typeof midi !== "undefined" && midi.layers.mode !== "off";
   const names = two ? (midi.layers.mode === "split" ? ["Lower hand", "Upper hand"] : ["Layer A", "Layer B"]) : ["Ink", "Second hand"];
   if (el.beamInkLabel.textContent !== names[0]) el.beamInkLabel.textContent = names[0];
   if (el.bInkLabel.textContent !== names[1]) el.bInkLabel.textContent = names[1];
-  el.bInkRow.classList.toggle("idle", !(figures && figures.length === 2));
+  /* Dimmed while one figure is drawn, and still choosable (the owner's, 23 Nov): it
+     changes nothing heard, and a choice made now is there when two hands play. Each
+     swatch's title says why it is dimmed, so the dimming is not read as off. */
+  const idle = !(figures && figures.length === 2);
+  el.bInkRow.classList.toggle("idle", idle);
+  const why = idle ? " \u2013 dimmed: it colours the second hand\u2019s figure, and none is drawn now; still yours to choose for when there is" : "";
+  for (const b of el.bInkSwatches.querySelectorAll(".ink-swatch")) {
+    const said = (b.dataset.ink === "lane" ? "Its lane\u2019s ink (" + INK_NAMES[laneInk] + " now)" : INK_NAMES[b.dataset.ink]) + why;
+    if (b.title !== said) { b.title = said; b.setAttribute("aria-label", said); }
+  }
 }
 /* The second row writes the hidden menu and sends its change event, so what
    hears the menu - the plugin's panel, undo, the setup - hears what it did. */
@@ -30749,13 +30756,13 @@ const CONTROL_WORDS = {
   "inkCh4": ["Ink: Sage", "Draws the X–Y figure in sage. Only the look: Scan reads the light, not its colour."],
   "inkCh5": ["Ink: Plum", "Draws the X–Y figure in plum. Only the look: Scan reads the light, not its colour."],
   "bInk": ["The second hand’s ink", "The colour of the second hand’s figure while each hand draws one, kept for the row of swatches beside the first hand’s: its lane’s ink to start."],
-  "bInkLane": ["Second hand: its lane’s ink", "Draws the second hand’s figure in its lane’s ink, the one that lane has in Y–T: half a disc in it. Only the look."],
-  "bInkAccent": ["Second hand: Rose", "Draws the second hand’s figure in rose while each hand draws one. Only the look: Scan reads the light, not its colour."],
-  "bInkCh1": ["Second hand: Charcoal", "Draws the second hand’s figure in charcoal while each hand draws one. Only the look: Scan reads the light, not its colour."],
-  "bInkCh2": ["Second hand: Slate", "Draws the second hand’s figure in slate while each hand draws one. Only the look: Scan reads the light, not its colour."],
-  "bInkCh3": ["Second hand: Olive", "Draws the second hand’s figure in olive while each hand draws one. Only the look: Scan reads the light, not its colour."],
-  "bInkCh4": ["Second hand: Sage", "Draws the second hand’s figure in sage while each hand draws one. Only the look: Scan reads the light, not its colour."],
-  "bInkCh5": ["Second hand: Plum", "Draws the second hand’s figure in plum while each hand draws one. Only the look: Scan reads the light, not its colour."],
+  "bInkLane": ["Second hand: its lane’s ink", "Draws the second hand’s figure in its lane’s ink, as in Y–T. Dimmed with one figure drawn, and still choosable for when there are two."],
+  "bInkAccent": ["Second hand: Rose", "Draws the second hand’s figure in rose. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh1": ["Second hand: Charcoal", "Draws the second hand’s figure in charcoal. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh2": ["Second hand: Slate", "Draws the second hand’s figure in slate. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh3": ["Second hand: Olive", "Draws the second hand’s figure in olive. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh4": ["Second hand: Sage", "Draws the second hand’s figure in sage. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
+  "bInkCh5": ["Second hand: Plum", "Draws the second hand’s figure in plum. Dimmed with one figure drawn, and still choosable for when there are two. Only the look."],
   "traceWidth": ["Thickness", "How thick the trace is drawn. Only the look: Scan reads where the beam went, not how wide it was drawn."],
   "graticuleOn": ["Graticule", "Rules the screen’s divisions over the paper, or leaves it bare. Only the look: Scan never reads the grid."],
   "beamXY": ["X–Y", "Lets Intensity dim the X–Y figure where it moves fast. Unticked, the whole figure is full ink, and Scan reads it that way."],
