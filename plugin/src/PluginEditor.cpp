@@ -228,7 +228,8 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     const auto face = processor.faceServed();
     const auto places = processor.envelopePlaces();
     const auto levels = processor.lfoLevels();
-    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed + 5 + scope::Instrument::kLfoLevels> out {};
+    const auto struck = processor.envelopeStruck();
+    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed + 5 + scope::Instrument::kLfoLevels + 2> out {};
     std::copy(lfos.begin(), lfos.end(), out.begin());
     std::copy(env.begin(), env.end(), out.begin() + 6);
     std::copy(clock.begin(), clock.end(), out.begin() + 10);
@@ -237,6 +238,8 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     std::copy(places.begin(), places.end(), out.begin() + 10 + static_cast<std::ptrdiff_t>(clock.size() + face.size()));
     // And after them each LFO's drawn levels this pass (19 Nov), for the editor's random points.
     std::copy(levels.begin(), levels.end(), out.begin() + 15 + static_cast<std::ptrdiff_t>(clock.size() + face.size()));
+    // And last (23 Nov) each hand's newest note's velocity, which the filter's sweep is drawn at.
+    std::copy(struck.begin(), struck.end(), out.begin() + 15 + static_cast<std::ptrdiff_t>(clock.size() + face.size() + levels.size()));
     return bytes(out.data(), out.size() * sizeof(double), "application/octet-stream");
   }
   /* The picture's grid, 64 by 64 little-endian float32s row by row, as it

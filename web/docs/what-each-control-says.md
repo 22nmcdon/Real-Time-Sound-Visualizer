@@ -142,6 +142,7 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | midiDrawWhich | Outline | Which notes make the outline: bass and melody, the lowest, the highest or the most recent. The lowest leans onto X, the rest onto Y. | 132 | yes: with two notes held it is the dyad whatever is chosen; the readout says how many make the outline and what interval it is |
 | midiPolyJust | Tune a chord | Tunes each chord to whole-number ratios of its lowest note, so a major triad is 4:5:6 and its figure closes. Notes move a few cents to get there. | 145 | yes: every note moves by a different amount depending on what is under it, so a held melody note retunes as the chord under it changes; not the Tuning switch |
 | midiHold | Hold the interval | In Dyad, a single note keeps the last interval above it, so one finger walks a figure up a melody. Off, one note is a unison. | 125 | - |
+| midiRetrig | Retrigger each note | A key over a held one strikes the amp's and the filter's envelopes again, as a mono synth does. Off, it slides on legato from where they were. | 142 | - |
 
 ### Expression
 
@@ -194,13 +195,14 @@ The band across the top of Play (17 Nov, `play-redesign.md`; with room since 19 
 | vcfCut | Cutoff | Where the filter starts taking the top off. Lower is darker, and the figure gets rounder, since the harmonics that put corners in it go first. | 142 | - |
 | vcfRes | Resonance | How sharply the filter peaks at its cutoff. Higher rings at that pitch, and a sweep of the cutoff draws its ringing in the figure. | 130 | - |
 | vcfTrack | Key track | How far the cutoff follows the note, from middle C. At 100 per cent a high note is as bright as a low one; at nought, high notes are duller. | 140 | - |
-| vcfEnvAmt | Amount | How many octaves the filter's own envelope sweeps the cutoff, up or down, as each note starts. | 94 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch |
+| vcfEnvAmt | Amount | How many octaves the filter's own envelope sweeps the cutoff, up or down, at full velocity. The drawing shows the last note's sweep. | 132 | yes: its four times below; it opens from where Cutoff is; on the dyad each channel is filtered at its own pitch; how much of it a softer note loses is Velocity's, beside the envelope's knobs |
 | vcfAtk | Attack | How long the filter's sweep takes to reach its height once a key goes down. Moves nothing while Envelope is at nought. | 118 | - |
 | vcfDec | Decay | How long the sweep takes to fall from its height to its sustain. Short gives each note a pluck or a wah. | 104 | - |
 | vcfSus | Sustain | Where the sweep holds while the key is down, as a share of Envelope's octaves. At nought each note opens and closes again. | 122 | - |
 | vcfRel | Release | How long the cutoff takes to come back once you let go of the key. | 66 | - |
 | vcfDelay | Delay | How long after a key goes down the filter's sweep starts, up to five seconds. | 77 | - |
 | vcfHold | Hold | How long the sweep stays at its height before it falls, up to five seconds. | 75 | - |
+| vcfVel | Velocity | How much of the sweep follows how hard you play. At 100% a soft note sweeps less; at nought every note sweeps the whole Amount. | 127 | - |
 | vcfResp | The response | The filter's response from 20 Hz to 20 kHz: drag its point sideways for the cutoff and up or down for the resonance. | 116 | - |
 | vcfShapes | Shape | Starts the filter's envelope from a shape: its six knobs and its points together. | 83 | - |
 | vcfLoop | Loop | Loops the filter's sweep while a key is held, from the attack's end back to the sustain point. | 96 | - |
@@ -430,7 +432,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
-| pictureResponds | Responds to | What the Amount’s push follows: Change flares at a new or harder gesture and settles; Level follows how much is lit; Both is a base with a flare. | 145 | yes — each hand’s own on the Picture’s link, or both while it is linked; Change is the start until the owner has heard the three; the read is the hand’s own picture’s, so with *Pictures* crossed a hand’s response goes with its picture to the other’s sound; on a fixed scale, so a held chord settles rather than swelling by itself |
+| pictureResponds | Responds to | What the Amount’s push follows: Change flares at a new or harder gesture and settles; Level follows how much is lit; Both is a base with a flare. | 145 | yes — each hand’s own on the Picture’s link, or both while it is linked; Change is the start until the owner has heard the three; the read is the hand’s own picture’s, so with *Pictures* crossed a hand’s response goes with its picture to the other’s sound; on a fixed scale, so a held chord settles rather than swelling by itself; the upper hand's own (and its Swell, Rise and fall) acts only while each hand draws its own figure, in X–Y - in Y–T both hands follow the lower hand's, and the line says so while the upper hand's own is being edited (23 Nov) |
 | pictureSwell | Swell | The picture breathing by itself while a chord is held, smoothly, at a rate the Persistence sets: slower as the light lingers. Off, a held chord rests. | 150 | - |
 | pictureFeel | Rise, fall | How quickly the push comes and how slowly it goes: Snappy, Smooth or Slow, or Custom with a knob for each. | 106 | - |
 | pictureRise | Rise | How long the push takes to come when the picture asks for more. Shown with Custom. | 82 | - |
@@ -547,6 +549,8 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 |---|---|---|---|---|
 | editHandA | Editing: Lower | Puts the lower hand on the face: its own sections show and write its values. Named A when layered. Only with a split or layers. | 127 | yes — a section linked is both hands whichever is chosen; the hand’s figure’s ink on its dot; the tab cards say where the hands differ |
 | editHandB | Editing: Upper | Puts the upper hand on the face: its own sections show and write its values. Named B when layered. Only with a split or layers. | 127 | - |
+| muteHandA | Mute: Lower | Silences the lower hand, heard and drawn: the picture is the sound, so its figure goes too. Alt-click to hear it alone. Never saved. | 132 | yes: only with two hands; a preset or a code loaded, or one hand again, unmutes both; undo leaves it, since it puts back the sound and not what you were listening to; the instrument is told and keeps nothing of it, so a host's project never opens with a hand silent |
+| muteHandB | Mute: Upper | Silences the upper hand, heard and drawn: the picture is the sound, so its figure goes too. Alt-click to hear it alone. Never saved. | 132 | yes: only with two hands; a preset or a code loaded, or one hand again, unmutes both; undo leaves it, since it puts back the sound and not what you were listening to; the instrument is told and keeps nothing of it, so a host's project never opens with a hand silent |
 | presetPrev | The previous preset | Loads the previous sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through. | 130 | - |
 | preset | Plain sine | The sound loaded now, with its heading above it, and edited once you change it; Custom for a code pasted. Press to open the preset browser. | 139 | - |
 | presetNext | The next preset | Loads the next sound in the bank, in the browser’s order, without opening anything. Your saved sounds are not stepped through. | 126 | - |

@@ -84,6 +84,7 @@ inline constexpr RangeSpec kRanges[] = {
   { "vcfRel", 1, 20000, 1, 300 },
   { "vcfDelay", 0, 5000, 1, 0 },
   { "vcfHold", 0, 5000, 1, 0 },
+  { "vcfVel", 0, 100, 1, 100 },
   { "planeTurn", -50, 50, 1, 0 },
   { "planeTwist", -100, 100, 1, 0 },
   { "planeRadius", 2, 100, 1, 40 },
@@ -232,7 +233,7 @@ inline constexpr const char* kMorphIds[] = {
   "delayWow", "reverbMix", "reverbSize", "reverbTone", "reverbPre", "reverbSpread", "bar0", "bar1", "bar2", "bar3",
   "bar4", "bar5", "bar6", "bar7", "bar8", "freq", "phase", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync",
   "oscSub", "oscSpread", "shpDrive", "shpFold", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec",
-  "vcfSus", "vcfRel", "vcfDelay", "vcfHold", "inputDepth", "filterCutoff", "filterRes",
+  "vcfSus", "vcfRel", "vcfDelay", "vcfHold", "vcfVel", "inputDepth", "filterCutoff", "filterRes",
   // The sound's own Width (16 Nov), in the Picture section after Scan's three: the setup's, so walked.
   "oscScan", "scanStrike", "scanSoft", "soundWidth", "menvAtk", "menvDec", "menvSus", "menvRel", "menvDelay", "menvHold",
 };

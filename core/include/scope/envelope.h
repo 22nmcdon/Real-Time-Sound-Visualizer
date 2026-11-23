@@ -32,6 +32,10 @@ struct EnvelopeTone {
   double releaseMs = 200;
   double delayMs = 0;
   double holdMs = 0;
+  /* How much of the drawn envelope's level the note's velocity scales (23
+     Nov): one, all of it, for the amplifier and the Envelope card, as it has
+     always been; the filter's envelope's Velocity knob for the filter's. */
+  double velAmount = 1;
   MsegShape shape;
 };
 

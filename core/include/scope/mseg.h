@@ -71,7 +71,7 @@ class Mseg {
 
   double step() {
     if (tone_->shape.serial != serial_) resync();
-    if (idle_ || holding_) return value_ * velocity_;
+    if (idle_ || holding_) return value_ * scale_;
     const MsegShape& sh = tone_->shape;
     const MsegSegment& g = sh.seg[static_cast<std::size_t>(seg_)];
     const double ms = msegStretchMs(*tone_, g.stretch) * g.share;
@@ -84,7 +84,7 @@ class Mseg {
       value_ += (target_ - value_) * (1.0 - std::exp(-span_ / samples));
       if (rising_ ? value_ >= end_ : value_ <= end_) { value_ = end_; arrive(seg_ + 1); }
     }
-    return value_ * velocity_;
+    return value_ * scale_;
   }
 
   /* The legato rule, as the old envelope's: a note arriving while the
@@ -104,14 +104,27 @@ class Mseg {
     held_ = true;
     if (idle_ || releasing() || (sh.oneShot() && !was)) {
       velocity_ = vel > 0 ? vel : 1;
+      /* How much of the level follows the velocity (23 Nov, the filter's
+         envelope's Velocity): all of it, as always, unless the tone says
+         less - and then exactly the old product at all of it, since
+         1 - (1 - v) is not always v to the last bit and the recordings are. */
+      const double share = tone_->velAmount;
+      scale_ = share == 1 ? velocity_ : 1 - share * (1 - velocity_);
       idle_ = false; holding_ = false;
       enter(0);
     }
   }
 
-  void reset(double to) { idle_ = true; holding_ = false; held_ = false; value_ = to; velocity_ = 1; seg_ = 0; x_ = 0; }
+  // Struck again from where it is (23 Nov, Retrigger): the attack climbs from the present level, at the new velocity.
+  void restrike(double vel) {
+    const double was = value_;
+    reset(was);
+    gate(true, vel);
+  }
 
-  double level() const { return value_ * velocity_; }
+  void reset(double to) { idle_ = true; holding_ = false; held_ = false; value_ = to; velocity_ = 1; scale_ = 1; seg_ = 0; x_ = 0; }
+
+  double level() const { return value_ * scale_; }
   double velocity() const { return velocity_; }
   // The old envelope's five stages, for what reads them (a voice let go and
   // silent, the Envelope card's dot): before the sustain point the delay and
@@ -224,6 +237,8 @@ class Mseg {
   int seg_ = 0;
   double value_ = 1;
   double velocity_ = 1;
+  // What the level is scaled by: the velocity, or as much of it as the tone's velAmount says.
+  double scale_ = 1;
   double target_ = 0, end_ = 0, span_ = 1, from_ = 0, x_ = 0;
 };
 

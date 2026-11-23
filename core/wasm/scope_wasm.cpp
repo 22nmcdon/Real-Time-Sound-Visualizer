@@ -627,6 +627,8 @@ EXPORT(brain_readings) double* brainReadings() {
   for (const double v : instrument->envelopePlaces()) brainRead.push_back(v);
   // And each LFO's drawn levels this pass (19 Nov, Instrument::lfoLevels), after them for the same reason.
   for (const double v : instrument->lfoLevels()) brainRead.push_back(v);
+  // And after them each hand's newest note's velocity (23 Nov, Instrument::envelopeStruck), for the filter's sweep.
+  for (const double v : instrument->envelopeStruck()) brainRead.push_back(v);
   return brainRead.data();
 }
 /* The table layer `layer`'s voice is playing - the one it fades to at each

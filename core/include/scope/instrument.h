@@ -814,6 +814,13 @@ class Instrument {
     for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[4 + i].load(std::memory_order_relaxed);
     return out;
   }
+  /* And each hand's newest note's velocity (23 Nov, Generator::struck),
+     nought before any, served last of all so nothing before it moves: the
+     filter's sweep is drawn at it. */
+  std::array<double, 2> envelopeStruck() const {
+    pictureAt_.load(std::memory_order_acquire);
+    return { envServed_[9].load(std::memory_order_relaxed), envServed_[10].load(std::memory_order_relaxed) };
+  }
   /* And each LFO's drawn levels this pass (19 Nov, lfo-drawn.md), after the
      envelopes' places so nothing before them moves: for each, the point
      whose line it is on (-1 while its shape is not drawn), then the level
@@ -1216,6 +1223,14 @@ class Instrument {
          which lost anything sent between blocks; at the top of the next
          block now, as anything a handler sends is. */
       if (was && !running_) midiOut_->panic();
+      return;
+    }
+    /* A hand muted (23 Nov): "0" to "3", the lower hand's bit and the
+       upper's. Not kept, so neither the state nor a project nor undo carries
+       it, and a host reopening a project hears both hands. */
+    if (id == "handMute") {
+      const int bits = static_cast<int>(jsStringToNumber(text));
+      core_->setMuted((bits & 1) != 0, (bits & 2) != 0);
       return;
     }
     if (!controlChange(id, text, checked, *brain_, *core_, *keyboard_, lfos_)) return;
@@ -1712,6 +1727,9 @@ class Instrument {
     envServed_[6].store(core_->envelopePlace(0, 1), std::memory_order_relaxed);
     envServed_[7].store(core_->envelopePlace(1, 1), std::memory_order_relaxed);
     envServed_[8].store(core_->envelopePlace(2), std::memory_order_relaxed);
+    // And each hand's newest note's velocity as its filter's envelope took it (23 Nov), for the sweep's drawing.
+    envServed_[9].store(core_->struck(0), std::memory_order_relaxed);
+    envServed_[10].store(core_->struck(1), std::memory_order_relaxed);
     for (std::size_t i = 0; i < 2 && i < lfos_.size(); ++i) {
       const Lfo& l = lfos_[i];
       const std::size_t at = i * (1 + kLfoMaxPoints);
@@ -2029,7 +2047,7 @@ class Instrument {
   std::array<float, kPictureFrames * kRingLanes> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
   std::array<std::atomic<double>, 6> lfosServed_ {};
-  std::array<std::atomic<double>, 9> envServed_ {};
+  std::array<std::atomic<double>, 11> envServed_ {};
   std::array<std::atomic<double>, kLfoLevels> lfoLevels_ {};
   std::array<std::atomic<double>, kClockServed> clockServed_ {};
   std::array<std::atomic<double>, kFaceServed> faceServed_ {};

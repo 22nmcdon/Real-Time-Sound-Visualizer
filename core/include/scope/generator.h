@@ -280,7 +280,9 @@ class Generator {
   void setVoices(const std::vector<NoteWant>* list, int layer = 0) {
     LayerSettings& t = layer == 1 ? static_cast<LayerSettings&>(b_) : a_;
     if (list == nullptr) t.voices.reset(); else t.voices = *list;
+    const int before = ctx_.births;
     reconcileVoices(layer == 1 ? voicesB_ : voices_, t.voices ? &*t.voices : nullptr, t, glideFrom_[layer == 1 ? 1 : 0], ctx_);
+    for (const auto& v : layer == 1 ? voicesB_ : voices_) if (v.born > before) struck_[layer == 1 ? 1 : 0] = v.fenv.velocity();
     bool held = false;
     for (const auto& v : voices_) held = held || v.held;
     for (const auto& v : voicesB_) held = held || v.held;
@@ -320,7 +322,25 @@ class Generator {
     handX_ = 1;
   }
 
-  void gate(bool open, double velocity) { env_.gate(open, velocity); fenv_.gate(open, velocity); menvGate(open); }
+  void gate(bool open, double velocity) {
+    env_.gate(open, velocity); fenv_.gate(open, velocity); menvGate(open);
+    if (open) struck_[0] = fenv_.velocity();
+  }
+  /* The velocity of each hand's newest note as its filter's envelope took it
+     (23 Nov), nought before any: what the face draws the filter's sweep at,
+     so the drawing says what the last note did rather than what a note at
+     full velocity would. Dyad's and Mono's a legato note leaves alone, as
+     the envelope does. */
+  double struck(int layer) const { return struck_[layer == 1 ? 1 : 0]; }
+  /* Retrigger (23 Nov): Dyad's and Mono's envelopes struck again over a held
+     note, each from where it is (Mseg::restrike), as the Envelope's own does
+     on Every note, so an attack climbs from the level it was at rather than
+     dropping to nought. */
+  void retrigger(double velocity) {
+    if (!gated_) return;
+    env_.restrike(velocity); fenv_.restrike(velocity);
+    struck_[0] = fenv_.velocity();
+  }
   // A key gone down: the Envelope's own, on Every note, starts its attack again from where it is.
   void noteDown() {
     if (!a_.menvEvery || !menvHeld_) return;
@@ -831,6 +851,9 @@ class Generator {
         l *= g; r *= g; hl *= g; hr *= g;
       }
 
+      // A hand muted (23 Nov): the lower hand's sound out before the plane, so neither heard nor drawn.
+      if (layered && muteNow_[0] != 1) { const double g = muteNow_[0]; l *= g; r *= g; hl *= g; hr *= g; }
+
       // What's drawn too: the screen draws the heard mix, and the plane's one pass is the heard pair's.
       if (drawnToo) { l = hl; r = hr; }
       if (planeOn) {
@@ -855,6 +878,7 @@ class Generator {
               vxB_, ctx_, true, glide, mixing ? width : -1, &tailsB_);
         bx = ctx_.mix[0]; by = ctx_.mix[1];
         hbx = ctx_.heard[0]; hby = ctx_.heard[1];
+        if (muteNow_[1] != 1) { const double g = muteNow_[1]; bx *= g; by *= g; hbx *= g; hby *= g; }
         if (drawnToo) { bx = hbx; by = hby; }
         if (planeOn) {
           plane_.step(Plane::B, bx, by, true); bx = plane_.x; by = plane_.y;
@@ -935,6 +959,14 @@ class Generator {
       }
     }
   }
+  /* A hand muted (23 Nov, the owner's): with two hands, the lower's sound or
+     the upper's taken out before the plane, so it is neither heard nor drawn
+     and Scan reads nothing of it - the picture is the sound. A working aid,
+     never a setup's: the face sends it as a hand the instrument does not
+     keep (Instrument::control's "handMute"), and nothing restores it. Only
+     while the hands are two: alone, the lower hand is the instrument. */
+  void setMuted(bool lower, bool upper) { muteTo_ = { lower ? 0.0 : 1.0, upper ? 0.0 : 1.0 }; }
+  bool muted(int layer) const { return muteTo_[layer == 1 ? 1 : 0] == 0; }
   // Where the Output's gain has got to, for a harness; and a hand's level and cutoff (layer 1 is B's).
   double outputNow() const { return outNow_; }
   double levelNow(int layer) const { return (layer == 1 ? vxB_ : vxA_).level; }
@@ -953,6 +985,12 @@ class Generator {
   void outputStep(double glide) {
     outNow_ += (a_.output - outNow_) * glide;
     if (std::fabs(a_.output - outNow_) < kOutputSnap) outNow_ = a_.output;
+    // Each hand's mute on the Output's glide, so a hand goes and comes back without a click.
+    for (std::size_t h = 0; h < 2; h++) {
+      if (muteNow_[h] == muteTo_[h]) continue;
+      muteNow_[h] += (muteTo_[h] - muteNow_[h]) * glide;
+      if (std::fabs(muteTo_[h] - muteNow_[h]) < kOutputSnap) muteNow_[h] = muteTo_[h];
+    }
     // The Width on the Output's glide and snap (the page's widthNow says why): the sound's own, drawn too.
     const double to = widthTarget();
     widthNow_ += (to - widthNow_) * glide;
@@ -977,6 +1015,8 @@ class Generator {
     else vx.cut = std::exp(vx.cutLn);
   }
   double outNow_ = 1;  // the Output's gain as it glides, a sample at a time
+  // Each hand's mute (23 Nov): where its gain is going, nought muted, and where it has got to.
+  std::array<double, 2> muteTo_ { 1, 1 }, muteNow_ { 1, 1 };
   double widthNow_ = 1;  // and the Width's
   static constexpr double kClockHyst = 0.01;
 
@@ -1063,6 +1103,8 @@ class Generator {
     else if (field == "envHoldMs") t.env.holdMs = v;
     else if (field == "fDelayMs") t.fenv.delayMs = v;
     else if (field == "fHoldMs") t.fenv.holdMs = v;
+    // The filter's envelope's Velocity (23 Nov): how much of its sweep follows how hard the key went, nought to one.
+    else if (field == "fVelocity") t.fenv.velAmount = v;
     else if (field == "morph") t.morph = v;
     else if (field == "width") t.width = v;
     else if (field == "table") t.table = v;
@@ -1409,6 +1451,7 @@ class Generator {
   struct { bool low = true; long since = 0, period = 0; } clock_;
   bool gated_ = false;
   Mseg env_, fenv_;
+  std::array<double, 2> struck_ {};
   Mseg menv_;          // the Envelope card's own, one for the generator
   bool menvHeld_ = false;  // and whether it is open, so a gate is sent only on a change
   void menvGate(bool open) {

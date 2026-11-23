@@ -138,6 +138,7 @@ class ScopeProcessor final : public juce::AudioProcessor, private juce::Timer {
   std::array<double, 4> envelopeServed() const { return instrument_.envelopeServed(); }
   std::array<double, 5> envelopePlaces() const { return instrument_.envelopePlaces(); }
   std::array<double, scope::Instrument::kLfoLevels> lfoLevels() const { return instrument_.lfoLevels(); }
+  std::array<double, 2> envelopeStruck() const { return instrument_.envelopeStruck(); }
   // And (5b) the clock, the limiter and what the face shows of the picture, as the site's page reads them.
   std::array<double, scope::Instrument::kClockServed> clockServed() const { return instrument_.clockServed(); }
   std::array<double, scope::Instrument::kFaceServed> faceServed() const { return instrument_.faceServed(); }

@@ -87,6 +87,10 @@ class NoteTarget {
      or not the generator waits for notes, as a restart is the LFO's, not the
      envelope's. */
   virtual void lfoStrike(bool fresh) { (void)fresh; }
+  /* Retrigger (23 Nov): in Dyad and Mono a key gone down over a held one
+     strikes the amplifier's and the filter's envelopes again at its own
+     velocity, where the legato rule would leave them alone. */
+  virtual void retrigger(double velocity) { (void)velocity; }
   virtual void setGated(bool on) = 0;
   virtual bool gated() const = 0;
   // Where the note envelope has got to, `env.note`'s reading while gated: the Key's release reads it (heard).
@@ -108,6 +112,7 @@ class GeneratorNotes : public NoteTarget {
   void gate(bool open, double velocity) override { g_.gate(open, velocity); }
   void noteDown() override { g_.noteDown(); }
   void lfoStrike(bool fresh) override { g_.lfoStrike(fresh); }
+  void retrigger(double velocity) override { g_.retrigger(velocity); }
   void setGated(bool on) override { g_.setGated(on); }
   bool gated() const override { return g_.gated(); }
   double envelope() const override { return g_.envelope(); }
@@ -405,6 +410,7 @@ class Keyboard {
   // The hand a held note plays in while split: 0 the lower, 1 the upper.
   int handOf(const Held& h) const { return layers_.by == SplitBy::Notes ? h.hand : h.note >= layers_.point ? 1 : 0; }
   void setHold(bool on) { hold_ = on; }
+  void setRetrig(bool on) { retrig_ = on; }
   void setPresent(bool on) { present_ = on; }
   // Whether the generator is on its own, to lay out a figure for each layer: not while the input is drawn.
   void setLayable(bool on) { layable_ = on; }
@@ -503,16 +509,19 @@ class Keyboard {
     bool countUpper = false;
     int count = 1;
     int window = kChordWindowDefault;
+    // Dyad's and Mono's Retrigger (23 Nov), last so the order above is kept: a setup without it is legato, as every code before it.
+    bool retrig = false;
   };
   Settings settings() const {
     return { mode_, draws_, layers_.mode, layers_.point, layers_.against, polyJust_, hold_, truth_, follow_,
-             layers_.by, layers_.countUpper, layers_.count, layers_.window };
+             layers_.by, layers_.countUpper, layers_.count, layers_.window, retrig_ };
   }
   void setSettings(const Settings& s) {
     mode_ = s.mode; draws_ = s.draws; layers_.mode = s.layers; layers_.point = s.point; layers_.against = s.against;
     layers_.learning = false; polyJust_ = s.polyJust; hold_ = s.hold; truth_ = s.truth; follow_ = s.follow;
     layers_.by = s.by; layers_.countUpper = s.countUpper; layers_.count = std::max(1, std::min(kSplitCountMost, s.count));
     layers_.window = chordWindowOf(s.window);
+    retrig_ = s.retrig;
     // A setup loaded over held keys deals them by its own split, as a control moved would.
     redeal();
   }
@@ -954,6 +963,8 @@ class Keyboard {
     notesBefore_.clear();
     for (const auto& n : notes_) notesBefore_.push_back(n.note);
     if (struck && t_.gated()) t_.noteDown();
+    // Retrigger: a key over a held one, in Dyad or Mono, strikes the envelopes afresh (the first of a phrase opened them already).
+    if (retrig_ && struck && !fresh && t_.gated() && !polyWanted() && !notes_.empty()) t_.retrigger(notes_.back().velocity);
     if (polyWanted()) { applyPoly(); return; }
     if (notes_.empty()) return;
 
@@ -998,7 +1009,7 @@ class Keyboard {
   NoteMode mode_ = NoteMode::Dyad;
   std::array<DrawRule, 2> draws_ {};
   Layers layers_;
-  bool polyJust_ = false, hold_ = false, present_ = true, layable_ = true;
+  bool polyJust_ = false, hold_ = false, present_ = true, layable_ = true, retrig_ = false;
   bool truth_ = true, follow_ = false;  // the note as the measurements' truth; kept for the setup
   double pedalTarget_ = 0;
   bool sustain_ = false;

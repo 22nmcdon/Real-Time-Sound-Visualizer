@@ -34,6 +34,7 @@ fails = []
 def check(name, ok, detail=""):
     print(("  PASS  " if ok else "  FAIL  ") + name + (("   " + detail) if detail else ""))
     if not ok: fails.append(name)
+def null(name, ok, detail=""): check("null: " + name, ok, detail)
 
 
 def line(x, f):
@@ -273,6 +274,84 @@ with sync_playwright() as pw:
     check("keytrack finds the voice filter while it is on, and while it is off finds it greyed",
           ["Key track", "Voice filter"] in found and ["Key track", "Voice filter"] in off and off_greyed,
           "%s / %s / greyed %s" % (found[:2], off[:2], off_greyed))
+
+    print("\n--- the sweep as the last note made it (23 Nov) ---")
+    # The owner's report: +3.3 octaves from 2 kHz played softly stayed dark,
+    # because the sweep is the Amount times the velocity and the face drew it
+    # at full velocity whatever was played. The drawing and its words now
+    # follow the newest note on the hand being edited, which the instrument
+    # serves (Instrument::envelopeStruck); before any note they say "at full
+    # velocity", and with Velocity at nought they leave velocity out, since
+    # every note sweeps the whole Amount. Played through the instrument as the
+    # keyboard plays it (scopeHost.midi), and read off the drawing.
+    sweep = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const set = (id, v, kind) => { el[id].value = String(v); el[id].dispatchEvent(new Event(kind, { bubbles: true })); };
+      setView('bench'); setBenchTab('play'); setFigSub('filter');
+      restore({ vcfType: 1, vcfCut: 667, vcfEnvAmt: 33, vcfAtk: 0, vcfDec: 300, vcfSus: 0, vcfRel: 1 }); await wait(200);
+      const read = () => { paintFigs(true); const r = el.vcfResp.querySelector('[data-sweep]');
+        return [el.vcfSweeps.textContent, r ? Number(r.dataset.top) : null,
+                Array.from(el.fenvPlot.querySelectorAll('.mseg-grid text')).map((t) => t.textContent)[0]]; };
+      const before = read();
+      // Until the instrument's reading has the note (a block and a reading later; longer on a loaded machine).
+      const struck = async (v) => { for (let t = 0; t < 60; t++) { const s = state.source.envelopeStruck;
+        if (s && Math.abs(s[0] - v / 127) < 1e-9) return; await wait(50); } };
+      scopeHost.midi([0x90, 48, 64]); await struck(64); scopeHost.midi([0x80, 48, 0]); await wait(100);
+      const soft = read();
+      scopeHost.midi([0x90, 48, 127]); await struck(127); scopeHost.midi([0x80, 48, 0]); await wait(100);
+      const hard = read();
+      set('vcfVel', 0, 'input'); await wait(100);
+      const all = read();
+      set('vcfVel', 100, 'input');
+      restore({}); await wait(100);
+      return { before, soft, hard, all, cut: cutoffHz(667) };
+    }""")
+    print("    before a note %s; at 64 %s; at 127 %s; Velocity nought %s" % (sweep["before"], sweep["soft"], sweep["hard"], sweep["all"]))
+    want64 = sweep["cut"] * 2 ** (3.3 * 64 / 127)
+    check("before any note the sweep is drawn at full velocity and says so",
+          sweep["before"][0] == "+3.3 oct at full velocity" and abs(sweep["before"][1] - sweep["cut"] * 2 ** 3.3) < 1,
+          str(sweep["before"]))
+    check("after a note at 64 the band ends where that note took the cutoff, the words and the drawing's top say it",
+          sweep["soft"][0] == "+1.7 oct at velocity 64" and abs(sweep["soft"][1] - want64) < 1 and sweep["soft"][2] == "6.3k",
+          "%s, want %.1f" % (sweep["soft"], want64))
+    null("and the reading as it stood before the note fails that: it follows the note, not the knob",
+         sweep["before"][1] != sweep["soft"][1] and sweep["before"][0] != sweep["soft"][0])
+    check("a note at 127 is the whole sweep again, and at Velocity nought every note is, without a velocity named",
+          sweep["hard"][0] == "+3.3 oct at velocity 127" and sweep["all"][0] == "sweeps +3.3 oct", "%s, %s" % (sweep["hard"], sweep["all"]))
+
+    # And where half the sweep is gone, which the drawing marks (23 Nov): the
+    # owner found 300 ms of decay "not very noticeable", and the decay's bend
+    # has done half its octaves long before it ends. Held to the core's own
+    # envelope (mseg.h through mseg_cpp), sample by sample at 48 kHz.
+    import subprocess, tempfile
+    exe = os.path.join(tempfile.mkdtemp(), "mseg_cpp")
+    subprocess.run(["g++", "-std=c++17", "-O2", "-I", os.path.join(ART, "..", "core", "include"),
+                    os.path.join(ART, "..", "core", "tests", "tools", "mseg_cpp.cpp"), "-o", exe], check=True)
+    def core_half(dec):
+        path = exe + ".txt"
+        with open(path, "w") as f:
+            f.write("rate 48000\ntone attackMs 0\ntone decayMs %d\ntone sustain 0\ntone releaseMs 1\nreset 0\nat 0 gate 1 1\nrun 192000\n" % dec)
+        v = [float.fromhex(l.split()[0]) for l in subprocess.run([exe, "new", path], check=True, capture_output=True, text=True).stdout.split("\n") if l.strip()]
+        top = max(range(len(v)), key=lambda i: v[i])
+        return next(i for i in range(top, len(v)) if v[i] <= v[top] / 2) / 48.0
+    halves = p.evaluate("""async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      setView('bench'); setBenchTab('play'); setFigSub('filter');
+      const out = [];
+      for (const dec of [300, 1200]) {
+        restore({ vcfType: 1, vcfCut: 667, vcfEnvAmt: 33, vcfAtk: 0, vcfDec: dec, vcfSus: 0, vcfRel: 1 }); await wait(150);
+        paintFigs(true);
+        const h = el.fenvPlot.querySelector('[data-half]');
+        out.push(h ? Number(h.dataset.half) : null);
+      }
+      restore({}); await wait(50);
+      return out;
+    }""")
+    cores = [core_half(300), core_half(1200)]
+    print("    half the sweep gone, the drawing %s ms, the core %s ms" % (halves, [round(c, 2) for c in cores]))
+    check("the drawing marks where half the sweep is gone where the core's envelope gets there, to a millisecond, at two decays",
+          None not in halves and all(abs(a - b) < 1 for a, b in zip(halves, cores)), "%s against %s" % (halves, cores))
+    null("and the short decay's mark is not the long one's: the comparison sees the decay", abs(halves[0] - cores[1]) > 50)
 
     check("no page errors", not bad, "; ".join(bad[:3]))
     b.close()

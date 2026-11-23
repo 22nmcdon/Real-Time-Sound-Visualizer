@@ -390,7 +390,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   envelope as the shape that plays it to the bit. On Play the amp's is the
   Amp figure, drawn the figure area's width with its six knobs in a row under
   it, and the filter's the Filter figure, its response with four and its
-  envelope with six (Play, below); nothing opens from them and nothing moves
+  envelope with six and, since 23 Nov, its Velocity (`vcfVel`: how much of the sweep follows
+  the key; the sweep drawn and said at the last note's velocity, its levels in hertz and where
+  half of it is gone marked - `vcftest.py`, the core's `pieces/vcfvel.py`) (Play, below); nothing opens from them and nothing moves
   in or out (the popover beside a small block, from earlier on 18 Nov, drew an
   8 ms attack as a 17 px wall). The peak is full scale; the sustain point moves
   (*Sustain here*) or goes (*No sustain*, a one-shot); a loop plays only while
@@ -537,7 +539,10 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Nov): the title over the line of what is playing; the preset between
   arrows that step the bank in the browser's order, its heading above its
   name; Browse; Save; with two hands, *Editing: Lower · Upper* (A · B
-  layered, G6), each in its figure's ink; undo and redo; then the run status, Perform, help and
+  layered, G6), each in its figure's ink with a speaker after its name that mutes it
+  (23 Nov; Alt for a hand alone; never stored, the instrument told `handMute` and the
+  hand dropped before its plane, so a muted hand is neither heard nor drawn - `mutetest.py`,
+  the core's `pieces/mute.py`); undo and redo; then the run status, Perform, help and
   Settings, one row above a phone's width with the line under the title or
   without it (G4). Undo records the setup (`snapshot`) once a
   change has held still for 400 ms with no pointer down, and only after a
@@ -616,7 +621,9 @@ Do not re-litigate these without a reason; each replaced something that failed.
   Dyad and Mono keeping its place unseen, so the heading never reflows) and the
   dots, then Dyad · Mono · Poly, and under them only what the mode uses of how
   the notes are drawn - Hold in Dyad, a line in Mono, Outline, Tune a chord and
-  with two hands the pairing (*each*, *A vs B*) in Poly. Its right column: the
+  with two hands the pairing (*each*, *A vs B*) in Poly, and since 23 Nov *Retrigger each
+  note* in Dyad and Mono, the second row as Tune a chord is Poly's (`midiRetrig`; the core's
+  `pieces/retrig.py`). Its right column: the
   **split row**, kept unseen with one hand so choosing Two hands moves nothing,
   holding Key · Notes · Layer and then that way's own: by key *Split at C4* in
   a reading of one width (the mockup found Learn moving when the name changed

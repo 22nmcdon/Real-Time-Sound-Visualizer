@@ -8159,3 +8159,58 @@ Three traps on the way:
 - **A narrow mid's peak missed its own path by 3 px.** The bands' own paths were sampled on the 360
   log-spaced frequencies only; a 0.2-octave mid at 8 kHz peaks between two of them. They are
   sampled at the bands' own frequencies too, as the sum always was.
+
+## The filter's sweep as played, Retrigger, and a hand muted (23 Nov)
+
+The owner reported that the voice filter "doesn't ever open up": a saw at 2 kHz, +3.3 octaves, Attack
+0, Decay 300 ms, Sustain 0. It did open, on the core offline and on the page played by hand: about
+20 dB more above 5 kHz in the first 20 ms than half a second later. Three things hid it:
+
+- **The sweep is the Amount times the velocity** (Mseg's level times vel/127, the filter's
+  envelope as the amplifier's), and nothing on the face said so: the shaded band, "sweeps +3.3 oct"
+  and the 100% peak were all at full velocity. At velocity 40 the cutoff got to 4 kHz, not 20.
+  The filter's envelope has a **Velocity** knob now (`vcfVel`, `bVcfVel`, 0 to 100, default 100):
+  how much of the sweep follows the key. At 100 it is the old product exactly - Mseg keeps
+  `scale_ = velocity_` there, because `1 - (1 - v)` is not always `v` to the last bit and the
+  recordings are - and at nought every note sweeps the whole Amount. The amplifier's envelope and
+  the Envelope card keep `velAmount` 1. The face draws the sweep **at the last note's velocity**:
+  the instrument serves each hand's (`Generator::struck`, `Instrument::envelopeStruck`, last in
+  `brain_readings` and in the plugin's `lfos.bin`), and the band, the words ("+1.7 oct at velocity
+  64", "at full velocity" before any note, no velocity named at nought) and the envelope's levels,
+  in hertz now, follow it.
+- **A 300 ms decay has done half its octaves in 90.** The decay's default bend falls fastest first,
+  so the bright part is short however long Decay reads. The envelope marks where half the sweep is
+  gone (`msegHalfway`, by the drawing's own `msegTravel`), held to the core's envelope sample by
+  sample in `vcftest.py`. At 2 kHz the sweep only adds the quiet partials above the strong ones
+  the filter already passes (about +6 dB above 2 kHz at the strike, against +15 at 1 kHz and +24 at
+  500 Hz), which the owner found by ear.
+- **In Dyad and Mono a note over a held one does not strike the envelopes again** (the legato
+  rule), so only the first note of a phrase opened the filter. **Retrigger each note**
+  (`midiRetrig`, in the band's left column where Poly's second row is, so the band keeps its
+  height) strikes both the amp's and the filter's envelopes again, each from where it is
+  (`Mseg::restrike`), as a mono synth's retrigger does. Both, not the filter's alone: a filter
+  that opens on a note the amplifier glides through sounds like a wah pedal, not a new note.
+
+**A hand muted** (`muteHandA`, `muteHandB`, a speaker after each hand's name in the header's
+Editing; Alt for a hand alone). The instrument takes the hand's sound out before its plane
+(`Generator::setMuted`, on the Output's 20 ms glide, untouched to the bit while unmuted), so a
+muted hand is neither heard nor drawn and Scan reads nothing of it: the picture is the sound, and a
+figure you cannot hear would move the other hand for no reason you could hear. Sent as
+`handMute` (the lower hand's bit, the upper's), which `Instrument::control` answers before the
+hands it keeps, so no state, project or undo has it; the face unmutes on a preset, a code and one
+hand, and not on undo, which puts back the sound and not what you were listening to.
+
+And a truth the review of B's fields found: **the upper hand's own "how the picture responds"
+acts only while each hand draws its own figure** (X-Y with two hands; in Y-T both hands are moved
+by the one shared picture at the lower hand's response). Its five lines say so while the upper
+hand's own is being edited (`handOwnCaveat`). Every other upper-hand control was replayed through
+the core as the face sends it and moved the upper hand alone, the lower bit-identical.
+
+Two traps on the way:
+
+- **`brain_readings` is read through a view of a fixed length.** The two new values were written
+  past the end of `r` and read as `undefined`, so the face drew full velocity after every note. The
+  view's length (`52 + SERVED_LENGTH + 5 + lfoLevels_`) had to grow with what was appended; the
+  plugin's `lfos.bin` and `ShellTest`'s `kLfosBin` likewise.
+- **`Keyboard::Settings` is built positionally.** A field added in the middle of the struct took
+  the next initialiser's value; the new one goes at the end.

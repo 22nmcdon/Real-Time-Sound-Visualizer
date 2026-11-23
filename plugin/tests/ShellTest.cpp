@@ -2547,9 +2547,10 @@ int main() {
     osc.prepareToPlay(rate, block);
     juce::AudioBuffer<float> buf(2, block);
     // Ten, then since 5b the clock's twelve and the face's picture, and since 18 Nov the drawn envelopes' five places, read below;
-    // since 19 Nov each LFO's drawn levels after them (Instrument::lfoLevels), read at the end of this block.
+    // since 19 Nov each LFO's drawn levels after them (Instrument::lfoLevels), read at the end of this block;
+    // since 23 Nov each hand's newest note's velocity (Instrument::envelopeStruck), last.
     constexpr std::size_t kPlacesAt = 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed;
-    constexpr std::size_t kLfosBin = (kPlacesAt + 5 + scope::Instrument::kLfoLevels) * sizeof(double);
+    constexpr std::size_t kLfosBin = (kPlacesAt + 5 + scope::Instrument::kLfoLevels + 2) * sizeof(double);
     const auto placesServed = [&] {
       const auto r = scopeResource("/lfos.bin", osc);
       std::array<double, 5> v {};

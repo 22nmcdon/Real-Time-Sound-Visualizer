@@ -619,6 +619,8 @@ inline const std::vector<LayerControl>& layerControls() {
     { "vcfRel", "fReleaseMs", LayerControl::Range, same, same },
     { "vcfDelay", "fDelayMs", LayerControl::Range, same, same },
     { "vcfHold", "fHoldMs", LayerControl::Range, same, same },
+    // The filter's envelope's Velocity (23 Nov), in hundredths: how much of the sweep follows the key.
+    { "vcfVel", "fVelocity", LayerControl::Range, hundred, byHundredRound },
     { "vcfShape", "fShape", LayerControl::Words, nullptr },
   };
   return rows;
@@ -652,9 +654,9 @@ inline const std::array<HandSectionSpec, kHandSections>& handSections() {
     { "ampEnv", "linkAmpEnv", { "envAttack", "envDecay", "envSustain", "envRelease", "envDelay", "envHold", "envShape" },
       { "bAtk", "bDec", "bSus", "bRel", "bEnvDelay", "bEnvHold", "bEnvShape" }, {}, 0 },
     { "vcf", "linkVcf", { "vcfType", "vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt", "vcfAtk", "vcfDec", "vcfSus", "vcfRel",
-                          "vcfDelay", "vcfHold", "vcfShape" },
+                          "vcfDelay", "vcfHold", "vcfShape", "vcfVel" },
       { "bVcf", "bVcfCut", "bVcfRes", "bVcfTrack", "bVcfEnv", "bVcfAtk", "bVcfDec", "bVcfSus", "bVcfRel",
-        "bVcfDelay", "bVcfHold", "bVcfShape" }, { "gen.vcf" }, 0 },
+        "bVcfDelay", "bVcfHold", "bVcfShape", "bVcfVel" }, { "gen.vcf" }, 0 },
     { "osc", "linkOsc", { "oscRatio", "oscFm", "oscBend", "oscBendAt", "oscRing", "oscSync", "oscSub", "oscSubOct", "oscSubShape",
                           "oscUnison", "oscSpread" },
       { "bRatio", "bFm", "bBend", "bBendAt", "bRing", "bSync", "bSub", "bSubOct", "bSubShape", "bUnison", "bSpread" },
@@ -756,6 +758,7 @@ inline double layerFieldValue(const LayerSettings& t, std::string_view f) {
   if (f == "envHoldMs") return t.env.holdMs;
   if (f == "fDelayMs") return t.fenv.delayMs;
   if (f == "fHoldMs") return t.fenv.holdMs;
+  if (f == "fVelocity") return t.fenv.velAmount;
   return std::nan("");
 }
 
@@ -927,6 +930,7 @@ void applyLayerB(const Json& partial, Field s, Generator& gen, const Controls& p
     { "vcfAtk", "bVcfAtk" }, { "vcfDec", "bVcfDec" }, { "vcfSus", "bVcfSus" }, { "vcfRel", "bVcfRel" },
     { "envDelay", "bEnvDelay" }, { "envHold", "bEnvHold" }, { "envShape", "bEnvShape" },
     { "vcfDelay", "bVcfDelay" }, { "vcfHold", "bVcfHold" }, { "vcfShape", "bVcfShape" },
+    { "vcfVel", "bVcfVel" },
   };
   static const std::pair<const char*, const char*> fallback[] = {
     { "amp", "amp" }, { "shape", "shape" }, { "envAttack", "atk" }, { "envDecay", "dec" }, { "envSustain", "sus" },
@@ -1708,6 +1712,7 @@ inline void restoreSetup(const Json& partial, Brain& brain, Generator& gen, Keyb
     brain.pictureHands[1].amount = amountB ? rangeSanitiseNumber(*rangeSpec("pictureAmount"), amountB->n) : brain.pictureHands[0].amount;
   }
   k.hold = fieldFlag("midiHold");
+  k.retrig = fieldFlag("midiRetrig");
   k.truth = fieldFlag("midiTruth");
   k.follow = fieldFlag("midiFollow");
   keys.setSettings(k);
@@ -2382,6 +2387,7 @@ inline bool controlChange(const std::string& id, const std::u16string& written, 
   else if (id == "scanReadsA") b.scanReads[0] = scanReadsOf(text, "A");
   else if (id == "scanReadsB") b.scanReads[1] = scanReadsOf(text, "B");
   else if (id == "midiHold") keys.setHold(checked);
+  else if (id == "midiRetrig") keys.setRetrig(checked);
   // Expression's menus (6 Nov): a vibrato no longer given to stops, as the page's expressionLetGo has it.
   else if (id == "midiBendRange" || id == "midiWheelTo" || id == "midiPressureTo") {
     double range = keys.bendRange();
