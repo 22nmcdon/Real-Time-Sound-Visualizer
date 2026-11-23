@@ -187,8 +187,10 @@ with sync_playwright() as pw:
         p.wait_for_timeout(100)
         words.append([p.evaluate(SUMS)["filter"][0], p.evaluate("() => [el.vcfSweeps.textContent, el.vcfSweeps.classList.contains('is-dead')]")])
     print("    %s" % words)
+    # Since 23 Nov the title says the sweep at the last note's velocity, and before any note "at full velocity"
+    # (vcftest.py holds it after a note): no note has been played here.
     check("the filter's summary is its type, cutoff and sweep, and its envelope's title says what it does",
-          words == [["low pass 2.0 kHz · 0.0 oct", ["amount 0, does nothing", True]], ["low pass 2.0 kHz · +1.5 oct", ["sweeps +1.5 oct", False]],
+          words == [["low pass 2.0 kHz · 0.0 oct", ["amount 0, does nothing", True]], ["low pass 2.0 kHz · +1.5 oct", ["+1.5 oct at full velocity", False]],
                     ["off", ["the filter is off", True]]], str(words))
     p.evaluate("() => { el.vcfType.value = '1'; el.vcfType.dispatchEvent(new Event('change', { bubbles: true })); }")
     oneshot = p.evaluate("() => { const t = el.envShape.value; msegWriteShape('amp', Object.assign(msegParse(t), { sus: -1 })); const s = figSummaries('amp')[0]; el.envShape.value = t; el.envShape.dispatchEvent(new Event('input', { bubbles: true })); return s; }")
@@ -262,9 +264,10 @@ with sync_playwright() as pw:
         f4: [...el.vcfFKnobs.querySelectorAll('input')].map((i) => i.id), env: [...el.vcfEnvKnobs.querySelectorAll('input')].map((i) => i.id) });
       setFigSub('amp'); const a = where(), code = encodeSetup(snapshot()); setFigSub('filter'); const b = where(), code2 = encodeSetup(snapshot()); setFigSub('wave'); const c = where();
       setFigSub('amp'); return { a, same: JSON.stringify(a) === JSON.stringify(b) && JSON.stringify(b) === JSON.stringify(c), stored: code === code2 }; }""")
-    check("the amp's six, the filter's four and its envelope's six are in their views, in the drawing's order, and stay there whichever subtab is shown",
+    # And since 23 Nov its Velocity after the six, scaling the whole drawing rather than drawing a part of it.
+    check("the amp's six, the filter's four and its envelope's six and Velocity are in their views, in the drawing's order, and stay there whichever subtab is shown",
           homes["a"] == {"amp": ["envDelay", "envAttack", "envHold", "envDecay", "envSustain", "envRelease"], "f4": ["vcfCut", "vcfRes", "vcfTrack", "vcfEnvAmt"],
-                         "env": ["vcfDelay", "vcfAtk", "vcfHold", "vcfDec", "vcfSus", "vcfRel"]} and homes["same"], str(homes))
+                         "env": ["vcfDelay", "vcfAtk", "vcfHold", "vcfDec", "vcfSus", "vcfRel", "vcfVel"]} and homes["same"], str(homes))
     check("and the subtab chosen is not in the setup", homes["stored"])
     # The Envelope's editor: its knobs move in while it is open and back after (controls are moved, never copied).
     ed = {}
