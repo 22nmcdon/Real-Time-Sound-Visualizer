@@ -150,6 +150,11 @@ struct LanePair { int x = 0, y = 1; };  // an X-Y figure's two lanes
 struct Screen {
   std::string display = "yt";   // yt | xy | spect
   double persistence = 0;
+  /* The zoom (22 Nov, the owner's: "I don't think zoom should affect the sound
+     anymore"): only the look. The face magnifies its own drawing by it, and the
+     view's readings carry it; the beam never reads it, so the grid Scan, the
+     picture's sources and the photocell read is the same at any zoom. Until then
+     it magnified the deposit, and a zoom changed the sound. */
   double zoom = 1;
   bool stack = true;
   LanePair xyPair;
@@ -217,7 +222,7 @@ inline void walkXY(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
 
     const std::size_t points = std::min(left.size(), right.size());
     const std::size_t stride = std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(static_cast<double>(points) / kBeamMax)));
-    const double scale = radius * s.zoom;
+    const double scale = radius;  // never the zoom: see Screen::zoom
 
     // Turned only when the capture has not already, and only on the shaped
     // side; and not layer B's figure while B turns itself.
@@ -252,8 +257,8 @@ inline void walkYT(Beam& beam, Phosphor& phosphor, const View& v, const Screen& 
   const auto bandY = [&](std::size_t index) { return plot.y + (isStack ? static_cast<double>(index) * bandH : 0); };
   const auto yAt = [&](std::size_t index, double value) { return bandY(index) + (1 - (value + 1) / 2) * bandH; };
 
-  // The magnifier: a slice of the record about the trigger point.
-  const double visible = std::fmax(16.0, jsRound(f.length / s.zoom));
+  // The whole record, at any zoom: the magnifier is the face's (Screen::zoom).
+  const double visible = std::fmax(16.0, f.length);
   const double from = std::fmax(0.0, std::fmin(f.length - visible, jsRound(f.pre - visible / 2)));
   const double ratio = s.beamYT && f.triggered ? beamRatio(s.beam) : 0;
 

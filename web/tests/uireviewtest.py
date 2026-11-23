@@ -18,7 +18,7 @@ Scope & measure
 - a label over three words or over one line. The null: the sentence the review took out;
 - showControl leaving the wrong subtab chosen. The null: the subtab before the call;
 - the drawings not reading the values: the trigger's crossing moves with the edge and
-  goes to free run past the peak, Zoom's slice is the window over the zoom, the filter's
+  goes to free run past the peak, the toolbar's Zoom's slice is the window over the zoom, the filter's
   cutoff mark moves with Cutoff. Each null is the other value's.
 
 The Picture strip
@@ -59,7 +59,7 @@ def null(name, red, detail=""):
 # Testing's panel before the review (1704599): each range's min, max and step as the page
 # leaves them once it has run (the timebase's max is TIMEBASE's, set by the script).
 RANGES = {"level": ["-1000", "1000", ""], "position": ["0", "100", ""], "holdoff": ["0", "50", "1"],
-          "timebase": ["0", "8", "1"], "zoom": ["0", "24", ""], "lag": ["1", "400", ""], "lagMix": ["0", "50", ""],
+          "timebase": ["0", "8", "1"], "lag": ["1", "400", ""], "lagMix": ["0", "50", ""],
           "ch1Scale": ["0", None, "1"], "ch2Scale": ["0", None, "1"], "ch1Offset": ["-100", "100", ""], "ch2Offset": ["-100", "100", ""],
           "acCorner": ["5", "200", ""], "filterCutoff": ["0", "1000", ""], "filterRes": ["0", "100", ""]}
 CHECKS = ["midiTruth", "midiFollow", "lagOn", "ch1On", "ch2On", "ch1Ac", "ch2Ac", "midSide", "filterOn", "readoutsOn", "cursorsOn"]
@@ -186,7 +186,7 @@ with sync_playwright() as pw:
 
     states = {
         "trigger": [("level", "-1000"), ("level", "1000"), ("holdoff", "50"), ("position", "100"), ("click", "edgeFalling"), ("click", "trigSource1")],
-        "time": [("timebase", "0"), ("timebase", "8"), ("zoom", "24"), ("tick", "lagOn"), ("click", "lagManual"), ("lag", "400"), ("tick-off", "midiTruth")],
+        "time": [("timebase", "0"), ("timebase", "8"), ("tick", "lagOn"), ("click", "lagManual"), ("lag", "400"), ("tick-off", "midiTruth")],
         "vertical": [("tick", "filterOn"), ("filterCutoff", "0"), ("filterRes", "100"), ("ch1Scale", "8"), ("ch1Offset", "-100"), ("tick", "midSide"), ("tick-off", "ch2On")],
         "measure": [("tick", "readoutsOn"), ("tick", "cursorsOn"), ("click", "measurePost"), ("click", "saveReference")],
     }
@@ -205,10 +205,12 @@ with sync_playwright() as pw:
             if diff: shifted.setdefault(view, []).append((kind, v, diff[:4]))
     check("nothing in a view moves as its values change: readings grow, the filter and the lag grey, the lanes turn mid / side",
           not shifted, shifted)
-    sized = p.evaluate("""() => { setMeasureView('time'); const row = el.timebase.closest('.knob-row'), face = row.querySelector('.knob-face');
-      row.style.cssText = 'width: max-content; min-width: 0; max-width: none'; el.timebase.value = '0'; el.timebase.dispatchEvent(new Event('input'));
-      const a = el.zoom.closest('.knob-row').getBoundingClientRect().left; el.timebaseValue.textContent = '2 ms/div · past the buffer';
-      const b2 = el.zoom.closest('.knob-row').getBoundingClientRect().left; row.style.cssText = ''; void face; return [a, b2]; }""")
+    # The trace filter's two knobs since 22 Nov, when the zoom beside the timebase went to the screen's toolbar.
+    sized = p.evaluate("""() => { setMeasureView('vertical'); const row = el.filterCutoff.closest('.knob-row'), face = row.querySelector('.knob-face');
+      row.style.cssText = 'width: max-content; min-width: 0; max-width: none';
+      const a = el.filterRes.closest('.knob-row').getBoundingClientRect().left; el.filterCutoffValue.textContent = '1.00 kHz and then some';
+      const b2 = el.filterRes.closest('.knob-row').getBoundingClientRect().left; row.style.cssText = ''; el.filterCutoffValue.textContent = '1.00 kHz';
+      void face; setMeasureView('time'); return [a, b2]; }""")
     null("a knob cell sized to its reading moves the knob beside it", abs(sized[0] - sized[1]) > 0.5, sized)
     p.evaluate("() => { el.presetNew.click(); }"); p.wait_for_timeout(400)
     p.evaluate("() => { for (const id of ['filterOn', 'lagOn', 'midSide', 'readoutsOn', 'cursorsOn']) { const i = el[id]; if (i.checked) { i.checked = false; i.dispatchEvent(new Event('change', { bubbles: true })); } } el.ch2On.checked = true; el.ch2On.dispatchEvent(new Event('change', { bubbles: true })); el.midiTruth.checked = true; el.midiTruth.dispatchEvent(new Event('change', { bubbles: true })); el.measurePre.click(); el.clearReference.click(); el.edgeRising.click(); }")
@@ -268,7 +270,7 @@ with sync_playwright() as pw:
           drawn["rising"]["free"] == "false" and drawn["falling"]["free"] == "false" and drawn["rising"]["crossing"] != drawn["falling"]["crossing"], drawn)
     check("past the stand-in's peak it runs free, and the caption says so", drawn["past"]["free"] == "true" and drawn["past"]["cap"].startswith("Free run"), drawn["past"])
     null("at nought it is not free run", drawn["rising"]["free"] == "false", drawn["rising"])
-    check("Zoom's slice is the window over the zoom", drawn["zoom"] > 1 and abs(drawn["slice"] - drawn["w"] / drawn["zoom"]) < 1, drawn)
+    check("the toolbar's Zoom's slice is the window over the zoom", drawn["zoom"] > 1 and abs(drawn["slice"] - drawn["w"] / drawn["zoom"]) < 1, drawn)
     null("at no zoom the slice is the whole window", abs(drawn["whole"] - drawn["w"]) < 1 and abs(drawn["whole"] - drawn["slice"]) > 5, drawn)
     check("the filter's cutoff mark moves with Cutoff, up the log axis", drawn["cutHigh"] - drawn["cutLow"] > 100, drawn)
     p.evaluate("() => setMeasureOpen(false)")

@@ -671,7 +671,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | mtab-trigger | Trigger | Where the trace starts: the edge, the source lane, the level, the position and the holdoff, drawn on a trace. Its summary is the four. | 134 | - |
-| mtab-time | Time | How much time the screen holds and the slice Zoom keeps, the keys' pitch, and the lag. Its summary is the timebase and the zoom. | 128 | - |
+| mtab-time | Time | How much time the screen holds and the slice the toolbar's Zoom shows of it, the keys' pitch, and the lag. Its summary is the timebase. | 135 | - |
 | mtab-vertical | Vertical | Each lane's scale and offset, AC and mid / side, and the trace filter with its response. Its summary is the lanes shown and the filter. | 135 | - |
 | mtab-measure | Measure | The readouts under the screen, the cursors, what the numbers read and a saved reference. Its summary is whether each shows. | 123 | - |
 | run | Stop | Holds the trace and the picture the sound reads, so the tone stands while notes sound on. Also silences the score and ends every MIDI note sent. | 144 | - |
@@ -697,7 +697,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | id | name | line | chars | paragraph |
 |---|---|---|---|---|
 | timebase | Timebase | How much time the screen holds, from a millisecond to half a second across. Scan reads what it holds, in X–Y as in Y–T, so the sound changes too. | 145 | yes — the longest settings depend on the converter’s rate (743 ms at 44.1 kHz, 341 at 96); past it the reading says past the buffer |
-| zoom | Zoom | Magnifies: in Y–T a slice around the trigger, in X–Y the figure, on the spectrogram the band. Scan reads it as drawn, so the sound changes too. | 143 | - |
+| zoom | Zoom | Magnifies the screen: in Y–T a slice around the trigger, in X–Y the figure, on the spectrogram the band. Only the look: Scan reads the whole. | 141 | - |
 
 ### Scope & measure › Lanes
 

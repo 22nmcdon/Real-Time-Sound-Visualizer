@@ -3573,7 +3573,24 @@ def bmnull(name, old, new, what):
     i = next(k for k, (n, _) in enumerate(bmruns) if n == name)
     check("and against " + what, kdiff(js, bmslice(bmcpp, i)) is not None)
 bmnull("xy", "beam high", "beam subtle", "a softer beam")
-bmnull("yt", "zoom 16", "zoom 15", "a zoom one step less")
+# A zoom one step less was this null until 22 Nov, when the zoom became only the look: the beam
+# lays the whole record and the figure at its own size at any zoom, so it moves nothing here now.
+bmnull("yt", "tb 6", "tb 5", "a timebase one step shorter")
+_yt = dict(bmruns)["yt"]
+_unzoomed = re.sub(r"zoom \d+", "zoom 1", _yt)
+# The core on both, with no recording between: the claim is about the core, and the recording
+# of the run with its zooms is the core's own answer since the same day.
+_path = os.path.join(BUILD, "beam_unzoomed.txt")
+with open(_path, "w") as _f: _f.write(_unzoomed)
+_ytcore = subprocess.run([bmexe, _path], check=True, capture_output=True, text=True, timeout=300).stdout
+with open(_path, "w") as _f: _f.write(_yt)
+_ytzoomed = subprocess.run([bmexe, _path], check=True, capture_output=True, text=True, timeout=300).stdout
+check("the zoom is only the look: the Y-T run with every zoom put back to one lays the same grids, line for line",
+      _unzoomed != _yt and _ytcore == _ytzoomed and len(_ytcore) > 1000, "%d and %d characters" % (len(_ytcore), len(_ytzoomed)))
+_path2 = os.path.join(BUILD, "beam_shorter.txt")
+with open(_path2, "w") as _f: _f.write(_yt.replace("tb 6", "tb 5", 1))
+check("null: and the same run with a timebase one step shorter does not",
+      subprocess.run([bmexe, _path2], check=True, capture_output=True, text=True, timeout=300).stdout != _ytzoomed)
 bmnull("turn", "rot 0.125", "rot 0.126", "a turn a thousandth further")
 bmnull("anchor", "draw 500", "draw 501", "a frame a millisecond longer")
 check("and the comparison fails against the page's lines one command out of step",
