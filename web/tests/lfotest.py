@@ -272,9 +272,16 @@ with sync_playwright() as pw:
     p.locator('.lfo-start[data-start="sine"]').click(); p.wait_for_timeout(200)
     p.evaluate("() => { const r = document.getElementById('lfoPhase0'); r.value = '90'; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); }")
     p.wait_for_timeout(500)
-    ph = p.evaluate("() => { const l = lfos[0]; return { value: l.value, quarter: Math.sin(l.phase + Math.PI / 2), none: Math.sin(l.phase), said: document.getElementById('lfoPhaseValue0').textContent }; }")
-    check("Phase reaches the instrument: a quarter on, its sine is read a quarter on", abs(ph["value"] - ph["quarter"]) < 1e-6 and ph["said"] == "90°", str(ph))
-    null("with no Phase it would read its own phase's sine", abs(ph["value"] - ph["none"]) > 0.05, str(ph))
+    # The two sines it tells apart, sin(phase + pi/2) and sin(phase), differ by sqrt(2)cos(phase + pi/4), which is
+    # nought near pi/4 + k*pi: read at whatever phase the LFO had reached, the null below failed by chance about one
+    # run in ten (23 Nov, phase 5pi/4, both -0.70). So the read waits, frame by frame, for a phase where they are
+    # more than 0.5 apart - which the free-running LFO reaches within a fraction of a cycle - and says how far.
+    ph = p.evaluate("""async () => { for (let n = 0; n < 200; n++) { const l = lfos[0], q = Math.sin(l.phase + Math.PI / 2), z = Math.sin(l.phase);
+        if (Math.abs(q - z) > 0.5) return { value: l.value, quarter: q, none: z, apart: Math.abs(q - z), tries: n, said: document.getElementById('lfoPhaseValue0').textContent };
+        await new Promise((r) => requestAnimationFrame(r)); }
+      return { apart: 0, said: '' }; }""")
+    check("Phase reaches the instrument: a quarter on, its sine is read a quarter on", ph["apart"] > 0.5 and abs(ph["value"] - ph["quarter"]) < 1e-6 and ph["said"] == "90°", str(ph))
+    null("with no Phase it would read its own phase's sine", ph["apart"] > 0.5 and abs(ph["value"] - ph["none"]) > 0.25, str(ph))
     p.locator('[data-lfo-tempo="1"]').click(); p.wait_for_timeout(300)
     tempo = p.evaluate("() => ({ sync: lfos[0].sync, menu: document.getElementById('lfoSync0').value, shown: Array.from(document.querySelectorAll('[data-lfo-row]')).filter((r) => !r.hidden).map((r) => r.dataset.lfoRow) })")
     check("Rate in Tempo follows the note value it had, a quarter, and the Rate knob is the note value's", tempo == {"sync": "1/4", "menu": "1/4", "shown": ["tempo"]}, str(tempo))
