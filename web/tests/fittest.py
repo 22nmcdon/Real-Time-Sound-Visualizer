@@ -255,12 +255,26 @@ ADVANCED = r"""async (extra) => {
   const copies = [];
   for (let k = 0; k < extra; k++) { const c = group.cloneNode(true); c.removeAttribute('id');
     c.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); group.after(c); copies.push(c); }
+  // The face's boxes before it opens, to say nothing on it moved (23 Nov).
+  const face = () => [el.pictureBar, el.pictureMore, el.traceSheet, el.screenTools, el.benchBody]
+    .map((n) => { const r = n.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round).join(','); }).join(' ');
+  const before = face();
   setPictureOpen(true); await wait(150);
   const box = el.picturePanel.getBoundingClientRect();
+  const link = el.pictureMore.getBoundingClientRect(), bar = el.pictureBar.getBoundingClientRect();
   const shown = [el.pictureMovesRow, el.scanReadsRow, el.pictureRiseRow, el.pictureFallRow].map((r) => !r.hidden && !!r.offsetParent);
-  const out = { inside: box.top >= 0 && box.bottom <= innerHeight + 1 && box.left >= 0 && box.right <= innerWidth + 1,
-                over: el.picturePanel.scrollHeight - el.picturePanel.clientHeight, shown,
-                knobs: [el.pictureRise, el.pictureFall].every((i) => i.classList.contains('knob-dial')) };
+  /* Anchored to its link (23 Nov, the owner's): its left edge within 3 px of the link's,
+     its bottom above the Picture bar - so it never covers the link that closes it. */
+  const placed = (b) => ({ inside: b.top >= 0 && b.bottom <= innerHeight + 1 && b.left >= 0 && b.right <= innerWidth + 1,
+                           anchored: Math.abs(b.left - link.left) <= 3, above: b.bottom <= bar.top + 0.5 });
+  const out = Object.assign(placed(box), {
+                over: el.picturePanel.scrollHeight - el.picturePanel.clientHeight, shown, moved: face() !== before,
+                knobs: [el.pictureRise, el.pictureFall].every((i) => i.classList.contains('knob-dial')) });
+  // The null: the placement it had until 23 Nov, the window's right and above the bar where it fits.
+  const z = pageZoom || 1, width = el.picturePanel.offsetWidth, height = el.picturePanel.offsetHeight;
+  el.picturePanel.style.left = Math.round(Math.max(16, innerWidth - width - 16)) + 'px';
+  el.picturePanel.style.top = Math.round(Math.max(8, Math.min(bar.top - height - 8, innerHeight - height - 8))) + 'px';
+  out.old = placed(el.picturePanel.getBoundingClientRect());
   setPictureOpen(false);
   copies.forEach((c) => c.remove());
   return out;
@@ -329,6 +343,10 @@ with sync_playwright() as pw:
         check("the Picture's Advanced at %dx%d, split and on Custom - Reads, Pictures, Responds to, Rise, fall and its two "
               "knobs - is inside the window and does not scroll" % (w, h),
               adv["inside"] and adv["over"] <= 1 and adv["shown"] == [True] * 4 and adv["knobs"], str(adv))
+        check("and it rises from its link (23 Nov): its left edge within 3 px of the link's, its bottom above the Picture bar, "
+              "and nothing on the face moved as it opened", adv["anchored"] and adv["above"] and not adv["moved"], str(adv))
+        check("null: the placement it had until 23 Nov, at the window's right, is not anchored to the link or not above the bar",
+              not (adv["old"]["anchored"] and adv["old"]["above"] and adv["old"]["inside"]), str(adv["old"]))
         if (w, h) == (960, 600):
             crowded = p.evaluate(ADVANCED, 3)
             check("null: three more such groups in it at 960x600 go over", not (crowded["inside"] and crowded["over"] <= 1), str(crowded))
