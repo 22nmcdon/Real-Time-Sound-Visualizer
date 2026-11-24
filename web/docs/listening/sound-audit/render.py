@@ -204,7 +204,8 @@ CONTROLS = [
     ("vcfVel", "Voice filter", "Velocity", lin(0, 100), 100, {"vcfType": 1, "vcfCut": 450, "vcfEnvAmt": 30}, False),
     # The oscillator
     ("oscFm", "Oscillator", "FM", lin(0, 100), 0, {}, False),
-    ("oscRatio", "Oscillator", "Ratio (with FM 30)", [0, 1, 2, 3, 4, 5, 7, 9, 12], 1, {"oscFm": 30}, False),
+    # the menu's values are the ratios themselves, String(p / q) on the page
+    ("oscRatio", "Oscillator", "Ratio (with FM 30)", [0.5, 1, 1.25, 4 / 3, 1.5, 5 / 3, 2, 2.5, 3.5, 7], 1, {"oscFm": 30}, False),
     ("oscRing", "Oscillator", "Ring", lin(0, 100), 0, {"oscRatio": 2}, False),
     ("oscSync", "Oscillator", "Sync", lin(100, 800), 100, {}, False),
     ("oscBend", "Oscillator", "Warp", lin(-100, 100, 7), 0, {}, True),
@@ -361,7 +362,8 @@ FEATURES = [
     ("flat", "Flatness", "spectral flatness of 4096-sample frames, 50 Hz to 16 kHz, in dB (a sine about -100, white noise about -2)"),
     ("alias", "Grit (aliasing)", "the share of energy in sharp partials that are not the note's harmonics, do not follow the note (held a fourth higher, they are not at the same multiple of it), and sit in the gaps between harmonics, 0.15 of the note or more from either: a bitcrusher's folded steps, a hold's images, in dB"),
     ("shimmer", "Shimmer", "the same partials that do not follow the note, but on a harmonic's skirt, within 0.15 of the note of it: a chorus's or a unison's sidebands, in dB"),
-    ("inharm", "Inharmonicity", "the share in sharp partials that are not the note's harmonics and do follow it, at the same multiple a fourth higher (an FM bell's), in dB"),
+    ("inharm", "Inharmonicity", "the share in sharp partials that are not the note's harmonics, nor halfway between two, and do follow it, at the same multiple a fourth higher (an FM bell's, FM at 5:4), in dB"),
+    ("under", "Undertone", "the share in partials that follow the note halfway between its harmonics: an octave under it (the Sub, FM at 1:2), in dB"),
     ("loud", "Loudness", "the sustain's RMS, in dB of full scale"),
     ("attack", "Attack", "from the key to 90 per cent of the note's loudest 5 ms, log10 of ms"),
     ("sustain", "Sustain", "the last 0.7 s held against the loudest moment, in dB (0 an organ, -30 a pluck)"),
@@ -439,15 +441,16 @@ def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
     # note's peaks on the axis of its own harmonics, f / f0, matched within 0.012.
     def split(a, fa, b, fb):
         rb = np.array(sorted(i / fb for i in b)) if b else np.array([1e9])
-        stay, moved = 0.0, {}
+        stay, under, moved = 0.0, 0.0, {}
         for i, e in a.items():
             r = i / fa
             j = np.searchsorted(rb, r)
             near = min(abs(rb[min(j, len(rb) - 1)] - r), abs(rb[max(j - 1, 0)] - r))
-            if near <= 0.012: stay += e
-            else: moved[i] = e
-        return stay, moved
-    st48, mv48 = split(pk48, f0, pk44, f0 * ratio); st44, mv44 = split(pk44, f0 * ratio, pk48, f0)
+            if near > 0.012: moved[i] = e
+            elif abs(2 * r - round(2 * r)) <= 0.024: under += e   # on the half-harmonics: an octave under
+            else: stay += e
+        return stay, under, moved
+    st48, un48, mv48 = split(pk48, f0, pk44, f0 * ratio); st44, un44, mv44 = split(pk44, f0 * ratio, pk48, f0)
     # What does not follow the note, by where it sits: in the gap between two harmonics,
     # 0.15 of the note or more from either (grit: a crusher's folding, a hold's images, which
     # land anywhere), or on a harmonic's skirt (shimmer: a chorus's or a unison's sidebands,
@@ -461,6 +464,7 @@ def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
     out["shimmer"] = db((wan48 / tot + wan44 / tot_) / 2, 1e-6)
     out["tonal"] = db((ton48 / tot + ton44 / tot_) / 2, 1e-6)
     out["inharm"] = db((st48 / tot + st44 / tot_) / 2, 1e-6)
+    out["under"] = db((un48 / tot + un44 / tot_) / 2, 1e-6)
     out["noise"] = db((nh48 / tot + nh44 / tot_) / 2, 1e-6)
     # flatness, per 4096 frame
     n = 4096; fl = []

@@ -25,8 +25,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 R = json.load(open(os.path.join(HERE, "results.json")))
-SPACE = ["bright", "noise", "flat", "alias", "shimmer", "inharm", "attack", "sustain", "tail", "width", "move", "wobble", "evenodd", "artic"]
-JND = {"bright": 0.1, "noise": 3, "flat": 3, "alias": 3, "shimmer": 3, "inharm": 3, "attack": 0.15, "sustain": 2, "tail": 2, "width": 2,
+SPACE = ["bright", "noise", "flat", "alias", "shimmer", "inharm", "under", "attack", "sustain", "tail", "width", "move", "wobble", "evenodd", "artic"]
+JND = {"bright": 0.1, "noise": 3, "flat": 3, "alias": 3, "shimmer": 3, "inharm": 3, "under": 3, "attack": 0.15, "sustain": 2, "tail": 2, "width": 2,
        "move": 0.005, "wobble": 0.5, "evenodd": 2, "artic": 2}
 NAMES = {k: n for k, n, _ in R["features"]}
 CATEGORICAL = {"vcfType", "planeMirror", "planeLimit", "fxOrder", "pictureResponds", "oscRatio", "screenDraws", "display",
@@ -50,7 +50,7 @@ def label_of(cid, opt=None, sign=None):
 OPTION_NAMES = {
     "vcfType": {1: "Low pass", 2: "Band pass", 3: "High pass", 4: "Notch"},
     "planeMirror": {1: "1", 2: "2", 3: "3"}, "planeLimit": {1: "radial", 2: "square"}, "planeSnap": {5: "5", 6: "6"},
-    "oscRatio": {0: "1:2", 1: "1:1", 2: "5:4", 3: "4:3", 4: "3:2", 5: "5:3", 7: "5:2", 9: "7:2", 12: "7:1"},
+    "oscRatio": {0.5: "1:2", 1: "1:1", 1.25: "5:4", 4 / 3: "4:3", 1.5: "3:2", 5 / 3: "5:3", 2: "2:1", 2.5: "5:2", 3.5: "7:2", 7: "7:1"},
     "persistence": {"0": "Off", "0.3": "Short", "0.12": "Medium", "0.04": "Long", "-1": "Infinite"},
     "just": {False: "equal"}, "delayPingPong": {True: "on"}, "pictureSwell": {True: "on"},
     "display": {"yt": "Y-T"}, "screenDraws": {"paint": "Paint"}, "pictureResponds": {"level": "level", "both": "both"},
