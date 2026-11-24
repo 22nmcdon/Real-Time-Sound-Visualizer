@@ -8286,3 +8286,36 @@ Two traps on the way:
   plugin's `lfos.bin` and `ShellTest`'s `kLfosBin` likewise.
 - **`Keyboard::Settings` is built positionally.** A field added in the middle of the struct took
   the next initialiser's value; the new one goes at the end.
+
+## Unison under Scan: the read made cheaper, and the governor told (24 Nov)
+
+The owner's report: with unison at seven (and worse at every step up from off) the sound "almost
+cuts out". There were two causes, and only one is fixed here.
+
+**The cost.** The governor's model (`Generator::voiceCost`) had no term for Scan, which reads
+two tables a sample in every copy. So unison 7 under Scan, with three notes a hand, was costed at
+345 of 350 units. In the page's module that took 1.86 ms of a 2.67 ms block on average, with a
+tenth of the blocks late. Two changes:
+
+- The read is cheaper, to the bit (a hash of every sample is unchanged at unison 1, 3 and 7).
+  `cycleRead` is now `cycleLevel` plus `cycleReadAt`. `scanMix` takes the place in the cycle
+  once for both tables. The index wraps by a compare instead of `%` (two 64-bit divisions a read).
+  Each copy keeps the level it chose last (`ScanLevelMemo` in `Osc`), keyed on its step and the
+  table's shape. The same case is now 1.15 to 1.33 ms.
+- The model has the term: `kScanCopyCost`, 3.5 a copy while the hand has a table and a depth.
+  It was fitted by two new cases in `core/tests/pieces/budget.py`, "saw scan" and "sine x7 scan",
+  which `budget_cpp`'s new `scan DEPTH` line makes by laying two tables in turn every sixtieth.
+  That is the check that would have caught it. Without the term it reads 1.84 and 2.11 of the
+  median against the 1.6 limit; with it, 1.05 and 0.85. What it costs: the owner's chord keeps
+  two or three copies a hand where seven were asked.
+
+Unison alone was never dear: with Scan off, unison 7 costs about what unison 1 does. The late
+blocks that remain are Scan's frame work (the blur and the tables, once a picture frame). They
+were there at unison 1 too, and are gone with Scan off.
+
+**The level, not changed here.** Unison's copies are evenly spaced in cents and all start in
+phase, so their sum realigns once every 1/Δf and cancels in between. One sine at C3, unison 7,
+spread 50, peaks every 0.79 s and spends most of each period 20 to 27 dB down. More copies make
+the peak narrower. On top of that the copies are averaged by n, not √n. This is the unison's
+design, inherited from the page's JavaScript, and changing it changes every recording with a
+unison, so it is the owner's call: phases spread at the start, uneven spacing, or √n.

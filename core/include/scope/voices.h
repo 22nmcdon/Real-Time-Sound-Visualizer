@@ -388,8 +388,10 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
     // Scan, where the oscillator is off: under it, `oscStep` has mixed it in.
     // A painted voice reads its own ring's tables in place of the layer's.
     if (vx.scanW > 0 && !vx.on && !tone.noise) {
-      w = voice.painted ? scanMix(w, voice.paintPrev, voice.paintNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW)
-                        : scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW);
+      // The oscillator's first copy's memo of Scan's level, which is idle while the oscillator is off.
+      ScanLevelMemo* memo = &voice.osc.scanLevel[0];
+      w = voice.painted ? scanMix(w, voice.paintPrev, voice.paintNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW, memo)
+                        : scanMix(w, vx.scanPrev, vx.scanNext, voice.phase, std::fabs(f) / c.rate, vx.scanX, vx.scanW, memo);
     }
     if (vx.shapeRun) {
       if (!voice.shp || voice.shp->factor() != c.shapeFactor) {

@@ -68,7 +68,10 @@ CASES = {
     "saw x7 sync": {"shape": "ramp", "unison": 7, "syncRatio": 1.5},
     "saw x7 ring sub": {"shape": "ramp", "unison": 7, "ringMix": 0.5, "subLevel": 0.5},
     "drive 2x": {"shape": "ramp", "drive": 0.5}, "drive 4x": {"shape": "ramp", "drive": 0.5, "shapeOS": 4},
-    "filter": {"shape": "ramp", "vcfType": 1, "vcfEnv": 2}, "plane 4x": {"shape": "ramp", "planeMirror": 3,
+    "filter": {"shape": "ramp", "vcfType": 1, "vcfEnv": 2},
+    # Scan reading two tables a sample in every copy (24 Nov): `_scan` is budget_cpp's `scan` line.
+    "saw scan": {"shape": "ramp", "_scan": 0.77}, "sine x7 scan": {"shape": "sine", "unison": 7, "_scan": 0.77},
+    "plane 4x": {"shape": "ramp", "planeMirror": 3,
     "planeLimit": 1, "planeRadius": 0.3, "planeOS": 4},
     "everything": ALL,
 }
@@ -86,7 +89,8 @@ def chord(base, hz=None, n=8, roles=None):
 
 
 def setall(cfg, layers=(0, 1)):
-    return ["set %s %s %d" % (k, v, l) for l in layers for k, v in cfg.items()]
+    lines = ["set %s %s %d" % (k, v, l) for l in layers for k, v in cfg.items() if not k.startswith("_")]
+    return lines + (["scan %s" % cfg["_scan"]] if "_scan" in cfg else [])
 
 
 class Read:

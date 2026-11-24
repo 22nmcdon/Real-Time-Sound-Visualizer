@@ -23,6 +23,10 @@
 //                              voice's role, and so whether it is inner, is the caller's to know
 //   shape                      `shape NAME` - layer A's shape, for the scan's count of shapes
 //   layered                    `layered 1` when the setup restored splits or layers the keyboard
+//   scan DEPTH                 Scan at DEPTH (nought to one) on both layers, reading two tables
+//                              that differ - a ramp and a narrow pulse made by scanTables - laid
+//                              in turn at every sixtieth of `time`, so every sample reads two as
+//                              the instrument's does while the picture moves (24 Nov)
 //   time [TRIES]               `time MS`: the best of TRIES (three if not given) one-second
 //                              blocks, in milliseconds of this thread's own processor time
 //   --bank                     (as the only argument) the bank's preset count
@@ -90,6 +94,9 @@ int script(const char* path) {
   Rig rig;
   rig.make(44100);
   std::vector<std::vector<float>> bufs(6);
+  // Scan's two tables, made once; `scanning` once a `scan` line has laid them.
+  scope::CycleTables scanA = scope::scanTableSet(), scanB = scope::scanTableSet();
+  bool scanning = false;
   const auto block = [&](long n) {
     for (auto& b : bufs) b.assign(static_cast<std::size_t>(n), 0.0f);
     rig.gen->block(bufs[0].data(), bufs[1].data(), static_cast<int>(n), bufs[2].data(), bufs[3].data(), bufs[4].data(), bufs[5].data());
@@ -152,7 +159,22 @@ int script(const char* path) {
       std::printf("\n");
     } else if (cmd == "shape") std::printf("shape %s\n", rig.gen->tone().shapeName.c_str());
     else if (cmd == "layered") std::printf("layered %d\n", rig.keys->settings().layers != scope::LayerMode::Off ? 1 : 0);
-    else if (cmd == "time") {
+    else if (cmd == "scan") {
+      std::array<double, scope::kScanPoints> ramp {}, pulse {};
+      for (std::size_t i = 0; i < scope::kScanPoints; i++) {
+        const double t = static_cast<double>(i) / scope::kScanPoints;
+        ramp[i] = 2 * t - 1;
+        pulse[i] = t < 0.2 ? 1 : -0.25;
+      }
+      scope::scanTables(ramp, scanA);
+      scope::scanTables(pulse, scanB);
+      for (int l = 0; l < 2; l++) {
+        rig.gen->set("scan", num(arg(1)), l);
+        rig.gen->set("scanHold", 1.0, l);
+        rig.gen->setScanTable(&scanA, l);
+      }
+      scanning = true;
+    } else if (cmd == "time") {
       /* The best of several: what the code costs, not what else the machine
          did during one of them. And on this thread's own clock, not the wall
          (20 Nov): on a busy machine every one of five seconds was preempted
@@ -169,7 +191,18 @@ int script(const char* path) {
       for (int r = 0; r < tries; r++) {
         for (auto& b : bufs) b.assign(static_cast<std::size_t>(n), 0.0f);
         const double t0 = cpu();
-        rig.gen->block(bufs[0].data(), bufs[1].data(), static_cast<int>(n), bufs[2].data(), bufs[3].data(), bufs[4].data(), bufs[5].data());
+        if (!scanning) rig.gen->block(bufs[0].data(), bufs[1].data(), static_cast<int>(n), bufs[2].data(), bufs[3].data(), bufs[4].data(), bufs[5].data());
+        else {
+          // A sixtieth at a time, the tables laid in turn, so the voices fade between two.
+          const long part = n / 60;
+          for (long at = 0, k = 0; at < n; at += part, k++) {
+            for (int l = 0; l < 2; l++) rig.gen->setScanTable(k % 2 ? &scanB : &scanA, l);
+            const long len = std::min(part, n - at);
+            const auto u = static_cast<std::size_t>(at);
+            rig.gen->block(bufs[0].data() + u, bufs[1].data() + u, static_cast<int>(len), bufs[2].data() + u, bufs[3].data() + u,
+                           bufs[4].data() + u, bufs[5].data() + u);
+          }
+        }
         const double ms = cpu() - t0;
         if (ms < best) best = ms;
       }

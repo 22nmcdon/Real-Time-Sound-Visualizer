@@ -141,27 +141,42 @@ struct CycleTables {
   std::vector<std::vector<double>> levels;
 };
 
-inline double cycleRead(const CycleTables* c, double phase, double step) {
-  if (c == nullptr || c->levels.empty()) return std::sin(phase);
-  const double t = cycleOf(phase);
-  const auto& levels = c->levels;
-  const int top = static_cast<int>(levels.size()) - 1;
-  int lo = 0;
-  double w = 0;
+/* A table's level for a read at `step`: which of its levels, and how far
+   towards the next. Kept apart from the read (24 Nov) so Scan, which reads
+   two tables a sample for every unison copy, chooses it once where both
+   tables would choose the same - the same arithmetic, so the same bits. */
+struct CycleLevel { int lo = 0; double w = 0; };
+inline CycleLevel cycleLevel(const CycleTables& c, double step) {
+  CycleLevel l;
   if (step > 0) {
-    const double f = std::log2(c->most * 2 * step);
-    lo = static_cast<int>(std::fmax(0.0, std::fmin(static_cast<double>(top), std::ceil(f))));
-    w = lo < top ? std::fmax(0.0, std::fmin(1.0, f - lo + 1)) : 0;
+    const int top = static_cast<int>(c.levels.size()) - 1;
+    const double f = std::log2(c.most * 2 * step);
+    l.lo = static_cast<int>(std::fmax(0.0, std::fmin(static_cast<double>(top), std::ceil(f))));
+    l.w = l.lo < top ? std::fmax(0.0, std::fmin(1.0, f - l.lo + 1)) : 0;
   }
+  return l;
+}
+/* The read at `t`, a place in the cycle from nought to one (cycleOf's).
+   `at` is never past the table's length, since t is under one, so the wrap
+   is a compare rather than the remainder it was: two 64-bit divisions a
+   read, four reads a copy a sample under Scan, were a fifth of what a
+   unison of seven cost the audio thread (24 Nov, the owner's report). */
+inline double cycleReadAt(const CycleTables& c, double t, CycleLevel l) {
   auto read = [t](const std::vector<double>& tab) {
-    const double n = static_cast<double>(tab.size());
-    const double x = t * n, i = std::floor(x), fr = x - i;
-    const std::size_t at = static_cast<std::size_t>(i);
-    const double a = tab[at % tab.size()], b2 = tab[(at + 1) % tab.size()];
+    const std::size_t size = tab.size();
+    const double x = t * static_cast<double>(size), i = std::floor(x), fr = x - i;
+    std::size_t at = static_cast<std::size_t>(i);
+    if (at >= size) at -= size;
+    const std::size_t next = at + 1 >= size ? at + 1 - size : at + 1;
+    const double a = tab[at], b2 = tab[next];
     return a + (b2 - a) * fr;
   };
-  const double a = read(levels[static_cast<std::size_t>(lo)]);
-  return w > 0 ? a + (read(levels[static_cast<std::size_t>(lo) + 1]) - a) * w : a;
+  const double a = read(c.levels[static_cast<std::size_t>(l.lo)]);
+  return l.w > 0 ? a + (read(c.levels[static_cast<std::size_t>(l.lo) + 1]) - a) * l.w : a;
+}
+inline double cycleRead(const CycleTables* c, double phase, double step) {
+  if (c == nullptr || c->levels.empty()) return std::sin(phase);
+  return cycleReadAt(*c, cycleOf(phase), cycleLevel(*c, step));
 }
 
 enum class Shape { Harmonic, Sine, Triangle, Square, Ramp, Pulse, Morph, Drawbars, Drawn, Wavetable };

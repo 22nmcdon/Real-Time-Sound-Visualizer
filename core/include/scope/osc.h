@@ -127,14 +127,39 @@ inline void shapeFade(VoiceFx& x, double step, int prime) {
 // A stage's sample as heard while it fades: all of it once the fade is done, to the bit.
 inline double switchBlend(double dry, double wet, double w) { return w >= 1 ? wet : dry + (wet - dry) * w; }
 
+/* The level a copy's Scan read chose last, and for what: the step and the
+   table's shape (its richest harmonic and how many levels). A copy's step is
+   the same sample after sample unless its pitch moves, and every table Scan
+   makes has one shape, so the choice - a logarithm, a ceiling and four
+   clamps - is taken again only when one of them changes. The same inputs give
+   the same level, so the same bits; it was a fifth of what Scan cost a copy
+   (24 Nov, the owner's report of a unison of seven breaking up). */
+struct ScanLevelMemo {
+  double step = std::nan(""), most = 0;
+  std::size_t levels = 0;
+  CycleLevel level;
+};
+inline CycleLevel scanLevel(const CycleTables& c, double step, ScanLevelMemo* memo) {
+  if (memo == nullptr) return cycleLevel(c, step);
+  if (memo->step != step || memo->most != c.most || memo->levels != c.levels.size()) {
+    memo->level = cycleLevel(c, step);
+    memo->step = step; memo->most = c.most; memo->levels = c.levels.size();
+  }
+  return memo->level;
+}
+
 // The voice's shape with Scan in it: `ink` is the shape at this phase, `x`
 // how far through the tick the crossfade is, `w` how much of the voice is
 // Scan. A layer with no table yet plays its shape, so turning Scan up before
-// the first tick is not a step to a sine.
+// the first tick is not a step to a sine. Each table is cycleRead's, with the
+// place in the cycle taken once for both and the level by `memo` where the
+// caller keeps one (24 Nov).
 inline double scanMix(double ink, const CycleTables* prev, const CycleTables* next, double phase, double step, double x,
-                      double w) {
-  const double a = prev ? cycleRead(prev, phase, step) : ink;
-  const double b = next == prev ? a : next ? cycleRead(next, phase, step) : ink;
+                      double w, ScanLevelMemo* memo = nullptr) {
+  const bool readPrev = prev && !prev->levels.empty(), readNext = next != prev && next && !next->levels.empty();
+  const double t = readPrev || readNext ? cycleOf(phase) : 0;
+  const double a = !prev ? ink : readPrev ? cycleReadAt(*prev, t, scanLevel(*prev, step, memo)) : std::sin(phase);
+  const double b = next == prev ? a : !next ? ink : readNext ? cycleReadAt(*next, t, scanLevel(*next, step, memo)) : std::sin(phase);
   return ink + (a + (b - a) * x - ink) * w;
 }
 
@@ -157,6 +182,7 @@ struct Osc {
   int n = 0;
   std::array<double, kUnisonMax> p {}, s {}, m {}, cyc {}, r {};
   double sub = 0, held = 0, dc = 0;
+  std::array<ScanLevelMemo, kUnisonMax> scanLevel {};  // each copy's, for its every Scan read
 };
 
 // J1 by its series, the page's besselJ1: ten terms are the double's last bit at 0.9.
@@ -239,20 +265,20 @@ inline double oscStep(Osc& o, double base, double offset, double hz, const Voice
         if (o.s[k] >= kPhaseWrap) o.s[k] -= kPhaseWrap;
         const double step = std::fabs(inst * syncR) / rate;
         v = waveAt(t.shape, o.s[k] + pm, step, bars, amount);
-        if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, o.s[k] + pm, step, x.scanX, x.scanW);
+        if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, o.s[k] + pm, step, x.scanX, x.scanW, &o.scanLevel[k]);
         const double sdt = std::fmin(0.49, step), c = cycleOf(o.s[k] + pm);
         o.r[k] = wrapHalf != 0 && sdt > 0 && c > 1 - sdt ? wrapHalf * std::pow((c - 1) / sdt + 1, 2) : 0;
       }
     } else {
       v = waveAt(t.shape, master + pm, std::fabs(inst) / rate, bars, amount);
       if (x.warpA != 0 && !blocking) v += x.warpDc;
-      if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, master + pm, std::fabs(inst) / rate, x.scanX, x.scanW);
+      if (x.scanW > 0) v = scanMix(v, x.scanPrev, x.scanNext, master + pm, std::fabs(inst) / rate, x.scanX, x.scanW, &o.scanLevel[k]);
     }
     double plain = 0;
     if (blocking) {
       plain = waveAt(t.shape, master + pm0, std::fabs(inst0) / rate, bars, amount);
       if (x.scanW > 0)
-        plain = scanMix(plain, x.scanPrev, x.scanNext, master + pm0, std::fabs(inst0) / rate, x.scanX, x.scanW);
+        plain = scanMix(plain, x.scanPrev, x.scanNext, master + pm0, std::fabs(inst0) / rate, x.scanX, x.scanW, &o.scanLevel[k]);
     }
     if (ring > 0) {
       const double g = 1 - ring + ring * std::sin(o.m[k]);

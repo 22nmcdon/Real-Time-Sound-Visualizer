@@ -162,6 +162,8 @@ struct Budget {
 class Generator {
  public:
   static constexpr double kVoiceBudget = 350;
+  // What a copy's Scan read costs the model, in its units (voiceCost says how it was fitted).
+  static constexpr double kScanCopyCost = 3.5;
   // Every key a pedal can hold, and the tails let ring past them: more is made room for as it comes.
   static constexpr std::size_t kVoicesKept = 128 + kPolyTails;
 
@@ -1304,6 +1306,15 @@ class Generator {
     if (t.drive > 0 || t.fold > 0 || shapeRouted) c += factor == 4 ? 30 : factor == 2 ? 17 : NAN;
     if (t.crushBits > 0 || t.crushHz > 0) c += 2;
     if (t.vcfType > 0) c += 1.4;
+    /* Scan (24 Nov): every copy reads two tables a sample while the picture
+       moves, which the model did not cost at all, so a unison of seven under
+       Scan was costed as seven plain copies and the audio thread ran past its
+       deadline with the governor content (the owner's report: the sound
+       "almost cuts out"). Fitted natively by budget.py's two Scan cases, a
+       saw's one copy and a sine's seven, at the dear end: 3.5 a copy. Counted
+       while the hand has a table and a depth, not by the picture's hold,
+       which moves continuously and would ask the governor afresh as it did. */
+    if (t.scanTable != nullptr && !std::isnan(t.scan) && t.scan > 0 && !t.noise) c += n * kScanCopyCost;  // noise is never scanned
     return c;
   }
 
