@@ -8357,3 +8357,83 @@ with the Scan term, held the unison's redesign, and asked for three more:
   of `process`, is kept exactly. Chromium's audio worklet has no `performance.now`, so there
   the times are whole milliseconds; the report says so, and its mean still holds over
   thousands of blocks.
+
+
+## Clicks at a change of note, through a fold (24 Nov)
+
+The owner, on Harmonic tone: "there is still a 'click' or 'scratch' when switching notes - not
+every time, but prevalent when playing notes quickly and switching frequently". Harmonic tone
+loads over the defaults, so it plays the harmonic shape in Dyad, and its Picture pushes the
+voice's Fold to about 0.43. That is `sin()` with a gain of about eight near nought. The fold was
+never what clicked. It made audible five things that stepped either the shaper's input or the
+wave's slope at a change of note, and each of them had always been there.
+`core/tests/pieces/clicks.py` counts them on fast passages through Harmonic tone and the whole
+bank, and holds each fix with a copy of the core that has only that fix taken out.
+
+- **The dyad's heard upper slots stopped dead and started stale.** The two heard copies of the
+  upper note (`heardDyad_[1..2]`, 16 Nov) ran their shaper, crush and filter only while there
+  was an upper note. When it went, the oversampler's last 30-odd samples were cut off. Those
+  samples are the tail of a straight-line fade, and the fold multiplies it by eight. When the
+  next upper note came, it resumed from the previous one's history. A slot now runs on, with
+  nothing going in, for `kHeardTail` samples after its note goes, and starts from nought when
+  it comes back.
+- **A Poly voice born in step starts at a sample that is not nought.** It joins held notes in
+  step with them (P6), so its fresh shaper saw a step from silence. The shaper is about 16
+  samples late, so its ringing landed after the envelope had opened. The shaper is now run
+  first over 64 samples of the voice's own past: the plain shape at the phases before, moved
+  to meet the first sample, so the join has no step.
+- **Past eight tails, the oldest were erased mid-release.** On fast chords that is a cut-off,
+  which clicks on any sound, the plain sine included. Such tails now fade over the governor's
+  10 ms cut. Only past twice that number, keys struck faster than a fade can finish, is one
+  still erased. `kVoicesKept` grew by eight so that this never allocates.
+- **A new note in Dyad or Mono stepped its pitch in one sample at full level.** The phase ran
+  on, so the wave never stepped, but its slope did, by the ratio of the two pitches. With no
+  Glide, a new note at the same interval now slides over `kNoteSlewMs`, 2 ms in a straight
+  line. It does not slide from silence, and it lands at once if the interval changes mid-slide,
+  because the dyad's crossfades find a note by its pitch jumping in the same sample as the
+  interval. **This changes the sound**: Dyad and Mono no longer jump in a single sample, though
+  2 ms is under any glide anyone would hear as one. The first try was a one-pole with a
+  1e-9 end. That ran for about 40 ms and slid the first note up from the idle 220 Hz, so a
+  second key 5 to 20 ms after the first changed the interval mid-slide. The dyad then
+  misread the half-slid pitch and stepped the plain sine by 0.26. A straight line ends when
+  it says it does.
+- **A change of the dyad landing inside the last one's crossfade.** A key let go 25 ms after
+  the one over it went down (legato 1.3 at 180 bpm) hit three problems:
+  - The handover set `dyadX_ = 1`, which cut off the right's unfinished crossfade at a
+    quarter of its level.
+  - An interval change started the old upper note's fade from full, where a handover had it
+    at 0.83.
+  - A handover on a handover reset `handX_`, which dropped the note the first one was taking
+    out.
+
+  Now a crossfade under way is let finish. A note whose crossfade is interrupted goes on as a
+  *ghost* (up to four, `ghosts_`), fading from the gain it had. The note that was arriving
+  leaves from the gain it had reached (`handScale_`, `oldScale_`, `oldGain_`). Where a
+  handover moves the gain of the same note in the heard upper slots, the difference is a
+  ghost of that note with a gain that may be negative, so the sum starts where it was. Across
+  216 passages of Harmonic tone in Dyad and Mono, the count went from 1,607 to 25.
+
+How a click was measured: a millisecond whose energy above 15 kHz is eight times the median of
+the 80 ms around it, and over 5e-4 RMS (about -66 dBFS). The old build's clicks had a median of
+7.4e-4, and 12,163 of its 18,642 across the bank cleared that floor. Measured that way, three
+things are not clicks:
+- A chord of three or more through Harmonic tone's fold aliases above 15 kHz whether or not
+  anything changes. Held still for two seconds, it trips the measure a hundred times.
+- Two notes two octaves apart crossfading into one fold make intermodulation for 30 ms. The
+  crossfades sit before the shaper, which is the design.
+- The Tine pianos' bark. The Envelope card's and the key's routes move every sounding voice's
+  FM index at a chord. With those routes off, both Tine pianos are at nought.
+
+A handful, none over 1e-3, remain in Poly sounds with the Picture high, about a frame after a
+note. Nothing on the Picture's routes steps there, and Strike, Swell and the response do not
+move them. This is not solved.
+
+Two things worth knowing before measuring clicks here:
+- The loop magnifies differences. With the Picture closed, a newborn voice primed instead of
+  silent differs from the old core by 1.4e-3 at its onset, and by 0.17 a second later; with the
+  loop open the two are identical to the bit. So "the change is limited to the transients" is
+  shown with the loop open, and on the Settled presets, which are identical outside the 60 ms
+  after each key.
+- A click detector needs to be able to see the click. A detector relative to the steady state
+  cannot see one in a sound that is already noisy above its band, which is why the fixtures
+  for Harmonic tone are lines and dyads.

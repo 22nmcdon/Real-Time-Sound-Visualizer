@@ -89,6 +89,9 @@ inline std::vector<double> lowpassTaps(int factor) {
   return h;
 }
 
+// Samples of a wave's past that fill both of a shaper's histories (32 in, and 32 oversampled).
+inline constexpr int kShaperPast = 64;
+
 // One voice's oversampled shaper: up by `factor`, shaped, filtered and back
 // down. Both histories are rings written twice, a length apart, as in the
 // page, so the newest samples are always one unbroken run.
@@ -114,6 +117,25 @@ class Shaper {
     std::fill(inX_.begin(), inX_.end(), 0.0);
     std::fill(up_.begin(), up_.end(), 0.0);
     pos_ = 0; at_ = 0;
+  }
+
+  /* Its history filled as if `x` had always been its input, for a voice born
+     at a sample that is not nought (a note joining held ones starts in step
+     with them). From an emptied history that sample is a step, the
+     oversampler rings on it a few samples after the envelope has opened (its
+     latency), and a fold's gain of eight near nought makes the ringing a
+     click (24 Nov, the owner's, on Harmonic tone). Each branch of the
+     polyphase filter is filled with what it would hold in that steady state,
+     so the first output is the shaped `x` to the last bit of its taps. */
+  void prime(double x, const Shaping& sh) {
+    std::fill(inX_.begin(), inX_.end(), x);
+    pos_ = 0; at_ = 0;
+    for (int p = 0; p < factor_; p++) {
+      double g = 0;
+      for (std::size_t k = 0; k < kPer; k++) g += h_[static_cast<std::size_t>(p) + k * static_cast<std::size_t>(factor_)];
+      const double y = shapeSample(sh, x * g * factor_);
+      for (std::size_t j = static_cast<std::size_t>(p); j < up_.size(); j += static_cast<std::size_t>(factor_)) up_[j] = y;
+    }
   }
 
   double step(double x, const Shaping& sh) {

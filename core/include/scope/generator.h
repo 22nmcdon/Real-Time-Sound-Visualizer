@@ -165,7 +165,7 @@ class Generator {
   // What a copy's Scan read costs the model, in its units (voiceCost says how it was fitted).
   static constexpr double kScanCopyCost = 3.5;
   // Every key a pedal can hold, and the tails let ring past them: more is made room for as it comes.
-  static constexpr std::size_t kVoicesKept = 128 + kPolyTails;
+  static constexpr std::size_t kVoicesKept = 128 + 2 * kPolyTails;  // and as many again fading out (reconcileVoices)
 
   Generator(double rate, int slots, std::vector<Lfo>& lfos, std::uint32_t seed = 1)
       : rate_(rate), slots_(slots), lfos_(lfos), random_(seed),
@@ -322,6 +322,10 @@ class Generator {
     for (auto& h : heardDyad_) { h.osc.n = 0; h.oscOld.n = 0; }
     oldOsc_.n = 0; handOscL_.n = 0; handOscR_.n = 0;
     handX_ = 1;
+    // And what was fading or sliding: a reswing begins the pair again, with nothing of the last change in it.
+    for (auto& g : ghosts_) { g.x = 1; g.now = 0; }
+    handScale_ = 1; oldScale_ = 1;
+    if (slewLeft_ > 0) { slewLeft_ = 0; freqNow_ = freqAim_; }  // a Glide under way is the player's, and goes on
   }
 
   void gate(bool open, double velocity) {
@@ -594,7 +598,8 @@ class Generator {
     const double bendGlide = poleFor(kBendGlideMs, rate_);
     const double outGlide = poleFor(kOutputGlideMs, rate_);
     const double levelGlide = poleFor(kLevelGlideMs, rate_);
-    if (!freqStarted_) { freqNow_ = a_.freq; freqStarted_ = true; }
+    if (!freqStarted_) { freqNow_ = a_.freq; freqAim_ = a_.freq; freqStarted_ = true; }
+    const int noteSlewSamples = std::max(1, static_cast<int>(jsRound(kNoteSlewMs * rate_ / 1000)));
     const int inMode = inBuf_ != nullptr && inLen_ >= n ? toInt32(a_.inputMode) : 0;
     const double inDepth = a_.inputDepth;
 
@@ -608,7 +613,31 @@ class Generator {
       levelsStep(vxA_, a_, levelGlide);
       levelsStep(vxB_, b_, levelGlide);
 
-      freqNow_ += (a_.freq - freqNow_) * glide;
+      /* A new note at the same interval, with no Glide, slides to its pitch
+         over kNoteSlewMs rather than stepping in one sample (24 Nov, the
+         owner's clicks on Harmonic tone). The phase always ran on through a
+         change, so the wave had no step, but its slope stepped by the ratio of
+         the pitches, at whatever level the last note had - and a fold, which
+         multiplies the slope by up to eight, made that a scratch on every
+         fast change of note. A change of interval is left to step: the
+         dyad's handover and its crossfade below find a note by its pitch
+         jumping in the same sample as the interval. */
+      if (a_.freq != freqAim_) {
+        // From silence there is no slope to step: the pitch goes straight there, as it always did.
+        const bool sounding = !gated_ || env_.level() > 1e-4;
+        slewLeft_ = a_.glideMs <= 0 && sounding && freqAim_ > 0 && dyadRatio_ != 0 && dyadBase == dyadRatio_
+                    ? noteSlewSamples : 0;
+        slewFrom_ = freqNow_;
+        freqAim_ = a_.freq;
+      }
+      // A change of interval mid-slew lands the pitch first, so the dyad below finds its note.
+      if (slewLeft_ > 0 && dyadBase != dyadRatio_) { slewLeft_ = 0; freqNow_ = a_.freq; }
+      if (slewLeft_ > 0) {
+        slewLeft_--;
+        freqNow_ = a_.freq + (slewFrom_ - a_.freq) * slewLeft_ / noteSlewSamples;
+      } else {
+        freqNow_ += (a_.freq - freqNow_) * glide;
+      }
       // Pitch bend and the wheel's vibrato, in octaves, glided (the page says why).
       bendNow_ += (a_.pitchBend - bendNow_) * bendGlide;
       vibNow_ += (a_.vibrato - vibNow_) * bendGlide;
@@ -704,12 +733,22 @@ class Generator {
              sides of the change, left to run on. Within a quarter-tone, since
              a just interval's upper note is not the equal-tempered key's. */
           const double was = dyadRatio_;
+          // The ghosts keep their own pitches through the change, as the right's old note does.
+          for (auto& g : ghosts_) if (g.x < 1) g.ratio *= prevHz / hz;
           const auto near = [](double a, double b) { return a > 0 && b > 0 && std::fabs(std::log2(a / b)) < 1.0 / 24; };
           const bool down = was != 1 && dyadBase == 1 && near(hz, prevHz * was);
           const bool up = was == 1 && dyadBase != 1 && near(hz * dyadBase, prevHz);
           if (down || up) {
-            handDown_ = down;
-            handX_ = 0;
+            handOver(prevHz, hz);
+            /* The heard upper slots hold the same note on both sides of a
+               handover, at the gain the handover gives it - from full leaving,
+               from nought arriving. One that lands on another moved it in one
+               sample; the difference goes on as a ghost of that note, fading,
+               so the sum starts where it was (24 Nov). */
+            const double fadeNow = dyadX_ < 1 ? std::sin(kPi / 2 * dyadX_) : 1;
+            ghost(Ghost::Upper, was * prevHz / hz, phaseR_, upperGain_ - (down ? fadeNow : 0),
+                  heardDyad_[1].osc, heardDyad_[1].osc, heardDyad_[2].osc);
+            handDown_ = down; handLower_ = false;
             handOscL_ = oscL_; handOscR_ = heardDyad_[0].osc;
             if (down) {
               // The bass leaving the lower place at its own pitch; the upper note goes on there, at its phase.
@@ -721,10 +760,51 @@ class Generator {
               heardDyad_[1].osc = oscL_; heardDyad_[2].osc = heardDyad_[0].osc;
             }
             oscL_.n = 0; heardDyad_[0].osc.n = 0;
-            dyadX_ = 1;
+            /* A crossfade of the right still under way is let finish, its old
+               note kept at its own pitch, which the pitch moving under it would
+               otherwise carry off. Until 24 Nov it was ended here at once: a key
+               let go within kDyadFadeMs of the one over it went down cut the
+               right's old note off at a quarter of its level, a click on every
+               fast overlapping run (the owner's, on Harmonic tone). */
+            if (dyadX_ < 1) oldRatio_ *= prevHz / hz;
           } else {
+            /* The lower note moved with the interval (a third key over a dyad,
+               or a new pair), which the right's crossfade below does not
+               cover: the left stepped its pitch in one sample, the slope's step
+               a fold makes a click (24 Nov, the owner's). So the leaving lower
+               note is crossfaded out as a handover's is, the arriving one
+               starting at its phase, and the handover's upper gain left alone. */
+            if (!near(hz, prevHz)) {
+              handOver(prevHz, hz);
+              handDown_ = false; handLower_ = true;
+              handOscL_ = oscL_; handOscR_ = heardDyad_[0].osc;
+              handPhase_ = phaseL_; handRatio_ = prevHz / hz;
+              oscL_.n = 0; heardDyad_[0].osc.n = 0;
+            }
+            /* A crossfade of the right interrupted: its old note goes on fading
+               from where it was as a ghost, and the note that was arriving is
+               the old one now, from the gain it had (24 Nov). */
+            if (dyadX_ < 1) {
+              const double out = std::cos(kPi / 2 * dyadX_), ratio = oldRatio_ * prevHz / hz;
+              ghost(Ghost::Right, ratio, oldPhase_, out * oldScale_, oldOsc_, oldOsc_, oldOsc_);
+              if (oldUpper_) ghost(Ghost::Upper, ratio, oldPhase_, out * oldGain_, oldOsc_, heardDyad_[1].oscOld, heardDyad_[2].oscOld);
+              oldScale_ = std::sin(kPi / 2 * dyadX_);
+            } else {
+              oldScale_ = 1;
+            }
             // The old right at its own pitch against the new, as it was before the change.
-            oldRatio_ = was * prevHz / hz; oldPhase_ = phaseR_; dyadX_ = 0;
+            oldRatio_ = was * prevHz / hz; oldPhase_ = phaseR_; dyadX_ = 0; oldUpper_ = oldRatio_ != 1;
+            /* From the gain it had: an upper note still arriving by a handover,
+               or itself fading in, is faded out from where it got to, not
+               from full - which was a step in the heard upper slots (24 Nov). */
+            oldGain_ = upperGain_;
+            /* A handover still under way goes on for the left alone: its upper
+               note, leaving or arriving in the heard upper slots, is the old
+               note now, faded from where it got to (24 Nov). */
+            if (handX_ < 1 && !handLower_) {
+              if (handDown_) oldUpper_ = true;
+              handLower_ = true;
+            }
             phaseR_ = std::fmod(phaseL_ * dyadBase, kPhaseWrap);
             oldOsc_ = oscR_; oscR_.n = 0;
             for (std::size_t k = 1; k < heardDyad_.size(); k++) { heardDyad_[k].oscOld = heardDyad_[k].osc; heardDyad_[k].osc.n = 0; }
@@ -768,8 +848,8 @@ class Generator {
         } else if (vxA_.on) {
           wl = oscStep(oscL_, phaseL_, 0, hz, a_, bars, amount, vxA_, rate_);
           wr = oscStep(oscR_, phaseR_, phase, hz * ratio, a_, bars, amount, vxA_, rate_);
-          if (fading) wr = fadeIn * wr + fadeOut * oscStep(oldOsc_, oldPhase_, phase, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
-          if (handing) wl = handIn * wl + (1 - handIn) * oscStep(handOscL_, handPhase_, 0, hz * handRatio_, a_, bars, amount, vxA_, rate_);
+          if (fading) wr = fadeIn * wr + fadeOut * oldScale_ * oscStep(oldOsc_, oldPhase_, phase, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
+          if (handing) wl = handIn * wl + (1 - handIn) * handScale_ * oscStep(handOscL_, handPhase_, 0, hz * handRatio_, a_, bars, amount, vxA_, rate_);
         } else {
           wl = waveAt(a_.shape, phaseL_, stepL, bars, amount);
           wr = waveAt(a_.shape, phaseR_ + phase, stepR, bars, amount);
@@ -777,33 +857,62 @@ class Generator {
             wl = scanMix(wl, vxA_.scanPrev, vxA_.scanNext, phaseL_, stepL, vxA_.scanX, vxA_.scanW);
             wr = scanMix(wr, vxA_.scanPrev, vxA_.scanNext, phaseR_ + phase, stepR, vxA_.scanX, vxA_.scanW);
           }
-          if (fading) wr = fadeIn * wr + fadeOut * plain(oldPhase_ + phase, stepOld);
-          if (handing) wl = handIn * wl + (1 - handIn) * plain(handPhase_, stepHand);
+          if (fading) wr = fadeIn * wr + fadeOut * oldScale_ * plain(oldPhase_ + phase, stepOld);
+          if (handing) wl = handIn * wl + (1 - handIn) * handScale_ * plain(handPhase_, stepHand);
+        }
+        // The ghosts: notes whose crossfade was interrupted, each going on to silence from where it was.
+        bool ghostUpper = false;
+        for (auto& g : ghosts_) {
+          if (g.x >= 1) continue;
+          g.phase += kTwoPi * hz * g.ratio * dt;
+          if (g.phase >= kPhaseWrap) g.phase -= kPhaseWrap;
+          if (g.phase < 0) g.phase += kPhaseWrap;
+          g.x = std::fmin(1.0, g.x + 1000 * dt / kDyadFadeMs);
+          g.now = g.gain * (1 - g.x);
+          const double f = hz * g.ratio, at = g.where == Ghost::Right ? phase : 0;
+          const double w = vxA_.on ? oscStep(g.osc[0], g.phase, at, f, a_, bars, amount, vxA_, rate_)
+                                   : plain(g.phase + at, std::fabs(f) / rate_);
+          if (g.where == Ghost::Lower) wl += g.now * w;
+          else if (g.where == Ghost::Right) wr += g.now * w;
+          else ghostUpper = true;
         }
         // The dyad heard as two voices (16 Nov), before the drawn pair's chain moves on: see `hearDyad`.
         double hu[3] = { 0, 0, 0 };
-        const bool upper = dyadBase != 1, upperWas = fading && oldRatio_ != 1;
+        const bool upper = dyadBase != 1, upperWas = fading && oldUpper_;
         // The upper place through a handover: the note leaving it (the lower let go) or arriving (one added under).
-        const bool upperLeaving = handing && handDown_;
-        const double upperGain = handing ? (handDown_ ? 1 - handIn : handIn) : fadeIn;
+        const bool upperLeaving = handing && handDown_ && !handLower_;
+        // Times the right's crossfade, which a handover now lets finish: one at a time, the gain is either.
+        const double upperGain = (handing && !handLower_ ? (handDown_ ? 1 - handIn : handIn) : 1) * fadeIn;
+        upperGain_ = upper || upperLeaving ? upperGain : 0;
+        const double oldGain = fadeOut * oldGain_;
         if (mixing && !a_.noise) {
           const double turn = width * phase;
           if (vxA_.on) {
             hu[0] = oscStep(heardDyad_[0].osc, phaseL_, turn, hz, a_, bars, amount, vxA_, rate_);
-            if (handing) hu[0] = handIn * hu[0] + (1 - handIn) * oscStep(handOscR_, handPhase_, turn, hz * handRatio_, a_, bars, amount, vxA_, rate_);
+            if (handing) hu[0] = handIn * hu[0] + (1 - handIn) * handScale_ * oscStep(handOscR_, handPhase_, turn, hz * handRatio_, a_, bars, amount, vxA_, rate_);
             for (int s = 1; s <= 2; s++) {
               const double at = s == 1 ? 0 : turn;
               auto& h = heardDyad_[static_cast<std::size_t>(s)];
               if (upper || upperLeaving) hu[s] += upperGain * oscStep(h.osc, phaseR_, at, hz * ratio, a_, bars, amount, vxA_, rate_);
-              if (upperWas) hu[s] += fadeOut * oscStep(h.oscOld, oldPhase_, at, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
+              if (upperWas) hu[s] += oldGain * oscStep(h.oscOld, oldPhase_, at, hz * oldRatio_, a_, bars, amount, vxA_, rate_);
             }
           } else {
             hu[0] = plain(phaseL_ + turn, stepL);
-            if (handing) hu[0] = handIn * hu[0] + (1 - handIn) * plain(handPhase_ + turn, stepHand);
+            if (handing) hu[0] = handIn * hu[0] + (1 - handIn) * handScale_ * plain(handPhase_ + turn, stepHand);
             for (int s = 1; s <= 2; s++) {
               const double at = s == 1 ? 0 : turn;
               if (upper || upperLeaving) hu[s] += upperGain * plain(phaseR_ + at, stepR);
-              if (upperWas) hu[s] += fadeOut * plain(oldPhase_ + at, stepOld);
+              if (upperWas) hu[s] += oldGain * plain(oldPhase_ + at, stepOld);
+            }
+          }
+          for (auto& g : ghosts_) {
+            if (g.now == 0) continue;
+            const double f = hz * g.ratio, st = std::fabs(f) / rate_;
+            if (g.where == Ghost::Lower) {
+              hu[0] += g.now * (vxA_.on ? oscStep(g.osc[1], g.phase, turn, f, a_, bars, amount, vxA_, rate_) : plain(g.phase + turn, st));
+            } else if (g.where == Ghost::Upper) {
+              hu[1] += g.now * (vxA_.on ? oscStep(g.osc[1], g.phase, 0, f, a_, bars, amount, vxA_, rate_) : plain(g.phase, st));
+              hu[2] += g.now * (vxA_.on ? oscStep(g.osc[2], g.phase, turn, f, a_, bars, amount, vxA_, rate_) : plain(g.phase + turn, st));
             }
           }
         }
@@ -827,11 +936,27 @@ class Generator {
             hl = l;
             hr = width == 1 ? r : (width * r + u * l) / std::sqrt(width * width + u * u);
           } else {
-            const bool run[3] = { true, upper || upperWas || upperLeaving, upper || upperWas || upperLeaving };
+            bool run[3] = { true, upper || upperWas || upperLeaving || ghostUpper, upper || upperWas || upperLeaving || ghostUpper };
             const double f[3] = { hz, hz * ratio, hz * ratio };
             for (std::size_t s = 0; s < 3; s++) {
-              if (!run[s]) continue;
               auto& h = heardDyad_[s];
+              /* The upper note's slots stop when it has gone. Until 24 Nov they
+                 stopped dead, so the shaper's last samples - a fade's tail
+                 still in its oversampler, which a fold multiplies by eight
+                 near nought - were cut off, and the next upper note resumed
+                 from the last one's history: two clicks a dyad (the owner's,
+                 on Harmonic tone). So a slot runs on with nothing going in
+                 until its chain has emptied, and one coming back from rest
+                 starts from nought, as a fresh voice does. */
+              if (run[s]) {
+                if (!h.ran) { h.shp.clear(); h.cr = Crush {}; h.vcf = VcfState {}; }
+                h.tail = kHeardTail;
+              } else if (h.tail > 0) {
+                h.tail--;
+                run[s] = true;
+              }
+              h.ran = run[s];
+              if (!run[s]) continue;
               double w = hu[s];
               if (vxA_.shapeRun) {
                 if (vxA_.shapeFresh) h.shp.clear();
@@ -1446,11 +1571,54 @@ class Generator {
   // it was and its oscillator, and how far through the crossfade (one is done).
   static constexpr double kDyadFadeMs = 30;
   double dyadRatio_ = 0, oldRatio_ = 1, oldPhase_ = 0, dyadX_ = 1;
+  bool oldUpper_ = false;  // whether the right's old note was an upper note, heard as one, when its crossfade began
+  // The heard upper note's gain last sample, and the old upper's when its crossfade began (24 Nov).
+  double upperGain_ = 1, oldGain_ = 1;
   Osc oldOsc_;
   // A note handed between the dyad's places (16 Nov): the lower place's leaving note, its pitch against
   // the new and its oscillators, how far through (one is done), and whether it was the lower let go.
   double handPhase_ = 0, handRatio_ = 1, handX_ = 1;
   bool handDown_ = false;
+  bool handLower_ = false;  // a handover of the lower place alone, the upper's crossfade its own (24 Nov)
+  /* The gains a crossfade's leaving note and the right's old note start
+     from: one, unless the crossfade before was interrupted, when each is the
+     gain the note had reached (24 Nov). */
+  double handScale_ = 1, oldScale_ = 1;
+  /* A note whose crossfade was interrupted by the next change of the dyad,
+     going on to silence from the gain it had over kDyadFadeMs (24 Nov, the
+     owner's clicks on Harmonic tone): until then the next change dropped it
+     in one sample. In the lower place (the drawn left and the heard lower
+     right), the drawn right, or the heard upper slots. Its pitch is a ratio
+     to the pair's, carried through each change, as the others' are. */
+  struct Ghost {
+    enum Where { Lower, Right, Upper } where = Lower;
+    double ratio = 1, phase = 0, gain = 0, x = 1, now = 0;
+    Osc osc[3];
+  };
+  std::array<Ghost, 4> ghosts_ {};
+  // A ghost made: in a free place, or over the quietest, whose drop is the least.
+  void ghost(Ghost::Where where, double ratio, double phase, double gain, const Osc& a, const Osc& b, const Osc& c) {
+    if (!(std::fabs(gain) > 1e-6)) return;
+    Ghost* at = &ghosts_[0];
+    for (auto& g : ghosts_) {
+      if (g.x >= 1 && g.now == 0) { at = &g; break; }
+      if (std::fabs(g.now) < std::fabs(at->now)) at = &g;
+    }
+    at->where = where; at->ratio = ratio; at->phase = phase; at->gain = gain; at->x = 0; at->now = gain;
+    at->osc[0] = a; at->osc[1] = b; at->osc[2] = c;
+  }
+  /* A new crossfade of the lower place: one still under way leaves its
+     leaving note as a ghost, and the note it was bringing in leaves from the
+     gain it had reached. */
+  void handOver(double prevHz, double hz) {
+    if (handX_ < 1) {
+      ghost(Ghost::Lower, handRatio_ * prevHz / hz, handPhase_, (1 - handX_) * handScale_, handOscL_, handOscR_, handOscR_);
+      handScale_ = handX_;
+    } else {
+      handScale_ = 1;
+    }
+    handX_ = 0;
+  }
   Osc handOscL_, handOscR_;
   /* The dyad heard as two voices (16 Nov): the lower note's right, and the
      upper note's left and right, each with its own oscillator (and the one it
@@ -1461,7 +1629,12 @@ class Generator {
     Shaper shp { 2, lowpassTaps(2) };
     Crush cr;
     VcfState vcf;
+    bool ran = false;  // whether it ran last sample
+    int tail = 0;      // samples it still runs on, emptying, after its note has gone
   };
+  /* How long a slot runs on: the shaper's two histories, 32 samples of input
+     and 32 of the oversampled, and as long again for the filter's ring. */
+  static constexpr int kHeardTail = 128;
   std::array<HeardVoice, 3> heardDyad_;
   const float* inBuf_ = nullptr;
   int inLen_ = 0;
@@ -1479,6 +1652,11 @@ class Generator {
   bool freqStarted_ = false;
   bool switchStarted_ = false;  // the page's switchStarted
   double freqNow_ = 0;
+  // The pitch last asked for, and whether the way to it is a new note's slew (see the loop).
+  double freqAim_ = 0, slewFrom_ = 0;
+  int slewLeft_ = 0;
+  // A note's slew where nothing glides it: under any glide anyone would hear as one, over the slope's step.
+  static constexpr double kNoteSlewMs = 2;
   std::array<double, 2> glideFrom_ {};  // each layer's last note's pitch, for Poly's glide out of silence
   double bendNow_ = 0, vibNow_ = 0, vibPhase_ = 0;  // the bend and the vibrato as they glide, and its cycle
   VcfState vcfL_, vcfR_;

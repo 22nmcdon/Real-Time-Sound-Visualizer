@@ -316,10 +316,27 @@ inline void reconcileVoices(std::vector<Voice>& voices, const std::vector<NoteWa
   for (auto& v : voices) {
     if (v.held && !v.wanted) { v.held = false; v.env.gate(false, 0); v.fenv.gate(false, 0); }
   }
-  int tails = 0;
-  for (const auto& v : voices) if (!v.held) tails++;
-  for (std::size_t v = 0; v < voices.size() && tails > kPolyTails; v++) {
-    if (!voices[v].held) { retireVoice(voices[v], c); voices.erase(voices.begin() + static_cast<long>(v)); v--; tails--; }
+  /* Past kPolyTails, the oldest tails are faded out over the governor's
+     cut (`cutSamples`, 10 ms) rather than erased: until 24 Nov they were taken
+     out in one sample, mid-release, which is a click on every fast chord past
+     eight tails (the owner's, on Harmonic tone). A tail already fading is not
+     counted, and leaves once its fade is done, as the governor's do. Only
+     past twice the number, keys struck faster than a fade can finish, is the
+     oldest still erased, so the voices never outgrow the room kept for them. */
+  int tails = 0, fading = 0;
+  for (const auto& v : voices) {
+    if (v.held) continue;
+    if (v.gone || v.fade > 0) fading++; else tails++;
+  }
+  for (std::size_t v = 0; v < voices.size() && tails + fading > 2 * kPolyTails; v++) {
+    if (!voices[v].held) {
+      if (voices[v].gone || voices[v].fade > 0) fading--; else tails--;
+      retireVoice(voices[v], c); voices.erase(voices.begin() + static_cast<long>(v)); v--;
+    }
+  }
+  for (auto& v : voices) {
+    if (tails <= kPolyTails) break;
+    if (!v.held && !v.gone && v.fade == 0) { v.fade = c.cutSamples; tails--; }
   }
 }
 
@@ -399,6 +416,21 @@ inline void sound(std::vector<Voice>& voices, const LayerTone& tone, const WaveT
         if (!voice.shp && !c.spareShapers.empty()) { voice.shp.emplace(std::move(c.spareShapers.back())); c.spareShapers.pop_back(); }
         if (voice.shp) voice.shp->reset(c.shapeFactor, taps);
         else voice.shp.emplace(c.shapeFactor, taps);
+        /* A voice born in step with held ones starts at a sample that is not
+           nought: its shaper is run first over the wave's own past, so the
+           first sample continues a wave rather than stepping out of silence
+           (Shaper::prime says why). The past is the plain shape's, moved to
+           meet this sample where the oscillator or Scan made it something else,
+           so the join has no step; noise has no past and holds its sample. */
+        if (tone.noise) voice.shp->prime(w, c.shaping);
+        else {
+          const double step = std::fabs(f) / c.rate, now = waveAt(tone.shape, voice.phase, step, bars, amount);
+          for (int k = kShaperPast; k >= 1; k--) {
+            double at = voice.phase - k * kTwoPi * f / c.rate;
+            at -= kPhaseWrap * std::floor(at / kPhaseWrap);
+            voice.shp->step(waveAt(tone.shape, at, step, bars, amount) + (w - now), c.shaping);
+          }
+        }
       } else if (vx.shapeFresh) {
         voice.shp->clear();
       }
