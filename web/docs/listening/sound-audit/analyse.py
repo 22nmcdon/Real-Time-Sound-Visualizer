@@ -25,13 +25,15 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 R = json.load(open(os.path.join(HERE, "results.json")))
-SPACE = ["bright", "noise", "flat", "alias", "shimmer", "inharm", "under", "attack", "sustain", "tail", "width", "move", "wobble", "evenodd", "artic"]
-JND = {"bright": 0.1, "noise": 3, "flat": 3, "alias": 3, "shimmer": 3, "inharm": 3, "under": 3, "attack": 0.15, "sustain": 2, "tail": 2, "width": 2,
+SPACE = ["bright", "noise", "flat", "alias", "shimmer", "inharm", "under", "bloom", "attack", "sustain", "tail", "width", "move", "wobble", "evenodd", "artic"]
+JND = {"bright": 0.1, "noise": 3, "flat": 3, "alias": 3, "shimmer": 3, "inharm": 3, "under": 3, "bloom": 0.1, "attack": 0.15, "sustain": 2, "tail": 2, "width": 2,
        "move": 0.005, "wobble": 0.5, "evenodd": 2, "artic": 2}
 NAMES = {k: n for k, n, _ in R["features"]}
 CATEGORICAL = {"vcfType", "planeMirror", "planeLimit", "fxOrder", "pictureResponds", "oscRatio", "screenDraws", "display",
                "just", "delayPingPong", "pictureSwell", "planeSnap", "persistence"}
 CONTROL = {c[0]: c for c in R["controls"]}
+# The shape menu, measured as points from the sine (render.py's SHAPES): an effect an option.
+CONTROL["shape"] = ["shape", "Generator", "Shape", [], "sine", {}, False]
 BASES = list(R["bases"])
 
 renders = R["renders"]
@@ -67,6 +69,10 @@ def add(key, cid, label, b, rest, pts):
 by = {}
 for i, r in enumerate(renders):
     if r["kind"] == "sweep": by.setdefault((r["base"], r["control"]), []).append(i)
+base_sine = next(r for r in renders if r["kind"] == "base" and r["base"] == "sine")
+for r in renders:
+    if r["kind"] == "shape" and r["value"] != "sine":
+        add("shape=" + r["value"], "shape", "Shape: " + r["value"], "sine", vec(base_sine), [(r["value"], vec(r))])
 for (b, cid), idx in by.items():
     c = CONTROL[cid]; places, rest, two = c[3], None, c[6]
     rr = [renders[i] for i in idx]
@@ -194,21 +200,30 @@ darken.sort(key=lambda d: d["octaves"])
 
 # ---------------------------------------------------------------- the gaps
 
+# Each direction is the features that define it, nothing else: a control from a base already
+# at the floor of grit cannot take grit away, so "inharmonic and clean" asked of it scores the
+# cleanliness it could not have. Cleanliness is reported instead - what the best control does
+# to grit on the way - and the reading is judged on the page.
 DIRECTIONS = [
-    ("darker and smoother", {"bright": -1, "alias": -1, "flat": -1}),
-    ("brighter and clean", {"bright": 1, "alias": -1, "flat": -0.5}),
-    ("stepped and aliased (the bitcrusher)", {"alias": 1, "flat": 0.5, "bright": 0.3}),
-    ("noisier: breath and air", {"noise": 1, "flat": 1, "alias": -0.5}),
-    ("inharmonic: a bell, a gong", {"inharm": 1, "alias": -1}),
-    ("percussive: struck and dying away", {"sustain": -1, "artic": 1, "attack": -0.5}),
-    ("a slower onset", {"attack": 1, "artic": -0.5}),
+    ("darker", {"bright": -1}),
+    ("brighter", {"bright": 1}),
+    ("grit: stepped and aliased (the bitcrusher's)", {"alias": 1}),
+    ("noisier: breath and air", {"noise": 1}),
+    ("inharmonic: a bell, a gong", {"inharm": 1}),
+    ("an octave under", {"under": 1}),
+    ("shimmer: sidebands round each partial", {"shimmer": 1}),
+    ("a bloom: bright on the strike, darker after", {"bloom": 1}),
+    ("percussive: dying away while held", {"sustain": -1}),
+    ("articulate: each note standing out", {"artic": 1}),
+    ("a slower onset", {"attack": 1}),
     ("wider", {"width": 1}),
     ("moving while held", {"move": 1}),
     ("a tail after the key", {"tail": 1}),
     ("fuller: even harmonics", {"evenodd": 1}),
     ("hollow: odd harmonics", {"evenodd": -1}),
-    ("rough: beating, tremolo", {"wobble": 1, "move": 0.5}),
+    ("rough: tremolo, beating", {"wobble": 1}),
 ]
+GRIT = SPACE.index("alias")
 gaps = []
 for name, want in DIRECTIONS:
     u = unit(np.array([want.get(k, 0) for k in SPACE], float))
@@ -216,14 +231,16 @@ for name, want in DIRECTIONS:
     for e in live:
         for b in BASES:
             if not active(e, b): continue
-            for cand in (e["base"][b]["dir"], e["base"][b]["far"]):
-                c = float(unit(cand) @ u); along = float(cand @ u)
-                best.append((c, along, e["key"], e["label"], b))
-    best.sort(key=lambda x: -(x[0] if x[1] >= 1 else x[0] - 1))
+            far = e["base"][b]["far"]
+            along = float(far @ u)
+            if along <= 0: continue
+            best.append((float(unit(far) @ u), along, e["key"], e["label"], b, float(far[GRIT] * SCALE[GRIT]), float(np.linalg.norm(far))))
+    # the controls that go furthest that way, among those for which it is a main part of what they do
+    best.sort(key=lambda x: -(x[1] if x[0] >= 0.5 else x[1] / 10))
     seen, top = set(), []
-    for c, along, key, label, b in best:
+    for c, along, key, label, b, grit, size in best:
         if key in seen: continue
-        seen.add(key); top.append({"key": key, "label": label, "base": b, "cos": round(c, 2), "along": round(along, 2)})
+        seen.add(key); top.append({"key": key, "label": label, "base": b, "cos": round(c, 2), "along": round(along, 2), "grit": round(grit, 1)})
         if len(top) == 5: break
     gaps.append({"name": name, "want": want, "best": top})
 
@@ -295,5 +312,5 @@ print("dead:", ", ".join(e["label"] for e in dead))
 print("hypothesis:", hyp)
 for k, row in zip(hyp, hyp_matrix): print("  %-18s %s" % (k, row))
 print("darken:", [(d["label"], d["octaves"]) for d in darken])
-for g in gaps: print(" gap %-38s %s" % (g["name"], [(t["label"], t["base"], t["cos"], t["along"]) for t in g["best"][:3]]))
+for g in gaps: print(" gap %-38s %s" % (g["name"][:38], [(t["label"], t["base"], t["cos"], t["along"], t["grit"]) for t in g["best"][:4]]))
 for v, bs in smooth.items(): print(" smooth %-7s %s" % (v, {b: (x["cosToCrusher"], x["reach"], x["at100"]["alias"], x["at100"]["bright"]) for b, x in bs.items()}))

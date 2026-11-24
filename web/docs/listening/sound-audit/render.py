@@ -364,6 +364,7 @@ FEATURES = [
     ("shimmer", "Shimmer", "the same partials that do not follow the note, but on a harmonic's skirt, within 0.15 of the note of it: a chorus's or a unison's sidebands, in dB"),
     ("inharm", "Inharmonicity", "the share in sharp partials that are not the note's harmonics, nor halfway between two, and do follow it, at the same multiple a fourth higher (an FM bell's, FM at 5:4), in dB"),
     ("under", "Undertone", "the share in partials that follow the note halfway between its harmonics: an octave under it (the Sub, FM at 1:2), in dB"),
+    ("bloom", "Bloom", "how much brighter the first 100 ms after the key are than the last half second held, in octaves: a filter envelope's sweep, Strike's flare"),
     ("loud", "Loudness", "the sustain's RMS, in dB of full scale"),
     ("attack", "Attack", "from the key to 90 per cent of the note's loudest 5 ms, log10 of ms"),
     ("sustain", "Sustain", "the last 0.7 s held against the loudest moment, in dB (0 an organ, -30 a pluck)"),
@@ -477,6 +478,17 @@ def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
     out["flat"] = float(np.mean(fl)) if fl else -100.0
     sus = m48[s:e]
     out["loud"] = db(np.mean(sus ** 2), 1e-12)
+    # Bloom: how much brighter the note's first 100 ms are than its last half second held -
+    # a filter envelope's sweep, Strike's flare, a pluck's bark - in octaves. Nought where
+    # either is silent.
+    def centroid(a, b):
+        x = m48[int(a * 48000):int(b * 48000)]
+        if len(x) < 64 or np.mean(x ** 2) < 1e-9: return None
+        q = np.abs(np.fft.rfft(x * np.hanning(len(x)), 16384)) ** 2
+        fq = np.fft.rfftfreq(16384, 1 / 48000); sel = (fq >= 20) & (fq <= 20000)
+        return np.log2(max((fq[sel] * q[sel]).sum() / max(q[sel].sum(), 1e-30), 1) / f0)
+    c0 = centroid(HELD_ON + land + 0.005, HELD_ON + land + 0.105); c1 = centroid(HELD_OFF - 0.5, HELD_OFF)
+    out["bloom"] = float(c0 - c1) if c0 is not None and c1 is not None else 0.0
     # envelope at 5 ms
     hop = 240
     env = np.sqrt(np.convolve(m48 ** 2, np.ones(hop) / hop, "same")[::hop])
