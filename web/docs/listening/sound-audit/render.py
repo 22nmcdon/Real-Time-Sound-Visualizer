@@ -359,7 +359,8 @@ FEATURES = [
     ("bright", "Brightness", "the spectral centroid of the held note's sustain, in octaves over the note"),
     ("noise", "Noisiness", "the share of the sustain's energy in the floor: bins that are neither a harmonic's nor a sharp partial's, each counted once, both notes averaged, in dB"),
     ("flat", "Flatness", "spectral flatness of 4096-sample frames, 50 Hz to 16 kHz, in dB (a sine about -100, white noise about -2)"),
-    ("alias", "Aliasing", "the share of energy in sharp partials that are not the note's harmonics and do not follow the note: held a fourth higher, they are not at the same multiple of it, in dB"),
+    ("alias", "Grit (aliasing)", "the share of energy in sharp partials that are not the note's harmonics, do not follow the note (held a fourth higher, they are not at the same multiple of it), and sit in the gaps between harmonics, 0.15 of the note or more from either: a bitcrusher's folded steps, a hold's images, in dB"),
+    ("shimmer", "Shimmer", "the same partials that do not follow the note, but on a harmonic's skirt, within 0.15 of the note of it: a chorus's or a unison's sidebands, in dB"),
     ("inharm", "Inharmonicity", "the share in sharp partials that are not the note's harmonics and do follow it, at the same multiple a fourth higher (an FM bell's), in dB"),
     ("loud", "Loudness", "the sustain's RMS, in dB of full scale"),
     ("attack", "Attack", "from the key to 90 per cent of the note's loudest 5 ms, log10 of ms"),
@@ -375,16 +376,21 @@ KEYS = [k for k, _, _ in FEATURES]
 
 def db(x, floor=1e-7): return float(10 * np.log10(max(x, floor)))
 
-def spectrum_1hz(mono, rate, t0, t1):
-    """The power spectrum at 1 Hz a bin, Hann windows a second long, half overlapped, averaged."""
+def spectra_1hz(mono, rate, t0, t1):
+    """Power spectra at 1 Hz a bin, Hann windows a second long, half overlapped."""
     n = int(rate)
     w = np.hanning(n)
-    acc, k = np.zeros(n // 2 + 1), 0
+    out = []
     s = int(t0 * rate)
     while s + n <= int(t1 * rate):
-        acc += np.abs(np.fft.rfft(mono[s:s + n] * w)) ** 2
-        s += n // 2; k += 1
-    return acc / max(k, 1)
+        out.append(np.abs(np.fft.rfft(mono[s:s + n] * w)) ** 2)
+        s += n // 2
+    return out
+
+def spectrum_1hz(mono, rate, t0, t1):
+    """Their average."""
+    ws = spectra_1hz(mono, rate, t0, t1)
+    return np.mean(ws, axis=0) if ws else np.zeros(int(rate) // 2 + 1)
 
 def partials(p, f0, top=20000):
     """The spectrum split by bins, each bin counted once: the note's harmonics (4 Hz either side
@@ -412,13 +418,17 @@ def partials(p, f0, top=20000):
     floor = float(p[(~claimed) & use].sum())
     return total, float(p[harm & use].sum()), peaks, tonal, floor
 
-def measure_held(x48, x44, f0, ratio=RATIO):
+def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
     """x48 the held A3, x44 the same held a fourth up (D4), both at 48 kHz."""
     out = {}
     m48 = x48.mean(axis=1); m44 = x44.mean(axis=1)
     s0, s1 = HELD_ON + 0.7, HELD_OFF
-    p48 = spectrum_1hz(m48, 48000, s0, s1)
-    p44 = spectrum_1hz(m44, 48000, s0, s1)
+    # The spectra over the whole held note from just after the key, energy-weighted as an
+    # average of power is: over the sustain alone a pluck whose sustain is nought has
+    # nothing left to read, and its "centroid" was the noise floor's (-8.9 octaves).
+    w0 = HELD_ON + land + 0.05
+    win48 = spectra_1hz(m48, 48000, w0, s1); win44 = spectra_1hz(m44, 48000, w0, s1)
+    p48 = np.mean(win48, axis=0); p44 = np.mean(win44, axis=0)
     fr = np.arange(len(p48))
     band = (fr >= 20) & (fr <= 20000)
     out["bright"] = float(np.log2(max((fr[band] * p48[band]).sum() / max(p48[band].sum(), 1e-30), 1) / f0))
@@ -429,16 +439,26 @@ def measure_held(x48, x44, f0, ratio=RATIO):
     # note's peaks on the axis of its own harmonics, f / f0, matched within 0.012.
     def split(a, fa, b, fb):
         rb = np.array(sorted(i / fb for i in b)) if b else np.array([1e9])
-        stay = 0.0
+        stay, moved = 0.0, {}
         for i, e in a.items():
             r = i / fa
             j = np.searchsorted(rb, r)
             near = min(abs(rb[min(j, len(rb) - 1)] - r), abs(rb[max(j - 1, 0)] - r))
             if near <= 0.012: stay += e
-        return stay, sum(a.values()) - stay
+            else: moved[i] = e
+        return stay, moved
     st48, mv48 = split(pk48, f0, pk44, f0 * ratio); st44, mv44 = split(pk44, f0 * ratio, pk48, f0)
+    # What does not follow the note, by where it sits: in the gap between two harmonics,
+    # 0.15 of the note or more from either (grit: a crusher's folding, a hold's images, which
+    # land anywhere), or on a harmonic's skirt (shimmer: a chorus's or a unison's sidebands,
+    # which a modulation puts round the partial it moves). Validated in --validate.
+    def gap(moved, f):
+        g = sum(e for i, e in moved.items() if abs(i / f - round(i / f)) >= 0.15)
+        return g, sum(moved.values()) - g
+    grit48, wan48 = gap(mv48, f0); grit44, wan44 = gap(mv44, f0 * ratio)
     tot = max(tot48, 1e-30); tot_ = max(tot44, 1e-30)
-    out["alias"] = db((mv48 / tot + mv44 / tot_) / 2, 1e-6)
+    out["alias"] = db((grit48 / tot + grit44 / tot_) / 2, 1e-6)
+    out["shimmer"] = db((wan48 / tot + wan44 / tot_) / 2, 1e-6)
     out["tonal"] = db((ton48 / tot + ton44 / tot_) / 2, 1e-6)
     out["inharm"] = db((st48 / tot + st44 / tot_) / 2, 1e-6)
     out["noise"] = db((nh48 / tot + nh44 / tot_) / 2, 1e-6)
@@ -456,7 +476,7 @@ def measure_held(x48, x44, f0, ratio=RATIO):
     # envelope at 5 ms
     hop = 240
     env = np.sqrt(np.convolve(m48 ** 2, np.ones(hop) / hop, "same")[::hop])
-    on, off = int(HELD_ON * 48000 / hop), int(HELD_OFF * 48000 / hop)
+    on, off = int((HELD_ON + land) * 48000 / hop), int(HELD_OFF * 48000 / hop)
     held = env[on:off]
     peak = held.max() if held.size else 0
     if peak > 1e-6:
@@ -474,6 +494,7 @@ def measure_held(x48, x44, f0, ratio=RATIO):
     bidx = np.clip(np.searchsorted(edges, ff) - 1, -1, 47)
     prev, moves = None, []
     for a in range(s, e - n, 2048):
+        if np.mean(m48[a:a + n] ** 2) < 1e-9: prev = None; continue  # silence has no spectrum to move
         q = np.abs(np.fft.rfft(m48[a:a + n] * np.hanning(n))) ** 2
         bands = np.bincount(bidx[bidx >= 0], weights=q[bidx >= 0], minlength=48)
         bands = np.sqrt(bands / max(bands.sum(), 1e-30))
@@ -484,7 +505,13 @@ def measure_held(x48, x44, f0, ratio=RATIO):
     lv = 10 * np.log10(np.maximum((e20 ** 2).mean(axis=1), 1e-12))
     out["wobble"] = float(np.std(lv))
     hk = [p48[max(0, int(round(k * f0)) - 4):int(round(k * f0)) + 5].sum() for k in range(1, 21)]
-    out["evenodd"] = db(sum(hk[1::2]) / max(sum(hk[2::2]), 1e-30), 1e-4)
+    # Only where harmonics 2 to 20 carry at least a hundredth of the note: on a sine the ratio
+    # is of two near-noughts (Sync read +181 dB from it). Nought - neither - otherwise, and
+    # held within 30 dB either way.
+    if sum(hk[1:]) >= 0.01 * max(tot48, 1e-30):
+        out["evenodd"] = float(np.clip(db(sum(hk[1::2]) / max(sum(hk[2::2]), 1e-30), 1e-9), -30, 30))
+    else:
+        out["evenodd"] = 0.0
     out["profile"] = [round(db(h / max(tot48, 1e-30), 1e-9), 1) for h in hk]
     return out
 
@@ -511,7 +538,7 @@ def measured(job):
     x48 = run((renderer, held, 48000))
     x44 = run((renderer, held_script(code, patch, notes, UP), 48000))
     xp = run((renderer, phrase_script(code, patch, split), 48000))
-    f = measure_held(x48, x44, f0)
+    f = measure_held(x48, x44, f0, land=patch.get("_land", 0) / 1000)
     f.update(measure_phrase(xp))
     f["peak"] = float(np.abs(x48).max())
     f["nonfinite"] = int((~np.isfinite(x48)).sum())
@@ -576,6 +603,8 @@ def validate():
     cases = [("clean band-limited saw", saw_bl), ("bitcrusher: the saw at 4 bits, held at 4 kHz", lambda r, f, t: crush(saw_bl(r, f, t), r, 4, 4000)),
              ("bitcrusher: 4 bits only", lambda r, f, t: crush(saw_bl(r, f, t), r, 4, r)),
              ("sample hold only, 4 kHz", lambda r, f, t: crush(saw_bl(r, f, t), r, 24, 4000)),
+             ("a saw whose level steps sixty times a second", lambda r, f, t: saw_bl(r, f, t) * (0.75 + 0.25 * np.random.RandomState(2).rand(int(t[-1] * 60) + 2)[(t * 60).astype(int)])),
+             ("a saw through a chorus (a 0.6 Hz, 3 ms sweep)", lambda r, f, t: 0.5 * saw_bl(r, f, t) + 0.5 * np.interp(t - 0.006 - 0.003 * np.sin(2 * np.pi * 0.6 * t), t, saw_bl(r, f, t))),
              ("bitcrusher: a sine at 3 bits", lambda r, f, t: crush(0.9 * np.sin(2 * np.pi * f * t), r, 3, r)),
              ("tanh drive, oversampled", tanh_os),
              ("tanh drive, not oversampled", lambda r, f, t: 0.5 * np.tanh(6 * saw_bl(r, f, t))), ("FM bell, ratio 1.4", fm_bell), ("white noise", white)]
@@ -588,8 +617,8 @@ def validate():
             y[: int(HELD_ON * 48000)] = 0
             xs[f0] = np.stack([y, y], 1)
         f = measure_held(xs[220.0], xs[220.0 * RATIO], 220.0)
-        rows.append({"name": name, **{k: round(f[k], 2) for k in ("bright", "alias", "inharm", "noise", "flat")}})
-        print("%-48s alias %6.1f  inharm %6.1f  noise %6.1f  flat %6.1f  bright %.2f" % (name, f["alias"], f["inharm"], f["noise"], f["flat"], f["bright"]))
+        rows.append({"name": name, **{k: round(f[k], 2) for k in ("bright", "alias", "shimmer", "inharm", "noise", "flat")}})
+        print("%-48s grit %6.1f  shimmer %6.1f  inharm %6.1f  noise %6.1f  flat %6.1f  bright %.2f" % (name, f["alias"], f["shimmer"], f["inharm"], f["noise"], f["flat"], f["bright"]))
     return rows
 
 if __name__ == "__main__":

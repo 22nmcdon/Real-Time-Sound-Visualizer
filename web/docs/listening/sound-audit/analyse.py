@@ -25,8 +25,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 R = json.load(open(os.path.join(HERE, "results.json")))
-SPACE = ["bright", "noise", "flat", "alias", "inharm", "attack", "sustain", "tail", "width", "move", "wobble", "evenodd", "artic"]
-JND = {"bright": 0.1, "noise": 3, "flat": 3, "alias": 3, "inharm": 3, "attack": 0.15, "sustain": 2, "tail": 2, "width": 2,
+SPACE = ["bright", "noise", "flat", "alias", "shimmer", "inharm", "attack", "sustain", "tail", "width", "move", "wobble", "evenodd", "artic"]
+JND = {"bright": 0.1, "noise": 3, "flat": 3, "alias": 3, "shimmer": 3, "inharm": 3, "attack": 0.15, "sustain": 2, "tail": 2, "width": 2,
        "move": 0.005, "wobble": 0.5, "evenodd": 2, "artic": 2}
 NAMES = {k: n for k, n, _ in R["features"]}
 CATEGORICAL = {"vcfType", "planeMirror", "planeLimit", "fxOrder", "pictureResponds", "oscRatio", "screenDraws", "display",
