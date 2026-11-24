@@ -1392,7 +1392,13 @@ class Generator {
     vxA_.cap = nA; vxB_.cap = nB; govFactor_ = factor;
     int silenced = 0;
     for (auto* pool : pools) for (const auto& v : *pool) if (v.held && cutting(v)) silenced++;
-    budget_.units = total(); budget_.asked = { askedA, askedB }; budget_.unison = { nA, nB };
+    /* What plays, a hand at a time: the cap, while the hand has voices to play
+       it. A hand with none plays nothing thinner than asked, and says so, though
+       the cap is kept for the governor's next ask (24 Nov: the face's word on
+       the unison stayed after a chord was let go, since nothing frees the cap
+       until a chord moves). */
+    budget_.units = total(); budget_.asked = { askedA, askedB };
+    budget_.unison = { countA > 0 ? nA : askedA, countB > 0 ? nB : askedB };
     budget_.askedFactor = askedF; budget_.factor = factor; budget_.silenced = silenced;
   }
 

@@ -229,7 +229,9 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     const auto places = processor.envelopePlaces();
     const auto levels = processor.lfoLevels();
     const auto struck = processor.envelopeStruck();
-    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed + 5 + scope::Instrument::kLfoLevels + 2> out {};
+    const auto budget = processor.budgetServed();
+    std::array<double, 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed + 5 + scope::Instrument::kLfoLevels + 2
+                       + scope::Instrument::kBudgetServed> out {};
     std::copy(lfos.begin(), lfos.end(), out.begin());
     std::copy(env.begin(), env.end(), out.begin() + 6);
     std::copy(clock.begin(), clock.end(), out.begin() + 10);
@@ -240,6 +242,8 @@ std::optional<juce::WebBrowserComponent::Resource> scopeResource(const juce::Str
     std::copy(levels.begin(), levels.end(), out.begin() + 15 + static_cast<std::ptrdiff_t>(clock.size() + face.size()));
     // And last (23 Nov) each hand's newest note's velocity, which the filter's sweep is drawn at.
     std::copy(struck.begin(), struck.end(), out.begin() + 15 + static_cast<std::ptrdiff_t>(clock.size() + face.size() + levels.size()));
+    // And after them (24 Nov) the voice budget, for the face's word on a unison played thinner than asked.
+    std::copy(budget.begin(), budget.end(), out.begin() + 17 + static_cast<std::ptrdiff_t>(clock.size() + face.size() + levels.size()));
     return bytes(out.data(), out.size() * sizeof(double), "application/octet-stream");
   }
   /* The picture's grid, 64 by 64 little-endian float32s row by row, as it

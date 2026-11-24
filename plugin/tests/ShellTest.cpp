@@ -2548,9 +2548,10 @@ int main() {
     juce::AudioBuffer<float> buf(2, block);
     // Ten, then since 5b the clock's twelve and the face's picture, and since 18 Nov the drawn envelopes' five places, read below;
     // since 19 Nov each LFO's drawn levels after them (Instrument::lfoLevels), read at the end of this block;
-    // since 23 Nov each hand's newest note's velocity (Instrument::envelopeStruck), last.
+    // since 23 Nov each hand's newest note's velocity (Instrument::envelopeStruck); since 24 Nov the voice budget, last.
     constexpr std::size_t kPlacesAt = 10 + scope::Instrument::kClockServed + scope::Instrument::kFaceServed;
-    constexpr std::size_t kLfosBin = (kPlacesAt + 5 + scope::Instrument::kLfoLevels + 2) * sizeof(double);
+    constexpr std::size_t kBudgetAt = kPlacesAt + 5 + scope::Instrument::kLfoLevels + 2;
+    constexpr std::size_t kLfosBin = (kBudgetAt + scope::Instrument::kBudgetServed) * sizeof(double);
     const auto placesServed = [&] {
       const auto r = scopeResource("/lfos.bin", osc);
       std::array<double, 5> v {};
@@ -2689,6 +2690,42 @@ int main() {
           levelsIn && tail[l] == -1 && tail[l + 33] == -1, num(tail[l]) + " " + num(tail[l + 33]));
     check("null: read five places early, the levels are not there",
           !std::equal(levelsNow.begin(), levelsNow.end(), tail.begin() + static_cast<std::ptrdiff_t>(l - 5)));
+    /* And last (24 Nov) the voice budget, which the face reads to say when the
+       governor plays fewer unison copies than asked - the owner's report, and
+       nothing the plugin's face could know before. At rest one copy is asked
+       of each hand and one plays. Then the plugin is asked for seven copies
+       of the drawbars, the dearest shape, and a chord of eight: the copies
+       served playing fall below the seven served asked, as the instrument's
+       own budget says. The null is one note of it, where all seven play, so
+       a budget that always read "fewer" cannot pass. */
+    const auto budgetNow = osc.budgetServed();
+    const std::size_t g = kBudgetAt;
+    check("and after the velocities the voice budget, in its place: one copy asked of each hand and one playing",
+          std::equal(budgetNow.begin(), budgetNow.end(), tail.begin() + static_cast<std::ptrdiff_t>(g))
+          && tail[g + 1] == 1 && tail[g + 2] == 1 && tail[g + 3] == 1 && tail[g + 4] == 1,
+          num(tail[g + 1]) + " " + num(tail[g + 2]) + " " + num(tail[g + 3]) + " " + num(tail[g + 4]));
+    const auto budgetUnder = [&](int notes) {
+      ScopeProcessor v;
+      v.prepareToPlay(rate, block);
+      v.pageControl("midiMode", scope::Json::string(std::string_view("poly")));
+      v.pageControl("shape", scope::Json::string(std::string_view("drawbars")));
+      v.pageControl("oscUnison", scope::Json::string(std::string_view("7")));
+      juce::AudioBuffer<float> b(2, block);
+      for (int start = 0; start < static_cast<int>(rate / 2); start += block) {
+        b.clear();
+        juce::MidiBuffer m;
+        if (start == 0) for (int k = 0; k < notes; ++k) m.addEvent(juce::MidiMessage::noteOn(1, 48 + 3 * k, static_cast<juce::uint8>(100)), 0);
+        v.processBlock(b, m);
+      }
+      const auto r = scopeResource("/lfos.bin", v);
+      std::vector<double> out(kLfosBin / sizeof(double));
+      if (r && r->data.size() == kLfosBin) std::memcpy(out.data(), r->data.data(), kLfosBin);
+      return std::array<double, 2> { out[g + 1], out[g + 2] };
+    };
+    const auto heavy = budgetUnder(8), light = budgetUnder(1);
+    check("a chord of eight at seven drawbar copies: seven asked, fewer served as playing",
+          heavy[0] == 7 && heavy[1] >= 1 && heavy[1] < 7, num(heavy[0]) + " asked, " + num(heavy[1]) + " playing");
+    check("null: one note of it, all seven play", light[0] == 7 && light[1] == 7, num(light[0]) + " asked, " + num(light[1]) + " playing");
   }
 
   std::printf("\n--- the picture's grid and the fade's gains (5b's second half) ---\n");

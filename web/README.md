@@ -8319,3 +8319,41 @@ spread 50, peaks every 0.79 s and spends most of each period 20 to 27 dB down. M
 the peak narrower. On top of that the copies are averaged by n, not √n. This is the unison's
 design, inherited from the page's JavaScript, and changing it changes every recording with a
 unison, so it is the owner's call: phases spread at the start, uneven spacing, or √n.
+
+**The owner's three, the same day.** After the report above the owner kept the budget at 350
+with the Scan term, held the unison's redesign, and asked for three more:
+
+- **The governor's word on the face.** While fewer copies play than the Unison menu asks, a box
+  laid exactly over the menu's name says *3 of 7*, or *2 · 3 of 7* with two hands (lower first).
+  Its title and the info line say it in full: *Lower 7 asked, 2 playing; Upper 7 asked, 3
+  playing*. With nothing cut the name shows (`unisonCut`, `paintUnisonCut`, with the tab lines
+  four times a second). The box is out of the flow and measured onto the name at every paint, so
+  nothing in Ink's row moves (`unisoncuttest.py`, half a pixel, at 1400x900 and 960x600).
+  It needed the name's line because the row ends 6 px under the menu. The site's readings
+  always carried the budget; the plugin's `lfos.bin` now does too, last
+  (`Instrument::budgetServed`), and the shell test holds a heavy chord's count there.
+  Two traps:
+  - The governor keeps its cap until a chord moves, so after a chord was let go the budget
+    still said 2 and 3 playing over silence. The budget now reports a hand with no voices as
+    playing what it asks. The cap itself is unchanged, so the sound is too.
+  - The plugin's reader cut `lfos.bin` to `10 + SERVED_LENGTH + 5 + LFO_LEVELS` doubles, two
+    short of the hands' velocities appended on 23 Nov. So the plugin's filter sweep has never
+    had them. It reads to the end now.
+- **Scan's frame work made cheaper, not spread.** Spreading it across a frame's blocks would
+  have moved a table by a tick now and then, which changes the sound. Making it cheaper does not:
+  - `ScanReader::read` blurs only the cells `scanRead`'s bilinear reads touch and the row sums
+    those need (`scanBlurRead`, each cell `scanBlur`'s sum in `scanBlur`'s order).
+  - `scanTables` writes every level in one pass, each a prefix of the richest's sum.
+  - Natively the frame's Scan went from 330M to 113M instructions a second.
+    `core/tests/pieces/scanread.py` holds both to the bit against the old ways, which
+    `scanread_cpp` keeps word for word, and holds the cost to under half. Its nulls are a blur
+    a millionth wider and the harmonics summed from the top.
+  - `scanBlur` itself is kept: it is the page's and its recordings name it.
+- **A diagnostic report.** *Copy diagnostic report* in Settings' This window copies the
+  browser, the rate and latencies, the worklet's block times since it was made (mean, 99th
+  percentile from a histogram in 0.05 ms bins, worst, late), the budget and the setup code. It
+  is copied to the clipboard and sent nowhere (`diagtest.py`). The worklet times every block
+  and posts a summary once a second, not per chunk. `diag.html`'s anchor, the first two lines
+  of `process`, is kept exactly. Chromium's audio worklet has no `performance.now`, so there
+  the times are whole milliseconds; the report says so, and its mean still holds over
+  thousands of blocks.

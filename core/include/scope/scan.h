@@ -24,9 +24,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -52,6 +54,8 @@ constexpr double kScanLeast = 2;
 constexpr double kScanFreezeMs = 250;
 // How many levels a table has: every harmonic, then half, to the fundamental alone.
 constexpr std::size_t kScanLevels = 7;
+// scanTables writes each level as a prefix of the richest's sum: the last level is the fundamental alone.
+static_assert((kScanHarmonics >> (kScanLevels - 1)) == 1, "the levels halve from every harmonic to one");
 
 // The figure's centre of brightness and its RMS radius about it, in
 // fractions of the grid; nothing when nothing is lit.
@@ -145,13 +149,79 @@ inline double scanBilinear(const double* g, int n, double u, double v) {
 
 // The path read: kScanPoints brightnesses round the off-centre circle, from
 // `blurred`, the grid already blurred by the softness.
-inline void scanRead(const double* blurred, int n, const ScanPath& path, std::array<double, kScanPoints>& points) {
+// Where scanRead reads, point by point: `at(i, u, v)` for each of its kScanPoints.
+template <class At>
+void scanReadPlaces(int n, const ScanPath& path, At&& at) {
   const double r = jsMax(path.r, kScanLeast / n);
   const double cx = path.cx + 0.35 * r, cy = path.cy + 0.2 * r, across = 0.8 * r;
   for (std::size_t i = 0; i < kScanPoints; i++) {
     const double th = 2 * kPi * static_cast<double>(i) / static_cast<double>(kScanPoints);
-    points[i] = scanBilinear(blurred, n, cx + across * std::cos(th), cy + across * std::sin(th));
+    at(i, cx + across * std::cos(th), cy + across * std::sin(th));
   }
+}
+inline void scanRead(const double* blurred, int n, const ScanPath& path, std::array<double, kScanPoints>& points) {
+  scanReadPlaces(n, path, [&](std::size_t i, double u, double v) { points[i] = scanBilinear(blurred, n, u, v); });
+}
+
+/* scanBlur, but only at the cells scanRead will read round `path` and the
+   row sums those need (24 Nov). The read touches the four cells about each
+   of its 256 points, a few hundred of the grid's 4096, and the whole grid's
+   blur was three fifths of a picture frame's Scan - the block every
+   sixtieth that ran past its deadline in the page's worklet even at a
+   unison of one. Each cell it does compute is scanBlur's sum in scanBlur's
+   order, so the read is the same to the bit; the cells it does not are
+   left as they were, and nothing reads them. `rowAt` and `outAt` are
+   scratch the size of the grid, marked with `stamp`, which the caller moves
+   on every call so nothing is cleared. */
+template <typename Cell>
+void scanBlurRead(const Cell* grid, int n, double sigma, const ScanPath& path, double* rows, double* out,
+                  std::uint32_t* rowAt, std::uint32_t* outAt, std::uint32_t stamp) {
+  if (!(sigma > 0)) { for (int i = 0; i < n * n; i++) out[i] = grid[i]; return; }
+  const int reach = std::min(kScanReachMost, static_cast<int>(std::ceil(3 * sigma)));
+  std::array<double, 2 * kScanReachMost + 1> kernel {};
+  const int width = 2 * reach + 1;
+  double sum = 0;
+  for (int j = -reach; j <= reach; j++) {
+    const double d = j;
+    kernel[static_cast<std::size_t>(j + reach)] = std::exp(-d * d / (2 * sigma * sigma));
+    sum += kernel[static_cast<std::size_t>(j + reach)];
+  }
+  for (int j = 0; j < width; j++) kernel[static_cast<std::size_t>(j)] /= sum;
+  const auto row = [&](int y, int x) {
+    const std::size_t at = static_cast<std::size_t>(y * n + x);
+    if (rowAt[at] == stamp) return;
+    rowAt[at] = stamp;
+    double v = 0;
+    for (int j = -reach; j <= reach; j++) {
+      const int xx = x + j;
+      if (xx >= 0 && xx < n) v += kernel[static_cast<std::size_t>(j + reach)] * grid[y * n + xx];
+    }
+    rows[at] = v;
+  };
+  const auto cell = [&](int x, int y) {
+    if (x < 0 || y < 0 || x >= n || y >= n) return;
+    const std::size_t at = static_cast<std::size_t>(y * n + x);
+    if (outAt[at] == stamp) return;
+    outAt[at] = stamp;
+    for (int j = -reach; j <= reach; j++) {
+      const int yy = y + j;
+      if (yy >= 0 && yy < n) row(yy, x);
+    }
+    double v = 0;
+    for (int j = -reach; j <= reach; j++) {
+      const int yy = y + j;
+      if (yy >= 0 && yy < n) v += kernel[static_cast<std::size_t>(j + reach)] * rows[yy * n + x];
+    }
+    out[at] = v;
+  };
+  // The cells scanBilinear reads at each place, found as it finds them.
+  scanReadPlaces(n, path, [&](std::size_t, double u, double v) {
+    const double fx = u * n - 0.5, fy = v * n - 0.5;
+    const double x0 = std::floor(fx), y0 = std::floor(fy);
+    for (const double cy : { y0, y0 + 1 })
+      for (const double cx : { x0, x0 + 1 })
+        if (!(cx < 0 || cy < 0 || cx >= n || cy >= n)) cell(static_cast<int>(cx), static_cast<int>(cy));
+  });
 }
 
 // A cosine over N points, kept, as the page keeps one for each length.
@@ -202,17 +272,22 @@ inline bool scanTables(const std::array<double, kScanPoints>& points, CycleTable
   }
   constexpr std::size_t T = kScanTable, qt = 3 * T / 4;
   const auto& ct = scanCosine<T>();
-  std::size_t level = 0;
-  for (std::size_t limit = kScanHarmonics; limit >= 1; limit >>= 1, level++) {
-    std::vector<double>& table = out.levels[level];
-    const std::size_t upto = std::min(top, limit);
-    for (std::size_t i = 0; i < T; i++) {
-      double v = 0;
-      for (std::size_t k = 1; k <= upto; k++) {
+  /* Each level is the sum of the harmonics up to its limit - 64, 32, ... 1 -
+     added from the first up, so each is a prefix of the richest's sum, in
+     the same order: one pass over the harmonics a point, each level written
+     as the pass reaches its limit, rather than a pass a level (24 Nov; the
+     same bits, at about half the cost of a picture frame's tables). */
+  for (std::size_t i = 0; i < T; i++) {
+    double v = 0;
+    std::size_t k = 1;
+    // Levels from the poorest (limit 1, the last) to the richest (the first).
+    for (std::size_t lv = kScanLevels; lv-- > 0;) {
+      const std::size_t upto = std::min(top, kScanHarmonics >> lv);
+      for (; k <= upto; k++) {
         const std::size_t m = (k * i) % T;
         v += a[k] * ct[m] + b[k] * ct[(m + qt) % T];
       }
-      table[i] = v;
+      out.levels[lv][i] = v;
     }
   }
   double peak = 0;
@@ -440,7 +515,8 @@ class ScanReader {
   bool read(const Cell* grid, std::size_t length, const ScanPath& path, double soft, std::array<double, kScanPoints>& points) {
     const int n = static_cast<int>(jsRound(std::sqrt(static_cast<double>(length))));
     if (static_cast<std::size_t>(n) * static_cast<std::size_t>(n) > blurred_.size()) return false;
-    scanBlur(grid, n, soft, rows_.data(), blurred_.data());
+    if (++stamp_ == 0) { std::fill(rowAt_.begin(), rowAt_.end(), 0u); std::fill(outAt_.begin(), outAt_.end(), 0u); stamp_ = 1; }
+    scanBlurRead(grid, n, soft, path, rows_.data(), blurred_.data(), rowAt_.data(), outAt_.data(), stamp_);
     scanRead(blurred_.data(), n, path, points);
     return true;
   }
@@ -448,6 +524,9 @@ class ScanReader {
  private:
   std::array<ScanTables, 2> tables_;
   std::vector<double> rows_ = std::vector<double>(64 * 64), blurred_ = std::vector<double>(64 * 64);
+  // scanBlurRead's marks: which cells this read has summed, by the read's stamp.
+  std::vector<std::uint32_t> rowAt_ = std::vector<std::uint32_t>(64 * 64, 0u), outAt_ = rowAt_;
+  std::uint32_t stamp_ = 0;
   std::array<std::array<double, kScanPoints>, 2> readings_ {};
   std::array<double, kScanPoints> averaged_ {};
 };

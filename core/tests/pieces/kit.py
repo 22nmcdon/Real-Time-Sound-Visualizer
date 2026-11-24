@@ -49,6 +49,10 @@ class Kit:
         with open(path, "w") as f: f.write(text if text.endswith("\n") else text + "\n")
         return subprocess.run([exe, *args, path], check=True, capture_output=True, text=True).stdout
 
+    def run_args(self, tool, *args):
+        """The tool's output on its arguments alone, for a tool that makes its own cases."""
+        return subprocess.run([self.build(tool), *args], check=True, capture_output=True, text=True).stdout
+
     def floats(self, tool, text, *args):
         return [float(v) for v in self.run(tool, text, *args).split()]
 

@@ -821,6 +821,20 @@ class Instrument {
     pictureAt_.load(std::memory_order_acquire);
     return { envServed_[9].load(std::memory_order_relaxed), envServed_[10].load(std::memory_order_relaxed) };
   }
+  /* And the voice budget (24 Nov, the owner's unison report), served after
+     the velocities so nothing before it moves: the units it counts, each
+     hand's copies asked and playing, the shaper's oversampling asked and
+     given, and the held notes let go - Generator::budget, as the site's
+     brain_readings has carried it since stage 5. The face says when the
+     governor plays fewer copies than asked, which in the plugin it had no
+     way to know. */
+  static constexpr std::size_t kBudgetServed = 8;
+  std::array<double, kBudgetServed> budgetServed() const {
+    pictureAt_.load(std::memory_order_acquire);
+    std::array<double, kBudgetServed> out {};
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = envServed_[11 + i].load(std::memory_order_relaxed);
+    return out;
+  }
   /* And each LFO's drawn levels this pass (19 Nov, lfo-drawn.md), after the
      envelopes' places so nothing before them moves: for each, the point
      whose line it is on (-1 while its shape is not drawn), then the level
@@ -1730,6 +1744,15 @@ class Instrument {
     // And each hand's newest note's velocity as its filter's envelope took it (23 Nov), for the sweep's drawing.
     envServed_[9].store(core_->struck(0), std::memory_order_relaxed);
     envServed_[10].store(core_->struck(1), std::memory_order_relaxed);
+    // And the voice budget (24 Nov), for the face's word on a unison played thinner than asked.
+    {
+      const Budget& b = core_->budget();
+      const double budget[kBudgetServed] = { b.units, static_cast<double>(b.asked[0]), static_cast<double>(b.unison[0]),
+                                             static_cast<double>(b.asked[1]), static_cast<double>(b.unison[1]),
+                                             static_cast<double>(b.askedFactor), static_cast<double>(b.factor),
+                                             static_cast<double>(b.silenced) };
+      for (std::size_t i = 0; i < kBudgetServed; ++i) envServed_[11 + i].store(budget[i], std::memory_order_relaxed);
+    }
     for (std::size_t i = 0; i < 2 && i < lfos_.size(); ++i) {
       const Lfo& l = lfos_[i];
       const std::size_t at = i * (1 + kLfoMaxPoints);
@@ -2047,7 +2070,7 @@ class Instrument {
   std::array<float, kPictureFrames * kRingLanes> picture_ {};
   std::atomic<std::size_t> pictureAt_ { 0 };
   std::array<std::atomic<double>, 6> lfosServed_ {};
-  std::array<std::atomic<double>, 11> envServed_ {};
+  std::array<std::atomic<double>, 11 + kBudgetServed> envServed_ {};
   std::array<std::atomic<double>, kLfoLevels> lfoLevels_ {};
   std::array<std::atomic<double>, kClockServed> clockServed_ {};
   std::array<std::atomic<double>, kFaceServed> faceServed_ {};

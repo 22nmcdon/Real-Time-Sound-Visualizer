@@ -666,6 +666,7 @@ Shown only while the screen is enlarged (G4). All of them are the look's alone.
 | size90 | Size | Everything on the face at 90%, whatever the window. This browser remembers it. | 78 | - |
 | size100 | Size | Everything on the face at its own size, whatever the window. This browser remembers it. | 87 | - |
 | size125 | Size | Everything on the face at 125%, whatever the window. This browser remembers it. | 79 | - |
+| diagCopy | Diagnostic report | Copies what this browser is doing to paste to someone helping: its rate, how long each block of sound takes, the budget, the setup. | 131 | - |
 
 ### Settings › Input
 
