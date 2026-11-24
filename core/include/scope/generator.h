@@ -625,7 +625,11 @@ class Generator {
       if (a_.freq != freqAim_) {
         // From silence there is no slope to step: the pitch goes straight there, as it always did.
         const bool sounding = !gated_ || env_.level() > 1e-4;
-        slewLeft_ = a_.glideMs <= 0 && sounding && freqAim_ > 0 && dyadRatio_ != 0 && dyadBase == dyadRatio_
+        /* Not under the key's quantiser either, which owns the way between
+           notes as Glide does: a slide there crossed the semitones between,
+           and the quantiser, held to forty steps a second, played each one it
+           met (keytest.py's glide arrived 18 ms late). */
+        slewLeft_ = a_.glideMs <= 0 && !ctx_.qMask && sounding && freqAim_ > 0 && dyadRatio_ != 0 && dyadBase == dyadRatio_
                     ? noteSlewSamples : 0;
         slewFrom_ = freqNow_;
         freqAim_ = a_.freq;

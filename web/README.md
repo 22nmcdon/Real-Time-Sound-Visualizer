@@ -8391,7 +8391,10 @@ bank, and holds each fix with a copy of the core that has only that fix taken ou
   Glide, a new note at the same interval now slides over `kNoteSlewMs`, 2 ms in a straight
   line. It does not slide from silence, and it lands at once if the interval changes mid-slide,
   because the dyad's crossfades find a note by its pitch jumping in the same sample as the
-  interval. **This changes the sound**: Dyad and Mono no longer jump in a single sample, though
+  interval. Nor under the key's quantiser, which owns the way between notes as Glide does: the
+  first full web run found it, in `keytest.py`'s glide arriving 18 ms late. The slide crossed
+  the semitones between the notes, and the quantiser, held to forty steps a second, played each
+  one it met. **This changes the sound**: Dyad and Mono no longer jump in a single sample, though
   2 ms is under any glide anyone would hear as one. The first try was a one-pole with a
   1e-9 end. That ran for about 40 ms and slid the first note up from the idle 220 Hz, so a
   second key 5 to 20 ms after the first changed the interval mid-slide. The dyad then
