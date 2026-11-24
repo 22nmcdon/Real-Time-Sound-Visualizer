@@ -38,16 +38,19 @@ PAGE = r"""<!doctype html>
           --line: #e4d9cc; --gold: #b08d57; --sage: #6f7f63; --rust: #a4553f; --slate: #4f6274;
           --hot: #c0573f; --cold: #4f7a94; --grid: #ece3d7;
           --g1: #a4553f; --g2: #b08d57; --g3: #6f7f63; --g4: #4f6274; --g5: #8a5a83; --g6: #3f7f7a;
-          --g7: #c07f79; --g8: #7a6a3a; --g9: #5a5a5a; --g10: #9a6b3f; --g11: #3f5a9a; --g12: #7f3f5a; }
+          --g7: #c07f79; --g8: #7a6a3a; --g9: #5a5a5a; --g10: #9a6b3f; --g11: #3f5a9a; --g12: #7f3f5a;
+          --g13: #2f8f5f; --g14: #b0b0b0; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
           --cream: #1d1a18; --paper: #262220; --charcoal: #f3ece4; --text: #ddd4ca; --text-soft: #a99e93;
           --line: #3d3631; --grid: #332d29; --hot: #e07a5f; --cold: #7fb0cc;
           --g1: #e08a70; --g2: #d6b47a; --g3: #9fb38f; --g4: #8fa6bd; --g5: #c08ab8; --g6: #6fbdb5;
-          --g7: #e0a39d; --g8: #c0ad70; --g9: #a8a8a8; --g10: #d39a66; --g11: #8fa6e0; --g12: #c07f9f; } }
+          --g7: #e0a39d; --g8: #c0ad70; --g9: #a8a8a8; --g10: #d39a66; --g11: #8fa6e0; --g12: #c07f9f;
+          --g13: #6fd09f; --g14: #6a6a6a; } }
   :root[data-theme="dark"] { --cream: #1d1a18; --paper: #262220; --charcoal: #f3ece4; --text: #ddd4ca; --text-soft: #a99e93;
           --line: #3d3631; --grid: #332d29; --hot: #e07a5f; --cold: #7fb0cc;
           --g1: #e08a70; --g2: #d6b47a; --g3: #9fb38f; --g4: #8fa6bd; --g5: #c08ab8; --g6: #6fbdb5;
-          --g7: #e0a39d; --g8: #c0ad70; --g9: #a8a8a8; --g10: #d39a66; --g11: #8fa6e0; --g12: #c07f9f; }
+          --g7: #e0a39d; --g8: #c0ad70; --g9: #a8a8a8; --g10: #d39a66; --g11: #8fa6e0; --g12: #c07f9f;
+          --g13: #6fd09f; --g14: #6a6a6a; }
   * { box-sizing: border-box; }
   body { background: var(--cream); color: var(--text); font: 16px/1.55 system-ui, sans-serif; margin: 0; padding: 24px 16px 64px; }
   main { max-width: 1060px; margin: 0 auto; }
@@ -68,6 +71,8 @@ PAGE = r"""<!doctype html>
   .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
   .controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0; font-size: 0.9rem; }
   .controls label { display: inline-flex; gap: 4px; align-items: center; }
+  .controls label { max-width: 100%; } .controls select { max-width: 100%; min-width: 0; }
+  #hl { max-width: min(420px, calc(100vw - 120px)); }
   select, button { font: inherit; color: var(--text); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
   button[aria-pressed="true"] { background: var(--charcoal); color: var(--cream); }
   .map { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
@@ -101,7 +106,7 @@ PAGE = r"""<!doctype html>
 
 __SUMMARY__
 
-<h2 id="map">The map</h2>
+<h2 id="the-map">The map</h2>
 <p>Two pictures of the same data. <b>The sound space</b> puts every render at a point, the features squashed to two
   dimensions (a principal-component projection: it keeps <span id="pcaKept"></span> of the spread, so two points close
   here can still differ on what it drops - the tables below are in the full space). Each control is a line from where
@@ -121,7 +126,8 @@ __SUMMARY__
 <h2 id="hyp">The hypothesis, tested</h2>
 <p>The brief's suspects: Drive, Fold, Bits, Rate, the Plane's Snap, Scan, the Picture amount and Swell. Each cell is
   the similarity of two controls' directions (the cosine, 1 the same move, 0 unrelated, -1 opposite), averaged over the
-  starting sounds where both do something measurable; blank where they never act from the same one.</p>
+  starting sounds where both do something measurable; blank where they never act from the same one. Swell is not in
+  the table: from none of the four did it reach past the null, so it has no direction to compare.</p>
 <div class="scroll"><table id="hypTable"></table></div>
 <p id="hypWhere"></p>
 
@@ -152,7 +158,9 @@ __SUMMARY__
   table of 64 harmonics sixty times a second. Four prototypes, in the render harness only: <b>interp</b> reads the
   grid bicubic, so the read has no corners where it crosses a cell's edge; <b>taper</b> rolls the 64 harmonics off
   (a tenth by the 32nd); <b>time</b> averages each read with the last, so the table does not jump a frame's change
-  at once; <b>smooth</b> is all three. Scan swept 0 to 100 from each starting sound under each.</p>
+  at once; <b>smooth</b> is all three. Scan swept 0 to 100 from each starting sound under each. <i>Like the crushers</i> is the cosine of Scan's direction
+  against Crush's and Rate's from the same sound; <i>reach</i> how far 100 is from 0; grit and shimmer in dB at 100,
+  movement the spectral flux at 100, with Scan at 0 under them.</p>
 <div class="scroll"><table id="smoothTable"></table></div>
 
 <h2 id="listen">Listen</h2>
@@ -194,7 +202,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const GROUPS = [...new Set(D.controls.map((c) => c[1]))];
-const gcol = (g) => "var(--g" + (GROUPS.indexOf(g) % 12 + 1) + ")";
+const gcol = (g) => "var(--g" + (GROUPS.indexOf(g) % 14 + 1) + ")";
 const name = (k) => A.names[k] || k;
 const effect = Object.fromEntries(A.effects.map((e) => [e.key, e]));
 const label = (k) => effect[k] ? effect[k].label : k;
@@ -233,7 +241,10 @@ function draw() {
   const grid = css("--grid"), soft = css("--text-soft");
   if (view === "space") {
     const rs = A.renders;
-    const S = scaler(rs.map((r) => [r.x, r.y]));
+    const bases0 = base === "all" ? Object.keys(D.bases) : [base];
+    // scaled to what is shown: one base's paths, and the presets
+    const shown = rs.filter((r) => (r.kind === "sweep" && bases0.includes(r.base) && r.control !== "_land") || r.kind === "preset" && $("showPresets").checked || (r.kind === "base" && bases0.includes(r.base)));
+    const S = scaler(shown.map((r) => [r.x, r.y]));
     const [ox, oy] = S([0, 0]);
     out += `<line x1="0" x2="${W}" y1="${oy}" y2="${oy}" stroke="${grid}"/><line y1="0" y2="${H}" x1="${ox}" x2="${ox}" stroke="${grid}"/>`;
     const bases = base === "all" ? Object.keys(D.bases) : [base];
@@ -330,12 +341,12 @@ $("darkList").innerHTML = "<p>" + A.darken.map((d) => `<span class="chip">${esc(
 
 const SV = Object.keys(A.smooth);
 const sb = Object.keys(D.bases);
-$("smoothTable").innerHTML = "<tr><th>Scan read</th>" + sb.map((b) => `<th colspan="4">${esc(D.bases[b])}</th>`).join("") + "</tr><tr><th></th>" +
-  sb.map(() => "<th class='n'>like the crusher</th><th class='n'>aliasing at 100</th><th class='n'>brightness at 100</th><th class='n'>movement at 100</th>").join("") + "</tr>" +
+$("smoothTable").innerHTML = "<tr><th>Scan read</th>" + sb.map((b) => `<th colspan="5">${esc(D.bases[b])}</th>`).join("") + "</tr><tr><th></th>" +
+  sb.map(() => "<th class='n'>like the crushers</th><th class='n'>reach</th><th class='n'>grit</th><th class='n'>shimmer</th><th class='n'>movement</th>").join("") + "</tr>" +
   SV.map((v) => `<tr><th>${v === "core" ? "as it is" : esc(v)}</th>` + sb.map((b) => { const s = A.smooth[v][b];
-    return `<td class="n">${fmt(s.cosToCrusher)}</td><td class="n">${fmt(s.at100.alias, 1)} dB</td><td class="n">${fmt(s.at100.bright)} oct</td><td class="n">${fmt(s.at100.move, 3)}</td>`; }).join("") + "</tr>").join("") +
+    return `<td class="n">${fmt(s.cosToCrusher)}</td><td class="n">${fmt(s.reach, 1)}</td><td class="n">${fmt(s.at100.alias, 0)}</td><td class="n">${fmt(s.at100.shimmer, 0)}</td><td class="n">${fmt(s.at100.move, 2)}</td>`; }).join("") + "</tr>").join("") +
   "<tr><th class='soft'>Scan at 0</th>" + sb.map((b) => { const s = A.smooth.core[b];
-    return `<td></td><td class="n soft">${fmt(s.at0.alias, 1)} dB</td><td class="n soft">${fmt(s.at0.bright)} oct</td><td class="n soft">${fmt(s.at0.move, 3)}</td>`; }).join("") + "</tr>";
+    return `<td></td><td></td><td class="n soft">${fmt(s.at0.alias, 0)}</td><td class="n soft">${fmt(s.at0.shimmer, 0)}</td><td class="n soft">${fmt(s.at0.move, 2)}</td>`; }).join("") + "</tr>";
 
 $("sets").innerHTML = D.audio.map((s) => `<div class="box"><h3 style="margin-top:0">${esc(s.title)}</h3><p class="soft" style="font-size:0.88rem">${esc(s.listen)}</p>` +
   s.clips.map((c) => `<div class="clip"><div>${esc(c.label)}</div><audio controls preload="none" src="${esc(c.file)}"></audio></div>`).join("") + "</div>").join("")

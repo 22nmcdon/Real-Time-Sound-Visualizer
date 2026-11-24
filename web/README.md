@@ -8357,3 +8357,19 @@ with the Scan term, held the unison's redesign, and asked for three more:
   of `process`, is kept exactly. Chromium's audio worklet has no `performance.now`, so there
   the times are whole milliseconds; the report says so, and its mean still holds over
   thousands of blocks.
+- **Measuring the heard sound offline: two channels, not their sum** (24 Nov, the sound audit,
+  `web/docs/listening/sound-audit/`). At the default Phase of 90 the two channels are a quarter
+  cycle apart, so a spectrum of `(L + R) / 2` cancels some harmonics outright: a saw's fourth
+  read -76 dB that way, and every brightness and harmonic reading built on it was off. Add the
+  two channels' powers, as two speakers are heard; keep the mid and side only for width. Three
+  more the audit found the hard way, each checked on a numpy stand-in before it was believed:
+  - Partials that are not the note's harmonics come in three kinds that one number confuses. A
+    bitcrusher's folding and a hold's images do not follow the note (hold it a fourth higher and
+    they are not at the same multiple) and land anywhere in the gap between harmonics; a
+    chorus's or a unison's sidebands do not follow it either but hug the harmonic they move; an
+    FM bell's follow it exactly. A 48 against 44.1 kHz test does not find a hold's images,
+    which are at the hold's rate, not the host's.
+  - The loop is chaotic: the same preset with the key 20 ms later moves the features of the
+    Tine piano and the Slow pad by more than many controls do. Any comparison of renders of a
+    loop-heavy sound needs that null beside it.
+  - The Oscillator's Ratio menu holds the ratios themselves (`String(p / q)`), not their places.

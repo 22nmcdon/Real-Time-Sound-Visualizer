@@ -1,0 +1,178 @@
+[
+ {
+  "title": "The bitcrusher family: Crush, Rate, Snap",
+  "listen": "The three the numbers put closest to each other (0.56 to 0.71 alike): each makes partials that are not the note's own. Rate's are the loudest by far; Snap's mostly a fizz.",
+  "clips": [
+   {
+    "file": "audio/crush-saw-off.mp3",
+    "label": "Saw, nothing"
+   },
+   {
+    "file": "audio/crush-saw-bits3.mp3",
+    "label": "Crush 3 bits"
+   },
+   {
+    "file": "audio/crush-saw-rate2k.mp3",
+    "label": "Rate 2 kHz"
+   },
+   {
+    "file": "audio/crush-saw-snap5.mp3",
+    "label": "Snap 5"
+   }
+  ]
+ },
+ {
+  "title": "Drive, Fold and Crush on a sine",
+  "listen": "The hypothesis put these together; the numbers do not (Drive to Crush 0.33, Drive to Fold 0.51). Drive adds odd harmonics cleanly, Fold many more, Crush adds grit.",
+  "clips": [
+   {
+    "file": "audio/shape-sine-drive.mp3",
+    "label": "Drive 100"
+   },
+   {
+    "file": "audio/shape-sine-fold.mp3",
+    "label": "Fold 60"
+   },
+   {
+    "file": "audio/shape-sine-bits.mp3",
+    "label": "Crush 3 bits"
+   }
+  ]
+ },
+ {
+  "title": "Scan against the crushers",
+  "listen": "Scan is not a bitcrusher by these numbers (0.36 to 0.48 alike): it makes no grit at all, but shimmer, inharmonic partials and movement - the sound wandering while held.",
+  "clips": [
+   {
+    "file": "audio/scan-saw-80.mp3",
+    "label": "Scan 80"
+   },
+   {
+    "file": "audio/scan-saw-bits3.mp3",
+    "label": "Crush 3 bits"
+   },
+   {
+    "file": "audio/scan-saw-rate4k.mp3",
+    "label": "Rate 4 kHz"
+   }
+  ]
+ },
+ {
+  "title": "A smooth Scan (prototype, not in the instrument)",
+  "listen": "Scan 80 on the saw as it is, and with the read smoothed in space, in its harmonics and in time. It moves less and shimmers less; it is still Scan.",
+  "clips": [
+   {
+    "file": "audio/smooth-saw-core.mp3",
+    "label": "Scan 80, as it is"
+   },
+   {
+    "file": "audio/smooth-saw-smooth.mp3",
+    "label": "Scan 80, smoothed (all three)"
+   },
+   {
+    "file": "audio/smooth-pad-core.mp3",
+    "label": "The Slow pad, as it is"
+   },
+   {
+    "file": "audio/smooth-pad-smooth.mp3",
+    "label": "The Slow pad, Scan smoothed"
+   }
+  ]
+ },
+ {
+  "title": "An octave under: the Sub and FM at 1:2",
+  "listen": "0.91 alike: both put partials halfway between the note's harmonics. The Sub is a second oscillator an octave down; FM at 1:2 gets there by sidebands, brighter and buzzier.",
+  "clips": [
+   {
+    "file": "audio/under-saw-sub.mp3",
+    "label": "Sub 60"
+   },
+   {
+    "file": "audio/under-saw-fm12.mp3",
+    "label": "FM 30 at 1:2"
+   }
+  ]
+ },
+ {
+  "title": "Three ways to darken",
+  "listen": "The voice filter's low pass, the EQ's High shelf down and the EQ's high cut: 0.87 alike. The voice filter is per note and has its envelope; the other two are on the whole sound.",
+  "clips": [
+   {
+    "file": "audio/dark-saw-lp.mp3",
+    "label": "Voice filter, Low pass at 400"
+   },
+   {
+    "file": "audio/dark-saw-eqhigh.mp3",
+    "label": "EQ High -12 dB"
+   },
+   {
+    "file": "audio/dark-saw-eqcut.mp3",
+    "label": "EQ high cut at 600"
+   }
+  ]
+ },
+ {
+  "title": "Brighter by adding, brighter by taking away",
+  "listen": "FM, Sync and a high pass point the same way in these numbers (0.90): each raises the centre of the spectrum. FM and Sync add partials; the high pass takes the fundamental away. The numbers miss that; the ear will not.",
+  "clips": [
+   {
+    "file": "audio/bright-saw-fm.mp3",
+    "label": "FM 60"
+   },
+   {
+    "file": "audio/bright-saw-sync.mp3",
+    "label": "Sync 380"
+   },
+   {
+    "file": "audio/bright-saw-hp.mp3",
+    "label": "Voice filter, High pass"
+   }
+  ]
+ },
+ {
+  "title": "Even harmonics: Warp and the Plane's Mirror",
+  "listen": "On a sine, Warp and Mirror both add even harmonics (0.92 alike). Warp bends the wave in time; Mirror folds the figure on the screen.",
+  "clips": [
+   {
+    "file": "audio/even-sine-warp.mp3",
+    "label": "Warp 67"
+   },
+   {
+    "file": "audio/even-sine-mirror.mp3",
+    "label": "Mirror 2"
+   }
+  ]
+ },
+ {
+  "title": "Width, three of four ways",
+  "listen": "Draw width, and the Plane's Scale X, Scale Y and Shear, all move only the stereo width (1.00 alike on these numbers).",
+  "clips": [
+   {
+    "file": "audio/wide-sine-width.mp3",
+    "label": "Width 100 (Draw width on)"
+   },
+   {
+    "file": "audio/wide-sine-scalex.mp3",
+    "label": "Scale X 33"
+   },
+   {
+    "file": "audio/wide-sine-shear.mp3",
+    "label": "Shear -67"
+   }
+  ]
+ },
+ {
+  "title": "What is there that nobody suspects: a bell",
+  "listen": "FM's Ratio at 4:3 or 5:3 turns nearly all of a sine's energy into partials that follow the note but are not its harmonics - a bell's. The direction exists; it is one menu deep in the Oscillator.",
+  "clips": [
+   {
+    "file": "audio/bell-sine-fm43.mp3",
+    "label": "FM 30 at 4:3"
+   },
+   {
+    "file": "audio/bell-sine-fm53.mp3",
+    "label": "FM 30 at 5:3"
+   }
+  ]
+ }
+]
