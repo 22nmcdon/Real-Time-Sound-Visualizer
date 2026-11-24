@@ -1,0 +1,85 @@
+[
+ {
+  "title": "Mirror against Crush, on the phrase",
+  "listen": "The phrase the owner heard Mirror on. Where two notes overlap, Mirror's rectifier makes their sums and differences - partials of neither note - which is what Crush's steps sound like; on the one note held at the end it goes clean again. Crush is rough on every note, alone or not.",
+  "clips": [
+   [
+    "fu-sine-off",
+    "Sine, nothing",
+    "sine",
+    {},
+    "core"
+   ],
+   [
+    "fu-sine-mirror3",
+    "Mirror Both",
+    "sine",
+    {
+     "planeMirror": 3
+    },
+    "core"
+   ],
+   [
+    "fu-sine-mirror1",
+    "Mirror X",
+    "sine",
+    {
+     "planeMirror": 1
+    },
+    "core"
+   ],
+   [
+    "fu-sine-bits3",
+    "Crush 3 bits",
+    "sine",
+    {
+     "shpBits": 3
+    },
+    "core"
+   ],
+   [
+    "fu-sine-snap5",
+    "Snap 5 bits",
+    "sine",
+    {
+     "planeSnap": 5
+    },
+    "core"
+   ]
+  ]
+ },
+ {
+  "title": "Mirror on one note, and on a chord",
+  "listen": "A3 with its major third, held three seconds: nothing, Mirror Both, and Crush 3 bits. On one note Mirror is an octave up and clean (the phrase's last note, above); on a chord it makes the two notes' sums and differences, and that is the crusher the owner heard.",
+  "clips": [
+   [
+    "fu-chord-off",
+    "A chord, nothing",
+    "sine",
+    {},
+    "core",
+    "chord"
+   ],
+   [
+    "fu-chord-mirror",
+    "A chord, Mirror Both",
+    "sine",
+    {
+     "planeMirror": 3
+    },
+    "core",
+    "chord"
+   ],
+   [
+    "fu-chord-bits3",
+    "A chord, Crush 3 bits",
+    "sine",
+    {
+     "shpBits": 3
+    },
+    "core",
+    "chord"
+   ]
+  ]
+ }
+]

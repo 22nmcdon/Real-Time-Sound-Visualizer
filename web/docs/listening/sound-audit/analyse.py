@@ -19,16 +19,31 @@ where its reach is at least one unit.
 Similarity is the cosine between two effects' directions from the same base,
 averaged over the bases where both are active. Groups are average-linkage
 clusters of 1 - similarity, cut at 0.8.
+
+With --followup (the follow-up, follow.py), the same with two features more in the
+space - Stair, the step error locked to the note's cycle, and Chord, what a held
+chord has off both notes' harmonics - read from followup.json for the same renders,
+and written to analysis-followup.json. The smooth Scan prototypes are left out of it:
+the owner heard no benefit from them.
 """
-import json, os
+import json, os, sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 R = json.load(open(os.path.join(HERE, "results.json")))
+FOLLOW = "--followup" in sys.argv
 SPACE = ["bright", "noise", "flat", "alias", "shimmer", "inharm", "under", "bloom", "attack", "sustain", "tail", "width", "move", "wobble", "evenodd", "artic"]
 JND = {"bright": 0.1, "noise": 3, "flat": 3, "alias": 3, "shimmer": 3, "inharm": 3, "under": 3, "bloom": 0.1, "attack": 0.15, "sustain": 2, "tail": 2, "width": 2,
        "move": 0.005, "wobble": 0.5, "evenodd": 2, "artic": 2}
 NAMES = {k: n for k, n, _ in R["features"]}
+if FOLLOW:
+    F = json.load(open(os.path.join(HERE, "followup.json")))
+    for i, r in enumerate(R["renders"]):
+        if str(i) in F["first"]: r["f"].update(F["first"][str(i)])
+    R["renders"] = [r for r in R["renders"] if r["kind"] != "smooth"]
+    SPACE += ["stair", "chord"]
+    JND.update({"stair": 3, "chord": 3})
+    NAMES.update({"stair": "Stair (locked steps)", "chord": "Chord grit"})
 CATEGORICAL = {"vcfType", "planeMirror", "planeLimit", "fxOrder", "pictureResponds", "oscRatio", "screenDraws", "display",
                "just", "delayPingPong", "pictureSwell", "planeSnap", "persistence"}
 CONTROL = {c[0]: c for c in R["controls"]}
@@ -181,6 +196,7 @@ pairs.sort(key=lambda p: -p["sim"])
 
 def find(key): return next((e for e in live if e["key"] == key), None)
 HYP = ["shpDrive", "shpFold", "shpBits", "shpRate", "planeSnap=5", "planeSnap=6", "oscScan", "pictureAmount", "pictureSwell=true"]
+if FOLLOW: HYP += ["planeMirror=1", "planeMirror=3", "planeLimit=1", "planeLimit=2", "planeRadius-", "oscBend+"]
 hyp = [k for k in HYP if find(k)]
 hyp_matrix = [[None if np.isnan(S[live.index(find(a)), live.index(find(b))]) else round(float(S[live.index(find(a)), live.index(find(b))]), 2)
                for b in hyp] for a in hyp]
@@ -248,7 +264,7 @@ for name, want in DIRECTIONS:
 
 crusher = [find(k) for k in ("shpBits", "shpRate") if find(k)]
 smooth = {}
-for variant in ["core"] + sorted(set(r["variant"] for r in renders if r["kind"] == "smooth")):
+for variant in ([] if FOLLOW else ["core"] + sorted(set(r["variant"] for r in renders if r["kind"] == "smooth"))):
     smooth[variant] = {}
     for b in BASES:
         if variant == "core":
@@ -304,7 +320,7 @@ out = {
     "darken": darken, "gaps": gaps, "smooth": smooth,
     "sim": {"keys": [e["key"] for e in live], "matrix": [[None if np.isnan(v) else round(float(v), 2) for v in row] for row in S]},
 }
-json.dump(out, open(os.path.join(HERE, "analysis.json"), "w"))
+json.dump(out, open(os.path.join(HERE, "analysis-followup.json" if FOLLOW else "analysis.json"), "w"))
 print("null reach", {b: round(NULL[b], 2) for b in BASES})
 print("effects %d live, %d dead; %d groups of two or more; %d cross-section pairs >= 0.85" % (len(live), len(dead), len(out_groups), len(pairs)))
 for g in out_groups: print(" %.2f  %s   -> %s" % (g["within"], " | ".join(g["labels"]), g["where"]))

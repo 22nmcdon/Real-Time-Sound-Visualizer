@@ -13,12 +13,24 @@ A = json.load(open(os.path.join(HERE, "analysis.json")))
 R = json.load(open(os.path.join(HERE, "results.json")))
 AUDIO = json.load(open(os.path.join(HERE, "audio", "index.json"))) if os.path.exists(os.path.join(HERE, "audio", "index.json")) else []
 SUMMARY = open(os.path.join(HERE, "summary.html")).read()
+# The follow-up (follow.py, curves.py, analyse.py --followup): shown first when it is there
+def load(name):
+    p = os.path.join(HERE, name)
+    return json.load(open(p)) if os.path.exists(p) else None
+FU, CU, AF = load("followup.json"), load("curves.json"), load("analysis-followup.json")
+FU_AUDIO = load(os.path.join("audio", "followup.json")) or []
+FU_WORDS = open(os.path.join(HERE, "followup.html")).read() if os.path.exists(os.path.join(HERE, "followup.html")) else ""
 
 data = {
     "A": {k: A[k] for k in ("space", "names", "scale", "renders", "pca", "effects", "effectPca", "dead", "groups", "pairs",
                             "hypothesis", "darken", "gaps", "smooth", "null", "floor")},
     "features": R["features"], "validation": R["validation"], "leftOut": R["left_out"], "bases": R["bases"],
     "controls": [[c[0], c[1], c[2], c[3], c[4]] for c in R["controls"]], "audio": AUDIO,
+    "fu": None if not (FU and CU and AF) else {
+        "validation": FU["validation"], "checks": FU["checks"], "curves": CU["controls"], "thresholds": CU["thresholds"],
+        "groups": AF["groups"], "hypothesis": AF["hypothesis"], "names": AF["names"], "scale": AF["scale"],
+        "effects": [{"key": e["key"], "label": e["label"], "group": e["group"], "where": e["where"]} for e in AF["effects"]],
+        "pairs": [p for p in AF["pairs"] if p["sim"] >= 0.85], "dead": AF["dead"], "audio": FU_AUDIO},
 }
 
 PAGE = r"""<!doctype html>
@@ -93,6 +105,10 @@ PAGE = r"""<!doctype html>
   .clip { margin: 6px 0; } .clip div { font-size: 0.85rem; font-weight: 600; color: var(--charcoal); }
   code { font-size: 0.88em; }
   details summary { cursor: pointer; color: var(--charcoal); font-weight: 600; }
+  .curves { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+  .curves .box { margin: 0; padding: 10px 12px; } .curves svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .curves h4 { margin: 0 0 2px; font-size: 0.95rem; color: var(--charcoal); } .curves .note { font-size: 0.8rem; color: var(--text-soft); min-height: 2.4em; }
+  .flag { color: var(--rust); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -104,6 +120,11 @@ PAGE = r"""<!doctype html>
   <span class="tag numbers">Numbers</span> marks what was measured, <span class="tag judgement">Judgement</span>
   what is my reading of it.</p>
 
+__FOLLOWUP__
+
+<h2 id="first">The first study, as it was published</h2>
+<p class="soft">Kept as it was so what changed can be seen. Where the follow-up above disagrees with it - on Mirror,
+  the Radial settings, the size of the bitcrusher family and the smooth Scan - the follow-up is the later word, and says why.</p>
 __SUMMARY__
 
 <h2 id="the-map">The map</h2>
@@ -364,11 +385,108 @@ $("ctlTable").innerHTML = "<tr><th>Section</th><th>Control</th><th>Places</th></
   D.controls.filter((c) => c[0] !== "_land").map((c) => `<tr><td>${esc(c[1])}</td><td>${esc(c[2])} <code>${esc(c[0])}</code></td><td>${esc(c[3].join(", "))}</td></tr>`).join("");
 $("outTable").innerHTML = "<tr><th>Fields</th><th>Why</th></tr>" + D.leftOut.map(([f, w]) => `<tr><td><code>${esc(f)}</code></td><td>${esc(w)}</td></tr>`).join("");
 $("deadText").textContent = A.dead.map((e) => e.group + ": " + e.label).join("; ") + ".";
+
+// ---------------------------------------------------------------- the follow-up
+if (D.fu) {
+  const F = D.fu, T = F.thresholds;
+  const vs = F.validation.filter((v) => v.kind === "stair"), vc = F.validation.filter((v) => v.kind === "chord");
+  $("fuValStair").innerHTML = "<tr><th>Known sound</th><th class='n'>Stair</th><th class='n'>Flat</th><th class='n'>Jumps</th></tr>" +
+    vs.map((v) => `<tr><td>${esc(v.name)}</td><td class="n">${fmt(v.stair, 1)}</td><td class="n">${fmt(v.flatrun)}</td><td class="n">${fmt(v.jumps, 0)}</td></tr>`).join("");
+  $("fuValChord").innerHTML = "<tr><th>Two sines, then</th><th class='n'>Just</th><th class='n'>Equal</th></tr>" +
+    vc.map((v) => `<tr><td>${esc(v.name)}</td><td class="n">${fmt(v.just, 1)}</td><td class="n">${fmt(v.equal, 1)}</td></tr>`).join("");
+  $("fuChecks").innerHTML = F.checks.map((c) => `${c.ok ? "&#10003;" : "<b class='flag'>failed</b>"} ${esc(c.check)}`).join("; ") + ".";
+  const fb = $("fuBase");
+  fb.innerHTML = Object.entries(D.bases).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
+  const W2 = 320, H2 = 92, L = 34, R2 = 8;
+  const val = (v) => typeof v === "number" ? (Math.abs(v) >= 100 ? v.toFixed(0) : +v.toFixed(1)) : String(v);
+  function chart(c, b) {
+    const r = c.bases[b]; if (!r) return "";
+    const P = r.points.filter((p) => p.v !== "off");
+    const menu = c.kind === "menu";
+    const xs = menu ? r.points.map((_, i) => i) : P.map((p) => p.v);
+    const pts = menu ? r.points : P;
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const X = (v) => L + (v - x0) / ((x1 - x0) || 1) * (W2 - L - R2);
+    const xOf = (p, i) => menu ? X(i) : X(p.v);
+    const dmax = Math.max(3, ...pts.map((p) => p.d / r.floor));
+    const Yd = (v) => 6 + (1 - Math.min(v, dmax) / dmax) * (H2 - 18);
+    const Ys = (v) => H2 + 14 + (1 - (Math.max(-60, Math.min(0, v)) + 60) / 60) * (H2 - 18);
+    const grid = css("--grid"), soft = css("--text-soft"), ink = css("--charcoal"), hot = css("--hot"), cold = css("--cold");
+    let o = "";
+    // dead shading: where the distance is under the floor
+    if (!menu) for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1].d / r.floor, z = pts[i].d / r.floor;
+      if (a < 1 && z < 1) o += `<rect x="${xOf(pts[i - 1])}" y="2" width="${xOf(pts[i]) - xOf(pts[i - 1])}" height="${2 * H2 + 4}" fill="${grid}"/>`;
+    }
+    o += `<line x1="${L}" x2="${W2 - R2}" y1="${Yd(1)}" y2="${Yd(1)}" stroke="${soft}" stroke-dasharray="2 3"/>`;
+    o += `<text x="${L - 4}" y="${Yd(1) + 4}" font-size="10" text-anchor="end" fill="${soft}">floor</text>`;
+    o += `<text x="${L - 4}" y="${Yd(dmax) + 8}" font-size="10" text-anchor="end" fill="${soft}">${fmt(dmax, 0)}&times;</text>`;
+    for (const v of [-60, -30, 0]) o += `<line x1="${L}" x2="${W2 - R2}" y1="${Ys(v)}" y2="${Ys(v)}" stroke="${grid}"/><text x="${L - 4}" y="${Ys(v) + 4}" font-size="10" text-anchor="end" fill="${soft}">${v}</text>`;
+    o += `<line x1="${L}" x2="${W2 - R2}" y1="${Ys(T.steps)}" y2="${Ys(T.steps)}" stroke="${hot}" stroke-dasharray="1 3" opacity="0.6"/>`;
+    const line = (f, Y) => pts.map((p, i) => (i ? "L" : "M") + xOf(p, i).toFixed(1) + " " + Y(f(p)).toFixed(1)).join("");
+    if (menu) {
+      pts.forEach((p, i) => {
+        const tipd = `${c.label} ${val(p.v)}: distance ${fmt(p.d / r.floor, 1)}x floor, Stair ${fmt(p.stair, 0)} dB, Chord grit ${fmt(p.chord, 0)} dB`;
+        o += `<line x1="${X(i)}" x2="${X(i)}" y1="${Yd(0)}" y2="${Yd(p.d / r.floor)}" stroke="${ink}" stroke-width="5" stroke-linecap="round"><title>${esc(tipd)}</title></line>`;
+        o += `<circle cx="${X(i) - 4}" cy="${Ys(p.stair)}" r="4" fill="${hot}"><title>${esc(tipd)}</title></circle><circle cx="${X(i) + 4}" cy="${Ys(p.chord)}" r="4" fill="none" stroke="${cold}" stroke-width="2"><title>${esc(tipd)}</title></circle>`;
+        o += `<text x="${X(i)}" y="${2 * H2 + 30}" font-size="10" text-anchor="middle" fill="${soft}">${esc(val(p.v))}</text>`;
+      });
+    } else {
+      o += `<path d="${line((p) => p.d / r.floor, Yd)}" fill="none" stroke="${ink}" stroke-width="2"/>`;
+      o += `<path d="${line((p) => p.stair, Ys)}" fill="none" stroke="${hot}" stroke-width="2"/>`;
+      o += `<path d="${line((p) => p.chord, Ys)}" fill="none" stroke="${cold}" stroke-width="2" stroke-dasharray="5 3"/>`;
+      pts.forEach((p, i) => { o += `<circle cx="${xOf(p)}" cy="${Yd(p.d / r.floor)}" r="7" fill="transparent"><title>${esc(`${c.label} ${val(p.v)}: distance ${fmt(p.d / r.floor, 1)}x floor, Stair ${fmt(p.stair, 0)} dB, Chord grit ${fmt(p.chord, 0)} dB, grit ${fmt(p.alias, 0)} dB, level ${fmt(p.loud, 0)} dB`)}</title></circle>`; });
+      for (const v of [x0, x1]) o += `<text x="${X(v)}" y="${2 * H2 + 30}" font-size="10" text-anchor="middle" fill="${soft}">${esc(val(v))}</text>`;
+      if (c.rest !== "off" && c.rest > x0 && c.rest < x1) o += `<text x="${X(c.rest)}" y="${2 * H2 + 30}" font-size="10" text-anchor="middle" fill="${soft}">${esc(val(c.rest))}</text>`;
+      for (const s of Object.values(r.sides)) {
+        for (const [k, col, lab] of [["acts", ink, "acts"], ["steps", hot, "steps"], ["chord", cold, "chords"]]) {
+          if (s[k] == null) continue;
+          o += `<line x1="${X(s[k])}" x2="${X(s[k])}" y1="2" y2="${2 * H2 + 18}" stroke="${col}" stroke-width="1" opacity="0.7"/>`;
+        }
+      }
+    }
+    o += `<text x="${W2 - R2}" y="${Yd(dmax) + 8}" font-size="10" text-anchor="end" fill="${soft}">distance</text>`;
+    o += `<text x="${W2 - R2}" y="${H2 + 22}" font-size="10" text-anchor="end" fill="${soft}">dB</text>`;
+    return `<svg viewBox="0 0 ${W2} ${2 * H2 + 34}" role="img" aria-label="${esc(c.label)}">${o}</svg>`;
+  }
+  function note(c, b) {
+    const r = c.bases[b]; if (!r) return "";
+    if (c.kind === "menu") return r.options.map((o) => `${esc(val(o.v))}: ${o.dead ? "nothing" : fmt(o.d / r.floor, 1) + "&times;"}`).join(" &middot; ");
+    return Object.entries(r.sides).map(([s, x]) => {
+      const bits = [`acts ${x.acts == null ? "never" : "from " + val(x.acts)}`];
+      if (x.steps != null) bits.push(`steps from ${val(x.steps)}`);
+      if (x.chord != null) bits.push(`chords crush from ${val(x.chord)}`);
+      bits.push(`<span class="${x.flag ? "flag" : ""}">${Math.round(100 * x.deadRun)}% dead from the rest</span>`);
+      return (s ? `<b>${s}</b> ` : "") + bits.join(", ");
+    }).join("<br>");
+  }
+  function curves() {
+    const b = fb.value;
+    $("fuCurves").innerHTML = F.curves.map((c) => `<div class="box"><h4>${esc(c.label)}</h4><div class="note">${note(c, b)}</div>${chart(c, b)}</div>`).join("");
+  }
+  fb.addEventListener("change", curves); curves();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", curves);
+  const rowsDead = [];
+  for (const c of F.curves) for (const [b, r] of Object.entries(c.bases)) for (const [s, x] of Object.entries(r.sides))
+    if (x.flag) rowsDead.push(`<tr><td>${esc(c.label)}${s ? " " + s : ""}</td><td>${esc(D.bases[b])}</td><td class="n">${Math.round(100 * x.deadRun)}%</td>
+      <td>${esc(val(x.from))} to ${esc(val(x.acts == null ? x.to : x.acts))}</td><td>${x.acts == null ? "never reaches the floor" : "acts from " + esc(val(x.acts))}${x.steps != null ? ", steps from " + esc(val(x.steps)) : ""}${x.chord != null ? ", chords crush from " + esc(val(x.chord)) : ""}</td></tr>`);
+  $("fuDead").innerHTML = "<tr><th>Control</th><th>From</th><th class='n'>Dead</th><th>The dead stretch</th><th>Then</th></tr>" + rowsDead.join("");
+  const fe = Object.fromEntries(F.effects.map((e) => [e.key, e]));
+  const fname = (k) => F.names[k] || k;
+  $("fuGroups").innerHTML = F.groups.map((g, i) => `<div class="box"><div class="tag">Group ${i + 1} &middot; ${fmt(g.within)} alike</div>
+    <div>${g.members.map((k) => `<span class="chip" style="border-color:${gcol(fe[k].group)}">${esc(fe[k].group)}: ${esc(fe[k].label)}</span>`).join("")}</div>
+    <div class="soft" style="font-size:0.85rem">Moves: ${g.where.map(([f, v]) => (v > 0 ? "more " : "less ") + fname(f).toLowerCase()).join(", ")}</div></div>`).join("");
+  const h = F.hypothesis;
+  $("fuHyp").innerHTML = "<tr><th></th>" + h.labels.map((l) => `<th class="cell">${esc(l)}</th>`).join("") + "</tr>" +
+    h.matrix.map((row, i) => `<tr><th>${esc(h.labels[i])}</th>` + row.map((v, j) => `<td class="cell" style="${i === j ? "" : heat(v)}">${i === j ? "" : fmt(v)}</td>`).join("") + "</tr>").join("");
+  $("fuSets").innerHTML = F.audio.map((s) => `<div class="box"><h3 style="margin-top:0">${esc(s.title)}</h3><p class="soft" style="font-size:0.88rem">${esc(s.listen)}</p>` +
+    s.clips.map((c) => `<div class="clip"><div>${esc(c.label)}</div><audio controls preload="none" src="${esc(c.file)}"></audio></div>`).join("") + "</div>").join("");
+}
 </script>
 </body>
 </html>
 """
 
-html = PAGE.replace("__SUMMARY__", SUMMARY).replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/"))
+html = PAGE.replace("__FOLLOWUP__", FU_HTML.replace("__FU_WORDS__", FU_WORDS) if data["fu"] else "").replace("__SUMMARY__", SUMMARY).replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/"))
 open(os.path.join(HERE, "index.html"), "w").write(html)
 print("index.html", len(html) // 1024, "KB")
