@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starter presets</title>
+<!-- Six candidate starter presets for the first release, each heard through a short
+     performance and seen on the page. None is in the bank: the owner chooses.
+     Made by page.py from candidates.py, measured.json (measure.py) and results.json
+     (render.py), which writes the audio and the pictures. -->
+<style>
+  :root { --cream: #faf6f0; --paper: #fffcf7; --charcoal: #241f1d; --text: #3a332f; --text-soft: #6b615a;
+          --line: #e4d9cc; --gold: #b08d57; --slate: #4a5a6a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --cream: #1d1a18; --paper: #262220; --charcoal: #f3ece4; --text: #e2d9cf; --text-soft: #a89c90;
+            --line: #3a332f; --gold: #c9a56c; --slate: #8fa3b5; }
+  }
+  body { background: var(--cream); color: var(--text); font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+  main { max-width: 1180px; margin: 0 auto; }
+  h1 { color: var(--charcoal); font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { color: var(--charcoal); font-size: 1.3rem; margin: 48px 0 6px; }
+  p { margin: 8px 0; }
+  a { color: var(--slate); }
+  .soft { color: var(--text-soft); }
+  .badge { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold);
+           border: 1px solid var(--gold); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
+  .kind { font-size: 0.85rem; font-weight: normal; color: var(--text-soft); vertical-align: middle; }
+  .lines { background: var(--paper); border-left: 3px solid var(--gold); padding: 6px 12px; }
+  .col { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-top: 12px; }
+  .tag { font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); display: block; margin: 14px 0 6px; }
+  .col .tag { margin-top: 0; }
+  .tag .soft { text-transform: none; letter-spacing: 0; }
+  audio { width: 100%; height: 32px; }
+  .moments { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .moment { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 8px; margin: 0; min-width: 0; }
+  .moment img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  .moment figcaption { font-size: 0.8rem; color: var(--text-soft); margin-top: 4px; }
+  .wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; font-size: 0.85rem; }
+  th { font-weight: 600; color: var(--charcoal); }
+  tr.soft td { color: var(--text-soft); }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--charcoal); }
+  .code { margin-top: 14px; }
+  .code textarea { display: block; width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace;
+                   background: var(--paper); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+                   padding: 6px; margin-top: 4px; resize: vertical; }
+  .code button { margin-top: 6px; font: inherit; font-size: 0.85rem; background: var(--paper); color: var(--charcoal);
+                 border: 1px solid var(--gold); border-radius: 6px; padding: 3px 12px; cursor: pointer; }
+  .ask { background: var(--paper); border: 1px solid var(--gold); border-radius: 10px; padding: 12px 16px; margin-top: 16px; }
+  code { font-size: 0.9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Starter presets</h1>
+  <p class="soft">24 Nov. Six candidates for the first release, to start from and tweak. <b>None of them is in the
+    bank</b>, and nothing in the page, the core or the bank was changed; nothing is added until you choose. None draws
+    Paint, so each works on the stable site as well as on testing.</p>
+  <p class="soft">You hear the bank converging on one gritty sound, so these were made to differ from it and from each
+    other: one clean and warm, one plucked, one evolving pad, one bass, one for two hands and one that shows the
+    filter's new sweep with Velocity. Each uses the EQ and one or two modules of the rack where the sound wants them,
+    never all at once. In every one, the screen moves the sound: Scan reads the figure back (each key strikes it), and
+    in the two Breathing ones the picture keeps pushing the sound while a chord is held.</p>
+
+  <ul>
+<li><a href="#felt-piano">Felt piano</a> <span class=soft>clean and warm &middot; Settled</span></li>
+<li><a href="#plucked-wire">Plucked wire</a> <span class=soft>plucked &middot; Settled</span></li>
+<li><a href="#tidal-glass">Tidal glass</a> <span class=soft>evolving pad &middot; Breathing</span></li>
+<li><a href="#round-bass">Round bass</a> <span class=soft>bass &middot; Settled</span></li>
+<li><a href="#mirrored-hands">Mirrored hands</a> <span class=soft>two hands, layered &middot; Breathing</span></li>
+<li><a href="#velocity-brass">Velocity brass</a> <span class=soft>the filter&#x27;s sweep with Velocity &middot; Settled</span></li>
+  </ul>
+
+  <div class="ask">
+    <p><b>How they were measured.</b> Each heading was measured as <code>honestytest.py</code> measures the bank: the
+      page loads the candidate as you would load a preset, hands over the setup code it sends the instrument, and the
+      core plays C4 held ten seconds from five moments after the load, judged by its worst moment. As shipped,
+      4 Settled and 2 Breathing. Every field each candidate names came back out of the setup the page made, as
+      <code>presettest.py</code> requires of the bank.</p>
+    <p><b>How they were heard and seen.</b> The audio is the core (<code>render_cpp</code>) playing the performance
+      written for each from its setup code alone, at the instrument's own level: nothing normalised, so loudness compares
+      across them (every peak is under -3 dBFS). The pictures are the page itself, the performance played into it in real
+      time as a keyboard's MIDI, at moments through it; the time under each is when it was taken. Y-T is the same setup
+      with the display switched to Y-T, played again. Scan reads what the screen shows, so in Y-T the sound is a little
+      different from what you hear here; it ships in X-Y.</p>
+    <p><b>Against the bank.</b> One C4 at velocity 100, held three seconds from the load. <i>Brightness</i> is the heard
+      spectral centroid two and a half seconds in. <i>Grit</i> is the share of the power not on the note's harmonics
+      (aliasing, crushing, the picture's noise), in per cent; <i>top</i> is the share above 2 kHz, at the strike and held,
+      since a stepped or crushed wave is harmonic and grit misses it. By these, the bank is mostly clean on a single
+      held note, so the gritty sound you hear is likely in the strike, in chords, or in what Scan does to a figure
+      once it is played on; these numbers do not settle it.</p>
+    <div class="wrap"><table><tr><th>Preset</th><th>Heading</th><th>Brightness, Hz</th><th>Grit, %</th><th>Top at the strike, %</th><th>Top held, %</th></tr>
+      <tr><td><b>Felt piano</b></td><td>Settled</td><td>267</td><td>0.01</td><td>0.00</td><td>0.00</td></tr><tr><td><b>Plucked wire</b></td><td>Settled</td><td>267</td><td>0.01</td><td>0.00</td><td>0.00</td></tr><tr><td><b>Tidal glass</b></td><td>Breathing</td><td>402</td><td>1.42</td><td>0.69</td><td>0.40</td></tr><tr><td><b>Round bass</b></td><td>Settled</td><td>243</td><td>0.01</td><td>0.00</td><td>0.00</td></tr><tr><td><b>Mirrored hands</b></td><td>Breathing</td><td>458</td><td>0.06</td><td>0.12</td><td>0.05</td></tr><tr><td><b>Velocity brass</b></td><td>Settled</td><td>347</td><td>0.01</td><td>0.65</td><td>0.01</td></tr><tr class=soft><td>Bass under the pad <span class=soft>(bank)</span></td><td></td><td>606</td><td>12.38</td><td>0.15</td><td>0.13</td></tr><tr class=soft><td>Bass under the tine piano <span class=soft>(bank)</span></td><td></td><td>561</td><td>0.01</td><td>0.15</td><td>0.02</td></tr><tr class=soft><td>Crossed hands <span class=soft>(bank)</span></td><td></td><td>266</td><td>0.00</td><td>1.95</td><td>0.13</td></tr><tr class=soft><td>Drawbar organ <span class=soft>(bank)</span></td><td></td><td>263</td><td>0.01</td><td>0.04</td><td>0.00</td></tr><tr class=soft><td>Harmonic tone <span class=soft>(bank)</span></td><td></td><td>678</td><td>0.01</td><td>9.67</td><td>3.71</td></tr><tr class=soft><td>Slow pad <span class=soft>(bank)</span></td><td></td><td>306</td><td>4.25</td><td>0.04</td><td>0.01</td></tr><tr class=soft><td>Tine piano <span class=soft>(bank)</span></td><td></td><td>567</td><td>0.04</td><td>0.10</td><td>0.04</td></tr><tr class=soft><td>Tines at the radius <span class=soft>(bank)</span></td><td></td><td>313</td><td>0.01</td><td>0.01</td><td>0.02</td></tr><tr class=soft><td>Turning fifths <span class=soft>(bank)</span></td><td></td><td>267</td><td>0.05</td><td>0.07</td><td>0.00</td></tr></table></div>
+    <p><b>Things to decide.</b> Which, if any, go in the bank, and with what changes. Each goes under the heading it
+      measures as, with its two lines (all twelve to sixty characters) and its description, then
+      <code>write_presets.py</code> and its thumbnail by <code>write_figures.py</code>. Each is a starting point, so
+      turn them freely: a change it does not contain may take it under the other heading, which is not a fault.</p>
+  </div>
+
+
+<section id="felt-piano">
+  <h2>Felt piano <span class="badge">Settled</span> <span class="kind">clean and warm</span></h2>
+  <p class="lines"><b>Listen for</b> A soft, round piano tone, brighter the harder you play<br><b>Watch for</b> A rounded ring that brightens as a key lands</p>
+  <p>A triangle through a gentle low pass that opens a little on each key, more the harder it is played, with a touch of chorus, a warm low shelf and the top rolled off: a felted piano with no grit in it. A little of its wave is read off its own figure, so each key brightens the tone for a moment as it strikes the screen, and a held chord comes to rest.</p>
+  <p><b>Try turning:</b> Scan and Strike in the Picture strip are how much the figure answers each key; at Scan 22 it is a touch; turn them up for a strike you can hear on every key. The Filter figure&#x27;s Velocity and Amount set how much a hard key opens the tone. The EQ&#x27;s high band (Space &amp; Memory) is the felt itself: lift it towards nought for a brighter, harder piano.</p>
+  <p class="soft"><b>Played:</b> C, A minor, F and G, a second and a half each; four single notes rising from soft (50) to hard (110); then C held over two octaves for four and a half seconds.</p>
+  <div class="col"><span class="tag">Felt piano <span class="soft">the core playing the code below, 14 s</span></span>
+    <audio controls preload="none" src="audio/felt-piano.mp3"></audio></div>
+  <p class="tag">X-Y, as it ships</p><div class="moments"><figure class=moment><img src="pictures/felt-piano-xy-0.jpg" width="467" height="467" loading="lazy" alt="Felt piano in XY at 2.0 s"><figcaption>2.0 s</figcaption></figure><figure class=moment><img src="pictures/felt-piano-xy-1.jpg" width="467" height="467" loading="lazy" alt="Felt piano in XY at 7.9 s"><figcaption>7.9 s</figcaption></figure><figure class=moment><img src="pictures/felt-piano-xy-2.jpg" width="467" height="467" loading="lazy" alt="Felt piano in XY at 9.3 s"><figcaption>9.3 s</figcaption></figure><figure class=moment><img src="pictures/felt-piano-xy-3.jpg" width="467" height="467" loading="lazy" alt="Felt piano in XY at 12.8 s"><figcaption>12.8 s</figcaption></figure></div><p class="tag">Y-T, the display switched</p><div class="moments"><figure class=moment><img src="pictures/felt-piano-yt-0.jpg" width="467" height="467" loading="lazy" alt="Felt piano in YT at 2.0 s"><figcaption>2.0 s</figcaption></figure><figure class=moment><img src="pictures/felt-piano-yt-1.jpg" width="467" height="467" loading="lazy" alt="Felt piano in YT at 7.9 s"><figcaption>7.9 s</figcaption></figure><figure class=moment><img src="pictures/felt-piano-yt-2.jpg" width="467" height="467" loading="lazy" alt="Felt piano in YT at 9.3 s"><figcaption>9.3 s</figcaption></figure><figure class=moment><img src="pictures/felt-piano-yt-3.jpg" width="467" height="467" loading="lazy" alt="Felt piano in YT at 12.8 s"><figcaption>12.8 s</figcaption></figure></div>
+  <div class="wrap"><table><tr><th>Section</th><th>Brightness, Hz</th><th>Changed from the first</th><th>RMS</th><th>Peak, dBFS</th></tr>
+    <tr><td>progression <span class=soft>0.3&ndash;6.3 s</span></td><td>229</td><td>&ndash;</td><td>0.155</td><td>-4.1</td></tr><tr><td>soft to hard <span class=soft>6.3&ndash;8.5 s</span></td><td>399</td><td>0.756</td><td>0.096</td><td>-9.2</td></tr><tr><td>held chord <span class=soft>9.1&ndash;13.1 s</span></td><td>297</td><td>0.796</td><td>0.087</td><td>-8.0</td></tr></table></div>
+  <details><summary>Its heading, measured as <code>honestytest.py</code> measures the bank</summary>
+    <div class="wrap"><table><tr><th>Probe</th><th>Early, five moments</th><th>Late</th><th>After, RMS</th><th>Verdict</th></tr>
+      <tr><td>C4</td><td>0.034 / 0.042 / 0.040 / 0.014 / 0.018</td><td>0.007 / 0.007 / 0.007 / 0.006 / 0.006</td><td>0.0000</td><td><b>Settled</b></td></tr></table></div>
+    <p class="soft">The limiter on the suite's four-note chord: -1.5 dB (the bound is six).</p></details>
+  <div class="code"><span class="soft">Setup code - on the testing site, Browse, paste it into the code box and press Paste:</span>
+    <textarea readonly rows="3" aria-label="Setup code for Felt piano">eyJ2IjoxNSwic2hhcGUiOiJ0cmlhbmdsZSIsIm9zY1NjYW4iOjIyLCJzY2FuU3RyaWtlIjo3MCwidmNmVHlwZSI6MSwidmNmQ3V0Ijo1NTEsInZjZlRyYWNrIjo2MCwidmNmRW52QW10IjoxMiwidmNmQXRrIjowLCJ2Y2ZEZWMiOjkwMCwidmNmU3VzIjoxMCwidmNmUmVsIjo0MDAsImFtcCI6NTAsImN5Y2xlcyI6IiIsInZjZlZlbCI6NzAsImF0ayI6MiwiZGVjIjoxODAwLCJzdXMiOjMwLCJyZWwiOjcwMCwiZGlzcGxheSI6Inh5IiwicGVyc2lzdGVuY2UiOiIwLjMiLCJ0aW1lYmFzZSI6MywibWlkaU1vZGUiOiJwb2x5IiwicGljdHVyZUFtb3VudCI6MCwiY2hvcnVzTWl4IjoxMiwiY2hvcnVzUmF0ZSI6MjAsImNob3J1c0RlcHRoIjoxNSwiZXFMb3ciOjMwLCJlcUxvd0ZyZXEiOjMxOCwiZXFIaWdoIjotNTAsImVxSGlnaEZyZXEiOjc5OSwiZXFPbiI6dHJ1ZSwiZXFDdXRMb3dGcmVxIjoxMTcsImVxQ3V0TG93T24iOnRydWV9</textarea>
+    <button type="button" class="copy">Copy</button></div>
+</section>
+
+<section id="plucked-wire">
+  <h2>Plucked wire <span class="badge">Settled</span> <span class="kind">plucked</span></h2>
+  <p class="lines"><b>Listen for</b> A bright pluck that rings off into its echoes<br><b>Watch for</b> Each pluck flashes on the figure, then fades</p>
+  <p>A narrow pulse plucked through a resonant low pass whose own envelope snaps shut in a fifth of a second, so every note is a pluck rather than a tone, with a dotted-eighth echo thrown from side to side. Every key strikes the figure where Scan reads it, so the pluck flares as it lands and settles as it dies.</p>
+  <p><b>Try turning:</b> The Filter figure&#x27;s Decay is the length of the pluck (160 ms: shorter is a click, longer a stab); Resonance its twang. The Delay&#x27;s Mix and Feedback are the room it rings into, synced to the tempo in Perform. Strike in the Picture strip is how hard each pluck flashes on the figure and in the tone.</p>
+  <p class="soft"><b>Played:</b> An arpeggio in A minor and G, a sixteenth note at a time at 100 bpm with an accent on every fourth, into its dotted-eighth echoes; then A3 held three seconds.</p>
+  <div class="col"><span class="tag">Plucked wire <span class="soft">the core playing the code below, 10 s</span></span>
+    <audio controls preload="none" src="audio/plucked-wire.mp3"></audio></div>
+  <p class="tag">X-Y, as it ships</p><div class="moments"><figure class=moment><img src="pictures/plucked-wire-xy-0.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in XY at 1.2 s"><figcaption>1.2 s</figcaption></figure><figure class=moment><img src="pictures/plucked-wire-xy-1.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in XY at 3.0 s"><figcaption>3.0 s</figcaption></figure><figure class=moment><img src="pictures/plucked-wire-xy-2.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in XY at 5.6 s"><figcaption>5.6 s</figcaption></figure><figure class=moment><img src="pictures/plucked-wire-xy-3.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in XY at 7.9 s"><figcaption>7.9 s</figcaption></figure></div><p class="tag">Y-T, the display switched</p><div class="moments"><figure class=moment><img src="pictures/plucked-wire-yt-0.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in YT at 1.2 s"><figcaption>1.2 s</figcaption></figure><figure class=moment><img src="pictures/plucked-wire-yt-1.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in YT at 3.0 s"><figcaption>3.0 s</figcaption></figure><figure class=moment><img src="pictures/plucked-wire-yt-2.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in YT at 5.6 s"><figcaption>5.6 s</figcaption></figure><figure class=moment><img src="pictures/plucked-wire-yt-3.jpg" width="467" height="467" loading="lazy" alt="Plucked wire in YT at 7.9 s"><figcaption>7.9 s</figcaption></figure></div>
+  <div class="wrap"><table><tr><th>Section</th><th>Brightness, Hz</th><th>Changed from the first</th><th>RMS</th><th>Peak, dBFS</th></tr>
+    <tr><td>figure <span class=soft>0.3&ndash;5.1 s</span></td><td>518</td><td>&ndash;</td><td>0.091</td><td>-6.1</td></tr><tr><td>held note <span class=soft>5.7&ndash;8.4 s</span></td><td>250</td><td>0.965</td><td>0.022</td><td>-17.4</td></tr></table></div>
+  <details><summary>Its heading, measured as <code>honestytest.py</code> measures the bank</summary>
+    <div class="wrap"><table><tr><th>Probe</th><th>Early, five moments</th><th>Late</th><th>After, RMS</th><th>Verdict</th></tr>
+      <tr><td>C4</td><td>0.452 / 0.321 / 0.456 / 0.458 / 0.451</td><td>0.000 / 0.000 / 0.000 / 0.000 / 0.000</td><td>0.0000</td><td><b>Settled</b></td></tr></table></div>
+    <p class="soft">The limiter on the suite's four-note chord: -2.5 dB (the bound is six).</p></details>
+  <div class="code"><span class="soft">Setup code - on the testing site, Browse, paste it into the code box and press Paste:</span>
+    <textarea readonly rows="3" aria-label="Setup code for Plucked wire">eyJ2IjoxNSwic2hhcGUiOiJwdWxzZSIsIndpZHRoIjozMCwib3NjU2NhbiI6MzUsInNjYW5TdHJpa2UiOjEwMCwidmNmVHlwZSI6MSwidmNmQ3V0IjozNzEsInZjZlJlcyI6MzAsInZjZlRyYWNrIjo1MCwidmNmRW52QW10IjozNCwidmNmQXRrIjowLCJ2Y2ZEZWMiOjE2MCwidmNmU3VzIjowLCJ2Y2ZSZWwiOjIwMCwiY3ljbGVzIjoiIiwidmNmVmVsIjo0NSwiYXRrIjoxLCJkZWMiOjYwMCwic3VzIjo4LCJyZWwiOjMwMCwiYnBtIjoxMDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4zIiwidGltZWJhc2UiOjMsIm1pZGlNb2RlIjoicG9seSIsInBpY3R1cmVBbW91bnQiOjAsImRlbGF5TWl4IjoyNCwiZGVsYXlTeW5jIjoiMS84ZCIsImRlbGF5RmVlZGJhY2siOjMyLCJkZWxheVBpbmdQb25nIjp0cnVlLCJkZWxheVRvbmUiOjU1LCJkZWxheUxvd0N1dCI6MzAsImVxTWlkIjoyNSwiZXFNaWRGcmVxIjo2ODAsImVxT24iOnRydWUsImVxQ3V0TG93RnJlcSI6MjU5LCJlcUN1dExvd09uIjp0cnVlfQ</textarea>
+    <button type="button" class="copy">Copy</button></div>
+</section>
+
+<section id="tidal-glass">
+  <h2>Tidal glass <span class="badge">Breathing</span> <span class="kind">evolving pad</span></h2>
+  <p class="lines"><b>Listen for</b> A glassy pad that swells and turns while held<br><b>Watch for</b> The figure folding slowly in and out of itself</p>
+  <p>A wavetable pad that swells in over most of a second, through a slow phaser and a little reverb, bright at the top. Most of its wave is read off its own figure, and the picture, with its Swell on, pushes the figure as it repeats, so a held chord keeps turning over, slowly, until you let go.</p>
+  <p><b>Try turning:</b> The Picture amount is how far the figure pushes the sound while held: lower it and the pad calms, at nought it holds still. The Wave figure&#x27;s Position picks the glass from the wavetable. The Phaser&#x27;s Rate and the Reverb&#x27;s Mix set how wide the tide is.</p>
+  <p class="soft"><b>Played:</b> A minor with a seventh held seven and a half seconds, F major with a seventh seven, and then let go, so its tail and its stillness after are heard.</p>
+  <div class="col"><span class="tag">Tidal glass <span class="soft">the core playing the code below, 18 s</span></span>
+    <audio controls preload="none" src="audio/tidal-glass.mp3"></audio></div>
+  <p class="tag">X-Y, as it ships</p><div class="moments"><figure class=moment><img src="pictures/tidal-glass-xy-0.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in XY at 3.0 s"><figcaption>3.0 s</figcaption></figure><figure class=moment><img src="pictures/tidal-glass-xy-1.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in XY at 7.5 s"><figcaption>7.5 s</figcaption></figure><figure class=moment><img src="pictures/tidal-glass-xy-2.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in XY at 12.0 s"><figcaption>12.0 s</figcaption></figure><figure class=moment><img src="pictures/tidal-glass-xy-3.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in XY at 14.8 s"><figcaption>14.8 s</figcaption></figure></div><p class="tag">Y-T, the display switched</p><div class="moments"><figure class=moment><img src="pictures/tidal-glass-yt-0.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in YT at 3.1 s"><figcaption>3.1 s</figcaption></figure><figure class=moment><img src="pictures/tidal-glass-yt-1.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in YT at 7.5 s"><figcaption>7.5 s</figcaption></figure><figure class=moment><img src="pictures/tidal-glass-yt-2.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in YT at 12.0 s"><figcaption>12.0 s</figcaption></figure><figure class=moment><img src="pictures/tidal-glass-yt-3.jpg" width="467" height="467" loading="lazy" alt="Tidal glass in YT at 14.8 s"><figcaption>14.8 s</figcaption></figure></div>
+  <div class="wrap"><table><tr><th>Section</th><th>Brightness, Hz</th><th>Changed from the first</th><th>RMS</th><th>Peak, dBFS</th></tr>
+    <tr><td>first chord <span class=soft>1.5&ndash;7.8 s</span></td><td>445</td><td>&ndash;</td><td>0.128</td><td>-6.0</td></tr><tr><td>second chord <span class=soft>9.2&ndash;15.0 s</span></td><td>398</td><td>0.904</td><td>0.076</td><td>-8.9</td></tr><tr><td>let go <span class=soft>15.6&ndash;18.3 s</span></td><td>370</td><td>1.111</td><td>0.006</td><td>-22.5</td></tr></table></div>
+  <details><summary>Its heading, measured as <code>honestytest.py</code> measures the bank</summary>
+    <div class="wrap"><table><tr><th>Probe</th><th>Early, five moments</th><th>Late</th><th>After, RMS</th><th>Verdict</th></tr>
+      <tr><td>C4</td><td>0.143 / 0.112 / 0.092 / 0.151 / 0.082</td><td>0.080 / 0.060 / 0.067 / 0.059 / 0.067</td><td>0.0000</td><td><b>Breathing</b></td></tr></table></div>
+    <p class="soft">The limiter on the suite's four-note chord: -0.7 dB (the bound is six).</p></details>
+  <div class="code"><span class="soft">Setup code - on the testing site, Browse, paste it into the code box and press Paste:</span>
+    <textarea readonly rows="3" aria-label="Setup code for Tidal glass">eyJ2IjoxNSwic2hhcGUiOiJ3YXZldGFibGUiLCJ0YWJsZSI6MTcwLCJvc2NTY2FuIjo1NSwic2NhblN0cmlrZSI6MzAsInBpY3R1cmVTd2VsbCI6dHJ1ZSwidmNmVHlwZSI6MSwidmNmQ3V0Ijo2NTEsInZjZlJlcyI6MTAsImFtcCI6MzAsImN5Y2xlcyI6IiIsImF0ayI6NzAwLCJkZWMiOjEyMDAsInN1cyI6ODUsInJlbCI6MTMwMCwiZGlzcGxheSI6Inh5IiwicGVyc2lzdGVuY2UiOiIwLjEyIiwidGltZWJhc2UiOjMsIm1pZGlNb2RlIjoicG9seSIsInBpY3R1cmVBbW91bnQiOjgwLCJwaGFzZXJNaXgiOjMwLCJwaGFzZXJSYXRlIjoxMiwicGhhc2VyRGVwdGgiOjYwLCJwaGFzZXJGZWVkYmFjayI6MzUsInJldmVyYk1peCI6MjIsInJldmVyYlNpemUiOjU1LCJyZXZlcmJUb25lIjo1MCwicmV2ZXJiU3ByZWFkIjo0MCwiZXFIaWdoIjozMCwiZXFIaWdoRnJlcSI6ODI2LCJlcU9uIjp0cnVlLCJlcUN1dExvd0ZyZXEiOjIxOCwiZXFDdXRMb3dPbiI6dHJ1ZX0</textarea>
+    <button type="button" class="copy">Copy</button></div>
+</section>
+
+<section id="round-bass">
+  <h2>Round bass <span class="badge">Settled</span> <span class="kind">bass</span></h2>
+  <p class="lines"><b>Listen for</b> A round mono bass with a soft bite on each note<br><b>Watch for</b> A low figure that kicks as each note lands</p>
+  <p>One voice at a time, gliding between notes: a square with a sine an octave under it, through a low pass that bites on each note and closes to a round tone, the low end lifted and the boxy middle taken out. A little of its wave is read off its own figure, so each note kicks as it lands and then holds still.</p>
+  <p><b>Try turning:</b> Glide in the Generator is the slide between overlapping notes. The Filter figure&#x27;s Amount and Decay are the bite; Resonance gives it a rubbery edge. The Oscillator&#x27;s Sub (Ink) is the weight under it. The EQ&#x27;s mid cut at 350 Hz keeps it out of a mix&#x27;s way; pull it back to nought for a boxier bass.</p>
+  <p class="soft"><b>Played:</b> A bass line in A, an octave jump and a few passing notes, played with some notes overlapping so the glide shows; then a held A2.</p>
+  <div class="col"><span class="tag">Round bass <span class="soft">the core playing the code below, 10 s</span></span>
+    <audio controls preload="none" src="audio/round-bass.mp3"></audio></div>
+  <p class="tag">X-Y, as it ships</p><div class="moments"><figure class=moment><img src="pictures/round-bass-xy-0.jpg" width="467" height="467" loading="lazy" alt="Round bass in XY at 1.1 s"><figcaption>1.1 s</figcaption></figure><figure class=moment><img src="pictures/round-bass-xy-1.jpg" width="467" height="467" loading="lazy" alt="Round bass in XY at 3.3 s"><figcaption>3.3 s</figcaption></figure><figure class=moment><img src="pictures/round-bass-xy-2.jpg" width="467" height="467" loading="lazy" alt="Round bass in XY at 5.7 s"><figcaption>5.7 s</figcaption></figure><figure class=moment><img src="pictures/round-bass-xy-3.jpg" width="467" height="467" loading="lazy" alt="Round bass in XY at 8.8 s"><figcaption>8.8 s</figcaption></figure></div><p class="tag">Y-T, the display switched</p><div class="moments"><figure class=moment><img src="pictures/round-bass-yt-0.jpg" width="467" height="467" loading="lazy" alt="Round bass in YT at 1.1 s"><figcaption>1.1 s</figcaption></figure><figure class=moment><img src="pictures/round-bass-yt-1.jpg" width="467" height="467" loading="lazy" alt="Round bass in YT at 3.2 s"><figcaption>3.2 s</figcaption></figure><figure class=moment><img src="pictures/round-bass-yt-2.jpg" width="467" height="467" loading="lazy" alt="Round bass in YT at 5.7 s"><figcaption>5.7 s</figcaption></figure><figure class=moment><img src="pictures/round-bass-yt-3.jpg" width="467" height="467" loading="lazy" alt="Round bass in YT at 8.8 s"><figcaption>8.8 s</figcaption></figure></div>
+  <div class="wrap"><table><tr><th>Section</th><th>Brightness, Hz</th><th>Changed from the first</th><th>RMS</th><th>Peak, dBFS</th></tr>
+    <tr><td>line <span class=soft>0.3&ndash;5.4 s</span></td><td>98</td><td>&ndash;</td><td>0.175</td><td>-6.9</td></tr><tr><td>held note <span class=soft>5.8&ndash;8.9 s</span></td><td>104</td><td>0.636</td><td>0.199</td><td>-7.3</td></tr></table></div>
+  <details><summary>Its heading, measured as <code>honestytest.py</code> measures the bank</summary>
+    <div class="wrap"><table><tr><th>Probe</th><th>Early, five moments</th><th>Late</th><th>After, RMS</th><th>Verdict</th></tr>
+      <tr><td>C4</td><td>0.026 / 0.025 / 0.028 / 0.026 / 0.026</td><td>0.002 / 0.002 / 0.002 / 0.002 / 0.002</td><td>0.0000</td><td><b>Settled</b></td></tr></table></div>
+    <p class="soft">The limiter on the suite's four-note chord: -0.7 dB (the bound is six).</p></details>
+  <div class="code"><span class="soft">Setup code - on the testing site, Browse, paste it into the code box and press Paste:</span>
+    <textarea readonly rows="3" aria-label="Setup code for Round bass">eyJ2IjoxNSwic2hhcGUiOiJzcXVhcmUiLCJvc2NTY2FuIjoyNSwic2NhblN0cmlrZSI6ODAsIm9zY1N1YiI6NDUsIm9zY1N1YlNoYXBlIjoic2luZSIsInZjZlR5cGUiOjEsInZjZkN1dCI6MzQ3LCJ2Y2ZSZXMiOjI1LCJ2Y2ZUcmFjayI6MzAsInZjZkVudkFtdCI6MjIsInZjZkF0ayI6MCwidmNmRGVjIjoyNjAsInZjZlN1cyI6MTUsInZjZlJlbCI6MTUwLCJmcmVxIjoxMTAsImN5Y2xlcyI6IiIsInZjZlZlbCI6NjAsImF0ayI6MiwiZGVjIjo3MDAsInJlbCI6MTIwLCJnbGlkZSI6NDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4zIiwidGltZWJhc2UiOjUsIm1pZGlNb2RlIjoibW9ubyIsIm1pZGlSZXRyaWciOnRydWUsInBpY3R1cmVBbW91bnQiOjAsImVxTG93IjoyNSwiZXFMb3dGcmVxIjoyMTgsImVxTWlkIjotMzAsImVxTWlkRnJlcSI6NDE0LCJlcU1pZFdpZHRoIjoxNCwiZXFPbiI6dHJ1ZSwiZXFDdXRMb3dGcmVxIjo2OCwiZXFDdXRMb3dPbiI6dHJ1ZX0</textarea>
+    <button type="button" class="copy">Copy</button></div>
+</section>
+
+<section id="mirrored-hands">
+  <h2>Mirrored hands <span class="badge">Breathing</span> <span class="kind">two hands, layered</span></h2>
+  <p class="lines"><b>Listen for</b> Two voices on every key, each reshaping the other<br><b>Watch for</b> Two figures, each the other&#x27;s wave, never still</p>
+  <p>Two hands layered, so every key plays both: an FM sine and a softer triangle that swells in behind it. Each hand&#x27;s wave is read off the other hand&#x27;s figure and moved by the other&#x27;s picture, so neither can sound without the other answering, and a held chord goes on changing between them until you let go.</p>
+  <p><b>Try turning:</b> Scan reads the other hand&#x27;s figure here, so turning it up makes the two hands argue harder. Edit one hand at a time from the header&#x27;s A and B: B, the triangle, swells in behind A. The Picture amount is how much each hand&#x27;s picture moves the other&#x27;s sound; at nought the two settle.</p>
+  <p class="soft"><b>Played:</b> A minor held six seconds, then a fifth held under a short melody, then let go.</p>
+  <div class="col"><span class="tag">Mirrored hands <span class="soft">the core playing the code below, 16 s</span></span>
+    <audio controls preload="none" src="audio/mirrored-hands.mp3"></audio></div>
+  <p class="tag">X-Y, as it ships</p><div class="moments"><figure class=moment><img src="pictures/mirrored-hands-xy-0.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in XY at 2.0 s"><figcaption>2.0 s</figcaption></figure><figure class=moment><img src="pictures/mirrored-hands-xy-1.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in XY at 6.0 s"><figcaption>6.0 s</figcaption></figure><figure class=moment><img src="pictures/mirrored-hands-xy-2.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in XY at 9.5 s"><figcaption>9.5 s</figcaption></figure><figure class=moment><img src="pictures/mirrored-hands-xy-3.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in XY at 13.0 s"><figcaption>13.0 s</figcaption></figure></div><p class="tag">Y-T, the display switched</p><div class="moments"><figure class=moment><img src="pictures/mirrored-hands-yt-0.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in YT at 2.0 s"><figcaption>2.0 s</figcaption></figure><figure class=moment><img src="pictures/mirrored-hands-yt-1.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in YT at 6.0 s"><figcaption>6.0 s</figcaption></figure><figure class=moment><img src="pictures/mirrored-hands-yt-2.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in YT at 9.5 s"><figcaption>9.5 s</figcaption></figure><figure class=moment><img src="pictures/mirrored-hands-yt-3.jpg" width="467" height="467" loading="lazy" alt="Mirrored hands in YT at 13.0 s"><figcaption>13.0 s</figcaption></figure></div>
+  <div class="wrap"><table><tr><th>Section</th><th>Brightness, Hz</th><th>Changed from the first</th><th>RMS</th><th>Peak, dBFS</th></tr>
+    <tr><td>held chord <span class=soft>1.0&ndash;6.2 s</span></td><td>597</td><td>&ndash;</td><td>0.199</td><td>-4.2</td></tr><tr><td>melody over a fifth <span class=soft>7.6&ndash;13.0 s</span></td><td>565</td><td>1.025</td><td>0.135</td><td>-5.2</td></tr><tr><td>let go <span class=soft>14.4&ndash;16.3 s</span></td><td>257</td><td>1.285</td><td>0.009</td><td>-23.0</td></tr></table></div>
+  <details><summary>Its heading, measured as <code>honestytest.py</code> measures the bank</summary>
+    <div class="wrap"><table><tr><th>Probe</th><th>Early, five moments</th><th>Late</th><th>After, RMS</th><th>Verdict</th></tr>
+      <tr><td>C4</td><td>0.126 / 0.180 / 0.101 / 0.090 / 0.048</td><td>0.061 / 0.087 / 0.095 / 0.066 / 0.080</td><td>0.0000</td><td><b>Breathing</b></td></tr></table></div>
+    <p class="soft">The limiter on the suite's four-note chord: -4.1 dB (the bound is six).</p></details>
+  <div class="code"><span class="soft">Setup code - on the testing site, Browse, paste it into the code box and press Paste:</span>
+    <textarea readonly rows="3" aria-label="Setup code for Mirrored hands">eyJ2IjoxNSwic2hhcGUiOiJzaW5lIiwib3NjUmF0aW8iOjIsIm9zY0ZtIjoxMCwib3NjU2NhbiI6NjAsInNjYW5SZWFkc0EiOiJCIiwic2NhblJlYWRzQiI6IkEiLCJhbXAiOjQwLCJjeWNsZXMiOiIiLCJhdGsiOjQwLCJkZWMiOjkwMCwicmVsIjo3MDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4xMiIsInRpbWViYXNlIjozLCJtaWRpTW9kZSI6InBvbHkiLCJsYXllcnMiOiJsYXllciIsInBpY3R1cmVNb3Zlc0EiOiJCIiwicGljdHVyZU1vdmVzQiI6IkEiLCJwaWN0dXJlQW1vdW50Ijo2MCwiY2hvcnVzTWl4IjoxOCwiY2hvcnVzUmF0ZSI6MjUsImJBbXAiOjMwLCJiU2hhcGUiOiJ0cmlhbmdsZSIsImJBdGsiOjEyMCwiYkRlYyI6OTAwLCJiU3VzIjo4MCwiYlJlbCI6OTAwLCJiRW52RGVsYXkiOjAsImJFbnZIb2xkIjowLCJiRW52U2hhcGUiOiIiLCJiQmFycyI6IjAwODc0MDAwMCIsImJNb3JwaCI6MTUwLCJiV2lkdGgiOjI1LCJiVGFibGUiOjE1MH0</textarea>
+    <button type="button" class="copy">Copy</button></div>
+</section>
+
+<section id="velocity-brass">
+  <h2>Velocity brass <span class="badge">Settled</span> <span class="kind">the filter&#x27;s sweep with Velocity</span></h2>
+  <p class="lines"><b>Listen for</b> Soft notes mellow, hard notes blare open<br><b>Watch for</b> The figure flares wider the harder you play</p>
+  <p>A pair of saws through a low pass whose own envelope sweeps up three and a half octaves and back, and all of that sweep follows the key: played softly it is a mellow horn, played hard it blares. A little of its wave is read off its own figure, so the strike flares with the sweep, and a held chord settles as the filter does.</p>
+  <p><b>Try turning:</b> Play it from a keyboard with velocity: soft notes are a mellow horn, hard ones blare. The Filter figure&#x27;s Velocity knob is how much of the sweep follows the key (at nought every note blares alike); Amount is the size of the sweep and Attack how slowly it opens. The EQ&#x27;s mid band at 1.4 kHz is its brassiness.</p>
+  <p class="soft"><b>Played:</b> One chord (G, C, E) struck five times at velocities 35, 60, 85, 110 and 127; then F major held soft (45) and the same held hard (120).</p>
+  <div class="col"><span class="tag">Velocity brass <span class="soft">the core playing the code below, 11 s</span></span>
+    <audio controls preload="none" src="audio/velocity-brass.mp3"></audio></div>
+  <p class="tag">X-Y, as it ships</p><div class="moments"><figure class=moment><img src="pictures/velocity-brass-xy-0.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in XY at 1.0 s"><figcaption>1.0 s</figcaption></figure><figure class=moment><img src="pictures/velocity-brass-xy-1.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in XY at 3.5 s"><figcaption>3.5 s</figcaption></figure><figure class=moment><img src="pictures/velocity-brass-xy-2.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in XY at 5.8 s"><figcaption>5.8 s</figcaption></figure><figure class=moment><img src="pictures/velocity-brass-xy-3.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in XY at 8.2 s"><figcaption>8.2 s</figcaption></figure></div><p class="tag">Y-T, the display switched</p><div class="moments"><figure class=moment><img src="pictures/velocity-brass-yt-0.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in YT at 1.0 s"><figcaption>1.0 s</figcaption></figure><figure class=moment><img src="pictures/velocity-brass-yt-1.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in YT at 3.5 s"><figcaption>3.5 s</figcaption></figure><figure class=moment><img src="pictures/velocity-brass-yt-2.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in YT at 5.8 s"><figcaption>5.8 s</figcaption></figure><figure class=moment><img src="pictures/velocity-brass-yt-3.jpg" width="467" height="467" loading="lazy" alt="Velocity brass in YT at 8.2 s"><figcaption>8.2 s</figcaption></figure></div>
+  <div class="wrap"><table><tr><th>Section</th><th>Brightness, Hz</th><th>Changed from the first</th><th>RMS</th><th>Peak, dBFS</th></tr>
+    <tr><td>stab at 35 <span class=soft>0.3&ndash;0.8 s</span></td><td>329</td><td>&ndash;</td><td>0.090</td><td>-11.1</td></tr><tr><td>stab at 60 <span class=soft>1.1&ndash;1.6 s</span></td><td>378</td><td>0.150</td><td>0.154</td><td>-5.5</td></tr><tr><td>stab at 85 <span class=soft>1.9&ndash;2.4 s</span></td><td>427</td><td>0.255</td><td>0.199</td><td>-4.0</td></tr><tr><td>stab at 110 <span class=soft>2.7&ndash;3.2 s</span></td><td>479</td><td>0.329</td><td>0.215</td><td>-3.8</td></tr><tr><td>stab at 127 <span class=soft>3.5&ndash;4.0 s</span></td><td>516</td><td>0.355</td><td>0.221</td><td>-3.8</td></tr><tr><td>soft chord <span class=soft>4.8&ndash;7.2 s</span></td><td>292</td><td>0.664</td><td>0.132</td><td>-6.8</td></tr><tr><td>hard chord <span class=soft>8.0&ndash;10.4 s</span></td><td>360</td><td>0.641</td><td>0.250</td><td>-3.8</td></tr></table></div>
+  <details><summary>Its heading, measured as <code>honestytest.py</code> measures the bank</summary>
+    <div class="wrap"><table><tr><th>Probe</th><th>Early, five moments</th><th>Late</th><th>After, RMS</th><th>Verdict</th></tr>
+      <tr><td>C4</td><td>0.123 / 0.088 / 0.113 / 0.102 / 0.106</td><td>0.004 / 0.004 / 0.005 / 0.005 / 0.003</td><td>0.0000</td><td><b>Settled</b></td></tr></table></div>
+    <p class="soft">The limiter on the suite's four-note chord: -4.1 dB (the bound is six).</p></details>
+  <div class="code"><span class="soft">Setup code - on the testing site, Browse, paste it into the code box and press Paste:</span>
+    <textarea readonly rows="3" aria-label="Setup code for Velocity brass">eyJ2IjoxNSwic2hhcGUiOiJyYW1wIiwib3NjU2NhbiI6MjAsInNjYW5TdHJpa2UiOjYwLCJ2Y2ZUeXBlIjoxLCJ2Y2ZDdXQiOjQwMSwidmNmUmVzIjoxOCwidmNmVHJhY2siOjUwLCJ2Y2ZFbnZBbXQiOjM0LCJ2Y2ZBdGsiOjcwLCJ2Y2ZEZWMiOjYwMCwidmNmU3VzIjozNSwiYW1wIjo0NSwiY3ljbGVzIjoiIiwiYXRrIjoyNSwiZGVjIjo1MDAsInN1cyI6ODAsInJlbCI6MjYwLCJkaXNwbGF5IjoieHkiLCJwZXJzaXN0ZW5jZSI6IjAuMyIsInRpbWViYXNlIjozLCJtaWRpTW9kZSI6InBvbHkiLCJwaWN0dXJlQW1vdW50IjowLCJyZXZlcmJNaXgiOjEyLCJyZXZlcmJTaXplIjozNSwiZXFNaWQiOjI1LCJlcU1pZEZyZXEiOjYxNSwiZXFPbiI6dHJ1ZSwiZXFDdXRIaWdoRnJlcSI6ODg0LCJlcUN1dEhpZ2hPbiI6dHJ1ZX0</textarea>
+    <button type="button" class="copy">Copy</button></div>
+</section>
+
+  <p class="soft">Made by <code>measure.py</code> (the headings and the setup codes, through the page),
+    <code>render.py</code> (the audio by the core, the measures, the pictures from the page) and <code>page.py</code>.
+    The candidates and their performances are in <code>candidates.py</code>; every number is in
+    <code>measured.json</code> and <code>results.json</code>.</p>
+</main>
+<script>
+  for (const b of document.querySelectorAll(".code button.copy")) {
+    b.addEventListener("click", () => {
+      const t = b.parentElement.querySelector("textarea");
+      t.select();
+      const done = () => { b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); };
+      try {
+        if (navigator.clipboard) navigator.clipboard.writeText(t.value).then(done, () => { document.execCommand("copy"); done(); });
+        else { document.execCommand("copy"); done(); }
+      } catch (e) { /* the text stays selected to copy by hand */ }
+    });
+  }
+</script>
+</body>
+</html>

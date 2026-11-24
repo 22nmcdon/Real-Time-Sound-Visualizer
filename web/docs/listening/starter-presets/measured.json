@@ -1,0 +1,182 @@
+{
+ "Felt piano": {
+  "code": "eyJ2IjoxNSwic2hhcGUiOiJ0cmlhbmdsZSIsIm9zY1NjYW4iOjIyLCJzY2FuU3RyaWtlIjo3MCwidmNmVHlwZSI6MSwidmNmQ3V0Ijo1NTEsInZjZlRyYWNrIjo2MCwidmNmRW52QW10IjoxMiwidmNmQXRrIjowLCJ2Y2ZEZWMiOjkwMCwidmNmU3VzIjoxMCwidmNmUmVsIjo0MDAsImFtcCI6NTAsImN5Y2xlcyI6IiIsInZjZlZlbCI6NzAsImF0ayI6MiwiZGVjIjoxODAwLCJzdXMiOjMwLCJyZWwiOjcwMCwiZGlzcGxheSI6Inh5IiwicGVyc2lzdGVuY2UiOiIwLjMiLCJ0aW1lYmFzZSI6MywibWlkaU1vZGUiOiJwb2x5IiwicGljdHVyZUFtb3VudCI6MCwiY2hvcnVzTWl4IjoxMiwiY2hvcnVzUmF0ZSI6MjAsImNob3J1c0RlcHRoIjoxNSwiZXFMb3ciOjMwLCJlcUxvd0ZyZXEiOjMxOCwiZXFIaWdoIjotNTAsImVxSGlnaEZyZXEiOjc5OSwiZXFPbiI6dHJ1ZSwiZXFDdXRMb3dGcmVxIjoxMTcsImVxQ3V0TG93T24iOnRydWV9",
+  "draws": "trace",
+  "limiter": -1.46,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.0335,
+     0.0415,
+     0.0404,
+     0.0142,
+     0.0177
+    ],
+    "held_rms": 0.0559,
+    "late": [
+     0.0073,
+     0.0071,
+     0.0068,
+     0.0056,
+     0.0063
+    ],
+    "most": 0.1095,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ },
+ "Mirrored hands": {
+  "code": "eyJ2IjoxNSwic2hhcGUiOiJzaW5lIiwib3NjUmF0aW8iOjIsIm9zY0ZtIjoxMCwib3NjU2NhbiI6NjAsInNjYW5SZWFkc0EiOiJCIiwic2NhblJlYWRzQiI6IkEiLCJhbXAiOjQwLCJjeWNsZXMiOiIiLCJhdGsiOjQwLCJkZWMiOjkwMCwicmVsIjo3MDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4xMiIsInRpbWViYXNlIjozLCJtaWRpTW9kZSI6InBvbHkiLCJsYXllcnMiOiJsYXllciIsInBpY3R1cmVNb3Zlc0EiOiJCIiwicGljdHVyZU1vdmVzQiI6IkEiLCJwaWN0dXJlQW1vdW50Ijo2MCwiY2hvcnVzTWl4IjoxOCwiY2hvcnVzUmF0ZSI6MjUsImJBbXAiOjMwLCJiU2hhcGUiOiJ0cmlhbmdsZSIsImJBdGsiOjEyMCwiYkRlYyI6OTAwLCJiU3VzIjo4MCwiYlJlbCI6OTAwLCJiRW52RGVsYXkiOjAsImJFbnZIb2xkIjowLCJiRW52U2hhcGUiOiIiLCJiQmFycyI6IjAwODc0MDAwMCIsImJNb3JwaCI6MTUwLCJiV2lkdGgiOjI1LCJiVGFibGUiOjE1MH0",
+  "draws": "trace",
+  "limiter": -4.09,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.1261,
+     0.1804,
+     0.101,
+     0.0905,
+     0.0478
+    ],
+    "held_rms": 0.1108,
+    "late": [
+     0.0614,
+     0.0875,
+     0.0954,
+     0.0662,
+     0.0798
+    ],
+    "most": 0.3894,
+    "notes": [
+     60
+    ],
+    "verdict": "Breathing"
+   }
+  ]
+ },
+ "Plucked wire": {
+  "code": "eyJ2IjoxNSwic2hhcGUiOiJwdWxzZSIsIndpZHRoIjozMCwib3NjU2NhbiI6MzUsInNjYW5TdHJpa2UiOjEwMCwidmNmVHlwZSI6MSwidmNmQ3V0IjozNzEsInZjZlJlcyI6MzAsInZjZlRyYWNrIjo1MCwidmNmRW52QW10IjozNCwidmNmQXRrIjowLCJ2Y2ZEZWMiOjE2MCwidmNmU3VzIjowLCJ2Y2ZSZWwiOjIwMCwiY3ljbGVzIjoiIiwidmNmVmVsIjo0NSwiYXRrIjoxLCJkZWMiOjYwMCwic3VzIjo4LCJyZWwiOjMwMCwiYnBtIjoxMDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4zIiwidGltZWJhc2UiOjMsIm1pZGlNb2RlIjoicG9seSIsInBpY3R1cmVBbW91bnQiOjAsImRlbGF5TWl4IjoyNCwiZGVsYXlTeW5jIjoiMS84ZCIsImRlbGF5RmVlZGJhY2siOjMyLCJkZWxheVBpbmdQb25nIjp0cnVlLCJkZWxheVRvbmUiOjU1LCJkZWxheUxvd0N1dCI6MzAsImVxTWlkIjoyNSwiZXFNaWRGcmVxIjo2ODAsImVxT24iOnRydWUsImVxQ3V0TG93RnJlcSI6MjU5LCJlcUN1dExvd09uIjp0cnVlfQ",
+  "draws": "trace",
+  "limiter": -2.52,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.4523,
+     0.321,
+     0.4557,
+     0.4581,
+     0.4508
+    ],
+    "held_rms": 0.0132,
+    "late": [
+     0.0001,
+     0.0001,
+     0.0001,
+     0.0001,
+     0.0001
+    ],
+    "most": 0.9167,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ },
+ "Round bass": {
+  "code": "eyJ2IjoxNSwic2hhcGUiOiJzcXVhcmUiLCJvc2NTY2FuIjoyNSwic2NhblN0cmlrZSI6ODAsIm9zY1N1YiI6NDUsIm9zY1N1YlNoYXBlIjoic2luZSIsInZjZlR5cGUiOjEsInZjZkN1dCI6MzQ3LCJ2Y2ZSZXMiOjI1LCJ2Y2ZUcmFjayI6MzAsInZjZkVudkFtdCI6MjIsInZjZkF0ayI6MCwidmNmRGVjIjoyNjAsInZjZlN1cyI6MTUsInZjZlJlbCI6MTUwLCJmcmVxIjoxMTAsImN5Y2xlcyI6IiIsInZjZlZlbCI6NjAsImF0ayI6MiwiZGVjIjo3MDAsInJlbCI6MTIwLCJnbGlkZSI6NDAsImRpc3BsYXkiOiJ4eSIsInBlcnNpc3RlbmNlIjoiMC4zIiwidGltZWJhc2UiOjUsIm1pZGlNb2RlIjoibW9ubyIsIm1pZGlSZXRyaWciOnRydWUsInBpY3R1cmVBbW91bnQiOjAsImVxTG93IjoyNSwiZXFMb3dGcmVxIjoyMTgsImVxTWlkIjotMzAsImVxTWlkRnJlcSI6NDE0LCJlcU1pZFdpZHRoIjoxNCwiZXFPbiI6dHJ1ZSwiZXFDdXRMb3dGcmVxIjo2OCwiZXFDdXRMb3dPbiI6dHJ1ZX0",
+  "draws": "trace",
+  "limiter": -0.68,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.026,
+     0.0248,
+     0.0277,
+     0.0257,
+     0.0256
+    ],
+    "held_rms": 0.2074,
+    "late": [
+     0.0016,
+     0.0021,
+     0.0021,
+     0.0024,
+     0.0016
+    ],
+    "most": 0.107,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ },
+ "Tidal glass": {
+  "code": "eyJ2IjoxNSwic2hhcGUiOiJ3YXZldGFibGUiLCJ0YWJsZSI6MTcwLCJvc2NTY2FuIjo1NSwic2NhblN0cmlrZSI6MzAsInBpY3R1cmVTd2VsbCI6dHJ1ZSwidmNmVHlwZSI6MSwidmNmQ3V0Ijo2NTEsInZjZlJlcyI6MTAsImFtcCI6MzAsImN5Y2xlcyI6IiIsImF0ayI6NzAwLCJkZWMiOjEyMDAsInN1cyI6ODUsInJlbCI6MTMwMCwiZGlzcGxheSI6Inh5IiwicGVyc2lzdGVuY2UiOiIwLjEyIiwidGltZWJhc2UiOjMsIm1pZGlNb2RlIjoicG9seSIsInBpY3R1cmVBbW91bnQiOjgwLCJwaGFzZXJNaXgiOjMwLCJwaGFzZXJSYXRlIjoxMiwicGhhc2VyRGVwdGgiOjYwLCJwaGFzZXJGZWVkYmFjayI6MzUsInJldmVyYk1peCI6MjIsInJldmVyYlNpemUiOjU1LCJyZXZlcmJUb25lIjo1MCwicmV2ZXJiU3ByZWFkIjo0MCwiZXFIaWdoIjozMCwiZXFIaWdoRnJlcSI6ODI2LCJlcU9uIjp0cnVlLCJlcUN1dExvd0ZyZXEiOjIxOCwiZXFDdXRMb3dPbiI6dHJ1ZX0",
+  "draws": "trace",
+  "limiter": -0.68,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.1432,
+     0.1123,
+     0.0916,
+     0.1515,
+     0.0822
+    ],
+    "held_rms": 0.0635,
+    "late": [
+     0.0796,
+     0.0599,
+     0.0671,
+     0.0591,
+     0.0667
+    ],
+    "most": 0.4283,
+    "notes": [
+     60
+    ],
+    "verdict": "Breathing"
+   }
+  ]
+ },
+ "Velocity brass": {
+  "code": "eyJ2IjoxNSwic2hhcGUiOiJyYW1wIiwib3NjU2NhbiI6MjAsInNjYW5TdHJpa2UiOjYwLCJ2Y2ZUeXBlIjoxLCJ2Y2ZDdXQiOjQwMSwidmNmUmVzIjoxOCwidmNmVHJhY2siOjUwLCJ2Y2ZFbnZBbXQiOjM0LCJ2Y2ZBdGsiOjcwLCJ2Y2ZEZWMiOjYwMCwidmNmU3VzIjozNSwiYW1wIjo0NSwiY3ljbGVzIjoiIiwiYXRrIjoyNSwiZGVjIjo1MDAsInN1cyI6ODAsInJlbCI6MjYwLCJkaXNwbGF5IjoieHkiLCJwZXJzaXN0ZW5jZSI6IjAuMyIsInRpbWViYXNlIjozLCJtaWRpTW9kZSI6InBvbHkiLCJwaWN0dXJlQW1vdW50IjowLCJyZXZlcmJNaXgiOjEyLCJyZXZlcmJTaXplIjozNSwiZXFNaWQiOjI1LCJlcU1pZEZyZXEiOjYxNSwiZXFPbiI6dHJ1ZSwiZXFDdXRIaWdoRnJlcSI6ODg0LCJlcUN1dEhpZ2hPbiI6dHJ1ZX0",
+  "draws": "trace",
+  "limiter": -4.06,
+  "probes": [
+   {
+    "after_rms": 0.0,
+    "early": [
+     0.123,
+     0.0883,
+     0.1127,
+     0.1018,
+     0.106
+    ],
+    "held_rms": 0.1595,
+    "late": [
+     0.0041,
+     0.0039,
+     0.005,
+     0.0046,
+     0.0034
+    ],
+    "most": 0.3548,
+    "notes": [
+     60
+    ],
+    "verdict": "Settled"
+   }
+  ]
+ }
+}

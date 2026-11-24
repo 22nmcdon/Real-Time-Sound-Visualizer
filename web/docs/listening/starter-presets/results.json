@@ -1,0 +1,411 @@
+{
+ "bank": {
+  "Bass under the pad": {
+   "grit": 12.38,
+   "hz": 606,
+   "rms": 0.154,
+   "top_held": 0.13,
+   "top_strike": 0.15
+  },
+  "Bass under the tine piano": {
+   "grit": 0.01,
+   "hz": 561,
+   "rms": 0.028,
+   "top_held": 0.02,
+   "top_strike": 0.15
+  },
+  "Crossed hands": {
+   "grit": 0.0,
+   "hz": 266,
+   "rms": 0.119,
+   "top_held": 0.13,
+   "top_strike": 1.95
+  },
+  "Drawbar organ": {
+   "grit": 0.01,
+   "hz": 263,
+   "rms": 0.122,
+   "top_held": 0.0,
+   "top_strike": 0.04
+  },
+  "Harmonic tone": {
+   "grit": 0.01,
+   "hz": 678,
+   "rms": 0.15,
+   "top_held": 3.71,
+   "top_strike": 9.67
+  },
+  "Slow pad": {
+   "grit": 4.25,
+   "hz": 306,
+   "rms": 0.12,
+   "top_held": 0.01,
+   "top_strike": 0.04
+  },
+  "Tine piano": {
+   "grit": 0.04,
+   "hz": 567,
+   "rms": 0.026,
+   "top_held": 0.04,
+   "top_strike": 0.1
+  },
+  "Tines at the radius": {
+   "grit": 0.01,
+   "hz": 313,
+   "rms": 0.03,
+   "top_held": 0.02,
+   "top_strike": 0.01
+  },
+  "Turning fifths": {
+   "grit": 0.05,
+   "hz": 267,
+   "rms": 0.145,
+   "top_held": 0.0,
+   "top_strike": 0.07
+  }
+ },
+ "candidates": {
+  "Felt piano": {
+   "c4": {
+    "grit": 0.01,
+    "hz": 267,
+    "rms": 0.041,
+    "top_held": 0.0,
+    "top_strike": 0.0
+   },
+   "length": 13.899999999999999,
+   "moments": {
+    "xy": [
+     2.01,
+     7.93,
+     9.31,
+     12.82
+    ],
+    "yt": [
+     2.02,
+     7.91,
+     9.31,
+     12.81
+    ]
+   },
+   "peak_db": -4.0,
+   "sections": [
+    {
+     "changed": 0.0,
+     "hz": 229,
+     "label": "progression",
+     "peak_db": -4.1,
+     "rms": 0.155,
+     "t0": 0.3,
+     "t1": 6.3
+    },
+    {
+     "changed": 0.756,
+     "hz": 399,
+     "label": "soft to hard",
+     "peak_db": -9.2,
+     "rms": 0.096,
+     "t0": 6.3,
+     "t1": 8.5
+    },
+    {
+     "changed": 0.796,
+     "hz": 297,
+     "label": "held chord",
+     "peak_db": -8.0,
+     "rms": 0.087,
+     "t0": 9.1,
+     "t1": 13.1
+    }
+   ]
+  },
+  "Mirrored hands": {
+   "c4": {
+    "grit": 0.06,
+    "hz": 458,
+    "rms": 0.101,
+    "top_held": 0.05,
+    "top_strike": 0.12
+   },
+   "length": 16.5,
+   "moments": {
+    "xy": [
+     2.02,
+     6.03,
+     9.51,
+     13.01
+    ],
+    "yt": [
+     2.03,
+     6.0,
+     9.53,
+     13.02
+    ]
+   },
+   "peak_db": -4.2,
+   "sections": [
+    {
+     "changed": 0.0,
+     "hz": 597,
+     "label": "held chord",
+     "peak_db": -4.2,
+     "rms": 0.199,
+     "t0": 1.0,
+     "t1": 6.2
+    },
+    {
+     "changed": 1.025,
+     "hz": 565,
+     "label": "melody over a fifth",
+     "peak_db": -5.2,
+     "rms": 0.135,
+     "t0": 7.6,
+     "t1": 13.0
+    },
+    {
+     "changed": 1.285,
+     "hz": 257,
+     "label": "let go",
+     "peak_db": -23.0,
+     "rms": 0.009,
+     "t0": 14.4,
+     "t1": 16.3
+    }
+   ]
+  },
+  "Plucked wire": {
+   "c4": {
+    "grit": 0.01,
+    "hz": 267,
+    "rms": 0.01,
+    "top_held": 0.0,
+    "top_strike": 0.0
+   },
+   "length": 9.899999999999999,
+   "moments": {
+    "xy": [
+     1.22,
+     3.01,
+     5.61,
+     7.91
+    ],
+    "yt": [
+     1.22,
+     3.02,
+     5.62,
+     7.91
+    ]
+   },
+   "peak_db": -6.1,
+   "sections": [
+    {
+     "changed": 0.0,
+     "hz": 518,
+     "label": "figure",
+     "peak_db": -6.1,
+     "rms": 0.091,
+     "t0": 0.3,
+     "t1": 5.1
+    },
+    {
+     "changed": 0.965,
+     "hz": 250,
+     "label": "held note",
+     "peak_db": -17.4,
+     "rms": 0.022,
+     "t0": 5.7,
+     "t1": 8.4
+    }
+   ]
+  },
+  "Round bass": {
+   "c4": {
+    "grit": 0.01,
+    "hz": 243,
+    "rms": 0.17,
+    "top_held": 0.0,
+    "top_strike": 0.0
+   },
+   "length": 9.8,
+   "moments": {
+    "xy": [
+     1.13,
+     3.28,
+     5.71,
+     8.82
+    ],
+    "yt": [
+     1.11,
+     3.21,
+     5.71,
+     8.82
+    ]
+   },
+   "peak_db": -6.5,
+   "sections": [
+    {
+     "changed": 0.0,
+     "hz": 98,
+     "label": "line",
+     "peak_db": -6.9,
+     "rms": 0.175,
+     "t0": 0.3,
+     "t1": 5.4
+    },
+    {
+     "changed": 0.636,
+     "hz": 104,
+     "label": "held note",
+     "peak_db": -7.3,
+     "rms": 0.199,
+     "t0": 5.8,
+     "t1": 8.9
+    }
+   ]
+  },
+  "Tidal glass": {
+   "c4": {
+    "grit": 1.42,
+    "hz": 402,
+    "rms": 0.052,
+    "top_held": 0.4,
+    "top_strike": 0.69
+   },
+   "length": 18.5,
+   "moments": {
+    "xy": [
+     3.02,
+     7.51,
+     12.01,
+     14.82
+    ],
+    "yt": [
+     3.06,
+     7.52,
+     12.01,
+     14.81
+    ]
+   },
+   "peak_db": -6.0,
+   "sections": [
+    {
+     "changed": 0.0,
+     "hz": 445,
+     "label": "first chord",
+     "peak_db": -6.0,
+     "rms": 0.128,
+     "t0": 1.5,
+     "t1": 7.8
+    },
+    {
+     "changed": 0.904,
+     "hz": 398,
+     "label": "second chord",
+     "peak_db": -8.9,
+     "rms": 0.076,
+     "t0": 9.2,
+     "t1": 15.0
+    },
+    {
+     "changed": 1.111,
+     "hz": 370,
+     "label": "let go",
+     "peak_db": -22.5,
+     "rms": 0.006,
+     "t0": 15.6,
+     "t1": 18.3
+    }
+   ]
+  },
+  "Velocity brass": {
+   "c4": {
+    "grit": 0.01,
+    "hz": 347,
+    "rms": 0.131,
+    "top_held": 0.01,
+    "top_strike": 0.65
+   },
+   "length": 11.2,
+   "moments": {
+    "xy": [
+     1.02,
+     3.52,
+     5.82,
+     8.21
+    ],
+    "yt": [
+     1.02,
+     3.53,
+     5.82,
+     8.22
+    ]
+   },
+   "peak_db": -3.8,
+   "sections": [
+    {
+     "changed": 0.0,
+     "hz": 329,
+     "label": "stab at 35",
+     "peak_db": -11.1,
+     "rms": 0.09,
+     "t0": 0.3,
+     "t1": 0.8
+    },
+    {
+     "changed": 0.15,
+     "hz": 378,
+     "label": "stab at 60",
+     "peak_db": -5.5,
+     "rms": 0.154,
+     "t0": 1.1,
+     "t1": 1.6
+    },
+    {
+     "changed": 0.255,
+     "hz": 427,
+     "label": "stab at 85",
+     "peak_db": -4.0,
+     "rms": 0.199,
+     "t0": 1.9,
+     "t1": 2.4
+    },
+    {
+     "changed": 0.329,
+     "hz": 479,
+     "label": "stab at 110",
+     "peak_db": -3.8,
+     "rms": 0.215,
+     "t0": 2.7,
+     "t1": 3.2
+    },
+    {
+     "changed": 0.355,
+     "hz": 516,
+     "label": "stab at 127",
+     "peak_db": -3.8,
+     "rms": 0.221,
+     "t0": 3.5,
+     "t1": 4.0
+    },
+    {
+     "changed": 0.664,
+     "hz": 292,
+     "label": "soft chord",
+     "peak_db": -6.8,
+     "rms": 0.132,
+     "t0": 4.8,
+     "t1": 7.2
+    },
+    {
+     "changed": 0.641,
+     "hz": 360,
+     "label": "hard chord",
+     "peak_db": -3.8,
+     "rms": 0.25,
+     "t0": 8.0,
+     "t1": 10.4
+    }
+   ]
+  }
+ }
+}
