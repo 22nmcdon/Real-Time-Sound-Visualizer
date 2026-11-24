@@ -379,14 +379,21 @@ KEYS = [k for k, _, _ in FEATURES]
 
 def db(x, floor=1e-7): return float(10 * np.log10(max(x, floor)))
 
-def spectra_1hz(mono, rate, t0, t1):
-    """Power spectra at 1 Hz a bin, Hann windows a second long, half overlapped."""
+def power(seg, nfft=None):
+    """The power spectrum of a stretch of both channels, Hann-windowed: the two channels' powers
+    added, as two speakers are heard. Not the mono sum: at the default Phase of 90 the channels
+    are a quarter cycle apart and (L + R) / 2 cancels some harmonics outright (a saw's fourth
+    read -76 dB that way)."""
+    w = np.hanning(len(seg))
+    return sum(np.abs(np.fft.rfft(seg[:, c] * w, nfft)) ** 2 for c in range(seg.shape[1]))
+
+def spectra_1hz(x, rate, t0, t1):
+    """Power spectra at 1 Hz a bin, windows a second long, half overlapped."""
     n = int(rate)
-    w = np.hanning(n)
     out = []
     s = int(t0 * rate)
     while s + n <= int(t1 * rate):
-        out.append(np.abs(np.fft.rfft(mono[s:s + n] * w)) ** 2)
+        out.append(power(x[s:s + n]))
         s += n // 2
     return out
 
@@ -430,7 +437,8 @@ def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
     # average of power is: over the sustain alone a pluck whose sustain is nought has
     # nothing left to read, and its "centroid" was the noise floor's (-8.9 octaves).
     w0 = HELD_ON + land + 0.05
-    win48 = spectra_1hz(m48, 48000, w0, s1); win44 = spectra_1hz(m44, 48000, w0, s1)
+    win48 = spectra_1hz(x48, 48000, w0, s1); win44 = spectra_1hz(x44, 48000, w0, s1)
+    pw = (x48 ** 2).mean(axis=1)   # the power a sample, both channels
     p48 = np.mean(win48, axis=0); p44 = np.mean(win44, axis=0)
     fr = np.arange(len(p48))
     band = (fr >= 20) & (fr <= 20000)
@@ -472,26 +480,26 @@ def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
     s, e = int(s0 * 48000), int(s1 * 48000)
     ff = np.fft.rfftfreq(n, 1 / 48000); sel = (ff >= 50) & (ff <= 16000)
     for a in range(s, e - n, n):
-        q = np.abs(np.fft.rfft(m48[a:a + n] * np.hanning(n))) ** 2
+        q = power(x48[a:a + n])
         q = q[sel] + 1e-12 * max(q[sel].mean(), 1e-30) + 1e-30
         fl.append(10 * np.log10(np.exp(np.mean(np.log(q))) / q.mean()))
     out["flat"] = float(np.mean(fl)) if fl else -100.0
-    sus = m48[s:e]
-    out["loud"] = db(np.mean(sus ** 2), 1e-12)
+    sus = pw[s:e]
+    out["loud"] = db(np.mean(sus), 1e-12)
     # Bloom: how much brighter the note's first 100 ms are than its last half second held -
     # a filter envelope's sweep, Strike's flare, a pluck's bark - in octaves. Nought where
     # either is silent.
     def centroid(a, b):
-        x = m48[int(a * 48000):int(b * 48000)]
+        x = x48[int(a * 48000):int(b * 48000)]
         if len(x) < 64 or np.mean(x ** 2) < 1e-9: return None
-        q = np.abs(np.fft.rfft(x * np.hanning(len(x)), 16384)) ** 2
+        q = power(x, 16384)
         fq = np.fft.rfftfreq(16384, 1 / 48000); sel = (fq >= 20) & (fq <= 20000)
         return np.log2(max((fq[sel] * q[sel]).sum() / max(q[sel].sum(), 1e-30), 1) / f0)
     c0 = centroid(HELD_ON + land + 0.005, HELD_ON + land + 0.105); c1 = centroid(HELD_OFF - 0.5, HELD_OFF)
     out["bloom"] = float(c0 - c1) if c0 is not None and c1 is not None else 0.0
     # envelope at 5 ms
     hop = 240
-    env = np.sqrt(np.convolve(m48 ** 2, np.ones(hop) / hop, "same")[::hop])
+    env = np.sqrt(np.convolve(pw, np.ones(hop) / hop, "same")[::hop])
     on, off = int((HELD_ON + land) * 48000 / hop), int(HELD_OFF * 48000 / hop)
     held = env[on:off]
     peak = held.max() if held.size else 0
@@ -500,25 +508,25 @@ def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
         out["sustain"] = db(np.mean(env[off - int(0.7 * 200):off] ** 2) / peak ** 2, 1e-6)
     else:
         out["attack"], out["sustain"] = 0.0, -60.0
-    heldp = np.mean(sus ** 2)
+    heldp = np.mean(sus)
     a, b = int((HELD_OFF + 0.1) * 48000), int((HELD_OFF + 0.6) * 48000)
-    out["tail"] = db(np.mean(m48[a:b] ** 2) / max(heldp, 1e-20), 1e-6)
+    out["tail"] = db(np.mean(pw[a:b]) / max(heldp, 1e-20), 1e-6)
     side = (x48[:, 0] - x48[:, 1]) / 2
-    out["width"] = db(np.mean(side[s:e] ** 2) / max(heldp, 1e-20), 1e-6)
+    out["width"] = db(np.mean(side[s:e] ** 2) / max(np.mean(m48[s:e] ** 2), 1e-20), 1e-6)
     # movement: fifth-octave band spectra of 4096 frames 2048 apart
     edges = 40 * 2 ** (np.arange(49) / 5)
     bidx = np.clip(np.searchsorted(edges, ff) - 1, -1, 47)
     prev, moves = None, []
     for a in range(s, e - n, 2048):
-        if np.mean(m48[a:a + n] ** 2) < 1e-9: prev = None; continue  # silence has no spectrum to move
-        q = np.abs(np.fft.rfft(m48[a:a + n] * np.hanning(n))) ** 2
+        if np.mean(pw[a:a + n]) < 1e-9: prev = None; continue  # silence has no spectrum to move
+        q = power(x48[a:a + n])
         bands = np.bincount(bidx[bidx >= 0], weights=q[bidx >= 0], minlength=48)
         bands = np.sqrt(bands / max(bands.sum(), 1e-30))
         if prev is not None: moves.append(float(np.sqrt(((bands - prev) ** 2).sum())))
         prev = bands
     out["move"] = float(np.mean(moves)) if moves else 0.0
     e20 = sus[: len(sus) // 960 * 960].reshape(-1, 960)
-    lv = 10 * np.log10(np.maximum((e20 ** 2).mean(axis=1), 1e-12))
+    lv = 10 * np.log10(np.maximum(e20.mean(axis=1), 1e-12))
     out["wobble"] = float(np.std(lv))
     hk = [p48[max(0, int(round(k * f0)) - 4):int(round(k * f0)) + 5].sum() for k in range(1, 21)]
     # Only where harmonics 2 to 20 carry at least a hundredth of the note: on a sine the ratio
@@ -532,7 +540,7 @@ def measure_held(x48, x44, f0, ratio=RATIO, land=0.0):
     return out
 
 def measure_phrase(x):
-    m = x.mean(axis=1)
+    m = np.sqrt((x ** 2).mean(axis=1))   # both channels' power, as the held note's measures
     w = int(0.03 * 48000)
     got = []
     for i in range(len(PHRASE)):
