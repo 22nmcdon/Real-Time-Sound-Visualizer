@@ -274,7 +274,12 @@ CONTROLS = [
      {"oscScan": 60, "pictureAmount": 80}, False),
     ("display", "Picture", "Display Y-T / X-Y (Scan 60)", ["xy", "yt"], "xy", {"oscScan": 60}, False),
     ("screenDraws", "Picture", "Trace / Paint (Scan 60, Amount 80)", ["trace", "paint"], "trace", {"oscScan": 60, "pictureAmount": 80}, False),
-    ("soundWidth", "Picture", "Width", lin(0, 100), 50, {}, False),
+    ("soundWidth", "Picture", "Width (Draw width on)", lin(0, 100), 50, {"widthDrawn": True}, False),
+    # The null: no control at all, the key landing a few milliseconds later. Nothing an
+    # ear could call a change, so whatever it moves from a base is that base's own
+    # chaos - the loop magnifies where in its state a note lands - and the floor an
+    # effect has to clear before it counts as one (analyse.py).
+    ("_land", "Null", "The key a moment later (ms)", [0, 1, 3, 7, 13, 20], 0, {}, False),
 ]
 
 # Left out, and why: see LEFT_OUT, which the page prints.
@@ -314,12 +319,14 @@ def notes_of(setup):
 
 def held_script(code, patch, notes, up=0):
     notes = [n + up for n in notes]
-    return [["make", None, code, patch], ["record", "heard", None], ["to", HELD_ON]] \
+    patch = dict(patch); land = patch.pop("_land", 0) / 1000
+    return [["make", None, code, patch], ["record", "heard", None], ["to", HELD_ON + land]] \
         + [["midi", 0x90, n, 100] for n in notes] + [["to", HELD_OFF]] + [["midi", 0x80, n, 0] for n in notes] \
         + [["to", HELD_END], ["record", "heard"]]
 
 def phrase_script(code, patch, split):
-    lines = [["make", 48000, code, patch], ["record", "heard", None], ["to", 0.2]]
+    patch = dict(patch); land = patch.pop("_land", 0) / 1000
+    lines = [["make", 48000, code, patch], ["record", "heard", None], ["to", 0.2 + land]]
     t = 0.2
     for i, (n, v) in enumerate(PHRASE):
         n = n + (12 if split and i % 2 else -12 if split else 0)
@@ -350,7 +357,7 @@ def run(job):
 FEATURES = [
     # key, name, what it reads
     ("bright", "Brightness", "the spectral centroid of the held note's sustain, in octaves over the note"),
-    ("noise", "Noisiness", "the share of the sustain's energy in the floor between peaks (neither a harmonic nor a sharp partial), in dB"),
+    ("noise", "Noisiness", "the share of the sustain's energy in the floor: bins that are neither a harmonic's nor a sharp partial's, each counted once, both notes averaged, in dB"),
     ("flat", "Flatness", "spectral flatness of 4096-sample frames, 50 Hz to 16 kHz, in dB (a sine about -100, white noise about -2)"),
     ("alias", "Aliasing", "the share of energy in sharp partials that are not the note's harmonics and do not follow the note: held a fourth higher, they are not at the same multiple of it, in dB"),
     ("inharm", "Inharmonicity", "the share in sharp partials that are not the note's harmonics and do follow it, at the same multiple a fourth higher (an FM bell's), in dB"),
@@ -380,24 +387,30 @@ def spectrum_1hz(mono, rate, t0, t1):
     return acc / max(k, 1)
 
 def partials(p, f0, top=20000):
-    """The spectrum split: harmonic energy, sharp non-harmonic peaks (their bins and energy), and the floor."""
+    """The spectrum split by bins, each bin counted once: the note's harmonics (4 Hz either side
+    of each), the sharp non-harmonic peaks (a local maximum 12 dB over the median within 60 Hz,
+    and the two bins either side of it), and the floor, everything else. Peaks are returned
+    with the energy of the bins they claim; a bin two peaks reach goes to the first."""
     f = np.arange(len(p))
     p = p[:top]; f = f[:top]
-    total = p[20:].sum()
+    use = f >= 20
+    total = p[use].sum()
     harm = np.zeros(len(p), bool)
     for k in range(1, int(top / f0) + 1):
         c = int(round(k * f0)); harm[max(0, c - 4):c + 5] = True
-    # a peak: a local maximum 12 dB over the median within 60 Hz, not in a harmonic's bins
     med = np.array([np.median(p[max(0, i - 60):i + 61]) for i in range(0, len(p), 20)])
     med = np.repeat(med, 20)[:len(p)]
-    loc = (p > np.roll(p, 1)) & (p >= np.roll(p, -1)) & (p > 16 * med) & ~harm
-    loc[:20] = False
+    loc = (p > np.roll(p, 1)) & (p >= np.roll(p, -1)) & (p > 16 * med) & ~harm & use
+    claimed = harm.copy()
     peaks = {}
     for i in np.nonzero(loc)[0]:
-        peaks[int(i)] = float(p[max(0, i - 2):i + 3].sum())
+        lo, hi = max(0, i - 2), min(len(p), i + 3)
+        free = ~claimed[lo:hi]
+        peaks[int(i)] = float(p[lo:hi][free].sum())
+        claimed[lo:hi] = True
     tonal = sum(peaks.values())
-    nonharm = p[(~harm) & (f >= 20)].sum()
-    return total, float(p[harm & (f >= 20)].sum()), peaks, tonal, float(nonharm)
+    floor = float(p[(~claimed) & use].sum())
+    return total, float(p[harm & use].sum()), peaks, tonal, floor
 
 def measure_held(x48, x44, f0, ratio=RATIO):
     """x48 the held A3, x44 the same held a fourth up (D4), both at 48 kHz."""
@@ -428,7 +441,7 @@ def measure_held(x48, x44, f0, ratio=RATIO):
     out["alias"] = db((mv48 / tot + mv44 / tot_) / 2, 1e-6)
     out["tonal"] = db((ton48 / tot + ton44 / tot_) / 2, 1e-6)
     out["inharm"] = db((st48 / tot + st44 / tot_) / 2, 1e-6)
-    out["noise"] = db(max(nh48 - ton48, 0) / tot, 1e-6)
+    out["noise"] = db((nh48 / tot + nh44 / tot_) / 2, 1e-6)
     # flatness, per 4096 frame
     n = 4096; fl = []
     s, e = int(s0 * 48000), int(s1 * 48000)

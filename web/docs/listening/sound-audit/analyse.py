@@ -94,7 +94,13 @@ for (b, cid), idx in by.items():
         else:
             add(cid, cid, label_of(cid), b, rvec, pts)
 
-def active(e, b): return b in e["base"] and e["base"][b]["reach"] >= 1.0
+# Each base's floor: what the null (the key a moment later, no control at all) reaches
+# from it, doubled, and never under one unit. A loop-heavy base is chaotic - where in
+# its state a note lands changes how it goes on - so an effect from it has to clear
+# that before its direction means anything.
+NULL = {b: effects["_land"]["base"][b]["reach"] if "_land" in effects and b in effects["_land"]["base"] else 0 for b in BASES}
+FLOOR = {b: max(1.0, 2 * NULL[b]) for b in BASES}
+def active(e, b): return b in e["base"] and e["id"] != "_land" and e["base"][b]["reach"] >= FLOOR[b]
 def unit(v):
     n = np.linalg.norm(v); return v / n if n > 0 else v
 
@@ -103,7 +109,7 @@ def sim(a, b):
     return (float(np.mean(cs)), len(cs)) if cs else (None, 0)
 
 live = [e for e in effects.values() if any(active(e, b) for b in BASES)]
-dead = [e for e in effects.values() if not any(active(e, b) for b in BASES)]
+dead = [e for e in effects.values() if e["id"] != "_land" and not any(active(e, b) for b in BASES)]
 live.sort(key=lambda e: (e["group"], e["label"]))
 n = len(live)
 S = np.full((n, n), np.nan); SH = np.zeros((n, n), int)
@@ -264,6 +270,7 @@ for gi, g in enumerate(out_groups):
     for k in g["members"]: gid[k] = gi
 
 out = {
+    "null": {b: round(NULL[b], 2) for b in BASES}, "floor": {b: round(FLOOR[b], 2) for b in BASES},
     "space": SPACE, "names": NAMES, "scale": {k: round(float(SCALE[i]), 4) for i, k in enumerate(SPACE)},
     "renders": [{"i": i, "kind": r["kind"], "base": r.get("base"), "control": r.get("control"), "value": r.get("value"),
                  "rest": r.get("rest"), "variant": r.get("variant"), "name": r.get("name"), "section": r.get("section"),
@@ -281,6 +288,7 @@ out = {
     "sim": {"keys": [e["key"] for e in live], "matrix": [[None if np.isnan(v) else round(float(v), 2) for v in row] for row in S]},
 }
 json.dump(out, open(os.path.join(HERE, "analysis.json"), "w"))
+print("null reach", {b: round(NULL[b], 2) for b in BASES})
 print("effects %d live, %d dead; %d groups of two or more; %d cross-section pairs >= 0.85" % (len(live), len(dead), len(out_groups), len(pairs)))
 for g in out_groups: print(" %.2f  %s   -> %s" % (g["within"], " | ".join(g["labels"]), g["where"]))
 print("dead:", ", ".join(e["label"] for e in dead))
