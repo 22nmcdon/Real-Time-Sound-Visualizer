@@ -43,8 +43,9 @@ judged at 75, the owner's own depth.
 The checks, each with its null:
 
 - Change, at the owner's depth with the Pictures crossed: the fast run swells
-  by at least +6.0 dB and 1.5 dB more than today did, and is as harsh as option 3 (at least 5.4 per cent of its energy above
-  1 kHz). Null: Picture nought, which does not swell.
+  by at least +6.0 dB and 1.5 dB more than today did, and is as harsh as option 3 (at least 4.4 per cent of its energy above
+  1 kHz: option 3's 5.4 less the point that was onset clicks, removed on 24
+  Nov). Null: Picture nought, which does not swell and is not as harsh.
 - Change: the soft notes after the swell swell no more than the same soft
   notes from a fresh start (by half a decibel), and by no more than a decibel
   at all. Null: Level, where a lit screen is a drive, and both swell.
@@ -238,8 +239,13 @@ fast, after = swell(seq100, seq0, 4, 9), swell(seq100, seq0, 9, 14.5)
 h100, h0 = harsh(seq100, 4, 9), harsh(seq0, 4, 9)
 check("Change, at the owner's depth, crossed: the fast run swells by %+.2f dB (today's stage +%.1f, the study's option 3 +6.3), "
       "and nothing after it (%+.2f)" % (fast, TODAY["fast"], after), fast >= 6.0 and fast >= TODAY["fast"] + 1.5 and after < 1.0)
-check("and it is as harsh as option 3: %.1f per cent of its energy above 1 kHz (%.1f at Picture nought)" % (100 * h100, 100 * h0),
-      h100 >= 0.054 and h100 > h0 * 1.5)
+# Option 3's 5.4 per cent was measured with a click at every voice born in step with held ones, a
+# step into its fresh shaper (24 Nov, core/tests/pieces/clicks.py): on this run the old core reads
+# 5.66 and the core without those clicks 4.65, a point of it the clicks, and Picture nought 2.49 either
+# way. So the bar is option 3's less that point.
+check("and it is as harsh as option 3 without its onset clicks: %.1f per cent of its energy above 1 kHz (%.1f at Picture nought)"
+      % (100 * h100, 100 * h0), h100 >= 0.044 and h100 > h0 * 1.5)
+null("and at Picture nought it is not (%.1f per cent)" % (100 * h0), not (h0 >= 0.044))
 null("at Picture nought the run does not swell (%+.2f dB)" % swell(seq0, seq0, 4, 9), not (swell(seq0, seq0, 4, 9) >= 6.0))
 
 seq75, fr75, fr0 = render(*SEQUENCE, responds("change", 75)), render(*FRESH, responds("change", 75)), render(*FRESH, responds("change", 0))

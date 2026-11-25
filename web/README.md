@@ -8437,6 +8437,11 @@ Two things worth knowing before measuring clicks here:
   loop open the two are identical to the bit. So "the change is limited to the transients" is
   shown with the loop open, and on the Settled presets, which are identical outside the 60 ms
   after each key.
+- A bar measured with the clicks in it moves when they go. `responsetest.py` held Crossed
+  hands' fast run to option 3's harshness, 5.4 per cent of its energy above 1 kHz. A point of
+  that was the click at each voice born in step: the shaper's-past fix alone takes the run
+  from 5.66 to 4.65, and Picture nought stays at 2.49 either way. The bar is now 4.4, with
+  Picture nought as its null.
 - A click detector needs to be able to see the click. A detector relative to the steady state
   cannot see one in a sound that is already noisy above its band, which is why the fixtures
   for Harmonic tone are lines and dyads.
