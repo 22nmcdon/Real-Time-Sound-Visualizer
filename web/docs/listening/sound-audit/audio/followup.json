@@ -1,0 +1,108 @@
+[
+ {
+  "title": "Mirror against Crush, on the phrase",
+  "listen": "The phrase the owner heard Mirror on. Where two notes overlap, Mirror's rectifier makes their sums and differences - partials of neither note - which is what Crush's steps sound like; on the one note held at the end it goes clean again. Crush is rough on every note, alone or not.",
+  "clips": [
+   {
+    "file": "audio/fu-sine-off.mp3",
+    "label": "Sine, nothing"
+   },
+   {
+    "file": "audio/fu-sine-mirror3.mp3",
+    "label": "Mirror Both"
+   },
+   {
+    "file": "audio/fu-sine-mirror1.mp3",
+    "label": "Mirror X"
+   },
+   {
+    "file": "audio/fu-sine-bits3.mp3",
+    "label": "Crush 3 bits"
+   },
+   {
+    "file": "audio/fu-sine-snap5.mp3",
+    "label": "Snap 5 bits"
+   }
+  ]
+ },
+ {
+  "title": "Mirror on one note, and on a chord",
+  "listen": "A3 with its major third, held three seconds: nothing, Mirror Both, and Crush 3 bits. On one note Mirror is an octave up and clean (the phrase's last note, above); on a chord it makes the two notes' sums and differences, and that is the crusher the owner heard.",
+  "clips": [
+   {
+    "file": "audio/fu-chord-off.mp3",
+    "label": "A chord, nothing"
+   },
+   {
+    "file": "audio/fu-chord-mirror.mp3",
+    "label": "A chord, Mirror Both"
+   },
+   {
+    "file": "audio/fu-chord-bits3.mp3",
+    "label": "A chord, Crush 3 bits"
+   }
+  ]
+ },
+ {
+  "title": "Radial Fold, either side of where it starts",
+  "listen": "A chord on the base sine with Radial on Fold. At a radius of 90 the figure never reaches the circle, and it is Radial off to the bit. At 75 it has just reached it; by 50 the chord is as crushed as Mirror makes it, and 20 is no worse. A small part of the knob does everything.",
+  "clips": [
+   {
+    "file": "audio/fu-fold-chord-90.mp3",
+    "label": "Fold, radius 90 (above: nothing)"
+   },
+   {
+    "file": "audio/fu-fold-chord-75.mp3",
+    "label": "Fold, radius 75 (just under)"
+   },
+   {
+    "file": "audio/fu-fold-chord-50.mp3",
+    "label": "Fold, radius 50"
+   },
+   {
+    "file": "audio/fu-fold-chord-20.mp3",
+    "label": "Fold, radius 20"
+   }
+  ]
+ },
+ {
+  "title": "The same on the Slow pad, a quieter sound",
+  "listen": "The pad is drawn smaller, so its threshold is lower: at 60 Fold does nothing, at 30 it is starting, at 12 it is crushed. Where the knob starts to act depends on how loud the sound is, not on the knob.",
+  "clips": [
+   {
+    "file": "audio/fu-fold-pad-off.mp3",
+    "label": "The Slow pad, Radial off"
+   },
+   {
+    "file": "audio/fu-fold-pad-60.mp3",
+    "label": "Fold, radius 60"
+   },
+   {
+    "file": "audio/fu-fold-pad-30.mp3",
+    "label": "Fold, radius 30"
+   },
+   {
+    "file": "audio/fu-fold-pad-12.mp3",
+    "label": "Fold, radius 12"
+   }
+  ]
+ },
+ {
+  "title": "Radial Clip at its gentlest, on a chord",
+  "listen": "Clip at a radius of 100 is the setting that ought to be nearly off. On a chord at the base's level it is not: the tanh rounds the summed figure and a little of the chord's products comes through (-27 dB against -60).",
+  "clips": [
+   {
+    "file": "audio/fu-clip-chord-off.mp3",
+    "label": "A chord, Radial off"
+   },
+   {
+    "file": "audio/fu-clip-chord-100.mp3",
+    "label": "Clip, radius 100"
+   },
+   {
+    "file": "audio/fu-clip-chord-20.mp3",
+    "label": "Clip, radius 20"
+   }
+  ]
+ }
+]

@@ -33,6 +33,62 @@ data = {
         "pairs": [p for p in AF["pairs"] if p["sim"] >= 0.85], "dead": AF["dead"], "audio": FU_AUDIO},
 }
 
+FU_HTML = r"""<h2 id="followup">Follow-up: stepping locked to the note</h2>
+__FU_WORDS__
+<h3 id="fu-measures">The two new measures, against sounds whose answer is known</h3>
+<p><b>Stair</b> reads the held note's waveform one cycle at a time: where the wave jumps (a sample whose step is three
+  times the steps around it, its neighbours counted with it so a step smoothed by an oversampler still counts), each
+  step's height, and how long it holds. The error of a staircase against the line through its steps is a ramp of the
+  step's height, so its level is worked out from those, against the cycle's height, in dB; the cycle's two largest
+  jumps are left out as the wave's own (a saw has one, a square two). The median over the cycles, so the loop's
+  movement spreads it rather than biasing it. <b>Chord grit</b> holds A3 with the just major third over it and reads
+  the share of the energy in the gaps between both notes' harmonics, far enough from each (8 to 26 Hz) that a
+  chorus's sidebands are not counted: every product of the two notes lands on a multiple of 55 Hz, at least 55 Hz
+  from either note's harmonics.</p>
+<div class="groups"><div class="box"><div class="tag numbers">Stair, dB (floor -60)</div><div class="scroll"><table id="fuValStair"></table></div></div>
+<div class="box"><div class="tag numbers">Chord grit, dB (floor -60)</div><div class="scroll"><table id="fuValChord"></table></div>
+<p class="soft" style="font-size:0.85rem">Shaped after the voices are summed (where the Plane is) against each voice shaped
+  alone (where the Shaping is): the same rectifier or drive makes the chord's products only in the first.</p></div></div>
+<p>Checks held on these, each seen to fail on purpose (<code>follow.py --validate --null</code> makes both measures read
+  their floors, <code>--null-high</code> reads everything as a step and every bin as grit): <span id="fuChecks"></span></p>
+<p class="soft">Known limits. Stair counts a jump the wave has more than twice a cycle: a delay's echo of a saw lands its
+  own reset mid-cycle, so the delay's Width and Ping-pong read -28 to -38 on the saw without stepping anything. Two
+  holds a cycle (Rate at 500 Hz on A3) is a square to it, and reads -60. A filter after the steps (the Slow pad's low
+  pass) rounds them past finding. Chord grit hears any nonlinearity after the voices, the output limiter's too: a
+  chord turned up into it (Level 100) reads -36 where the base reads -60.</p>
+
+<h3 id="fu-curves">Each control, swept finely</h3>
+<p>Every control of the Plane and the Shaping, 25 places across its range closer together near its ends (13 a side
+  from the middle for one that goes both ways), five more where the sound changed fastest, from each starting sound.
+  <b>Distance</b> is how far the sound is from where the control rests, in the first study's space with Stair and
+  Chord grit added (loudness left out), as a multiple of that starting sound's floor - the line marked floor, twice what the
+  key a moment later moves it. Shaded: <b>dead stretches</b>, travel under the floor. The upright lines mark where it
+  starts to act (charcoal), where it steps (Stair -45 dB, red) and where chords crush (Chord grit 15 dB over the rest
+  and over -35 dB, blue). The Radius is measured against Radial off, from 100 inwards. Hover a place for its numbers.</p>
+<div class="controls"><label>From <select id="fuBase"></select></label>
+  <span class="legend" style="margin:0"><span><i style="background:var(--charcoal)"></i>distance</span>
+  <span><i style="background:var(--hot)"></i>Stair (solid)</span><span><i style="background:var(--cold)"></i>Chord grit (dashed)</span></span></div>
+<div class="curves" id="fuCurves"></div>
+<h3>What each does to a held chord, and whether it steps</h3>
+<p>The most Chord grit anywhere on its travel (the starting sound's own in brackets) and where, and the most Stair,
+  from each starting sound, in dB. Worst first.</p>
+<div class="scroll"><table id="fuRank"></table></div>
+<h3>Dead stretches over 30 per cent of the travel</h3>
+<div class="scroll"><table id="fuDead"></table></div>
+
+<h3 id="fu-groups">The groups again, with the two new features</h3>
+<p>The first study's clustering, unchanged but for Stair and Chord grit in the space (and without the smooth Scan's renders).
+  A group is a direction, not a size: Radial lands with Level up because both raise Chord grit and little else,
+  from the sine Radial by 55 dB, Level by 24 (into the output limiter).</p>
+<div class="groups" id="fuGroups"></div>
+<h3>The suspects, alike or not, again</h3>
+<div class="scroll"><table id="fuHyp"></table></div>
+
+<h3 id="fu-listen">Listen</h3>
+<p>Matched in loudness within each set. The phrase is the first study's; a chord is A3 and its major third held three seconds.</p>
+<div class="sets" id="fuSets"></div>
+"""
+
 PAGE = r"""<!doctype html>
 <html lang="en-GB">
 <head>
@@ -175,6 +231,7 @@ __SUMMARY__
 <div id="darkList"></div>
 
 <h2 id="smooth">A smooth Scan</h2>
+<p class="soft"><b>Dropped</b> in the follow-up: the owner heard no benefit. Kept here as it was measured.</p>
 <p>Scan reads the picture's 64 by 64 grid of cells round a circle, bilinear between cell centres, and turns it into a
   table of 64 harmonics sixty times a second. Four prototypes, in the render harness only: <b>interp</b> reads the
   grid bicubic, so the read has no corners where it crosses a cell's edge; <b>taper</b> rolls the 64 harmonics off
@@ -403,7 +460,8 @@ if (D.fu) {
     const r = c.bases[b]; if (!r) return "";
     const P = r.points.filter((p) => p.v !== "off");
     const menu = c.kind === "menu";
-    const xs = menu ? r.points.map((_, i) => i) : P.map((p) => p.v);
+    // a menu's options are bars, spaced half a step in from either edge
+    const xs = menu ? [-0.6, r.points.length - 0.4] : P.map((p) => p.v);
     const pts = menu ? r.points : P;
     const x0 = Math.min(...xs), x1 = Math.max(...xs);
     const X = (v) => L + (v - x0) / ((x1 - x0) || 1) * (W2 - L - R2);
@@ -421,6 +479,7 @@ if (D.fu) {
     o += `<line x1="${L}" x2="${W2 - R2}" y1="${Yd(1)}" y2="${Yd(1)}" stroke="${soft}" stroke-dasharray="2 3"/>`;
     o += `<text x="${L - 4}" y="${Yd(1) + 4}" font-size="10" text-anchor="end" fill="${soft}">floor</text>`;
     o += `<text x="${L - 4}" y="${Yd(dmax) + 8}" font-size="10" text-anchor="end" fill="${soft}">${fmt(dmax, 0)}&times;</text>`;
+    o += `<line x1="${L}" x2="${W2 - R2}" y1="${Yd(0)}" y2="${Yd(0)}" stroke="${grid}"/><text x="${L - 4}" y="${Yd(0) + 4}" font-size="10" text-anchor="end" fill="${soft}">0&times;</text>`;
     for (const v of [-60, -30, 0]) o += `<line x1="${L}" x2="${W2 - R2}" y1="${Ys(v)}" y2="${Ys(v)}" stroke="${grid}"/><text x="${L - 4}" y="${Ys(v) + 4}" font-size="10" text-anchor="end" fill="${soft}">${v}</text>`;
     o += `<line x1="${L}" x2="${W2 - R2}" y1="${Ys(T.steps)}" y2="${Ys(T.steps)}" stroke="${hot}" stroke-dasharray="1 3" opacity="0.6"/>`;
     const line = (f, Y) => pts.map((p, i) => (i ? "L" : "M") + xOf(p, i).toFixed(1) + " " + Y(f(p)).toFixed(1)).join("");
@@ -466,6 +525,15 @@ if (D.fu) {
   }
   fb.addEventListener("change", curves); curves();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", curves);
+  const BS = Object.keys(D.bases);
+  const worst = (c, b) => { const P = c.bases[b].points.filter((p) => p.v !== "off");
+    const m = P.reduce((a, p) => p.chord > a.chord ? p : a, P[0]); const st = P.reduce((a, p) => p.stair > a.stair ? p : a, P[0]); return [m, st]; };
+  const ranked = F.curves.slice().sort((a, b) => BS.reduce((t, x) => t + worst(b, x)[0].chord, 0) - BS.reduce((t, x) => t + worst(a, x)[0].chord, 0));
+  $("fuRank").innerHTML = "<tr><th>Control</th>" + BS.map((b) => `<th colspan="3" class="cell">${esc(D.bases[b])}</th>`).join("") + "</tr><tr><th></th>" +
+    BS.map(() => "<th class='n'>chord (rest)</th><th class='n'>at</th><th class='n'>stair</th>").join("") + "</tr>" +
+    ranked.map((c) => `<tr><td>${esc(c.label)}</td>` + BS.map((b) => { const [m, st] = worst(c, b), r0 = c.bases[b].rest.chord;
+      const rise = Math.max(0, Math.min(1, (m.chord - r0) / 50));
+      return `<td class="n" style="${heat(rise)}">${fmt(m.chord, 0)} <span class="soft">(${fmt(r0, 0)})</span></td><td class="n soft">${esc(val(m.v))}</td><td class="n" style="${heat(Math.max(0, (st.stair + 60) / 45))}">${fmt(st.stair, 0)}</td>`; }).join("") + "</tr>").join("");
   const rowsDead = [];
   for (const c of F.curves) for (const [b, r] of Object.entries(c.bases)) for (const [s, x] of Object.entries(r.sides))
     if (x.flag) rowsDead.push(`<tr><td>${esc(c.label)}${s ? " " + s : ""}</td><td>${esc(D.bases[b])}</td><td class="n">${Math.round(100 * x.deadRun)}%</td>

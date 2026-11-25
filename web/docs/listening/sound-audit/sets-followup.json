@@ -81,5 +81,134 @@
     "chord"
    ]
   ]
+ },
+ {
+  "title": "Radial Fold, either side of where it starts",
+  "listen": "A chord on the base sine with Radial on Fold. At a radius of 90 the figure never reaches the circle, and it is Radial off to the bit. At 75 it has just reached it; by 50 the chord is as crushed as Mirror makes it, and 20 is no worse. A small part of the knob does everything.",
+  "clips": [
+   [
+    "fu-fold-chord-90",
+    "Fold, radius 90 (above: nothing)",
+    "sine",
+    {
+     "planeLimit": 2,
+     "planeRadius": 90
+    },
+    "core",
+    "chord"
+   ],
+   [
+    "fu-fold-chord-75",
+    "Fold, radius 75 (just under)",
+    "sine",
+    {
+     "planeLimit": 2,
+     "planeRadius": 75
+    },
+    "core",
+    "chord"
+   ],
+   [
+    "fu-fold-chord-50",
+    "Fold, radius 50",
+    "sine",
+    {
+     "planeLimit": 2,
+     "planeRadius": 50
+    },
+    "core",
+    "chord"
+   ],
+   [
+    "fu-fold-chord-20",
+    "Fold, radius 20",
+    "sine",
+    {
+     "planeLimit": 2,
+     "planeRadius": 20
+    },
+    "core",
+    "chord"
+   ]
+  ]
+ },
+ {
+  "title": "The same on the Slow pad, a quieter sound",
+  "listen": "The pad is drawn smaller, so its threshold is lower: at 60 Fold does nothing, at 30 it is starting, at 12 it is crushed. Where the knob starts to act depends on how loud the sound is, not on the knob.",
+  "clips": [
+   [
+    "fu-fold-pad-off",
+    "The Slow pad, Radial off",
+    "pad",
+    {},
+    "core"
+   ],
+   [
+    "fu-fold-pad-60",
+    "Fold, radius 60",
+    "pad",
+    {
+     "planeLimit": 2,
+     "planeRadius": 60
+    },
+    "core"
+   ],
+   [
+    "fu-fold-pad-30",
+    "Fold, radius 30",
+    "pad",
+    {
+     "planeLimit": 2,
+     "planeRadius": 30
+    },
+    "core"
+   ],
+   [
+    "fu-fold-pad-12",
+    "Fold, radius 12",
+    "pad",
+    {
+     "planeLimit": 2,
+     "planeRadius": 12
+    },
+    "core"
+   ]
+  ]
+ },
+ {
+  "title": "Radial Clip at its gentlest, on a chord",
+  "listen": "Clip at a radius of 100 is the setting that ought to be nearly off. On a chord at the base's level it is not: the tanh rounds the summed figure and a little of the chord's products comes through (-27 dB against -60).",
+  "clips": [
+   [
+    "fu-clip-chord-off",
+    "A chord, Radial off",
+    "sine",
+    {},
+    "core",
+    "chord"
+   ],
+   [
+    "fu-clip-chord-100",
+    "Clip, radius 100",
+    "sine",
+    {
+     "planeLimit": 1,
+     "planeRadius": 100
+    },
+    "core",
+    "chord"
+   ],
+   [
+    "fu-clip-chord-20",
+    "Clip, radius 20",
+    "sine",
+    {
+     "planeLimit": 1,
+     "planeRadius": 20
+    },
+    "core",
+    "chord"
+   ]
+  ]
  }
 ]
