@@ -8427,9 +8427,41 @@ things are not clicks:
 - The Tine pianos' bark. The Envelope card's and the key's routes move every sounding voice's
   FM index at a chord. With those routes off, both Tine pianos are at nought.
 
-A handful, none over 1e-3, remain in Poly sounds with the Picture high, about a frame after a
-note. Nothing on the Picture's routes steps there, and Strike, Swell and the response do not
-move them. This is not solved.
+**A known limitation: the output clamp bites on onset peaks (25 Nov, kept by the owner's
+choice).** A handful of clicks, none over 1e-3, remain in Poly sounds with the Picture high and
+in the two Tine pianos, about 16 ms after a note-on. They are not the Picture's frame. On
+Harmonic tone in Poly (240 bpm, legato 1.0) they fall at 111, 45 and 39 samples into the
+128-sample block and line up with no frame. The fold the Picture pushes glides smoothly through
+them, and a fixed fold from 12 to 25 with the Picture at nought makes none. They are not in the
+signal the limiter is given (`record prelimit`) and are in what it puts out. The limiter's
+compressor (Chromium's, ported to the bit: -3 dB, 20:1, a 3 ms attack behind a 6 ms lookahead)
+lets a note's onset peak through. The peak comes at the end of the attack, 6 ms of the note's
+start plus 8 of the attack. The make-up gain then lifts it into the clamp's knee (0.85 to a 0.99
+ceiling, a soft clip with no oversampling). The three clicks are three of the clamp's four
+deepest bites in the run (0.025, 0.016 and 0.014 off peaks of 0.95 to 0.97). With the clamp
+bypassed there are none. The Picture is why only loud sounds show it: its fold and echo pushes
+make the onsets louder and brighter. The Tine pianos' last one is the same clamp, gone with it
+bypassed. It is the instrument's own limiter, so the site and the plugin behave the same.
+
+Each fix was rejected for a reason:
+- *Oversampling the clamp* (tried offline at 4x on its real input) took Harmonic tone from
+  three to one and left the Tine piano's. A soft clip on a bright onset makes real harmonics
+  above 15 kHz, not only aliases. It would also have changed every loud passage bit for bit,
+  ended the limiter's equality with Chromium's node (the reason it was ported), and added
+  latency, or a fractional delay, to the plugin.
+- *Keeping onsets off the clamp* - less make-up gain, another attack, a true-peak lookahead -
+  changes the level or the dynamics of everything loud. That is the headroom decided on 22 Nov,
+  not a click to fix.
+
+So the clamp stays a safety device doing its job on overs. What it costs is under 1e-3 RMS above
+15 kHz, about -60 dBFS in that band. `core/tests/pieces/clicks.py` holds those sounds to it:
+nothing over 1e-3, and a tenth at most of what the core without the fixes makes.
+
+Crossed hands has one more of its own, and it is not the clamp. It is a single click of 7e-4,
+1 ms after an upper-hand key, on one of twelve passages, and it is already in the signal before
+the limiter. It goes at Scan nought or Picture nought. Strike nought moves it to another note,
+Strike 100 takes it away, and Softness 60 makes two. It rides on Scan reading a picture that
+moves, at the measure's floor, and no single mechanism was isolated. This is not solved.
 
 Two things worth knowing before measuring clicks here:
 - The loop magnifies differences. With the Picture closed, a newborn voice primed instead of
